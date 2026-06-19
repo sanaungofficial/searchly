@@ -31,14 +31,16 @@ export interface Job {
 const FULL = "#1A3A2F";
 const EMPTY = "rgba(26,58,47,0.15)";
 
-export function ScoutHeader({ screen }: { screen: Screen }) {
+export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutClick?: () => void }) {
   return (
     <div
       className="w-full max-w-[720px] flex justify-between items-start"
       style={{ paddingTop: 40, paddingBottom: 0 }}
     >
       <div>
-        <div
+        <button
+          onClick={onScoutClick}
+          disabled={!onScoutClick}
           style={{
             fontFamily: "var(--font-playfair), Georgia, serif",
             fontSize: 19,
@@ -46,10 +48,18 @@ export function ScoutHeader({ screen }: { screen: Screen }) {
             color: "#1A1A1A",
             letterSpacing: "-0.3px",
             lineHeight: 1,
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: onScoutClick ? "pointer" : "default",
+            transition: "opacity 0.15s",
           }}
+          onMouseEnter={(e) => onScoutClick && (e.currentTarget.style.opacity = "0.6")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          title={onScoutClick ? "Go to workspace" : undefined}
         >
           Scout
-        </div>
+        </button>
         <div
           style={{
             fontFamily: "var(--font-dm-sans), system-ui",

@@ -12,7 +12,6 @@ import {
   type Screen,
   type Job,
 } from "@/components/scout/screens";
-import { DirectionComparison } from "@/components/scout/direction-comparison";
 import { ScoutWorkspace } from "@/components/scout/workspace";
 
 type View = "onboarding" | "workspace";
@@ -187,7 +186,7 @@ export default function Home() {
           padding: "0 40px 100px",
         }}
       >
-        <ScoutHeader screen={screen} />
+        <ScoutHeader screen={screen} onScoutClick={enterWorkspace} />
 
         <div style={{ width: "100%", maxWidth: 620, paddingTop: 88, flex: 1 }}>
           {screen === 0 && (
@@ -228,9 +227,6 @@ export default function Home() {
       </div>
 
       <DemoNextButton onClick={demoAdvance} />
-
-      {/* ── Direction comparison (exploration) ── */}
-      <DirectionComparison />
     </div>
   );
 }
