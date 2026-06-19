@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #F2EDE3; font-family: 'DM Sans', system-ui, sans-serif; }
+    input::placeholder { color: rgba(74,69,64,0.38); font-weight: 300; }
+    input:focus, button:focus { outline: none; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.35; }
+      50%       { opacity: 1; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</helmet>
+
+<div style="background: #F2EDE3;">
+
+  <!-- ═══════════════════════════════════════════════════
+       INTERACTIVE FLOW
+  ════════════════════════════════════════════════════ -->
+  <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 40px 100px;">
+
+    <!-- HEADER BAR -->
+    <div style="width: 100%; max-width: 720px; display: flex; justify-content: space-between; align-items: flex-start; padding-top: 40px; padding-bottom: 0;">
+      <div>
+        <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 19px; font-weight: 500; color: #1A1A1A; letter-spacing: -0.3px; line-height: 1;">Scout</div>
+        <div style="font-family: 'DM Sans', system-ui; font-size: 9px; font-weight: 400; color: #A09890; letter-spacing: 1.1px; text-transform: uppercase; margin-top: 4px;">by Second Ladder</div>
+      </div>
+      <div style="display: flex; gap: 5px; align-items: center; padding-top: 6px;">
+        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor1 }}; transition: background 0.6s ease;"></div>
+        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor2 }}; transition: background 0.6s ease;"></div>
+        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor3 }}; transition: background 0.6s ease;"></div>
+        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor4 }}; transition: background 0.6s ease;"></div>
+      </div>
+    </div>
+
+    <!-- CONVERSATION AREA -->
+    <div style="width: 100%; max-width: 620px; padding-top: 88px; flex: 1;">
+
+      <!-- ── SCREEN 0: WELCOME + RESUME ── -->
+      <sc-if value="{{ s0 }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="01 — Welcome" style="display: flex; flex-direction: column; gap: 30px;">
+          <h1 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 56px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.03; letter-spacing: -0.3px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.1s;">Hello. I'm Scout.</h1>
+          <p style="font-family: 'DM Sans', system-ui; font-size: 18px; font-weight: 300; color: #52493F; line-height: 1.7; max-width: 460px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.5s; text-wrap: pretty;">I'll read your resume and get you set up to apply faster. Drop it below to get started.</p>
+
+          <!-- Upload zone -->
+          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 1.0s;">
+            <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" onClick="{{ onFileClick }}"
+              style="border: 1.5px dashed {{ dropBorder }}; border-radius: 10px; padding: 54px 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; cursor: pointer; background: {{ dropBg }}; transition: border-color 0.2s, background 0.2s; user-select: none;">
+              <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+                <circle cx="17" cy="17" r="16" stroke="rgba(26,58,47,0.18)" stroke-width="1.5"/>
+                <path d="M17 22V14" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M14 17l3-3 3 3" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 23h10" stroke="#1A3A2F" stroke-width="1.3" stroke-linecap="round"/>
+              </svg>
+              <div style="text-align: center; display: flex; flex-direction: column; gap: 5px;">
+                <span style="font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 400; color: #2E2820;">Drop your resume here</span>
+                <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890;">PDF or DOCX · click to browse</span>
+              </div>
+            </div>
+            <input type="file" id="scout-file" accept=".pdf,.doc,.docx" style="display: none;" onChange="{{ onFileChange }}">
+          </div>
+
+          <!-- Uploaded state -->
+          <sc-if value="{{ resumeUploaded }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: rgba(26,58,47,0.06); border-radius: 8px; animation: fadeIn 0.35s ease both;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="9" fill="#1A3A2F"/>
+                <path d="M5.5 9l2.5 2.5 4.5-4.5" stroke="#E8D5A3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span style="font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 500; color: #1A3A2F; flex: 1;">{{ resumeFilename }}</span>
+              <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; animation: pulse 1.8s ease infinite;">Reading…</span>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ── SCREEN 1: LINKEDIN ── -->
+      <sc-if value="{{ s1 }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="02 — LinkedIn" style="display: flex; flex-direction: column; gap: 32px;">
+          <div style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 10px; background: rgba(26,58,47,0.08); border-radius: 100px; width: fit-content; animation: fadeIn 0.4s ease both;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="7" fill="#1A3A2F"/>
+              <path d="M4 7l2 2 4-4" stroke="#E8D5A3" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 500; color: #1A3A2F;">{{ resumeFilename }}</span>
+          </div>
+          <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 50px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.05; letter-spacing: -0.2px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.2s;">What's your LinkedIn?</h2>
+          <p style="font-family: 'DM Sans', system-ui; font-size: 17px; font-weight: 300; color: #52493F; line-height: 1.65; max-width: 420px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.55s; text-wrap: pretty;">I'll use it to round out the picture — especially experience that may not be on the resume.</p>
+
+          <!-- Input -->
+          <sc-if value="{{ showLIInput }}" hint-placeholder-val="{{ true }}">
+            <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.9s;">
+              <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1.5px solid #1A3A2F; padding-bottom: 14px;">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="flex-shrink: 0;">
+                  <rect width="22" height="22" rx="4" fill="#0A66C2"/>
+                  <path d="M5.5 9.5h3V17h-3V9.5zm1.5-5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm4 5h2.9v1.1h.04c.4-.76 1.38-1.55 2.84-1.55C19.2 9.05 19.5 11 19.5 13.4V17h-3v-3.15c0-.75-.01-1.72-1.05-1.72-1.05 0-1.2.82-1.2 1.66V17H11V9.5z" fill="white"/>
+                </svg>
+                <input type="text" placeholder="linkedin.com/in/your-name" value="{{ liInput }}" onChange="{{ onLIChange }}" onKeyDown="{{ onLIKey }}" style="flex: 1; border: none; background: transparent; font-family: 'DM Sans', system-ui; font-size: 16px; font-weight: 400; color: #1A1A1A; caret-color: #1A3A2F;" />
+                <button onClick="{{ onLISubmit }}" style="background: none; border: none; cursor: pointer; opacity: {{ liBtnOp }}; transition: opacity 0.2s; padding: 4px; display: flex; align-items: center;">
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <path d="M5 11h12M13 7.5l4 3.5-4 3.5" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+              <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; margin-top: 10px;">Press Enter to continue</p>
+            </div>
+          </sc-if>
+
+          <!-- Analyzing state -->
+          <sc-if value="{{ liSubmitting }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; align-items: center; gap: 14px; animation: fadeIn 0.4s ease both;">
+              <div style="width: 16px; height: 16px; border: 1.5px solid rgba(26,58,47,0.2); border-top-color: #1A3A2F; border-radius: 50%; animation: spin 0.75s linear infinite; flex-shrink: 0;"></div>
+              <p style="font-family: 'DM Sans', system-ui; font-size: 16px; font-weight: 300; color: #52493F; animation: pulse 2s ease infinite;">Analyzing your background…</p>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ── SCREEN 2: THE READ-BACK ── -->
+      <sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="03 — The Read-Back" style="display: flex; flex-direction: column; gap: 36px;">
+          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.1s;">
+            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1.1px; text-transform: uppercase; margin-bottom: 14px;">Scout's read</p>
+            <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 50px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.04; letter-spacing: -0.2px;">Here's what I see.</h2>
+          </div>
+
+          <!-- Profile card -->
+          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.45s;">
+            <div style="background: #FFFFFF; border-radius: 10px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 10px 28px rgba(0,0,0,0.07);">
+
+              <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px;">A picture of you</p>
+
+              <p style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; font-weight: 400; color: #2A2218; line-height: 1.78; margin-bottom: 28px; text-wrap: pretty;">You're a seasoned Senior PM with eight years in the industry — data-literate, naturally cross-functional, and clearly ready for something bigger.</p>
+
+              <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 28px; padding-bottom: 28px; border-bottom: 1px solid #EEE9E2;">
+                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Product Strategy</span>
+                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Cross-functional Leadership</span>
+                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Data-driven Decisions</span>
+                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Stakeholder Alignment</span>
+              </div>
+
+              <!-- Target roles — green left-border -->
+              <div style="border-left: 2px solid #1A3A2F; padding-left: 20px; margin-bottom: 28px;">
+                <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 14px;">You'd thrive as</p>
+                <div style="display: flex; flex-direction: column; gap: 11px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 500; color: #1A1A1A;">Head of Product</span>
+                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 400; color: #4A8B6A;">Strong match</span>
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 500; color: #1A1A1A;">Director of Product Management</span>
+                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 400; color: #4A8B6A;">Strong match</span>
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 500; color: #1A1A1A;">Group Product Manager</span>
+                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 400; color: #A89462;">Good fit</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- One honest note -->
+              <div style="padding: 18px 22px; background: #FBF8F2; border-radius: 7px;">
+                <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 9px;">One honest note</p>
+                <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 300; color: #6B6258; line-height: 1.6; text-wrap: pretty;">Your direct reports story is thin. Roles managing large organizations will need more framing — let's address it together in your applications.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scout follow-up + CTA -->
+          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.85s;">
+            <p style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 21px; font-style: italic; font-weight: 400; color: #52493F; line-height: 1.55; margin-bottom: 24px;">Does this feel like you?</p>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button onClick="{{ onConfirm }}" style="padding: 14px 30px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 500; cursor: pointer; letter-spacing: 0.2px; transition: opacity 0.15s;" style-hover="opacity: 0.86;">Yes, carry on →</button>
+              <button style="padding: 14px 24px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 400; cursor: pointer; transition: background 0.15s;" style-hover="background: rgba(26,58,47,0.04);">Refine this</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ── SCREEN 3: TARGET JOBS ── -->
+      <sc-if value="{{ s3 }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="04 — Target Jobs" style="display: flex; flex-direction: column; gap: 32px;">
+          <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 50px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.05; letter-spacing: -0.2px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.1s;">Show me what you're aiming for.</h2>
+          <p style="font-family: 'DM Sans', system-ui; font-size: 17px; font-weight: 300; color: #52493F; line-height: 1.65; max-width: 440px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.4s; text-wrap: pretty;">Paste 1–3 job URLs you're excited about. I'll read each one and prepare your application.</p>
+
+          <!-- Job URL input -->
+          <sc-if value="{{ canAdd }}" hint-placeholder-val="{{ true }}">
+            <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.7s;">
+              <div style="display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid rgba(26,58,47,0.22); padding-bottom: 14px;">
+                <svg width="17" height="17" viewBox="0 0 17 17" fill="none" style="flex-shrink: 0;">
+                  <path d="M8.5 2.5a6 6 0 100 12 6 6 0 000-12z" stroke="rgba(74,69,64,0.35)" stroke-width="1.2"/>
+                  <path d="M8.5 5.5v3l2 2" stroke="rgba(74,69,64,0.35)" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                <input type="url" placeholder="Paste a job URL here…" value="{{ jobInput }}" onChange="{{ onJobChange }}" onKeyDown="{{ onJobKey }}" style="flex: 1; border: none; background: transparent; font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 400; color: #1A1A1A; caret-color: #1A3A2F;" />
+                <button onClick="{{ onAddJob }}" style="background: none; border: none; cursor: pointer; opacity: {{ jobBtnOp }}; transition: opacity 0.2s; padding: 4px; display: flex;" style-hover="opacity: 1;">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M4 10h12M12 7l3 3-3 3" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+              <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; margin-top: 10px;">Press Enter or → to add</p>
+            </div>
+          </sc-if>
+
+          <!-- Job cards -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <sc-for list="{{ jobs }}" as="job" hint-placeholder-count="0">
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #FFFFFF; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 3px 10px rgba(0,0,0,0.04); animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                  <div style="width: 38px; height: 38px; border-radius: 8px; background: #F0EDE6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 600; color: #3A3020;">{{ job.initials }}</span>
+                  </div>
+                  <div>
+                    <p style="font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 500; color: #1A1A1A; margin-bottom: 3px;">{{ job.role }}</p>
+                    <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 400; color: #A09890;">{{ job.company }}</p>
+                  </div>
+                </div>
+                <div>
+                  <sc-if value="{{ job.isReading }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; font-style: italic; animation: pulse 1.6s ease infinite;">reading…</span>
+                  </sc-if>
+                  <sc-if value="{{ job.isReady }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; align-items: center; gap: 6px; animation: fadeIn 0.35s ease both;">
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                        <circle cx="7.5" cy="7.5" r="7.5" fill="rgba(26,58,47,0.1)"/>
+                        <path d="M5 7.5l2 2 3.5-3.5" stroke="#1A3A2F" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 500; color: #1A3A2F;">Ready</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- CTA when all ready -->
+          <sc-if value="{{ allReady }}" hint-placeholder-val="{{ false }}">
+            <div style="animation: fadeUp 0.55s ease both;">
+              <button onClick="{{ onFinish }}" style="padding: 15px 32px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 500; cursor: pointer; letter-spacing: 0.2px; transition: opacity 0.15s;" style-hover="opacity: 0.86;">Enter your workspace →</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ── SCREEN 4: TRANSITION ── -->
+      <sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="05 — Transition" style="display: flex; flex-direction: column; gap: 40px; animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) both;">
+          <div>
+            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1.1px; text-transform: uppercase; margin-bottom: 14px;">You're set up</p>
+            <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 58px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.02; letter-spacing: -0.4px;">Let's get you<br>interviews.</h2>
+          </div>
+          <p style="font-family: 'DM Sans', system-ui; font-size: 18px; font-weight: 300; color: #52493F; line-height: 1.65; max-width: 400px; text-wrap: pretty;">Scout has your background and knows the roles you want. Your workspace is ready.</p>
+
+          <!-- Workspace preview -->
+          <div style="background: #FFFFFF; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 14px 36px rgba(0,0,0,0.08); animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.35s;">
+            <div style="background: #1A3A2F; padding: 20px 30px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: baseline; gap: 10px;">
+                <span style="font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 400; color: #E8D5A3;">Scout</span>
+                <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: rgba(232,213,163,0.45);">workspace</span>
+              </div>
+              <span style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 400; color: rgba(232,213,163,0.55); letter-spacing: 0.6px; text-transform: uppercase;">3 roles tracked</span>
+            </div>
+            <div style="padding: 22px 30px; display: flex; flex-direction: column; gap: 9px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: #F8F6F2; border-radius: 7px;">
+                <div>
+                  <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Senior PM · Stripe</p>
+                  <p style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: #A09890;">Resume match: 91%</p>
+                </div>
+                <span style="padding: 4px 11px; background: rgba(26,58,47,0.08); border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 500; color: #1A3A2F;">Draft ready</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: #F8F6F2; border-radius: 7px;">
+                <div>
+                  <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Product Lead · Linear</p>
+                  <p style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: #A09890;">Resume match: 87%</p>
+                </div>
+                <span style="padding: 4px 11px; background: rgba(26,58,47,0.08); border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 500; color: #1A3A2F;">Draft ready</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: #F8F6F2; border-radius: 7px; opacity: 0.5;">
+                <div>
+                  <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Design Systems PM · Figma</p>
+                  <p style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: #A09890; animation: pulse 1.8s ease infinite;">Tailoring…</p>
+                </div>
+                <span style="padding: 4px 11px; background: rgba(0,0,0,0.05); border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 11px; color: #A09890;">In progress</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.65s;">
+            <a href="Scout Workspace.dc.html" style="display: inline-block; padding: 16px 36px; background: #1A3A2F; color: #E8D5A3; border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 500; cursor: pointer; letter-spacing: 0.2px; text-decoration: none; transition: opacity 0.15s;">Get Interviews →</a>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- Demo nav button -->
+  <div style="position: fixed; bottom: 28px; right: 28px; z-index: 100;">
+    <button onClick="{{ demoNext }}" style="padding: 10px 20px; background: rgba(26,58,47,0.9); color: rgba(232,213,163,0.88); border: none; border-radius: 6px; font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 500; cursor: pointer; letter-spacing: 0.3px; backdrop-filter: blur(8px);" style-hover="background: #1A3A2F;">Demo: next →</button>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       DIRECTION COMPARISON — Beat 3, three visual approaches
+  ════════════════════════════════════════════════════ -->
+  <div style="background: #E3E0D9; padding: 96px 60px 110px;">
+    <div style="max-width: 1380px; margin: 0 auto;">
+
+      <!-- Section header -->
+      <div style="margin-bottom: 60px; max-width: 560px;">
+        <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #8A8278; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px;">Visual direction exploration</p>
+        <h3 style="font-family: 'Playfair Display', Georgia, serif; font-size: 30px; font-weight: 400; font-style: italic; color: #1A1A1A; letter-spacing: -0.5px; margin-bottom: 10px;">Beat 3 — The Read-Back</h3>
+        <p style="font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 300; color: #6B6258; line-height: 1.65;">Three approaches to the moment that sells Scout. The interactive flow above uses Direction A.</p>
+      </div>
+
+      <!-- Three frames -->
+      <div style="display: flex; gap: 28px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px;">
+
+        <!-- A: The Correspondent (primary direction) -->
+        <div style="flex: none; width: 390px;">
+          <div style="margin-bottom: 14px;">
+            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 600; color: #8A8278; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;">A — The Correspondent</p>
+            <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #8A8278;">Playfair serif · editorial · generous white space</p>
+          </div>
+          <div style="background: #F0EEE9; border-radius: 10px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);">
+            <p style="font-family: 'DM Sans', system-ui; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">Scout's read</p>
+            <h3 style="font-family: 'Playfair Display', serif; font-size: 25px; font-weight: 400; font-style: italic; color: #1A1A1A; margin-bottom: 22px; line-height: 1.2;">Here's what I see.</h3>
+            <div style="background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #EEE9E2; margin-bottom: 16px;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: #1A3A2F; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                  <span style="font-family: 'Playfair Display'; font-size: 11px; font-weight: 500; color: #E8D5A3;">SC</span>
+                </div>
+                <div>
+                  <p style="font-family: 'DM Sans'; font-size: 12px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Senior IC → Director-ready</p>
+                  <p style="font-family: 'DM Sans'; font-size: 10px; font-weight: 300; color: #A09890;">8 years · SaaS Product</p>
+                </div>
+              </div>
+              <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 9px;">Strengths</p>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+                <span style="padding: 5px 12px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans'; font-size: 11px; color: #2A2218;">Product Strategy</span>
+                <span style="padding: 5px 12px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans'; font-size: 11px; color: #2A2218;">Cross-functional</span>
+                <span style="padding: 5px 12px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans'; font-size: 11px; color: #2A2218;">Data Analysis</span>
+              </div>
+              <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 9px;">Target Roles</p>
+              <div style="display: flex; flex-direction: column; gap: 7px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Head of Product</span>
+                  <span style="font-family: 'DM Sans'; font-size: 10px; color: #4A8B6A;">Strong</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Director of PM</span>
+                  <span style="font-family: 'DM Sans'; font-size: 10px; color: #4A8B6A;">Strong</span>
+                </div>
+              </div>
+              <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #EEE9E2;">
+                <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px;">Worth Noting</p>
+                <div style="display: flex; align-items: flex-start; gap: 7px;">
+                  <div style="width: 4px; height: 4px; border-radius: 50%; background: #C4A86A; margin-top: 5px; flex-shrink: 0;"></div>
+                  <p style="font-family: 'DM Sans'; font-size: 11px; font-weight: 300; color: #52493F; line-height: 1.5;">Limited direct reports history — org leadership roles may need framing.</p>
+                </div>
+              </div>
+            </div>
+            <p style="font-family: 'DM Sans'; font-size: 13px; font-weight: 300; color: #52493F; margin-top: 18px; line-height: 1.5;">Does this feel accurate?</p>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+              <button style="padding: 10px 20px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; font-weight: 500; cursor: pointer;">Looks right →</button>
+              <button style="padding: 10px 16px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; cursor: pointer;">Adjust</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- B: The Analyst -->
+        <div style="flex: none; width: 390px;">
+          <div style="margin-bottom: 14px;">
+            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 600; color: #8A8278; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;">B — The Analyst</p>
+            <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #8A8278;">DM Sans + DM Mono · data-forward · structured grid</p>
+          </div>
+          <div style="background: #ECEAE4; border-radius: 10px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
+              <div style="width: 7px; height: 7px; border-radius: 50%; background: #1A3A2F;"></div>
+              <p style="font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; color: #1A3A2F; letter-spacing: 0.4px;">analysis complete</p>
+            </div>
+            <h3 style="font-family: 'DM Sans', system-ui; font-size: 22px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.3px; margin-bottom: 22px; line-height: 1.2;">Here's what I see.</h3>
+            <div style="background: white; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07);">
+              <div style="background: #1A3A2F; padding: 11px 20px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500; color: #E8D5A3; letter-spacing: 0.7px; text-transform: uppercase;">Profile</span>
+                <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(232,213,163,0.6);">Senior IC</span>
+              </div>
+              <div style="padding: 18px 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #EEE9E2; margin-bottom: 14px;">
+                  <div>
+                    <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 4px;">Experience</p>
+                    <p style="font-family: 'DM Sans'; font-size: 22px; font-weight: 600; color: #1A1A1A; letter-spacing: -0.5px;">8 yrs</p>
+                  </div>
+                  <div>
+                    <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 4px;">Match score</p>
+                    <p style="font-family: 'DM Sans'; font-size: 22px; font-weight: 600; color: #1A3A2F; letter-spacing: -0.5px;">91%</p>
+                  </div>
+                </div>
+                <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 10px;">Skill Signals</p>
+                <div style="display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-family: 'DM Sans'; font-size: 11px; color: #3A3020; width: 80px; flex-shrink: 0;">Strategy</span>
+                    <div style="flex: 1; height: 3px; background: #EDE9E1; border-radius: 2px; overflow: hidden;">
+                      <div style="width: 92%; height: 100%; background: #1A3A2F; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: #A09890; width: 26px; text-align: right;">92%</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-family: 'DM Sans'; font-size: 11px; color: #3A3020; width: 80px; flex-shrink: 0;">Leadership</span>
+                    <div style="flex: 1; height: 3px; background: #EDE9E1; border-radius: 2px; overflow: hidden;">
+                      <div style="width: 74%; height: 100%; background: #1A3A2F; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: #A09890; width: 26px; text-align: right;">74%</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-family: 'DM Sans'; font-size: 11px; color: #3A3020; width: 80px; flex-shrink: 0;">Analytics</span>
+                    <div style="flex: 1; height: 3px; background: #EDE9E1; border-radius: 2px; overflow: hidden;">
+                      <div style="width: 86%; height: 100%; background: #1A3A2F; border-radius: 2px;"></div>
+                    </div>
+                    <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: #A09890; width: 26px; text-align: right;">86%</span>
+                  </div>
+                </div>
+                <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 8px;">Role Fit</p>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Head of Product</span>
+                    <span style="font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; color: #4A8B6A;">91%</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Director of PM</span>
+                    <span style="font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; color: #4A8B6A;">87%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <button style="flex: 1; padding: 10px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 3px; font-family: 'DM Sans'; font-size: 12px; font-weight: 500; cursor: pointer;">Confirm →</button>
+              <button style="padding: 10px 14px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 3px; font-family: 'DM Sans'; font-size: 12px; cursor: pointer;">Edit</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- C: The Mentor -->
+        <div style="flex: none; width: 390px;">
+          <div style="margin-bottom: 14px;">
+            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 600; color: #8A8278; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;">C — The Mentor</p>
+            <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #8A8278;">Cormorant Garamond · warm prose · dossier feel</p>
+          </div>
+          <div style="background: #F2EDE2; border-radius: 10px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);">
+            <h3 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 27px; font-weight: 500; color: #1A1A1A; line-height: 1.2; margin-bottom: 20px;">Here's what I see.</h3>
+            <div style="background: white; border-radius: 6px; padding: 24px 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+              <p style="font-family: 'Cormorant Garamond', serif; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px;">A picture of you</p>
+              <p style="font-family: 'Cormorant Garamond', serif; font-size: 16px; color: #2A2218; line-height: 1.75; margin-bottom: 22px; text-wrap: pretty;">You're a seasoned Senior PM with eight years in the industry — data-literate, naturally cross-functional, and clearly ready for something bigger.</p>
+              <div style="border-left: 2px solid #C4A86A; padding-left: 16px; margin-bottom: 20px;">
+                <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 9px;">You'd thrive as</p>
+                <p style="font-family: 'Cormorant Garamond'; font-size: 15px; font-weight: 500; color: #1A1A1A; line-height: 1.75;">Head of Product<br>Director of PM<br>Group Product Manager</p>
+              </div>
+              <div style="padding: 14px 16px; background: #FBF8F2; border-radius: 5px;">
+                <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 7px;">One honest note</p>
+                <p style="font-family: 'DM Sans'; font-size: 12px; font-weight: 300; color: #6B6258; line-height: 1.55; text-wrap: pretty;">Your direct reports story is thin. Roles managing large orgs will need more framing to land well.</p>
+              </div>
+            </div>
+            <p style="font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: italic; color: #52493F; margin-top: 18px; line-height: 1.5;">Does this feel like you?</p>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+              <button style="padding: 10px 20px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; font-weight: 500; cursor: pointer;">Yes, carry on</button>
+              <button style="padding: 10px 16px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; cursor: pointer;">Refine this</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    screen: 0,
+    resumeFilename: null,
+    resumeUploaded: false,
+    liInput: '',
+    liSubmitting: false,
+    jobInput: '',
+    jobs: [],
+    isDragging: false,
+  };
+
+  goTo(n) {
+    this.setState({ screen: n, liSubmitting: false });
+  }
+
+  processFile(file) {
+    if (!file) return;
+    this.setState({ resumeFilename: file.name, resumeUploaded: false });
+    setTimeout(() => {
+      this.setState({ resumeUploaded: true });
+      setTimeout(() => this.goTo(1), 700);
+    }, 1300);
+  }
+
+  submitLI() {
+    if (!this.state.liInput.trim()) return;
+    this.setState({ liSubmitting: true });
+    setTimeout(() => this.goTo(2), 2100);
+  }
+
+  addJob() {
+    const { jobInput, jobs } = this.state;
+    if (!jobInput.trim() || jobs.length >= 3) return;
+    const mocks = [
+      { company: 'Stripe', role: 'Senior PM' },
+      { company: 'Linear', role: 'Product Lead' },
+      { company: 'Figma', role: 'Design Systems PM' },
+    ];
+    const m = mocks[jobs.length] || { company: 'Company', role: 'PM Role' };
+    const id = Date.now();
+    const job = {
+      id,
+      company: m.company,
+      role: m.role,
+      initials: m.company.slice(0, 2).toUpperCase(),
+      state: 'reading',
+    };
+    this.setState({ jobs: [...jobs, job], jobInput: '' });
+    setTimeout(() => {
+      this.setState(prev => ({
+        jobs: prev.jobs.map(j => j.id === id ? Object.assign({}, j, { state: 'ready' }) : j),
+      }));
+    }, 1900);
+  }
+
+  demoAdvance() {
+    const { screen, jobs } = this.state;
+    if (screen === 0) {
+      this.setState({ resumeFilename: 'Sarah_Chen_Resume.pdf' });
+      setTimeout(() => {
+        this.setState({ resumeUploaded: true });
+        setTimeout(() => this.goTo(1), 700);
+      }, 1300);
+    } else if (screen === 1) {
+      this.setState({ liInput: 'linkedin.com/in/sarahchen-pm', liSubmitting: true });
+      setTimeout(() => this.goTo(2), 2100);
+    } else if (screen === 2) {
+      this.goTo(3);
+    } else if (screen === 3) {
+      const allReady = jobs.length > 0 && jobs.every(j => j.state === 'ready');
+      if (allReady) { this.goTo(4); return; }
+      if (jobs.length < 3) {
+        const mocks = [
+          { company: 'Stripe', role: 'Senior PM' },
+          { company: 'Linear', role: 'Product Lead' },
+          { company: 'Figma', role: 'Design Systems PM' },
+        ];
+        const now = Date.now();
+        const newJobs = mocks.map((m, i) => ({
+          id: now + i,
+          company: m.company,
+          role: m.role,
+          initials: m.company.slice(0, 2).toUpperCase(),
+          state: 'reading',
+        }));
+        this.setState({ jobs: newJobs });
+        newJobs.forEach((job, i) => {
+          const jid = job.id;
+          setTimeout(() => {
+            this.setState(prev => ({
+              jobs: prev.jobs.map(j => j.id === jid ? Object.assign({}, j, { state: 'ready' }) : j),
+            }));
+          }, 1500 + i * 650);
+        });
+      }
+    }
+  }
+
+  renderVals() {
+    const { screen, resumeFilename, resumeUploaded, liInput, liSubmitting, jobInput, jobs, isDragging } = this.state;
+    const FULL = '#1A3A2F';
+    const EMPTY = 'rgba(26,58,47,0.15)';
+
+    return {
+      s0: screen === 0,
+      s1: screen === 1,
+      s2: screen === 2,
+      s3: screen === 3,
+      s4: screen === 4,
+
+      segColor1: FULL,
+      segColor2: screen >= 1 ? FULL : EMPTY,
+      segColor3: screen >= 2 ? FULL : EMPTY,
+      segColor4: screen >= 3 ? FULL : EMPTY,
+
+      resumeFilename: resumeFilename || 'document',
+      resumeUploaded,
+      dropBorder: isDragging ? '#1A3A2F' : 'rgba(26,58,47,0.22)',
+      dropBg: isDragging ? 'rgba(26,58,47,0.04)' : 'transparent',
+
+      liInput,
+      liSubmitting,
+      showLIInput: !liSubmitting,
+      liBtnOp: liInput.trim() ? 1 : 0.28,
+
+      jobInput,
+      jobBtnOp: jobInput.trim() ? 1 : 0.28,
+      jobs: jobs.map(j => Object.assign({}, j, { isReady: j.state === 'ready', isReading: j.state === 'reading' })),
+      allReady: jobs.length > 0 && jobs.every(j => j.state === 'ready'),
+      canAdd: jobs.length < 3,
+
+      onDragOver: (e) => { e.preventDefault(); this.setState({ isDragging: true }); },
+      onDragLeave: () => this.setState({ isDragging: false }),
+      onDrop: (e) => {
+        e.preventDefault();
+        this.setState({ isDragging: false });
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) this.processFile(f);
+      },
+      onFileClick: () => { const el = document.getElementById('scout-file'); if (el) el.click(); },
+      onFileChange: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.processFile(f); },
+
+      onLIChange: (e) => this.setState({ liInput: e.target.value }),
+      onLIKey: (e) => { if (e.key === 'Enter') this.submitLI(); },
+      onLISubmit: () => this.submitLI(),
+
+      onConfirm: () => this.goTo(3),
+
+      onJobChange: (e) => this.setState({ jobInput: e.target.value }),
+      onJobKey: (e) => { if (e.key === 'Enter') this.addJob(); },
+      onAddJob: () => this.addJob(),
+      onFinish: () => this.goTo(4),
+
+      demoNext: () => this.demoAdvance(),
+    };
+  }
+}
+</script>
+</body>
+</html>

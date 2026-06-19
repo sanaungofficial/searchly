@@ -1,0 +1,665 @@
+     1→<!DOCTYPE html>
+     2→<html>
+     3→<head>
+     4→<meta charset="utf-8">
+     5→<meta name="viewport" content="width=device-width, initial-scale=1">
+     6→<script src="./support.js"></script>
+     7→</head>
+     8→<body>
+     9→<x-dc>
+    10→<helmet>
+    11→  <link rel="preconnect" href="https://fonts.googleapis.com">
+    12→  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    13→  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    14→  <style>
+    15→    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    16→    body { background: #F2EDE3; font-family: 'DM Sans', system-ui, sans-serif; }
+    17→    input::placeholder { color: rgba(74,69,64,0.38); font-weight: 300; }
+    18→    input:focus, button:focus { outline: none; }
+    19→    @keyframes fadeUp {
+    20→      from { opacity: 0; transform: translateY(14px); }
+    21→      to   { opacity: 1; transform: translateY(0); }
+    22→    }
+    23→    @keyframes fadeIn {
+    24→      from { opacity: 0; }
+    25→      to   { opacity: 1; }
+    26→    }
+    27→    @keyframes pulse {
+    28→      0%, 100% { opacity: 0.35; }
+    29→      50%       { opacity: 1; }
+    30→    }
+    31→    @keyframes spin {
+    32→      to { transform: rotate(360deg); }
+    33→    }
+    34→    @keyframes slideUp {
+    35→      from { opacity: 0; transform: translateY(20px); }
+    36→      to   { opacity: 1; transform: translateY(0); }
+    37→    }
+    38→  </style>
+    39→</helmet>
+    40→
+    41→<div style="background: #F2EDE3;">
+    42→
+    43→  <!-- ═══════════════════════════════════════════════════
+    44→       INTERACTIVE FLOW
+    45→  ════════════════════════════════════════════════════ -->
+    46→  <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 40px 100px;">
+    47→
+    48→    <!-- HEADER BAR -->
+    49→    <div style="width: 100%; max-width: 720px; display: flex; justify-content: space-between; align-items: flex-start; padding-top: 40px; padding-bottom: 0;">
+    50→      <div>
+    51→        <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 19px; font-weight: 500; color: #1A1A1A; letter-spacing: -0.3px; line-height: 1;">Scout</div>
+    52→        <div style="font-family: 'DM Sans', system-ui; font-size: 9px; font-weight: 400; color: #A09890; letter-spacing: 1.1px; text-transform: uppercase; margin-top: 4px;">by Second Ladder</div>
+    53→      </div>
+    54→      <div style="display: flex; gap: 5px; align-items: center; padding-top: 6px;">
+    55→        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor1 }}; transition: background 0.6s ease;"></div>
+    56→        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor2 }}; transition: background 0.6s ease;"></div>
+    57→        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor3 }}; transition: background 0.6s ease;"></div>
+    58→        <div style="width: 30px; height: 2px; border-radius: 1px; background: {{ segColor4 }}; transition: background 0.6s ease;"></div>
+    59→      </div>
+    60→    </div>
+    61→
+    62→    <!-- CONVERSATION AREA -->
+    63→    <div style="width: 100%; max-width: 620px; padding-top: 88px; flex: 1;">
+    64→
+    65→      <!-- ── SCREEN 0: WELCOME + RESUME ── -->
+    66→      <sc-if value="{{ s0 }}" hint-placeholder-val="{{ true }}">
+    67→        <div data-screen-label="01 — Welcome" style="display: flex; flex-direction: column; gap: 30px;">
+    68→          <h1 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 56px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.03; letter-spacing: -0.3px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.1s;">Hello. I'm Scout.</h1>
+    69→          <p style="font-family: 'DM Sans', system-ui; font-size: 18px; font-weight: 300; color: #52493F; line-height: 1.7; max-width: 460px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.5s; text-wrap: pretty;">I'll read your resume and get you set up to apply faster. Drop it below to get started.</p>
+    70→
+    71→          <!-- Upload zone -->
+    72→          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 1.0s;">
+    73→            <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" onClick="{{ onFileClick }}"
+    74→              style="border: 1.5px dashed {{ dropBorder }}; border-radius: 10px; padding: 54px 40px; display: flex; flex-direction: column; align-items: center; gap: 16px; cursor: pointer; background: {{ dropBg }}; transition: border-color 0.2s, background 0.2s; user-select: none;">
+    75→              <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+    76→                <circle cx="17" cy="17" r="16" stroke="rgba(26,58,47,0.18)" stroke-width="1.5"/>
+    77→                <path d="M17 22V14" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round"/>
+    78→                <path d="M14 17l3-3 3 3" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    79→                <path d="M12 23h10" stroke="#1A3A2F" stroke-width="1.3" stroke-linecap="round"/>
+    80→              </svg>
+    81→              <div style="text-align: center; display: flex; flex-direction: column; gap: 5px;">
+    82→                <span style="font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 400; color: #2E2820;">Drop your resume here</span>
+    83→                <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890;">PDF or DOCX · click to browse</span>
+    84→              </div>
+    85→            </div>
+    86→            <input type="file" id="scout-file" accept=".pdf,.doc,.docx" style="display: none;" onChange="{{ onFileChange }}">
+    87→          </div>
+    88→
+    89→          <!-- Uploaded state -->
+    90→          <sc-if value="{{ resumeUploaded }}" hint-placeholder-val="{{ false }}">
+    91→            <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: rgba(26,58,47,0.06); border-radius: 8px; animation: fadeIn 0.35s ease both;">
+    92→              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    93→                <circle cx="9" cy="9" r="9" fill="#1A3A2F"/>
+    94→                <path d="M5.5 9l2.5 2.5 4.5-4.5" stroke="#E8D5A3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    95→              </svg>
+    96→              <span style="font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 500; color: #1A3A2F; flex: 1;">{{ resumeFilename }}</span>
+    97→              <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; animation: pulse 1.8s ease infinite;">Reading…</span>
+    98→            </div>
+    99→          </sc-if>
+   100→        </div>
+   101→      </sc-if>
+   102→
+   103→      <!-- ── SCREEN 1: LINKEDIN ── -->
+   104→      <sc-if value="{{ s1 }}" hint-placeholder-val="{{ false }}">
+   105→        <div data-screen-label="02 — LinkedIn" style="display: flex; flex-direction: column; gap: 32px;">
+   106→          <div style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 10px; background: rgba(26,58,47,0.08); border-radius: 100px; width: fit-content; animation: fadeIn 0.4s ease both;">
+   107→            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+   108→              <circle cx="7" cy="7" r="7" fill="#1A3A2F"/>
+   109→              <path d="M4 7l2 2 4-4" stroke="#E8D5A3" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+   110→            </svg>
+   111→            <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 500; color: #1A3A2F;">{{ resumeFilename }}</span>
+   112→          </div>
+   113→          <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 50px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.05; letter-spacing: -0.2px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.2s;">What's your LinkedIn?</h2>
+   114→          <p style="font-family: 'DM Sans', system-ui; font-size: 17px; font-weight: 300; color: #52493F; line-height: 1.65; max-width: 420px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.55s; text-wrap: pretty;">I'll use it to round out the picture — especially experience that may not be on the resume.</p>
+   115→
+   116→          <!-- Input -->
+   117→          <sc-if value="{{ showLIInput }}" hint-placeholder-val="{{ true }}">
+   118→            <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.9s;">
+   119→              <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1.5px solid #1A3A2F; padding-bottom: 14px;">
+   120→                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="flex-shrink: 0;">
+   121→                  <rect width="22" height="22" rx="4" fill="#0A66C2"/>
+   122→                  <path d="M5.5 9.5h3V17h-3V9.5zm1.5-5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm4 5h2.9v1.1h.04c.4-.76 1.38-1.55 2.84-1.55C19.2 9.05 19.5 11 19.5 13.4V17h-3v-3.15c0-.75-.01-1.72-1.05-1.72-1.05 0-1.2.82-1.2 1.66V17H11V9.5z" fill="white"/>
+   123→                </svg>
+   124→                <input type="text" placeholder="linkedin.com/in/your-name" value="{{ liInput }}" onChange="{{ onLIChange }}" onKeyDown="{{ onLIKey }}" style="flex: 1; border: none; background: transparent; font-family: 'DM Sans', system-ui; font-size: 16px; font-weight: 400; color: #1A1A1A; caret-color: #1A3A2F;" />
+   125→                <button onClick="{{ onLISubmit }}" style="background: none; border: none; cursor: pointer; opacity: {{ liBtnOp }}; transition: opacity 0.2s; padding: 4px; display: flex; align-items: center;">
+   126→                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+   127→                    <path d="M5 11h12M13 7.5l4 3.5-4 3.5" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+   128→                  </svg>
+   129→                </button>
+   130→              </div>
+   131→              <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; margin-top: 10px;">Press Enter to continue</p>
+   132→            </div>
+   133→          </sc-if>
+   134→
+   135→          <!-- Analyzing state -->
+   136→          <sc-if value="{{ liSubmitting }}" hint-placeholder-val="{{ false }}">
+   137→            <div style="display: flex; align-items: center; gap: 14px; animation: fadeIn 0.4s ease both;">
+   138→              <div style="width: 16px; height: 16px; border: 1.5px solid rgba(26,58,47,0.2); border-top-color: #1A3A2F; border-radius: 50%; animation: spin 0.75s linear infinite; flex-shrink: 0;"></div>
+   139→              <p style="font-family: 'DM Sans', system-ui; font-size: 16px; font-weight: 300; color: #52493F; animation: pulse 2s ease infinite;">Analyzing your background…</p>
+   140→            </div>
+   141→          </sc-if>
+   142→        </div>
+   143→      </sc-if>
+   144→
+   145→      <!-- ── SCREEN 2: THE READ-BACK ── -->
+   146→      <sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
+   147→        <div data-screen-label="03 — The Read-Back" style="display: flex; flex-direction: column; gap: 36px;">
+   148→          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.1s;">
+   149→            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1.1px; text-transform: uppercase; margin-bottom: 14px;">Scout's read</p>
+   150→            <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 50px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.04; letter-spacing: -0.2px;">Here's what I see.</h2>
+   151→          </div>
+   152→
+   153→          <!-- Profile card -->
+   154→          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.45s;">
+   155→            <div style="background: #FFFFFF; border-radius: 10px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 10px 28px rgba(0,0,0,0.07);">
+   156→
+   157→              <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px;">A picture of you</p>
+   158→
+   159→              <p style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; font-weight: 400; color: #2A2218; line-height: 1.78; margin-bottom: 28px; text-wrap: pretty;">You're a seasoned Senior PM with eight years in the industry — data-literate, naturally cross-functional, and clearly ready for something bigger.</p>
+   160→
+   161→              <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 28px; padding-bottom: 28px; border-bottom: 1px solid #EEE9E2;">
+   162→                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Product Strategy</span>
+   163→                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Cross-functional Leadership</span>
+   164→                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Data-driven Decisions</span>
+   165→                <span style="padding: 6px 14px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 12px; color: #2A2218;">Stakeholder Alignment</span>
+   166→              </div>
+   167→
+   168→              <!-- Target roles — green left-border -->
+   169→              <div style="border-left: 2px solid #1A3A2F; padding-left: 20px; margin-bottom: 28px;">
+   170→                <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 14px;">You'd thrive as</p>
+   171→                <div style="display: flex; flex-direction: column; gap: 11px;">
+   172→                  <div style="display: flex; align-items: center; justify-content: space-between;">
+   173→                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 500; color: #1A1A1A;">Head of Product</span>
+   174→                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 400; color: #4A8B6A;">Strong match</span>
+   175→                  </div>
+   176→                  <div style="display: flex; align-items: center; justify-content: space-between;">
+   177→                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 500; color: #1A1A1A;">Director of Product Management</span>
+   178→                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 400; color: #4A8B6A;">Strong match</span>
+   179→                  </div>
+   180→                  <div style="display: flex; align-items: center; justify-content: space-between;">
+   181→                    <span style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 500; color: #1A1A1A;">Group Product Manager</span>
+   182→                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 400; color: #A89462;">Good fit</span>
+   183→                  </div>
+   184→                </div>
+   185→              </div>
+   186→
+   187→              <!-- One honest note -->
+   188→              <div style="padding: 18px 22px; background: #FBF8F2; border-radius: 7px;">
+   189→                <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 9px;">One honest note</p>
+   190→                <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 300; color: #6B6258; line-height: 1.6; text-wrap: pretty;">Your direct reports story is thin. Roles managing large organizations will need more framing — let's address it together in your applications.</p>
+   191→              </div>
+   192→            </div>
+   193→          </div>
+   194→
+   195→          <!-- Scout follow-up + CTA -->
+   196→          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.85s;">
+   197→            <p style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 21px; font-style: italic; font-weight: 400; color: #52493F; line-height: 1.55; margin-bottom: 24px;">Does this feel like you?</p>
+   198→            <div style="display: flex; gap: 10px; align-items: center;">
+   199→              <button onClick="{{ onConfirm }}" style="padding: 14px 30px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 500; cursor: pointer; letter-spacing: 0.2px; transition: opacity 0.15s;" style-hover="opacity: 0.86;">Yes, carry on →</button>
+   200→              <button style="padding: 14px 24px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 400; cursor: pointer; transition: background 0.15s;" style-hover="background: rgba(26,58,47,0.04);">Refine this</button>
+   201→            </div>
+   202→          </div>
+   203→        </div>
+   204→      </sc-if>
+   205→
+   206→      <!-- ── SCREEN 3: TARGET JOBS ── -->
+   207→      <sc-if value="{{ s3 }}" hint-placeholder-val="{{ false }}">
+   208→        <div data-screen-label="04 — Target Jobs" style="display: flex; flex-direction: column; gap: 32px;">
+   209→          <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 50px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.05; letter-spacing: -0.2px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.1s;">Show me what you're aiming for.</h2>
+   210→          <p style="font-family: 'DM Sans', system-ui; font-size: 17px; font-weight: 300; color: #52493F; line-height: 1.65; max-width: 440px; animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.4s; text-wrap: pretty;">Paste 1–3 job URLs you're excited about. I'll read each one and prepare your application.</p>
+   211→
+   212→          <!-- Job URL input -->
+   213→          <sc-if value="{{ canAdd }}" hint-placeholder-val="{{ true }}">
+   214→            <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.7s;">
+   215→              <div style="display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid rgba(26,58,47,0.22); padding-bottom: 14px;">
+   216→                <svg width="17" height="17" viewBox="0 0 17 17" fill="none" style="flex-shrink: 0;">
+   217→                  <path d="M8.5 2.5a6 6 0 100 12 6 6 0 000-12z" stroke="rgba(74,69,64,0.35)" stroke-width="1.2"/>
+   218→                  <path d="M8.5 5.5v3l2 2" stroke="rgba(74,69,64,0.35)" stroke-width="1.2" stroke-linecap="round"/>
+   219→                </svg>
+   220→                <input type="url" placeholder="Paste a job URL here…" value="{{ jobInput }}" onChange="{{ onJobChange }}" onKeyDown="{{ onJobKey }}" style="flex: 1; border: none; background: transparent; font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 400; color: #1A1A1A; caret-color: #1A3A2F;" />
+   221→                <button onClick="{{ onAddJob }}" style="background: none; border: none; cursor: pointer; opacity: {{ jobBtnOp }}; transition: opacity 0.2s; padding: 4px; display: flex;" style-hover="opacity: 1;">
+   222→                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+   223→                    <path d="M4 10h12M12 7l3 3-3 3" stroke="#1A3A2F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+   224→                  </svg>
+   225→                </button>
+   226→              </div>
+   227→              <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; margin-top: 10px;">Press Enter or → to add</p>
+   228→            </div>
+   229→          </sc-if>
+   230→
+   231→          <!-- Job cards -->
+   232→          <div style="display: flex; flex-direction: column; gap: 10px;">
+   233→            <sc-for list="{{ jobs }}" as="job" hint-placeholder-count="0">
+   234→              <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #FFFFFF; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 3px 10px rgba(0,0,0,0.04); animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both;">
+   235→                <div style="display: flex; align-items: center; gap: 14px;">
+   236→                  <div style="width: 38px; height: 38px; border-radius: 8px; background: #F0EDE6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+   237→                    <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 600; color: #3A3020;">{{ job.initials }}</span>
+   238→                  </div>
+   239→                  <div>
+   240→                    <p style="font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 500; color: #1A1A1A; margin-bottom: 3px;">{{ job.role }}</p>
+   241→                    <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 400; color: #A09890;">{{ job.company }}</p>
+   242→                  </div>
+   243→                </div>
+   244→                <div>
+   245→                  <sc-if value="{{ job.isReading }}" hint-placeholder-val="{{ false }}">
+   246→                    <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #A09890; font-style: italic; animation: pulse 1.6s ease infinite;">reading…</span>
+   247→                  </sc-if>
+   248→                  <sc-if value="{{ job.isReady }}" hint-placeholder-val="{{ false }}">
+   249→                    <div style="display: flex; align-items: center; gap: 6px; animation: fadeIn 0.35s ease both;">
+   250→                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+   251→                        <circle cx="7.5" cy="7.5" r="7.5" fill="rgba(26,58,47,0.1)"/>
+   252→                        <path d="M5 7.5l2 2 3.5-3.5" stroke="#1A3A2F" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+   253→                      </svg>
+   254→                      <span style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 500; color: #1A3A2F;">Ready</span>
+   255→                    </div>
+   256→                  </sc-if>
+   257→                </div>
+   258→              </div>
+   259→            </sc-for>
+   260→          </div>
+   261→
+   262→          <!-- CTA when all ready -->
+   263→          <sc-if value="{{ allReady }}" hint-placeholder-val="{{ false }}">
+   264→            <div style="animation: fadeUp 0.55s ease both;">
+   265→              <button onClick="{{ onFinish }}" style="padding: 15px 32px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 500; cursor: pointer; letter-spacing: 0.2px; transition: opacity 0.15s;" style-hover="opacity: 0.86;">Enter your workspace →</button>
+   266→            </div>
+   267→          </sc-if>
+   268→        </div>
+   269→      </sc-if>
+   270→
+   271→      <!-- ── SCREEN 4: TRANSITION ── -->
+   272→      <sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}">
+   273→        <div data-screen-label="05 — Transition" style="display: flex; flex-direction: column; gap: 40px; animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) both;">
+   274→          <div>
+   275→            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1.1px; text-transform: uppercase; margin-bottom: 14px;">You're set up</p>
+   276→            <h2 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 58px; font-weight: 500; font-style: italic; color: #1A1A1A; line-height: 1.02; letter-spacing: -0.4px;">Let's get you<br>interviews.</h2>
+   277→          </div>
+   278→          <p style="font-family: 'DM Sans', system-ui; font-size: 18px; font-weight: 300; color: #52493F; line-height: 1.65; max-width: 400px; text-wrap: pretty;">Scout has your background and knows the roles you want. Your workspace is ready.</p>
+   279→
+   280→          <!-- Workspace preview -->
+   281→          <div style="background: #FFFFFF; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 14px 36px rgba(0,0,0,0.08); animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.35s;">
+   282→            <div style="background: #1A3A2F; padding: 20px 30px; display: flex; align-items: center; justify-content: space-between;">
+   283→              <div style="display: flex; align-items: baseline; gap: 10px;">
+   284→                <span style="font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 400; color: #E8D5A3;">Scout</span>
+   285→                <span style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: rgba(232,213,163,0.45);">workspace</span>
+   286→              </div>
+   287→              <span style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 400; color: rgba(232,213,163,0.55); letter-spacing: 0.6px; text-transform: uppercase;">3 roles tracked</span>
+   288→            </div>
+   289→            <div style="padding: 22px 30px; display: flex; flex-direction: column; gap: 9px;">
+   290→              <div style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: #F8F6F2; border-radius: 7px;">
+   291→                <div>
+   292→                  <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Senior PM · Stripe</p>
+   293→                  <p style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: #A09890;">Resume match: 91%</p>
+   294→                </div>
+   295→                <span style="padding: 4px 11px; background: rgba(26,58,47,0.08); border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 500; color: #1A3A2F;">Draft ready</span>
+   296→              </div>
+   297→              <div style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: #F8F6F2; border-radius: 7px;">
+   298→                <div>
+   299→                  <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Product Lead · Linear</p>
+   300→                  <p style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: #A09890;">Resume match: 87%</p>
+   301→                </div>
+   302→                <span style="padding: 4px 11px; background: rgba(26,58,47,0.08); border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 500; color: #1A3A2F;">Draft ready</span>
+   303→              </div>
+   304→              <div style="display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; background: #F8F6F2; border-radius: 7px; opacity: 0.5;">
+   305→                <div>
+   306→                  <p style="font-family: 'DM Sans', system-ui; font-size: 13px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Design Systems PM · Figma</p>
+   307→                  <p style="font-family: 'DM Sans', system-ui; font-size: 11px; font-weight: 300; color: #A09890; animation: pulse 1.8s ease infinite;">Tailoring…</p>
+   308→                </div>
+   309→                <span style="padding: 4px 11px; background: rgba(0,0,0,0.05); border-radius: 100px; font-family: 'DM Sans', system-ui; font-size: 11px; color: #A09890;">In progress</span>
+   310→              </div>
+   311→            </div>
+   312→          </div>
+   313→
+   314→          <div style="animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; animation-delay: 0.65s;">
+   315→            <a href="Scout Workspace.dc.html" style="display: inline-block; padding: 16px 36px; background: #1A3A2F; color: #E8D5A3; border-radius: 5px; font-family: 'DM Sans', system-ui; font-size: 15px; font-weight: 500; cursor: pointer; letter-spacing: 0.2px; text-decoration: none; transition: opacity 0.15s;">Get Interviews →</a>
+   316→          </div>
+   317→        </div>
+   318→      </sc-if>
+   319→
+   320→    </div>
+   321→  </div>
+   322→
+   323→  <!-- Demo nav button -->
+   324→  <div style="position: fixed; bottom: 28px; right: 28px; z-index: 100;">
+   325→    <button onClick="{{ demoNext }}" style="padding: 10px 20px; background: rgba(26,58,47,0.9); color: rgba(232,213,163,0.88); border: none; border-radius: 6px; font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 500; cursor: pointer; letter-spacing: 0.3px; backdrop-filter: blur(8px);" style-hover="background: #1A3A2F;">Demo: next →</button>
+   326→  </div>
+   327→
+   328→
+   329→  <!-- ═══════════════════════════════════════════════════
+   330→       DIRECTION COMPARISON — Beat 3, three visual approaches
+   331→  ════════════════════════════════════════════════════ -->
+   332→  <div style="background: #E3E0D9; padding: 96px 60px 110px;">
+   333→    <div style="max-width: 1380px; margin: 0 auto;">
+   334→
+   335→      <!-- Section header -->
+   336→      <div style="margin-bottom: 60px; max-width: 560px;">
+   337→        <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 500; color: #8A8278; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px;">Visual direction exploration</p>
+   338→        <h3 style="font-family: 'Playfair Display', Georgia, serif; font-size: 30px; font-weight: 400; font-style: italic; color: #1A1A1A; letter-spacing: -0.5px; margin-bottom: 10px;">Beat 3 — The Read-Back</h3>
+   339→        <p style="font-family: 'DM Sans', system-ui; font-size: 14px; font-weight: 300; color: #6B6258; line-height: 1.65;">Three approaches to the moment that sells Scout. The interactive flow above uses Direction A.</p>
+   340→      </div>
+   341→
+   342→      <!-- Three frames -->
+   343→      <div style="display: flex; gap: 28px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px;">
+   344→
+   345→        <!-- A: The Correspondent (primary direction) -->
+   346→        <div style="flex: none; width: 390px;">
+   347→          <div style="margin-bottom: 14px;">
+   348→            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 600; color: #8A8278; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;">A — The Correspondent</p>
+   349→            <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #8A8278;">Playfair serif · editorial · generous white space</p>
+   350→          </div>
+   351→          <div style="background: #F0EEE9; border-radius: 10px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);">
+   352→            <p style="font-family: 'DM Sans', system-ui; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">Scout's read</p>
+   353→            <h3 style="font-family: 'Playfair Display', serif; font-size: 25px; font-weight: 400; font-style: italic; color: #1A1A1A; margin-bottom: 22px; line-height: 1.2;">Here's what I see.</h3>
+   354→            <div style="background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+   355→              <div style="display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #EEE9E2; margin-bottom: 16px;">
+   356→                <div style="width: 36px; height: 36px; border-radius: 50%; background: #1A3A2F; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+   357→                  <span style="font-family: 'Playfair Display'; font-size: 11px; font-weight: 500; color: #E8D5A3;">SC</span>
+   358→                </div>
+   359→                <div>
+   360→                  <p style="font-family: 'DM Sans'; font-size: 12px; font-weight: 500; color: #1A1A1A; margin-bottom: 2px;">Senior IC → Director-ready</p>
+   361→                  <p style="font-family: 'DM Sans'; font-size: 10px; font-weight: 300; color: #A09890;">8 years · SaaS Product</p>
+   362→                </div>
+   363→              </div>
+   364→              <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 9px;">Strengths</p>
+   365→              <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+   366→                <span style="padding: 5px 12px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans'; font-size: 11px; color: #2A2218;">Product Strategy</span>
+   367→                <span style="padding: 5px 12px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans'; font-size: 11px; color: #2A2218;">Cross-functional</span>
+   368→                <span style="padding: 5px 12px; background: #F5F3EF; border-radius: 100px; font-family: 'DM Sans'; font-size: 11px; color: #2A2218;">Data Analysis</span>
+   369→              </div>
+   370→              <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 9px;">Target Roles</p>
+   371→              <div style="display: flex; flex-direction: column; gap: 7px;">
+   372→                <div style="display: flex; justify-content: space-between; align-items: center;">
+   373→                  <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Head of Product</span>
+   374→                  <span style="font-family: 'DM Sans'; font-size: 10px; color: #4A8B6A;">Strong</span>
+   375→                </div>
+   376→                <div style="display: flex; justify-content: space-between; align-items: center;">
+   377→                  <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Director of PM</span>
+   378→                  <span style="font-family: 'DM Sans'; font-size: 10px; color: #4A8B6A;">Strong</span>
+   379→                </div>
+   380→              </div>
+   381→              <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #EEE9E2;">
+   382→                <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px;">Worth Noting</p>
+   383→                <div style="display: flex; align-items: flex-start; gap: 7px;">
+   384→                  <div style="width: 4px; height: 4px; border-radius: 50%; background: #C4A86A; margin-top: 5px; flex-shrink: 0;"></div>
+   385→                  <p style="font-family: 'DM Sans'; font-size: 11px; font-weight: 300; color: #52493F; line-height: 1.5;">Limited direct reports history — org leadership roles may need framing.</p>
+   386→                </div>
+   387→              </div>
+   388→            </div>
+   389→            <p style="font-family: 'DM Sans'; font-size: 13px; font-weight: 300; color: #52493F; margin-top: 18px; line-height: 1.5;">Does this feel accurate?</p>
+   390→            <div style="display: flex; gap: 8px; margin-top: 12px;">
+   391→              <button style="padding: 10px 20px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; font-weight: 500; cursor: pointer;">Looks right →</button>
+   392→              <button style="padding: 10px 16px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; cursor: pointer;">Adjust</button>
+   393→            </div>
+   394→          </div>
+   395→        </div>
+   396→
+   397→        <!-- B: The Analyst -->
+   398→        <div style="flex: none; width: 390px;">
+   399→          <div style="margin-bottom: 14px;">
+   400→            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 600; color: #8A8278; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;">B — The Analyst</p>
+   401→            <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #8A8278;">DM Sans + DM Mono · data-forward · structured grid</p>
+   402→          </div>
+   403→          <div style="background: #ECEAE4; border-radius: 10px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);">
+   404→            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
+   405→              <div style="width: 7px; height: 7px; border-radius: 50%; background: #1A3A2F;"></div>
+   406→              <p style="font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; color: #1A3A2F; letter-spacing: 0.4px;">analysis complete</p>
+   407→            </div>
+   408→            <h3 style="font-family: 'DM Sans', system-ui; font-size: 22px; font-weight: 400; color: #1A1A1A; letter-spacing: -0.3px; margin-bottom: 22px; line-height: 1.2;">Here's what I see.</h3>
+   409→            <div style="background: white; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07);">
+   410→              <div style="background: #1A3A2F; padding: 11px 20px; display: flex; justify-content: space-between; align-items: center;">
+   411→                <span style="font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500; color: #E8D5A3; letter-spacing: 0.7px; text-transform: uppercase;">Profile</span>
+   412→                <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(232,213,163,0.6);">Senior IC</span>
+   413→              </div>
+   414→              <div style="padding: 18px 20px;">
+   415→                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #EEE9E2; margin-bottom: 14px;">
+   416→                  <div>
+   417→                    <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 4px;">Experience</p>
+   418→                    <p style="font-family: 'DM Sans'; font-size: 22px; font-weight: 600; color: #1A1A1A; letter-spacing: -0.5px;">8 yrs</p>
+   419→                  </div>
+   420→                  <div>
+   421→                    <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 4px;">Match score</p>
+   422→                    <p style="font-family: 'DM Sans'; font-size: 22px; font-weight: 600; color: #1A3A2F; letter-spacing: -0.5px;">91%</p>
+   423→                  </div>
+   424→                </div>
+   425→                <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 10px;">Skill Signals</p>
+   426→                <div style="display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px;">
+   427→                  <div style="display: flex; align-items: center; gap: 10px;">
+   428→                    <span style="font-family: 'DM Sans'; font-size: 11px; color: #3A3020; width: 80px; flex-shrink: 0;">Strategy</span>
+   429→                    <div style="flex: 1; height: 3px; background: #EDE9E1; border-radius: 2px; overflow: hidden;">
+   430→                      <div style="width: 92%; height: 100%; background: #1A3A2F; border-radius: 2px;"></div>
+   431→                    </div>
+   432→                    <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: #A09890; width: 26px; text-align: right;">92%</span>
+   433→                  </div>
+   434→                  <div style="display: flex; align-items: center; gap: 10px;">
+   435→                    <span style="font-family: 'DM Sans'; font-size: 11px; color: #3A3020; width: 80px; flex-shrink: 0;">Leadership</span>
+   436→                    <div style="flex: 1; height: 3px; background: #EDE9E1; border-radius: 2px; overflow: hidden;">
+   437→                      <div style="width: 74%; height: 100%; background: #1A3A2F; border-radius: 2px;"></div>
+   438→                    </div>
+   439→                    <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: #A09890; width: 26px; text-align: right;">74%</span>
+   440→                  </div>
+   441→                  <div style="display: flex; align-items: center; gap: 10px;">
+   442→                    <span style="font-family: 'DM Sans'; font-size: 11px; color: #3A3020; width: 80px; flex-shrink: 0;">Analytics</span>
+   443→                    <div style="flex: 1; height: 3px; background: #EDE9E1; border-radius: 2px; overflow: hidden;">
+   444→                      <div style="width: 86%; height: 100%; background: #1A3A2F; border-radius: 2px;"></div>
+   445→                    </div>
+   446→                    <span style="font-family: 'DM Mono', monospace; font-size: 9px; color: #A09890; width: 26px; text-align: right;">86%</span>
+   447→                  </div>
+   448→                </div>
+   449→                <p style="font-family: 'DM Mono', monospace; font-size: 8px; color: #A09890; letter-spacing: 0.9px; text-transform: uppercase; margin-bottom: 8px;">Role Fit</p>
+   450→                <div style="display: flex; flex-direction: column; gap: 6px;">
+   451→                  <div style="display: flex; justify-content: space-between; align-items: center;">
+   452→                    <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Head of Product</span>
+   453→                    <span style="font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; color: #4A8B6A;">91%</span>
+   454→                  </div>
+   455→                  <div style="display: flex; justify-content: space-between; align-items: center;">
+   456→                    <span style="font-family: 'DM Sans'; font-size: 12px; color: #1A1A1A;">Director of PM</span>
+   457→                    <span style="font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; color: #4A8B6A;">87%</span>
+   458→                  </div>
+   459→                </div>
+   460→              </div>
+   461→            </div>
+   462→            <div style="display: flex; gap: 8px; margin-top: 16px;">
+   463→              <button style="flex: 1; padding: 10px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 3px; font-family: 'DM Sans'; font-size: 12px; font-weight: 500; cursor: pointer;">Confirm →</button>
+   464→              <button style="padding: 10px 14px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 3px; font-family: 'DM Sans'; font-size: 12px; cursor: pointer;">Edit</button>
+   465→            </div>
+   466→          </div>
+   467→        </div>
+   468→
+   469→        <!-- C: The Mentor -->
+   470→        <div style="flex: none; width: 390px;">
+   471→          <div style="margin-bottom: 14px;">
+   472→            <p style="font-family: 'DM Sans', system-ui; font-size: 10px; font-weight: 600; color: #8A8278; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;">C — The Mentor</p>
+   473→            <p style="font-family: 'DM Sans', system-ui; font-size: 12px; font-weight: 300; color: #8A8278;">Cormorant Garamond · warm prose · dossier feel</p>
+   474→          </div>
+   475→          <div style="background: #F2EDE2; border-radius: 10px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);">
+   476→            <h3 style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 27px; font-weight: 500; color: #1A1A1A; line-height: 1.2; margin-bottom: 20px;">Here's what I see.</h3>
+   477→            <div style="background: white; border-radius: 6px; padding: 24px 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+   478→              <p style="font-family: 'Cormorant Garamond', serif; font-size: 10px; font-weight: 500; color: #A09890; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px;">A picture of you</p>
+   479→              <p style="font-family: 'Cormorant Garamond', serif; font-size: 16px; color: #2A2218; line-height: 1.75; margin-bottom: 22px; text-wrap: pretty;">You're a seasoned Senior PM with eight years in the industry — data-literate, naturally cross-functional, and clearly ready for something bigger.</p>
+   480→              <div style="border-left: 2px solid #C4A86A; padding-left: 16px; margin-bottom: 20px;">
+   481→                <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 9px;">You'd thrive as</p>
+   482→                <p style="font-family: 'Cormorant Garamond'; font-size: 15px; font-weight: 500; color: #1A1A1A; line-height: 1.75;">Head of Product<br>Director of PM<br>Group Product Manager</p>
+   483→              </div>
+   484→              <div style="padding: 14px 16px; background: #FBF8F2; border-radius: 5px;">
+   485→                <p style="font-family: 'DM Sans'; font-size: 9px; font-weight: 500; color: #A09890; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 7px;">One honest note</p>
+   486→                <p style="font-family: 'DM Sans'; font-size: 12px; font-weight: 300; color: #6B6258; line-height: 1.55; text-wrap: pretty;">Your direct reports story is thin. Roles managing large orgs will need more framing to land well.</p>
+   487→              </div>
+   488→            </div>
+   489→            <p style="font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: italic; color: #52493F; margin-top: 18px; line-height: 1.5;">Does this feel like you?</p>
+   490→            <div style="display: flex; gap: 8px; margin-top: 12px;">
+   491→              <button style="padding: 10px 20px; background: #1A3A2F; color: #E8D5A3; border: none; border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; font-weight: 500; cursor: pointer;">Yes, carry on</button>
+   492→              <button style="padding: 10px 16px; background: transparent; color: #52493F; border: 1px solid rgba(26,58,47,0.2); border-radius: 4px; font-family: 'DM Sans'; font-size: 12px; cursor: pointer;">Refine this</button>
+   493→            </div>
+   494→          </div>
+   495→        </div>
+   496→
+   497→      </div>
+   498→    </div>
+   499→  </div>
+   500→
+   501→</div>
+   502→</x-dc>
+   503→<script type="text/x-dc" data-dc-script>
+   504→class Component extends DCLogic {
+   505→  state = {
+   506→    screen: 0,
+   507→    resumeFilename: null,
+   508→    resumeUploaded: false,
+   509→    liInput: '',
+   510→    liSubmitting: false,
+   511→    jobInput: '',
+   512→    jobs: [],
+   513→    isDragging: false,
+   514→  };
+   515→
+   516→  goTo(n) {
+   517→    this.setState({ screen: n, liSubmitting: false });
+   518→  }
+   519→
+   520→  processFile(file) {
+   521→    if (!file) return;
+   522→    this.setState({ resumeFilename: file.name, resumeUploaded: false });
+   523→    setTimeout(() => {
+   524→      this.setState({ resumeUploaded: true });
+   525→      setTimeout(() => this.goTo(1), 700);
+   526→    }, 1300);
+   527→  }
+   528→
+   529→  submitLI() {
+   530→    if (!this.state.liInput.trim()) return;
+   531→    this.setState({ liSubmitting: true });
+   532→    setTimeout(() => this.goTo(2), 2100);
+   533→  }
+   534→
+   535→  addJob() {
+   536→    const { jobInput, jobs } = this.state;
+   537→    if (!jobInput.trim() || jobs.length >= 3) return;
+   538→    const mocks = [
+   539→      { company: 'Stripe', role: 'Senior PM' },
+   540→      { company: 'Linear', role: 'Product Lead' },
+   541→      { company: 'Figma', role: 'Design Systems PM' },
+   542→    ];
+   543→    const m = mocks[jobs.length] || { company: 'Company', role: 'PM Role' };
+   544→    const id = Date.now();
+   545→    const job = {
+   546→      id,
+   547→      company: m.company,
+   548→      role: m.role,
+   549→      initials: m.company.slice(0, 2).toUpperCase(),
+   550→      state: 'reading',
+   551→    };
+   552→    this.setState({ jobs: [...jobs, job], jobInput: '' });
+   553→    setTimeout(() => {
+   554→      this.setState(prev => ({
+   555→        jobs: prev.jobs.map(j => j.id === id ? Object.assign({}, j, { state: 'ready' }) : j),
+   556→      }));
+   557→    }, 1900);
+   558→  }
+   559→
+   560→  demoAdvance() {
+   561→    const { screen, jobs } = this.state;
+   562→    if (screen === 0) {
+   563→      this.setState({ resumeFilename: 'Sarah_Chen_Resume.pdf' });
+   564→      setTimeout(() => {
+   565→        this.setState({ resumeUploaded: true });
+   566→        setTimeout(() => this.goTo(1), 700);
+   567→      }, 1300);
+   568→    } else if (screen === 1) {
+   569→      this.setState({ liInput: 'linkedin.com/in/sarahchen-pm', liSubmitting: true });
+   570→      setTimeout(() => this.goTo(2), 2100);
+   571→    } else if (screen === 2) {
+   572→      this.goTo(3);
+   573→    } else if (screen === 3) {
+   574→      const allReady = jobs.length > 0 && jobs.every(j => j.state === 'ready');
+   575→      if (allReady) { this.goTo(4); return; }
+   576→      if (jobs.length < 3) {
+   577→        const mocks = [
+   578→          { company: 'Stripe', role: 'Senior PM' },
+   579→          { company: 'Linear', role: 'Product Lead' },
+   580→          { company: 'Figma', role: 'Design Systems PM' },
+   581→        ];
+   582→        const now = Date.now();
+   583→        const newJobs = mocks.map((m, i) => ({
+   584→          id: now + i,
+   585→          company: m.company,
+   586→          role: m.role,
+   587→          initials: m.company.slice(0, 2).toUpperCase(),
+   588→          state: 'reading',
+   589→        }));
+   590→        this.setState({ jobs: newJobs });
+   591→        newJobs.forEach((job, i) => {
+   592→          const jid = job.id;
+   593→          setTimeout(() => {
+   594→            this.setState(prev => ({
+   595→              jobs: prev.jobs.map(j => j.id === jid ? Object.assign({}, j, { state: 'ready' }) : j),
+   596→            }));
+   597→          }, 1500 + i * 650);
+   598→        });
+   599→      }
+   600→    }
+   601→  }
+   602→
+   603→  renderVals() {
+   604→    const { screen, resumeFilename, resumeUploaded, liInput, liSubmitting, jobInput, jobs, isDragging } = this.state;
+   605→    const FULL = '#1A3A2F';
+   606→    const EMPTY = 'rgba(26,58,47,0.15)';
+   607→
+   608→    return {
+   609→      s0: screen === 0,
+   610→      s1: screen === 1,
+   611→      s2: screen === 2,
+   612→      s3: screen === 3,
+   613→      s4: screen === 4,
+   614→
+   615→      segColor1: FULL,
+   616→      segColor2: screen >= 1 ? FULL : EMPTY,
+   617→      segColor3: screen >= 2 ? FULL : EMPTY,
+   618→      segColor4: screen >= 3 ? FULL : EMPTY,
+   619→
+   620→      resumeFilename: resumeFilename || 'document',
+   621→      resumeUploaded,
+   622→      dropBorder: isDragging ? '#1A3A2F' : 'rgba(26,58,47,0.22)',
+   623→      dropBg: isDragging ? 'rgba(26,58,47,0.04)' : 'transparent',
+   624→
+   625→      liInput,
+   626→      liSubmitting,
+   627→      showLIInput: !liSubmitting,
+   628→      liBtnOp: liInput.trim() ? 1 : 0.28,
+   629→
+   630→      jobInput,
+   631→      jobBtnOp: jobInput.trim() ? 1 : 0.28,
+   632→      jobs: jobs.map(j => Object.assign({}, j, { isReady: j.state === 'ready', isReading: j.state === 'reading' })),
+   633→      allReady: jobs.length > 0 && jobs.every(j => j.state === 'ready'),
+   634→      canAdd: jobs.length < 3,
+   635→
+   636→      onDragOver: (e) => { e.preventDefault(); this.setState({ isDragging: true }); },
+   637→      onDragLeave: () => this.setState({ isDragging: false }),
+   638→      onDrop: (e) => {
+   639→        e.preventDefault();
+   640→        this.setState({ isDragging: false });
+   641→        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+   642→        if (f) this.processFile(f);
+   643→      },
+   644→      onFileClick: () => { const el = document.getElementById('scout-file'); if (el) el.click(); },
+   645→      onFileChange: (e) => { const f = e.target.files && e.target.files[0]; if (f) this.processFile(f); },
+   646→
+   647→      onLIChange: (e) => this.setState({ liInput: e.target.value }),
+   648→      onLIKey: (e) => { if (e.key === 'Enter') this.submitLI(); },
+   649→      onLISubmit: () => this.submitLI(),
+   650→
+   651→      onConfirm: () => this.goTo(3),
+   652→
+   653→      onJobChange: (e) => this.setState({ jobInput: e.target.value }),
+   654→      onJobKey: (e) => { if (e.key === 'Enter') this.addJob(); },
+   655→      onAddJob: () => this.addJob(),
+   656→      onFinish: () => this.goTo(4),
+   657→
+   658→      demoNext: () => this.demoAdvance(),
+   659→    };
+   660→  }
+   661→}
+   662→</script>
+   663→</body>
+   664→</html>
+   665→
