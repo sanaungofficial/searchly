@@ -93,6 +93,16 @@ export function ArrowLeftIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/* Upload — CSV upload button */
+export function UploadIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" {...props}>
+      <path d="M5 7V1.5M5 1.5L2.5 4M5 1.5L7.5 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1.5 7v1.5a1 1 0 001 1h5a1 1 0 001-1V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /* Plus — add */
 export function PlusIcon(props: SVGProps<SVGSVGElement>) {
   return (
