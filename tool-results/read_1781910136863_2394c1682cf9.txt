@@ -1,0 +1,402 @@
+  1100→                      <div>
+  1101→                        <p style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:#1A3A2F;">{{ person.hmOpenRoles }}</p>
+  1102→                        <p style="font-family:'DM Sans',system-ui; font-size:9px; color:#A09890;">open slots</p>
+  1103→                      </div>
+  1104→                      <div>
+  1105→                        <p style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:#1A3A2F;">{{ person.hmFee }}</p>
+  1106→                        <p style="font-family:'DM Sans',system-ui; font-size:9px; color:#A09890;">commission</p>
+  1107→                      </div>
+  1108→                      <div>
+  1109→                        <p style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:{{ person.hmSuccessColor }};">{{ person.hmSuccessRate }}%</p>
+  1110→                        <p style="font-family:'DM Sans',system-ui; font-size:9px; color:#A09890;">success rate</p>
+  1111→                      </div>
+  1112→                      <sc-if value="{{ person.hmVerified }}" hint-placeholder-val="{{ false }}">
+  1113→                        <div style="display:flex; align-items:center; gap:4px;">
+  1114→                          <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#4A8B6A;">✓ Verified referrer</span>
+  1115→                        </div>
+  1116→                      </sc-if>
+  1117→                    </div>
+  1118→                    <button style="padding:6px 14px; background:#4A8B6A; color:#FFFFFF; border:none; border-radius:5px; font-family:'DM Sans',system-ui; font-size:10px; font-weight:600; cursor:pointer; white-space:nowrap;" style-hover="opacity:0.85;">Request referral</button>
+  1119→                  </div>
+  1120→                </sc-if>
+  1121→              </div>
+  1122→            </sc-for>
+  1123→          </div>
+  1124→
+  1125→          <!-- Second Ladder upsell inline -->
+  1126→          <div style="margin-top:20px; background:#1A3A2F; border-radius:10px; padding:18px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  1127→            <div style="flex:1; min-width:0;">
+  1128→              <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:rgba(232,213,163,0.5); letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Second Ladder network</p>
+  1129→              <p style="font-family:'Cormorant Garamond',Georgia,serif; font-size:18px; font-weight:500; color:#E8D5A3; font-style:italic; margin-bottom:4px;">1,000+ recruiters. Direct intros.</p>
+  1130→              <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:rgba(232,213,163,0.6); line-height:1.55; text-wrap:pretty;">As a Second Ladder client, your profile gets in front of senior recruiters at your target companies — not the inbox pile.</p>
+  1131→            </div>
+  1132→            <button style="padding:10px 20px; background:#E8D5A3; color:#1A3A2F; border:none; border-radius:6px; font-family:'DM Sans',system-ui; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;" style-hover="opacity:0.85;">Book a call →</button>
+  1133→          </div>
+  1134→
+  1135→        </div>
+  1136→      </div>
+  1137→    </sc-if>
+  1138→
+  1139→    <!-- ─ LIVE ─ -->
+  1140→    <div data-section="live" style="flex:1; display:flex; flex-direction:column; overflow:hidden; animation:fadeIn 0.3s ease both;">
+  1141→
+  1142→        <!-- Header -->
+  1143→        <div style="padding:16px 28px; border-bottom:1px solid rgba(0,0,0,0.07); flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  1144→          <div>
+  1145→            <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:#A09890; letter-spacing:1.1px; text-transform:uppercase; margin-bottom:6px;">Second Ladder</p>
+  1146→            <h2 style="font-family:'Cormorant Garamond',Georgia,serif; font-size:26px; font-weight:400; font-style:italic; color:#1A1A1A; line-height:1.1;">Live sessions &amp; trainings</h2>
+  1147→          </div>
+  1148→          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+  1149→            <button onClick="{{ onLiveFilterAll }}" style="padding:6px 14px; border-radius:100px; border:none; background:{{ liveFilterAllBg }}; color:{{ liveFilterAllColor }}; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s;">All</button>
+  1150→            <button onClick="{{ onLiveFilterLive }}" style="padding:6px 14px; border-radius:100px; border:none; background:{{ liveFilterLiveBg }}; color:{{ liveFilterLiveColor }}; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:5px;"><span style="width:6px; height:6px; border-radius:50%; background:currentColor; display:inline-block;"></span>Live now</button>
+  1151→            <button onClick="{{ onLiveFilterWeek }}" style="padding:6px 14px; border-radius:100px; border:none; background:{{ liveFilterWeekBg }}; color:{{ liveFilterWeekColor }}; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s;">This week</button>
+  1152→          </div>
+  1153→        </div>
+  1154→
+  1155→        <div style="flex:1; overflow-y:auto; padding:24px 28px 48px;">
+  1156→
+  1157→          <!-- Mira's weekly — featured hero -->
+  1158→          <div style="margin-bottom:28px;">
+  1159→            <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#1A3A2F; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">✦ Second Ladder Weekly — always free</p>
+  1160→            <div style="border-radius:14px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+  1161→              <!-- Thumbnail -->
+  1162→              <div style="background:{{ miraWeeklySession.bgColor }}; padding:36px 40px 28px; position:relative; min-height:180px; display:flex; flex-direction:column; justify-content:flex-end;">
+  1163→                <div style="position:absolute; top:0; left:0; right:0; bottom:0; background:radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.04) 0%, transparent 70%);"></div>
+  1164→                <div style="position:absolute; top:16px; left:20px; display:flex; gap:8px; align-items:center;">
+  1165→                  <sc-if value="{{ miraWeeklySession.isLive }}" hint-placeholder-val="{{ false }}">
+  1166→                    <span style="padding:3px 10px; background:#C4574A; border-radius:4px; font-family:'DM Sans',system-ui; font-size:10px; font-weight:700; color:#FFFFFF; letter-spacing:0.5px;">LIVE</span>
+  1167→                  </sc-if>
+  1168→                  <span style="padding:3px 10px; background:rgba(232,213,163,0.15); border:1px solid rgba(232,213,163,0.2); border-radius:4px; font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#E8D5A3; letter-spacing:0.5px; text-transform:uppercase;">{{ miraWeeklySession.category }}</span>
+  1169→                </div>
+  1170→                <div style="position:absolute; bottom:16px; right:20px; background:rgba(0,0,0,0.35); border-radius:5px; padding:3px 8px;">
+  1171→                  <p style="font-family:'DM Mono',monospace; font-size:10px; color:#FFFFFF;">{{ miraWeeklySession.registered }} registered</p>
+  1172→                </div>
+  1173→                <h3 style="font-family:'Cormorant Garamond',Georgia,serif; font-size:28px; font-weight:500; color:{{ miraWeeklySession.accentColor }}; line-height:1.2; max-width:520px; position:relative;">{{ miraWeeklySession.title }}</h3>
+  1174→              </div>
+  1175→              <!-- Info row -->
+  1176→              <div style="background:#FFFFFF; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  1177→                <div style="display:flex; align-items:center; gap:12px;">
+  1178→                  <div style="width:36px; height:36px; border-radius:50%; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+  1179→                    <span style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#E8D5A3;">{{ miraWeeklySession.hostInitials }}</span>
+  1180→                  </div>
+  1181→                  <div>
+  1182→                    <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:600; color:#1A1A1A; margin-bottom:2px;">{{ miraWeeklySession.host }}</p>
+  1183→                    <div style="display:flex; align-items:center; gap:6px;">
+  1184→                      <span style="font-family:'DM Sans',system-ui; font-size:11px; color:#C4A86A;">★</span>
+  1185→                      <span style="font-family:'DM Sans',system-ui; font-size:11px; color:#52493F;">{{ miraWeeklySession.hostRating }} ({{ miraWeeklySession.hostReviews }})</span>
+  1186→                      <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">· {{ miraWeeklySession.hostRole }}</span>
+  1187→                    </div>
+  1188→                  </div>
+  1189→                </div>
+  1190→                <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+  1191→                  <div style="text-align:right;">
+  1192→                    <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#1A1A1A;">{{ miraWeeklySession.date }}</p>
+  1193→                    <p style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">{{ miraWeeklySession.time }}</p>
+  1194→                  </div>
+  1195→                  <button style="padding:10px 22px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:6px; font-family:'DM Sans',system-ui; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:opacity 0.15s;" style-hover="opacity:0.85;">Register free →</button>
+  1196→                </div>
+  1197→              </div>
+  1198→            </div>
+  1199→          </div>
+  1200→
+  1201→          <!-- Live now (if any) -->
+  1202→          <sc-if value="{{ hasLiveNow }}" hint-placeholder-val="{{ false }}">
+  1203→            <div style="margin-bottom:28px;">
+  1204→              <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+  1205→                <div style="width:8px; height:8px; border-radius:50%; background:#C4574A; animation:pulse 1.5s ease infinite;"></div>
+  1206→                <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#C4574A; text-transform:uppercase; letter-spacing:1px;">Happening now</p>
+  1207→              </div>
+  1208→              <div style="display:flex; flex-direction:column; gap:10px;">
+  1209→                <sc-for list="{{ liveNowSessions }}" as="session" hint-placeholder-count="1">
+  1210→                  <div style="background:#FFFFFF; border-radius:10px; overflow:hidden; border:2px solid rgba(196,87,74,0.25); box-shadow:0 2px 12px rgba(196,87,74,0.08);">
+  1211→                    <div style="background:{{ session.bgColor }}; padding:20px 24px; min-height:100px; position:relative; display:flex; flex-direction:column; justify-content:flex-end;">
+  1212→                      <span style="position:absolute; top:12px; left:16px; padding:3px 10px; background:#C4574A; border-radius:4px; font-family:'DM Sans',system-ui; font-size:10px; font-weight:700; color:#FFFFFF; letter-spacing:0.5px;">LIVE</span>
+  1213→                      <div style="position:absolute; bottom:10px; right:14px; background:rgba(0,0,0,0.35); border-radius:5px; padding:3px 8px;">
+  1214→                        <p style="font-family:'DM Mono',monospace; font-size:10px; color:#FFFFFF;">{{ session.registeredLabel }}</p>
+  1215→                      </div>
+  1216→                      <h4 style="font-family:'Cormorant Garamond',Georgia,serif; font-size:20px; font-weight:500; color:{{ session.accentColor }}; line-height:1.2; max-width:480px;">{{ session.title }}</h4>
+  1217→                    </div>
+  1218→                    <div style="padding:12px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+  1219→                      <div style="display:flex; align-items:center; gap:9px;">
+  1220→                        <div style="width:28px; height:28px; border-radius:50%; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+  1221→                          <span style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#E8D5A3;">{{ session.hostInitials }}</span>
+  1222→                        </div>
+  1223→                        <div>
+  1224→                          <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#1A1A1A;">{{ session.host }}</p>
+  1225→                          <p style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">{{ session.hostRole }}</p>
+  1226→                        </div>
+  1227→                      </div>
+  1228→                      <button style="padding:9px 20px; background:#C4574A; color:#FFFFFF; border:none; border-radius:6px; font-family:'DM Sans',system-ui; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;" style-hover="opacity:0.85;">Join now →</button>
+  1229→                    </div>
+  1230→                  </div>
+  1231→                </sc-for>
+  1232→              </div>
+  1233→            </div>
+  1234→          </sc-if>
+  1235→
+  1236→          <!-- Upcoming sessions grid -->
+  1237→          <div>
+  1238→            <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#A09890; text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;">Upcoming sessions</p>
+  1239→            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:14px;">
+  1240→              <sc-for list="{{ upcomingSessions }}" as="session" hint-placeholder-count="3">
+  1241→                <div style="background:#FFFFFF; border-radius:10px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.06);">
+  1242→                  <!-- Thumbnail -->
+  1243→                  <div style="background:{{ session.bgColor }}; padding:22px 20px 16px; position:relative; min-height:110px; display:flex; flex-direction:column; justify-content:flex-end;">
+  1244→                    <div style="position:absolute; top:10px; left:12px;">
+  1245→                      <span style="padding:3px 8px; background:rgba(0,0,0,0.35); border-radius:4px; font-family:'DM Sans',system-ui; font-size:9px; color:#FFFFFF; font-weight:500;">{{ session.startsIn }}</span>
+  1246→                    </div>
+  1247→                    <div style="position:absolute; bottom:10px; right:12px; background:rgba(0,0,0,0.35); border-radius:5px; padding:3px 7px;">
+  1248→                      <p style="font-family:'DM Mono',monospace; font-size:9px; color:#FFFFFF;">{{ session.registeredLabel }}</p>
+  1249→                    </div>
+  1250→                    <h4 style="font-family:'Cormorant Garamond',Georgia,serif; font-size:17px; font-weight:500; color:{{ session.accentColor }}; line-height:1.25;">{{ session.title }}</h4>
+  1251→                  </div>
+  1252→                  <!-- Info -->
+  1253→                  <div style="padding:12px 14px;">
+  1254→                    <div style="display:flex; align-items:center; gap:9px; margin-bottom:10px;">
+  1255→                      <div style="width:28px; height:28px; border-radius:50%; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+  1256→                        <span style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#E8D5A3;">{{ session.hostInitials }}</span>
+  1257→                      </div>
+  1258→                      <div style="flex:1; min-width:0;">
+  1259→                        <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#1A1A1A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ session.host }}</p>
+  1260→                        <div style="display:flex; align-items:center; gap:5px;">
+  1261→                          <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#C4A86A;">★</span>
+  1262→                          <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#52493F;">{{ session.hostRating }} ({{ session.hostReviews }})</span>
+  1263→                        </div>
+  1264→                      </div>
+  1265→                    </div>
+  1266→                    <p style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:300; color:#7A7268; line-height:1.55; margin-bottom:12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">{{ session.description }}</p>
+  1267→                    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+  1268→                      <p style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">{{ session.time }}</p>
+  1269→                      <button style="padding:7px 16px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; white-space:nowrap; transition:opacity 0.15s;" style-hover="opacity:0.85;">Register</button>
+  1270→                    </div>
+  1271→                  </div>
+  1272→                </div>
+  1273→              </sc-for>
+  1274→            </div>
+  1275→          </div>
+  1276→
+  1277→          <!-- Host CTA -->
+  1278→          <div style="margin-top:28px; padding:20px 24px; background:rgba(26,58,47,0.05); border-radius:10px; border:1px dashed rgba(26,58,47,0.2); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  1279→            <div>
+  1280→              <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:600; color:#1A3A2F; margin-bottom:4px;">Want to host a session?</p>
+  1281→              <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:#7A7268; line-height:1.5;">If you're a coach or career expert, apply to lead a live training for the Second Ladder community.</p>
+  1282→            </div>
+  1283→            <button style="padding:9px 20px; background:transparent; color:#1A3A2F; border:1.5px solid rgba(26,58,47,0.3); border-radius:6px; font-family:'DM Sans',system-ui; font-size:12px; font-weight:500; cursor:pointer; white-space:nowrap; flex-shrink:0;" style-hover="background:rgba(26,58,47,0.04);">Apply to host →</button>
+  1284→          </div>
+  1285→
+  1286→        </div>
+  1287→      </div>
+  1288→    </sc-if>
+  1289→
+  1290→  <!-- ── COACH PROFILE DRAWER ── -->
+  1291→  <sc-if value="{{ coachProfileOpen }}" hint-placeholder-val="{{ false }}">
+  1292→    <div style="position:fixed; inset:0; z-index:80; display:flex; justify-content:flex-end;">
+  1293→      <div onClick="{{ coachProfile.onClose }}" style="flex:1; background:rgba(0,0,0,0.2); backdrop-filter:blur(2px);"></div>
+  1294→      <div style="width:440px; background:#F2EDE3; height:100%; overflow-y:auto; display:flex; flex-direction:column; animation:slideInRight 0.26s cubic-bezier(0.16,1,0.3,1) both; box-shadow:-4px 0 28px rgba(0,0,0,0.1);">
+  1295→        <div style="padding:24px 28px 20px; border-bottom:1px solid rgba(0,0,0,0.07); flex-shrink:0; display:flex; align-items:flex-start; gap:16px;">
+  1296→          <div style="width:56px; height:56px; border-radius:50%; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+  1297→            <span style="font-family:'DM Sans',system-ui; font-size:16px; font-weight:600; color:#E8D5A3;">{{ coachProfile.initials }}</span>
+  1298→          </div>
+  1299→          <div style="flex:1; min-width:0;">
+  1300→            <p style="font-family:'DM Sans',system-ui; font-size:15px; font-weight:600; color:#1A1A1A; margin-bottom:2px;">{{ coachProfile.name }}</p>
+  1301→            <p style="font-family:'DM Sans',system-ui; font-size:11px; color:#52493F; margin-bottom:6px;">{{ coachProfile.role }}</p>
+  1302→            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+  1303→              <span style="font-family:'DM Sans',system-ui; font-size:12px; color:#C4A86A;">★★★★★</span>
+  1304→              <span style="font-family:'DM Sans',system-ui; font-size:11px; color:#52493F;">{{ coachProfile.reviewStr }}</span>
+  1305→              <span style="font-family:'DM Mono',monospace; font-size:10px; color:#A09890;">· {{ coachProfile.minutesStr }}</span>
+  1306→            </div>
+  1307→          </div>
+  1308→          <button onClick="{{ coachProfile.onClose }}" style="background:none; border:none; cursor:pointer; color:#A09890; font-size:20px; padding:2px 6px; line-height:1; flex-shrink:0;">×</button>
+  1309→        </div>
+  1310→        <div style="padding:20px 28px; border-bottom:1px solid rgba(0,0,0,0.07);">
+  1311→          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+  1312→            <sc-for list="{{ coachProfile.workedAtChips }}" as="wa" hint-placeholder-count="1">
+  1313→              <span style="padding:3px 10px; background:rgba(26,58,47,0.09); border-radius:100px; font-family:'DM Sans',system-ui; font-size:10px; color:#1A3A2F;">Worked at {{ wa.w }}</span>
+  1314→            </sc-for>
+  1315→            <span style="padding:3px 10px; background:rgba(0,0,0,0.05); border-radius:100px; font-family:'DM Sans',system-ui; font-size:10px; color:#52493F;">{{ coachProfile.studiedAt }}</span>
+  1316→          </div>
+  1317→          <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:300; color:#52493F; line-height:1.65; text-wrap:pretty; margin-bottom:14px;">{{ coachProfile.bio }}</p>
+  1318→          <div style="display:flex; flex-wrap:wrap; gap:5px;">
+  1319→            <sc-for list="{{ coachProfile.specialtyChips }}" as="sp" hint-placeholder-count="2">
+  1320→              <span style="padding:3px 10px; background:rgba(74,139,106,0.08); border-radius:100px; font-family:'DM Sans',system-ui; font-size:10px; color:#2D6B4A;">{{ sp.s }}</span>
+  1321→            </sc-for>
+  1322→          </div>
+  1323→        </div>
+  1324→        <div style="padding:20px 28px; flex:1;">
+  1325→          <p style="font-family:'DM Sans',system-ui; font-size:13px; font-weight:600; color:#1A1A1A; margin-bottom:4px;">{{ coachProfile.rateStr }}</p>
+  1326→          <p style="font-family:'DM Sans',system-ui; font-size:11px; color:{{ coachProfile.availColor }}; margin-bottom:20px;">Available {{ coachProfile.available }}</p>
+  1327→          <div style="display:flex; flex-direction:column; gap:10px;">
+  1328→            <button style="width:100%; padding:13px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:6px; font-family:'DM Sans',system-ui; font-size:13px; font-weight:500; cursor:pointer; transition:opacity 0.15s;" style-hover="opacity:0.85;">Schedule a free intro call</button>
+  1329→            <button style="width:100%; padding:13px; background:#FFFFFF; color:#1A3A2F; border:1px solid rgba(26,58,47,0.2); border-radius:6px; font-family:'DM Sans',system-ui; font-size:13px; cursor:pointer;" style-hover="background:#F5F2EC;">Book a session</button>
+  1330→            <button style="width:100%; padding:13px; background:transparent; color:#1A3A2F; border:1px solid rgba(26,58,47,0.12); border-radius:6px; font-family:'DM Sans',system-ui; font-size:13px; cursor:pointer;" style-hover="background:rgba(26,58,47,0.03);">+ Follow coach</button>
+  1331→          </div>
+  1332→        </div>
+  1333→      </div>
+  1334→    </div>
+  1335→  </sc-if>
+  1336→
+  1337→
+  1338→  <!-- ── COMPANY DETAIL DRAWER ── -->
+  1339→  <sc-if value="{{ showCompanyDetail }}" hint-placeholder-val="{{ false }}">
+  1340→    <div style="position:fixed; inset:0; z-index:60; display:flex; justify-content:flex-end;">
+  1341→      <div onClick="{{ onCloseCompanyDrawer }}" style="flex:1; background:rgba(0,0,0,0.18); backdrop-filter:blur(2px);"></div>
+  1342→      <div style="width:480px; background:#F2EDE3; height:100%; overflow-y:auto; display:flex; flex-direction:column; animation:slideInRight 0.26s cubic-bezier(0.16,1,0.3,1) both; box-shadow:-4px 0 28px rgba(0,0,0,0.1);">
+  1343→        <!-- Header -->
+  1344→        <div style="padding:24px 28px 16px; border-bottom:1px solid rgba(0,0,0,0.07); flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between;">
+  1345→          <div style="display:flex; align-items:center; gap:12px;">
+  1346→            <div style="width:40px; height:40px; border-radius:9px; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+  1347→              <span style="font-family:'DM Sans',system-ui; font-size:13px; font-weight:600; color:#E8D5A3;">{{ company.initials }}</span>
+  1348→            </div>
+  1349→            <div>
+  1350→              <p style="font-family:'Cormorant Garamond',Georgia,serif; font-size:20px; font-weight:500; color:#1A1A1A; line-height:1.2;">{{ company.name }}</p>
+  1351→              <p style="font-family:'DM Sans',system-ui; font-size:11px; color:#A09890; margin-top:2px;">{{ company.industry }} · {{ company.stage }}</p>
+  1352→            </div>
+  1353→          </div>
+  1354→          <button onClick="{{ onCloseCompanyDrawer }}" style="background:none; border:none; cursor:pointer; color:#A09890; font-size:20px; font-weight:300; line-height:1; padding:2px 6px; flex-shrink:0;" style-hover="color:#52493F;">×</button>
+  1355→        </div>
+  1356→
+  1357→        <!-- Fit reason -->
+  1358→        <div style="padding:16px 28px 0; flex-shrink:0;">
+  1359→          <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:#52493F; line-height:1.65; text-wrap:pretty;">{{ company.fitReason }}</p>
+  1360→          <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+  1361→            <p style="font-family:'DM Mono',monospace; font-size:24px; font-weight:500; color:#4A8B6A;">{{ company.fit }}%</p>
+  1362→            <p style="font-family:'DM Sans',system-ui; font-size:11px; color:#A09890;">overall match</p>
+  1363→          </div>
+  1364→        </div>
+  1365→
+  1366→        <!-- Roles -->
+  1367→        <div style="padding:20px 28px 40px; flex:1; overflow-y:auto;">
+  1368→          <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:#A09890; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px;">Open roles matching your profile</p>
+  1369→          <div style="display:flex; flex-direction:column; gap:10px;">
+  1370→            <sc-for list="{{ companyRoles }}" as="role" hint-placeholder-count="2">
+  1371→              <div onClick="{{ role.onSelect }}" style="background:#FFFFFF; border-radius:9px; padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,0.06); cursor:pointer; border:1px solid rgba(0,0,0,0.06); transition:box-shadow 0.2s;" style-hover="box-shadow:0 3px 12px rgba(0,0,0,0.1);">
+  1372→                <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px;">
+  1373→                  <div style="flex:1; min-width:0;">
+  1374→                    <p style="font-family:'DM Sans',system-ui; font-size:13px; font-weight:600; color:#1A1A1A; margin-bottom:3px;">{{ role.role }}</p>
+  1375→                    <p style="font-family:'DM Mono',monospace; font-size:10px; color:#A09890;">{{ role.location }} · {{ role.salary }}</p>
+  1376→                  </div>
+  1377→                  <div style="text-align:right; flex-shrink:0; margin-left:12px;">
+  1378→                    <p style="font-family:'DM Mono',monospace; font-size:20px; font-weight:500; color:{{ role.fitColor }}; line-height:1;">{{ role.fitScore }}%</p>
+  1379→                    <p style="font-family:'DM Sans',system-ui; font-size:9px; color:#A09890;">match</p>
+  1380→                  </div>
+  1381→                </div>
+  1382→                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px;">
+  1383→                  <sc-for list="{{ role.keywordChips }}" as="kw" hint-placeholder-count="3">
+  1384→                    <span style="padding:3px 9px; background:{{ kw.bg }}; border-radius:100px; font-family:'DM Sans',system-ui; font-size:10px; color:{{ kw.color }};">{{ kw.kw }}</span>
+  1385→                  </sc-for>
+  1386→                </div>
+  1387→                <div style="display:flex; justify-content:flex-end;">
+  1388→                  <span style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; color:#1A3A2F;">View role →</span>
+  1389→                </div>
+  1390→              </div>
+  1391→            </sc-for>
+  1392→          </div>
+  1393→        </div>
+  1394→      </div>
+  1395→    </div>
+  1396→  </sc-if>
+  1397→
+  1398→  <!-- ── KANBAN CARD DRAWER ── -->
+  1399→  <sc-if value="{{ hasKanbanDrawer }}" hint-placeholder-val="{{ false }}">
+  1400→    <div style="position:fixed; inset:0; z-index:80; display:flex; justify-content:flex-end;">
+  1401→      <div onClick="{{ kanbanDrawerCard.onClose }}" style="flex:1; background:rgba(0,0,0,0.18); backdrop-filter:blur(2px);"></div>
+  1402→      <div style="width:400px; background:#F2EDE3; height:100%; overflow-y:auto; display:flex; flex-direction:column; animation:slideInRight 0.26s cubic-bezier(0.16,1,0.3,1) both; box-shadow:-4px 0 28px rgba(0,0,0,0.1);">
+  1403→        <div style="padding:24px 28px 16px; border-bottom:1px solid rgba(0,0,0,0.07); flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between;">
+  1404→          <div>
+  1405→            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+  1406→              <div style="width:34px; height:34px; border-radius:8px; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+  1407→                <span style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:600; color:#E8D5A3;">{{ kanbanDrawerCard.initials }}</span>
+  1408→              </div>
+  1409→              <div>
+  1410→                <p style="font-family:'DM Sans',system-ui; font-size:14px; font-weight:600; color:#1A1A1A; margin-bottom:2px;">{{ kanbanDrawerCard.company }}</p>
+  1411→                <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:#7A7268;">{{ kanbanDrawerCard.role }}</p>
+  1412→              </div>
+  1413→            </div>
+  1414→            <div style="display:flex; align-items:center; gap:8px;">
+  1415→              <span style="padding:3px 10px; background:rgba(0,0,0,0.06); border-radius:100px; font-family:'DM Sans',system-ui; font-size:10px; color:#52493F;">{{ kanbanDrawerCard.stageName }}</span>
+  1416→              <span style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:{{ kanbanDrawerCard.fitColor }};">{{ kanbanDrawerCard.fit }}% match</span>
+  1417→            </div>
+  1418→          </div>
+  1419→          <button onClick="{{ kanbanDrawerCard.onClose }}" style="background:none; border:none; cursor:pointer; color:#A09890; font-size:20px; padding:2px 6px; line-height:1; flex-shrink:0;">×</button>
+  1420→        </div>
+  1421→        <div style="padding:16px 28px; border-bottom:1px solid rgba(0,0,0,0.07);">
+  1422→          <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:#A09890; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:8px;">Move to stage</p>
+  1423→          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+  1424→            <sc-for list="{{ kanbanDrawerCard.moveStages }}" as="ms" hint-placeholder-count="4">
+  1425→              <button onClick="{{ ms.onMoveTo }}" style="padding:5px 12px; background:#FFFFFF; border:1px solid rgba(0,0,0,0.1); border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; color:#1A1A1A; cursor:pointer; transition:background 0.15s;" style-hover="background:#F0EDE5;">{{ ms.label }}</button>
+  1426→            </sc-for>
+  1427→          </div>
+  1428→        </div>
+  1429→        <div style="padding:16px 28px; flex:1;">
+  1430→          <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:#A09890; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:12px;">Why you're a fit</p>
+  1431→          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+  1432→            <sc-for list="{{ kanbanDrawerCard.fitWorks }}" as="fw" hint-placeholder-count="3">
+  1433→              <div style="display:flex; align-items:flex-start; gap:8px;">
+  1434→                <span style="color:#4A8B6A; font-size:12px; flex-shrink:0; margin-top:1px;">✓</span>
+  1435→                <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:#52493F; line-height:1.55; text-wrap:pretty;">{{ fw }}</p>
+  1436→              </div>
+  1437→            </sc-for>
+  1438→          </div>
+  1439→
+  1440→          <!-- Apply with Scout (saved/applied stage) -->
+  1441→          <sc-if value="{{ kanbanDrawerCard.isApplyable }}" hint-placeholder-val="{{ false }}">
+  1442→            <div style="border-top:1px solid rgba(0,0,0,0.07); padding-top:16px; margin-bottom:16px;">
+  1443→              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+  1444→                <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#1A3A2F; text-transform:uppercase; letter-spacing:1px;">✦ Apply with Scout</p>
+  1445→                <button onClick="{{ kanbanDrawerCard.onRunApplyAgent }}" style="padding:7px 16px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; cursor:pointer; transition:opacity 0.15s;" style-hover="opacity:0.85;">Generate →</button>
+  1446→              </div>
+  1447→              <sc-if value="{{ applyAgentLoading }}" hint-placeholder-val="{{ false }}">
+  1448→                <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(26,58,47,0.04); border-radius:7px;">
+  1449→                  <div style="width:7px; height:7px; border-radius:50%; background:#1A3A2F; animation:pulse 1s ease infinite;"></div>
+  1450→                  <p style="font-family:'DM Sans',system-ui; font-size:11px; color:#1A3A2F; font-weight:300;">Scout is preparing your application pack…</p>
+  1451→                </div>
+  1452→              </sc-if>
+  1453→              <sc-if value="{{ showApplyAgent }}" hint-placeholder-val="{{ false }}">
+  1454→                <div style="animation:fadeIn 0.3s ease both; display:flex; flex-direction:column; gap:12px;">
+  1455→                  <!-- Step indicators -->
+  1456→                  <div style="display:flex; gap:14px;">
+  1457→                    <div style="display:flex; align-items:center; gap:5px;">
+  1458→                      <div style="width:16px; height:16px; border-radius:50%; background:{{ applyAgentStep1Bg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><span style="font-size:8px; font-weight:700; color:#fff;">1</span></div>
+  1459→                      <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#52493F;">Resume</span>
+  1460→                    </div>
+  1461→                    <div style="display:flex; align-items:center; gap:5px;">
+  1462→                      <div style="width:16px; height:16px; border-radius:50%; background:{{ applyAgentStep2Bg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><span style="font-size:8px; font-weight:700; color:#fff;">2</span></div>
+  1463→                      <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#52493F;">Cover letter</span>
+  1464→                    </div>
+  1465→                    <div style="display:flex; align-items:center; gap:5px;">
+  1466→                      <div style="width:16px; height:16px; border-radius:50%; background:{{ applyAgentStep3Bg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><span style="font-size:8px; font-weight:700; color:#fff;">3</span></div>
+  1467→                      <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#52493F;">Outreach</span>
+  1468→                    </div>
+  1469→                  </div>
+  1470→                  <sc-if value="{{ applyAgentResumeReady }}" hint-placeholder-val="{{ false }}">
+  1471→                    <div>
+  1472→                      <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#4A8B6A; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">✓ Tailored bullets</p>
+  1473→                      <div style="display:flex; flex-direction:column; gap:5px;">
+  1474→                        <sc-for list="{{ applyAgentResumeBullets }}" as="ab" hint-placeholder-count="3">
+  1475→                          <div style="display:flex; align-items:flex-start; gap:6px;">
+  1476→                            <div style="width:4px; height:4px; border-radius:50%; background:#1A3A2F; margin-top:6px; flex-shrink:0;"></div>
+  1477→                            <p style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:300; color:#1A1A1A; line-height:1.6; text-wrap:pretty;">{{ ab.b }}</p>
+  1478→                          </div>
+  1479→                        </sc-for>
+  1480→                      </div>
+  1481→                    </div>
+  1482→                  </sc-if>
+  1483→                  <sc-if value="{{ applyAgentCoverReady }}" hint-placeholder-val="{{ false }}">
+  1484→                    <div>
+  1485→                      <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#4A8B6A; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">✓ Cover letter opener</p>
+  1486→                      <p style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:300; color:#1A1A1A; line-height:1.8; white-space:pre-wrap; text-wrap:pretty; font-style:italic;">{{ applyAgentCoverText }}</p>
+  1487→                    </div>
+  1488→                  </sc-if>
+  1489→                  <sc-if value="{{ applyAgentOutreachReady }}" hint-placeholder-val="{{ false }}">
+  1490→                    <div>
+  1491→                      <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#4A8B6A; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">✓ Outreach note</p>
+  1492→                      <div style="background:rgba(26,58,47,0.04); border-radius:7px; padding:10px 12px; border-left:3px solid #1A3A2F;">
+  1493→                        <p style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:300; color:#1A1A1A; line-height:1.7; text-wrap:pretty;">{{ applyAgentOutreachText }}</p>
+  1494→                      </div>
+  1495→                    </div>
+  1496→                  </sc-if>
+  1497→                  <sc-if value="{{ applyAgentIsDone }}" hint-placeholder-val="{{ false }}">
+  1498→                    <button style="width:100%; padding:9px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:6px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; cursor:pointer;" style-hover="opacity:0.88;">Submit application →</button>
+  1499→                  </sc-if>
+
+[showing lines 1100-1499 of 3001; use offset=1500 with limit to continue reading]

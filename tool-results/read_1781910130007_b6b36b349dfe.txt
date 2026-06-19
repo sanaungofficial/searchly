@@ -1,0 +1,402 @@
+   300→                          <div style="display:flex; align-items:center; gap:8px;">
+   301→                            <div style="width:30px; height:30px; border-radius:7px; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+   302→                              <span style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:600; color:#E8D5A3;">{{ co.initials }}</span>
+   303→                            </div>
+   304→                            <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:600; color:#1A1A1A;">{{ co.name }}</p>
+   305→                          </div>
+   306→                          <p style="font-family:'DM Mono',monospace; font-size:14px; font-weight:500; color:{{ co.fitColor }}; flex-shrink:0;">{{ co.fit }}%</p>
+   307→                        </div>
+   308→                        <p style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:300; color:#52493F; line-height:1.5; margin-bottom:10px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">{{ co.fitReason }}</p>
+   309→                        <div style="display:flex; align-items:center; gap:5px;">
+   310→                          <div style="width:6px; height:6px; border-radius:50%; background:{{ co.rolesBadgeColor }};"></div>
+   311→                          <span style="font-family:'DM Sans',system-ui; font-size:9px; color:#52493F;">{{ co.openRolesLabel }}</span>
+   312→                        </div>
+   313→                      </div>
+   314→                    </sc-for>
+   315→                  </div>
+   316→                </div>
+   317→
+   318→                <!-- Upcoming live sessions -->
+   319→                <div style="margin-bottom:28px;">
+   320→                  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+   321→                    <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:#A09890; letter-spacing:1.1px; text-transform:uppercase;">Upcoming live sessions</p>
+   322→                    <button onClick="{{ onNavLive }}" style="background:none; border:none; cursor:pointer; font-family:'DM Sans',system-ui; font-size:11px; color:#1A3A2F; padding:0;" style-hover="opacity:0.7;">View all →</button>
+   323→                  </div>
+   324→                  <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none;">
+   325→                    <sc-for list="{{ dashboardSessions }}" as="s" hint-placeholder-count="3">
+   326→                      <div onClick="{{ onNavLive }}" style="flex:none; width:260px; background:#FFFFFF; border-radius:10px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); box-shadow:0 1px 3px rgba(0,0,0,0.04); cursor:pointer; transition:box-shadow 0.2s;" style-hover="box-shadow:0 4px 14px rgba(0,0,0,0.08);">
+   327→                        <div style="background:{{ s.bgColor }}; padding:16px 16px 12px; min-height:80px; position:relative; display:flex; flex-direction:column; justify-content:flex-end;">
+   328→                          <span style="position:absolute; top:8px; left:10px; padding:2px 7px; background:rgba(0,0,0,0.35); border-radius:3px; font-family:'DM Sans',system-ui; font-size:9px; color:#FFFFFF;">{{ s.startsIn }}</span>
+   329→                          <h4 style="font-family:'Cormorant Garamond',Georgia,serif; font-size:14px; font-weight:500; color:{{ s.accentColor }}; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">{{ s.title }}</h4>
+   330→                        </div>
+   331→                        <div style="padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+   332→                          <div>
+   333→                            <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#1A1A1A;">{{ s.host }}</p>
+   334→                            <p style="font-family:'DM Sans',system-ui; font-size:9px; color:#A09890;">{{ s.registeredLabel }}</p>
+   335→                          </div>
+   336→                          <button style="padding:5px 12px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:4px; font-family:'DM Sans',system-ui; font-size:10px; font-weight:500; cursor:pointer; white-space:nowrap;">Register</button>
+   337→                        </div>
+   338→                      </div>
+   339→                    </sc-for>
+   340→                  </div>
+   341→                </div>
+   342→
+   343→                <!-- Scout activity -->
+   344→                <div>
+   345→                  <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:#A09890; letter-spacing:1.1px; text-transform:uppercase; margin-bottom:12px;">Scout activity</p>
+   346→                  <div style="display:flex; flex-direction:column; gap:8px; max-width:600px;">
+   347→                    <div style="background:#FFFFFF; border-radius:8px; padding:12px 16px; border:1px solid rgba(0,0,0,0.06); display:flex; align-items:flex-start; gap:10px;">
+   348→                      <div style="width:24px; height:24px; border-radius:50%; background:rgba(74,139,106,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;"><span style="font-size:11px;">✦</span></div>
+   349→                      <div><p style="font-family:'DM Sans',system-ui; font-size:11px; color:#1A1A1A; margin-bottom:2px;"><strong>Stripe posted 2 new PM roles</strong> matching your profile.</p><p style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">2 hours ago · <span style="color:#1A3A2F; cursor:pointer;">View roles →</span></p></div>
+   350→                    </div>
+   351→                    <div style="background:#FFFFFF; border-radius:8px; padding:12px 16px; border:1px solid rgba(0,0,0,0.06); display:flex; align-items:flex-start; gap:10px;">
+   352→                      <div style="width:24px; height:24px; border-radius:50%; background:rgba(196,168,106,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;"><span style="font-size:11px;">△</span></div>
+   353→                      <div><p style="font-family:'DM Sans',system-ui; font-size:11px; color:#1A1A1A; margin-bottom:2px;"><strong>Linear raised $50M Series C</strong> — expansion likely in PM headcount.</p><p style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">Yesterday · <span style="color:#1A3A2F; cursor:pointer;">View company →</span></p></div>
+   354→                    </div>
+   355→                    <div style="background:#FFFFFF; border-radius:8px; padding:12px 16px; border:1px solid rgba(0,0,0,0.06); display:flex; align-items:flex-start; gap:10px;">
+   356→                      <div style="width:24px; height:24px; border-radius:50%; background:rgba(26,58,47,0.07); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;"><span style="font-size:11px;">→</span></div>
+   357→                      <div><p style="font-family:'DM Sans',system-ui; font-size:11px; color:#1A1A1A; margin-bottom:2px;"><strong>Your Figma application</strong> has been open for 7 days with no response.</p><p style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">3 days ago · <span style="color:#1A3A2F; cursor:pointer;">Draft a follow-up →</span></p></div>
+   358→                    </div>
+   359→                  </div>
+   360→                </div>
+   361→
+   362→              </div>
+   363→            </sc-if>
+   364→            </sc-if>
+   365→
+   366→            <!-- Company detail -->
+   367→            
+   368→
+   369→            <!-- Job workspace -->
+   370→            <sc-if value="{{ showRoleWS }}" hint-placeholder-val="{{ false }}">
+   371→              <div style="flex:1; display:flex; overflow:hidden;">
+   372→                <div style="flex:1; overflow-y:auto; padding:24px 32px; display:flex; flex-direction:column; gap:0;">
+   373→                  <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-shrink:0;">
+   374→                    <button onClick="{{ onBackToCompany }}" style="background:none; border:none; cursor:pointer; color:#A09890; font-family:'DM Sans',system-ui; font-size:12px; display:flex; align-items:center; gap:5px; padding:0;" style-hover="color:#52493F;">← {{ company.name }}</button>
+   375→                  </div>
+   376→                  <div style="margin-bottom:20px; flex-shrink:0;">
+   377→                    <h2 style="font-family:'Cormorant Garamond',Georgia,serif; font-size:26px; font-weight:400; font-style:italic; color:#1A1A1A; margin-bottom:4px; line-height:1.15;">{{ job.role }}</h2>
+   378→                    <p style="font-family:'DM Sans',system-ui; font-size:11px; color:#A09890;">{{ job.location }} · {{ job.type }} · {{ job.salary }}</p>
+   379→                  </div>
+   380→                  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; flex-shrink:0;">
+   381→                    <button onClick="{{ onWsResume }}" style="padding:8px 16px; background:{{ resumeBtnBg }}; color:{{ resumeBtnColor }}; border:1px solid rgba(26,58,47,0.2); border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s;">Tailor Resume</button>
+   382→                    <button onClick="{{ onWsCover }}" style="padding:8px 16px; background:{{ coverBtnBg }}; color:{{ coverBtnColor }}; border:1px solid rgba(26,58,47,0.2); border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s;">Cover Letter</button>
+   383→                    <button onClick="{{ onWsFit }}" style="padding:8px 16px; background:{{ fitBtnBg }}; color:{{ fitBtnColor }}; border:1px solid rgba(26,58,47,0.2); border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s;">Why I'm a Fit</button>
+   384→                    <button onClick="{{ onWsGaps }}" style="padding:8px 16px; background:{{ gapsBtnBg }}; color:{{ gapsBtnColor }}; border:1px solid rgba(26,58,47,0.2); border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:500; cursor:pointer; transition:all 0.15s;">Gap Analysis</button>
+   385→
+   386→                  </div>
+   387→                  <sc-if value="{{ showToolPanel }}" hint-placeholder-val="{{ false }}">
+   388→                    <div style="flex:1; overflow-y:auto; background:#FFFFFF; border-radius:8px; padding:20px 22px; box-shadow:0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04); margin-bottom:16px;">
+   389→                      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+   390→                        <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#1A1A1A; text-transform:uppercase; letter-spacing:0.5px;">{{ toolTitle }}</p>
+   391→                        <sc-if value="{{ showCopyBtn }}" hint-placeholder-val="{{ false }}">
+   392→                          <button onClick="{{ onWsCopyLetter }}" style="padding:4px 12px; background:transparent; color:#1A3A2F; border:1px solid rgba(26,58,47,0.2); border-radius:4px; font-family:'DM Sans',system-ui; font-size:10px; cursor:pointer;">{{ wsCopyBtnText }}</button>
+   393→                        </sc-if>
+   394→                      </div>
+   395→                      <sc-if value="{{ toolLoading }}" hint-placeholder-val="{{ false }}">
+   396→                        <div style="display:flex; align-items:center; gap:8px; padding:16px 0;">
+   397→                          <div style="width:8px; height:8px; border-radius:50%; background:#1A3A2F; animation:pulse 1s ease infinite;"></div>
+   398→                          <p style="font-family:'DM Sans',system-ui; font-size:12px; color:#7A7268;">Scout is working…</p>
+   399→                        </div>
+   400→                      </sc-if>
+   401→                      <sc-if value="{{ showResumeTool }}" hint-placeholder-val="{{ false }}">
+   402→                        <sc-for list="{{ tailoredBullets }}" as="bullet" hint-placeholder-count="3">
+   403→                          <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:10px;">
+   404→                            <div style="width:5px; height:5px; border-radius:50%; background:#1A3A2F; margin-top:6px; flex-shrink:0;"></div>
+   405→                            <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:300; color:#1A1A1A; line-height:1.6; text-wrap:pretty;">{{ bullet.text }}</p>
+   406→                          </div>
+   407→                        </sc-for>
+   408→                      </sc-if>
+   409→                      <sc-if value="{{ showCoverTool }}" hint-placeholder-val="{{ false }}">
+   410→                        <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:300; color:#1A1A1A; line-height:1.8; white-space:pre-wrap; text-wrap:pretty;">{{ job.coverLetter }}</p>
+   411→                      </sc-if>
+   412→                      <sc-if value="{{ showFitTool }}" hint-placeholder-val="{{ false }}">
+   413→                        <sc-for list="{{ fitWorks }}" as="fw" hint-placeholder-count="3">
+   414→                          <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:10px;">
+   415→                            <span style="color:#4A8B6A; font-size:13px; flex-shrink:0; margin-top:1px;">✓</span>
+   416→                            <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:300; color:#52493F; line-height:1.6; text-wrap:pretty;">{{ fw }}</p>
+   417→                          </div>
+   418→                        </sc-for>
+   419→                      </sc-if>
+   420→                      <sc-if value="{{ showGapsTool }}" hint-placeholder-val="{{ false }}">
+   421→                        <sc-for list="{{ fitWatches }}" as="fw" hint-placeholder-count="2">
+   422→                          <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:10px;">
+   423→                            <span style="color:#C4A86A; font-size:13px; flex-shrink:0; margin-top:1px;">→</span>
+   424→                            <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:300; color:#52493F; line-height:1.6; text-wrap:pretty;">{{ fw.title }}: {{ fw.body }}</p>
+   425→                          </div>
+   426→                        </sc-for>
+   427→                      </sc-if>
+   428→                    </div>
+   429→                  </sc-if>
+   430→
+   431→                  <!-- ── Apply with Scout Agent Panel ── -->
+   432→                  <sc-if value="{{ showApplyAgent }}" hint-placeholder-val="{{ false }}">
+   433→                    <div style="margin-top:16px; border:1.5px solid rgba(26,58,47,0.18); border-radius:10px; overflow:hidden; animation:fadeIn 0.3s ease both;">
+   434→                      <!-- Header -->
+   435→                      <div style="background:#1A3A2F; padding:12px 18px; display:flex; align-items:center; justify-content:space-between;">
+   436→                        <div style="display:flex; align-items:center; gap:8px;">
+   437→                          <span style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#E8D5A3;">✦ Apply with Scout</span>
+   438→                          <sc-if value="{{ applyAgentLoading }}" hint-placeholder-val="{{ false }}">
+   439→                            <div style="width:6px; height:6px; border-radius:50%; background:#E8D5A3; animation:pulse 1s ease infinite;"></div>
+   440→                          </sc-if>
+   441→                          <sc-if value="{{ applyAgentIsDone }}" hint-placeholder-val="{{ false }}">
+   442→                            <span style="font-family:'DM Sans',system-ui; font-size:10px; color:rgba(232,213,163,0.6);">Ready to apply</span>
+   443→                          </sc-if>
+   444→                        </div>
+   445→                        <button onClick="{{ onCloseApplyAgent }}" style="background:none; border:none; cursor:pointer; color:rgba(232,213,163,0.5); font-size:16px; line-height:1; padding:0 4px;" style-hover="color:#E8D5A3;">×</button>
+   446→                      </div>
+   447→
+   448→                      <!-- Step indicators -->
+   449→                      <div style="padding:10px 18px; background:rgba(26,58,47,0.04); border-bottom:1px solid rgba(0,0,0,0.06); display:flex; gap:20px;">
+   450→                        <div style="display:flex; align-items:center; gap:6px;">
+   451→                          <div style="width:18px; height:18px; border-radius:50%; background:{{ applyAgentStep1Bg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+   452→                            <span style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:700; color:#FFFFFF;">1</span>
+   453→                          </div>
+   454→                          <span style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:500; color:#52493F;">Resume</span>
+   455→                        </div>
+   456→                        <div style="display:flex; align-items:center; gap:6px;">
+   457→                          <div style="width:18px; height:18px; border-radius:50%; background:{{ applyAgentStep2Bg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+   458→                            <span style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:700; color:#FFFFFF;">2</span>
+   459→                          </div>
+   460→                          <span style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:500; color:#52493F;">Cover Letter</span>
+   461→                        </div>
+   462→                        <div style="display:flex; align-items:center; gap:6px;">
+   463→                          <div style="width:18px; height:18px; border-radius:50%; background:{{ applyAgentStep3Bg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+   464→                            <span style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:700; color:#FFFFFF;">3</span>
+   465→                          </div>
+   466→                          <span style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:500; color:#52493F;">Outreach</span>
+   467→                        </div>
+   468→                      </div>
+   469→
+   470→                      <div style="padding:16px 18px; display:flex; flex-direction:column; gap:14px;">
+   471→
+   472→                        <!-- Step 1: Resume bullets -->
+   473→                        <sc-if value="{{ applyAgentResumeReady }}" hint-placeholder-val="{{ false }}">
+   474→                          <div>
+   475→                            <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#4A8B6A; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">✓ Tailored bullets</p>
+   476→                            <div style="display:flex; flex-direction:column; gap:6px;">
+   477→                              <sc-for list="{{ applyAgentResumeBullets }}" as="ab" hint-placeholder-count="3">
+   478→                                <div style="display:flex; align-items:flex-start; gap:7px;">
+   479→                                  <div style="width:4px; height:4px; border-radius:50%; background:#1A3A2F; margin-top:6px; flex-shrink:0;"></div>
+   480→                                  <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:#1A1A1A; line-height:1.6; text-wrap:pretty;">{{ ab.b }}</p>
+   481→                                </div>
+   482→                              </sc-for>
+   483→                            </div>
+   484→                          </div>
+   485→                        </sc-if>
+   486→
+   487→                        <!-- Step 2: Cover letter -->
+   488→                        <sc-if value="{{ applyAgentCoverReady }}" hint-placeholder-val="{{ false }}">
+   489→                          <div>
+   490→                            <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#4A8B6A; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">✓ Cover letter opener</p>
+   491→                            <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:#1A1A1A; line-height:1.8; white-space:pre-wrap; text-wrap:pretty; font-style:italic;">{{ applyAgentCoverText }}</p>
+   492→                          </div>
+   493→                        </sc-if>
+   494→
+   495→                        <!-- Step 3: Outreach -->
+   496→                        <sc-if value="{{ applyAgentOutreachReady }}" hint-placeholder-val="{{ false }}">
+   497→                          <div>
+   498→                            <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:600; color:#4A8B6A; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">✓ Outreach note</p>
+   499→                            <div style="background:rgba(26,58,47,0.04); border-radius:7px; padding:10px 12px; border-left:3px solid #1A3A2F;">
+   500→                              <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:#1A1A1A; line-height:1.7; text-wrap:pretty;">{{ applyAgentOutreachText }}</p>
+   501→                            </div>
+   502→                          </div>
+   503→                        </sc-if>
+   504→
+   505→                        <!-- Done CTA -->
+   506→                        <sc-if value="{{ applyAgentIsDone }}" hint-placeholder-val="{{ false }}">
+   507→                          <div style="display:flex; gap:8px; padding-top:4px;">
+   508→                            <button style="flex:1; padding:9px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:6px; font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; cursor:pointer;" style-hover="opacity:0.88;">Submit application →</button>
+   509→                          </div>
+   510→                        </sc-if>
+   511→
+   512→                      </div>
+   513→                    </div>
+   514→                  </sc-if>
+   515→
+   516→                </div>
+   517→                <div style="width:300px; border-left:1px solid rgba(0,0,0,0.07); background:#FAFAF8; overflow-y:auto; padding:20px 18px; flex-shrink:0; display:flex; flex-direction:column; gap:0;">
+   518→                  <p style="font-family:'DM Sans',system-ui; font-size:9px; font-weight:500; color:#A09890; letter-spacing:0.9px; text-transform:uppercase; margin-bottom:14px;">Scout</p>
+   519→                  <div style="display:flex; flex-direction:column; gap:10px; flex:1; overflow-y:auto; margin-bottom:12px;">
+   520→                    <sc-for list="{{ chatMessages }}" as="msg" hint-placeholder-count="1">
+   521→                      <div style="display:flex; gap:8px; align-items:flex-start;">
+   522→                        <sc-if value="{{ msg.isScout }}" hint-placeholder-val="{{ true }}">
+   523→                          <div style="width:20px; height:20px; border-radius:50%; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">
+   524→                            <span style="font-family:'DM Sans',system-ui; font-size:7px; font-weight:600; color:#E8D5A3;">S</span>
+   525→                          </div>
+   526→                        </sc-if>
+   527→                        <div style="flex:1; background:{{ msg.bubbleBg }}; border-radius:8px; padding:9px 12px;">
+   528→                          <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:300; color:{{ msg.textColor }}; line-height:1.6; text-wrap:pretty;">{{ msg.text }}</p>
+   529→                        </div>
+   530→                      </div>
+   531→                    </sc-for>
+   532→                    <sc-if value="{{ chatLoading }}" hint-placeholder-val="{{ false }}">
+   533→                      <div style="display:flex; gap:8px; align-items:center;">
+   534→                        <div style="width:20px; height:20px; border-radius:50%; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+   535→                          <span style="font-family:'DM Sans',system-ui; font-size:7px; font-weight:600; color:#E8D5A3;">S</span>
+   536→                        </div>
+   537→                        <div style="display:flex; gap:4px; padding:10px 12px; background:#FFFFFF; border-radius:8px;">
+   538→                          <span style="width:5px; height:5px; border-radius:50%; background:#C0B8B0; animation:pulse 1.2s ease infinite;"></span>
+   539→                          <span style="width:5px; height:5px; border-radius:50%; background:#C0B8B0; animation:pulse 1.2s ease infinite 0.2s;"></span>
+   540→                          <span style="width:5px; height:5px; border-radius:50%; background:#C0B8B0; animation:pulse 1.2s ease infinite 0.4s;"></span>
+   541→                        </div>
+   542→                      </div>
+   543→                    </sc-if>
+   544→                  </div>
+   545→                  <div style="display:flex; gap:6px; flex-shrink:0;">
+   546→                    <input type="text" value="{{ chatInput }}" onChange="{{ onWsChatChange }}" onKeyDown="{{ onWsChatKey }}" placeholder="Ask Scout anything…" style="flex:1; padding:8px 10px; border:1px solid rgba(0,0,0,0.12); border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; background:#FFFFFF; min-width:0;" />
+   547→                    <button onClick="{{ onWsChatSubmit }}" style="padding:8px 12px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:5px; font-family:'DM Sans',system-ui; font-size:11px; cursor:pointer; flex-shrink:0;">→</button>
+   548→                  </div>
+   549→                </div>
+   550→              </div>
+   551→            </sc-if>
+   552→
+   553→          </div>
+   554→        </sc-if>
+   555→
+   556→        <!-- MY JOBS TAB -->
+   557→        <sc-if value="{{ showMyJobsTab }}" hint-placeholder-val="{{ false }}">
+   558→          <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+   559→            <!-- URL input bar -->
+   560→            <div style="padding:14px 28px; border-bottom:1px solid rgba(0,0,0,0.07); display:flex; gap:10px; align-items:center; background:#fff;">
+   561→              <input type="url" value="{{ myJobsUrlInput }}" onChange="{{ onMyJobsUrlChange }}" onKeyDown="{{ onAddJobUrlKey }}" placeholder="Paste a job URL to add it…" style="flex:1; padding:10px 16px; border:1px solid rgba(0,0,0,0.12); border-radius:8px; font-family:'DM Sans',system-ui; font-size:13px; color:#1A1A1A; outline:none; background:#FAFAF8;" />
+   562→              <button onClick="{{ onAddJobSubmit }}" style="padding:10px 22px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:8px; font-family:'DM Sans',system-ui; font-size:13px; font-weight:500; cursor:pointer; flex-shrink:0; white-space:nowrap;" style-hover="opacity:0.88;">+ Add Job</button>
+   563→            </div>
+   564→            <!-- Job list -->
+   565→            <div style="flex:1; overflow-y:auto; padding:20px 28px; display:flex; flex-direction:column; gap:14px;">
+   566→              <sc-for list="{{ myJobsItems }}" as="job" hint-placeholder-count="3">
+   567→                <div style="display:flex; gap:0; border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.08); border:1px solid rgba(0,0,0,0.08);">
+   568→                  <!-- Main card -->
+   569→                  <div style="flex:1; background:#fff; padding:20px 24px;">
+   570→                    <div style="display:flex; align-items:flex-start; gap:16px; margin-bottom:14px;">
+   571→                      <div style="width:56px; height:56px; border-radius:10px; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+   572→                        <span style="font-family:'DM Mono',monospace; font-size:13px; font-weight:600; color:#E8D5A3;">{{ job.initials }}</span>
+   573→                      </div>
+   574→                      <div style="flex:1; min-width:0;">
+   575→                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+   576→                          <span style="padding:2px 8px; background:rgba(26,58,47,0.07); border:1px solid rgba(26,58,47,0.14); border-radius:4px; font-family:'DM Sans',system-ui; font-size:10px; color:#1A3A2F; font-weight:500; letter-spacing:0.3px; text-transform:uppercase;">My Jobs</span>
+   577→                          <span style="font-family:'DM Mono',monospace; font-size:11px; color:#A09890;">{{ job.daysLabel }}</span>
+   578→                        </div>
+   579→                        <p style="font-family:'DM Sans',system-ui; font-size:19px; font-weight:600; color:#1A1A1A; margin-bottom:2px; line-height:1.2;">{{ job.role }}</p>
+   580→                        <p style="font-family:'DM Sans',system-ui; font-size:13px; color:#A09890;">{{ job.company }}</p>
+   581→                      </div>
+   582→                      <button onClick="{{ job.onRemove }}" style="width:28px; height:28px; border:none; background:transparent; cursor:pointer; color:#C0B8B0; font-size:18px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:4px;" style-hover="background:rgba(0,0,0,0.05); color:#1A1A1A;">×</button>
+   583→                    </div>
+   584→                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 32px; padding:14px 0; border-top:1px solid rgba(0,0,0,0.06); border-bottom:1px solid rgba(0,0,0,0.06); margin-bottom:14px;">
+   585→                      <div style="display:flex; align-items:center; gap:8px;">
+   586→                        <span style="font-size:13px; color:#A09890;">◎</span>
+   587→                        <span style="font-family:'DM Sans',system-ui; font-size:13px; color:#52493F;">{{ job.location }}</span>
+   588→                      </div>
+   589→                      <div style="display:flex; align-items:center; gap:8px;">
+   590→                        <span style="font-size:13px; color:#A09890;">⊙</span>
+   591→                        <span style="font-family:'DM Sans',system-ui; font-size:13px; color:#52493F;">Full-time</span>
+   592→                      </div>
+   593→                      <div style="display:flex; align-items:center; gap:8px;">
+   594→                        <span style="font-size:13px; color:#A09890;">⌂</span>
+   595→                        <span style="font-family:'DM Sans',system-ui; font-size:13px; color:#52493F;">{{ job.workType }}</span>
+   596→                      </div>
+   597→                      <div style="display:flex; align-items:center; gap:8px;">
+   598→                        <span style="font-size:13px; color:#A09890;">♛</span>
+   599→                        <span style="font-family:'DM Sans',system-ui; font-size:13px; color:#52493F;">Senior Level</span>
+   600→                      </div>
+   601→                    </div>
+   602→                    <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+   603→                      <button style="padding:8px 16px; background:transparent; border:1px solid rgba(0,0,0,0.12); border-radius:20px; font-family:'DM Sans',system-ui; font-size:12px; color:#3D3630; cursor:pointer; font-weight:500;" style-hover="background:rgba(0,0,0,0.04);">Custom Resume</button>
+   604→                      <button style="padding:8px 14px; background:transparent; border:1px solid rgba(0,0,0,0.12); border-radius:20px; font-family:'DM Sans',system-ui; font-size:12px; color:#3D3630; cursor:pointer; display:flex; align-items:center; gap:5px;" style-hover="background:rgba(0,0,0,0.04);">
+   605→                        <span style="font-size:11px; color:#1A3A2F;">✦</span> Scout
+   606→                      </button>
+   607→                      <button onClick="{{ job.onApply }}" style="padding:8px 20px; background:#1A3A2F; border:none; border-radius:20px; font-family:'DM Sans',system-ui; font-size:12px; color:#E8D5A3; cursor:pointer; font-weight:500;" style-hover="opacity:0.88;">Apply →</button>
+   608→                    </div>
+   609→                  </div>
+   610→                  <!-- Fit score panel -->
+   611→                  <div style="width:170px; flex-shrink:0; background:#1A3A2F; padding:24px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;">
+   612→                    <div style="position:relative; width:88px; height:88px;">
+   613→                      <svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg);">
+   614→                        <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="6"></circle>
+   615→                        <circle cx="44" cy="44" r="38" fill="none" stroke="{{ job.fitStroke }}" stroke-width="6" stroke-linecap="round" stroke-dasharray="{{ job.circumference }}" stroke-dashoffset="{{ job.dashOffset }}"></circle>
+   616→                      </svg>
+   617→                      <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+   618→                        <span style="font-family:'DM Mono',monospace; font-size:19px; font-weight:700; color:#fff; line-height:1;">{{ job.fit }}<span style="font-size:11px;">%</span></span>
+   619→                      </div>
+   620→                    </div>
+   621→                    <p style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:700; color:#fff; letter-spacing:0.6px; text-transform:uppercase; text-align:center; line-height:1.3;">{{ job.fitLabel }}</p>
+   622→                  </div>
+   623→                </div>
+   624→              </sc-for>
+   625→            </div>
+   626→          </div>
+   627→        </sc-if>
+   628→
+   629→        <!-- PIPELINE TAB (List) -->
+   630→        <sc-if value="{{ showTrackerTab }}" hint-placeholder-val="{{ false }}">
+   631→          <div style="flex:1; overflow-x:auto; overflow-y:hidden; padding:20px 28px; display:flex; gap:14px; align-items:flex-start; animation:fadeIn 0.25s ease both;">
+   632→            <sc-for list="{{ kanbanStages }}" as="stage" hint-placeholder-count="5">
+   633→              <div style="width:220px; flex-shrink:0; display:flex; flex-direction:column;" onDrop="{{ stage.onDrop }}" onDragOver="{{ stage.onDragOver }}">
+   634→                <div style="display:flex; align-items:center; gap:7px; margin-bottom:12px; padding:8px 12px; border-radius:8px; background:rgba(0,0,0,0.04);">
+   635→                  <div style="width:8px; height:8px; border-radius:50%; background:{{ stage.color }}; flex-shrink:0;"></div>
+   636→                  <span style="font-family:'DM Sans',system-ui; font-size:11px; font-weight:600; color:#1A1A1A; flex:1;">{{ stage.label }}</span>
+   637→                  <span style="font-family:'DM Mono',monospace; font-size:10px; color:#A09890;">{{ stage.count }}</span>
+   638→                </div>
+   639→                <div style="display:flex; flex-direction:column; gap:8px; min-height:120px;">
+   640→                  <sc-for list="{{ stage.cards }}" as="card" hint-placeholder-count="1">
+   641→                    <div draggable="true" onDragStart="{{ card.onDragStart }}" onClick="{{ card.onOpen }}" style="background:#FFFFFF; border-radius:9px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.06), 0 3px 8px rgba(0,0,0,0.04); cursor:pointer; transition:box-shadow 0.15s;" style-hover="box-shadow:0 3px 12px rgba(0,0,0,0.12);">
+   642→                      <div style="display:flex; align-items:center; gap:9px; margin-bottom:10px;">
+   643→                        <div style="width:28px; height:28px; border-radius:7px; background:#1A3A2F; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+   644→                          <span style="font-family:'DM Sans',system-ui; font-size:8px; font-weight:600; color:#E8D5A3;">{{ card.initials }}</span>
+   645→                        </div>
+   646→                        <div style="flex:1; min-width:0;">
+   647→                          <p style="font-family:'DM Sans',system-ui; font-size:12px; font-weight:600; color:#1A1A1A; margin-bottom:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ card.company }}</p>
+   648→                          <p style="font-family:'DM Sans',system-ui; font-size:10px; font-weight:300; color:#7A7268; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ card.role }}</p>
+   649→                        </div>
+   650→                      </div>
+   651→                      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+   652→                        <span style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:{{ card.fitColor }};">{{ card.fit }}%</span>
+   653→                        <span style="font-family:'DM Sans',system-ui; font-size:10px; color:#A09890;">{{ card.daysLabel }}</span>
+   654→                      </div>
+   655→                      <sc-if value="{{ card.canAdvance }}" hint-placeholder-val="{{ false }}">
+   656→                        <button onClick="{{ card.onAdvance }}" style="width:100%; padding:6px; background:rgba(26,58,47,0.05); border:1px solid rgba(26,58,47,0.12); border-radius:5px; font-family:'DM Sans',system-ui; font-size:10px; color:#1A3A2F; cursor:pointer; transition:background 0.15s;" style-hover="background:rgba(26,58,47,0.1);">{{ card.advanceLabel }}</button>
+   657→                      </sc-if>
+   658→                    </div>
+   659→                  </sc-for>
+   660→                  <sc-if value="{{ stage.isEmpty }}" hint-placeholder-val="{{ false }}">
+   661→                    <div style="border:1.5px dashed rgba(0,0,0,0.1); border-radius:9px; padding:20px; text-align:center;">
+   662→                      <p style="font-family:'DM Sans',system-ui; font-size:10px; color:#C0B8B0;">Drop here</p>
+   663→                    </div>
+   664→                  </sc-if>
+   665→                </div>
+   666→              </div>
+   667→            </sc-for>
+   668→          </div>
+   669→        </sc-if>
+   670→
+   671→
+   672→    </div>
+   673→
+   674→    <!-- ─ PROFILE ─ -->
+   675→    <div data-section="profile" style="flex:1; display:flex; overflow:hidden; animation:fadeIn 0.3s ease both;">
+   676→
+   677→      <!-- Left: scrollable profile content -->
+   678→      <div style="flex:1; overflow-y:auto; padding:32px 40px 60px;">
+   679→
+   680→        <!-- Profile Intelligence Banner -->
+   681→        <sc-if value="{{ showProfileSetupBanner }}" hint-placeholder-val="{{ true }}">
+   682→          <div style="margin-bottom:24px; border-radius:10px; overflow:hidden; border:1px solid rgba(26,58,47,0.15);">
+   683→            <div onClick="{{ onToggleProfileSetup }}" style="background:#1A3A2F; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; cursor:pointer;" style-hover="opacity:0.92;">
+   684→              <div style="display:flex; align-items:center; gap:10px;">
+   685→                <span style="font-family:'DM Sans',system-ui; font-size:14px; color:#E8D5A3;">✦</span>
+   686→                <span style="font-family:'DM Sans',system-ui; font-size:13px; font-weight:500; color:#E8D5A3;">Profile Intelligence</span>
+   687→                <span style="font-family:'DM Sans',system-ui; font-size:11px; color:rgba(232,213,163,0.55); font-weight:300;">Paste your resume to unlock personalized coaching</span>
+   688→              </div>
+   689→              <span style="font-family:'DM Mono',monospace; font-size:12px; color:rgba(232,213,163,0.6);">{{ profileSetupChevron }}</span>
+   690→            </div>
+   691→            <sc-if value="{{ showProfileSetupPanel }}" hint-placeholder-val="{{ false }}">
+   692→              <div style="background:#FAFAF8; padding:20px 24px;">
+   693→                <p style="font-family:'DM Sans',system-ui; font-size:12px; color:#52493F; margin-bottom:12px; font-weight:400;">Paste your resume below — Scout will extract your experience, skills, and suggest improvements.</p>
+   694→                <textarea onChange="{{ onResumeTextChange }}" placeholder="Paste resume text here…" style="width:100%; height:140px; border:1px solid rgba(0,0,0,0.12); border-radius:7px; padding:12px; font-family:'DM Sans',system-ui; font-size:12px; color:#1A1A1A; resize:vertical; outline:none; background:#fff; box-sizing:border-box;">{{ resumePasteText }}</textarea>
+   695→                <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:12px;">
+   696→                  <sc-if value="{{ profileSetupLoading }}" hint-placeholder-val="{{ false }}">
+   697→                    <span style="font-family:'DM Sans',system-ui; font-size:12px; color:#4A8B6A;">Analyzing…</span>
+   698→                  </sc-if>
+   699→                  <button onClick="{{ onRunProfileIntelligence }}" style="padding:8px 20px; background:#1A3A2F; color:#E8D5A3; border:none; border-radius:6px; font-family:'DM Sans',system-ui; font-size:12px; font-weight:500; cursor:pointer;" style-hover="opacity:0.88;">Analyze Resume →</button>
+
+[showing lines 300-699 of 3001; use offset=700 with limit to continue reading]

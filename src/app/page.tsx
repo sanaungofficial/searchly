@@ -13,6 +13,9 @@ import {
   type Job,
 } from "@/components/scout/screens";
 import { DirectionComparison } from "@/components/scout/direction-comparison";
+import { ScoutWorkspace } from "@/components/scout/workspace";
+
+type View = "onboarding" | "workspace";
 
 const JOB_MOCKS = [
   { company: "Stripe", role: "Senior PM" },
@@ -21,6 +24,8 @@ const JOB_MOCKS = [
 ];
 
 export default function Home() {
+  const [view, setView] = useState<View>("onboarding");
+
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
   const [resumeUploaded, setResumeUploaded] = useState(false);
@@ -32,12 +37,25 @@ export default function Home() {
   const [jobInput, setJobInput] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
 
+  /* ── View toggle ── */
+  const enterWorkspace = useCallback(() => setView("workspace"), []);
+  const backToOnboarding = useCallback(() => {
+    setView("onboarding");
+    setScreen(0);
+    setResumeFilename(null);
+    setResumeUploaded(false);
+    setLiInput("");
+    setLISubmitting(false);
+    setJobInput("");
+    setJobs([]);
+  }, []);
+
+  /* ── Onboarding flow ── */
   const goTo = useCallback((n: Screen) => {
     setScreen(n);
     setLISubmitting(false);
   }, []);
 
-  /* ── Resume upload handlers ── */
   const processFile = useCallback(
     (file: File | undefined | null) => {
       if (!file) return;
@@ -71,7 +89,6 @@ export default function Home() {
     if (f) processFile(f);
   };
 
-  /* ── LinkedIn handlers ── */
   const submitLI = () => {
     if (!liInput.trim()) return;
     setLISubmitting(true);
@@ -82,7 +99,6 @@ export default function Home() {
     if (e.key === "Enter") submitLI();
   };
 
-  /* ── Job handlers ── */
   const addJob = () => {
     if (!jobInput.trim() || jobs.length >= 3) return;
     const m = JOB_MOCKS[jobs.length] || { company: "Company", role: "PM Role" };
@@ -105,7 +121,6 @@ export default function Home() {
     if (e.key === "Enter") addJob();
   };
 
-  /* ── Demo button: skip ahead through every screen ── */
   const demoAdvance = () => {
     if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
@@ -145,6 +160,12 @@ export default function Home() {
     }
   };
 
+  /* ── Workspace view ── */
+  if (view === "workspace") {
+    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} />;
+  }
+
+  /* ── Onboarding view ── */
   return (
     <div style={{ background: "#F2EDE3" }}>
       {/* Hidden file input — used by Welcome screen via getElementById */}
@@ -202,7 +223,7 @@ export default function Home() {
               onFinish={() => goTo(4)}
             />
           )}
-          {screen === 4 && <ScreenTransition />}
+          {screen === 4 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
         </div>
       </div>
 

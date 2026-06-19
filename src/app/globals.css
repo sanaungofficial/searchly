@@ -164,9 +164,19 @@
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 
 .anim-fade-up { animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .anim-fade-in { animation: fadeIn 0.4s ease both; }
 .anim-pulse   { animation: pulseSoft 1.8s ease infinite; }
 .anim-spin    { animation: spin 0.75s linear infinite; }
 .anim-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Aliases matching the original prototype's animation names */
+@keyframes pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}

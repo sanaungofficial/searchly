@@ -927,7 +927,7 @@ export function ScreenTargetJobs({
 /* ──────────────────────────────────────────────────────────────
    Screen 4 — Transition
    ────────────────────────────────────────────────────────────── */
-export function ScreenTransition() {
+export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () => void }) {
   return (
     <div
       className="flex flex-col gap-10 anim-fade-up"
@@ -1094,9 +1094,7 @@ export function ScreenTransition() {
 
       <div className="anim-fade-up" style={{ animationDelay: "0.65s" }}>
         <button
-          onClick={() => {
-            /* Placeholder: this would route to the Scout Workspace in production */
-          }}
+          onClick={onEnterWorkspace}
           style={{
             display: "inline-block",
             padding: "16px 36px",
