@@ -1,4 +1,4 @@
-// Scout Workspace — static data (ported faithfully from Scout Workspace.dc.html)
+// Searchly Workspace — static data (ported faithfully from Searchly Workspace.dc.html)
 // All copy is preserved verbatim from the original prototype.
 
 export interface Keyword {
@@ -1060,18 +1060,18 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
     items: [
       {
         id: 4,
-        platform: "Scout",
+        platform: "Searchly",
         platformInitial: "S",
         platformColor: "#1A3A2F",
         name: "LinkedIn Profile Audit",
         duration: "20 min",
         credential: "Recommendations",
         scoutPick: true,
-        why: "Scout identified 4 specific improvements that could double your inbound recruiter reach.",
+        why: "Searchly identified 4 specific improvements that could double your inbound recruiter reach.",
       },
       {
         id: 5,
-        platform: "Scout",
+        platform: "Searchly",
         platformInitial: "S",
         platformColor: "#1A3A2F",
         name: "Portfolio Case Study Guide",
@@ -1104,7 +1104,7 @@ export const NOTIFICATIONS: Notification[] = [
     type: "role",
     company: "Notion",
     title: "New matching role found",
-    body: "Head of Product Operations — 82% match. Scout surfaced this 2 minutes ago.",
+    body: "Head of Product Operations — 82% match. Searchly surfaced this 2 minutes ago.",
     time: "Just now",
     unread: true,
     section: "opportunities",
@@ -1122,7 +1122,7 @@ export const NOTIFICATIONS: Notification[] = [
   {
     id: 2,
     type: "insight",
-    company: "Scout",
+    company: "Searchly",
     title: "Profile strength increased",
     body: "Your LinkedIn profile strength went from 65% → 72% based on recent updates.",
     time: "3h ago",

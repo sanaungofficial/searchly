@@ -127,7 +127,7 @@ export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/* Sparkle — Scout signature */
+/* Sparkle — Searchly signature */
 export function SparkleIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" fill="none" {...props}>

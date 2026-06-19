@@ -34,9 +34,9 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Scout — by Second Ladder",
-  description: "Scout reads your resume, understands your story, and prepares every application. An editorial onboarding experience.",
-  keywords: ["Scout", "Second Ladder", "job search", "resume", "career", "AI"],
+  title: "Searchly — by Second Ladder",
+  description: "Searchly reads your resume, understands your story, and prepares every application. An editorial onboarding experience.",
+  keywords: ["Searchly", "Second Ladder", "job search", "resume", "career", "AI"],
   authors: [{ name: "Second Ladder" }],
 };
 

@@ -26,7 +26,7 @@ export interface Job {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Header — Scout logo + progress segments
+   Header — Searchly logo + progress segments
    ────────────────────────────────────────────────────────────── */
 const FULL = "#1A3A2F";
 const EMPTY = "rgba(26,58,47,0.15)";
@@ -58,7 +58,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           title={onScoutClick ? "Go to workspace" : undefined}
         >
-          Scout
+          Searchly
         </button>
         <div
           style={{
@@ -135,7 +135,7 @@ export function ScreenWelcome({
           animationDelay: "0.1s",
         }}
       >
-        Hello. I&apos;m Scout.
+        Hello. I&apos;m Searchly.
       </h1>
       <p
         className="anim-fade-up"
@@ -455,7 +455,7 @@ export function ScreenReadBack({ onConfirm }: ReadBackProps) {
             marginBottom: 14,
           }}
         >
-          Scout&apos;s read
+          Searchly&apos;s read
         </p>
         <h2
           style={{
@@ -984,7 +984,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
           textWrap: "pretty",
         }}
       >
-        Scout has your background and knows the roles you want. Your workspace is ready.
+        Searchly has your background and knows the roles you want. Your workspace is ready.
       </p>
 
       {/* Workspace preview */}
@@ -1016,7 +1016,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
                 color: "#E8D5A3",
               }}
             >
-              Scout
+              Searchly
             </span>
             <span
               style={{

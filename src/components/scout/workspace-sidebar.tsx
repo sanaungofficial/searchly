@@ -91,7 +91,7 @@ export function WorkspaceSidebar({
                 color: "#E8D5A3",
               }}
             >
-              Scout
+              Searchly
             </div>
             <div
               style={{

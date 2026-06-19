@@ -50,7 +50,7 @@
   --background: #F2EDE3;
   --foreground: #1A1A1A;
 
-  /* Scout brand tokens */
+  /* Searchly brand tokens */
   --scout-cream: #F2EDE3;
   --scout-ink: #1A1A1A;
   --scout-forest: #1A3A2F;
@@ -143,7 +143,7 @@
 }
 
 /* ─────────────────────────────────────────────
-   Scout Onboarding Animations
+   Searchly Onboarding Animations
    ───────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }

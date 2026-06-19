@@ -67,7 +67,7 @@ export function WorkspaceProfile() {
               letterSpacing: "-0.3px",
             }}
           >
-            Your profile, through Scout&apos;s eyes.
+            Your profile, through Searchly&apos;s eyes.
           </h1>
         </div>
 
@@ -184,7 +184,7 @@ function DreamRoleTab({
               lineHeight: 1.6,
             }}
           >
-            Pick up to three roles you&apos;re aiming for. Scout will measure the gap, surface roles that match, and
+            Pick up to three roles you&apos;re aiming for. Searchly will measure the gap, surface roles that match, and
             build a learning path to bridge what&apos;s missing.
           </p>
 
@@ -522,7 +522,7 @@ function DreamRoleDetail({
             gap: 5,
           }}
         >
-          <SparkleIcon /> Run Scout gap analysis →
+          <SparkleIcon /> Run Searchly gap analysis →
         </button>
       </div>
     </div>
@@ -702,7 +702,7 @@ function SkillsTab() {
             gap: 4,
           }}
         >
-          <SparkleIcon /> Scout suggests adding
+          <SparkleIcon /> Searchly suggests adding
         </p>
         <p
           style={{
@@ -913,7 +913,7 @@ function LearningTab({
                             fontWeight: 600,
                           }}
                         >
-                          Scout pick
+                          Searchly pick
                         </span>
                       )}
                     </div>
@@ -1052,7 +1052,7 @@ function AssetsTab() {
             gap: 4,
           }}
         >
-          <SparkleIcon /> Scout&apos;s suggestions
+          <SparkleIcon /> Searchly&apos;s suggestions
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {suggestions.map((s) => {

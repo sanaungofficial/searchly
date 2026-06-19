@@ -463,7 +463,7 @@ function DiscoverTab({
                 flexShrink: 0,
               }}
             >
-              Scout it
+              Search →
             </button>
           </div>
           {addJobLoading && (
@@ -478,7 +478,7 @@ function DiscoverTab({
                 }}
               />
               <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
-                Scout is analyzing this listing…
+                Searchly is analyzing this listing…
               </p>
             </div>
           )}
@@ -919,7 +919,7 @@ function DiscoverTab({
                 textTransform: "uppercase",
               }}
             >
-              Scout signals · updated weekly
+              Searchly signals · updated weekly
             </p>
             <button
               onClick={refreshSignals}
@@ -968,7 +968,7 @@ function DiscoverTab({
                   color: "#1A3A2F",
                 }}
               >
-                Scout is scanning the market…
+                Searchly is scanning the market…
               </p>
             </div>
           )}
@@ -1131,7 +1131,7 @@ function DiscoverTab({
                 textTransform: "uppercase",
               }}
             >
-              Scout radar · {COMPANIES.length} companies
+              Searchly radar · {COMPANIES.length} companies
             </p>
             <button
               style={{
@@ -1552,7 +1552,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }}
             />
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
-              Scout is analyzing {progress.done} of {progress.total} URLs…
+              Searchly is analyzing {progress.done} of {progress.total} URLs…
             </p>
           </div>
           <div style={{ height: 4, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
@@ -1686,7 +1686,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, onAddTo
             flexShrink: 0,
           }}
         >
-          Scout it
+          Search →
         </button>
         <button
           onClick={onDismiss}
@@ -1707,7 +1707,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, onAddTo
       {loading && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Scout is analyzing this listing…</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Searchly is analyzing this listing…</p>
         </div>
       )}
       {analysis && !loading && (
@@ -2286,7 +2286,7 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied }: JobDrawerProp
                     marginBottom: 8,
                   }}
                 >
-                  Scout&apos;s fit summary
+                  Searchly&apos;s fit summary
                 </p>
                 <p
                   style={{
@@ -2527,7 +2527,7 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied }: JobDrawerProp
                 fontSize: 12,
               }}
             >
-              <SparkleIcon /> Detailed analysis available for jobs Scout has read.
+              <SparkleIcon /> Detailed analysis available for jobs Searchly has read.
             </div>
           )}
         </div>
