@@ -340,60 +340,60 @@ export function WorkspaceOpportunities({
         />
       )}
 
-      {/* Content area */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-        {tab === "discover" && (
-          <DiscoverTab
-            showAddPanel={showAddPanel}
-            addJobUrl={addJobUrl}
-            setAddJobUrl={setAddJobUrl}
-            submitAddJob={submitAddJob}
-            addJobLoading={addJobLoading}
-            jobAnalysis={jobAnalysis}
-            addToKanban={addToKanban}
-            dismissJobAnalysis={() => setJobAnalysis(null)}
-            pipeline={pipeline}
-            signalsData={signalsData}
-            signalsLoading={signalsLoading}
-            refreshSignals={refreshSignals}
-            onOpenLive={onOpenLive}
-            onSelectCompany={() => {
-              /* company detail view (could be expanded later) */
-            }}
-          />
-        )}
-        {tab === "pipeline" && (
-          <PipelineTab
-            cards={kanbanCards}
-            filter={pipelineFilter}
-            setFilter={setPipelineFilter}
-            onChangeStage={changeStage}
-            onOpenDrawer={openDrawer}
-            drawerCard={drawerCardId !== null ? kanbanCards.find((c) => c.id === drawerCardId) || null : null}
-            closeDrawer={closeDrawer}
-            moveCard={moveCard}
-            copied={copied}
-            setCopied={setCopied}
-          />
-        )}
-      </div>
+      {/* Content area + right drawer — flex row */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+          {tab === "discover" && (
+            <DiscoverTab
+              showAddPanel={showAddPanel}
+              addJobUrl={addJobUrl}
+              setAddJobUrl={setAddJobUrl}
+              submitAddJob={submitAddJob}
+              addJobLoading={addJobLoading}
+              jobAnalysis={jobAnalysis}
+              addToKanban={addToKanban}
+              dismissJobAnalysis={() => setJobAnalysis(null)}
+              pipeline={pipeline}
+              signalsData={signalsData}
+              signalsLoading={signalsLoading}
+              refreshSignals={refreshSignals}
+              onOpenLive={onOpenLive}
+              onSelectCompany={() => {}}
+            />
+          )}
+          {tab === "pipeline" && (
+            <PipelineTab
+              cards={kanbanCards}
+              filter={pipelineFilter}
+              setFilter={setPipelineFilter}
+              onChangeStage={changeStage}
+              onOpenDrawer={openDrawer}
+              drawerCard={drawerCardId !== null ? kanbanCards.find((c) => c.id === drawerCardId) || null : null}
+              closeDrawer={closeDrawer}
+              moveCard={moveCard}
+              copied={copied}
+              setCopied={setCopied}
+            />
+          )}
+        </div>
 
-      {/* Job drawer — rendered at parent level so both My Jobs + Pipeline can open it */}
-      {drawerCardId !== null && (() => {
-        const card = kanbanCards.find((c) => c.id === drawerCardId);
-        if (!card) return null;
-        return (
-          <JobDrawer
-            card={card}
-            onClose={closeDrawer}
-            moveCard={moveCard}
-            copied={copied}
-            setCopied={setCopied}
-            tool={drawerTool}
-            onToolChange={setDrawerTool}
-          />
-        );
-      })()}
+        {/* Job detail panel — slides in from right, no overlay */}
+        {drawerCardId !== null && (() => {
+          const card = kanbanCards.find((c) => c.id === drawerCardId);
+          if (!card) return null;
+          return (
+            <JobDrawer
+              card={card}
+              onClose={closeDrawer}
+              moveCard={moveCard}
+              copied={copied}
+              setCopied={setCopied}
+              tool={drawerTool}
+              onToolChange={setDrawerTool}
+            />
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -1699,11 +1699,16 @@ function PipelineTab({
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
-                        {c.fit}%
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                        <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
+                          {c.fit}%
+                        </span>
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
+                      </div>
+                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, padding: "2px 7px", borderRadius: 100, background: c.fit >= 88 ? "rgba(74,139,106,0.12)" : c.fit >= 75 ? "rgba(196,168,106,0.12)" : "rgba(160,152,144,0.12)", color: c.fit >= 88 ? "#2D6B4A" : c.fit >= 75 ? "#7A6020" : "#7A7268", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        {c.fit >= 88 ? "Strong match" : c.fit >= 75 ? "Good fit" : "Fair match"}
                       </span>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
                     </div>
                     <StatusDropdown stage={c.stage} onChange={(s) => onChangeStage(c.id, s)} />
                   </div>
@@ -1723,7 +1728,7 @@ function PipelineTab({
                     {job.fitSummary}
                   </p>
                 )}
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <button
                     onClick={() => onOpenDrawer(c.id)}
                     style={{
@@ -1739,6 +1744,14 @@ function PipelineTab({
                   >
                     Open detail
                   </button>
+                  {c.days <= 2 && (
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, padding: "4px 9px", borderRadius: 100, background: "rgba(45,107,74,0.1)", color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      ⚡ Early applicant
+                    </span>
+                  )}
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890", marginLeft: "auto" }}>
+                    {((c.id * 17 + c.fit) % 80) + 12} applicants
+                  </span>
                 </div>
               </div>
             );
@@ -1769,168 +1782,238 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
   const [dbId, setDbId] = useState<string | null>(null);
   void setDbId;
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<"overview" | "company" | "ai">("overview");
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
-  const setTool = (t: DrawerTool) => onToolChange?.(t);
+  const setTool = (t: DrawerTool) => { onToolChange?.(t); setDrawerTab("ai"); };
+
+  const mockDescription = job ? {
+    postedAt: `${card.days === 0 ? "Today" : `${card.days} days ago`}`,
+    type: "Full-time",
+    level: "Senior Level",
+    location: job.location,
+    salary: job.salary,
+    tags: ["SaaS", "Product", "Strategy"],
+    responsibilities: [
+      `Lead product strategy and roadmap for ${card.company}'s core platform.`,
+      "Drive cross-functional alignment across engineering, design, and GTM teams.",
+      "Define and track north-star metrics; present to executive stakeholders monthly.",
+      "Own the discovery-to-launch lifecycle for major product initiatives.",
+      "Partner with sales and customer success to synthesize user feedback into product decisions.",
+      "Recruit and mentor junior PMs as the team scales.",
+    ],
+    requirements: [
+      "8+ years of product management experience in B2B SaaS",
+      "Track record of shipping platform or API-first products at scale",
+      "Strong analytical skills — comfortable in SQL, Amplitude, or Looker",
+      "Exceptional written and verbal communication",
+      "Experience navigating ambiguity in high-growth environments",
+    ],
+    niceToHave: [
+      "Background in fintech, devtools, or enterprise software",
+      "Experience building 0-to-1 products",
+      "MBA or equivalent analytical training",
+    ],
+    companyBlurb: `${card.company} is a high-growth technology company building the next generation of infrastructure for modern businesses. Backed by top-tier investors, we're focused on shipping products that make our customers wildly successful. Our team is mission-driven, moves fast, and takes ownership seriously.`,
+    companySize: "200–500 employees",
+    companyStage: "Series C",
+    companyIndustry: "Enterprise SaaS",
+  } : null;
 
   return (
     <>
       <div
-        onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }}
-      />
-      <div
         style={{
-          width: 440,
-          background: "#F8F6F2",
-          borderLeft: "1px solid rgba(0,0,0,0.07)",
+          width: 460,
+          minWidth: 460,
+          background: "#FFFFFF",
+          borderLeft: "1px solid rgba(0,0,0,0.08)",
           overflowY: "auto",
-          zIndex: 70,
-          position: "relative",
-          animation: "slideInRight 0.25s ease both",
+          display: "flex",
+          flexDirection: "column",
+          animation: "slideInRight 0.2s ease both",
+          flexShrink: 0,
         }}
       >
         {/* Header */}
-        <div style={{ padding: "20px 24px 18px", borderBottom: "1px solid rgba(0,0,0,0.07)", background: "#FFFFFF" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 7,
-                  background: "#1A3A2F",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "#E8D5A3",
-                  }}
-                >
-                  {card.initials}
-                </span>
-              </div>
-              <div>
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1A1A1A",
-                  }}
-                >
-                  {card.role}
-                </p>
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
-                    color: "#7A7268",
-                    marginTop: 2,
-                  }}
-                >
-                  {card.company} · {job?.location || "Remote"}
-                </p>
+        <div style={{ padding: "16px 20px 0", borderBottom: "1px solid rgba(0,0,0,0.08)", background: "#FFFFFF", flexShrink: 0 }}>
+          {/* Top row: close + apply */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#A09890", padding: 0, lineHeight: 1 }}>×</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={{ padding: "7px 16px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.25)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, cursor: "pointer" }}>
+                Save
+              </button>
+              <button style={{ padding: "7px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                Apply ↗
+              </button>
+            </div>
+          </div>
+
+          {/* Company + title */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#1A3A2F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#E8D5A3" }}>{card.initials}</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268", marginBottom: 2 }}>
+                {card.company} · {mockDescription?.postedAt}
+              </p>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 17, fontWeight: 700, color: "#1A1A1A", lineHeight: 1.3 }}>{card.role}</p>
+            </div>
+          </div>
+
+          {/* Meta row */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+            {[
+              { icon: "📍", text: job?.location || "Remote" },
+              { icon: "⏱", text: mockDescription?.type || "Full-time" },
+              { icon: "💼", text: mockDescription?.level || "Senior Level" },
+              { icon: "💰", text: job?.salary || "Competitive" },
+            ].map((m, i) => (
+              <span key={i} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ fontSize: 12 }}>{m.icon}</span> {m.text}
+              </span>
+            ))}
+          </div>
+
+          {/* Fit score bar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: `${fitColor}0D`, borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+              <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx="22" cy="22" r="18" stroke="rgba(0,0,0,0.08)" strokeWidth="4" fill="none" />
+                <circle cx="22" cy="22" r="18" stroke={fitColor} strokeWidth="4" fill="none" strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 18 * card.fit / 100} ${2 * Math.PI * 18}`} />
+              </svg>
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 11, fontWeight: 700, color: fitColor }}>{card.fit}%</span>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 18,
-                color: "#A09890",
-                padding: 0,
-                lineHeight: 1,
-              }}
-            >
-              ×
-            </button>
+            <div>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: fitColor, marginBottom: 2 }}>
+                {card.fit >= 88 ? "Strong match" : card.fit >= 75 ? "Good fit" : "Fair match"}
+              </p>
+              <div style={{ display: "flex", gap: 12 }}>
+                {([["Experience", Math.min(100, Math.round(card.fit * 1.08))], ["Skills", Math.round(card.fit * 0.88)], ["Industry", Math.round(card.fit * 0.94)]] as [string, number][]).map(([label, pct]) => (
+                  <span key={label} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268" }}>
+                    {label} <span style={{ fontWeight: 600, color: "#1A1A1A" }}>{Math.min(100, pct)}%</span>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span
-              style={{
-                padding: "3px 10px",
-                borderRadius: 100,
-                background: `${STAGE_COLORS[card.stage]}20`,
-                color: STAGE_COLORS[card.stage],
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 10,
-                fontWeight: 600,
-              }}
-            >
-              {STAGE_LABELS[card.stage]}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-dm-mono), monospace",
-                fontSize: 13,
-                fontWeight: 500,
-                color: fitColor,
-              }}
-            >
-              {card.fit}% fit
-            </span>
-            {job && (
-              <span
-                style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 10,
-                  color: "#A09890",
-                }}
-              >
-                · {job.salary}
-              </span>
-            )}
-          </div>
-        </div>
 
-        {/* Body */}
-        <div style={{ padding: 20 }}>
-          {/* Move-to stage chips */}
-          <p
-            style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 9,
-              fontWeight: 600,
-              color: "#A09890",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              marginBottom: 8,
-            }}
-          >
-            Move to
-          </p>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+          {/* Stage + move */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Move to:</span>
             {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
-              <button
-                key={s}
-                onClick={() => {
-                  moveCard(card.id, s);
-                  onClose();
-                }}
-                style={{
-                  padding: "6px 12px",
-                  background: "#FFFFFF",
-                  border: "1px solid rgba(0,0,0,0.1)",
-                  borderRadius: 5,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  color: "#1A1A1A",
-                  cursor: "pointer",
-                }}
-              >
+              <button key={s} onClick={() => { moveCard(card.id, s); }}
+                style={{ padding: "4px 10px", background: `${STAGE_COLORS[s]}15`, border: `1px solid ${STAGE_COLORS[s]}40`, borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: STAGE_COLORS[s], cursor: "pointer" }}>
                 {STAGE_LABELS[s]}
               </button>
             ))}
           </div>
+
+          {/* Tab strip */}
+          <div style={{ display: "flex", gap: 0, borderBottom: "none" }}>
+            {(["overview", "company", "ai"] as const).map((t) => {
+              const labels = { overview: "Overview", company: "Company", ai: "✦ AI Tools" };
+              const active = drawerTab === t;
+              return (
+                <button key={t} onClick={() => setDrawerTab(t)}
+                  style={{ padding: "8px 16px", background: "none", border: "none", borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: active ? 600 : 400, color: active ? "#1A3A2F" : "#A09890", cursor: "pointer", transition: "all 0.15s" }}>
+                  {labels[t]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+
+          {/* ── Overview Tab ── */}
+          {drawerTab === "overview" && mockDescription && (
+            <div style={{ animation: "fadeIn 0.2s ease both" }}>
+              <div style={{ marginBottom: 22 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Responsibilities</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {mockDescription.responsibilities.map((r, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <span style={{ color: "#1A3A2F", fontSize: 11, flexShrink: 0, marginTop: 2 }}>•</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.6 }}>{r}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 22 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Requirements</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {mockDescription.requirements.map((r, i) => {
+                    const matched = i < Math.round(mockDescription.requirements.length * (card.fit / 100));
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "7px 10px", borderRadius: 5, background: matched ? "rgba(74,139,106,0.05)" : "rgba(160,152,144,0.05)" }}>
+                        <span style={{ fontSize: 11, flexShrink: 0, marginTop: 2, color: matched ? "#4A8B6A" : "#A09890" }}>{matched ? "✓" : "○"}</span>
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: matched ? "#2A2218" : "#7A7268", lineHeight: 1.6 }}>{r}</p>
+                        {matched && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#4A8B6A", padding: "2px 6px", background: "rgba(74,139,106,0.1)", borderRadius: 100, flexShrink: 0, alignSelf: "center" }}>You have this</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 22 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Nice to have</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {mockDescription.niceToHave.map((r, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <span style={{ color: "#C4A86A", fontSize: 11, flexShrink: 0, marginTop: 2 }}>△</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.6 }}>{r}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {job && (
+                <div style={{ marginBottom: 22 }}>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Searchly's fit summary</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.7, padding: "12px 14px", background: "rgba(26,58,47,0.04)", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
+                    {job.fitSummary}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Company Tab ── */}
+          {drawerTab === "company" && mockDescription && (
+            <div style={{ animation: "fadeIn 0.2s ease both" }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 18, padding: "16px", background: "rgba(26,58,47,0.04)", borderRadius: 10 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 12, background: "#1A3A2F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#E8D5A3" }}>{card.initials}</span>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 700, color: "#1A1A1A", marginBottom: 2 }}>{card.company}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>{mockDescription.companyIndustry} · {mockDescription.companyStage}</p>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+                {[["Stage", mockDescription.companyStage], ["Size", mockDescription.companySize], ["Industry", mockDescription.companyIndustry], ["Location", job?.location || "Remote"]].map(([k, v]) => (
+                  <div key={k as string} style={{ padding: "10px 12px", background: "#F8F6F2", borderRadius: 7 }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 3 }}>{k}</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#1A1A1A" }}>{v}</p>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>About</p>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.7 }}>{mockDescription.companyBlurb}</p>
+            </div>
+          )}
+
+          {/* ── AI Tools Tab ── */}
+          {drawerTab === "ai" && (
+            <div style={{ animation: "fadeIn 0.2s ease both" }}>
 
           {/* AI Tools — 3 buttons */}
           <p
@@ -2430,18 +2513,12 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
               </div>
             </>
           ) : tool === null ? (
-            <div
-              style={{
-                padding: 24,
-                textAlign: "center",
-                color: "#A09890",
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 12,
-              }}
-            >
+            <div style={{ padding: 24, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12 }}>
               <SparkleIcon /> Detailed analysis available for jobs Searchly has read.
             </div>
           ) : null}
+            </div>
+          )}
         </div>
       </div>
 
