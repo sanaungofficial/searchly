@@ -26,8 +26,8 @@ export async function GET(request: Request) {
           create: { email: user.email!, name, avatarUrl: user.user_metadata?.avatar_url ?? null },
         });
 
-        // Send welcome email only on first sign-in
-        if (!existing) {
+        // Send welcome email only on first sign-in and when Resend is configured
+        if (!existing && process.env.RESEND_API_KEY) {
           try {
             await sendWelcomeEmail(user.email!, name);
           } catch {
