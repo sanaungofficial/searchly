@@ -73,6 +73,11 @@ export function WorkspaceOpportunities({
   // Pipeline flat-list filter
   const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>("all");
 
+  // Resume editor (opened from drawer)
+  const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
+  const [dbId, setDbId] = useState<string | null>(null);
+  void setDbId; // used when saving a real job to DB
+
   /* ── Mock URL analysis (shared by single-URL panel and CSV bulk upload) ── */
   const analyzeUrl = (url: string, hintCompany?: string, hintRole?: string) => {
     let company = hintCompany || "Company";
@@ -1761,6 +1766,9 @@ interface JobDrawerProps {
 }
 
 function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
+  const [dbId, setDbId] = useState<string | null>(null);
+  void setDbId;
+  const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
   const setTool = (t: DrawerTool) => onToolChange?.(t);

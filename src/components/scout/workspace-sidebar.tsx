@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   OpportunitiesIcon,
   ProfileIcon,
@@ -34,7 +34,7 @@ interface SidebarProps {
 interface NavItem {
   id: Section;
   label: string;
-  Icon: (p: { className?: string }) => JSX.Element;
+  Icon: (p: { className?: string }) => React.ReactElement;
 }
 
 const NAV_ITEMS: NavItem[] = [

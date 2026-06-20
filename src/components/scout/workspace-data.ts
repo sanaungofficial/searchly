@@ -338,7 +338,7 @@ export const INITIAL_KANBAN_CARDS: KanbanCard[] = [
 
 /* ── Market signals ────────────────────────────────────────── */
 export interface SignalItem {
-  type: "hiring_surge" | "trend" | "role_demand" | "funding" | "salary";
+  type: "hiring_surge" | "hiring_freeze" | "trend" | "role_demand" | "funding" | "salary";
   company: string | null;
   title: string;
   body: string;

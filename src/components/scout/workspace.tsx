@@ -72,7 +72,6 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin }:
           setDrawerTool={setDrawerTool}
           kanbanCards={kanbanCards}
           setKanbanCards={setKanbanCards}
-          onStageChange={updateStage}
         />
       )}
       {activeSection === "profile" && <WorkspaceProfile />}

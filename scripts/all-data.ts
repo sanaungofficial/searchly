@@ -285,3 +285,6 @@ class Component extends DCLogic {
         { type:'funding', company:'Linear', title:'Linear raises Series C — headcount growth likely', body:'$35M new round suggests significant hiring ahead, particularly in product and engineering.', sentiment:'positive', actionable:'Reach out to your Linear contact while momentum is fresh.' },
         { type:'salary', company:null, title:'Director PM comp stabilizing at $280–400k TC', body:'After the 2023–24 correction, total comp has stabilized with equity bouncing back at growth-stage companies.', sentiment:'neutral', actionable:'Use this benchmark in your next offer negotiation.' },
       ],
+    },
+  },
+};

@@ -20,8 +20,8 @@ export function WorkspaceNetwork() {
   const filters: [Filter, string][] = [
     ["all", "All"],
     ["hivemind", "Hive Mind"],
-    ["1st", "1st degree"],
-    ["2nd", "2nd degree"],
+    ["first", "1st degree"],
+    ["second", "2nd degree"],
   ];
 
   return (

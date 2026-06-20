@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
 
 let _a: Anthropic | null = null;
@@ -59,7 +60,7 @@ Return ONLY the JSON array, no other text.`,
   });
 
   const text = message.content[0].type === "text" ? message.content[0].text : "[]";
-  let sections: unknown[] = [];
+  let sections: Record<string, unknown>[] = [];
   try {
     sections = JSON.parse(text.trim());
   } catch {
@@ -70,7 +71,7 @@ Return ONLY the JSON array, no other text.`,
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   await prisma.tailoredResume.create({
-    data: { jobId, userId: dbUser.id, sections },
+    data: { jobId, userId: dbUser.id, sections: sections as Prisma.InputJsonValue },
   });
 
   return NextResponse.json({ sections });

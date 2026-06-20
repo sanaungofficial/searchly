@@ -37,6 +37,21 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Supabase redirects auth errors back to the root URL with ?error= params.
+  // Detect and forward them to /login so the user sees a clear message.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error") ?? params.get("error_code");
+    if (err) {
+      const code = params.get("error_code") ?? "";
+      const desc = params.get("error_description") ?? err;
+      window.location.replace(
+        `/login?error=${encodeURIComponent(code || desc)}`
+      );
+    }
+  }, []);
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {

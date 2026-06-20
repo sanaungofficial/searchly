@@ -109,7 +109,7 @@ function SkillChip({ label, onRemove }: { label: string; onRemove?: () => void }
 
 function PersonalTab({ profile, onSave }: {
   profile: UserProfile;
-  onSave: (patch: Partial<UserProfile> & { parsedData?: Partial<ParsedData> }) => Promise<void>;
+  onSave: (patch: Omit<Partial<UserProfile>, "parsedData"> & { parsedData?: Partial<ParsedData> }) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.name);
@@ -121,7 +121,7 @@ function PersonalTab({ profile, onSave }: {
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({ name, linkedinUrl: linkedinUrl || null, parsedData: { phone: phone || null, location: location || null, website: website || null } });
+    await onSave({ name, linkedinUrl: linkedinUrl || null, parsedData: { phone: phone || null, location: location || null, website: website || null } as Partial<ParsedData> });
     setSaving(false);
     setEditing(false);
   };
@@ -555,28 +555,7 @@ function LearningTab({ progress, setProgress }: {
   );
 }
 
-// ─── Tab: Resume Assets (original) ────────────────────────────────────────────
-
-interface ResumeRow {
-  id: string;
-  name: string;
-  url: string;
-  isPrimary: boolean;
-  analysisComplete: boolean;
-  updatedAt: string;
-  createdAt: string;
-  targetJobTitle?: string;
-}
-
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? "s" : ""} ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days} day${days !== 1 ? "s" : ""} ago`;
-}
+// ─── Tab: Resume Assets ───────────────────────────────────────────────────────
 
 interface ResumeRow {
   id: string;
@@ -879,7 +858,7 @@ export function WorkspaceProfile() {
     await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
   };
 
-  const handlePersonalSave = async (patch: Partial<UserProfile> & { parsedData?: Partial<ParsedData> }) => {
+  const handlePersonalSave = async (patch: Omit<Partial<UserProfile>, "parsedData"> & { parsedData?: Partial<ParsedData> }) => {
     if (!profile) return;
     const { parsedData: pdPatch, ...rest } = patch;
     const newParsedData = pdPatch ? { ...(profile.parsedData || { education: [], workExperience: [], skills: [] }), ...pdPatch } : profile.parsedData;
