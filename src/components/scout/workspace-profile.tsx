@@ -559,45 +559,254 @@ function LearningTab({ progress, setProgress }: {
 
 // ─── Tab: Resume Assets (original) ────────────────────────────────────────────
 
-function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
+interface ResumeRow {
+  id: string;
+  name: string;
+  url: string;
+  isPrimary: boolean;
+  analysisComplete: boolean;
+  updatedAt: string;
+  createdAt: string;
+  targetJobTitle?: string;
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? "s" : ""} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days !== 1 ? "s" : ""} ago`;
+}
+
+function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, resumeUpdatedAt }: {
   resumeUrl: string | null;
   uploading: boolean;
   onUpload: (file: File) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  resumeUpdatedAt?: string | null;
 }) {
-  const suggestions = PROFILE_SUGGESTIONS;
+  const [menuOpen, setMenuOpen] = React.useState<string | null>(null);
+  const MAX_SLOTS = 5;
+
+  const resumes: ResumeRow[] = resumeUrl
+    ? [
+        {
+          id: "primary",
+          name: extractResumeName(resumeUrl),
+          url: resumeUrl,
+          isPrimary: true,
+          analysisComplete: true,
+          updatedAt: resumeUpdatedAt ?? new Date().toISOString(),
+          createdAt: resumeUpdatedAt ?? new Date().toISOString(),
+        },
+      ]
+    : [];
+
+  function extractResumeName(url: string) {
+    try {
+      const decoded = decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "");
+      // strip the timestamp prefix e.g. "resume-1234567890.pdf" → just show the original feel
+      return decoded.replace(/^resume-\d+\./, "resume.") || "Resume";
+    } catch {
+      return "Resume";
+    }
+  }
+
   return (
     <div style={{ paddingBottom: 40 }}>
-      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", marginBottom: 12, border: "1px solid rgba(0,0,0,0.06)" }}>
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>Resume</p>
-        <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
-        {resumeUrl ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ padding: "12px 14px", background: "rgba(26,58,47,0.03)", borderRadius: 6, borderLeft: "2px solid #1A3A2F", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>📄 Resume on file</p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", marginTop: 2 }}>Used by Searchly AI for tailoring</p>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <a href={resumeUrl} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 12px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, textDecoration: "none" }}>View &rarr;</a>
-                <button onClick={() => inputRef.current?.click()} disabled={uploading} style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.6 : 1 }}>
-                  {uploading ? "Uploading…" : "Replace"}
-                </button>
-              </div>
-            </div>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>RESUME</h2>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258", marginTop: 6 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#4A8B6A", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>
+              </span>
+              You have {resumes.length} resume{resumes.length !== 1 ? "s" : ""} saved out of {MAX_SLOTS} available slots.
+            </span>
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            style={{
+              padding: "8px 16px",
+              background: "#F0FFF8",
+              color: "#1A7A4A",
+              border: "1px solid #A8DFC0",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            ⚡ Upgrade to Turbo: Get Hired Faster ›
+          </button>
+          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            style={{
+              padding: "8px 16px",
+              background: "#FFFFFF",
+              color: "#1A1A1A",
+              border: "1px solid #D8D0C5",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: uploading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
+            {uploading ? "Uploading…" : "+ Add Resume"}
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
+        {/* Table header */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
+          padding: "10px 20px",
+          borderBottom: "1px solid #E5DDD0",
+          background: "#FAFAF8",
+        }}>
+          {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
+            <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890" }}>{col}</span>
+          ))}
+        </div>
+
+        {/* Rows */}
+        {resumes.length === 0 ? (
+          <div style={{ padding: "48px 20px", textAlign: "center" }}>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
+            <button
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              + Add Resume
+            </button>
           </div>
         ) : (
-          <button onClick={() => inputRef.current?.click()} disabled={uploading} style={{ padding: "14px 20px", background: "rgba(26,58,47,0.04)", border: "1.5px dashed rgba(26,58,47,0.25)", borderRadius: 8, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A3A2F", cursor: uploading ? "not-allowed" : "pointer", width: "100%", textAlign: "center" }}>
-            {uploading ? "Uploading…" : "📄 Upload your resume (PDF, DOC)"}
-          </button>
+          resumes.map((r) => (
+            <div
+              key={r.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
+                padding: "14px 20px",
+                alignItems: "center",
+                borderBottom: "1px solid #F5F3EF",
+                position: "relative",
+              }}
+            >
+              {/* Name + badges */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 6, background: "#1C3A2F",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <span style={{ color: "#E8D5A3", fontSize: 13, fontWeight: 700 }}>
+                    {r.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
+                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                    {r.isPrimary && (
+                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 10, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
+                        ★ PRIMARY
+                      </span>
+                    )}
+                    {r.analysisComplete && (
+                      <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 10, fontWeight: 500, color: "#1A7A4A" }}>
+                        Analysis Complete
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Target job title */}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>
+                {r.targetJobTitle ?? "—"}
+              </span>
+
+              {/* Last modified */}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                {timeAgo(r.updatedAt)}
+              </span>
+
+              {/* Created */}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                {timeAgo(r.createdAt)}
+              </span>
+
+              {/* Options menu */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
+                >
+                  ···
+                </button>
+                {menuOpen === r.id && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 4px)",
+                      background: "#FFFFFF",
+                      border: "1px solid #E5DDD0",
+                      borderRadius: 7,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                      minWidth: 160,
+                      zIndex: 100,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {[
+                      { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+                      { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
+                      { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={item.action}
+                        style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
         )}
       </div>
-      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)" }}>
+
+      {/* Searchly suggestions */}
+      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)", marginTop: 20 }}>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Searchly&apos;s suggestions
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {suggestions.map((s) => {
+          {PROFILE_SUGGESTIONS.map((s) => {
             const pColor = s.priority === "high" ? "#C4574A" : s.priority === "medium" ? "#C4A86A" : "#A09890";
             const pBg = s.priority === "high" ? "rgba(196,87,74,0.08)" : s.priority === "medium" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.05)";
             return (
@@ -757,7 +966,7 @@ export function WorkspaceProfile() {
           <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />
         )}
         {tab === "assets" && profile && (
-          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} />
+          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} resumeUpdatedAt={(profile as unknown as { updatedAt?: string }).updatedAt} />
         )}
       </div>
     </div>
