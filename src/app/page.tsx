@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
   ScoutHeader,
@@ -31,6 +32,7 @@ const JOB_MOCKS = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const [view, setView] = useState<View>("onboarding");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -60,6 +62,7 @@ export default function Home() {
         avatarUrl: user.user_metadata?.avatar_url ?? null,
         headline,
       });
+      setView("workspace");
     });
   }, []);
 
@@ -74,8 +77,21 @@ export default function Home() {
   const [jobInput, setJobInput] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
 
+  /* ── Auth ── */
+  const handleSignOut = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }, [router]);
+
   /* ── View toggle ── */
-  const enterWorkspace = useCallback(() => setView("workspace"), []);
+  const enterWorkspace = useCallback(() => {
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+    setView("workspace");
+  }, [currentUser, router]);
   const backToOnboarding = useCallback(() => {
     setView("onboarding");
     setScreen(0);
@@ -199,7 +215,7 @@ export default function Home() {
 
   /* ── Workspace view ── */
   if (view === "workspace") {
-    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} user={currentUser ?? undefined} isAdmin={isAdmin} />;
+    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} onSignOut={handleSignOut} user={currentUser ?? undefined} isAdmin={isAdmin} />;
   }
 
   /* ── Onboarding view ── */
