@@ -45,18 +45,18 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
   const notifUnreadCount = NOTIFICATIONS.filter((n) => !notifRead[n.id] && n.unread).length;
 
   const navigate = useCallback((s: Section) => {
-    router.push(s === "opportunities" ? "/" : `/?tab=${s}`);
+    router.push(`/?tab=${s}`);
   }, [router]);
 
   const navigateNotif = useCallback((s: Section) => {
-    router.push(s === "opportunities" ? "/" : `/?tab=${s}`);
+    router.push(`/?tab=${s}`);
     const allRead: Record<number, boolean> = {};
     NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));
     setNotifRead(allRead);
   }, [router]);
 
   const handleOpenTool = useCallback((jobId: number, tool: DrawerTool) => {
-    router.push("/");
+    router.push("/?tab=opportunities");
     setDrawerCardId(jobId);
     setDrawerTool(tool);
   }, [router]);
