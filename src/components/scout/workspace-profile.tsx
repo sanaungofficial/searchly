@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   SKILLS_LIST,
-  SKILLS_SUGGESTED,
   PROFILE_SUGGESTIONS,
   ROLE_ARCHETYPES,
   AVAILABLE_ROLES,
@@ -997,6 +996,12 @@ export function WorkspaceProfile() {
           <DreamRoleTab dreamList={dreamList} setDreamList={setDreamList} dreamSelectedId={dreamSelectedId} setDreamSelectedId={setDreamSelectedId} adding={adding} setAdding={setAdding} />
         )}
 
+        {page === "about" && loading && (
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Loading…</p>
+        )}
+        {page === "about" && !loading && !profile && (
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+        )}
         {page === "about" && profile && (
           <div style={{ maxWidth: 600 }}>
             <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ paddingBottom: 48 }}>
@@ -1021,6 +1026,9 @@ export function WorkspaceProfile() {
           <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />
         )}
 
+        {page === "assets" && !profile && !loading && (
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+        )}
         {page === "assets" && profile && (
           <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} />
         )}
