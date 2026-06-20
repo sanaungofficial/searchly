@@ -1095,7 +1095,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
 ];
 
 /* ── Notifications ─────────────────────────────────────────── */
-export type Section = "opportunities" | "profile" | "coaching" | "network" | "live" | "admin";
+export type Section = "opportunities" | "profile" | "coaching" | "network" | "live" | "admin" | "clients";
 
 export interface Notification {
   id: number;

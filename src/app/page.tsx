@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -36,6 +36,7 @@ export default function Home() {
   const [view, setView] = useState<View>("onboarding");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string>("USER");
 
   // Supabase redirects auth errors back to the root URL with ?error= params.
   // Detect and forward them to /login so the user sees a clear message.
@@ -67,6 +68,13 @@ export default function Home() {
       try {
         const res = await fetch("/api/admin");
         setIsAdmin(res.ok);
+      } catch {}
+      try {
+        const res = await fetch("/api/staff/role");
+        if (res.ok) {
+          const data = await res.json();
+          setUserRole(data.role ?? "USER");
+        }
       } catch {}
       setCurrentUser({
         name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
@@ -227,7 +235,11 @@ export default function Home() {
 
   /* ── Workspace view ── */
   if (view === "workspace") {
-    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} onSignOut={handleSignOut} user={currentUser ?? undefined} isAdmin={isAdmin} />;
+    return (
+      <Suspense>
+        <ScoutWorkspace onBackToOnboarding={backToOnboarding} onSignOut={handleSignOut} user={currentUser ?? undefined} isAdmin={isAdmin} userRole={userRole} />
+      </Suspense>
+    );
   }
 
   /* ── Onboarding view ── */

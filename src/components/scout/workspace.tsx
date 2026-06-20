@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { WorkspaceOpportunities, type DrawerTool } from "./workspace-opportunities";
 import { WorkspaceProfile } from "./workspace-profile";
@@ -8,6 +9,7 @@ import { WorkspaceCoaching } from "./workspace-coaching";
 import { WorkspaceNetwork } from "./workspace-network";
 import { WorkspaceLive } from "./workspace-live";
 import { WorkspaceAdmin } from "./workspace-admin";
+import { WorkspaceCoach } from "./workspace-coach";
 import { ChatWidget } from "./chat-widget";
 import { NOTIFICATIONS, INITIAL_KANBAN_CARDS, type Section } from "./workspace-data";
 import { useJobs } from "@/hooks/useJobs";
@@ -16,6 +18,7 @@ interface WorkspaceProps {
   onBackToOnboarding: () => void;
   onSignOut?: () => void;
   isAdmin?: boolean;
+  userRole?: string;
   user?: {
     name: string | null;
     email: string;
@@ -24,8 +27,14 @@ interface WorkspaceProps {
   };
 }
 
-export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin }: WorkspaceProps) {
-  const [activeSection, setActiveSection] = useState<Section>("opportunities");
+const VALID_SECTIONS: Section[] = ["opportunities", "profile", "coaching", "network", "live", "admin", "clients"];
+
+export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, userRole }: WorkspaceProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawTab = searchParams.get("tab") as Section | null;
+  const activeSection: Section = rawTab && VALID_SECTIONS.includes(rawTab) ? rawTab : "opportunities";
+
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
 
@@ -35,19 +44,22 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin }:
 
   const notifUnreadCount = NOTIFICATIONS.filter((n) => !notifRead[n.id] && n.unread).length;
 
-  const navigate = (s: Section) => setActiveSection(s);
-  const navigateNotif = (s: Section) => {
-    setActiveSection(s);
+  const navigate = useCallback((s: Section) => {
+    router.push(s === "opportunities" ? "/" : `/?tab=${s}`);
+  }, [router]);
+
+  const navigateNotif = useCallback((s: Section) => {
+    router.push(s === "opportunities" ? "/" : `/?tab=${s}`);
     const allRead: Record<number, boolean> = {};
     NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));
     setNotifRead(allRead);
-  };
+  }, [router]);
 
-  const handleOpenTool = (jobId: number, tool: DrawerTool) => {
-    setActiveSection("opportunities");
+  const handleOpenTool = useCallback((jobId: number, tool: DrawerTool) => {
+    router.push("/");
     setDrawerCardId(jobId);
     setDrawerTool(tool);
-  };
+  }, [router]);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#F2EDE3" }}>
@@ -62,10 +74,11 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin }:
         onNavigateNotif={navigateNotif}
         user={user}
         isAdmin={isAdmin}
+        userRole={userRole}
       />
       {activeSection === "opportunities" && (
         <WorkspaceOpportunities
-          onOpenLive={() => setActiveSection("live")}
+          onOpenLive={() => navigate("live")}
           drawerCardId={drawerCardId}
           setDrawerCardId={setDrawerCardId}
           drawerTool={drawerTool}
@@ -79,6 +92,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin }:
       {activeSection === "network" && <WorkspaceNetwork />}
       {activeSection === "live" && <WorkspaceLive />}
       {activeSection === "admin" && isAdmin && <WorkspaceAdmin />}
+      {activeSection === "clients" && (userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN") && <WorkspaceCoach />}
 
       <ChatWidget
         kanbanCards={kanbanCards}

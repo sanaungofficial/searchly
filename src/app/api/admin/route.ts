@@ -57,6 +57,7 @@ export async function GET() {
       id: u.id,
       email: u.email,
       name: u.name,
+      role: u.role,
       createdAt: u.createdAt,
       jobCount: u._count.jobs,
       subscriptionStatus: u.subscription?.status ?? null,
