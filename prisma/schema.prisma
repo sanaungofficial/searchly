@@ -24,6 +24,38 @@ model User {
   subscription     Subscription?
   tailoredResumes  TailoredResume[]
   monthlyUsage     MonthlyUsage[]
+  resumes          Resume[]
+  aiUsageLogs      AiUsageLog[]
+}
+
+model Resume {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label       String?
+  url         String
+  resumeText  String?
+  parsedData  Json?
+  isPrimary   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AiUsageLog {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature        String   // "chat" | "readback" | "parse-job"
+  model          String
+  inputTokens    Int
+  outputTokens   Int
+  costUsdMicros  Int      // cost in millionths of a dollar (avoids floats)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model MonthlyUsage {

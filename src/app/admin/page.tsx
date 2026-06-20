@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { SubscriptionStatus } from "@prisma/client";
 import { FREE_AI_LIMIT } from "@/lib/usage";
+import { microsToDollars } from "@/lib/ai-cost";
 import { UsersTable } from "./users-table";
 
 async function getAdminData() {
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  const [users, jobs, subscriptions, monthlyUsage] = await Promise.all([
+  const startOfMonth = new Date(`${currentMonth}-01T00:00:00Z`);
+
+  const [users, jobs, subscriptions, monthlyUsage, aiCostThisMonth, aiCostByFeature] = await Promise.all([
     prisma.user.findMany({
       include: {
         subscription: true,
@@ -20,6 +23,17 @@ async function getAdminData() {
     prisma.monthlyUsage.aggregate({
       where: { month: currentMonth },
       _sum: { count: true },
+      _count: { _all: true },
+    }),
+    prisma.aiUsageLog.aggregate({
+      where: { createdAt: { gte: startOfMonth } },
+      _sum: { inputTokens: true, outputTokens: true, costUsdMicros: true },
+      _count: { _all: true },
+    }),
+    prisma.aiUsageLog.groupBy({
+      by: ["feature"],
+      where: { createdAt: { gte: startOfMonth } },
+      _sum: { costUsdMicros: true, inputTokens: true, outputTokens: true },
       _count: { _all: true },
     }),
   ]);
@@ -49,6 +63,9 @@ async function getAdminData() {
   const usersWithFitAnalysis = await prisma.job.count({ where: { fitAnalysis: { not: null } } });
 
   const totalAiThisMonth = monthlyUsage._sum.count ?? 0;
+  const totalCostMicros = aiCostThisMonth._sum.costUsdMicros ?? 0;
+  const totalInputTokens = aiCostThisMonth._sum.inputTokens ?? 0;
+  const totalOutputTokens = aiCostThisMonth._sum.outputTokens ?? 0;
   const usersAtLimit = users.filter((u) => {
     if (u.subscription) return false; // pro users don't have a cap
     const used = u.monthlyUsage[0]?.count ?? 0;
@@ -70,6 +87,10 @@ async function getAdminData() {
     totalAiThisMonth,
     usersAtLimit,
     currentMonth,
+    totalCostMicros,
+    totalInputTokens,
+    totalOutputTokens,
+    aiCostByFeature,
   };
 }
 
@@ -177,6 +198,61 @@ export default async function AdminPage() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* AI Cost Breakdown */}
+      <section>
+        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">
+          AI Cost — {data.currentMonth}
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+          <StatCard
+            label="Total Cost"
+            value={microsToDollars(data.totalCostMicros)}
+            sub="estimated from token usage"
+          />
+          <StatCard
+            label="Input Tokens"
+            value={data.totalInputTokens.toLocaleString()}
+            sub="across all features"
+          />
+          <StatCard
+            label="Output Tokens"
+            value={data.totalOutputTokens.toLocaleString()}
+            sub="across all features"
+          />
+        </div>
+        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-stone-100">
+                <th className="text-left px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Feature</th>
+                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Calls</th>
+                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Input Tok</th>
+                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Output Tok</th>
+                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Est. Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.aiCostByFeature.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-6 text-center text-stone-400 text-sm">
+                    No AI usage logged yet this month
+                  </td>
+                </tr>
+              )}
+              {data.aiCostByFeature.map((row) => (
+                <tr key={row.feature} className="border-b border-stone-50 last:border-0">
+                  <td className="px-6 py-3 font-mono text-stone-700">{row.feature}</td>
+                  <td className="px-6 py-3 text-right font-mono text-stone-500">{row._count._all}</td>
+                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.inputTokens ?? 0).toLocaleString()}</td>
+                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.outputTokens ?? 0).toLocaleString()}</td>
+                  <td className="px-6 py-3 text-right font-mono text-stone-700 font-medium">{microsToDollars(row._sum.costUsdMicros ?? 0)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
 import { checkAndIncrementUsage } from "@/lib/usage";
+import { logAiUsage } from "@/lib/ai-cost";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -77,8 +78,9 @@ export async function POST(request: Request) {
   }
 
   // Extract structured job data with Claude
+  const PARSE_MODEL = "claude-haiku-4-5-20251001";
   const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: PARSE_MODEL,
     max_tokens: 800,
     messages: [
       {
@@ -102,6 +104,14 @@ If you cannot determine a field, use null. Requirements should be the 4-5 most i
       },
     ],
   });
+
+  logAiUsage({
+    userId: dbUser?.id ?? user.id,
+    feature: "parse-job",
+    model: PARSE_MODEL,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
+  }).catch(() => {});
 
   const text = message.content[0].type === "text" ? message.content[0].text : "";
 

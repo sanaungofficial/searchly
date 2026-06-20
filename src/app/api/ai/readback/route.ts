@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
 import { checkAndIncrementUsage } from "@/lib/usage";
+import { logAiUsage } from "@/lib/ai-cost";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -67,11 +68,20 @@ Respond in this exact JSON format:
   "honestNote": "..."
 }`;
 
+  const READBACK_MODEL = "claude-haiku-4-5-20251001";
   const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: READBACK_MODEL,
     max_tokens: 800,
     messages: [{ role: "user", content: prompt }],
   });
+
+  logAiUsage({
+    userId: dbUser?.id ?? user.id,
+    feature: "readback",
+    model: READBACK_MODEL,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
+  }).catch(() => {});
 
   const content = message.content[0];
   if (content.type !== "text") {

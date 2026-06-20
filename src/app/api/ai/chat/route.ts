@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
 import { checkAndIncrementUsage } from "@/lib/usage";
+import { logAiUsage } from "@/lib/ai-cost";
 import Anthropic from "@anthropic-ai/sdk";
 
 let _anthropic: Anthropic | null = null;
@@ -66,13 +67,15 @@ You know about the user's job search:${pipelineContext}${focusContext}${resumeCo
 
 When discussing specific jobs, reference what you know about them. When the user asks about their background, qualifications, or experience, use their resume to give specific answers. Keep responses concise — 2-4 short paragraphs max unless they ask for something longer. No corporate fluff.`;
 
+  const CHAT_MODEL = "claude-sonnet-4-6";
   const stream = await getAnthropic().messages.stream({
-    model: "claude-sonnet-4-6",
+    model: CHAT_MODEL,
     max_tokens: 1024,
     system: systemPrompt,
     messages,
   });
 
+  const userId = dbUser?.id ?? user.id;
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
@@ -85,6 +88,16 @@ When discussing specific jobs, reference what you know about them. When the user
         }
       }
       controller.close();
+      // Log token usage after stream completes (fire-and-forget)
+      stream.finalMessage().then((msg) => {
+        logAiUsage({
+          userId,
+          feature: "chat",
+          model: CHAT_MODEL,
+          inputTokens: msg.usage.input_tokens,
+          outputTokens: msg.usage.output_tokens,
+        }).catch(() => {});
+      }).catch(() => {});
     },
   });
 
