@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import {
   COMPANIES,
   JOBS,
-  INITIAL_KANBAN_CARDS,
   INITIAL_SIGNALS,
   LIVE_SESSIONS,
   KANBAN_STAGES,
@@ -17,13 +16,29 @@ import {
 } from "./workspace-data";
 import { PlusIcon, RefreshIcon, SparkleIcon, UploadIcon } from "./workspace-icons";
 
-type OppTab = "discover" | "myjobs" | "tracker";
+type OppTab = "discover" | "pipeline";
 
 interface OpportunitiesProps {
   onOpenLive: () => void;
+  /** Controlled drawer state (lifted to parent so ChatWidget can open drawer from any section) */
+  drawerCardId: number | null;
+  setDrawerCardId: (id: number | null) => void;
+  drawerTool: DrawerTool;
+  setDrawerTool: (t: DrawerTool) => void;
+  /** Controlled kanban cards (lifted so ChatWidget can show job picker) */
+  kanbanCards: KanbanCard[];
+  setKanbanCards: React.Dispatch<React.SetStateAction<KanbanCard[]>>;
 }
 
-export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
+export function WorkspaceOpportunities({
+  onOpenLive,
+  drawerCardId,
+  setDrawerCardId,
+  drawerTool,
+  setDrawerTool,
+  kanbanCards,
+  setKanbanCards,
+}: OpportunitiesProps) {
   const [tab, setTab] = useState<OppTab>("discover");
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
@@ -44,8 +59,6 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
   const [signalsData, setSignalsData] = useState<SignalsData | null>(INITIAL_SIGNALS);
   const [signalsLoading, setSignalsLoading] = useState(false);
 
-  const [kanbanCards, setKanbanCards] = useState<KanbanCard[]>(INITIAL_KANBAN_CARDS);
-  const [drawerCardId, setDrawerCardId] = useState<number | null>(null);
   const [usedBullets, setUsedBullets] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
   const [selectedJobRef, setSelectedJobRef] = useState<number | null>(null);
@@ -185,8 +198,14 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
     setKanbanCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, stage } : c)));
   };
 
-  const openDrawer = (cardId: number) => setDrawerCardId(cardId);
-  const closeDrawer = () => setDrawerCardId(null);
+  const openDrawer = (cardId: number) => {
+    setDrawerCardId(cardId);
+    setDrawerTool(null);
+  };
+  const closeDrawer = () => {
+    setDrawerCardId(null);
+    setDrawerTool(null);
+  };
 
   const pipeline = {
     saved: kanbanCards.filter((c) => c.stage === "saved").length,
@@ -220,8 +239,7 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
         <div style={{ display: "flex", gap: 3, background: "rgba(0,0,0,0.05)", padding: 3, borderRadius: 7 }}>
           {([
             ["discover", "Discover"],
-            ["myjobs", "My Jobs"],
-            ["tracker", "Pipeline"],
+            ["pipeline", "Pipeline"],
           ] as [OppTab, string][]).map(([id, label]) => {
             const active = tab === id;
             return (
@@ -246,7 +264,7 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
             );
           })}
         </div>
-        {(tab === "discover" || tab === "myjobs") && (
+        {(tab === "discover" || tab === "pipeline") && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
               onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
@@ -268,7 +286,7 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
             >
               <PlusIcon /> Add job
             </button>
-            {tab === "myjobs" && (
+            {tab === "pipeline" && (
               <button
                 onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
                 style={{
@@ -294,8 +312,8 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
         )}
       </div>
 
-      {/* URL paste panel — renders in My Jobs tab (DiscoverTab has its own inline panel) */}
-      {showAddPanel && tab === "myjobs" && (
+      {/* URL paste panel — renders in Pipeline tab (DiscoverTab has its own inline panel) */}
+      {showAddPanel && tab === "pipeline" && (
         <MyJobsUrlPastePanel
           url={addJobUrl}
           setUrl={setAddJobUrl}
@@ -307,8 +325,8 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
         />
       )}
 
-      {/* CSV upload panel — only in My Jobs */}
-      {showCsvPanel && tab === "myjobs" && (
+      {/* CSV upload panel — only in Pipeline */}
+      {showCsvPanel && tab === "pipeline" && (
         <CsvUploadPanel
           loading={csvLoading}
           progress={csvProgress}
@@ -340,17 +358,9 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
             }}
           />
         )}
-        {tab === "myjobs" && (
-          <MyJobsTab
-            cards={kanbanCards.filter((c) => c.stage === "saved")}
-            onChangeStage={changeStage}
-            onOpenDrawer={openDrawer}
-            onRemove={(id) => setKanbanCards((prev) => prev.filter((c) => c.id !== id))}
-          />
-        )}
-        {tab === "tracker" && (
+        {tab === "pipeline" && (
           <PipelineTab
-            cards={kanbanCards.filter((c) => c.stage !== "saved")}
+            cards={kanbanCards}
             filter={pipelineFilter}
             setFilter={setPipelineFilter}
             onChangeStage={changeStage}
@@ -375,6 +385,8 @@ export function WorkspaceOpportunities({ onOpenLive }: OpportunitiesProps) {
             moveCard={moveCard}
             copied={copied}
             setCopied={setCopied}
+            tool={drawerTool}
+            onToolChange={setDrawerTool}
           />
         );
       })()}
@@ -1760,159 +1772,6 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, onAddTo
 }
 
 /* ──────────────────────────────────────────────────────────────
-   My Jobs tab — all saved jobs with status dropdown
-   ────────────────────────────────────────────────────────────── */
-interface MyJobsTabProps {
-  cards: KanbanCard[];
-  onChangeStage: (id: number, stage: KanbanStage) => void;
-  onOpenDrawer: (id: number) => void;
-  onRemove: (id: number) => void;
-}
-
-function MyJobsTab({ cards, onChangeStage, onOpenDrawer, onRemove }: MyJobsTabProps) {
-  if (cards.length === 0) {
-    return (
-      <div
-        style={{
-          padding: 80,
-          textAlign: "center",
-          color: "#A09890",
-          fontFamily: "var(--font-dm-sans), system-ui",
-          fontSize: 13,
-        }}
-      >
-        No saved jobs yet. Use <strong style={{ color: "#1A3A2F" }}>+ Add job</strong> or <strong style={{ color: "#1A3A2F" }}>Upload CSV</strong> above to begin.
-      </div>
-    );
-  }
-  return (
-    <div style={{ padding: "24px 32px 48px" }}>
-      <p
-        style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
-          fontSize: 9,
-          fontWeight: 500,
-          color: "#A09890",
-          letterSpacing: "1.1px",
-          textTransform: "uppercase",
-          marginBottom: 14,
-        }}
-      >
-        Saved · {cards.length}
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {cards.map((c) => {
-          const job = c.jobRef !== null ? JOBS[c.jobRef] : null;
-          const fitColor = c.fit >= 90 ? "#4A8B6A" : c.fit >= 85 ? "#C4A86A" : "#A09890";
-          return (
-            <div
-              key={c.id}
-              style={{
-                background: "#FFFFFF",
-                borderRadius: 10,
-                padding: "18px 22px",
-                border: "1px solid rgba(0,0,0,0.06)",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 12 }}>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1, minWidth: 0 }}
-                  onClick={() => onOpenDrawer(c.id)}
-                >
-                  <div
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 8,
-                      background: "#1A3A2F",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#E8D5A3" }}>
-                      {c.initials}
-                    </span>
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>
-                      {c.role}
-                    </p>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268" }}>
-                      {c.company} · {job?.location || "Remote"} · {c.days === 0 ? "Today" : `${c.days} days ago`}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
-                      {c.fit}%
-                    </span>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
-                  </div>
-                  <StatusDropdown stage={c.stage} onChange={(s) => onChangeStage(c.id, s)} />
-                </div>
-              </div>
-              {job && (
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 12,
-                    fontWeight: 300,
-                    color: "#52493F",
-                    lineHeight: 1.6,
-                    marginBottom: 14,
-                    textWrap: "pretty",
-                  }}
-                >
-                  {job.fitSummary}
-                </p>
-              )}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <button
-                  onClick={() => onOpenDrawer(c.id)}
-                  style={{
-                    padding: "7px 14px",
-                    background: "transparent",
-                    color: "#1A3A2F",
-                    border: "1px solid rgba(26,58,47,0.2)",
-                    borderRadius: 5,
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
-                    cursor: "pointer",
-                  }}
-                >
-                  Open detail
-                </button>
-                <button
-                  onClick={() => onRemove(c.id)}
-                  style={{
-                    padding: "7px 12px",
-                    background: "transparent",
-                    color: "#A09890",
-                    border: "none",
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
-                    cursor: "pointer",
-                  }}
-                >
-                  Remove
-                </button>
-                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890", marginLeft: "auto" }}>
-                  Change status to move →
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────
    Pipeline tab — flat list with stage filter + status dropdowns
    ────────────────────────────────────────────────────────────── */
 interface PipelineTabProps {
@@ -1936,13 +1795,14 @@ function PipelineTab({
   onOpenDrawer,
 }: PipelineTabProps) {
   const visibleCards = filter === "all" ? cards : cards.filter((c) => c.stage === filter);
-  const stageOrder: KanbanStage[] = ["applied", "interview", "offer", "closed"];
+  const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer", "closed"];
   const sortedCards = [...visibleCards].sort((a, b) => {
     return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
   });
 
   const filterChips: ["all" | KanbanStage, string][] = [
     ["all", "All"],
+    ["saved", "Saved"],
     ["applied", "Applied"],
     ["interview", "Interviewing"],
     ["offer", "Offer"],
@@ -1994,7 +1854,7 @@ function PipelineTab({
           }}
         >
           {cards.length === 0
-            ? "No jobs in pipeline yet. Move jobs from My Jobs by changing their status to Applied."
+            ? "No jobs yet. Click \"+ Add job\" above to paste a URL, or \"Upload CSV\" to bulk-add jobs."
             : "No jobs match this filter."}
         </div>
       ) : (
@@ -2100,17 +1960,22 @@ function PipelineTab({
 /* ──────────────────────────────────────────────────────────────
    Job drawer (right side panel)
    ────────────────────────────────────────────────────────────── */
+export type DrawerTool = "resume" | "cover" | "fit" | null;
+
 interface JobDrawerProps {
   card: KanbanCard;
   onClose: () => void;
   moveCard: (id: number, stage: KanbanStage) => void;
   copied: boolean;
   setCopied: (b: boolean) => void;
+  tool?: DrawerTool;
+  onToolChange?: (t: DrawerTool) => void;
 }
 
-function JobDrawer({ card, onClose, moveCard, copied, setCopied }: JobDrawerProps) {
+function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
+  const setTool = (t: DrawerTool) => onToolChange?.(t);
 
   return (
     <>
@@ -2271,7 +2136,230 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied }: JobDrawerProp
             ))}
           </div>
 
-          {job ? (
+          {/* AI Tools — 3 buttons */}
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 9,
+              fontWeight: 600,
+              color: "#1A3A2F",
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              marginBottom: 8,
+              marginTop: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <span style={{ color: "#C4A86A" }}>✦</span> AI Tools
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+            <button
+              onClick={() => setTool(tool === "resume" ? null : "resume")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 12px",
+                background: tool === "resume" ? "#1A3A2F" : "#FFFFFF",
+                color: tool === "resume" ? "#E8D5A3" : "#1A1A1A",
+                border: "1px solid rgba(0,0,0,0.08)",
+                borderRadius: 7,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.15s",
+              }}
+            >
+              <span style={{ fontSize: 14, flexShrink: 0 }}>✦</span>
+              <span style={{ flex: 1 }}>
+                Update resume
+                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Maximize your interview chances</span>
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "resume" ? "▲" : "›"}</span>
+            </button>
+            <button
+              onClick={() => setTool(tool === "cover" ? null : "cover")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 12px",
+                background: tool === "cover" ? "#1A3A2F" : "#FFFFFF",
+                color: tool === "cover" ? "#E8D5A3" : "#1A1A1A",
+                border: "1px solid rgba(0,0,0,0.08)",
+                borderRadius: 7,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.15s",
+              }}
+            >
+              <span style={{ fontSize: 14, flexShrink: 0 }}>✉</span>
+              <span style={{ flex: 1 }}>
+                Create cover letter
+                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Make your application stand out</span>
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "cover" ? "▲" : "›"}</span>
+            </button>
+            <button
+              onClick={() => setTool(tool === "fit" ? null : "fit")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 12px",
+                background: tool === "fit" ? "#1A3A2F" : "#FFFFFF",
+                color: tool === "fit" ? "#E8D5A3" : "#1A1A1A",
+                border: "1px solid rgba(0,0,0,0.08)",
+                borderRadius: 7,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.15s",
+              }}
+            >
+              <span style={{ fontSize: 14, flexShrink: 0 }}>👍</span>
+              <span style={{ flex: 1 }}>
+                Tell me why I&apos;m a good fit
+                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Understand your strengths & gaps</span>
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "fit" ? "▲" : "›"}</span>
+            </button>
+          </div>
+
+          {/* Tool views or standard drawer content */}
+          {/* Tool view: Update resume */}
+          {tool === "resume" && job && (
+            <div style={{ animation: "fadeIn 0.3s ease both" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Updated resume bullets</p>
+                <button
+                  onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(job.bullets.map(b => "• " + b.tailored).join("\n\n")); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}
+                  style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, cursor: "pointer" }}
+                >
+                  {copied ? "Copied ✓" : "Copy all"}
+                </button>
+              </div>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
+                Searchly rewrote these bullets to align with what {card.company} screens for. Replace the originals on your resume.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                {job.bullets.map((b, i) => (
+                  <div key={i} style={{ padding: "12px 14px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 400, color: "#1A1A1A", lineHeight: 1.6, marginBottom: 8, textWrap: "pretty" }}>
+                      {b.tailored}
+                    </p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890", fontStyle: "italic" }}>
+                      Original: {b.original}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: "14px", background: "rgba(196,168,106,0.08)", borderRadius: 7, borderLeft: "2px solid #C4A86A" }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#7A6020", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Suggested summary line</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.6, fontStyle: "italic", textWrap: "pretty" }}>
+                  Senior PM with 8 years scaling API-first SaaS products — {card.company}-scale infrastructure experience with measurable revenue impact.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Tool view: Create cover letter */}
+          {tool === "cover" && job && (
+            <div style={{ animation: "fadeIn 0.3s ease both" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Cover letter</p>
+                <button
+                  onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(job.coverLetter); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}
+                  style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, cursor: "pointer" }}
+                >
+                  {copied ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
+                Tailored to {card.company} — references their priorities and your specific background.
+              </p>
+              <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#1A1A1A", lineHeight: 1.75, whiteSpace: "pre-wrap", textWrap: "pretty" }}>
+                  {job.coverLetter}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Tool view: Tell me why I'm a good fit */}
+          {tool === "fit" && job && (
+            <div style={{ animation: "fadeIn 0.3s ease both" }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>Fit analysis</p>
+
+              {/* Fit score breakdown */}
+              <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, marginBottom: 14, display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+                  <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: "rotate(-90deg)" }}>
+                    <circle cx="32" cy="32" r="28" stroke="rgba(0,0,0,0.08)" strokeWidth="6" fill="none" />
+                    <circle cx="32" cy="32" r="28" stroke={fitColor} strokeWidth="6" fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 28 * card.fit / 100} ${2 * Math.PI * 28}`} />
+                  </svg>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 16, fontWeight: 600, color: fitColor }}>{card.fit}%</span>
+                  </div>
+                </div>
+                <div>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{card.fit >= 85 ? "Strong match" : card.fit >= 70 ? "Good fit" : "Fair match"}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{job.fitSummary}</p>
+                </div>
+              </div>
+
+              {/* Why you fit */}
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Why you fit</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {job.fitWorks.map((w, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "rgba(74,139,106,0.06)", borderRadius: 5 }}>
+                      <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Watch outs */}
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Watch outs</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {job.fitWatches.map((w, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "rgba(196,168,106,0.06)", borderRadius: 5 }}>
+                      <span style={{ color: "#C4A86A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>△</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gaps */}
+              <div>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#C4574A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Gaps to address</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {job.gaps.map((g, i) => (
+                    <div key={i} style={{ padding: "10px 12px", background: "#FFFFFF", borderRadius: 5, borderLeft: "2px solid #C4574A" }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A1A1A", marginBottom: 3 }}>{g.title}</p>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{g.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Standard drawer content (no tool active) */}
+          {tool === null && job ? (
             <>
               {/* Fit summary */}
               <div style={{ marginBottom: 18 }}>
@@ -2517,7 +2605,7 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied }: JobDrawerProp
                 </div>
               </div>
             </>
-          ) : (
+          ) : tool === null ? (
             <div
               style={{
                 padding: 24,
@@ -2529,7 +2617,7 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied }: JobDrawerProp
             >
               <SparkleIcon /> Detailed analysis available for jobs Searchly has read.
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </>
