@@ -65,11 +65,8 @@ export default function Home() {
         }
       } catch {}
       try {
-        const res = await fetch("/api/admin/check");
-        if (res.ok) {
-          const data = await res.json();
-          setIsAdmin(data.isAdmin === true);
-        }
+        const res = await fetch("/api/admin");
+        setIsAdmin(res.ok);
       } catch {}
       setCurrentUser({
         name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
