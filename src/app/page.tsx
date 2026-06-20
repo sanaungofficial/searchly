@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 import {
   ScoutHeader,
   ScreenWelcome,
@@ -23,6 +25,8 @@ const JOB_MOCKS = [
 ];
 
 export default function Home() {
+  const supabase = createClient();
+  const router = useRouter();
   const [view, setView] = useState<View>("onboarding");
 
   const [screen, setScreen] = useState<Screen>(0);
@@ -159,9 +163,14 @@ export default function Home() {
     }
   };
 
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }, [supabase, router]);
+
   /* ── Workspace view ── */
   if (view === "workspace") {
-    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} />;
+    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} onSignOut={signOut} />;
   }
 
   /* ── Onboarding view ── */

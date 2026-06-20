@@ -12,9 +12,10 @@ import { NOTIFICATIONS, INITIAL_KANBAN_CARDS, type KanbanCard, type Section } fr
 
 interface WorkspaceProps {
   onBackToOnboarding: () => void;
+  onSignOut?: () => void;
 }
 
-export function ScoutWorkspace({ onBackToOnboarding }: WorkspaceProps) {
+export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps) {
   const [activeSection, setActiveSection] = useState<Section>("opportunities");
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
@@ -46,6 +47,7 @@ export function ScoutWorkspace({ onBackToOnboarding }: WorkspaceProps) {
         activeSection={activeSection}
         onNavigate={navigate}
         onBackToOnboarding={onBackToOnboarding}
+        onSignOut={onSignOut}
         notifOpen={notifOpen}
         notifUnreadCount={notifUnreadCount}
         onToggleNotif={() => setNotifOpen((p) => !p)}
