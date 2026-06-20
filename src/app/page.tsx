@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import {
   ScoutHeader,
   ScreenWelcome,
@@ -10,13 +8,13 @@ import {
   ScreenReadBack,
   ScreenTargetJobs,
   ScreenTransition,
+  DemoNextButton,
   type Screen,
   type Job,
 } from "@/components/scout/screens";
 import { ScoutWorkspace } from "@/components/scout/workspace";
-import { LandingPage } from "@/components/landing-page";
 
-type View = "onboarding" | "workspace" | "loading" | "landing";
+type View = "onboarding" | "workspace";
 
 const JOB_MOCKS = [
   { company: "Stripe", role: "Senior PM" },
@@ -25,30 +23,7 @@ const JOB_MOCKS = [
 ];
 
 export default function Home() {
-  const supabase = createClient();
-  const router = useRouter();
-  const [view, setView] = useState<View>("loading");
-
-  useEffect(() => {
-    // Check if user is authenticated; if not, show landing page
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        setView("landing");
-        return;
-      }
-      // Authenticated — check if they've already onboarded
-      fetch("/api/profile")
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.resumeUrl) {
-            setView("workspace");
-          } else {
-            setView("onboarding");
-          }
-        })
-        .catch(() => setView("onboarding"));
-    });
-  }, [supabase]);
+  const [view, setView] = useState<View>("onboarding");
 
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
@@ -81,22 +56,14 @@ export default function Home() {
   }, []);
 
   const processFile = useCallback(
-    async (file: File | undefined | null) => {
+    (file: File | undefined | null) => {
       if (!file) return;
       setResumeFilename(file.name);
       setResumeUploaded(false);
-
-      const form = new FormData();
-      form.append("file", file);
-
-      try {
-        await fetch("/api/resume", { method: "POST", body: form });
-      } catch {
-        // upload failed silently — user can still continue
-      }
-
-      setResumeUploaded(true);
-      window.setTimeout(() => goTo(1), 700);
+      window.setTimeout(() => {
+        setResumeUploaded(true);
+        window.setTimeout(() => goTo(1), 700);
+      }, 1300);
     },
     [goTo],
   );
@@ -124,12 +91,6 @@ export default function Home() {
   const submitLI = () => {
     if (!liInput.trim()) return;
     setLISubmitting(true);
-    // Save LinkedIn URL to profile (fire and forget)
-    fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ linkedinUrl: liInput.trim() }),
-    }).catch(() => {});
     window.setTimeout(() => goTo(2), 2100);
   };
   const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => setLiInput(e.target.value);
@@ -159,24 +120,48 @@ export default function Home() {
     if (e.key === "Enter") addJob();
   };
 
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-  }, [supabase, router]);
+  const demoAdvance = () => {
+    if (screen === 0) {
+      setResumeFilename("Sarah_Chen_Resume.pdf");
+      window.setTimeout(() => {
+        setResumeUploaded(true);
+        window.setTimeout(() => goTo(1), 700);
+      }, 1300);
+    } else if (screen === 1) {
+      setLiInput("linkedin.com/in/sarahchen-pm");
+      setLISubmitting(true);
+      window.setTimeout(() => goTo(2), 2100);
+    } else if (screen === 2) {
+      goTo(3);
+    } else if (screen === 3) {
+      const allReady = jobs.length > 0 && jobs.every((j) => j.state === "ready");
+      if (allReady) {
+        goTo(4);
+        return;
+      }
+      if (jobs.length < 3) {
+        const now = Date.now();
+        const newJobs: Job[] = JOB_MOCKS.map((m, i) => ({
+          id: now + i,
+          company: m.company,
+          role: m.role,
+          initials: m.company.slice(0, 2).toUpperCase(),
+          state: "reading",
+        }));
+        setJobs(newJobs);
+        newJobs.forEach((job, i) => {
+          const jid = job.id;
+          window.setTimeout(() => {
+            setJobs((prev) => prev.map((j) => (j.id === jid ? { ...j, state: "ready" } : j)));
+          }, 1500 + i * 650);
+        });
+      }
+    }
+  };
 
   /* ── Workspace view ── */
   if (view === "workspace") {
-    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} onSignOut={signOut} />;
-  }
-
-  /* ── Loading state ── */
-  if (view === "loading") {
-    return <div style={{ background: "#F2EDE3", minHeight: "100vh" }} />;
-  }
-
-  /* ── Landing page (logged out) ── */
-  if (view === "landing") {
-    return <LandingPage />;
+    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} />;
   }
 
   /* ── Onboarding view ── */
@@ -240,6 +225,8 @@ export default function Home() {
           {screen === 4 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
         </div>
       </div>
+
+      <DemoNextButton onClick={demoAdvance} />
     </div>
   );
 }

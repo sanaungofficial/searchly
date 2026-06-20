@@ -15,7 +15,6 @@ interface SidebarProps {
   activeSection: Section;
   onNavigate: (s: Section) => void;
   onBackToOnboarding: () => void;
-  onSignOut?: () => void;
   notifOpen: boolean;
   notifUnreadCount: number;
   onToggleNotif: () => void;
@@ -40,7 +39,6 @@ export function WorkspaceSidebar({
   activeSection,
   onNavigate,
   onBackToOnboarding,
-  onSignOut,
   notifOpen,
   notifUnreadCount,
   onToggleNotif,
@@ -252,7 +250,7 @@ export function WorkspaceSidebar({
             SC
           </span>
         </div>
-        <div style={{ flex: 1 }}>
+        <div>
           <p
             style={{
               fontFamily: "var(--font-dm-sans), system-ui",
@@ -275,38 +273,6 @@ export function WorkspaceSidebar({
             Senior PM · 8 yrs
           </p>
         </div>
-        {onSignOut && (
-          <button
-            onClick={onSignOut}
-            title="Sign out"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 6,
-              borderRadius: 6,
-              color: "rgba(232,213,163,0.3)",
-              display: "flex",
-              alignItems: "center",
-              flexShrink: 0,
-              transition: "color 0.15s, background 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "rgba(232,213,163,0.7)";
-              e.currentTarget.style.background = "rgba(232,213,163,0.08)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "rgba(232,213,163,0.3)";
-              e.currentTarget.style.background = "none";
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
-        )}
       </div>
 
       {/* Notifications popover */}

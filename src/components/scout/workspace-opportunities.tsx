@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   COMPANIES,
   JOBS,
@@ -28,7 +28,6 @@ interface OpportunitiesProps {
   /** Controlled kanban cards (lifted so ChatWidget can show job picker) */
   kanbanCards: KanbanCard[];
   setKanbanCards: React.Dispatch<React.SetStateAction<KanbanCard[]>>;
-  onStageChange?: (cardId: number, stage: KanbanStage) => void;
 }
 
 export function WorkspaceOpportunities({
@@ -39,20 +38,22 @@ export function WorkspaceOpportunities({
   setDrawerTool,
   kanbanCards,
   setKanbanCards,
-  onStageChange,
 }: OpportunitiesProps) {
   const [tab, setTab] = useState<OppTab>("discover");
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
   const [addJobLoading, setAddJobLoading] = useState(false);
-  const [addJobError, setAddJobError] = useState<string | null>(null);
   const [jobAnalysis, setJobAnalysis] = useState<null | {
     company: string;
     role: string;
-    location: string | null;
-    salary: string | null;
-    description: string | null;
+    fitScore: number;
+    fitReason: string;
+    salaryRange: string;
     requirements: string[];
+    tailoredBullets: string[];
+    coverLetterOpener: string;
+    skillGaps: string[];
+    insiderTip: string;
   }>(null);
 
   const [signalsData, setSignalsData] = useState<SignalsData | null>(INITIAL_SIGNALS);
@@ -71,55 +72,71 @@ export function WorkspaceOpportunities({
   // Pipeline flat-list filter
   const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>("all");
 
-  /* ── Real URL analysis via AI ── */
-  const submitAddJob = async () => {
+  /* ── Mock URL analysis (shared by single-URL panel and CSV bulk upload) ── */
+  const analyzeUrl = (url: string, hintCompany?: string, hintRole?: string) => {
+    let company = hintCompany || "Company";
+    let role = hintRole || "Senior PM";
+    if (!hintCompany) {
+      const lower = url.toLowerCase();
+      if (lower.includes("stripe")) { company = "Stripe"; role = "Senior PM — Revenue"; }
+      else if (lower.includes("linear")) { company = "Linear"; role = "Product Lead"; }
+      else if (lower.includes("figma")) { company = "Figma"; role = "Design Systems PM"; }
+      else if (lower.includes("notion")) { company = "Notion"; role = "Head of Product Ops"; }
+      else if (lower.includes("vercel")) { company = "Vercel"; role = "Platform PM"; }
+    }
+    return {
+      company, role, fitScore: 84,
+      fitReason: `Your background in API-first products and cross-functional leadership maps well to what ${company} is hiring for. Eight years of SaaS pattern recognition gives you a strong starting position.`,
+      salaryRange: "$180–230k + equity",
+      requirements: [
+        "8+ years product management experience in SaaS",
+        "Track record of shipping API-first or platform products",
+        "Cross-functional leadership across engineering & design",
+        "Data-driven decision-making with SQL or Amplitude",
+        "Experience scaling products from $1M to $50M+ ARR",
+      ],
+      tailoredBullets: [
+        `Owned ${company}-scale revenue infrastructure product strategy, driving API-first decisions that reduced integration friction by 40%`,
+        "Built cross-functional alignment across engineering, design, and finance stakeholders to ship load-bearing platform changes on time",
+        "Defined and tracked north-star metrics for financial data products, improving decision velocity for 200+ enterprise customers",
+      ],
+      coverLetterOpener: `When I look at what ${company} is building, I see a problem I've spent years thinking about from the other side. My eight years in SaaS product have been defined by a conviction that the best infrastructure products make hard decisions feel obvious.`,
+      skillGaps: [
+        "Direct domain experience in this specific surface area — surface adjacent work explicitly",
+        "Engineering depth signal — revise 1–2 bullets to name technical decisions you influenced",
+      ],
+      insiderTip: `${company} interviews are known for being opinionated — come with 2–3 strong product opinions about their current roadmap.`,
+    };
+  };
+
+  /* ── Add job (single URL) ── */
+  const submitAddJob = () => {
     const url = addJobUrl.trim();
     if (!url) return;
     setAddJobLoading(true);
     setJobAnalysis(null);
-    setAddJobError(null);
-    try {
-      const res = await fetch("/api/ai/parse-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setAddJobError(data.error || "Could not parse job. Try adding manually.");
-      } else {
-        setJobAnalysis(data);
-      }
-    } catch {
-      setAddJobError("Network error. Check your connection and try again.");
-    } finally {
+    window.setTimeout(() => {
+      setJobAnalysis(analyzeUrl(url));
       setAddJobLoading(false);
-    }
+    }, 1500);
   };
 
   /* ── Add a job directly from a URL (used by CSV bulk upload) ── */
   const addJobFromUrl = (url: string, hintCompany?: string, hintRole?: string) => {
-    const company = hintCompany || "Unknown";
-    const role = hintRole || "Unknown Role";
+    const analysis = analyzeUrl(url, hintCompany, hintRole);
     setKanbanCards((prev) => {
       const newId = Math.max(...prev.map((c) => c.id), 0) + 1;
       return [...prev, {
         id: newId,
-        company,
-        initials: company.slice(0, 2).toUpperCase(),
-        role,
+        company: analysis.company,
+        initials: analysis.company.slice(0, 2).toUpperCase(),
+        role: analysis.role,
         stage: "saved" as KanbanStage,
-        fit: null,
+        fit: analysis.fitScore,
         jobRef: null,
         days: 0,
       }];
     });
-    // Persist to DB
-    fetch("/api/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company, role, url }),
-    }).catch(() => {});
   };
 
   /* ── CSV upload handler ── */
@@ -145,7 +162,6 @@ export function WorkspaceOpportunities({
   /* ── Change a card's stage (used by status dropdowns in My Jobs + Pipeline) ── */
   const changeStage = (cardId: number, newStage: KanbanStage) => {
     setKanbanCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, stage: newStage } : c)));
-    onStageChange?.(cardId, newStage);
   };
 
   const addToKanban = () => {
@@ -159,17 +175,11 @@ export function WorkspaceOpportunities({
         initials: jobAnalysis.company.slice(0, 2).toUpperCase(),
         role: jobAnalysis.role,
         stage: "saved",
-        fit: null,
+        fit: jobAnalysis.fitScore,
         jobRef: null,
         days: 0,
       },
     ]);
-    // Persist to DB
-    fetch("/api/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company: jobAnalysis.company, role: jobAnalysis.role, url: addJobUrl }),
-    }).catch(() => {});
     setShowAddPanel(false);
     setJobAnalysis(null);
     setAddJobUrl("");
@@ -186,7 +196,6 @@ export function WorkspaceOpportunities({
 
   const moveCard = (cardId: number, stage: KanbanStage) => {
     setKanbanCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, stage } : c)));
-    onStageChange?.(cardId, stage);
   };
 
   const openDrawer = (cardId: number) => {
@@ -229,7 +238,7 @@ export function WorkspaceOpportunities({
       >
         <div style={{ display: "flex", gap: 3, background: "rgba(0,0,0,0.05)", padding: 3, borderRadius: 7 }}>
           {([
-            ["discover", "Discover"],
+            ["discover", "Signals"],
             ["pipeline", "Pipeline"],
           ] as [OppTab, string][]).map(([id, label]) => {
             const active = tab === id;
@@ -255,7 +264,7 @@ export function WorkspaceOpportunities({
             );
           })}
         </div>
-        {(tab === "discover" || tab === "pipeline") && (
+        {tab === "pipeline" && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
               onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
@@ -277,28 +286,26 @@ export function WorkspaceOpportunities({
             >
               <PlusIcon /> Add job
             </button>
-            {tab === "pipeline" && (
-              <button
-                onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
-                style={{
-                  padding: "7px 16px",
-                  background: showCsvPanel ? "#1A3A2F" : "transparent",
-                  color: showCsvPanel ? "#E8D5A3" : "#1A3A2F",
-                  border: "1px solid rgba(26,58,47,0.2)",
-                  borderRadius: 5,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  letterSpacing: "0.2px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <UploadIcon /> Upload CSV
-              </button>
-            )}
+            <button
+              onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
+              style={{
+                padding: "7px 16px",
+                background: showCsvPanel ? "#1A3A2F" : "transparent",
+                color: showCsvPanel ? "#E8D5A3" : "#1A3A2F",
+                border: "1px solid rgba(26,58,47,0.2)",
+                borderRadius: 5,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 11,
+                fontWeight: 500,
+                cursor: "pointer",
+                letterSpacing: "0.2px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <UploadIcon /> Upload CSV
+            </button>
           </div>
         )}
       </div>
@@ -310,10 +317,9 @@ export function WorkspaceOpportunities({
           setUrl={setAddJobUrl}
           onSubmit={submitAddJob}
           loading={addJobLoading}
-          error={addJobError}
           analysis={jobAnalysis}
           onAddToKanban={addToKanban}
-          onDismiss={() => { setJobAnalysis(null); setAddJobError(null); setShowAddPanel(false); setAddJobUrl(""); }}
+          onDismiss={() => { setJobAnalysis(null); setShowAddPanel(false); setAddJobUrl(""); }}
         />
       )}
 
@@ -507,54 +513,290 @@ function DiscoverTab({
               >
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 600, color: "#1A1A1A" }}>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: "#1A1A1A",
+                      }}
+                    >
                       {jobAnalysis.company}
                     </p>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 11,
+                        color: "#52493F",
+                      }}
+                    >
+                      ·
+                    </span>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 13,
+                        color: "#52493F",
+                      }}
+                    >
                       {jobAnalysis.role}
                     </p>
                   </div>
-                  {(jobAnalysis.location || jobAnalysis.salary) && (
-                    <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
-                      {jobAnalysis.location && (
-                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268" }}>
-                          📍 {jobAnalysis.location}
-                        </span>
-                      )}
-                      {jobAnalysis.salary && (
-                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#4A8B6A", fontWeight: 500 }}>
-                          💰 {jobAnalysis.salary}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {jobAnalysis.description && (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#7A7268", lineHeight: 1.6, maxWidth: 560, textWrap: "pretty" }}>
-                      {jobAnalysis.description}
-                    </p>
-                  )}
+                  <p
+                    style={{
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 11,
+                      fontWeight: 300,
+                      color: "#7A7268",
+                      lineHeight: 1.6,
+                      maxWidth: 520,
+                      textWrap: "pretty",
+                    }}
+                  >
+                    {jobAnalysis.fitReason}
+                  </p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-dm-mono), monospace",
+                        fontSize: 26,
+                        fontWeight: 500,
+                        color: "#4A8B6A",
+                      }}
+                    >
+                      {jobAnalysis.fitScore}%
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 11,
+                        color: "#A09890",
+                      }}
+                    >
+                      fit
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 10,
+                      color: "#A09890",
+                    }}
+                  >
+                    {jobAnalysis.salaryRange}
+                  </p>
                 </div>
               </div>
 
-              {/* Requirements */}
-              {jobAnalysis.requirements?.length > 0 && (
-                <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", marginBottom: 14 }}>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                {/* Requirements */}
+                <div
+                  style={{
+                    background: "#FFFFFF",
+                    borderRadius: 8,
+                    padding: "14px 16px",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 9,
+                      fontWeight: 600,
+                      color: "#A09890",
+                      textTransform: "uppercase",
+                      letterSpacing: "1px",
+                      marginBottom: 10,
+                    }}
+                  >
                     Key Requirements
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     {jobAnalysis.requirements.map((r: string, i: number) => (
                       <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
                         <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>
+                        <p
+                          style={{
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontSize: 11,
+                            fontWeight: 300,
+                            color: "#2A2218",
+                            lineHeight: 1.5,
+                          }}
+                        >
                           {r}
                         </p>
                       </div>
                     ))}
                   </div>
                 </div>
-              )}
+
+                {/* Skill gaps */}
+                <div
+                  style={{
+                    background: "#FFFFFF",
+                    borderRadius: 8,
+                    padding: "14px 16px",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 9,
+                      fontWeight: 600,
+                      color: "#A09890",
+                      textTransform: "uppercase",
+                      letterSpacing: "1px",
+                      marginBottom: 10,
+                    }}
+                  >
+                    Skill Gaps to Address
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {jobAnalysis.skillGaps.map((g: string, i: number) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+                        <span style={{ color: "#C4A86A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>△</span>
+                        <p
+                          style={{
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontSize: 11,
+                            fontWeight: 300,
+                            color: "#2A2218",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {g}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 9,
+                        fontWeight: 600,
+                        color: "#A09890",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        marginBottom: 5,
+                      }}
+                    >
+                      Insider tip
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 10,
+                        fontWeight: 300,
+                        color: "#52493F",
+                        lineHeight: 1.55,
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {jobAnalysis.insiderTip}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tailored resume bullets */}
+              <div
+                style={{
+                  background: "#FFFFFF",
+                  borderRadius: 8,
+                  padding: "14px 16px",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  marginBottom: 14,
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: "#A09890",
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                    marginBottom: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  Tailored Resume Bullets <span style={{ color: "#C4A86A" }}>✦</span>
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {jobAnalysis.tailoredBullets.map((b: string, i: number) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        padding: "8px 10px",
+                        background: "rgba(26,58,47,0.03)",
+                        borderRadius: 5,
+                        borderLeft: "2px solid #1A3A2F",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontFamily: "var(--font-dm-sans), system-ui",
+                          fontSize: 11,
+                          fontWeight: 300,
+                          color: "#1A1A1A",
+                          lineHeight: 1.6,
+                          textWrap: "pretty",
+                        }}
+                      >
+                        {b}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cover letter opener */}
+              <div
+                style={{
+                  background: "#FFFFFF",
+                  borderRadius: 8,
+                  padding: "14px 16px",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  marginBottom: 16,
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: "#A09890",
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                    marginBottom: 10,
+                  }}
+                >
+                  Cover Letter Opener
+                </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 12,
+                    fontWeight: 300,
+                    color: "#1A1A1A",
+                    lineHeight: 1.75,
+                    textWrap: "pretty",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {jobAnalysis.coverLetterOpener}
+                </p>
+              </div>
 
               {/* CTAs */}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -610,63 +852,6 @@ function DiscoverTab({
 
       {/* Welcome / dashboard content */}
       <div style={{ padding: "24px 32px 48px" }}>
-        {/* Pipeline snapshot */}
-        <div style={{ marginBottom: 28 }}>
-          <p
-            style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 9,
-              fontWeight: 500,
-              color: "#A09890",
-              letterSpacing: "1.1px",
-              textTransform: "uppercase",
-              marginBottom: 12,
-            }}
-          >
-            Your pipeline
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
-            {[
-              { count: pipeline.saved, label: "Saved", color: "#1A3A2F" },
-              { count: pipeline.applied, label: "Applied", color: "#C4A86A" },
-              { count: pipeline.interview, label: "Interviewing", color: "#4A8B6A" },
-              { count: pipeline.offer, label: "Offers", color: "#C4574A" },
-            ].map((s) => (
-              <div
-                key={s.label}
-                style={{
-                  background: "#FFFFFF",
-                  borderRadius: 9,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                }}
-              >
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-mono), monospace",
-                    fontSize: 26,
-                    fontWeight: 500,
-                    color: s.color,
-                    marginBottom: 3,
-                  }}
-                >
-                  {s.count}
-                </p>
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 10,
-                    color: "#A09890",
-                  }}
-                >
-                  {s.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Market signals strip */}
         <div style={{ marginBottom: 28 }}>
           <div
@@ -879,285 +1064,131 @@ function DiscoverTab({
           )}
         </div>
 
-        {/* Monitored companies */}
-        <div style={{ marginBottom: 28 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 12,
-            }}
-          >
-            <p
+        {/* Salary benchmark + hot/cold skills */}
+        {signalsData && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 20 }}>
+            {/* Salary benchmark */}
+            <div
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 9,
-                fontWeight: 500,
-                color: "#A09890",
-                letterSpacing: "1.1px",
-                textTransform: "uppercase",
+                background: "#FFFFFF",
+                borderRadius: 10,
+                padding: "16px 18px",
+                border: "1px solid rgba(0,0,0,0.06)",
               }}
             >
-              Searchly radar · {COMPANIES.length} companies
-            </p>
-            <button
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: "#A09890",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  marginBottom: 8,
+                }}
+              >
+                Salary benchmark
+              </p>
+              <p
+                style={{
+                  fontFamily: "var(--font-cormorant), Georgia, serif",
+                  fontSize: 16,
+                  fontWeight: 500,
+                  fontStyle: "italic",
+                  color: "#1A1A1A",
+                  marginBottom: 4,
+                }}
+              >
+                {signalsData.salaryBenchmark.role}
+              </p>
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 11,
+                  fontWeight: 300,
+                  color: "#52493F",
+                  lineHeight: 1.55,
+                  textWrap: "pretty",
+                }}
+              >
+                {signalsData.salaryBenchmark.note}
+              </p>
+            </div>
+
+            {/* Hot / cold skills */}
+            <div
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
-                color: "#1A3A2F",
-                padding: 0,
+                background: "#FFFFFF",
+                borderRadius: 10,
+                padding: "16px 18px",
+                border: "1px solid rgba(0,0,0,0.06)",
               }}
             >
-              View all →
-            </button>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              overflowX: "auto",
-              paddingBottom: 6,
-              scrollbarWidth: "none",
-            }}
-          >
-            {COMPANIES.map((co) => {
-              const fitColor = co.fit !== null && co.fit >= 90 ? "#4A8B6A" : co.fit !== null && co.fit >= 85 ? "#C4A86A" : "#A09890";
-              const cardBorder = co.fit >= 90 ? "rgba(74,139,106,0.2)" : "rgba(0,0,0,0.06)";
-              const rolesBadgeColor = co.openRoles.length > 0 ? "#4A8B6A" : "#A09890";
-              return (
-                <button
-                  key={co.id}
-                  onClick={() => onSelectCompany(co.id)}
-                  style={{
-                    flex: "none",
-                    width: 220,
-                    background: "#FFFFFF",
-                    borderRadius: 10,
-                    padding: "16px 16px 14px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
-                    cursor: "pointer",
-                    border: `1.5px solid ${cardBorder}`,
-                    transition: "box-shadow 0.2s",
-                    textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)")}
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.boxShadow =
-                      "0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)")
-                  }
-                >
-                  <div
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: "#A09890",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  marginBottom: 8,
+                }}
+              >
+                Skills in demand
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                {signalsData.hotSkills.map((s) => (
+                  <span
+                    key={s}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 7,
-                          background: "#1A3A2F",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: "#E8D5A3",
-                          }}
-                        >
-                          {co.initials}
-                        </span>
-                      </div>
-                      <p
-                        style={{
-                          fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "#1A1A1A",
-                        }}
-                      >
-                        {co.name}
-                      </p>
-                    </div>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-mono), monospace",
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: fitColor,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {co.fit}%
-                    </p>
-                  </div>
-                  <p
-                    style={{
+                      padding: "3px 10px",
+                      background: "rgba(74,139,106,0.1)",
+                      borderRadius: 100,
                       fontFamily: "var(--font-dm-sans), system-ui",
                       fontSize: 10,
-                      fontWeight: 300,
-                      color: "#52493F",
-                      lineHeight: 1.5,
-                      marginBottom: 10,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
+                      fontWeight: 500,
+                      color: "#2D6B4A",
                     }}
                   >
-                    {co.fitReason}
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <div
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: rolesBadgeColor,
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 9,
-                        color: "#52493F",
-                      }}
-                    >
-                      {co.openRoles.length} open role{co.openRoles.length !== 1 ? "s" : ""} matching you
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Upcoming live sessions preview */}
-        <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 12,
-            }}
-          >
-            <p
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 9,
-                fontWeight: 500,
-                color: "#A09890",
-                letterSpacing: "1.1px",
-                textTransform: "uppercase",
-              }}
-            >
-              Live this week
-            </p>
-            <button
-              onClick={onOpenLive}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
-                color: "#1A3A2F",
-                padding: 0,
-              }}
-            >
-              View all →
-            </button>
-          </div>
-          <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 6, scrollbarWidth: "none" }}>
-            {LIVE_SESSIONS.filter((s) => !s.isLive)
-              .slice(0, 3)
-              .map((s) => (
-                <button
-                  key={s.id}
-                  onClick={onOpenLive}
-                  style={{
-                    flex: "none",
-                    width: 280,
-                    background: "#FFFFFF",
-                    borderRadius: 10,
-                    padding: 0,
-                    cursor: "pointer",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    overflow: "hidden",
-                    textAlign: "left",
-                  }}
-                >
-                  <div
+                    ↑ {s}
+                  </span>
+                ))}
+              </div>
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: "#A09890",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  marginBottom: 6,
+                }}
+              >
+                Cooling
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {signalsData.coldSkills.map((s) => (
+                  <span
+                    key={s}
                     style={{
-                      background: s.bgColor,
-                      padding: "14px 16px 12px",
+                      padding: "3px 10px",
+                      background: "rgba(160,152,144,0.12)",
+                      borderRadius: 100,
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 10,
+                      color: "#7A7268",
                     }}
                   >
-                    <span
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 9,
-                        fontWeight: 600,
-                        color: s.accentColor,
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                      }}
-                    >
-                      {s.category}
-                    </span>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#FFFFFF",
-                        marginTop: 4,
-                        lineHeight: 1.3,
-                      }}
-                    >
-                      {s.title}
-                    </p>
-                  </div>
-                  <div style={{ padding: "10px 16px 12px" }}>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 10,
-                        color: "#52493F",
-                        marginBottom: 4,
-                      }}
-                    >
-                      {s.startsIn} · {s.registered} registered
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 10,
-                        color: "#A09890",
-                      }}
-                    >
-                      with {s.host}
-                    </p>
-                  </div>
-                </button>
-              ))}
+                    ↓ {s}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );
@@ -1395,20 +1426,23 @@ interface MyJobsUrlPastePanelProps {
   setUrl: (s: string) => void;
   onSubmit: () => void;
   loading: boolean;
-  error?: string | null;
   analysis: {
     company: string;
     role: string;
-    location: string | null;
-    salary: string | null;
-    description: string | null;
+    fitScore: number;
+    fitReason: string;
+    salaryRange: string;
     requirements: string[];
+    tailoredBullets: string[];
+    coverLetterOpener: string;
+    skillGaps: string[];
+    insiderTip: string;
   } | null;
   onAddToKanban: () => void;
   onDismiss: () => void;
 }
 
-function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, error, analysis, onAddToKanban, onDismiss }: MyJobsUrlPastePanelProps) {
+function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, onAddToKanban, onDismiss }: MyJobsUrlPastePanelProps) {
   return (
     <div
       style={{
@@ -1475,9 +1509,6 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, error, analysis, 
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Searchly is analyzing this listing…</p>
         </div>
       )}
-      {error && !loading && (
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#DC2626" }}>{error}</p>
-      )}
       {analysis && !loading && (
         <div
           style={{
@@ -1489,23 +1520,21 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, error, analysis, 
             animation: "fadeIn 0.3s ease both",
           }}
         >
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{analysis.company}</p>
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>{analysis.role}</p>
-              {analysis.salary && (
-                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", fontWeight: 500 }}>{analysis.salary}</span>
-              )}
-              {analysis.location && (
-                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268" }}>{analysis.location}</span>
-              )}
-            </div>
-            {analysis.description && (
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{analysis.company}</p>
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>{analysis.role}</p>
+              </div>
               <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 300, color: "#7A7268", lineHeight: 1.5, maxWidth: 420, textWrap: "pretty" }}>
-                {analysis.description}
+                {analysis.fitReason}
               </p>
-            )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
+              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 20, fontWeight: 500, color: "#4A8B6A" }}>{analysis.fitScore}%</span>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#A09890" }}>{analysis.salaryRange}</span>
+            </div>
           </div>
           <button
             onClick={onAddToKanban}
@@ -1619,7 +1648,7 @@ function PipelineTab({
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {sortedCards.map((c) => {
             const job = c.jobRef !== null ? JOBS[c.jobRef] : null;
-            const fitColor = c.fit !== null && c.fit >= 90 ? "#4A8B6A" : c.fit !== null && c.fit >= 85 ? "#C4A86A" : "#A09890";
+            const fitColor = c.fit >= 90 ? "#4A8B6A" : c.fit >= 85 ? "#C4A86A" : "#A09890";
             const stageColor = STAGE_COLORS[c.stage];
             return (
               <div
@@ -1664,14 +1693,12 @@ function PipelineTab({
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                    {c.fit !== null && (
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                        <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
-                          {c.fit}%
-                        </span>
-                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
-                      </div>
-                    )}
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
+                        {c.fit}%
+                      </span>
+                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
+                    </div>
                     <StatusDropdown stage={c.stage} onChange={(s) => onChangeStage(c.id, s)} />
                   </div>
                 </div>
@@ -1734,39 +1761,8 @@ interface JobDrawerProps {
 
 function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
-  const fitColor = card.fit !== null && card.fit >= 90 ? "#4A8B6A" : card.fit !== null && card.fit >= 85 ? "#C4A86A" : "#A09890";
-
-  // AI tool state
-  const [aiLoading, setAiLoading] = React.useState(false);
-  const [aiResult, setAiResult] = React.useState<Record<string, unknown> | null>(null);
-  const [aiError, setAiError] = React.useState<string | null>(null);
-
-  const setTool = async (t: DrawerTool) => {
-    onToolChange?.(t);
-    if (!t) { setAiResult(null); setAiError(null); return; }
-    // Don't re-fetch if same tool already has result
-    setAiResult(null);
-    setAiError(null);
-    setAiLoading(true);
-    try {
-      const dbId = (card as KanbanCard & { _dbId?: string })._dbId;
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: t, company: card.company, role: card.role, jobId: dbId }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setAiError((err as { error?: string }).error || "AI request failed");
-      } else {
-        setAiResult(await res.json());
-      }
-    } catch {
-      setAiError("Network error");
-    } finally {
-      setAiLoading(false);
-    }
-  };
+  const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
+  const setTool = (t: DrawerTool) => onToolChange?.(t);
 
   return (
     <>
@@ -1863,11 +1859,16 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
             >
               {STAGE_LABELS[card.stage]}
             </span>
-            {card.fit !== null && (
-              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 13, fontWeight: 500, color: fitColor }}>
-                {card.fit}% fit
-              </span>
-            )}
+            <span
+              style={{
+                fontFamily: "var(--font-dm-mono), monospace",
+                fontSize: 13,
+                fontWeight: 500,
+                color: fitColor,
+              }}
+            >
+              {card.fit}% fit
+            </span>
             {job && (
               <span
                 style={{
@@ -2023,97 +2024,124 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
 
           {/* Tool views or standard drawer content */}
           {/* Tool view: Update resume */}
-          {tool === "resume" && (
+          {tool === "resume" && job && (
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
-              {aiLoading && <AiLoadingState label="Tailoring resume bullets..." />}
-              {aiError && <AiErrorState error={aiError} />}
-              {!aiLoading && aiResult && (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Updated resume bullets</p>
-                    <button
-                      onClick={() => {
-                        const bullets = (aiResult.bullets as { tailored: string }[]).map(b => "• " + b.tailored).join("\n\n");
-                        if (navigator.clipboard) navigator.clipboard.writeText(bullets);
-                        setCopied(true); window.setTimeout(() => setCopied(false), 2000);
-                      }}
-                      style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, cursor: "pointer" }}
-                    >
-                      {copied ? "Copied ✓" : "Copy all"}
-                    </button>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Updated resume bullets</p>
+                <button
+                  onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(job.bullets.map(b => "• " + b.tailored).join("\n\n")); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}
+                  style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, cursor: "pointer" }}
+                >
+                  {copied ? "Copied ✓" : "Copy all"}
+                </button>
+              </div>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
+                Searchly rewrote these bullets to align with what {card.company} screens for. Replace the originals on your resume.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                {job.bullets.map((b, i) => (
+                  <div key={i} style={{ padding: "12px 14px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 400, color: "#1A1A1A", lineHeight: 1.6, marginBottom: 8, textWrap: "pretty" }}>
+                      {b.tailored}
+                    </p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890", fontStyle: "italic" }}>
+                      Original: {b.original}
+                    </p>
                   </div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
-                    Searchly rewrote these bullets to align with what {card.company} screens for.
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-                    {(aiResult.bullets as { tailored: string; hint: string }[]).map((b, i) => (
-                      <div key={i} style={{ padding: "12px 14px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 400, color: "#1A1A1A", lineHeight: 1.6, marginBottom: 6, textWrap: "pretty" }}>
-                          {b.tailored}
-                        </p>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890", fontStyle: "italic" }}>
-                          {b.hint}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  {aiResult.summary && (
-                    <div style={{ padding: "14px", background: "rgba(196,168,106,0.08)", borderRadius: 7, borderLeft: "2px solid #C4A86A" }}>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#7A6020", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Suggested summary line</p>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.6, fontStyle: "italic", textWrap: "pretty" }}>
-                        {aiResult.summary as string}
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
+                ))}
+              </div>
+              <div style={{ padding: "14px", background: "rgba(196,168,106,0.08)", borderRadius: 7, borderLeft: "2px solid #C4A86A" }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#7A6020", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Suggested summary line</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.6, fontStyle: "italic", textWrap: "pretty" }}>
+                  Senior PM with 8 years scaling API-first SaaS products — {card.company}-scale infrastructure experience with measurable revenue impact.
+                </p>
+              </div>
             </div>
           )}
 
           {/* Tool view: Create cover letter */}
-          {tool === "cover" && (
+          {tool === "cover" && job && (
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
-              {aiLoading && <AiLoadingState label="Writing your cover letter..." />}
-              {aiError && <AiErrorState error={aiError} />}
-              {!aiLoading && aiResult && (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Cover letter</p>
-                    <button
-                      onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(aiResult.text as string); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}
-                      style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, cursor: "pointer" }}
-                    >
-                      {copied ? "Copied ✓" : "Copy"}
-                    </button>
-                  </div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
-                    Tailored to {card.company} — references their priorities and your background.
-                  </p>
-                  <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#1A1A1A", lineHeight: 1.75, whiteSpace: "pre-wrap", textWrap: "pretty" }}>
-                      {aiResult.text as string}
-                    </p>
-                  </div>
-                </>
-              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Cover letter</p>
+                <button
+                  onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(job.coverLetter); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}
+                  style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, cursor: "pointer" }}
+                >
+                  {copied ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
+                Tailored to {card.company} — references their priorities and your specific background.
+              </p>
+              <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#1A1A1A", lineHeight: 1.75, whiteSpace: "pre-wrap", textWrap: "pretty" }}>
+                  {job.coverLetter}
+                </p>
+              </div>
             </div>
           )}
 
           {/* Tool view: Tell me why I'm a good fit */}
-          {tool === "fit" && (
+          {tool === "fit" && job && (
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
-              {aiLoading && <AiLoadingState label="Analyzing your fit..." />}
-              {aiError && <AiErrorState error={aiError} />}
-              {!aiLoading && aiResult && (
-                <>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>Fit analysis</p>
-                  <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#1A1A1A", lineHeight: 1.8, whiteSpace: "pre-wrap", textWrap: "pretty" }}>
-                      {aiResult.text as string}
-                    </p>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>Fit analysis</p>
+
+              {/* Fit score breakdown */}
+              <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, marginBottom: 14, display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+                  <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: "rotate(-90deg)" }}>
+                    <circle cx="32" cy="32" r="28" stroke="rgba(0,0,0,0.08)" strokeWidth="6" fill="none" />
+                    <circle cx="32" cy="32" r="28" stroke={fitColor} strokeWidth="6" fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 28 * card.fit / 100} ${2 * Math.PI * 28}`} />
+                  </svg>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 16, fontWeight: 600, color: fitColor }}>{card.fit}%</span>
                   </div>
-                </>
-              )}
+                </div>
+                <div>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{card.fit >= 85 ? "Strong match" : card.fit >= 70 ? "Good fit" : "Fair match"}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{job.fitSummary}</p>
+                </div>
+              </div>
+
+              {/* Why you fit */}
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Why you fit</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {job.fitWorks.map((w, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "rgba(74,139,106,0.06)", borderRadius: 5 }}>
+                      <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Watch outs */}
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Watch outs</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {job.fitWatches.map((w, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "rgba(196,168,106,0.06)", borderRadius: 5 }}>
+                      <span style={{ color: "#C4A86A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>△</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gaps */}
+              <div>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#C4574A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Gaps to address</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {job.gaps.map((g, i) => (
+                    <div key={i} style={{ padding: "10px 12px", background: "#FFFFFF", borderRadius: 5, borderLeft: "2px solid #C4574A" }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A1A1A", marginBottom: 3 }}>{g.title}</p>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{g.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -2380,23 +2408,5 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
         </div>
       </div>
     </>
-  );
-}
-
-function AiLoadingState({ label }: { label: string }) {
-  return (
-    <div style={{ padding: "24px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-      <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid #1A3A2F", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
-      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>{label}</p>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
-
-function AiErrorState({ error }: { error: string }) {
-  return (
-    <div style={{ padding: "14px", background: "rgba(196,87,74,0.06)", borderRadius: 7, borderLeft: "2px solid #C4574A" }}>
-      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A" }}>{error}</p>
-    </div>
   );
 }

@@ -8,20 +8,19 @@ import { WorkspaceCoaching } from "./workspace-coaching";
 import { WorkspaceNetwork } from "./workspace-network";
 import { WorkspaceLive } from "./workspace-live";
 import { ChatWidget } from "./chat-widget";
-import { NOTIFICATIONS, INITIAL_KANBAN_CARDS, type Section } from "./workspace-data";
-import { useJobs } from "@/hooks/useJobs";
+import { NOTIFICATIONS, INITIAL_KANBAN_CARDS, type KanbanCard, type Section } from "./workspace-data";
 
 interface WorkspaceProps {
   onBackToOnboarding: () => void;
-  onSignOut?: () => void;
 }
 
-export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps) {
+export function ScoutWorkspace({ onBackToOnboarding }: WorkspaceProps) {
   const [activeSection, setActiveSection] = useState<Section>("opportunities");
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
 
-  const { cards: kanbanCards, setCards: setKanbanCards, updateStage } = useJobs(INITIAL_KANBAN_CARDS);
+  // Lifted state — shared between WorkspaceOpportunities and ChatWidget
+  const [kanbanCards, setKanbanCards] = useState<KanbanCard[]>(INITIAL_KANBAN_CARDS);
   const [drawerCardId, setDrawerCardId] = useState<number | null>(null);
   const [drawerTool, setDrawerTool] = useState<DrawerTool>(null);
 
@@ -47,7 +46,6 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps
         activeSection={activeSection}
         onNavigate={navigate}
         onBackToOnboarding={onBackToOnboarding}
-        onSignOut={onSignOut}
         notifOpen={notifOpen}
         notifUnreadCount={notifUnreadCount}
         onToggleNotif={() => setNotifOpen((p) => !p)}
@@ -62,7 +60,6 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps
           setDrawerTool={setDrawerTool}
           kanbanCards={kanbanCards}
           setKanbanCards={setKanbanCards}
-          onStageChange={updateStage}
         />
       )}
       {activeSection === "profile" && <WorkspaceProfile />}
@@ -70,6 +67,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps
       {activeSection === "network" && <WorkspaceNetwork />}
       {activeSection === "live" && <WorkspaceLive />}
 
+      {/* Floating chat widget — visible on every workspace section */}
       <ChatWidget
         kanbanCards={kanbanCards}
         currentJobId={drawerCardId}
