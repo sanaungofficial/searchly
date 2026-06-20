@@ -16,8 +16,36 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile   Profile?
-  jobs      Job[]
+  stripeCustomerId String? @unique
+
+  profile      Profile?
+  jobs         Job[]
+  subscription Subscription?
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String             @unique
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeSubscriptionId   String             @unique
+  stripePriceId          String
+  stripeCurrentPeriodEnd DateTime
+  status                 SubscriptionStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  TRIALING
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  PAUSED
 }
 
 model Profile {
