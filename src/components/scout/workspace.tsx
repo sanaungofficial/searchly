@@ -7,6 +7,7 @@ import { WorkspaceProfile } from "./workspace-profile";
 import { WorkspaceCoaching } from "./workspace-coaching";
 import { WorkspaceNetwork } from "./workspace-network";
 import { WorkspaceLive } from "./workspace-live";
+import { WorkspaceAdmin } from "./workspace-admin";
 import { ChatWidget } from "./chat-widget";
 import { NOTIFICATIONS, INITIAL_KANBAN_CARDS, type Section } from "./workspace-data";
 import { useJobs } from "@/hooks/useJobs";
@@ -14,6 +15,7 @@ import { useJobs } from "@/hooks/useJobs";
 interface WorkspaceProps {
   onBackToOnboarding: () => void;
   onSignOut?: () => void;
+  isAdmin?: boolean;
   user?: {
     name: string | null;
     email: string;
@@ -22,7 +24,7 @@ interface WorkspaceProps {
   };
 }
 
-export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user }: WorkspaceProps) {
+export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin }: WorkspaceProps) {
   const [activeSection, setActiveSection] = useState<Section>("opportunities");
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
@@ -59,6 +61,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user }: Workspac
         onToggleNotif={() => setNotifOpen((p) => !p)}
         onNavigateNotif={navigateNotif}
         user={user}
+        isAdmin={isAdmin}
       />
       {activeSection === "opportunities" && (
         <WorkspaceOpportunities
@@ -76,6 +79,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user }: Workspac
       {activeSection === "coaching" && <WorkspaceCoaching />}
       {activeSection === "network" && <WorkspaceNetwork />}
       {activeSection === "live" && <WorkspaceLive />}
+      {activeSection === "admin" && isAdmin && <WorkspaceAdmin />}
 
       <ChatWidget
         kanbanCards={kanbanCards}
