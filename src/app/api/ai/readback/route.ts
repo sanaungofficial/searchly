@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isPro } from "@/lib/stripe";
+import { checkAndIncrementUsage } from "@/lib/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -20,8 +22,17 @@ export async function GET() {
 
   const dbUser = await prisma.user.findUnique({
     where: { email: user.email! },
-    include: { profile: true },
+    include: { profile: true, subscription: true },
   });
+
+  const { allowed, used, limit } = await checkAndIncrementUsage(
+    dbUser?.id ?? user.id,
+    isPro(dbUser?.subscription ?? null)
+  );
+
+  if (!allowed) {
+    return NextResponse.json({ error: "Monthly AI limit reached", used, limit }, { status: 402 });
+  }
 
   const resumeText = dbUser?.profile?.resumeText;
   if (!resumeText) {

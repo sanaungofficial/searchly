@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
+import { getUsage, FREE_AI_LIMIT } from "@/lib/usage";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -28,9 +29,16 @@ export async function GET() {
 
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+  const proUser = isPro(dbUser.subscription);
+  const usage = proUser ? { used: 0, limit: Infinity } : await getUsage(dbUser.id);
+
   return NextResponse.json({
-    isPro: isPro(dbUser.subscription),
+    isPro: proUser,
     status: dbUser.subscription?.status ?? null,
     currentPeriodEnd: dbUser.subscription?.stripeCurrentPeriodEnd ?? null,
+    usage: {
+      used: usage.used,
+      limit: proUser ? null : FREE_AI_LIMIT,
+    },
   });
 }

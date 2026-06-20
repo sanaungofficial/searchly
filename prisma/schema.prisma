@@ -23,6 +23,19 @@ model User {
   jobs             Job[]
   subscription     Subscription?
   tailoredResumes  TailoredResume[]
+  monthlyUsage     MonthlyUsage[]
+}
+
+model MonthlyUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month     String   // "YYYY-MM" e.g. "2026-06"
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month])
 }
 
 model Subscription {

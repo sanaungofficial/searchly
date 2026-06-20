@@ -28,7 +28,7 @@ function initials(name: string | null, email: string) {
 
 export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
   const [tab, setTab] = useState<SettingsTab>("profile");
-  const { isPro, status, currentPeriodEnd, loading, startCheckout, openPortal } = useSubscription();
+  const { isPro, status, currentPeriodEnd, usage, loading, startCheckout, openPortal } = useSubscription();
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -396,6 +396,43 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
                     )}
                   </div>
                 </div>
+
+                {/* AI usage meter — free users only */}
+                {!isPro && usage && (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      background: "#FDFCFA",
+                      border: "1px solid #EEE9E2",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+                        AI requests this month
+                      </p>
+                      <span style={{ fontSize: 11, color: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#8A7F72" }}>
+                        {usage.used} / {usage.limit ?? 10}
+                      </span>
+                    </div>
+                    <div style={{ height: 6, background: "#EEE9E2", borderRadius: 4, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${Math.min(100, ((usage.used) / (usage.limit ?? 10)) * 100)}%`,
+                          background: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#4A8B6A",
+                          borderRadius: 4,
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                    </div>
+                    {usage.used >= (usage.limit ?? 10) && (
+                      <p style={{ fontSize: 11, color: "#C4574A", margin: "8px 0 0" }}>
+                        Limit reached — upgrade for unlimited AI access.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* What's included */}
                 {!isPro && (

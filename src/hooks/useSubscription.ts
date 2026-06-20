@@ -4,6 +4,7 @@ interface SubscriptionState {
   isPro: boolean;
   status: string | null;
   currentPeriodEnd: string | null;
+  usage: { used: number; limit: number | null } | null;
   loading: boolean;
 }
 
@@ -15,6 +16,7 @@ export function useSubscription(): SubscriptionState & {
     isPro: false,
     status: null,
     currentPeriodEnd: null,
+    usage: null,
     loading: true,
   });
 
@@ -26,6 +28,7 @@ export function useSubscription(): SubscriptionState & {
           isPro: data.isPro ?? false,
           status: data.status ?? null,
           currentPeriodEnd: data.currentPeriodEnd ?? null,
+          usage: data.usage ?? null,
           loading: false,
         });
       })

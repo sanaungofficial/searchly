@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isPro } from "@/lib/stripe";
+import { checkAndIncrementUsage } from "@/lib/usage";
 import Anthropic from "@anthropic-ai/sdk";
 
 let _anthropic: Anthropic | null = null;
@@ -17,6 +19,23 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
 
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { profile: true, subscription: true },
+  });
+
+  const { allowed, used, limit } = await checkAndIncrementUsage(
+    dbUser?.id ?? user.id,
+    isPro(dbUser?.subscription ?? null)
+  );
+
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: "Monthly AI limit reached", used, limit }),
+      { status: 402, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const body = await request.json();
   const { messages, pipeline, focusedJob } = body as {
     messages: { role: "user" | "assistant"; content: string }[];
@@ -24,11 +43,6 @@ export async function POST(request: Request) {
     focusedJob?: { company: string; role: string } | null;
   };
 
-  // Load user's profile + resume text for context
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
   const resumeText = dbUser?.profile?.resumeText || "";
 
   const pipelineContext = pipeline?.length
