@@ -33,6 +33,7 @@ const JOB_MOCKS = [
 export default function Home() {
   const [view, setView] = useState<View>("onboarding");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -44,6 +45,13 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json();
           headline = data?.headline ?? null;
+        }
+      } catch {}
+      try {
+        const res = await fetch("/api/admin/check");
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.isAdmin === true);
         }
       } catch {}
       setCurrentUser({
@@ -191,7 +199,7 @@ export default function Home() {
 
   /* ── Workspace view ── */
   if (view === "workspace") {
-    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} user={currentUser ?? undefined} />;
+    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} user={currentUser ?? undefined} isAdmin={isAdmin} />;
   }
 
   /* ── Onboarding view ── */
