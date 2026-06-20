@@ -834,7 +834,7 @@ const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "
 const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal", education: "Education", experience: "Experience", skills: "Skills" };
 
 export function WorkspaceProfile() {
-  const [page, setPage] = useState<PageTab>("dreamrole");
+  const [page, setPage] = useState<PageTab>("about");
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -925,8 +925,8 @@ export function WorkspaceProfile() {
   const skills = pd?.skills || [];
 
   const PAGE_TABS: { id: PageTab | AboutSection; label: string; isSection?: boolean }[] = [
-    { id: "dreamrole", label: "Dream Role" },
     ...ABOUT_SECTIONS.map((s) => ({ id: s as PageTab | AboutSection, label: ABOUT_LABEL[s], isSection: true })),
+    { id: "dreamrole", label: "Dream Role" },
     { id: "learning", label: "Learning Path" },
     { id: "assets", label: "Resume Assets" },
   ];
