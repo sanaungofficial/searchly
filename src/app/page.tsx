@@ -266,7 +266,7 @@ export default function Home() {
       >
         <ScoutHeader screen={screen} onScoutClick={enterWorkspace} />
 
-        <div style={{ width: "100%", maxWidth: 620, paddingTop: 88, flex: 1 }}>
+        <div style={{ width: "100%", maxWidth: 620, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: 40, paddingBottom: 60 }}>
           {screen === 0 && (
             <ScreenWelcome
               resumeFilename={resumeFilename}
@@ -289,7 +289,7 @@ export default function Home() {
               onLISubmit={submitLI}
             />
           )}
-          {screen === 2 && <ScreenReadBack onConfirm={() => goTo(3)} />}
+          {screen === 2 && <ScreenReadBack onConfirm={() => goTo(3)} onRefine={() => goTo(1)} />}
           {screen === 3 && (
             <ScreenTargetJobs
               jobInput={jobInput}
@@ -301,10 +301,34 @@ export default function Home() {
             />
           )}
           {screen === 4 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
+
+          {screen === 0 && (
+            <p
+              style={{
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 13,
+                fontWeight: 300,
+                color: "#A09890",
+                marginTop: 28,
+              }}
+            >
+              Already have an account?{" "}
+              <a
+                href="/login"
+                style={{
+                  color: "#1A3A2F",
+                  textDecoration: "underline",
+                  fontWeight: 400,
+                }}
+              >
+                Sign in
+              </a>
+            </p>
+          )}
         </div>
       </div>
 
-      <DemoNextButton onClick={demoAdvance} />
+      {process.env.NODE_ENV === "development" && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }
