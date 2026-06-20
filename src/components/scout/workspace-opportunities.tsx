@@ -228,28 +228,28 @@ export function WorkspaceOpportunities({
             );
           })}
         </div>
-        {tab === "pipeline" && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
-              style={{
-                padding: "7px 16px",
-                background: "#1A3A2F",
-                color: "#E8D5A3",
-                border: "none",
-                borderRadius: 5,
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
-                fontWeight: 500,
-                cursor: "pointer",
-                letterSpacing: "0.2px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <PlusIcon /> Add job
-            </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
+            style={{
+              padding: "7px 16px",
+              background: "#1A3A2F",
+              color: "#E8D5A3",
+              border: "none",
+              borderRadius: 5,
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: "pointer",
+              letterSpacing: "0.2px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            <PlusIcon /> Add job
+          </button>
+          {tab === "pipeline" && (
             <button
               onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
               style={{
@@ -270,8 +270,8 @@ export function WorkspaceOpportunities({
             >
               <UploadIcon /> Upload CSV
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* URL paste panel — renders in Pipeline tab (DiscoverTab has its own inline panel) */}
