@@ -31,16 +31,26 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<string>("");
   const [fitToPage, setFitToPage] = useState(false);
+  const [matchData, setMatchData] = useState<{ score: number; matched: string[]; missing: string[]; total: number } | null>(null);
+  const [matchLoading, setMatchLoading] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open && jobId) {
       setLoading(true);
+      setMatchData(null);
       fetch(`/api/resume/tailored/${jobId}`)
         .then((r) => r.json())
         .then((d) => { if (d.sections) setSections(d.sections); })
         .catch(() => {})
         .finally(() => setLoading(false));
+
+      setMatchLoading(true);
+      fetch(`/api/resume/tailored/${jobId}/match`)
+        .then((r) => r.json())
+        .then((d) => { if (typeof d.score === "number") setMatchData(d); })
+        .catch(() => {})
+        .finally(() => setMatchLoading(false));
     }
   }, [open, jobId]);
 
@@ -118,6 +128,12 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     setSections(previewSections);
     save(previewSections);
     setPreviewSections(null);
+    setMatchLoading(true);
+    fetch(`/api/resume/tailored/${jobId}/match`)
+      .then((r) => r.json())
+      .then((d) => { if (typeof d.score === "number") setMatchData(d); })
+      .catch(() => {})
+      .finally(() => setMatchLoading(false));
   }
 
   async function downloadDocx() {
@@ -257,6 +273,85 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               {jobTitle && <p style={{ fontSize: 12, color: "#6B6258", marginTop: 3 }}>{jobTitle}</p>}
             </div>
           )}
+          {/* Match score */}
+          <div style={{ marginBottom: 16 }}>
+            {matchLoading ? (
+              <div style={{ padding: "14px 16px", background: "#F5F3EF", borderRadius: 7, display: "flex", alignItems: "center", gap: 8 }}>
+                <Loader2 size={13} style={{ color: "#A09890", animation: "spin 1s linear infinite" }} />
+                <span style={{ fontSize: 11, color: "#7A6E64" }}>Analyzing keyword match…</span>
+              </div>
+            ) : matchData ? (
+              <div style={{ padding: "14px 16px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
+                {/* Score header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#52493F", textTransform: "uppercase", letterSpacing: 0.5 }}>Keyword Match</span>
+                  <span style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: matchData.score >= 70 ? "#2E7D52" : matchData.score >= 40 ? "#B8860B" : "#C0392B",
+                  }}>
+                    {matchData.score}%
+                  </span>
+                </div>
+                {/* Score bar */}
+                <div style={{ height: 5, background: "#F0EDE8", borderRadius: 3, marginBottom: 12, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${matchData.score}%`,
+                    background: matchData.score >= 70 ? "#2E7D52" : matchData.score >= 40 ? "#D4A017" : "#C0392B",
+                    borderRadius: 3,
+                    transition: "width 0.4s ease",
+                  }} />
+                </div>
+                {/* Missing keywords */}
+                {matchData.missing.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
+                      Missing ({matchData.missing.length})
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {matchData.missing.map((kw) => (
+                        <span key={kw} style={{
+                          fontSize: 10,
+                          padding: "2px 7px",
+                          background: "#FFF0EE",
+                          color: "#C0392B",
+                          border: "1px solid #FADADD",
+                          borderRadius: 10,
+                        }}>{kw}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Matched keywords */}
+                {matchData.matched.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
+                      Matched ({matchData.matched.length})
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {matchData.matched.map((kw) => (
+                        <span key={kw} style={{
+                          fontSize: 10,
+                          padding: "2px 7px",
+                          background: "#F0FAF4",
+                          color: "#2E7D52",
+                          border: "1px solid #C8E6D0",
+                          borderRadius: 10,
+                        }}>{kw}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {matchData.missing.length > 0 && (
+                  <p style={{ fontSize: 10, color: "#A09890", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+                    Tip: Regenerate to incorporate missing keywords.
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
+
           <div
             style={{
               padding: "14px 16px",
@@ -271,22 +366,6 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             <span style={{ color: "#C0392B", marginRight: 4 }}>⚠</span>
             Section order changes will be saved, other edits here apply only to this resume. For major updates like editing experiences, update your Base Resume to affect future resumes.
           </div>
-          <button
-            style={{
-              marginTop: 14,
-              width: "100%",
-              padding: "10px 0",
-              background: "#FFFFFF",
-              border: "1px solid #D8D0C5",
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 500,
-              color: "#1A1A1A",
-              cursor: "pointer",
-            }}
-          >
-            Edit Base Resume
-          </button>
         </div>
 
         {/* Middle — resume preview */}
