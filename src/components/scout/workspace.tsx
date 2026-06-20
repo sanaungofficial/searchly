@@ -38,7 +38,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
 
-  const { cards: kanbanCards, setCards: setKanbanCards, updateStage } = useJobs(INITIAL_KANBAN_CARDS);
+  const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage } = useJobs(INITIAL_KANBAN_CARDS);
   const [drawerCardId, setDrawerCardId] = useState<number | null>(null);
   const [drawerTool, setDrawerTool] = useState<DrawerTool>(null);
 
@@ -85,6 +85,8 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
           setDrawerTool={setDrawerTool}
           kanbanCards={kanbanCards}
           setKanbanCards={setKanbanCards}
+          addJob={addJob}
+          updateStage={updateStage}
         />
       )}
       {activeSection === "profile" && <WorkspaceProfile />}
