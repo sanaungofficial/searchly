@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   SKILLS_LIST,
   SKILLS_SUGGESTED,
@@ -579,14 +579,35 @@ function timeAgo(iso: string) {
   return `${days} day${days !== 1 ? "s" : ""} ago`;
 }
 
-function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, resumeUpdatedAt }: {
+interface ResumeRow {
+  id: string;
+  name: string;
+  url: string;
+  isPrimary: boolean;
+  analysisComplete: boolean;
+  updatedAt: string;
+  createdAt: string;
+  targetJobTitle?: string;
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
   resumeUrl: string | null;
   uploading: boolean;
   onUpload: (file: File) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  resumeUpdatedAt?: string | null;
 }) {
-  const [menuOpen, setMenuOpen] = React.useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const MAX_SLOTS = 5;
 
   const resumes: ResumeRow[] = resumeUrl
@@ -597,8 +618,8 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, resumeUpdatedAt }
           url: resumeUrl,
           isPrimary: true,
           analysisComplete: true,
-          updatedAt: resumeUpdatedAt ?? new Date().toISOString(),
-          createdAt: resumeUpdatedAt ?? new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
         },
       ]
     : [];
