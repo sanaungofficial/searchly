@@ -287,6 +287,7 @@ export default function Home() {
               onLIChange={onLIChange}
               onLIKey={onLIKey}
               onLISubmit={submitLI}
+              onSkip={() => goTo(3)}
             />
           )}
           {screen === 2 && <ScreenReadBack onConfirm={() => goTo(3)} onRefine={() => goTo(1)} />}
