@@ -12,6 +12,15 @@ type AdminUser = {
   createdAt: string;
   jobCount: number;
   subscriptionStatus: string | null;
+  aiUsedThisMonth: number;
+};
+
+type AiFeatureStat = {
+  feature: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  costMicros: number;
 };
 
 type AdminData = {
@@ -25,8 +34,25 @@ type AdminData = {
   usersWithFitAnalysis: number;
   subCounts: { active: number; trialing: number; pastDue: number; canceled: number };
   stageCounts: Record<string, number>;
+  currentMonth: string;
+  aiStats: {
+    totalAiRequests: number;
+    usersAtLimit: number;
+    totalCostMicros: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    byFeature: AiFeatureStat[];
+  };
   users: AdminUser[];
 };
+
+function microsToDollars(micros: number) {
+  return `$${(micros / 1_000_000).toFixed(4)}`;
+}
+
+function fmtNum(n: number) {
+  return n.toLocaleString();
+}
 
 const STAGE_LABELS: Record<string, string> = {
   SAVED: "Saved", APPLYING: "Applying", APPLIED: "Applied",
@@ -370,6 +396,39 @@ export function WorkspaceAdmin() {
         </table>
       </div>
 
+      <SectionLabel>AI Usage — {data.currentMonth}</SectionLabel>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 12 }}>
+        <StatCard label="Total Requests" value={data.aiStats.totalAiRequests} sub="all users this month" />
+        <StatCard label="Free at Limit" value={data.aiStats.usersAtLimit} sub="10 req/mo cap" />
+        <StatCard label="Est. Cost" value={microsToDollars(data.aiStats.totalCostMicros)} sub="based on token usage" />
+        <StatCard label="Total Tokens" value={fmtNum(data.aiStats.totalInputTokens + data.aiStats.totalOutputTokens)} sub={`${fmtNum(data.aiStats.totalInputTokens)} in / ${fmtNum(data.aiStats.totalOutputTokens)} out`} />
+      </div>
+      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #f0ece6" }}>
+              {["Feature", "Calls", "Input Tok", "Output Tok", "Est. Cost"].map((h, i) => (
+                <th key={h} style={{ padding: "10px 20px", textAlign: i === 0 ? "left" : "right", fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.aiStats.byFeature.length === 0 && (
+              <tr><td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "#a09890", fontSize: 12 }}>No AI usage logged yet this month</td></tr>
+            )}
+            {data.aiStats.byFeature.map((row) => (
+              <tr key={row.feature} style={{ borderBottom: "1px solid #faf8f5" }}>
+                <td style={{ padding: "9px 20px", color: "#3d3530", fontFamily: "var(--font-dm-mono)" }}>{row.feature}</td>
+                <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>{row.calls}</td>
+                <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>{fmtNum(row.inputTokens)}</td>
+                <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>{fmtNum(row.outputTokens)}</td>
+                <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#1a1a1a", fontWeight: 500 }}>{microsToDollars(row.costMicros)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <SectionLabel action={
         <button onClick={() => setInviteOpen(true)} style={{
           fontSize: 11, fontFamily: "var(--font-dm-sans)", padding: "5px 12px", borderRadius: 7,
@@ -399,14 +458,14 @@ export function WorkspaceAdmin() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #f0ece6" }}>
-              {["User", "Role", "Joined", "Subscription", "Jobs", ""].map((h, i) => (
+              {["User", "Role", "Joined", "Subscription", "Jobs", "AI / mo", ""].map((h, i) => (
                 <th key={i} style={{ padding: "10px 20px", textAlign: i >= 4 ? "right" : "left", fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "#a09890", fontSize: 12 }}>No users found</td></tr>
+              <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "#a09890", fontSize: 12 }}>No users found</td></tr>
             )}
             {filtered.map((u) => {
               const statusKey = u.subscriptionStatus ?? "free";
@@ -425,6 +484,12 @@ export function WorkspaceAdmin() {
                     </span>
                   </td>
                   <td style={{ padding: "10px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#3d3530" }}>{u.jobCount}</td>
+                  <td style={{ padding: "10px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)" }}>
+                    {u.subscriptionStatus === "ACTIVE" || u.subscriptionStatus === "TRIALING"
+                      ? <span style={{ color: "#a09890" }}>∞</span>
+                      : <span style={{ color: u.aiUsedThisMonth >= 10 ? "#b45309" : "#3d3530" }}>{u.aiUsedThisMonth}/10</span>
+                    }
+                  </td>
                   <td style={{ padding: "10px 20px", textAlign: "right" }}>
                     <button onClick={() => setEditUser(u)} style={{
                       fontSize: 11, padding: "3px 10px", borderRadius: 6,
