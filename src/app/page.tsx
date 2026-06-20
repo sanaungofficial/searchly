@@ -81,8 +81,8 @@ export default function Home() {
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
-  }, [router]);
+    window.location.href = "/login";
+  }, []);
 
   /* ── View toggle ── */
   const enterWorkspace = useCallback(() => {
