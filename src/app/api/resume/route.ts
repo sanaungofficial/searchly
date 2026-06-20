@@ -9,76 +9,136 @@ function getAnthropic() {
   return _anthropic;
 }
 
-async function extractResumeText(file: File): Promise<string> {
-  const bytes = await file.arrayBuffer();
-  const base64 = Buffer.from(bytes).toString("base64");
+const STRUCTURED_PROMPT = `Extract the following from this resume and return ONLY valid JSON, no markdown, no explanation:
 
+{
+  "name": "full name or null",
+  "phone": "phone number or null",
+  "location": "city, state or null",
+  "website": "personal website or null",
+  "education": [
+    {
+      "id": "edu_0",
+      "school": "school name",
+      "degree": "degree type (e.g. Bachelor of Science)",
+      "field": "field of study or null",
+      "from": "YYYY-MM or null",
+      "to": "YYYY-MM or null or 'Present'"
+    }
+  ],
+  "workExperience": [
+    {
+      "id": "exp_0",
+      "company": "company name",
+      "title": "job title",
+      "description": "one sentence description of the role or null",
+      "from": "YYYY-MM or null",
+      "to": "YYYY-MM or null or 'Present'",
+      "bullets": ["achievement or responsibility bullet point"]
+    }
+  ],
+  "skills": ["skill1", "skill2"]
+}
+
+Rules:
+- IDs must be unique strings like edu_0, edu_1, exp_0, exp_1 etc.
+- workExperience should be ordered newest first
+- Include all jobs and education entries
+- Extract every skill mentioned
+- Return ONLY the JSON object, nothing else`;
+
+async function extractFromPdf(base64: string): Promise<{ text: string; parsed: object | null }> {
+  try {
+    const [textMsg, structuredMsg] = await Promise.all([
+      getAnthropic().messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+            { type: "text", text: "Extract all text from this resume exactly as written. Output only the extracted text, nothing else." },
+          ],
+        }],
+      }),
+      getAnthropic().messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+            { type: "text", text: STRUCTURED_PROMPT },
+          ],
+        }],
+      }),
+    ]);
+
+    const text = textMsg.content[0]?.type === "text" ? textMsg.content[0].text : "";
+    let parsed: object | null = null;
+    if (structuredMsg.content[0]?.type === "text") {
+      try { parsed = JSON.parse(structuredMsg.content[0].text); } catch { parsed = null; }
+    }
+    return { text, parsed };
+  } catch {
+    return { text: "", parsed: null };
+  }
+}
+
+async function extractFromText(rawText: string): Promise<{ text: string; parsed: object | null }> {
+  try {
+    const msg = await getAnthropic().messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: `${STRUCTURED_PROMPT}\n\nResume text:\n${rawText.slice(0, 8000)}` }],
+    });
+    let parsed: object | null = null;
+    if (msg.content[0]?.type === "text") {
+      try { parsed = JSON.parse(msg.content[0].text); } catch { parsed = null; }
+    }
+    return { text: rawText, parsed };
+  } catch {
+    return { text: rawText, parsed: null };
+  }
+}
+
+async function extractResume(file: File): Promise<{ text: string; parsed: object | null }> {
+  const bytes = await file.arrayBuffer();
   const ext = file.name.split(".").pop()?.toLowerCase();
+
+  if (ext === "pdf") {
+    const base64 = Buffer.from(bytes).toString("base64");
+    return extractFromPdf(base64);
+  }
 
   if (ext === "docx") {
     try {
       const mammoth = await import("mammoth");
       const { value: rawText } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
-      if (!rawText.trim()) return "";
-      const msg = await getAnthropic().messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: `Summarize this resume in 400 words or less. Include: full name, most recent job title, years of experience, top skills, work history (company + title + key accomplishments), education. Plain text only.\n\n${rawText.slice(0, 8000)}` }],
-      });
-      const block = msg.content[0];
-      return block.type === "text" ? block.text : "";
+      if (!rawText.trim()) return { text: "", parsed: null };
+      return extractFromText(rawText);
     } catch {
-      return "";
+      return { text: "", parsed: null };
     }
   }
 
   if (ext === "txt") {
-    return Buffer.from(bytes).toString("utf-8").slice(0, 4000);
+    const rawText = Buffer.from(bytes).toString("utf-8");
+    return extractFromText(rawText);
   }
 
-  if (ext !== "pdf") return "";
-
-  try {
-    const msg = await getAnthropic().messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "document",
-              source: { type: "base64", media_type: "application/pdf", data: base64 },
-            },
-            {
-              type: "text",
-              text: "Extract all text from this resume exactly as written. Preserve the structure (sections, bullet points). Output only the extracted text, nothing else.",
-            },
-          ],
-        },
-      ],
-    });
-    const block = msg.content[0];
-    return block.type === "text" ? block.text : "";
-  } catch {
-    return "";
-  }
+  return { text: "", parsed: null };
 }
 
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
-
-  if (!file) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  }
+  if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
   const ext = file.name.split(".").pop();
   const path = `${user.id}/resume-${Date.now()}.${ext}`;
@@ -87,13 +147,11 @@ export async function POST(request: Request) {
     .from("resumes")
     .upload(path, file, { upsert: true });
 
-  if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
-  }
+  if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
 
   const { data: signedData, error: signedError } = await supabase.storage
     .from("resumes")
-    .createSignedUrl(path, 60 * 60 * 24 * 365); // 1-year signed URL
+    .createSignedUrl(path, 60 * 60 * 24 * 365);
 
   if (signedError || !signedData) {
     return NextResponse.json({ error: "Could not generate file URL" }, { status: 500 });
@@ -101,17 +159,33 @@ export async function POST(request: Request) {
 
   const publicUrl = signedData.signedUrl;
 
-  // Extract resume text (best-effort — don't fail the upload if this fails)
-  const resumeText = process.env.ANTHROPIC_API_KEY ? await extractResumeText(file) : "";
+  const { text: resumeText, parsed: parsedData } = process.env.ANTHROPIC_API_KEY
+    ? await extractResume(file)
+    : { text: "", parsed: null };
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (dbUser) {
+    // Also update the user's name if extracted and not already set
+    const extractedName = (parsedData as Record<string, unknown> | null)?.name as string | undefined;
+    if (extractedName && !dbUser.name) {
+      await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
+    }
+
     await prisma.profile.upsert({
       where: { userId: dbUser.id },
-      update: { resumeUrl: publicUrl, resumeText: resumeText || undefined },
-      create: { userId: dbUser.id, resumeUrl: publicUrl, resumeText: resumeText || undefined },
+      update: {
+        resumeUrl: publicUrl,
+        ...(resumeText ? { resumeText } : {}),
+        ...(parsedData ? { parsedData } : {}),
+      },
+      create: {
+        userId: dbUser.id,
+        resumeUrl: publicUrl,
+        resumeText: resumeText || undefined,
+        parsedData: parsedData ?? undefined,
+      },
     });
   }
 
-  return NextResponse.json({ url: publicUrl });
+  return NextResponse.json({ url: publicUrl, parsed: !!parsedData });
 }

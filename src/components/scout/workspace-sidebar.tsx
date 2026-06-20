@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   OpportunitiesIcon,
   ProfileIcon,
@@ -10,6 +11,7 @@ import {
   ArrowLeftIcon,
 } from "./workspace-icons";
 import { NOTIFICATIONS, type Section } from "./workspace-data";
+import { UserSettingsModal } from "./user-settings-modal";
 
 interface SidebarProps {
   activeSection: Section;
@@ -20,6 +22,12 @@ interface SidebarProps {
   notifUnreadCount: number;
   onToggleNotif: () => void;
   onNavigateNotif: (s: Section) => void;
+  user?: {
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+    headline?: string | null;
+  };
 }
 
 interface NavItem {
@@ -36,6 +44,16 @@ const NAV_ITEMS: NavItem[] = [
   { id: "network", label: "Network", Icon: NetworkIcon },
 ];
 
+function initials(name: string | null, email: string) {
+  if (name) {
+    const parts = name.trim().split(" ");
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
+
 export function WorkspaceSidebar({
   activeSection,
   onNavigate,
@@ -45,7 +63,9 @@ export function WorkspaceSidebar({
   notifUnreadCount,
   onToggleNotif,
   onNavigateNotif,
+  user,
 }: SidebarProps) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const hasLiveNow = true; // LIVE_SESSIONS has one isLive session
 
   return (
@@ -219,95 +239,74 @@ export function WorkspaceSidebar({
         </a>
       </div>
 
-      {/* User badge */}
-      <div
+      {/* User badge — click to open settings */}
+      <button
+        onClick={() => setSettingsOpen(true)}
         style={{
           padding: "14px 18px 20px",
           borderTop: "1px solid rgba(232,213,163,0.08)",
           display: "flex",
           alignItems: "center",
           gap: 10,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          width: "100%",
+          textAlign: "left",
+          transition: "background 0.15s",
         }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.05)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+        title="Account settings"
       >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            background: "rgba(232,213,163,0.12)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <span
+        {user?.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt={user.name ?? ""}
+            style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+          />
+        ) : (
+          <div
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 10,
-              fontWeight: 600,
-              color: "rgba(232,213,163,0.8)",
-            }}
-          >
-            SC
-          </span>
-        </div>
-        <div style={{ flex: 1 }}>
-          <p
-            style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 12,
-              fontWeight: 400,
-              color: "rgba(232,213,163,0.65)",
-              marginBottom: 1,
-            }}
-          >
-            Sarah Chen
-          </p>
-          <p
-            style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 10,
-              fontWeight: 300,
-              color: "rgba(232,213,163,0.28)",
-            }}
-          >
-            Senior PM · 8 yrs
-          </p>
-        </div>
-        {onSignOut && (
-          <button
-            onClick={onSignOut}
-            title="Sign out"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 6,
-              borderRadius: 6,
-              color: "rgba(232,213,163,0.3)",
+              width: 30,
+              height: 30,
+              borderRadius: "50%",
+              background: "rgba(232,213,163,0.12)",
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               flexShrink: 0,
-              transition: "color 0.15s, background 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "rgba(232,213,163,0.7)";
-              e.currentTarget.style.background = "rgba(232,213,163,0.08)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "rgba(232,213,163,0.3)";
-              e.currentTarget.style.background = "none";
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
+            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "rgba(232,213,163,0.8)" }}>
+              {user ? initials(user.name, user.email) : "?"}
+            </span>
+          </div>
         )}
-      </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 400, color: "rgba(232,213,163,0.65)", marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {user?.name ?? user?.email?.split("@")[0] ?? "Account"}
+          </p>
+          {user?.headline && (
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 300, color: "rgba(232,213,163,0.28)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {user.headline}
+            </p>
+          )}
+        </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(232,213,163,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      </button>
+
+      {/* Settings modal */}
+      {settingsOpen && user && (
+        <UserSettingsModal
+          user={user}
+          onClose={() => setSettingsOpen(false)}
+          onSignOut={() => { setSettingsOpen(false); onSignOut?.(); }}
+        />
+      )}
 
       {/* Notifications popover */}
       {notifOpen && (

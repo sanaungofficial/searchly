@@ -14,9 +14,15 @@ import { useJobs } from "@/hooks/useJobs";
 interface WorkspaceProps {
   onBackToOnboarding: () => void;
   onSignOut?: () => void;
+  user?: {
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+    headline?: string | null;
+  };
 }
 
-export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps) {
+export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user }: WorkspaceProps) {
   const [activeSection, setActiveSection] = useState<Section>("opportunities");
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
@@ -52,6 +58,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps
         notifUnreadCount={notifUnreadCount}
         onToggleNotif={() => setNotifOpen((p) => !p)}
         onNavigateNotif={navigateNotif}
+        user={user}
       />
       {activeSection === "opportunities" && (
         <WorkspaceOpportunities

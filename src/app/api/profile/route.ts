@@ -19,6 +19,7 @@ export async function GET() {
     linkedinUrl: dbUser?.profile?.linkedinUrl || null,
     headline: dbUser?.profile?.headline || null,
     targetRoles: dbUser?.profile?.targetRoles || [],
+    parsedData: dbUser?.profile?.parsedData || null,
   });
 }
 
@@ -28,7 +29,7 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles } = body;
+  const { name, headline, linkedinUrl, targetRoles, parsedData } = body;
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -37,11 +38,17 @@ export async function PATCH(request: Request) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name } });
   }
 
-  if (headline !== undefined || linkedinUrl !== undefined || targetRoles !== undefined) {
+  const profileUpdate: Record<string, unknown> = {};
+  if (headline !== undefined) profileUpdate.headline = headline;
+  if (linkedinUrl !== undefined) profileUpdate.linkedinUrl = linkedinUrl;
+  if (targetRoles !== undefined) profileUpdate.targetRoles = targetRoles;
+  if (parsedData !== undefined) profileUpdate.parsedData = parsedData;
+
+  if (Object.keys(profileUpdate).length > 0) {
     await prisma.profile.upsert({
       where: { userId: dbUser.id },
-      update: { headline, linkedinUrl, targetRoles },
-      create: { userId: dbUser.id, headline, linkedinUrl, targetRoles: targetRoles || [] },
+      update: profileUpdate,
+      create: { userId: dbUser.id, ...profileUpdate, targetRoles: (profileUpdate.targetRoles as string[]) || [] },
     });
   }
 

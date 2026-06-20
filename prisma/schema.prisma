@@ -19,9 +19,10 @@ model User {
 
   stripeCustomerId String? @unique
 
-  profile      Profile?
-  jobs         Job[]
-  subscription Subscription?
+  profile          Profile?
+  jobs             Job[]
+  subscription     Subscription?
+  tailoredResumes  TailoredResume[]
 }
 
 model Subscription {
@@ -56,6 +57,7 @@ model Profile {
 
   resumeUrl   String?
   resumeText  String?
+  parsedData  Json?
   linkedinUrl String?
   headline    String?
   summary     String?
@@ -84,6 +86,20 @@ model Job {
   appliedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  tailoredResume TailoredResume?
+}
+
+model TailoredResume {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  userId    String
+  sections  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum JobStage {

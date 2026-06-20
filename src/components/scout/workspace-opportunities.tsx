@@ -15,6 +15,7 @@ import {
   type SignalsData,
 } from "./workspace-data";
 import { PlusIcon, RefreshIcon, SparkleIcon, UploadIcon } from "./workspace-icons";
+import { ResumeEditor } from "./resume-editor";
 
 type OppTab = "discover" | "pipeline";
 
@@ -1741,6 +1742,10 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
   const [aiResult, setAiResult] = React.useState<Record<string, unknown> | null>(null);
   const [aiError, setAiError] = React.useState<string | null>(null);
 
+  // Tailored resume editor state
+  const [resumeEditorOpen, setResumeEditorOpen] = React.useState(false);
+  const dbId = (card as KanbanCard & { _dbId?: string })._dbId;
+
   const setTool = async (t: DrawerTool) => {
     onToolChange?.(t);
     if (!t) { setAiResult(null); setAiError(null); return; }
@@ -2019,6 +2024,34 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
               </span>
               <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "fit" ? "▲" : "›"}</span>
             </button>
+            {dbId && (
+              <button
+                onClick={() => setResumeEditorOpen(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  background: "#FFFFFF",
+                  color: "#1A1A1A",
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  borderRadius: 7,
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "all 0.15s",
+                }}
+              >
+                <span style={{ fontSize: 14, flexShrink: 0 }}>📄</span>
+                <span style={{ flex: 1 }}>
+                  Tailored resume
+                  <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>AI-tailored full resume for this role</span>
+                </span>
+                <span style={{ fontSize: 12, opacity: 0.5 }}>›</span>
+              </button>
+            )}
           </div>
 
           {/* Tool views or standard drawer content */}
@@ -2379,6 +2412,16 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
           ) : null}
         </div>
       </div>
+
+      {dbId && (
+        <ResumeEditor
+          open={resumeEditorOpen}
+          onOpenChange={setResumeEditorOpen}
+          jobId={dbId}
+          jobTitle={card.role}
+          company={card.company}
+        />
+      )}
     </>
   );
 }
