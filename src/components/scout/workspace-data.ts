@@ -325,7 +325,7 @@ export interface KanbanCard {
   initials: string;
   role: string;
   stage: KanbanStage;
-  fit: number | null;
+  fit: number;
   jobRef: number | null;
   days: number;
 }
@@ -989,6 +989,10 @@ export interface UpskillItem {
   credential: string;
   scoutPick: boolean;
   why: string;
+  /** Skill from ROLE_ARCHETYPES that this course helps close.
+   *  If the user is missing this skill for any of their dream roles, the
+   *  Learning tab will show "Closes your gap: <skill>" on the card. */
+  closesGap?: string;
 }
 
 export interface UpskillCategory {
@@ -1012,6 +1016,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: true,
         why: "AI product literacy is now expected in PM interviews at Stripe, Figma, and Notion.",
+        closesGap: "Executive Communication",
       },
       {
         id: 1,
@@ -1023,6 +1028,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Badge",
         scoutPick: true,
         why: "Builds the direct-reports narrative that is currently thin on your resume.",
+        closesGap: "Team Management",
       },
     ],
   },
@@ -1040,6 +1046,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certification",
         scoutPick: false,
         why: "Stripe and Vercel value PMs who can reason about infrastructure tradeoffs and costs.",
+        closesGap: "Process Design",
       },
       {
         id: 3,
@@ -1051,6 +1058,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: true,
         why: "Recognized across all your target companies — strong baseline credentialing.",
+        closesGap: "OKR Frameworks",
       },
     ],
   },
@@ -1068,6 +1076,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Recommendations",
         scoutPick: true,
         why: "Searchly identified 4 specific improvements that could double your inbound recruiter reach.",
+        closesGap: "Executive Communication",
       },
       {
         id: 5,
@@ -1079,6 +1088,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Project",
         scoutPick: true,
         why: "Figma and Linear both value candidates with visible, written product thinking.",
+        closesGap: "Mentorship",
       },
     ],
   },

@@ -1,128 +1,41 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import type { KanbanCard, KanbanStage } from "./workspace-data";
-
-const STAGE_LABELS: Record<KanbanStage, string> = {
-  saved: "Saved",
-  applied: "Applied",
-  interview: "Interviewing",
-  offer: "Offer",
-  closed: "Closed",
-};
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import { useState } from "react";
+import type { KanbanCard } from "./workspace-data";
+import type { DrawerTool } from "./workspace-opportunities";
 
 interface ChatWidgetProps {
+  /** All jobs in the pipeline (for the job picker when no drawer is open) */
   kanbanCards: KanbanCard[];
+  /** The job currently open in the drawer, if any */
   currentJobId: number | null;
-  onOpenTool: (jobId: number, tool: "resume" | "cover" | "fit") => void;
+  /** Called when a tool button is clicked. Opens the drawer with the selected job + tool. */
+  onOpenTool: (jobId: number, tool: DrawerTool) => void;
 }
 
-const SUGGESTED_PROMPTS = [
-  "How's my pipeline looking?",
-  "What should I focus on this week?",
-  "How do I follow up after an interview?",
-  "Help me prep for a screening call",
-];
-
-export function ChatWidget({ kanbanCards, currentJobId }: ChatWidgetProps) {
+export function ChatWidget({ kanbanCards, currentJobId, onOpenTool }: ChatWidgetProps) {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
 
-  const currentJob = currentJobId !== null ? kanbanCards.find((c) => c.id === currentJobId) : null;
+  const effectiveJobId = currentJobId !== null ? currentJobId : selectedJobId;
+  const currentJob = effectiveJobId !== null ? kanbanCards.find((c) => c.id === effectiveJobId) : null;
+  const needsJobPicker = currentJobId === null && kanbanCards.length > 0;
+  const hasJobs = kanbanCards.length > 0;
 
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  const pipeline = kanbanCards.map((c) => ({
-    company: c.company,
-    role: c.role,
-    stage: STAGE_LABELS[c.stage],
-  }));
-
-  const focusedJob = currentJob
-    ? { company: currentJob.company, role: currentJob.role }
-    : null;
-
-  const send = async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || loading) return;
-
-    const newMessages: Message[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(newMessages);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, pipeline, focusedJob }),
-      });
-
-      if (!res.ok || !res.body) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Something went wrong. Try again." },
-        ]);
-        return;
-      }
-
-      // Stream the response
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantText = "";
-
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        assistantText += decoder.decode(value, { stream: true });
-        setMessages((prev) => [
-          ...prev.slice(0, -1),
-          { role: "assistant", content: assistantText },
-        ]);
-      }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Network error. Try again." },
-      ]);
-    } finally {
-      setLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send(input);
+  const handleToolClick = (tool: DrawerTool) => {
+    if (effectiveJobId !== null) {
+      onOpenTool(effectiveJobId, tool);
+      setOpen(false);
+      setSelectedJobId(null);
     }
   };
 
   return (
     <>
-      {/* Floating button */}
+      {/* Floating sparkle button — bottom-right of every workspace page */}
       <button
         onClick={() => setOpen((p) => !p)}
-        aria-label="AI Coach"
+        aria-label="AI Tools"
         style={{
           position: "fixed",
           bottom: 24,
@@ -143,210 +56,329 @@ export function ChatWidget({ kanbanCards, currentJobId }: ChatWidgetProps) {
         onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
         onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
       >
-        {open ? (
-          <span style={{ fontSize: 18, color: "#E8D5A3", lineHeight: 1 }}>✕</span>
-        ) : (
-          <span style={{ fontSize: 22, color: "#1A3A2F", lineHeight: 1 }}>✦</span>
-        )}
+        <span style={{ fontSize: 22, color: open ? "#E8D5A3" : "#1A3A2F", lineHeight: 1 }}>✦</span>
       </button>
 
-      {/* Chat panel */}
+      {/* Popup panel */}
       {open && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 88,
-            right: 24,
-            width: 360,
-            height: 520,
-            background: "#FFFFFF",
-            borderRadius: 14,
-            boxShadow: "0 12px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
-            border: "1px solid rgba(0,0,0,0.06)",
-            zIndex: 100,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            animation: "fadeIn 0.2s ease both",
-          }}
-        >
-          {/* Header */}
+        <>
+          {/* Click-away catcher */}
+          <div
+            onClick={() => {
+              setOpen(false);
+              setSelectedJobId(null);
+            }}
+            style={{ position: "fixed", inset: 0, zIndex: 95 }}
+          />
           <div
             style={{
-              padding: "14px 18px",
-              background: "#1A3A2F",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexShrink: 0,
+              position: "fixed",
+              bottom: 88,
+              right: 24,
+              width: 320,
+              background: "#FFFFFF",
+              borderRadius: 12,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0,0,0,0.06)",
+              zIndex: 100,
+              overflow: "hidden",
+              animation: "fadeIn 0.2s ease both",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14, color: "#E8D5A3" }}>✦</span>
-              <div>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#E8D5A3", lineHeight: 1 }}>
-                  Scout
-                </p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "rgba(232,213,163,0.6)", marginTop: 2 }}>
-                  Your AI job search coach
-                </p>
-              </div>
-            </div>
-            {currentJob && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.08)", borderRadius: 5 }}>
-                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "rgba(232,213,163,0.7)" }}>
-                  {currentJob.company}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Messages */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "16px 16px 8px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-            }}
-          >
-            {messages.length === 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", lineHeight: 1.5, textAlign: "center", padding: "8px 0 4px" }}>
-                  Ask me anything about your job search.
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {SUGGESTED_PROMPTS.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => send(p)}
-                      style={{
-                        padding: "8px 12px",
-                        background: "#F8F6F2",
-                        border: "1px solid rgba(0,0,0,0.08)",
-                        borderRadius: 8,
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 12,
-                        color: "#1A3A2F",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.06)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "#F8F6F2")}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                }}
-              >
-                <div
-                  style={{
-                    maxWidth: "82%",
-                    padding: "9px 12px",
-                    borderRadius: msg.role === "user" ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
-                    background: msg.role === "user" ? "#1A3A2F" : "#F2EDE3",
-                    color: msg.role === "user" ? "#E8D5A3" : "#1A1A1A",
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 12,
-                    lineHeight: 1.65,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {msg.content || (loading && i === messages.length - 1 ? (
-                    <span style={{ opacity: 0.5 }}>●●●</span>
-                  ) : "")}
-                </div>
-              </div>
-            ))}
-
-            {loading && messages[messages.length - 1]?.role !== "assistant" && (
-              <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <div style={{ padding: "9px 14px", borderRadius: "10px 10px 10px 2px", background: "#F2EDE3" }}>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890", letterSpacing: 2 }}>●●●</span>
-                </div>
-              </div>
-            )}
-
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Input */}
-          <div
-            style={{
-              padding: "10px 12px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
-              background: "#FAFAF8",
-              flexShrink: 0,
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-end",
-            }}
-          >
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your search…"
-              rows={1}
+            {/* Header */}
+            <div
               style={{
-                flex: 1,
-                resize: "none",
-                border: "1px solid rgba(0,0,0,0.12)",
-                borderRadius: 8,
-                padding: "8px 10px",
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 12,
-                color: "#1A1A1A",
-                background: "#FFFFFF",
-                outline: "none",
-                lineHeight: 1.5,
-                maxHeight: 80,
-                overflowY: "auto",
-              }}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = Math.min(el.scrollHeight, 80) + "px";
-              }}
-            />
-            <button
-              onClick={() => send(input)}
-              disabled={!input.trim() || loading}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                background: input.trim() && !loading ? "#1A3A2F" : "rgba(0,0,0,0.08)",
-                border: "none",
-                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
+                padding: "14px 18px 12px",
+                background: "#1A3A2F",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                transition: "background 0.15s",
+                justifyContent: "space-between",
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M22 2L11 13" stroke={input.trim() && !loading ? "#E8D5A3" : "#A09890"} strokeWidth="2" strokeLinecap="round"/>
-                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke={input.trim() && !loading ? "#E8D5A3" : "#A09890"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14, color: "#E8D5A3" }}>✦</span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#E8D5A3",
+                  }}
+                >
+                  AI Tools
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setSelectedJobId(null);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  color: "rgba(232,213,163,0.6)",
+                  padding: 0,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "14px 16px 16px" }}>
+              {/* Job context */}
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: "#A09890",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  marginBottom: 6,
+                }}
+              >
+                For this job
+              </p>
+              {currentJob ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "8px 10px",
+                    background: "rgba(26,58,47,0.04)",
+                    borderRadius: 6,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 5,
+                      background: "#1A3A2F",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 9,
+                        fontWeight: 600,
+                        color: "#E8D5A3",
+                      }}
+                    >
+                      {currentJob.initials}
+                    </span>
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#1A1A1A",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {currentJob.role}
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 9,
+                        color: "#7A7268",
+                      }}
+                    >
+                      {currentJob.company}
+                    </p>
+                  </div>
+                </div>
+              ) : needsJobPicker ? (
+                <select
+                  value={selectedJobId ?? ""}
+                  onChange={(e) => setSelectedJobId(e.target.value ? Number(e.target.value) : null)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 10px",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    borderRadius: 6,
+                    background: "#FFFFFF",
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 11,
+                    color: "#1A1A1A",
+                    marginBottom: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="">Pick a job…</option>
+                  {kanbanCards.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.role} · {c.company}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 11,
+                    fontWeight: 300,
+                    color: "#A09890",
+                    marginBottom: 12,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Add a job first to use AI tools.
+                </p>
+              )}
+
+              {/* 3 tool buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <button
+                  onClick={() => handleToolClick("resume")}
+                  disabled={!currentJob}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "11px 12px",
+                    background: currentJob ? "#FFFFFF" : "rgba(0,0,0,0.03)",
+                    color: currentJob ? "#1A1A1A" : "#A09890",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    borderRadius: 7,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: currentJob ? "pointer" : "not-allowed",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={(e) => currentJob && (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
+                  onMouseLeave={(e) => currentJob && (e.currentTarget.style.background = "#FFFFFF")}
+                >
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>✦</span>
+                  <span style={{ flex: 1 }}>
+                    Update resume
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: 10,
+                        fontWeight: 300,
+                        color: "#7A7268",
+                        marginTop: 1,
+                      }}
+                    >
+                      Maximize your interview chances
+                    </span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleToolClick("cover")}
+                  disabled={!currentJob}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "11px 12px",
+                    background: currentJob ? "#FFFFFF" : "rgba(0,0,0,0.03)",
+                    color: currentJob ? "#1A1A1A" : "#A09890",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    borderRadius: 7,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: currentJob ? "pointer" : "not-allowed",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={(e) => currentJob && (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
+                  onMouseLeave={(e) => currentJob && (e.currentTarget.style.background = "#FFFFFF")}
+                >
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>✉</span>
+                  <span style={{ flex: 1 }}>
+                    Create cover letter
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: 10,
+                        fontWeight: 300,
+                        color: "#7A7268",
+                        marginTop: 1,
+                      }}
+                    >
+                      Make your application stand out
+                    </span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleToolClick("fit")}
+                  disabled={!currentJob}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "11px 12px",
+                    background: currentJob ? "#FFFFFF" : "rgba(0,0,0,0.03)",
+                    color: currentJob ? "#1A1A1A" : "#A09890",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    borderRadius: 7,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: currentJob ? "pointer" : "not-allowed",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={(e) => currentJob && (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
+                  onMouseLeave={(e) => currentJob && (e.currentTarget.style.background = "#FFFFFF")}
+                >
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>👍</span>
+                  <span style={{ flex: 1 }}>
+                    Tell me why I&apos;m a good fit
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: 10,
+                        fontWeight: 300,
+                        color: "#7A7268",
+                        marginTop: 1,
+                      }}
+                    >
+                      Understand your strengths &amp; gaps
+                    </span>
+                  </span>
+                </button>
+              </div>
+
+              {/* Footer hint */}
+              {hasJobs && (
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 9,
+                    fontWeight: 300,
+                    color: "#A09890",
+                    marginTop: 12,
+                    textAlign: "center",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Opens the job drawer with the tool ready to go.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </>
   );
