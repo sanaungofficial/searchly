@@ -425,6 +425,7 @@ export function ScreenLinkedIn({
    ────────────────────────────────────────────────────────────── */
 interface ReadBackProps {
   onConfirm: () => void;
+  onRefine: () => void;
 }
 
 interface ReadBackData {
@@ -440,7 +441,7 @@ function fitColor(fit: string): string {
   return "#8A7A6A";
 }
 
-export function ScreenReadBack({ onConfirm }: ReadBackProps) {
+export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
   const [data, setData] = React.useState<ReadBackData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -699,6 +700,7 @@ export function ScreenReadBack({ onConfirm }: ReadBackProps) {
             Yes, carry on →
           </button>
           <button
+            onClick={onRefine}
             style={{
               padding: "14px 24px",
               background: "transparent",
