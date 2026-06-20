@@ -17,7 +17,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
 
   const { jobId } = await params;
 
-  const existing = await prisma.tailoredResume.findUnique({ where: { jobId } });
+  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const existing = await prisma.tailoredResume.findFirst({ where: { jobId, userId: dbUser.id } });
   if (existing) return NextResponse.json({ sections: existing.sections });
 
   const [job, profile] = await Promise.all([
@@ -66,9 +69,6 @@ Return ONLY the JSON array, no other text.`,
   } catch {
     sections = [{ id: "1", title: "Resume", type: "text", content: resumeText }];
   }
-
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   await prisma.tailoredResume.create({
     data: { jobId, userId: dbUser.id, sections: sections as Prisma.InputJsonValue },
