@@ -89,6 +89,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
         user={user}
         isAdmin={isAdmin}
         userRole={userRole}
+        isMobile={isMobile}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
