@@ -1,6 +1,48 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+
+let _anthropic: Anthropic | null = null;
+function getAnthropic() {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _anthropic;
+}
+
+async function extractResumeText(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const base64 = Buffer.from(bytes).toString("base64");
+
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  // Only send PDFs to Claude for extraction; for .doc/.docx we fall back to empty
+  if (ext !== "pdf") return "";
+
+  try {
+    const msg = await getAnthropic().messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4096,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: { type: "base64", media_type: "application/pdf", data: base64 },
+            },
+            {
+              type: "text",
+              text: "Extract all text from this resume exactly as written. Preserve the structure (sections, bullet points). Output only the extracted text, nothing else.",
+            },
+          ],
+        },
+      ],
+    });
+    const block = msg.content[0];
+    return block.type === "text" ? block.text : "";
+  } catch {
+    return "";
+  }
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -38,13 +80,15 @@ export async function POST(request: Request) {
 
   const publicUrl = signedData.signedUrl;
 
-  // Look up DB user by email, then upsert profile
+  // Extract resume text (best-effort — don't fail the upload if this fails)
+  const resumeText = process.env.ANTHROPIC_API_KEY ? await extractResumeText(file) : "";
+
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (dbUser) {
     await prisma.profile.upsert({
       where: { userId: dbUser.id },
-      update: { resumeUrl: publicUrl },
-      create: { userId: dbUser.id, resumeUrl: publicUrl },
+      update: { resumeUrl: publicUrl, resumeText: resumeText || undefined },
+      create: { userId: dbUser.id, resumeUrl: publicUrl, resumeText: resumeText || undefined },
     });
   }
 

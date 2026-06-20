@@ -55,6 +55,7 @@ model Profile {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   resumeUrl   String?
+  resumeText  String?
   linkedinUrl String?
   headline    String?
   summary     String?

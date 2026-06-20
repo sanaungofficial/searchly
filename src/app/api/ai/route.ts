@@ -50,9 +50,13 @@ export async function POST(request: Request) {
   }
 
   const userName = dbUser.name || "the candidate";
-  const profileContext = dbUser.profile
-    ? `LinkedIn: ${dbUser.profile.linkedinUrl || "not provided"}. Headline: ${dbUser.profile.headline || "not provided"}. Target roles: ${(dbUser.profile.targetRoles || []).join(", ") || "not specified"}.`
-    : "";
+  const resumeText = dbUser.profile?.resumeText || "";
+  const profileContext = [
+    resumeText ? `RESUME:\n${resumeText}` : "",
+    dbUser.profile?.linkedinUrl ? `LinkedIn: ${dbUser.profile.linkedinUrl}` : "",
+    dbUser.profile?.headline ? `Headline: ${dbUser.profile.headline}` : "",
+    dbUser.profile?.targetRoles?.length ? `Target roles: ${dbUser.profile.targetRoles.join(", ")}` : "",
+  ].filter(Boolean).join("\n\n");
 
   let prompt = "";
 
@@ -60,9 +64,9 @@ export async function POST(request: Request) {
     prompt = `You are a professional resume writer helping ${userName} tailor their resume for a job at ${company} as ${role}.
 
 ${profileContext}
-${jobNotes ? `Job notes/description: ${jobNotes}` : ""}
+${jobNotes ? `\nJob notes/description: ${jobNotes}` : ""}
 
-Generate 4 strong, tailored resume bullet points for this role. Each bullet should:
+${resumeText ? "Using the candidate's actual resume above, generate" : "Generate"} 4 strong, tailored resume bullet points for this role. Each bullet should:
 - Start with a strong action verb
 - Include specific metrics or impact where possible
 - Be relevant to what ${company} likely looks for in a ${role}
@@ -86,7 +90,7 @@ Respond in this exact JSON format:
 ${profileContext}
 ${jobNotes ? `Job notes/description: ${jobNotes}` : ""}
 
-Write a compelling, concise cover letter (3 short paragraphs). It should:
+${resumeText ? "Drawing from the candidate's actual resume above, write" : "Write"} a compelling, concise cover letter (3 short paragraphs). It should:
 - Open with a specific, non-generic hook about ${company}
 - Connect the candidate's background to the role
 - Close with a clear call to action
@@ -100,7 +104,7 @@ Respond with just the cover letter text, no subject line or "Dear Hiring Manager
 ${profileContext}
 ${jobNotes ? `Job notes/description: ${jobNotes}` : ""}
 
-Analyze and explain:
+${resumeText ? "Based on the candidate's actual resume above, analyze" : "Analyze"} and explain:
 1. Why this person is a strong candidate for this role (2-3 specific strengths)
 2. Any potential gaps or things to address in the application
 3. One tactical tip for standing out

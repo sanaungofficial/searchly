@@ -24,6 +24,13 @@ export async function POST(request: Request) {
     focusedJob?: { company: string; role: string } | null;
   };
 
+  // Load user's profile + resume text for context
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { profile: true },
+  });
+  const resumeText = dbUser?.profile?.resumeText || "";
+
   const pipelineContext = pipeline?.length
     ? `\nUser's current job pipeline:\n${pipeline.map((j) => `- ${j.role} at ${j.company} (${j.stage})`).join("\n")}`
     : "\nUser has no jobs in their pipeline yet.";
@@ -32,13 +39,17 @@ export async function POST(request: Request) {
     ? `\nThe user is currently looking at: ${focusedJob.role} at ${focusedJob.company}.`
     : "";
 
+  const resumeContext = resumeText
+    ? `\n\nUser's resume:\n${resumeText.slice(0, 6000)}` // cap at 6k chars to stay within context budget
+    : "";
+
   const systemPrompt = `You are Scout, an AI job search coach built into Searchly — a job search workspace for senior professionals targeting roles in Product Management, Corporate Strategy, and Operations.
 
 Your job is to help the user land their next role. You're direct, practical, and honest — not a cheerleader. You give specific, actionable advice. You know how hiring actually works at senior levels.
 
-You know about the user's job search:${pipelineContext}${focusContext}
+You know about the user's job search:${pipelineContext}${focusContext}${resumeContext}
 
-When discussing specific jobs, reference what you know about them. When asked about strategy, tailor it to where they are in their search. Keep responses concise — 2-4 short paragraphs max unless they ask for something longer. No corporate fluff.`;
+When discussing specific jobs, reference what you know about them. When the user asks about their background, qualifications, or experience, use their resume to give specific answers. Keep responses concise — 2-4 short paragraphs max unless they ask for something longer. No corporate fluff.`;
 
   const stream = await getAnthropic().messages.stream({
     model: "claude-sonnet-4-6",
