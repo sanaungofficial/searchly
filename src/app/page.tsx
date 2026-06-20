@@ -28,6 +28,12 @@ export default function Home() {
   const supabase = createClient();
   const router = useRouter();
   const [view, setView] = useState<View>("loading");
+  const [currentUser, setCurrentUser] = useState<{
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+    headline: string | null;
+  } | null>(null);
 
   useEffect(() => {
     // Check if user is authenticated; if not, show landing page
@@ -36,10 +42,21 @@ export default function Home() {
         setView("landing");
         return;
       }
+      // Store user info for the sidebar
+      setCurrentUser({
+        name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+        email: user.email ?? "",
+        avatarUrl: user.user_metadata?.avatar_url ?? null,
+        headline: null,
+      });
       // Authenticated — check if they've already onboarded
       fetch("/api/profile")
         .then((r) => r.json())
         .then((data) => {
+          // Enrich with profile headline if available
+          if (data.headline) {
+            setCurrentUser((u) => u ? { ...u, headline: data.headline } : u);
+          }
           if (data.resumeUrl) {
             setView("workspace");
           } else {
@@ -166,7 +183,7 @@ export default function Home() {
 
   /* ── Workspace view ── */
   if (view === "workspace") {
-    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} onSignOut={signOut} />;
+    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} onSignOut={signOut} user={currentUser ?? undefined} />;
   }
 
   /* ── Loading state ── */
