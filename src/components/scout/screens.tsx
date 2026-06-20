@@ -734,6 +734,7 @@ interface TargetJobsProps {
   onJobKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onAddJob: () => void;
   onFinish: () => void;
+  onSkip: () => void;
 }
 
 export function ScreenTargetJobs({
@@ -743,6 +744,7 @@ export function ScreenTargetJobs({
   onJobKey,
   onAddJob,
   onFinish,
+  onSkip,
 }: TargetJobsProps) {
   const canAdd = jobs.length < 3;
   const allReady = jobs.length > 0 && jobs.every((j) => j.state === "ready");
@@ -970,6 +972,28 @@ export function ScreenTargetJobs({
             Enter your workspace →
           </button>
         </div>
+      )}
+
+      {/* Skip link — always visible */}
+      {!allReady && (
+        <button
+          onClick={onSkip}
+          style={{
+            background: "none",
+            border: "none",
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
+            cursor: "pointer",
+            padding: 0,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Skip for now — I'll add jobs from the workspace
+        </button>
       )}
     </div>
   );
