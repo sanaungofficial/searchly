@@ -39,13 +39,13 @@ export async function POST() {
     });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://searchly-roan.vercel.app";
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
-    success_url: `${baseUrl}/dashboard?upgraded=true`,
+    success_url: `${baseUrl}/?upgraded=true`,
     cancel_url: `${baseUrl}/pricing`,
     metadata: { userId: dbUser.id },
   });
