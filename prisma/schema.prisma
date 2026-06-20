@@ -24,9 +24,7 @@ model User {
   jobs             Job[]
   subscription     Subscription?
   tailoredResumes  TailoredResume[]
-  monthlyUsage     MonthlyUsage[]
-  resumes          Resume[]
-  aiUsageLogs      AiUsageLog[]
+  coachProfile     CoachProfile?
 }
 
 enum UserRole {
@@ -34,36 +32,6 @@ enum UserRole {
   COACH
   RECRUITER
   ADMIN
-}
-
-model Resume {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  label       String?
-  url         String
-  resumeText  String?
-  parsedData  Json?
-  isPrimary   Boolean  @default(false)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model AiUsageLog {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  feature        String
-  model          String
-  inputTokens    Int
-  outputTokens   Int
-  costUsdMicros  Int
-  createdAt      DateTime @default(now())
-
-  @@index([userId])
-  @@index([createdAt])
 }
 
 model Subscription {
@@ -143,6 +111,43 @@ model TailoredResume {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model CoachProfile {
+  id             String      @id @default(cuid())
+  userId         String?     @unique
+  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  airtableId     String?     @unique
+
+  displayName    String
+  email          String?     @unique
+  headline       String?
+  bio            String?
+  currentRole    String?
+  currentCompany String?
+  location       String?
+  linkedinUrl    String?
+  lelandUrl      String?
+  photoUrl       String?
+
+  firms          String[]
+  schools        String[]
+  specialties    String[]
+  industries     String[]
+
+  hourlyRate     Int?
+  category       String?
+  featured       Boolean     @default(false)
+  status         CoachStatus @default(ACTIVE)
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+enum CoachStatus {
+  ACTIVE
+  PENDING
+  INACTIVE
+}
+
 enum JobStage {
   SAVED
   APPLYING
@@ -152,16 +157,4 @@ enum JobStage {
   OFFER
   REJECTED
   WITHDRAWN
-}
-
-model MonthlyUsage {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  month     String
-  count     Int      @default(0)
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, month])
-  @@index([userId])
 }
