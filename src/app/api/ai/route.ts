@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { logAiUsage } from "@/lib/ai-usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -121,11 +122,15 @@ Keep it honest, direct, and actionable. No fluff. Format as:
 [one concrete tip]`;
   }
 
+  const MODEL = "claude-haiku-4-5-20251001";
   const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: MODEL,
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
   });
+
+  const aiFeature = tool === "cover" ? "COVER_LETTER" : tool === "fit" ? "FIT_ANALYSIS" : "RESUME_BULLETS";
+  logAiUsage(dbUser.id, aiFeature as import("@prisma/client").AiFeature, MODEL, message.usage.input_tokens, message.usage.output_tokens);
 
   const content = message.content[0];
   if (content.type !== "text") {

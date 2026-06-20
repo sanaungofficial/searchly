@@ -1,8 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { isPro } from "@/lib/stripe";
-import { checkAndIncrementUsage } from "@/lib/usage";
-import { logAiUsage } from "@/lib/ai-cost";
+import { logAiUsage } from "@/lib/ai-usage";
 import Anthropic from "@anthropic-ai/sdk";
 
 let _anthropic: Anthropic | null = null;
@@ -20,24 +18,6 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true, subscription: true },
-  });
-
-  const { allowed, used, limit } = await checkAndIncrementUsage(
-    dbUser?.id ?? user.id,
-    isPro(dbUser?.subscription ?? null),
-    user.email ?? undefined
-  );
-
-  if (!allowed) {
-    return new Response(
-      JSON.stringify({ error: "Monthly AI limit reached", used, limit }),
-      { status: 402, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
   const body = await request.json();
   const { messages, pipeline, focusedJob } = body as {
     messages: { role: "user" | "assistant"; content: string }[];
@@ -45,6 +25,11 @@ export async function POST(request: Request) {
     focusedJob?: { company: string; role: string } | null;
   };
 
+  // Load user's profile + resume text for context
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { profile: true },
+  });
   const resumeText = dbUser?.profile?.resumeText || "";
 
   const pipelineContext = pipeline?.length
@@ -75,7 +60,13 @@ When discussing specific jobs, reference what you know about them. When the user
     messages,
   });
 
-  const userId = dbUser?.id ?? user.id;
+  const userId = dbUser?.id;
+  if (userId) {
+    stream.on("finalMessage", (msg) => {
+      logAiUsage(userId, "CHAT", CHAT_MODEL, msg.usage.input_tokens, msg.usage.output_tokens);
+    });
+  }
+
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
@@ -87,18 +78,6 @@ When discussing specific jobs, reference what you know about them. When the user
           controller.enqueue(encoder.encode(chunk.delta.text));
         }
       }
-      // Log BEFORE closing — finalMessage() is already settled at this point,
-      // and awaiting here keeps the function alive long enough to write to DB.
-      try {
-        const msg = await stream.finalMessage();
-        await logAiUsage({
-          userId,
-          feature: "chat",
-          model: CHAT_MODEL,
-          inputTokens: msg.usage.input_tokens,
-          outputTokens: msg.usage.output_tokens,
-        });
-      } catch {}
       controller.close();
     },
   });

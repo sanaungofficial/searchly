@@ -25,6 +25,7 @@ model User {
   subscription     Subscription?
   tailoredResumes  TailoredResume[]
   coachProfile     CoachProfile?
+  aiUsageLogs      AiUsageLog[]
 }
 
 enum UserRole {
@@ -157,4 +158,29 @@ enum JobStage {
   OFFER
   REJECTED
   WITHDRAWN
+}
+
+enum AiFeature {
+  COVER_LETTER
+  FIT_ANALYSIS
+  RESUME_BULLETS
+  RESUME_PARSE
+  JOB_PARSE
+  CHAT
+  RESUME_TAILOR
+}
+
+model AiUsageLog {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   AiFeature
+  model     String
+  tokensIn  Int        @default(0)
+  tokensOut Int        @default(0)
+  costUsd   Float      @default(0)
+  createdAt DateTime   @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }

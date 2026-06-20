@@ -1,8 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { isPro } from "@/lib/stripe";
-import { checkAndIncrementUsage } from "@/lib/usage";
-import { logAiUsage } from "@/lib/ai-cost";
+import { logAiUsage } from "@/lib/ai-usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -20,21 +18,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { subscription: true },
-  });
-
-  const { allowed, used, limit } = await checkAndIncrementUsage(
-    dbUser?.id ?? user.id,
-    isPro(dbUser?.subscription ?? null),
-    user.email ?? undefined
-  );
-
-  if (!allowed) {
-    return NextResponse.json({ error: "Monthly AI limit reached", used, limit }, { status: 402 });
-  }
+  const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true } });
 
   const { url } = await request.json();
   if (!url) return NextResponse.json({ error: "URL required" }, { status: 400 });
@@ -105,13 +89,7 @@ If you cannot determine a field, use null. Requirements should be the 4-5 most i
     ],
   });
 
-  logAiUsage({
-    userId: dbUser?.id ?? user.id,
-    feature: "parse-job",
-    model: PARSE_MODEL,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
-  }).catch(() => {});
+  if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", PARSE_MODEL, message.usage.input_tokens, message.usage.output_tokens);
 
   const text = message.content[0].type === "text" ? message.content[0].text : "";
 
