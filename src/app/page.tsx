@@ -60,14 +60,22 @@ export default function Home() {
   }, []);
 
   const processFile = useCallback(
-    (file: File | undefined | null) => {
+    async (file: File | undefined | null) => {
       if (!file) return;
       setResumeFilename(file.name);
       setResumeUploaded(false);
-      window.setTimeout(() => {
-        setResumeUploaded(true);
-        window.setTimeout(() => goTo(1), 700);
-      }, 1300);
+
+      const form = new FormData();
+      form.append("file", file);
+
+      try {
+        await fetch("/api/resume", { method: "POST", body: form });
+      } catch {
+        // upload failed silently — user can still continue
+      }
+
+      setResumeUploaded(true);
+      window.setTimeout(() => goTo(1), 700);
     },
     [goTo],
   );
