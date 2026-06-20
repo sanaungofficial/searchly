@@ -52,7 +52,6 @@ interface UserProfile {
   parsedData: ParsedData | null;
 }
 
-type ProfileTab = "dreamrole" | "personal" | "education" | "experience" | "skills" | "learning" | "assets";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -828,18 +827,15 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, resumeUpdatedAt }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const TABS: { id: ProfileTab; label: string }[] = [
-  { id: "dreamrole", label: "Dream Role" },
-  { id: "personal", label: "Personal" },
-  { id: "education", label: "Education" },
-  { id: "experience", label: "Experience" },
-  { id: "skills", label: "Skills" },
-  { id: "learning", label: "Learning Path" },
-  { id: "assets", label: "Resume Assets" },
-];
+type PageTab = "dreamrole" | "about" | "learning" | "assets";
+type AboutSection = "personal" | "education" | "experience" | "skills";
+
+const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "skills"];
+const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal", education: "Education", experience: "Experience", skills: "Skills" };
 
 export function WorkspaceProfile() {
-  const [tab, setTab] = useState<ProfileTab>("dreamrole");
+  const [page, setPage] = useState<PageTab>("dreamrole");
+  const [activeSection, setActiveSection] = useState<AboutSection>("personal");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>(["VP of Product", "Head of Product Operations"]);
@@ -848,6 +844,8 @@ export function WorkspaceProfile() {
   const [upskillProgress, setUpskillProgress] = useState<Record<number, "none" | "inprogress" | "completed">>({});
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
   useEffect(() => {
     fetch("/api/profile")
@@ -907,14 +905,37 @@ export function WorkspaceProfile() {
     finally { setResumeUploading(false); }
   };
 
+  const goToSection = (section: AboutSection) => {
+    setPage("about");
+    setActiveSection(section);
+    // Wait for render if switching from another page, then scroll
+    setTimeout(() => {
+      const el = sectionRefs.current[section];
+      const container = scrollRef.current;
+      if (el && container) {
+        const top = el.offsetTop - 16;
+        container.scrollTo({ top, behavior: "smooth" });
+      }
+    }, 50);
+  };
+
   const pd = profile?.parsedData;
   const education = pd?.education || [];
   const workExperience = pd?.workExperience || [];
   const skills = pd?.skills || [];
 
+  const PAGE_TABS: { id: PageTab | AboutSection; label: string; isSection?: boolean }[] = [
+    { id: "dreamrole", label: "Dream Role" },
+    ...ABOUT_SECTIONS.map((s) => ({ id: s as PageTab | AboutSection, label: ABOUT_LABEL[s], isSection: true })),
+    { id: "learning", label: "Learning Path" },
+    { id: "assets", label: "Resume Assets" },
+  ];
+
+  const isAboutActive = page === "about";
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F2EDE3", animation: "fadeIn 0.3s ease both" }}>
-      <div style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
+      <div ref={scrollRef} style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8 }}>
@@ -928,10 +949,22 @@ export function WorkspaceProfile() {
 
         {/* Tab bar */}
         <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto" }}>
-          {TABS.map(({ id, label }) => {
-            const active = tab === id;
+          {PAGE_TABS.map(({ id, label, isSection }) => {
+            const active = isSection
+              ? isAboutActive && activeSection === id
+              : page === id;
             return (
-              <button key={id} onClick={() => setTab(id)} style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: active ? "#1A3A2F" : "transparent", color: active ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}>
+              <button
+                key={id}
+                onClick={() => {
+                  if (isSection) {
+                    goToSection(id as AboutSection);
+                  } else {
+                    setPage(id as PageTab);
+                  }
+                }}
+                style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: active ? "#1A3A2F" : "transparent", color: active ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
+              >
                 {label}
               </button>
             );
@@ -939,34 +972,36 @@ export function WorkspaceProfile() {
         </div>
 
         {/* Tab content */}
-        {tab === "dreamrole" && (
+        {page === "dreamrole" && (
           <DreamRoleTab dreamList={dreamList} setDreamList={setDreamList} dreamSelectedId={dreamSelectedId} setDreamSelectedId={setDreamSelectedId} adding={adding} setAdding={setAdding} />
         )}
-        {tab === "personal" && profile && (
-          <div style={{ maxWidth: 560, paddingBottom: 40 }}>
-            <PersonalTab profile={profile} onSave={handlePersonalSave} />
+
+        {page === "about" && profile && (
+          <div style={{ maxWidth: 600 }}>
+            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ paddingBottom: 48 }}>
+              <PersonalTab profile={profile} onSave={handlePersonalSave} />
+            </div>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
+              ref={(el) => { sectionRefs.current.education = el; }}>
+              <EducationTab entries={education} onSave={handleEducationSave} />
+            </div>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
+              ref={(el) => { sectionRefs.current.experience = el; }}>
+              <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
+            </div>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }}
+              ref={(el) => { sectionRefs.current.skills = el; }}>
+              <SkillsTab skills={skills} onSave={handleSkillsSave} />
+            </div>
           </div>
         )}
-        {tab === "education" && (
-          <div style={{ maxWidth: 560, paddingBottom: 40 }}>
-            <EducationTab entries={education} onSave={handleEducationSave} />
-          </div>
-        )}
-        {tab === "experience" && (
-          <div style={{ maxWidth: 600, paddingBottom: 40 }}>
-            <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
-          </div>
-        )}
-        {tab === "skills" && (
-          <div style={{ maxWidth: 560, paddingBottom: 40 }}>
-            <SkillsTab skills={skills} onSave={handleSkillsSave} />
-          </div>
-        )}
-        {tab === "learning" && (
+
+        {page === "learning" && (
           <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />
         )}
-        {tab === "assets" && profile && (
-          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} resumeUpdatedAt={(profile as unknown as { updatedAt?: string }).updatedAt} />
+
+        {page === "assets" && profile && (
+          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} />
         )}
       </div>
     </div>
