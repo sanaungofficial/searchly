@@ -39,7 +39,7 @@ export async function POST() {
     });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://searchly-roan.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.secondladder.com";
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,

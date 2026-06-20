@@ -48,7 +48,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
                       <table cellpadding="0" cellspacing="0">
                         <tr>
                           <td style="background:#1C3A2F;border-radius:10px;">
-                            <a href="https://searchly-roan.vercel.app" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:600;color:#F2EDE3;text-decoration:none;">
+                            <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.secondladder.com"}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:600;color:#F2EDE3;text-decoration:none;">
                               Open your workspace →
                             </a>
                           </td>

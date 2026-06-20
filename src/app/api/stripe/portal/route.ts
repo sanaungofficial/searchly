@@ -26,7 +26,7 @@ export async function POST() {
     return NextResponse.json({ error: "No billing account found" }, { status: 400 });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://searchly-roan.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.secondladder.com";
 
   const session = await stripe.billingPortal.sessions.create({
     customer: dbUser.stripeCustomerId,
