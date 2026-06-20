@@ -56,7 +56,7 @@ export function useJobs(fallback: KanbanCard[]) {
     fetch("/api/jobs")
       .then((r) => r.json())
       .then((jobs: DbJob[]) => {
-        if (Array.isArray(jobs) && jobs.length > 0) {
+        if (Array.isArray(jobs)) {
           setCards(jobs.map(dbJobToKanban));
         }
         setLoaded(true);
