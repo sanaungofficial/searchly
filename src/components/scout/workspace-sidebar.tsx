@@ -166,6 +166,44 @@ export function WorkspaceSidebar({
 
       {/* Nav items */}
       <div style={{ padding: "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Admin item — top of nav, admins only */}
+        {isAdmin && (
+          <button
+            onClick={() => onNavigate("admin")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 7,
+              cursor: "pointer",
+              background: activeSection === "admin" ? "rgba(232,213,163,0.12)" : "transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: 11,
+              border: "none",
+              transition: "background 0.15s",
+              textAlign: "left",
+            }}
+          >
+            <svg
+              width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke={activeSection === "admin" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
+              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            <span style={{
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 13,
+              fontWeight: 400,
+              color: activeSection === "admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
+            }}>
+              Admin
+            </span>
+          </button>
+        )}
+
         {NAV_ITEMS.map(({ id, label, Icon }) => {
           const active = activeSection === id;
           const bg = active ? "rgba(232,213,163,0.12)" : "transparent";
@@ -222,49 +260,6 @@ export function WorkspaceSidebar({
       </div>
 
       <div style={{ flex: 1 }} />
-
-      {/* Admin nav item — only visible to admins */}
-      {isAdmin && (
-        <div style={{ padding: "0 10px 8px" }}>
-          <button
-            onClick={() => onNavigate("admin")}
-            style={{
-              width: "100%",
-              padding: "9px 14px",
-              borderRadius: 7,
-              cursor: "pointer",
-              background: activeSection === "admin" ? "rgba(232,213,163,0.12)" : "transparent",
-              display: "flex",
-              alignItems: "center",
-              gap: 11,
-              border: "none",
-              transition: "background 0.15s",
-              textAlign: "left",
-            }}
-            onMouseEnter={(e) => { if (activeSection !== "admin") (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,213,163,0.07)"; }}
-            onMouseLeave={(e) => { if (activeSection !== "admin") (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-          >
-            <svg
-              width="15" height="15" viewBox="0 0 24 24" fill="none"
-              stroke={activeSection === "admin" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
-              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-            <span style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 13,
-              fontWeight: 400,
-              color: activeSection === "admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
-            }}>
-              Admin
-            </span>
-          </button>
-        </div>
-      )}
 
       {/* Upgrade CTA */}
       <div style={{ padding: "0 14px 12px" }}>
