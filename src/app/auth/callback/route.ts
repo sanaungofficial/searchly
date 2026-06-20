@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { sendWelcomeEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -34,11 +35,16 @@ export async function GET(request: Request) {
       user.user_metadata?.picture ??
       null;
 
+    const existing = await prisma.user.findUnique({ where: { email: user.email } });
     await prisma.user.upsert({
       where: { email: user.email },
       update: { name, avatarUrl },
       create: { email: user.email, name, avatarUrl },
     });
+    // Send welcome email only on first sign-in
+    if (!existing && process.env.RESEND_API_KEY) {
+      sendWelcomeEmail(user.email, name).catch(() => {});
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`);

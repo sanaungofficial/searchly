@@ -201,6 +201,24 @@ export function WorkspaceSidebar({
 
       <div style={{ flex: 1 }} />
 
+      {/* Upgrade CTA */}
+      <div style={{ padding: "0 14px 12px" }}>
+        <a
+          href="/pricing"
+          style={{
+            display: "block",
+            background: "rgba(232,213,163,0.08)",
+            border: "1px solid rgba(232,213,163,0.15)",
+            borderRadius: 10,
+            padding: "10px 14px",
+            textDecoration: "none",
+          }}
+        >
+          <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.3px" }}>Upgrade to Pro</p>
+          <p style={{ margin: 0, fontSize: 10, color: "rgba(232,213,163,0.4)", lineHeight: 1.5 }}>Unlimited AI tools &amp; chat</p>
+        </a>
+      </div>
+
       {/* User badge */}
       <div
         style={{

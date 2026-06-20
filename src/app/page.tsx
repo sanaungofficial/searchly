@@ -14,8 +14,9 @@ import {
   type Job,
 } from "@/components/scout/screens";
 import { ScoutWorkspace } from "@/components/scout/workspace";
+import { LandingPage } from "@/components/landing-page";
 
-type View = "onboarding" | "workspace" | "loading";
+type View = "onboarding" | "workspace" | "loading" | "landing";
 
 const JOB_MOCKS = [
   { company: "Stripe", role: "Senior PM" },
@@ -28,19 +29,26 @@ export default function Home() {
   const router = useRouter();
   const [view, setView] = useState<View>("loading");
 
-  // Skip onboarding if user has already uploaded a resume
   useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.resumeUrl) {
-          setView("workspace");
-        } else {
-          setView("onboarding");
-        }
-      })
-      .catch(() => setView("onboarding"));
-  }, []);
+    // Check if user is authenticated; if not, show landing page
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        setView("landing");
+        return;
+      }
+      // Authenticated — check if they've already onboarded
+      fetch("/api/profile")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.resumeUrl) {
+            setView("workspace");
+          } else {
+            setView("onboarding");
+          }
+        })
+        .catch(() => setView("onboarding"));
+    });
+  }, [supabase]);
 
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
@@ -116,6 +124,12 @@ export default function Home() {
   const submitLI = () => {
     if (!liInput.trim()) return;
     setLISubmitting(true);
+    // Save LinkedIn URL to profile (fire and forget)
+    fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linkedinUrl: liInput.trim() }),
+    }).catch(() => {});
     window.setTimeout(() => goTo(2), 2100);
   };
   const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => setLiInput(e.target.value);
@@ -158,6 +172,11 @@ export default function Home() {
   /* ── Loading state ── */
   if (view === "loading") {
     return <div style={{ background: "#F2EDE3", minHeight: "100vh" }} />;
+  }
+
+  /* ── Landing page (logged out) ── */
+  if (view === "landing") {
+    return <LandingPage />;
   }
 
   /* ── Onboarding view ── */

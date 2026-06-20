@@ -33,18 +33,20 @@ export async function middleware(request: NextRequest) {
 
   // Allow public routes through always
   if (
+    pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
+    pathname.startsWith("/pricing") ||
     pathname.startsWith("/auth") ||
-    pathname === "/api/stripe/webhooks"
+    pathname.startsWith("/api/") // API routes handle their own auth and must return JSON, not HTML redirects
   ) {
     return supabaseResponse;
   }
 
-  // Redirect unauthenticated users to login
+  // Redirect unauthenticated users to landing page
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
