@@ -51,6 +51,13 @@ interface UserProfile {
   parsedData: ParsedData | null;
 }
 
+interface ReadbackData {
+  picture: string;
+  strengths: string[];
+  targetRoles: { role: string; fit: string }[];
+  honestNote: string;
+}
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,6 +75,32 @@ function formatDateRange(from?: string | null, to?: string | null) {
 
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
+function profileCompleteness(p: UserProfile): number {
+  let score = 0;
+  if (p.name) score++;
+  if (p.email) score++;
+  if (p.parsedData?.phone) score++;
+  if (p.parsedData?.location) score++;
+  if (p.linkedinUrl) score++;
+  if (p.resumeUrl) score += 2;
+  if ((p.parsedData?.education || []).length > 0) score++;
+  if ((p.parsedData?.workExperience || []).length > 0) score++;
+  if ((p.parsedData?.skills || []).length > 0) score++;
+  return Math.round((score / 10) * 100);
 }
 
 // ─── Shared small components ──────────────────────────────────────────────────
@@ -384,13 +417,14 @@ function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: stri
 
 // ─── Tab: Dream Role (original) ───────────────────────────────────────────────
 
-function DreamRoleTab({ dreamList, setDreamList, dreamSelectedId, setDreamSelectedId, adding, setAdding }: {
+function DreamRoleTab({ dreamList, setDreamList, dreamSelectedId, setDreamSelectedId, adding, setAdding, onSave }: {
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   dreamSelectedId: number | null;
   setDreamSelectedId: (n: number | null) => void;
   adding: boolean;
   setAdding: (b: boolean) => void;
+  onSave: (list: string[]) => void;
 }) {
   const skillsSet = new Set(SKILLS_LIST);
   const topMap: Record<number, string[]> = { 1: ["50%"], 2: ["28%", "72%"], 3: ["13%", "50%", "87%"] };
@@ -398,11 +432,18 @@ function DreamRoleTab({ dreamList, setDreamList, dreamSelectedId, setDreamSelect
 
   const addRole = (title: string) => {
     if (dreamList.includes(title) || dreamList.length >= 3) { setAdding(false); return; }
-    setDreamList([...dreamList, title]);
+    const next = [...dreamList, title];
+    setDreamList(next);
+    onSave(next);
     setAdding(false);
     setDreamSelectedId(null);
   };
-  const removeRole = (idx: number) => { setDreamList(dreamList.filter((_, i) => i !== idx)); setDreamSelectedId(null); };
+  const removeRole = (idx: number) => {
+    const next = dreamList.filter((_, i) => i !== idx);
+    setDreamList(next);
+    onSave(next);
+    setDreamSelectedId(null);
+  };
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -555,14 +596,6 @@ function LearningTab({ progress, setProgress }: {
   );
 }
 
-function timeAgo(iso: string): string {
-  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (secs < 60) return "just now";
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
-  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
-  return `${Math.floor(secs / 86400)}d ago`;
-}
-
 // ─── Tab: Resume Assets ───────────────────────────────────────────────────────
 
 interface ResumeRow {
@@ -576,45 +609,6 @@ interface ResumeRow {
   targetJobTitle?: string;
 }
 
-const RESUME_REPORT = {
-  grade: "B",
-  gradeLabel: "GOOD",
-  score: 74,
-  urgent: 2,
-  critical: 3,
-  optional: 5,
-  categories: [
-    {
-      name: "Relevance",
-      status: "critical" as const,
-      issues: [
-        { severity: "urgent" as const, title: "Summary doesn't match target roles", fix: "Rewrite your summary to explicitly name Product Management, Strategy, or Operations — recruiters skim the top 3 lines first." },
-        { severity: "critical" as const, title: "Missing keywords from JD", fix: "Add terms like 'cross-functional alignment', 'north-star metrics', and 'GTM partnership' — these appear in 80%+ of PM/Strategy JDs." },
-      ],
-    },
-    {
-      name: "Impact & Achievements",
-      status: "urgent" as const,
-      issues: [
-        { severity: "urgent" as const, title: "Bullets lack quantified outcomes", fix: "Convert 'Led team to improve onboarding' → 'Led onboarding redesign that reduced time-to-value by 34% for 2,400 SMB accounts.'" },
-        { severity: "critical" as const, title: "Action verbs are weak", fix: "Replace 'Helped', 'Assisted', 'Supported' with 'Owned', 'Drove', 'Launched', 'Negotiated'. You're underselling ownership." },
-        { severity: "critical" as const, title: "No scope signals", fix: "Add team size, budget, or ARR context to at least 3 bullets. Hiring committees need scale to assess level." },
-      ],
-    },
-    {
-      name: "Brevity & Effectiveness",
-      status: "optional" as const,
-      issues: [
-        { severity: "optional" as const, title: "Most recent role is over-indexed", fix: "You have 7 bullets for your current role and 2 for the one before. Even out to 4–5 per role — recency bias is already built in." },
-        { severity: "optional" as const, title: "Education section placement", fix: "For 8+ years experience, move Education below Experience. ATS and recruiter eye-tracking both favor this." },
-        { severity: "optional" as const, title: "Skills section is generic", fix: "Remove 'Microsoft Office', 'PowerPoint'. Add specific tools: 'Figma (design reviews)', 'Looker (self-serve analytics)', 'Notion (roadmap ops)'." },
-        { severity: "optional" as const, title: "Contact info formatting", fix: "Add LinkedIn URL and city/state. Remove full street address — it's outdated and a privacy risk." },
-        { severity: "optional" as const, title: "File name is not recruiter-friendly", fix: "Rename to 'FirstName-LastName-Resume-2026.pdf' before uploading to portals." },
-      ],
-    },
-  ],
-};
-
 function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
   resumeUrl: string | null;
   uploading: boolean;
@@ -622,7 +616,6 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [reportOpen, setReportOpen] = useState<string | null>(null);
   const MAX_SLOTS = 5;
 
   const resumes: ResumeRow[] = resumeUrl
@@ -642,14 +635,12 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
   function extractResumeName(url: string) {
     try {
       const decoded = decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "");
+      // strip the timestamp prefix e.g. "resume-1234567890.pdf" → just show the original feel
       return decoded.replace(/^resume-\d+\./, "resume.") || "Resume";
     } catch {
       return "Resume";
     }
   }
-
-  const gradeColor = RESUME_REPORT.grade === "A" ? "#2D6B4A" : RESUME_REPORT.grade === "B" ? "#C4A86A" : "#C4574A";
-  const gradeBg = RESUME_REPORT.grade === "A" ? "rgba(45,107,74,0.08)" : RESUME_REPORT.grade === "B" ? "rgba(196,168,106,0.1)" : "rgba(196,87,74,0.08)";
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -667,146 +658,178 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button style={{ padding: "8px 16px", background: "#F0FFF8", color: "#1A7A4A", border: "1px solid #A8DFC0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+          <button
+            style={{
+              padding: "8px 16px",
+              background: "#F0FFF8",
+              color: "#1A7A4A",
+              border: "1px solid #A8DFC0",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
             ⚡ Upgrade to Turbo: Get Hired Faster ›
           </button>
           <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
-          <button onClick={() => inputRef.current?.click()} disabled={uploading}
-            style={{ padding: "8px 16px", background: "#FFFFFF", color: "#1A1A1A", border: "1px solid #D8D0C5", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: uploading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 5, opacity: uploading ? 0.6 : 1 }}>
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            style={{
+              padding: "8px 16px",
+              background: "#FFFFFF",
+              color: "#1A1A1A",
+              border: "1px solid #D8D0C5",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: uploading ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
             {uploading ? "Uploading…" : "+ Add Resume"}
           </button>
         </div>
       </div>
 
-      {/* Resume rows */}
-      {resumes.length === 0 ? (
-        <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", padding: "48px 20px", textAlign: "center" }}>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
-          <button onClick={() => inputRef.current?.click()} disabled={uploading}
-            style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            + Add Resume
-          </button>
+      {/* Table */}
+      <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
+        {/* Table header */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
+          padding: "10px 20px",
+          borderBottom: "1px solid #E5DDD0",
+          background: "#FAFAF8",
+        }}>
+          {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
+            <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890" }}>{col}</span>
+          ))}
         </div>
-      ) : (
-        resumes.map((r) => (
-          <div key={r.id} style={{ marginBottom: 16 }}>
-            {/* Card */}
-            <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
-              <div style={{ padding: "18px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
-                {/* Grade circle */}
-                {r.analysisComplete && (
-                  <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: "50%", background: gradeBg, border: `2px solid ${gradeColor}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 22, fontWeight: 700, color: gradeColor, lineHeight: 1 }}>{RESUME_REPORT.grade}</span>
-                    </div>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: gradeColor, letterSpacing: "0.5px" }}>{RESUME_REPORT.gradeLabel}</span>
-                  </div>
-                )}
 
-                {/* Name + fix counts */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
-                    {r.isPrimary && (
-                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 10, fontWeight: 600, color: "#A08030" }}>★ PRIMARY</span>
-                    )}
-                  </div>
-                  {r.analysisComplete && (
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(196,87,74,0.1)", color: "#C4574A", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#C4574A", flexShrink: 0 }} />
-                        {RESUME_REPORT.urgent} URGENT
-                      </span>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(196,168,106,0.12)", color: "#8B6B0A", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#C4A86A", flexShrink: 0 }} />
-                        {RESUME_REPORT.critical} CRITICAL
-                      </span>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(160,152,144,0.1)", color: "#7A7268", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#A09890", flexShrink: 0 }} />
-                        {RESUME_REPORT.optional} OPTIONAL
-                      </span>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890" }}>Modified {timeAgo(r.updatedAt)}</span>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890" }}>Added {timeAgo(r.createdAt)}</span>
-                    {r.targetJobTitle && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>Target: {r.targetJobTitle}</span>}
-                  </div>
+        {/* Rows */}
+        {resumes.length === 0 ? (
+          <div style={{ padding: "48px 20px", textAlign: "center" }}>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
+            <button
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              + Add Resume
+            </button>
+          </div>
+        ) : (
+          resumes.map((r) => (
+            <div
+              key={r.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
+                padding: "14px 20px",
+                alignItems: "center",
+                borderBottom: "1px solid #F5F3EF",
+                position: "relative",
+              }}
+            >
+              {/* Name + badges */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 6, background: "#1C3A2F",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <span style={{ color: "#E8D5A3", fontSize: 13, fontWeight: 700 }}>
+                    {r.name.charAt(0).toUpperCase()}
+                  </span>
                 </div>
-
-                {/* Actions */}
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                  {r.analysisComplete && (
-                    <button
-                      onClick={() => setReportOpen(reportOpen === r.id ? null : r.id)}
-                      style={{ padding: "7px 14px", background: reportOpen === r.id ? "#1C3A2F" : "transparent", color: reportOpen === r.id ? "#E8D5A3" : "#1C3A2F", border: "1px solid rgba(28,58,47,0.25)", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                      {reportOpen === r.id ? "Hide Report ▲" : "View Full Report ▼"}
-                    </button>
-                  )}
-                  <div style={{ position: "relative" }}>
-                    <button onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
-                      style={{ background: "none", border: "1px solid #E5DDD0", cursor: "pointer", fontSize: 16, color: "#A09890", padding: "6px 10px", borderRadius: 6 }}>···</button>
-                    {menuOpen === r.id && (
-                      <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 160, zIndex: 100, overflow: "hidden" }}>
-                        {[
-                          { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
-                          { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
-                          { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
-                        ].map((item) => (
-                          <button key={item.label} onClick={item.action}
-                            style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
+                <div>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
+                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                    {r.isPrimary && (
+                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 10, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
+                        ★ PRIMARY
+                      </span>
+                    )}
+                    {r.analysisComplete && (
+                      <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 10, fontWeight: 500, color: "#1A7A4A" }}>
+                        Analysis Complete
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Inline report panel */}
-              {reportOpen === r.id && (
-                <div style={{ borderTop: "1px solid #E5DDD0", padding: "20px 20px 24px", background: "#FAFAF8", animation: "fadeIn 0.2s ease both" }}>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16 }}>Analysis Report</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                    {RESUME_REPORT.categories.map((cat) => {
-                      const catColor = cat.status === "urgent" ? "#C4574A" : cat.status === "critical" ? "#8B6B0A" : "#7A7268";
-                      const catBg = cat.status === "urgent" ? "rgba(196,87,74,0.06)" : cat.status === "critical" ? "rgba(196,168,106,0.08)" : "rgba(160,152,144,0.06)";
-                      return (
-                        <div key={cat.name}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 700, color: "#1A1A1A" }}>{cat.name}</span>
-                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: catBg, color: catColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>{cat.status}</span>
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {cat.issues.map((issue, i) => {
-                              const iColor = issue.severity === "urgent" ? "#C4574A" : issue.severity === "critical" ? "#8B6B0A" : "#7A7268";
-                              return (
-                                <div key={i} style={{ padding: "12px 14px", background: "#FFFFFF", borderRadius: 7, borderLeft: `2px solid ${iColor}` }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: iColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>{issue.severity}</span>
-                                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>{issue.title}</span>
-                                  </div>
-                                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55 }}>{issue.fix}</p>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
+              {/* Target job title */}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>
+                {r.targetJobTitle ?? "—"}
+              </span>
+
+              {/* Last modified */}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                {timeAgo(r.updatedAt)}
+              </span>
+
+              {/* Created */}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                {timeAgo(r.createdAt)}
+              </span>
+
+              {/* Options menu */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
+                >
+                  ···
+                </button>
+                {menuOpen === r.id && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 4px)",
+                      background: "#FFFFFF",
+                      border: "1px solid #E5DDD0",
+                      borderRadius: 7,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                      minWidth: 160,
+                      zIndex: 100,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {[
+                      { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+                      { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
+                      { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={item.action}
+                        style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))
-      )}
+          ))
+        )}
+      </div>
 
       {/* Searchly suggestions */}
-      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)", marginTop: 4 }}>
+      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)", marginTop: 20 }}>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Searchly&apos;s suggestions
         </p>
@@ -831,6 +854,41 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
   );
 }
 
+// ─── AI Readback Card ─────────────────────────────────────────────────────────
+
+function ReadbackCard({ data, loading }: { data: ReadbackData | null; loading: boolean }) {
+  if (!loading && !data) return null;
+  return (
+    <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: "16px 20px", marginBottom: 28 }}>
+      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
+        <SparkleIcon /> Searchly&apos;s read on you
+      </p>
+      {loading ? (
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your profile…</p>
+      ) : data ? (
+        <>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
+          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
+            {data.strengths.map((s) => (
+              <span key={s} style={{ padding: "4px 10px", background: "rgba(28,58,47,0.08)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1C3A2F" }}>{s}</span>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
+            {data.targetRoles.map((r) => {
+              const c = r.fit === "Strong match" ? "#4A8B6A" : r.fit === "Good fit" ? "#C4A86A" : "#A09890";
+              const bg = r.fit === "Strong match" ? "rgba(74,139,106,0.08)" : r.fit === "Good fit" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.04)";
+              return (
+                <span key={r.role} style={{ padding: "4px 10px", background: bg, borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: c }}>{r.role} · {r.fit}</span>
+              );
+            })}
+          </div>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", fontStyle: "italic" }}>{data.honestNote}</p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 type PageTab = "dreamrole" | "about" | "learning" | "assets";
@@ -844,22 +902,40 @@ export function WorkspaceProfile() {
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dreamList, setDreamList] = useState<string[]>(["VP of Product", "Head of Product Operations"]);
+  const [dreamList, setDreamList] = useState<string[]>([]);
   const [dreamSelectedId, setDreamSelectedId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [upskillProgress, setUpskillProgress] = useState<Record<number, "none" | "inprogress" | "completed">>({});
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [readback, setReadback] = useState<ReadbackData | null>(null);
+  const [readbackLoading, setReadbackLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
-      .then((data) => { if (!data.error) setProfile(data); })
+      .then((data) => {
+        if (!data.error) {
+          setProfile(data);
+          setDreamList(data.targetRoles || []);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!profile?.resumeUrl) return;
+    setReadbackLoading(true);
+    fetch("/api/ai/readback")
+      .then((r) => r.json())
+      .then((data) => { if (!data.error) setReadback(data); })
+      .catch(() => {})
+      .finally(() => setReadbackLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.resumeUrl]);
 
   const patchProfile = async (patch: Record<string, unknown>) => {
     await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
@@ -951,6 +1027,20 @@ export function WorkspaceProfile() {
           <h1 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px" }}>
             Your profile, through Searchly&apos;s eyes.
           </h1>
+          {profile && (() => {
+            const pct = profileCompleteness(profile);
+            return (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Profile completeness</span>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>{pct}%</span>
+                </div>
+                <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: 280 }}>
+                  <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#4A8B6A" : "#C4A86A", borderRadius: 2, transition: "width 0.4s ease" }} />
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Tab bar */}
@@ -979,7 +1069,7 @@ export function WorkspaceProfile() {
 
         {/* Tab content */}
         {page === "dreamrole" && (
-          <DreamRoleTab dreamList={dreamList} setDreamList={setDreamList} dreamSelectedId={dreamSelectedId} setDreamSelectedId={setDreamSelectedId} adding={adding} setAdding={setAdding} />
+          <DreamRoleTab dreamList={dreamList} setDreamList={setDreamList} dreamSelectedId={dreamSelectedId} setDreamSelectedId={setDreamSelectedId} adding={adding} setAdding={setAdding} onSave={(list) => patchProfile({ targetRoles: list })} />
         )}
 
         {page === "about" && loading && (
@@ -988,95 +1078,26 @@ export function WorkspaceProfile() {
         {page === "about" && !loading && !profile && (
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
-        {page === "about" && profile && (() => {
-          const completionItems: { label: string; done: boolean; section: AboutSection | null; weight: number }[] = [
-            { label: "Full name", done: !!profile.name, section: "personal", weight: 10 },
-            { label: "Email", done: !!profile.email, section: "personal", weight: 10 },
-            { label: "LinkedIn URL", done: !!profile.linkedinUrl, section: "personal", weight: 10 },
-            { label: "Phone & location", done: !!(pd?.phone && pd?.location), section: "personal", weight: 5 },
-            { label: "Education history", done: education.length > 0, section: "education", weight: 10 },
-            { label: "Work experience", done: workExperience.length > 0, section: "experience", weight: 20 },
-            { label: "Experience bullets", done: workExperience.some((e) => e.bullets.length > 0), section: "experience", weight: 15 },
-            { label: "Skills added", done: skills.length >= 5, section: "skills", weight: 10 },
-            { label: "Resume uploaded", done: !!profile.resumeUrl, section: null, weight: 10 },
-          ];
-          const score = completionItems.reduce((sum, i) => sum + (i.done ? i.weight : 0), 0);
-          const circumference = 2 * Math.PI * 26;
-          return (
-            <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
-              {/* Profile sections */}
-              <div style={{ flex: 1, minWidth: 0, maxWidth: 560 }}>
-                <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ paddingBottom: 48 }}>
-                  <PersonalTab profile={profile} onSave={handlePersonalSave} />
-                </div>
-                <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
-                  ref={(el) => { sectionRefs.current.education = el; }}>
-                  <EducationTab entries={education} onSave={handleEducationSave} />
-                </div>
-                <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
-                  ref={(el) => { sectionRefs.current.experience = el; }}>
-                  <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
-                </div>
-                <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }}
-                  ref={(el) => { sectionRefs.current.skills = el; }}>
-                  <SkillsTab skills={skills} onSave={handleSkillsSave} />
-                </div>
-              </div>
-
-              {/* Completion sidebar */}
-              <div style={{ width: 230, flexShrink: 0, position: "sticky", top: 0 }}>
-                <div style={{ background: "#FFFFFF", borderRadius: 12, border: "1px solid #E5DDD0", padding: "20px 18px", marginBottom: 12 }}>
-                  {/* Score ring */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                    <div style={{ position: "relative", width: 60, height: 60, flexShrink: 0 }}>
-                      <svg width="60" height="60" viewBox="0 0 60 60" style={{ transform: "rotate(-90deg)" }}>
-                        <circle cx="30" cy="30" r="26" stroke="rgba(0,0,0,0.07)" strokeWidth="5" fill="none" />
-                        <circle cx="30" cy="30" r="26" stroke={score >= 80 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "#C4574A"} strokeWidth="5" fill="none" strokeLinecap="round"
-                          strokeDasharray={`${circumference * score / 100} ${circumference}`} />
-                      </svg>
-                      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 14, fontWeight: 700, color: score >= 80 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "#C4574A" }}>{score}%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#1A1A1A", marginBottom: 2 }}>Profile strength</p>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268" }}>
-                        {score >= 80 ? "Looking strong" : score >= 50 ? "Almost there" : "Needs attention"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Checklist */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {completionItems.map((item) => (
-                      <div key={item.label}
-                        onClick={() => item.section ? goToSection(item.section) : setPage("assets")}
-                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, cursor: item.done ? "default" : "pointer", background: item.done ? "transparent" : "rgba(196,87,74,0.04)", transition: "background 0.1s" }}
-                        onMouseEnter={(e) => { if (!item.done) e.currentTarget.style.background = "rgba(28,58,47,0.06)"; }}
-                        onMouseLeave={(e) => { if (!item.done) e.currentTarget.style.background = "rgba(196,87,74,0.04)"; }}>
-                        <div style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: item.done ? "#4A8B6A" : "rgba(0,0,0,0.06)", border: item.done ? "none" : "1.5px dashed #C0B8B0" }}>
-                          {item.done && <span style={{ color: "#fff", fontSize: 9, fontWeight: 700 }}>✓</span>}
-                        </div>
-                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: item.done ? "#7A7268" : "#1A1A1A", fontWeight: item.done ? 400 : 500, flex: 1, textDecoration: item.done ? "none" : "none" }}>{item.label}</span>
-                        {!item.done && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#1C3A2F", fontWeight: 600 }}>+{item.weight}%</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tip */}
-                {score < 100 && (
-                  <div style={{ background: "rgba(26,58,47,0.04)", borderRadius: 10, padding: "14px 16px", border: "1px solid rgba(26,58,47,0.08)" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#1C3A2F", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6 }}>Why it matters</p>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55 }}>
-                      Complete profiles get {score < 60 ? "3–5×" : "1.5–2×"} more relevant job matches and higher resume tailoring accuracy.
-                    </p>
-                  </div>
-                )}
-              </div>
+        {page === "about" && profile && (
+          <div style={{ maxWidth: 600 }}>
+            <ReadbackCard data={readback} loading={readbackLoading} />
+            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ paddingBottom: 48 }}>
+              <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
-          );
-        })()}
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
+              ref={(el) => { sectionRefs.current.education = el; }}>
+              <EducationTab entries={education} onSave={handleEducationSave} />
+            </div>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
+              ref={(el) => { sectionRefs.current.experience = el; }}>
+              <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
+            </div>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }}
+              ref={(el) => { sectionRefs.current.skills = el; }}>
+              <SkillsTab skills={skills} onSave={handleSkillsSave} />
+            </div>
+          </div>
+        )}
 
         {page === "learning" && (
           <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />
