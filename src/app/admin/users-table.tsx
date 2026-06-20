@@ -9,6 +9,7 @@ type UserRow = {
   name: string | null;
   createdAt: Date;
   subscription: { status: SubscriptionStatus; stripeCurrentPeriodEnd: Date } | null;
+  monthlyUsage: { count: number }[];
   _count: { jobs: number };
 };
 
@@ -77,6 +78,7 @@ export function UsersTable({ users }: { users: UserRow[] }) {
             <th className="text-left px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">User</th>
             <th className="text-left px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Joined</th>
             <th className="text-left px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Subscription</th>
+            <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">AI / mo</th>
             <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Jobs</th>
           </tr>
         </thead>
@@ -104,6 +106,15 @@ export function UsersTable({ users }: { users: UserRow[] }) {
                   </span>
                 ) : (
                   <span className="text-xs text-stone-300 font-mono">free</span>
+                )}
+              </td>
+              <td className="px-6 py-3 text-right font-mono text-stone-500 text-xs">
+                {user.subscription ? (
+                  <span className="text-stone-300">∞</span>
+                ) : (
+                  <span className={user.monthlyUsage[0]?.count >= 10 ? "text-red-500 font-semibold" : ""}>
+                    {user.monthlyUsage[0]?.count ?? 0}/10
+                  </span>
                 )}
               </td>
               <td className="px-6 py-3 text-right font-mono text-stone-700">{user._count.jobs}</td>

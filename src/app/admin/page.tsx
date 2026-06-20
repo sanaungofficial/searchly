@@ -1,18 +1,27 @@
 import { prisma } from "@/lib/prisma";
 import { SubscriptionStatus } from "@prisma/client";
+import { FREE_AI_LIMIT } from "@/lib/usage";
 import { UsersTable } from "./users-table";
 
 async function getAdminData() {
-  const [users, jobs, subscriptions] = await Promise.all([
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
+  const [users, jobs, subscriptions, monthlyUsage] = await Promise.all([
     prisma.user.findMany({
       include: {
         subscription: true,
+        monthlyUsage: { where: { month: currentMonth } },
         _count: { select: { jobs: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
     prisma.job.findMany({ select: { stage: true, createdAt: true } }),
     prisma.subscription.findMany({ select: { status: true } }),
+    prisma.monthlyUsage.aggregate({
+      where: { month: currentMonth },
+      _sum: { count: true },
+      _count: { _all: true },
+    }),
   ]);
 
   const now = new Date();
@@ -39,6 +48,13 @@ async function getAdminData() {
   const usersWithCoverLetter = await prisma.job.count({ where: { coverLetter: { not: null } } });
   const usersWithFitAnalysis = await prisma.job.count({ where: { fitAnalysis: { not: null } } });
 
+  const totalAiThisMonth = monthlyUsage._sum.count ?? 0;
+  const usersAtLimit = users.filter((u) => {
+    if (u.subscription) return false; // pro users don't have a cap
+    const used = u.monthlyUsage[0]?.count ?? 0;
+    return used >= FREE_AI_LIMIT;
+  }).length;
+
   return {
     users,
     totalUsers: users.length,
@@ -51,6 +67,9 @@ async function getAdminData() {
     usersWithResume,
     usersWithCoverLetter,
     usersWithFitAnalysis,
+    totalAiThisMonth,
+    usersAtLimit,
+    currentMonth,
   };
 }
 
@@ -119,6 +138,18 @@ export default async function AdminPage() {
           <StatCard label="Resumes Uploaded" value={data.usersWithResume} />
           <StatCard label="Cover Letters Generated" value={data.usersWithCoverLetter} />
           <StatCard label="Fit Analyses Run" value={data.usersWithFitAnalysis} />
+        </div>
+      </section>
+
+      {/* AI Credits */}
+      <section>
+        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">
+          AI Usage — {data.currentMonth}
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <StatCard label="Total AI Requests" value={data.totalAiThisMonth} sub="across all users this month" />
+          <StatCard label="Free Users at Limit" value={data.usersAtLimit} sub={`${FREE_AI_LIMIT} req/mo cap`} />
+          <StatCard label="Free Limit" value={`${FREE_AI_LIMIT} / mo`} sub="per free user" />
         </div>
       </section>
 
