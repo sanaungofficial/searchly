@@ -8,7 +8,8 @@ import { WorkspaceCoaching } from "./workspace-coaching";
 import { WorkspaceNetwork } from "./workspace-network";
 import { WorkspaceLive } from "./workspace-live";
 import { ChatWidget } from "./chat-widget";
-import { NOTIFICATIONS, INITIAL_KANBAN_CARDS, type KanbanCard, type Section } from "./workspace-data";
+import { NOTIFICATIONS, INITIAL_KANBAN_CARDS, type Section } from "./workspace-data";
+import { useJobs } from "@/hooks/useJobs";
 
 interface WorkspaceProps {
   onBackToOnboarding: () => void;
@@ -20,8 +21,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
 
-  // Lifted state — shared between WorkspaceOpportunities and ChatWidget
-  const [kanbanCards, setKanbanCards] = useState<KanbanCard[]>(INITIAL_KANBAN_CARDS);
+  const { cards: kanbanCards, setCards: setKanbanCards, updateStage } = useJobs(INITIAL_KANBAN_CARDS);
   const [drawerCardId, setDrawerCardId] = useState<number | null>(null);
   const [drawerTool, setDrawerTool] = useState<DrawerTool>(null);
 
@@ -62,6 +62,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps
           setDrawerTool={setDrawerTool}
           kanbanCards={kanbanCards}
           setKanbanCards={setKanbanCards}
+          onStageChange={updateStage}
         />
       )}
       {activeSection === "profile" && <WorkspaceProfile />}
@@ -69,7 +70,6 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut }: WorkspaceProps
       {activeSection === "network" && <WorkspaceNetwork />}
       {activeSection === "live" && <WorkspaceLive />}
 
-      {/* Floating chat widget — visible on every workspace section */}
       <ChatWidget
         kanbanCards={kanbanCards}
         currentJobId={drawerCardId}

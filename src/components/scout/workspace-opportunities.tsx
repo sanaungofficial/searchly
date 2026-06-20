@@ -28,6 +28,7 @@ interface OpportunitiesProps {
   /** Controlled kanban cards (lifted so ChatWidget can show job picker) */
   kanbanCards: KanbanCard[];
   setKanbanCards: React.Dispatch<React.SetStateAction<KanbanCard[]>>;
+  onStageChange?: (cardId: number, stage: KanbanStage) => void;
 }
 
 export function WorkspaceOpportunities({
@@ -38,6 +39,7 @@ export function WorkspaceOpportunities({
   setDrawerTool,
   kanbanCards,
   setKanbanCards,
+  onStageChange,
 }: OpportunitiesProps) {
   const [tab, setTab] = useState<OppTab>("discover");
   const [showAddPanel, setShowAddPanel] = useState(false);
@@ -137,6 +139,12 @@ export function WorkspaceOpportunities({
         days: 0,
       }];
     });
+    // Persist to DB
+    fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company: analysis.company, role: analysis.role, url }),
+    }).catch(() => {});
   };
 
   /* ── CSV upload handler ── */
@@ -162,6 +170,7 @@ export function WorkspaceOpportunities({
   /* ── Change a card's stage (used by status dropdowns in My Jobs + Pipeline) ── */
   const changeStage = (cardId: number, newStage: KanbanStage) => {
     setKanbanCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, stage: newStage } : c)));
+    onStageChange?.(cardId, newStage);
   };
 
   const addToKanban = () => {
@@ -180,6 +189,12 @@ export function WorkspaceOpportunities({
         days: 0,
       },
     ]);
+    // Persist to DB
+    fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company: jobAnalysis.company, role: jobAnalysis.role, url: addJobUrl }),
+    }).catch(() => {});
     setShowAddPanel(false);
     setJobAnalysis(null);
     setAddJobUrl("");
@@ -196,6 +211,7 @@ export function WorkspaceOpportunities({
 
   const moveCard = (cardId: number, stage: KanbanStage) => {
     setKanbanCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, stage } : c)));
+    onStageChange?.(cardId, stage);
   };
 
   const openDrawer = (cardId: number) => {

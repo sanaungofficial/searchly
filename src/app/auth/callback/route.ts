@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { sendWelcomeEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -15,18 +16,24 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
+        const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? null;
+
+        const existing = await prisma.user.findUnique({ where: { email: user.email! } });
+
         await prisma.user.upsert({
           where: { email: user.email! },
-          update: {
-            name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-            avatarUrl: user.user_metadata?.avatar_url ?? null,
-          },
-          create: {
-            email: user.email!,
-            name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-            avatarUrl: user.user_metadata?.avatar_url ?? null,
-          },
+          update: { name, avatarUrl: user.user_metadata?.avatar_url ?? null },
+          create: { email: user.email!, name, avatarUrl: user.user_metadata?.avatar_url ?? null },
         });
+
+        // Send welcome email only on first sign-in
+        if (!existing) {
+          try {
+            await sendWelcomeEmail(user.email!, name);
+          } catch {
+            // Don't block sign-in if email fails
+          }
+        }
       }
 
       return NextResponse.redirect(`${origin}${next}`);
