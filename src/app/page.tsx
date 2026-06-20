@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { createClient } from "@/utils/supabase/client";
 import {
   ScoutHeader,
   ScreenWelcome,
@@ -16,6 +17,13 @@ import { ScoutWorkspace } from "@/components/scout/workspace";
 
 type View = "onboarding" | "workspace";
 
+interface CurrentUser {
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+  headline?: string | null;
+}
+
 const JOB_MOCKS = [
   { company: "Stripe", role: "Senior PM" },
   { company: "Linear", role: "Product Lead" },
@@ -24,6 +32,28 @@ const JOB_MOCKS = [
 
 export default function Home() {
   const [view, setView] = useState<View>("onboarding");
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      let headline: string | null = null;
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          headline = data?.headline ?? null;
+        }
+      } catch {}
+      setCurrentUser({
+        name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
+        email: user.email!,
+        avatarUrl: user.user_metadata?.avatar_url ?? null,
+        headline,
+      });
+    });
+  }, []);
 
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
@@ -161,7 +191,7 @@ export default function Home() {
 
   /* ── Workspace view ── */
   if (view === "workspace") {
-    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} />;
+    return <ScoutWorkspace onBackToOnboarding={backToOnboarding} user={currentUser ?? undefined} />;
   }
 
   /* ── Onboarding view ── */
