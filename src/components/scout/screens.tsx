@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   UploadIcon,
   CheckCircleFilled,
@@ -427,20 +427,35 @@ interface ReadBackProps {
   onConfirm: () => void;
 }
 
-const STRENGTHS = [
-  "Product Strategy",
-  "Cross-functional Leadership",
-  "Data-driven Decisions",
-  "Stakeholder Alignment",
-];
+interface ReadBackData {
+  picture: string;
+  strengths: string[];
+  targetRoles: { role: string; fit: string }[];
+  honestNote: string;
+}
 
-const TARGET_ROLES = [
-  { role: "Head of Product", fit: "Strong match", color: "#4A8B6A" },
-  { role: "Director of Product Management", fit: "Strong match", color: "#4A8B6A" },
-  { role: "Group Product Manager", fit: "Good fit", color: "#A89462" },
-];
+function fitColor(fit: string): string {
+  if (fit === "Strong match") return "#4A8B6A";
+  if (fit === "Good fit") return "#A89462";
+  return "#8A7A6A";
+}
 
 export function ScreenReadBack({ onConfirm }: ReadBackProps) {
+  const [data, setData] = React.useState<ReadBackData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch("/api/ai/readback")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.error) { setError(true); }
+        else { setData(d); }
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="flex flex-col gap-9">
       <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
@@ -480,146 +495,170 @@ export function ScreenReadBack({ onConfirm }: ReadBackProps) {
             borderRadius: 10,
             padding: 40,
             boxShadow: "0 2px 4px rgba(0,0,0,0.04), 0 10px 28px rgba(0,0,0,0.07)",
+            minHeight: loading ? 320 : undefined,
           }}
         >
-          <p
-            style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 10,
-              fontWeight: 500,
-              color: "#A09890",
-              letterSpacing: "1px",
-              textTransform: "uppercase",
-              marginBottom: 20,
-            }}
-          >
-            A picture of you
-          </p>
-
-          <p
-            style={{
-              fontFamily: "var(--font-cormorant), Georgia, serif",
-              fontSize: 19,
-              fontWeight: 400,
-              color: "#2A2218",
-              lineHeight: 1.78,
-              marginBottom: 28,
-              textWrap: "pretty",
-            }}
-          >
-            You&apos;re a seasoned Senior PM with eight years in the industry — data-literate,
-            naturally cross-functional, and clearly ready for something bigger.
-          </p>
-
-          {/* Strengths */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 7,
-              marginBottom: 28,
-              paddingBottom: 28,
-              borderBottom: "1px solid #EEE9E2",
-            }}
-          >
-            {STRENGTHS.map((s) => (
-              <span
-                key={s}
-                style={{
-                  padding: "6px 14px",
-                  background: "#F5F3EF",
-                  borderRadius: 100,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 12,
-                  color: "#2A2218",
-                }}
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-
-          {/* Target roles — green left-border */}
-          <div
-            style={{
-              borderLeft: "2px solid #1A3A2F",
-              paddingLeft: 20,
-              marginBottom: 28,
-            }}
-          >
-            <p
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 10,
-                fontWeight: 500,
-                color: "#A09890",
-                letterSpacing: "0.9px",
-                textTransform: "uppercase",
-                marginBottom: 14,
-              }}
-            >
-              You&apos;d thrive as
-            </p>
-            <div className="flex flex-col gap-[11px]">
-              {TARGET_ROLES.map((r) => (
-                <div
-                  key={r.role}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "var(--font-cormorant), Georgia, serif",
-                      fontSize: 18,
-                      fontWeight: 500,
-                      color: "#1A1A1A",
-                    }}
-                  >
-                    {r.role}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 11,
-                      fontWeight: 400,
-                      color: r.color,
-                    }}
-                  >
-                    {r.fit}
-                  </span>
-                </div>
+          {loading && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>
+                Reading your resume...
+              </p>
+              {[180, 220, 140].map((w, i) => (
+                <div key={i} style={{ height: 14, width: w, borderRadius: 6, background: "#F0EDE8", animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.2}s` }} />
+              ))}
+              <div style={{ height: 1, background: "#EEE9E2", margin: "10px 0" }} />
+              {[160, 200, 140].map((w, i) => (
+                <div key={i} style={{ height: 14, width: w, borderRadius: 6, background: "#F0EDE8", animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.2 + 0.3}s` }} />
               ))}
             </div>
-          </div>
+          )}
 
-          {/* One honest note */}
-          <div style={{ padding: "18px 22px", background: "#FBF8F2", borderRadius: 7 }}>
-            <p
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 10,
-                fontWeight: 500,
-                color: "#A09890",
-                letterSpacing: "0.9px",
-                textTransform: "uppercase",
-                marginBottom: 9,
-              }}
-            >
-              One honest note
+          {!loading && (error || !data) && (
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6 }}>
+              We couldn&apos;t generate a profile read — your resume may not have uploaded correctly. You can continue and update your profile in the workspace.
             </p>
-            <p
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
-                fontWeight: 300,
-                color: "#6B6258",
-                lineHeight: 1.6,
-                textWrap: "pretty",
-              }}
-            >
-              Your direct reports story is thin. Roles managing large organizations will need more
-              framing — let&apos;s address it together in your applications.
-            </p>
-          </div>
+          )}
+
+          {!loading && data && (
+            <>
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 10,
+                  fontWeight: 500,
+                  color: "#A09890",
+                  letterSpacing: "1px",
+                  textTransform: "uppercase",
+                  marginBottom: 20,
+                }}
+              >
+                A picture of you
+              </p>
+
+              <p
+                style={{
+                  fontFamily: "var(--font-cormorant), Georgia, serif",
+                  fontSize: 19,
+                  fontWeight: 400,
+                  color: "#2A2218",
+                  lineHeight: 1.78,
+                  marginBottom: 28,
+                  textWrap: "pretty",
+                }}
+              >
+                {data.picture}
+              </p>
+
+              {/* Strengths */}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 7,
+                  marginBottom: 28,
+                  paddingBottom: 28,
+                  borderBottom: "1px solid #EEE9E2",
+                }}
+              >
+                {data.strengths.map((s) => (
+                  <span
+                    key={s}
+                    style={{
+                      padding: "6px 14px",
+                      background: "#F5F3EF",
+                      borderRadius: 100,
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 12,
+                      color: "#2A2218",
+                    }}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+
+              {/* Target roles */}
+              <div
+                style={{
+                  borderLeft: "2px solid #1A3A2F",
+                  paddingLeft: 20,
+                  marginBottom: 28,
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: "#A09890",
+                    letterSpacing: "0.9px",
+                    textTransform: "uppercase",
+                    marginBottom: 14,
+                  }}
+                >
+                  You&apos;d thrive as
+                </p>
+                <div className="flex flex-col gap-[11px]">
+                  {data.targetRoles.map((r) => (
+                    <div
+                      key={r.role}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "var(--font-cormorant), Georgia, serif",
+                          fontSize: 18,
+                          fontWeight: 500,
+                          color: "#1A1A1A",
+                        }}
+                      >
+                        {r.role}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "var(--font-dm-sans), system-ui",
+                          fontSize: 11,
+                          fontWeight: 400,
+                          color: fitColor(r.fit),
+                        }}
+                      >
+                        {r.fit}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* One honest note */}
+              <div style={{ padding: "18px 22px", background: "#FBF8F2", borderRadius: 7 }}>
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: "#A09890",
+                    letterSpacing: "0.9px",
+                    textTransform: "uppercase",
+                    marginBottom: 9,
+                  }}
+                >
+                  One honest note
+                </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 13,
+                    fontWeight: 300,
+                    color: "#6B6258",
+                    lineHeight: 1.6,
+                    textWrap: "pretty",
+                  }}
+                >
+                  {data.honestNote}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
