@@ -14,7 +14,28 @@ async function extractResumeText(file: File): Promise<string> {
   const base64 = Buffer.from(bytes).toString("base64");
 
   const ext = file.name.split(".").pop()?.toLowerCase();
-  // Only send PDFs to Claude for extraction; for .doc/.docx we fall back to empty
+
+  if (ext === "docx") {
+    try {
+      const mammoth = await import("mammoth");
+      const { value: rawText } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
+      if (!rawText.trim()) return "";
+      const msg = await getAnthropic().messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: `Summarize this resume in 400 words or less. Include: full name, most recent job title, years of experience, top skills, work history (company + title + key accomplishments), education. Plain text only.\n\n${rawText.slice(0, 8000)}` }],
+      });
+      const block = msg.content[0];
+      return block.type === "text" ? block.text : "";
+    } catch {
+      return "";
+    }
+  }
+
+  if (ext === "txt") {
+    return Buffer.from(bytes).toString("utf-8").slice(0, 4000);
+  }
+
   if (ext !== "pdf") return "";
 
   try {

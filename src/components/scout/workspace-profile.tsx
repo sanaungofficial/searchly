@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   WORK_EXP,
   EDUCATION_LIST,
@@ -15,12 +15,50 @@ import { SparkleIcon } from "./workspace-icons";
 
 type ProfileTab = "dreamrole" | "experience" | "skills" | "learning" | "assets";
 
+interface UserProfile {
+  name: string;
+  email: string | null;
+  resumeUrl: string | null;
+  linkedinUrl: string | null;
+  headline: string | null;
+  targetRoles: string[];
+}
+
 export function WorkspaceProfile() {
   const [tab, setTab] = useState<ProfileTab>("dreamrole");
   const [dreamList, setDreamList] = useState<string[]>(["VP of Product", "Head of Product Operations"]);
   const [dreamSelectedId, setDreamSelectedId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [upskillProgress, setUpskillProgress] = useState<Record<number, "none" | "inprogress" | "completed">>({});
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) setUserProfile(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleResumeUpload = async (file: File) => {
+    setResumeUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await fetch("/api/resume", { method: "POST", body: form });
+      const data = await res.json();
+      if (data.url) {
+        setUserProfile((prev) => prev ? { ...prev, resumeUrl: data.url } : prev);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setResumeUploading(false);
+    }
+  };
 
   const tabs: [ProfileTab, string][] = [
     ["dreamrole", "Dream Role"],
@@ -55,7 +93,8 @@ export function WorkspaceProfile() {
               marginBottom: 8,
             }}
           >
-            Sarah Chen · Senior PM · 8 yrs
+            {userProfile ? (userProfile.name || userProfile.email || "Your profile") : "Loading…"}
+            {userProfile?.headline ? ` · ${userProfile.headline}` : ""}
           </p>
           <h1
             style={{
@@ -120,7 +159,14 @@ export function WorkspaceProfile() {
         {tab === "experience" && <ExperienceTab />}
         {tab === "skills" && <SkillsTab />}
         {tab === "learning" && <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />}
-        {tab === "assets" && <AssetsTab />}
+        {tab === "assets" && (
+          <AssetsTab
+            resumeUrl={userProfile?.resumeUrl || null}
+            uploading={resumeUploading}
+            onUpload={handleResumeUpload}
+            inputRef={resumeInputRef}
+          />
+        )}
       </div>
     </div>
   );
@@ -971,7 +1017,17 @@ function LearningTab({
 }
 
 /* ── Resume Assets tab ── */
-function AssetsTab() {
+function AssetsTab({
+  resumeUrl,
+  uploading,
+  onUpload,
+  inputRef,
+}: {
+  resumeUrl: string | null;
+  uploading: boolean;
+  onUpload: (file: File) => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+}) {
   const suggestions = PROFILE_SUGGESTIONS;
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -995,39 +1051,95 @@ function AssetsTab() {
             marginBottom: 12,
           }}
         >
-          Resume versions
+          Resume
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }}
+        />
+        {resumeUrl ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div
+              style={{
+                padding: "12px 14px",
+                background: "rgba(26,58,47,0.03)",
+                borderRadius: 6,
+                borderLeft: "2px solid #1A3A2F",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
+                  📄 Resume on file
+                </p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", marginTop: 2 }}>
+                  Used by Searchly AI for tailoring
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a
+                  href={resumeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: "6px 12px",
+                    background: "transparent",
+                    color: "#1A3A2F",
+                    border: "1px solid rgba(26,58,47,0.2)",
+                    borderRadius: 5,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    textDecoration: "none",
+                  }}
+                >
+                  View →
+                </a>
+                <button
+                  onClick={() => inputRef.current?.click()}
+                  disabled={uploading}
+                  style={{
+                    padding: "6px 12px",
+                    background: "#1A3A2F",
+                    color: "#E8D5A3",
+                    border: "none",
+                    borderRadius: 5,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 11,
+                    cursor: uploading ? "not-allowed" : "pointer",
+                    opacity: uploading ? 0.6 : 1,
+                  }}
+                >
+                  {uploading ? "Uploading…" : "Replace"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
             style={{
-              padding: "12px 14px",
-              background: "rgba(26,58,47,0.03)",
-              borderRadius: 6,
-              borderLeft: "2px solid #1A3A2F",
+              padding: "14px 20px",
+              background: "rgba(26,58,47,0.04)",
+              border: "1.5px dashed rgba(26,58,47,0.25)",
+              borderRadius: 8,
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 12,
+              color: "#1A3A2F",
+              cursor: uploading ? "not-allowed" : "pointer",
+              width: "100%",
+              textAlign: "center",
             }}
           >
-            <p
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#1A1A1A",
-              }}
-            >
-              📄 Original Resume
-            </p>
-            <p
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 10,
-                color: "#7A7268",
-                marginTop: 2,
-              }}
-            >
-              Uploaded Jun 19, 2026
-            </p>
-          </div>
-        </div>
+            {uploading ? "Uploading…" : "📄 Upload your resume (PDF, DOC)"}
+          </button>
+        )}
       </div>
 
       <div

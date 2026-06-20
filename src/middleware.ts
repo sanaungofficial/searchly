@@ -31,8 +31,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Allow auth routes through always
-  if (pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/auth")) {
+  // Allow public routes through always
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/auth") ||
+    pathname === "/api/stripe/webhooks"
+  ) {
     return supabaseResponse;
   }
 
