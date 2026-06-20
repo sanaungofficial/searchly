@@ -260,12 +260,14 @@ interface LinkedInProps {
   onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onLISubmit: () => void;
+  onSkip: () => void;
 }
 
 export function ScreenLinkedIn({
   resumeFilename,
   liInput,
   liSubmitting,
+  onSkip,
   onLIChange,
   onLIKey,
   onLISubmit,
@@ -415,6 +417,28 @@ export function ScreenLinkedIn({
             Analyzing your background…
           </p>
         </div>
+      )}
+
+      {/* Skip link */}
+      {!liSubmitting && (
+        <button
+          onClick={onSkip}
+          style={{
+            background: "none",
+            border: "none",
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
+            cursor: "pointer",
+            padding: 0,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Skip for now
+        </button>
       )}
     </div>
   );
