@@ -120,7 +120,7 @@ export function WorkspaceSidebar({
           fill="none"
           style={{
             transition: "transform 0.22s",
-            transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
+            transform: collapsed ? "rotate(180deg)" : "rotate(0deg)",
           }}
         >
           <path d="M6.5 2L3.5 5L6.5 8" stroke="rgba(232,213,163,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
