@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown, Copy, FileText } from "lucide-react";
 
 interface ResumeSection {
   id: string;
@@ -20,6 +21,7 @@ interface ResumeEditorProps {
 }
 
 export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, updatedAt }: ResumeEditorProps) {
+  const router = useRouter();
   const [sections, setSections] = useState<ResumeSection[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -33,6 +35,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [fitToPage, setFitToPage] = useState(false);
   const [matchData, setMatchData] = useState<{ score: number; matched: string[]; missing: string[]; total: number } | null>(null);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [coverLetter, setCoverLetter] = useState<string | null>(null);
+  const [coverLoading, setCoverLoading] = useState(false);
+  const [coverCopied, setCoverCopied] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -160,6 +166,47 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     window.print();
   }
 
+  function editBaseResume() {
+    onOpenChange(false);
+    router.push("?tab=profile");
+  }
+
+  async function generateCoverLetter() {
+    setCoverLoading(true);
+    setCoverOpen(true);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: "cover", company, role: jobTitle, jobId }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.text) setCoverLetter(d.text);
+      }
+    } finally {
+      setCoverLoading(false);
+    }
+  }
+
+  async function copyCoverLetter() {
+    if (!coverLetter) return;
+    await navigator.clipboard.writeText(coverLetter);
+    setCoverCopied(true);
+    setTimeout(() => setCoverCopied(false), 2000);
+  }
+
+  function downloadCoverLetterDocx() {
+    if (!coverLetter) return;
+    const blob = new Blob([coverLetter], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cover-letter-${company || "application"}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const personalInfo = activeSections.find((s) => s.type === "header");
   const contentSections = activeSections.filter((s) => s.type !== "header");
 
@@ -226,7 +273,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             Fit to one page
           </button>
           <button
-            onClick={() => {}}
+            onClick={editBaseResume}
             style={{
               padding: "6px 14px",
               background: "#FFFFFF",
@@ -350,6 +397,108 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 )}
               </div>
             ) : null}
+          </div>
+
+          {/* Cover letter */}
+          <div style={{ marginBottom: 16 }}>
+            <button
+              onClick={coverOpen ? () => setCoverOpen(false) : generateCoverLetter}
+              disabled={coverLoading}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                background: coverOpen ? "#F5F3EF" : "#1C3A2F",
+                color: coverOpen ? "#52493F" : "#E8D5A3",
+                border: coverOpen ? "1px solid #D8D0C5" : "none",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: coverLoading ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                opacity: coverLoading ? 0.7 : 1,
+              }}
+            >
+              {coverLoading
+                ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Generating…</>
+                : coverOpen
+                ? "Hide Cover Letter"
+                : <><FileText size={13} /> Generate Cover Letter</>
+              }
+            </button>
+
+            {coverOpen && (
+              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
+                {coverLoading ? (
+                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>Writing your cover letter…</p>
+                ) : coverLetter ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 8 }}>
+                      <button
+                        onClick={copyCoverLetter}
+                        style={{
+                          padding: "4px 10px",
+                          background: "#F5F3EF",
+                          border: "1px solid #D8D0C5",
+                          borderRadius: 4,
+                          fontSize: 10,
+                          color: "#52493F",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {coverCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                      </button>
+                      <button
+                        onClick={downloadCoverLetterDocx}
+                        style={{
+                          padding: "4px 10px",
+                          background: "#F5F3EF",
+                          border: "1px solid #D8D0C5",
+                          borderRadius: 4,
+                          fontSize: 10,
+                          color: "#52493F",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <Download size={11} /> Download
+                      </button>
+                      <button
+                        onClick={generateCoverLetter}
+                        style={{
+                          padding: "4px 10px",
+                          background: "#F5F3EF",
+                          border: "1px solid #D8D0C5",
+                          borderRadius: 4,
+                          fontSize: 10,
+                          color: "#52493F",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <RefreshCw size={11} /> Retry
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 11, color: "#1A1A1A", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+                      {coverLetter}
+                    </p>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>
+                    Could not generate. Check that you have a resume uploaded and job notes added.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div
