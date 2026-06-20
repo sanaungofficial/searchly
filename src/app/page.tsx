@@ -298,6 +298,7 @@ export default function Home() {
               onJobKey={onJobKey}
               onAddJob={addJob}
               onFinish={() => goTo(4)}
+              onSkip={() => goTo(4)}
             />
           )}
           {screen === 4 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
