@@ -431,6 +431,299 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
   );
 }
 
+/* ── Coach Management ── */
+type AdminView = "overview" | "coaches";
+
+type CoachStatus = "ACTIVE" | "PENDING" | "INACTIVE";
+
+type CoachProfile = {
+  id: string;
+  displayName: string;
+  email: string | null;
+  headline: string | null;
+  bio: string | null;
+  currentRole: string | null;
+  currentCompany: string | null;
+  location: string | null;
+  linkedinUrl: string | null;
+  lelandUrl: string | null;
+  photoUrl: string | null;
+  firms: string[];
+  schools: string[];
+  specialties: string[];
+  industries: string[];
+  hourlyRate: number | null;
+  category: string | null;
+  featured: boolean;
+  status: CoachStatus;
+  createdAt: string;
+};
+
+const COACH_STATUS_STYLES: Record<CoachStatus, { color: string; background: string; border: string }> = {
+  ACTIVE:   { color: "#2d7a50", background: "rgba(45,122,80,0.1)",   border: "1px solid rgba(45,122,80,0.2)" },
+  PENDING:  { color: "#b45309", background: "rgba(180,83,9,0.08)",   border: "1px solid rgba(180,83,9,0.15)" },
+  INACTIVE: { color: "#a8a29e", background: "transparent",           border: "1px solid rgba(168,162,158,0.2)" },
+};
+
+const coachInputStyle: React.CSSProperties = {
+  width: "100%", fontSize: 12, background: "#faf8f5", border: "1px solid #e8e2da",
+  borderRadius: 7, padding: "7px 10px", outline: "none", fontFamily: "var(--font-dm-sans)",
+  boxSizing: "border-box", color: "#1a1a1a",
+};
+
+const coachLabelStyle: React.CSSProperties = {
+  display: "block", fontSize: 10, color: "#a09890", textTransform: "uppercase",
+  letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 4,
+};
+
+function CoachTagInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [input, setInput] = useState("");
+  function add() {
+    const t = input.trim();
+    if (t && !value.includes(t)) onChange([...value, t]);
+    setInput("");
+  }
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 5 }}>
+        {value.map((t) => (
+          <span key={t} style={{ display: "flex", alignItems: "center", gap: 3, background: "rgba(26,58,47,0.08)", borderRadius: 4, padding: "1px 7px", fontSize: 11, color: "#1a3a2f" }}>
+            {t}
+            <button onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 5 }}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} placeholder="Type & Enter" style={{ ...coachInputStyle, flex: 1 }} />
+        <button onClick={add} style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 11, color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachProfile | null; onClose: () => void; onSaved: (c: CoachProfile) => void; onDeleted: (id: string) => void }) {
+  const isNew = !coach;
+  const [form, setForm] = useState<Partial<CoachProfile>>(coach ?? { firms: [], schools: [], specialties: [], industries: [], featured: false, status: "ACTIVE" });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [err, setErr] = useState("");
+
+  function field(key: keyof CoachProfile) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+  }
+
+  async function save() {
+    if (!form.displayName) { setErr("Display name is required."); return; }
+    setSaving(true); setErr("");
+    const url = isNew ? "/api/admin/coaches" : `/api/admin/coaches/${coach!.id}`;
+    const method = isNew ? "POST" : "PATCH";
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (r.ok) { onSaved(await r.json()); }
+    else { const d = await r.json(); setErr(d.error ?? "Save failed."); }
+    setSaving(false);
+  }
+
+  async function remove() {
+    if (!coach || !confirm(`Delete ${coach.displayName}?`)) return;
+    setDeleting(true);
+    await fetch(`/api/admin/coaches/${coach.id}`, { method: "DELETE" });
+    onDeleted(coach.id);
+    setDeleting(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.15)" }} />
+      <div style={{ position: "relative", width: 460, height: "100%", background: "#fff", boxShadow: "-4px 0 24px rgba(0,0,0,0.08)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ece6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontFamily: "var(--font-playfair)", fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>{isNew ? "New Coach" : "Edit Coach"}</p>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#a09890" }}>×</button>
+        </div>
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
+          {/* Basic */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={coachLabelStyle}>Display Name *</label>
+              <input value={form.displayName ?? ""} onChange={field("displayName")} style={coachInputStyle} />
+            </div>
+            <div>
+              <label style={coachLabelStyle}>Email</label>
+              <input value={form.email ?? ""} onChange={field("email")} style={coachInputStyle} />
+            </div>
+            <div>
+              <label style={coachLabelStyle}>Hourly Rate ($)</label>
+              <input type="number" value={form.hourlyRate ?? ""} onChange={field("hourlyRate")} placeholder="200" style={coachInputStyle} />
+            </div>
+            <div>
+              <label style={coachLabelStyle}>Current Role</label>
+              <input value={form.currentRole ?? ""} onChange={field("currentRole")} style={coachInputStyle} />
+            </div>
+            <div>
+              <label style={coachLabelStyle}>Current Company</label>
+              <input value={form.currentCompany ?? ""} onChange={field("currentCompany")} style={coachInputStyle} />
+            </div>
+            <div>
+              <label style={coachLabelStyle}>Location</label>
+              <input value={form.location ?? ""} onChange={field("location")} style={coachInputStyle} />
+            </div>
+            <div>
+              <label style={coachLabelStyle}>Status</label>
+              <select value={form.status ?? "ACTIVE"} onChange={field("status")} style={{ ...coachInputStyle, cursor: "pointer" }}>
+                {(["ACTIVE", "PENDING", "INACTIVE"] as CoachStatus[]).map((s) => <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>)}
+              </select>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
+              <input type="checkbox" id="featured-chk" checked={form.featured ?? false} onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))} style={{ width: 14, height: 14, cursor: "pointer" }} />
+              <label htmlFor="featured-chk" style={{ fontSize: 12, color: "#3d3530", cursor: "pointer", fontFamily: "var(--font-dm-sans)" }}>Featured (shown first)</label>
+            </div>
+          </div>
+
+          {/* Headline & bio */}
+          <div>
+            <label style={coachLabelStyle}>Headline</label>
+            <input value={form.headline ?? ""} onChange={field("headline")} style={coachInputStyle} />
+          </div>
+          <div>
+            <label style={coachLabelStyle}>Bio</label>
+            <textarea value={form.bio ?? ""} onChange={field("bio")} rows={4} style={{ ...coachInputStyle, resize: "vertical", lineHeight: 1.5 }} />
+          </div>
+
+          {/* Links */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={coachLabelStyle}>LinkedIn URL</label>
+              <input value={form.linkedinUrl ?? ""} onChange={field("linkedinUrl")} style={coachInputStyle} />
+            </div>
+            <div>
+              <label style={coachLabelStyle}>Leland URL</label>
+              <input value={form.lelandUrl ?? ""} onChange={field("lelandUrl")} style={coachInputStyle} />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={coachLabelStyle}>Photo URL</label>
+              <input value={form.photoUrl ?? ""} onChange={field("photoUrl")} style={coachInputStyle} />
+            </div>
+          </div>
+
+          {/* Tags */}
+          {(["firms", "schools", "specialties", "industries"] as const).map((key) => (
+            <div key={key}>
+              <label style={coachLabelStyle}>{key.charAt(0).toUpperCase() + key.slice(1)}</label>
+              <CoachTagInput value={(form[key] as string[]) ?? []} onChange={(v) => setForm((f) => ({ ...f, [key]: v }))} />
+            </div>
+          ))}
+
+          {err && <p style={{ fontSize: 12, color: "#b45309", margin: 0 }}>{err}</p>}
+        </div>
+
+        <div style={{ padding: "16px 24px", borderTop: "1px solid #f0ece6", display: "flex", gap: 8 }}>
+          {!isNew && (
+            <button onClick={remove} disabled={deleting} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(220,38,38,0.3)", background: "transparent", cursor: deleting ? "default" : "pointer", fontSize: 12, color: "#dc2626", fontFamily: "var(--font-dm-sans)" }}>
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          )}
+          <div style={{ flex: 1 }} />
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 12, color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 12, color: "#fff", fontFamily: "var(--font-dm-sans)", fontWeight: 600 }}>
+            {saving ? "Saving…" : isNew ? "Create" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoachesPanel() {
+  const [coaches, setCoaches] = useState<CoachProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editCoach, setEditCoach] = useState<CoachProfile | "new" | null>(null);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/coaches").then((r) => r.json()).then(setCoaches).finally(() => setLoading(false));
+  }, []);
+
+  function handleSaved(c: CoachProfile) {
+    setCoaches((prev) => {
+      const idx = prev.findIndex((x) => x.id === c.id);
+      return idx >= 0 ? prev.map((x) => x.id === c.id ? c : x) : [c, ...prev];
+    });
+    setEditCoach(null);
+  }
+
+  function handleDeleted(id: string) {
+    setCoaches((prev) => prev.filter((c) => c.id !== id));
+    setEditCoach(null);
+  }
+
+  const filtered = coaches.filter((c) => {
+    const q = search.toLowerCase();
+    return c.displayName.toLowerCase().includes(q) || (c.email ?? "").toLowerCase().includes(q) || c.firms.some((f) => f.toLowerCase().includes(q));
+  });
+
+  return (
+    <div>
+      <SectionLabel action={
+        <button onClick={() => setEditCoach("new")} style={{ fontSize: 11, fontFamily: "var(--font-dm-sans)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ New Coach</button>
+      }>Coaches ({coaches.length})</SectionLabel>
+
+      {loading ? <p style={{ fontSize: 12, color: "#a09890" }}>Loading…</p> : (
+        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+          <div style={{ padding: "10px 16px", borderBottom: "1px solid #f0ece6" }}>
+            <input type="text" placeholder="Search coaches…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: "100%", fontSize: 12, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-dm-sans)", boxSizing: "border-box" }} />
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f0ece6" }}>
+                {["Coach", "Firms", "Rate", "Status", ""].map((h, i) => (
+                  <th key={i} style={{ padding: "10px 20px", textAlign: i >= 3 ? "right" : "left", fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && <tr><td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "#a09890", fontSize: 12 }}>No coaches found</td></tr>}
+              {filtered.map((c) => {
+                const ss = COACH_STATUS_STYLES[c.status];
+                return (
+                  <tr key={c.id} style={{ borderBottom: "1px solid #faf8f5", cursor: "pointer" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#faf8f5")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    onClick={() => setEditCoach(c)}>
+                    <td style={{ padding: "10px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontWeight: 500, color: "#1a1a1a" }}>{c.displayName}</span>
+                        {c.featured && <span style={{ fontSize: 9, background: "rgba(196,168,106,0.15)", color: "#7a6020", padding: "1px 5px", borderRadius: 3, fontFamily: "var(--font-dm-mono)" }}>featured</span>}
+                      </div>
+                      {c.email && <div style={{ fontSize: 11, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{c.email}</div>}
+                    </td>
+                    <td style={{ padding: "10px 20px", fontSize: 11, color: "#52493f" }}>{c.firms.slice(0, 2).join(", ") || "—"}</td>
+                    <td style={{ padding: "10px 20px", fontFamily: "var(--font-dm-mono)", color: "#3d3530", fontSize: 12 }}>{c.hourlyRate ? `$${c.hourlyRate}` : "—"}</td>
+                    <td style={{ padding: "10px 20px", textAlign: "right" }}>
+                      <span style={{ fontSize: 10, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, ...ss }}>{c.status.toLowerCase()}</span>
+                    </td>
+                    <td style={{ padding: "10px 20px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => setEditCoach(c)} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Edit</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editCoach !== null && (
+        <CoachEditDrawer
+          coach={editCoach === "new" ? null : editCoach}
+          onClose={() => setEditCoach(null)}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+        />
+      )}
+    </div>
+  );
+}
+
 /* ── Funnel Bar ── */
 function FunnelRow({ label, value, total, color = "#1a3a2f" }: { label: string; value: number; total: number; color?: string }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
@@ -447,6 +740,7 @@ function FunnelRow({ label, value, total, color = "#1a3a2f" }: { label: string; 
 
 /* ── Main ── */
 export function WorkspaceAdmin() {
+  const [adminView, setAdminView] = useState<AdminView>("overview");
   const [data, setData] = useState<AdminData | null>(null);
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [revenueError, setRevenueError] = useState(false);
@@ -498,8 +792,23 @@ export function WorkspaceAdmin() {
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F2EDE3" }}>
-      <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Admin</h1>
-      <p style={{ fontSize: 12, color: "#a09890", marginBottom: 0 }}>Live data — super admin only</p>
+      <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 600, color: "#1a1a1a", marginBottom: 16 }}>Admin</h1>
+
+      {/* Top tabs */}
+      <div style={{ display: "inline-flex", gap: 3, background: "rgba(0,0,0,0.05)", padding: 3, borderRadius: 7, marginBottom: 28 }}>
+        {([["overview", "Overview"], ["coaches", "Coaches"]] as [AdminView, string][]).map(([id, label]) => {
+          const active = adminView === id;
+          return (
+            <button key={id} onClick={() => setAdminView(id)}
+              style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-dm-sans)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {adminView === "coaches" && <CoachesPanel />}
+      {adminView === "overview" && <>
 
       {/* Revenue */}
       <SectionLabel>Revenue</SectionLabel>
@@ -689,6 +998,8 @@ export function WorkspaceAdmin() {
       )}
       {editUser && <EditPanel user={editUser} onClose={() => setEditUser(null)} onSaved={handleUserSaved} />}
       {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} onInvited={handleUserInvited} />}
+
+      </>}
     </div>
   );
 }
