@@ -45,17 +45,14 @@ export function WorkspaceOpportunities({
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
   const [addJobLoading, setAddJobLoading] = useState(false);
+  const [addJobError, setAddJobError] = useState<string | null>(null);
   const [jobAnalysis, setJobAnalysis] = useState<null | {
     company: string;
     role: string;
-    fitScore: number;
-    fitReason: string;
-    salaryRange: string;
+    location: string | null;
+    salary: string | null;
+    description: string | null;
     requirements: string[];
-    tailoredBullets: string[];
-    coverLetterOpener: string;
-    skillGaps: string[];
-    insiderTip: string;
   }>(null);
 
   const [signalsData, setSignalsData] = useState<SignalsData | null>(INITIAL_SIGNALS);
@@ -74,67 +71,45 @@ export function WorkspaceOpportunities({
   // Pipeline flat-list filter
   const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>("all");
 
-  /* ── Mock URL analysis (shared by single-URL panel and CSV bulk upload) ── */
-  const analyzeUrl = (url: string, hintCompany?: string, hintRole?: string) => {
-    let company = hintCompany || "Company";
-    let role = hintRole || "Senior PM";
-    if (!hintCompany) {
-      const lower = url.toLowerCase();
-      if (lower.includes("stripe")) { company = "Stripe"; role = "Senior PM — Revenue"; }
-      else if (lower.includes("linear")) { company = "Linear"; role = "Product Lead"; }
-      else if (lower.includes("figma")) { company = "Figma"; role = "Design Systems PM"; }
-      else if (lower.includes("notion")) { company = "Notion"; role = "Head of Product Ops"; }
-      else if (lower.includes("vercel")) { company = "Vercel"; role = "Platform PM"; }
-    }
-    return {
-      company, role, fitScore: 84,
-      fitReason: `Your background in API-first products and cross-functional leadership maps well to what ${company} is hiring for. Eight years of SaaS pattern recognition gives you a strong starting position.`,
-      salaryRange: "$180–230k + equity",
-      requirements: [
-        "8+ years product management experience in SaaS",
-        "Track record of shipping API-first or platform products",
-        "Cross-functional leadership across engineering & design",
-        "Data-driven decision-making with SQL or Amplitude",
-        "Experience scaling products from $1M to $50M+ ARR",
-      ],
-      tailoredBullets: [
-        `Owned ${company}-scale revenue infrastructure product strategy, driving API-first decisions that reduced integration friction by 40%`,
-        "Built cross-functional alignment across engineering, design, and finance stakeholders to ship load-bearing platform changes on time",
-        "Defined and tracked north-star metrics for financial data products, improving decision velocity for 200+ enterprise customers",
-      ],
-      coverLetterOpener: `When I look at what ${company} is building, I see a problem I've spent years thinking about from the other side. My eight years in SaaS product have been defined by a conviction that the best infrastructure products make hard decisions feel obvious.`,
-      skillGaps: [
-        "Direct domain experience in this specific surface area — surface adjacent work explicitly",
-        "Engineering depth signal — revise 1–2 bullets to name technical decisions you influenced",
-      ],
-      insiderTip: `${company} interviews are known for being opinionated — come with 2–3 strong product opinions about their current roadmap.`,
-    };
-  };
-
-  /* ── Add job (single URL) ── */
-  const submitAddJob = () => {
+  /* ── Real URL analysis via AI ── */
+  const submitAddJob = async () => {
     const url = addJobUrl.trim();
     if (!url) return;
     setAddJobLoading(true);
     setJobAnalysis(null);
-    window.setTimeout(() => {
-      setJobAnalysis(analyzeUrl(url));
+    setAddJobError(null);
+    try {
+      const res = await fetch("/api/ai/parse-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddJobError(data.error || "Could not parse job. Try adding manually.");
+      } else {
+        setJobAnalysis(data);
+      }
+    } catch {
+      setAddJobError("Network error. Check your connection and try again.");
+    } finally {
       setAddJobLoading(false);
-    }, 1500);
+    }
   };
 
   /* ── Add a job directly from a URL (used by CSV bulk upload) ── */
   const addJobFromUrl = (url: string, hintCompany?: string, hintRole?: string) => {
-    const analysis = analyzeUrl(url, hintCompany, hintRole);
+    const company = hintCompany || "Unknown";
+    const role = hintRole || "Unknown Role";
     setKanbanCards((prev) => {
       const newId = Math.max(...prev.map((c) => c.id), 0) + 1;
       return [...prev, {
         id: newId,
-        company: analysis.company,
-        initials: analysis.company.slice(0, 2).toUpperCase(),
-        role: analysis.role,
+        company,
+        initials: company.slice(0, 2).toUpperCase(),
+        role,
         stage: "saved" as KanbanStage,
-        fit: analysis.fitScore,
+        fit: null,
         jobRef: null,
         days: 0,
       }];
@@ -143,7 +118,7 @@ export function WorkspaceOpportunities({
     fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company: analysis.company, role: analysis.role, url }),
+      body: JSON.stringify({ company, role, url }),
     }).catch(() => {});
   };
 
@@ -184,7 +159,7 @@ export function WorkspaceOpportunities({
         initials: jobAnalysis.company.slice(0, 2).toUpperCase(),
         role: jobAnalysis.role,
         stage: "saved",
-        fit: jobAnalysis.fitScore,
+        fit: null,
         jobRef: null,
         days: 0,
       },
@@ -335,9 +310,10 @@ export function WorkspaceOpportunities({
           setUrl={setAddJobUrl}
           onSubmit={submitAddJob}
           loading={addJobLoading}
+          error={addJobError}
           analysis={jobAnalysis}
           onAddToKanban={addToKanban}
-          onDismiss={() => { setJobAnalysis(null); setShowAddPanel(false); setAddJobUrl(""); }}
+          onDismiss={() => { setJobAnalysis(null); setAddJobError(null); setShowAddPanel(false); setAddJobUrl(""); }}
         />
       )}
 
@@ -531,290 +507,54 @@ function DiscoverTab({
               >
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 15,
-                        fontWeight: 600,
-                        color: "#1A1A1A",
-                      }}
-                    >
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 600, color: "#1A1A1A" }}>
                       {jobAnalysis.company}
                     </p>
-                    <span
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 11,
-                        color: "#52493F",
-                      }}
-                    >
-                      ·
-                    </span>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 13,
-                        color: "#52493F",
-                      }}
-                    >
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>
                       {jobAnalysis.role}
                     </p>
                   </div>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 11,
-                      fontWeight: 300,
-                      color: "#7A7268",
-                      lineHeight: 1.6,
-                      maxWidth: 520,
-                      textWrap: "pretty",
-                    }}
-                  >
-                    {jobAnalysis.fitReason}
-                  </p>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                    <span
-                      style={{
-                        fontFamily: "var(--font-dm-mono), monospace",
-                        fontSize: 26,
-                        fontWeight: 500,
-                        color: "#4A8B6A",
-                      }}
-                    >
-                      {jobAnalysis.fitScore}%
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 11,
-                        color: "#A09890",
-                      }}
-                    >
-                      fit
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 10,
-                      color: "#A09890",
-                    }}
-                  >
-                    {jobAnalysis.salaryRange}
-                  </p>
+                  {(jobAnalysis.location || jobAnalysis.salary) && (
+                    <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+                      {jobAnalysis.location && (
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268" }}>
+                          📍 {jobAnalysis.location}
+                        </span>
+                      )}
+                      {jobAnalysis.salary && (
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#4A8B6A", fontWeight: 500 }}>
+                          💰 {jobAnalysis.salary}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {jobAnalysis.description && (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#7A7268", lineHeight: 1.6, maxWidth: 560, textWrap: "pretty" }}>
+                      {jobAnalysis.description}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                {/* Requirements */}
-                <div
-                  style={{
-                    background: "#FFFFFF",
-                    borderRadius: 8,
-                    padding: "14px 16px",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 9,
-                      fontWeight: 600,
-                      color: "#A09890",
-                      textTransform: "uppercase",
-                      letterSpacing: "1px",
-                      marginBottom: 10,
-                    }}
-                  >
+              {/* Requirements */}
+              {jobAnalysis.requirements?.length > 0 && (
+                <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", marginBottom: 14 }}>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
                     Key Requirements
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     {jobAnalysis.requirements.map((r: string, i: number) => (
                       <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
                         <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
-                        <p
-                          style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 11,
-                            fontWeight: 300,
-                            color: "#2A2218",
-                            lineHeight: 1.5,
-                          }}
-                        >
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>
                           {r}
                         </p>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                {/* Skill gaps */}
-                <div
-                  style={{
-                    background: "#FFFFFF",
-                    borderRadius: 8,
-                    padding: "14px 16px",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 9,
-                      fontWeight: 600,
-                      color: "#A09890",
-                      textTransform: "uppercase",
-                      letterSpacing: "1px",
-                      marginBottom: 10,
-                    }}
-                  >
-                    Skill Gaps to Address
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    {jobAnalysis.skillGaps.map((g: string, i: number) => (
-                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
-                        <span style={{ color: "#C4A86A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>△</span>
-                        <p
-                          style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 11,
-                            fontWeight: 300,
-                            color: "#2A2218",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {g}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 9,
-                        fontWeight: 600,
-                        color: "#A09890",
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        marginBottom: 5,
-                      }}
-                    >
-                      Insider tip
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 10,
-                        fontWeight: 300,
-                        color: "#52493F",
-                        lineHeight: 1.55,
-                        fontStyle: "italic",
-                      }}
-                    >
-                      {jobAnalysis.insiderTip}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tailored resume bullets */}
-              <div
-                style={{
-                  background: "#FFFFFF",
-                  borderRadius: 8,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  marginBottom: 14,
-                }}
-              >
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 9,
-                    fontWeight: 600,
-                    color: "#A09890",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    marginBottom: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  Tailored Resume Bullets <span style={{ color: "#C4A86A" }}>✦</span>
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {jobAnalysis.tailoredBullets.map((b: string, i: number) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 8,
-                        padding: "8px 10px",
-                        background: "rgba(26,58,47,0.03)",
-                        borderRadius: 5,
-                        borderLeft: "2px solid #1A3A2F",
-                      }}
-                    >
-                      <p
-                        style={{
-                          fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 11,
-                          fontWeight: 300,
-                          color: "#1A1A1A",
-                          lineHeight: 1.6,
-                          textWrap: "pretty",
-                        }}
-                      >
-                        {b}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Cover letter opener */}
-              <div
-                style={{
-                  background: "#FFFFFF",
-                  borderRadius: 8,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  marginBottom: 16,
-                }}
-              >
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 9,
-                    fontWeight: 600,
-                    color: "#A09890",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    marginBottom: 10,
-                  }}
-                >
-                  Cover Letter Opener
-                </p>
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 12,
-                    fontWeight: 300,
-                    color: "#1A1A1A",
-                    lineHeight: 1.75,
-                    textWrap: "pretty",
-                    fontStyle: "italic",
-                  }}
-                >
-                  {jobAnalysis.coverLetterOpener}
-                </p>
-              </div>
+              )}
 
               {/* CTAs */}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1185,7 +925,7 @@ function DiscoverTab({
             }}
           >
             {COMPANIES.map((co) => {
-              const fitColor = co.fit >= 90 ? "#4A8B6A" : co.fit >= 85 ? "#C4A86A" : "#A09890";
+              const fitColor = co.fit !== null && co.fit >= 90 ? "#4A8B6A" : co.fit !== null && co.fit >= 85 ? "#C4A86A" : "#A09890";
               const cardBorder = co.fit >= 90 ? "rgba(74,139,106,0.2)" : "rgba(0,0,0,0.06)";
               const rolesBadgeColor = co.openRoles.length > 0 ? "#4A8B6A" : "#A09890";
               return (
@@ -1655,23 +1395,20 @@ interface MyJobsUrlPastePanelProps {
   setUrl: (s: string) => void;
   onSubmit: () => void;
   loading: boolean;
+  error?: string | null;
   analysis: {
     company: string;
     role: string;
-    fitScore: number;
-    fitReason: string;
-    salaryRange: string;
+    location: string | null;
+    salary: string | null;
+    description: string | null;
     requirements: string[];
-    tailoredBullets: string[];
-    coverLetterOpener: string;
-    skillGaps: string[];
-    insiderTip: string;
   } | null;
   onAddToKanban: () => void;
   onDismiss: () => void;
 }
 
-function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, onAddToKanban, onDismiss }: MyJobsUrlPastePanelProps) {
+function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, error, analysis, onAddToKanban, onDismiss }: MyJobsUrlPastePanelProps) {
   return (
     <div
       style={{
@@ -1738,6 +1475,9 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, onAddTo
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Searchly is analyzing this listing…</p>
         </div>
       )}
+      {error && !loading && (
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#DC2626" }}>{error}</p>
+      )}
       {analysis && !loading && (
         <div
           style={{
@@ -1749,21 +1489,23 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, onAddTo
             animation: "fadeIn 0.3s ease both",
           }}
         >
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{analysis.company}</p>
-                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>{analysis.role}</p>
-              </div>
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{analysis.company}</p>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>{analysis.role}</p>
+              {analysis.salary && (
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", fontWeight: 500 }}>{analysis.salary}</span>
+              )}
+              {analysis.location && (
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268" }}>{analysis.location}</span>
+              )}
+            </div>
+            {analysis.description && (
               <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 300, color: "#7A7268", lineHeight: 1.5, maxWidth: 420, textWrap: "pretty" }}>
-                {analysis.fitReason}
+                {analysis.description}
               </p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 20, fontWeight: 500, color: "#4A8B6A" }}>{analysis.fitScore}%</span>
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#A09890" }}>{analysis.salaryRange}</span>
-            </div>
+            )}
           </div>
           <button
             onClick={onAddToKanban}
@@ -1877,7 +1619,7 @@ function PipelineTab({
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {sortedCards.map((c) => {
             const job = c.jobRef !== null ? JOBS[c.jobRef] : null;
-            const fitColor = c.fit >= 90 ? "#4A8B6A" : c.fit >= 85 ? "#C4A86A" : "#A09890";
+            const fitColor = c.fit !== null && c.fit >= 90 ? "#4A8B6A" : c.fit !== null && c.fit >= 85 ? "#C4A86A" : "#A09890";
             const stageColor = STAGE_COLORS[c.stage];
             return (
               <div
@@ -1922,12 +1664,14 @@ function PipelineTab({
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
-                        {c.fit}%
-                      </span>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
-                    </div>
+                    {c.fit !== null && (
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                        <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
+                          {c.fit}%
+                        </span>
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
+                      </div>
+                    )}
                     <StatusDropdown stage={c.stage} onChange={(s) => onChangeStage(c.id, s)} />
                   </div>
                 </div>
@@ -1990,7 +1734,7 @@ interface JobDrawerProps {
 
 function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
-  const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
+  const fitColor = card.fit !== null && card.fit >= 90 ? "#4A8B6A" : card.fit !== null && card.fit >= 85 ? "#C4A86A" : "#A09890";
 
   // AI tool state
   const [aiLoading, setAiLoading] = React.useState(false);
@@ -2119,16 +1863,11 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
             >
               {STAGE_LABELS[card.stage]}
             </span>
-            <span
-              style={{
-                fontFamily: "var(--font-dm-mono), monospace",
-                fontSize: 13,
-                fontWeight: 500,
-                color: fitColor,
-              }}
-            >
-              {card.fit}% fit
-            </span>
+            {card.fit !== null && (
+              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 13, fontWeight: 500, color: fitColor }}>
+                {card.fit}% fit
+              </span>
+            )}
             {job && (
               <span
                 style={{

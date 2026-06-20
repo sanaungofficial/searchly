@@ -2,7 +2,11 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+let _anthropic: Anthropic | null = null;
+function getAnthropic() {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _anthropic;
+}
 
 export async function POST(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -36,7 +40,7 @@ You know about the user's job search:${pipelineContext}${focusContext}
 
 When discussing specific jobs, reference what you know about them. When asked about strategy, tailor it to where they are in their search. Keep responses concise — 2-4 short paragraphs max unless they ask for something longer. No corporate fluff.`;
 
-  const stream = await anthropic.messages.stream({
+  const stream = await getAnthropic().messages.stream({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     system: systemPrompt,

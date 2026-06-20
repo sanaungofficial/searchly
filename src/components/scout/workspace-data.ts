@@ -325,7 +325,7 @@ export interface KanbanCard {
   initials: string;
   role: string;
   stage: KanbanStage;
-  fit: number;
+  fit: number | null;
   jobRef: number | null;
   days: number;
 }
