@@ -29,6 +29,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [downloading, setDownloading] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<string>("");
   const [fitToPage, setFitToPage] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
@@ -148,6 +149,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
   return (
     <div
+      className="resume-print-target"
       style={{
         position: "fixed",
         inset: 0,
@@ -160,6 +162,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     >
       {/* Header bar */}
       <div
+        className="resume-print-hide"
         style={{
           display: "flex",
           alignItems: "center",
@@ -229,6 +232,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
         {/* Left — job context */}
         <div
+          className="resume-print-hide"
           style={{
             width: 260,
             borderRight: "1px solid #E5DDD0",
@@ -295,7 +299,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             flexDirection: "column",
             alignItems: "center",
           }}
-          className="resume-print-target"
+          className="resume-print-center"
         >
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, marginTop: 80 }}>
@@ -378,6 +382,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
         {/* Right — section editor */}
         <div
+          className="resume-print-hide"
           style={{
             width: 280,
             borderLeft: "1px solid #E5DDD0",
@@ -407,7 +412,14 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                   <span style={{ fontSize: 12, fontWeight: 500, color: "#1A1A1A", flex: 1 }}>{section.title}</span>
                   <div style={{ display: "flex", gap: 4 }}>
                     <button
-                      onClick={() => setEditingId(editingId === section.id ? null : section.id)}
+                      onClick={() => {
+                        if (editingId === section.id) {
+                          setEditingId(null);
+                        } else {
+                          setEditingId(section.id);
+                          setEditDraft(section.content);
+                        }
+                      }}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#A09890", display: "flex", alignItems: "center" }}
                     >
                       <Pencil size={13} />
@@ -424,8 +436,9 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 {editingId === section.id && (
                   <div style={{ padding: "8px 20px 14px" }}>
                     <textarea
-                      defaultValue={section.content}
-                      onBlur={(e) => updateSection(section.id, e.target.value)}
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      onBlur={() => updateSection(section.id, editDraft)}
                       rows={6}
                       style={{
                         width: "100%",
@@ -474,6 +487,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
       {/* Footer bar */}
       <div
+        className="resume-print-hide"
         style={{
           display: "flex",
           alignItems: "center",
@@ -568,7 +582,18 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
       <style>{`
         @media print {
           body > *:not(.resume-print-target) { display: none !important; }
-          .resume-print-target { display: block !important; }
+          .resume-print-target {
+            display: flex !important;
+            position: static !important;
+            height: auto !important;
+            background: white !important;
+          }
+          .resume-print-hide { display: none !important; }
+          .resume-print-center {
+            flex: 1 !important;
+            overflow: visible !important;
+            padding: 0 !important;
+          }
         }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
