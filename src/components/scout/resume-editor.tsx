@@ -39,6 +39,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [coverLoading, setCoverLoading] = useState(false);
   const [coverCopied, setCoverCopied] = useState(false);
   const [coverOpen, setCoverOpen] = useState(false);
+  const [fitAnalysis, setFitAnalysis] = useState<string | null>(null);
+  const [fitLoading, setFitLoading] = useState(false);
+  const [fitOpen, setFitOpen] = useState(false);
+  const [fitCopied, setFitCopied] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -196,15 +200,47 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     setTimeout(() => setCoverCopied(false), 2000);
   }
 
-  function downloadCoverLetterDocx() {
+  async function downloadCoverLetterDocx() {
     if (!coverLetter) return;
-    const blob = new Blob([coverLetter], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `cover-letter-${company || "application"}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const res = await fetch("/api/ai/cover-letter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: coverLetter, company }),
+    });
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cover-letter-${company || "application"}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function generateFitAnalysis() {
+    setFitLoading(true);
+    setFitOpen(true);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: "fit", company, role: jobTitle, jobId }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.text) setFitAnalysis(d.text);
+      }
+    } finally {
+      setFitLoading(false);
+    }
+  }
+
+  async function copyFitAnalysis() {
+    if (!fitAnalysis) return;
+    await navigator.clipboard.writeText(fitAnalysis);
+    setFitCopied(true);
+    setTimeout(() => setFitCopied(false), 2000);
   }
 
   const personalInfo = activeSections.find((s) => s.type === "header");
@@ -495,6 +531,91 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 ) : (
                   <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>
                     Could not generate. Check that you have a resume uploaded and job notes added.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Fit analysis */}
+          <div style={{ marginBottom: 16 }}>
+            <button
+              onClick={fitOpen ? () => setFitOpen(false) : generateFitAnalysis}
+              disabled={fitLoading}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                background: fitOpen ? "#F5F3EF" : "#2C5F8A",
+                color: fitOpen ? "#52493F" : "#DDEEFF",
+                border: fitOpen ? "1px solid #D8D0C5" : "none",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: fitLoading ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 7,
+                opacity: fitLoading ? 0.7 : 1,
+              }}
+            >
+              {fitLoading
+                ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Analyzing…</>
+                : fitOpen
+                ? "Hide Fit Analysis"
+                : "Why am I a fit?"
+              }
+            </button>
+
+            {fitOpen && (
+              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
+                {fitLoading ? (
+                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>Analyzing your fit for this role…</p>
+                ) : fitAnalysis ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 8 }}>
+                      <button
+                        onClick={copyFitAnalysis}
+                        style={{
+                          padding: "4px 10px",
+                          background: "#F5F3EF",
+                          border: "1px solid #D8D0C5",
+                          borderRadius: 4,
+                          fontSize: 10,
+                          color: "#52493F",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {fitCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                      </button>
+                      <button
+                        onClick={generateFitAnalysis}
+                        style={{
+                          padding: "4px 10px",
+                          background: "#F5F3EF",
+                          border: "1px solid #D8D0C5",
+                          borderRadius: 4,
+                          fontSize: 10,
+                          color: "#52493F",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <RefreshCw size={11} /> Retry
+                      </button>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#1A1A1A", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                      {fitAnalysis}
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>
+                    Could not analyze fit. Check that you have a resume uploaded.
                   </p>
                 )}
               </div>
