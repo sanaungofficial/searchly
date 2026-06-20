@@ -27,7 +27,8 @@ export async function GET() {
 
   const { allowed, used, limit } = await checkAndIncrementUsage(
     dbUser?.id ?? user.id,
-    isPro(dbUser?.subscription ?? null)
+    isPro(dbUser?.subscription ?? null),
+    user.email ?? undefined
   );
 
   if (!allowed) {

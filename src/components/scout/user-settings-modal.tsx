@@ -28,7 +28,7 @@ function initials(name: string | null, email: string) {
 
 export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
   const [tab, setTab] = useState<SettingsTab>("profile");
-  const { isPro, status, currentPeriodEnd, usage, loading, startCheckout, openPortal } = useSubscription();
+  const { isPro, isAdmin, status, currentPeriodEnd, usage, loading, startCheckout, openPortal } = useSubscription();
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -326,36 +326,41 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
                             letterSpacing: "0.3px",
                           }}
                         >
-                          {loading ? "Loading…" : isPro ? "SEARCHLY PRO" : "SEARCHLY FREE"}
+                          {loading ? "Loading…" : isAdmin ? "SEARCHLY ADMIN" : isPro ? "SEARCHLY PRO" : "SEARCHLY FREE"}
                         </span>
-                        {isPro && (
+                        {(isPro || isAdmin) && (
                           <span
                             style={{
                               fontSize: 10,
                               fontWeight: 600,
                               color: "#FFFFFF",
-                              background: "#1A3A2F",
+                              background: isAdmin ? "#6B4A8A" : "#1A3A2F",
                               padding: "2px 8px",
                               borderRadius: 20,
                               letterSpacing: "0.4px",
                             }}
                           >
-                            ACTIVE
+                            {isAdmin ? "ADMIN" : "ACTIVE"}
                           </span>
                         )}
                       </div>
-                      {isPro && periodEndFormatted && (
+                      {isPro && !isAdmin && periodEndFormatted && (
                         <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
                           Renews {periodEndFormatted}
                         </p>
                       )}
-                      {!isPro && (
+                      {isAdmin && (
+                        <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
+                          Unlimited access · all features enabled
+                        </p>
+                      )}
+                      {!isPro && !isAdmin && (
                         <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
                           Unlock unlimited AI tools &amp; job tracking
                         </p>
                       )}
                     </div>
-                    {isPro ? (
+                    {isAdmin ? null : isPro ? (
                       <button
                         onClick={openPortal}
                         style={{
@@ -398,7 +403,7 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
                 </div>
 
                 {/* AI usage meter — free users only */}
-                {!isPro && usage && (
+                {!isPro && !isAdmin && usage && (
                   <div
                     style={{
                       padding: "14px 16px",
@@ -435,7 +440,7 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
                 )}
 
                 {/* What's included */}
-                {!isPro && (
+                {!isPro && !isAdmin && (
                   <div
                     style={{
                       padding: "14px 16px",

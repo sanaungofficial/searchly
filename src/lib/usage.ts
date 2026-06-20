@@ -14,11 +14,17 @@ export async function getUsage(userId: string): Promise<{ used: number; limit: n
   return { used: row?.count ?? 0, limit: FREE_AI_LIMIT };
 }
 
+function isAdminEmail(email: string) {
+  const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
+  return admins.includes(email.toLowerCase());
+}
+
 export async function checkAndIncrementUsage(
   userId: string,
-  proUser: boolean
+  proUser: boolean,
+  email?: string
 ): Promise<{ allowed: boolean; used: number; limit: number }> {
-  if (proUser) return { allowed: true, used: 0, limit: Infinity };
+  if (proUser || (email && isAdminEmail(email))) return { allowed: true, used: 0, limit: Infinity };
 
   const month = currentMonth();
   const row = await prisma.monthlyUsage.findUnique({
