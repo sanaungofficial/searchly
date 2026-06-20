@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   OpportunitiesIcon,
   ProfileIcon,
@@ -24,6 +24,7 @@ interface SidebarProps {
   onNavigateNotif: (s: Section) => void;
   isAdmin?: boolean;
   userRole?: string;
+  isMobile?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
   user?: {
@@ -69,21 +70,14 @@ export function WorkspaceSidebar({
   onNavigateNotif,
   isAdmin,
   userRole,
+  isMobile = false,
   isOpen,
   onClose,
   user,
 }: SidebarProps) {
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const hasLiveNow = true; // LIVE_SESSIONS has one isLive session
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   const sidebarVisible = isMobile ? (isOpen ?? false) : true;
 
