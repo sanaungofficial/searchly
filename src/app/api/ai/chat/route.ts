@@ -87,17 +87,19 @@ When discussing specific jobs, reference what you know about them. When the user
           controller.enqueue(encoder.encode(chunk.delta.text));
         }
       }
-      controller.close();
-      // Log token usage after stream completes (fire-and-forget)
-      stream.finalMessage().then((msg) => {
-        logAiUsage({
+      // Log BEFORE closing — finalMessage() is already settled at this point,
+      // and awaiting here keeps the function alive long enough to write to DB.
+      try {
+        const msg = await stream.finalMessage();
+        await logAiUsage({
           userId,
           feature: "chat",
           model: CHAT_MODEL,
           inputTokens: msg.usage.input_tokens,
           outputTokens: msg.usage.output_tokens,
-        }).catch(() => {});
-      }).catch(() => {});
+        });
+      } catch {}
+      controller.close();
     },
   });
 
