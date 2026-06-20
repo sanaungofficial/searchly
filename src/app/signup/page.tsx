@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,9 +38,7 @@ export default function LoginPage() {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) setError(error.message);
   };
@@ -49,9 +47,7 @@ export default function LoginPage() {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "linkedin_oidc",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) setError(error.message);
   };
@@ -114,7 +110,7 @@ export default function LoginPage() {
               Check your inbox
             </h2>
             <p style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.6 }}>
-              We sent a magic link to <strong>{email}</strong>. Click it to sign in — no password needed.
+              We sent a magic link to <strong>{email}</strong>. Click it to create your account — no password needed.
             </p>
           </div>
         ) : (
@@ -129,10 +125,10 @@ export default function LoginPage() {
                 fontStyle: "italic",
               }}
             >
-              Welcome back.
+              Create your account.
             </h2>
             <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32, lineHeight: 1.5 }}>
-              Sign in to your Searchly workspace.
+              Your AI-powered job search workspace.
             </p>
 
             {/* Google */}
@@ -152,7 +148,7 @@ export default function LoginPage() {
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: "pointer",
-                marginBottom: 20,
+                marginBottom: 12,
                 fontFamily: "inherit",
                 transition: "opacity 0.15s",
               }}
@@ -160,7 +156,7 @@ export default function LoginPage() {
               onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
             >
               <GoogleIcon />
-              Continue with Google
+              Sign up with Google
             </button>
 
             {/* LinkedIn */}
@@ -188,18 +184,11 @@ export default function LoginPage() {
               onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
             >
               <LinkedInIcon />
-              Continue with LinkedIn
+              Sign up with LinkedIn
             </button>
 
             {/* Divider */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 20,
-              }}
-            >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <div style={{ flex: 1, height: 1, background: "#E5DDD0" }} />
               <span style={{ fontSize: 12, color: "#9CA3AF" }}>or</span>
               <div style={{ flex: 1, height: 1, background: "#E5DDD0" }} />
@@ -257,18 +246,23 @@ export default function LoginPage() {
                 {error}
               </p>
             )}
+
+            {/* Terms */}
+            <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 20, textAlign: "center", lineHeight: 1.5 }}>
+              By signing up, you agree to our Terms of Service and Privacy Policy.
+            </p>
           </>
         )}
       </div>
 
-      {/* Switch to signup */}
+      {/* Switch to login */}
       <p style={{ marginTop: 24, fontSize: 13, color: "#6B7280" }}>
-        Don&apos;t have an account?{" "}
+        Already have an account?{" "}
         <button
-          onClick={() => router.push("/signup")}
+          onClick={() => router.push("/login")}
           style={{ background: "none", border: "none", color: "#1C3A2F", fontWeight: 600, cursor: "pointer", fontSize: 13, padding: 0, fontFamily: "inherit" }}
         >
-          Sign up
+          Sign in
         </button>
       </p>
     </div>
