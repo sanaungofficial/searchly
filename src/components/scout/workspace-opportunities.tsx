@@ -1481,8 +1481,7 @@ interface JobDrawerProps {
 }
 
 function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
-  const [dbId, setDbId] = useState<string | null>(null);
-  void setDbId;
+  const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
