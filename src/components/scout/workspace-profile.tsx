@@ -2,20 +2,13 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
+  SKILLS_LIST,
+  PROFILE_SUGGESTIONS,
+  ROLE_ARCHETYPES,
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
 } from "./workspace-data";
-
-interface AISuggestion {
-  priority: "high" | "medium" | "low";
-  category: string;
-  title: string;
-  detail: string;
-  impact: string;
-}
 import { SparkleIcon } from "./workspace-icons";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface EducationEntry {
   id: string;
@@ -56,13 +49,6 @@ interface UserProfile {
   parsedData: ParsedData | null;
 }
 
-interface ReadbackData {
-  picture: string;
-  strengths: string[];
-  targetRoles: { role: string; fit: string }[];
-  honestNote: string;
-}
-
 interface RoleAnalysis {
   fitScore: number;
   summary: string;
@@ -71,8 +57,16 @@ interface RoleAnalysis {
   nextSteps: string[];
 }
 
+interface ReadbackData {
+  picture: string;
+  strengths: string[];
+  targetRoles: { role: string; fit: string }[];
+  honestNote: string;
+  _cachedAt?: string;
+}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const _unusedSkills = SKILLS_LIST;
+void _unusedSkills;
 
 function formatDateRange(from?: string | null, to?: string | null) {
   if (!from && !to) return null;
@@ -90,33 +84,23 @@ function initials(name: string) {
   return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
 }
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
+function timeAgo(iso: string) {
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  } catch { return "—"; }
 }
 
-function profileCompleteness(p: UserProfile): number {
-  let score = 0;
-  if (p.name) score++;
-  if (p.email) score++;
-  if (p.parsedData?.phone) score++;
-  if (p.parsedData?.location) score++;
-  if (p.linkedinUrl) score++;
-  if (p.resumeUrl) score += 2;
-  if ((p.parsedData?.education || []).length > 0) score++;
-  if ((p.parsedData?.workExperience || []).length > 0) score++;
-  if ((p.parsedData?.skills || []).length > 0) score++;
-  return Math.round((score / 10) * 100);
+function formatCachedAt(iso: string) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch { return "recently"; }
 }
-
-// ─── Shared small components ──────────────────────────────────────────────────
 
 function SectionHeader({ title, onEdit }: { title: string; onEdit?: () => void }) {
   return (
@@ -146,12 +130,10 @@ function SkillChip({ label, onRemove }: { label: string; onRemove?: () => void }
   return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#E8D5A3]/50 text-xs font-medium text-[#52493F]">
       {label}
-      {onRemove && <button onClick={onRemove} className="ml-0.5 text-[#A09890] hover:text-[#52493F]">x</button>}
+      {onRemove && <button onClick={onRemove} className="ml-0.5 text-[#A09890] hover:text-[#52493F]">&times;</button>}
     </span>
   );
 }
-
-// ─── Tab: Personal ────────────────────────────────────────────────────────────
 
 function PersonalTab({ profile, onSave }: {
   profile: UserProfile;
@@ -228,8 +210,6 @@ function PersonalTab({ profile, onSave }: {
   );
 }
 
-// ─── Tab: Education ───────────────────────────────────────────────────────────
-
 function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: (entries: EducationEntry[]) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [list, setList] = useState<EducationEntry[]>(entries);
@@ -247,7 +227,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
       <div className="space-y-4">
         {list.map((entry) => (
           <div key={entry.id} className="rounded-xl border border-[#E5DDD0] p-3 space-y-2 relative">
-            <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
+            <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">&times;</button>
             <div><label className="block text-xs text-[#A09890] mb-1">School</label>
               <input value={entry.school} onChange={(e) => updateEntry(entry.id, "school", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             <div className="grid grid-cols-2 gap-2">
@@ -277,7 +257,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
     <div>
       <SectionHeader title="Education" onEdit={() => setEditing(true)} />
       {entries.length === 0 ? (
-        <EmptyState message="No education added yet" sub="Upload your resume and we'll fill this in automatically." />
+        <EmptyState message="No education added yet" sub="Upload your resume and we will fill this in automatically." />
       ) : (
         <div className="space-y-4">
           {entries.map((entry, i) => (
@@ -299,8 +279,6 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
   );
 }
 
-// ─── Tab: Work Experience ─────────────────────────────────────────────────────
-
 function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (entries: WorkEntry[]) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [list, setList] = useState<WorkEntry[]>(entries);
@@ -320,7 +298,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
       <div className="space-y-4">
         {list.map((entry) => (
           <div key={entry.id} className="rounded-xl border border-[#E5DDD0] p-3 space-y-2 relative">
-            <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
+            <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">&times;</button>
             <div className="grid grid-cols-2 gap-2">
               <div><label className="block text-xs text-[#A09890] mb-1">Company</label>
                 <input value={entry.company} onChange={(e) => updateEntry(entry.id, "company", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
@@ -350,7 +328,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
     <div>
       <SectionHeader title="Work Experience" onEdit={() => setEditing(true)} />
       {entries.length === 0 ? (
-        <EmptyState message="No experience added yet" sub="Upload your resume and we'll fill this in automatically." />
+        <EmptyState message="No experience added yet" sub="Upload your resume and we will fill this in automatically." />
       ) : (
         <div className="space-y-5">
           {entries.map((entry, i) => (
@@ -386,8 +364,6 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
     </div>
   );
 }
-
-// ─── Tab: Skills (real data) ──────────────────────────────────────────────────
 
 function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: string[]) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
@@ -428,8 +404,6 @@ function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: stri
   );
 }
 
-// ─── Tab: Dream Role ──────────────────────────────────────────────────────────
-
 function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, onAddSkill }: {
   dreamList: string[];
   setDreamList: (l: string[]) => void;
@@ -439,11 +413,46 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
   onAddSkill: (skill: string) => Promise<void>;
 }) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<Record<string, RoleAnalysis | "loading" | "error">>({});
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [analyses, setAnalyses] = useState<Record<string, RoleAnalysis>>({});
+  const [loadingRoles, setLoadingRoles] = useState<Set<string>>(new Set());
   const [pendingSkills, setPendingSkills] = useState<Set<string>>(new Set());
   const [needsRefresh, setNeedsRefresh] = useState<Set<string>>(new Set());
+  const [showSearch, setShowSearch] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const fetchAnalysis = async (role: string, force = false) => {
+    if (loadingRoles.has(role)) return;
+    if (!force && analyses[role]) return;
+    setLoadingRoles((prev) => new Set(prev).add(role));
+    try {
+      const res = await fetch(`/api/ai/role-gap?role=${encodeURIComponent(role)}`);
+      const data = await res.json();
+      if (!data.error) {
+        setAnalyses((prev) => ({ ...prev, [role]: data }));
+        setNeedsRefresh((prev) => { const n = new Set(prev); n.delete(role); return n; });
+      }
+    } catch { /* silent */ }
+    finally {
+      setLoadingRoles((prev) => { const n = new Set(prev); n.delete(role); return n; });
+    }
+  };
+
+  const handleCardClick = (role: string) => {
+    if (expandedRole === role) { setExpandedRole(null); return; }
+    setExpandedRole(role);
+    if (hasResume) fetchAnalysis(role);
+  };
+
+  const handleAddSkill = async (role: string, skill: string) => {
+    const key = `${role}::${skill}`;
+    setPendingSkills((prev) => new Set(prev).add(key));
+    setNeedsRefresh((prev) => new Set(prev).add(role));
+    await onAddSkill(skill);
+  };
+
+  const hasSkill = (_role: string, skill: string) => {
+    return userSkills.includes(skill) || pendingSkills.has(`${_role}::${skill}`);
+  };
 
   const addRole = (title: string) => {
     if (dreamList.includes(title) || dreamList.length >= 3) return;
@@ -451,166 +460,122 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
     setDreamList(next);
     onSave(next);
     setShowSearch(false);
-    setSearchQuery("");
+    setQuery("");
   };
 
-  const removeRole = (title: string) => {
-    const next = dreamList.filter((r) => r !== title);
+  const removeRole = (role: string) => {
+    const next = dreamList.filter((r) => r !== role);
     setDreamList(next);
     onSave(next);
-    if (expandedRole === title) setExpandedRole(null);
+    if (expandedRole === role) setExpandedRole(null);
   };
 
-  const fetchAnalysis = async (role: string) => {
-    setAnalysis((prev) => ({ ...prev, [role]: "loading" }));
-    try {
-      const res = await fetch(`/api/ai/role-gap?role=${encodeURIComponent(role)}`);
-      const data = await res.json();
-      if (data.error) setAnalysis((prev) => ({ ...prev, [role]: "error" }));
-      else setAnalysis((prev) => ({ ...prev, [role]: data as RoleAnalysis }));
-    } catch {
-      setAnalysis((prev) => ({ ...prev, [role]: "error" }));
-    }
-  };
-
-  const toggleExpand = async (role: string) => {
-    if (expandedRole === role) { setExpandedRole(null); return; }
-    setExpandedRole(role);
-    if (analysis[role] || !hasResume) return;
-    await fetchAnalysis(role);
-  };
-
-  const handleAddSkill = async (skill: string, role: string) => {
-    setPendingSkills((prev) => new Set([...prev, skill]));
-    setNeedsRefresh((prev) => new Set([...prev, role]));
-    await onAddSkill(skill);
-  };
-
-  const handleRefresh = async (role: string) => {
-    setNeedsRefresh((prev) => { const n = new Set(prev); n.delete(role); return n; });
-    setPendingSkills(new Set());
-    await fetchAnalysis(role);
-  };
-
-  const filteredRoles = AVAILABLE_ROLES.filter(
-    (r) => !dreamList.includes(r) && r.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSuggestions = AVAILABLE_ROLES.filter(
+    (r) => !dreamList.includes(r) && r.toLowerCase().includes(query.toLowerCase())
   );
-
-  const scoreColor = (score: number) =>
-    score >= 70 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "#A09890";
-
-  const scoreLabel = (score: number) =>
-    score >= 70 ? "Strong fit" : score >= 50 ? "Good foundation" : "Gap to close";
-
-  const hasSkill = (skill: string) =>
-    userSkills.some((s) => s.toLowerCase() === skill.toLowerCase()) || pendingSkills.has(skill);
+  const showAddCustom = query.trim() &&
+    !AVAILABLE_ROLES.some((r) => r.toLowerCase() === query.trim().toLowerCase()) &&
+    !dreamList.includes(query.trim());
 
   return (
-    <div style={{ maxWidth: 560, paddingBottom: 40 }}>
-      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
-        Pick up to three roles you&apos;re targeting. Expand any card to see your fit score, required skills, and next steps — powered by your resume.
+    <div style={{ paddingBottom: 40 }}>
+      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
+        Pick up to three roles you are aiming for. Searchly will measure the gap, surface roles that match, and build a learning path to bridge what is missing.
       </p>
 
-      {/* Role cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
         {dreamList.map((role) => {
-          const isOpen = expandedRole === role;
-          const result = analysis[role];
-          const loaded = result && result !== "loading" && result !== "error" ? result as RoleAnalysis : null;
+          const analysis = analyses[role];
+          const isExpanded = expandedRole === role;
+          const isLoading = loadingRoles.has(role);
           const roleNeedsRefresh = needsRefresh.has(role);
+          const score = analysis?.fitScore;
+          const scoreColor = score !== undefined ? (score >= 70 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "#A09890") : "#A09890";
 
           return (
-            <div key={role} style={{ background: "#FFFFFF", borderRadius: 10, border: isOpen ? "1.5px solid #1A3A2F" : "1.5px solid rgba(0,0,0,0.08)", boxShadow: isOpen ? "0 4px 20px rgba(26,58,47,0.08)" : "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden", transition: "border-color 0.15s, box-shadow 0.15s" }}>
-              {/* Card header */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
-                {loaded ? (
-                  <div style={{ width: 40, height: 40, borderRadius: 8, background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 11, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
+            <div key={role} style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div onClick={() => handleCardClick(role)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: score !== undefined ? scoreColor : "#E5DDD0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {isLoading ? (
+                      <span style={{ fontSize: 9, color: "#FFFFFF", fontWeight: 600 }}>...</span>
+                    ) : score !== undefined ? (
+                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 11, color: "#FFFFFF", fontWeight: 700 }}>{score}%</span>
+                    ) : (
+                      <span style={{ fontSize: 9, color: "#A09890" }}>{"—"}</span>
+                    )}
                   </div>
-                ) : (
-                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
-                  {loaded ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: scoreColor(loaded.fitScore) }}>
-                      {scoreLabel(loaded.fitScore)}{roleNeedsRefresh ? " · score pending refresh" : ""}
-                    </p>
-                  ) : !hasResume ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Upload a resume to see your fit score</p>
-                  ) : result === "loading" ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Analyzing…</p>
-                  ) : result === "error" ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#C4A86A" }}>Analysis unavailable</p>
-                  ) : (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Click to analyze fit</p>
-                  )}
+                  <div>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
+                    {analysis?.summary && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268", lineHeight: 1.4 }}>{analysis.summary}</p>}
+                    {!hasResume && !analysis && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#C0B8B0" }}>Upload a resume to see your fit score</p>}
+                  </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeRole(role); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#C0B8B0", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}
-                    aria-label={`Remove ${role}`}
-                  >×</button>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s", color: "#A09890" }}>
-                    <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <button onClick={(e) => { e.stopPropagation(); removeRole(role); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#C0B8B0", fontSize: 16, padding: "2px 6px", lineHeight: 1 }}>&times;</button>
+                  <span style={{ color: "#C0B8B0", fontSize: 12 }}>{isExpanded ? "▲" : "▼"}</span>
                 </div>
               </div>
 
-              {/* Expanded panel */}
-              {isOpen && (
-                <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: "16px 16px 20px" }}>
-                  {result === "loading" && (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
-                  )}
-                  {result === "error" && (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
-                  )}
-                  {!hasResume && (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
-                  )}
-                  {loaded && (
+              {isExpanded && (
+                <div style={{ borderTop: "1px solid #F0EBE0", padding: "16px 16px 20px" }}>
+                  {isLoading && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your fit...</p>}
+                  {!isLoading && !analysis && !hasResume && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload a resume to get a detailed gap analysis for this role.</p>}
+                  {!isLoading && !analysis && hasResume && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Loading analysis...</p>}
+                  {analysis && (
                     <>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F", lineHeight: 1.65, marginBottom: 20 }}>{loaded.summary}</p>
-
-                      {/* Required skills — interactive chips */}
-                      {loaded.requiredSkills?.length > 0 && (
-                        <div style={{ marginBottom: 20 }}>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Skills for this role</p>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                            {loaded.requiredSkills.map((skill) =>
-                              hasSkill(skill) ? (
-                                <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                  <span style={{ fontSize: 10 }}>✓</span> {skill}
-                                </span>
-                              ) : (
-                                <button key={skill} onClick={() => handleAddSkill(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                  <span style={{ color: "#1A3A2F", fontWeight: 700, fontSize: 13, lineHeight: 1 }}>+</span> {skill}
-                                </button>
-                              )
-                            )}
-                          </div>
-                          {roleNeedsRefresh && (
-                            <button onClick={() => handleRefresh(role)} style={{ marginTop: 10, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#1A3A2F", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
-                              Refresh score with updated skills
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Required skills</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
+                        {analysis.requiredSkills.map((skill) => {
+                          const owned = hasSkill(role, skill);
+                          return owned ? (
+                            <span key={skill} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.25)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 500 }}>
+                              {"✓"} {skill}
+                            </span>
+                          ) : (
+                            <button key={skill} onClick={() => handleAddSkill(role, skill)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", background: "transparent", border: "1.5px dashed #C0B8B0", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268", cursor: "pointer", fontWeight: 500 }}>
+                              + {skill}
                             </button>
-                          )}
-                        </div>
+                          );
+                        })}
+                      </div>
+
+                      {roleNeedsRefresh && (
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F", marginBottom: 14 }}>
+                          Skills updated {" — "}
+                          <button onClick={() => fetchAnalysis(role, true)} style={{ background: "none", border: "none", cursor: "pointer", textDecoration: "underline", color: "#1A3A2F", fontSize: 11, padding: 0 }}>
+                            refresh score
+                          </button>
+                        </p>
                       )}
 
-                      {/* Next steps */}
-                      <div>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {loaded.nextSteps.map((step, i) => (
-                            <div key={i} style={{ display: "flex", gap: 8 }}>
-                              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
-                              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      {analysis.gaps.length > 0 && (
+                        <>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Key gaps</p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+                            {analysis.gaps.map((gap) => (
+                              <div key={gap.skill} style={{ padding: "10px 12px", background: "rgba(196,168,106,0.06)", borderLeft: "2px solid #C4A86A", borderRadius: 5 }}>
+                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A", marginBottom: 3 }}>{gap.skill}</p>
+                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268", lineHeight: 1.4 }}>{gap.why}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {analysis.nextSteps.length > 0 && (
+                        <>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>Next steps</p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {analysis.nextSteps.map((step, i) => (
+                              <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#1A3A2F", color: "#E8D5A3", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -620,48 +585,94 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
         })}
       </div>
 
-      {/* Add role area */}
       {dreamList.length < 3 && (
-        <div>
-          {!showSearch ? (
-            <button
-              onClick={() => setShowSearch(true)}
-              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
-            >+ Add a role</button>
-          ) : (
-            <div>
-              <input
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search roles…"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
-              />
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
-                  <button
-                    onClick={() => addRole(searchQuery.trim())}
-                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#E8D5A3", cursor: "pointer" }}
-                  >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
-                )}
-                {filteredRoles.slice(0, 20).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => addRole(r)}
-                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A1A1A", cursor: "pointer" }}
-                  >{r}</button>
-                ))}
-                <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", cursor: "pointer" }}>Cancel</button>
-              </div>
+        !showSearch ? (
+          <button onClick={() => setShowSearch(true)} style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}>
+            + Add a role
+          </button>
+        ) : (
+          <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)", padding: 16 }}>
+            <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search or type a role title..." style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "1px solid #E5DDD0", borderRadius: 6, outline: "none", background: "#FFFDF9", color: "#1A1A1A", marginBottom: 10, boxSizing: "border-box" }} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {filteredSuggestions.slice(0, 10).map((r) => (
+                <button key={r} onClick={() => addRole(r)} style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A1A1A", cursor: "pointer" }}>{r}</button>
+              ))}
+              {showAddCustom && (
+                <button onClick={() => addRole(query.trim())} style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#E8D5A3", cursor: "pointer", fontWeight: 600 }}>
+                  + Add &quot;{query.trim()}&quot;
+                </button>
+              )}
+              <button onClick={() => { setShowSearch(false); setQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", cursor: "pointer" }}>Cancel</button>
             </div>
-          )}
-        </div>
+          </div>
+        )
       )}
     </div>
   );
 }
 
-// ─── Tab: Learning Path (original) ────────────────────────────────────────────
+function DreamRoleDetail({ title, onClose }: { title: string; onClose: () => void }) {
+  const arch = ROLE_ARCHETYPES[title];
+  if (!arch) return null;
+  return (
+    <div style={{ paddingBottom: 40 }}>
+      <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F", padding: 0, marginBottom: 16 }}>{"←"} Back</button>
+      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: 28, border: `2px solid ${arch.color}` }}>
+        <h2 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 28, fontWeight: 500, color: "#1A1A1A", fontStyle: "italic" }}>{title}</h2>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.65 }}>{arch.description}</p>
+      </div>
+    </div>
+  );
+}
+
+function ReadbackCard({ data, loading, onRefresh, refreshing }: {
+  data: ReadbackData | null;
+  loading: boolean;
+  onRefresh: () => void;
+  refreshing: boolean;
+}) {
+  if (loading) {
+    return (
+      <div style={{ background: "#1A3A2F", borderRadius: 10, padding: "20px 24px", marginBottom: 32, opacity: 0.7 }}>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Searchly read on you</p>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "rgba(232,213,163,0.5)" }}>Analyzing your profile...</p>
+      </div>
+    );
+  }
+  if (!data) return null;
+  return (
+    <div style={{ background: "#1A3A2F", borderRadius: 10, padding: "20px 24px", marginBottom: 32 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", display: "flex", alignItems: "center", gap: 4 }}>
+          <SparkleIcon /> Searchly read on you
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {data._cachedAt && (
+            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "rgba(232,213,163,0.4)" }}>Last updated {formatCachedAt(data._cachedAt)}</span>
+          )}
+          <button onClick={onRefresh} disabled={refreshing} title="Refresh analysis" style={{ background: "none", border: "none", cursor: refreshing ? "not-allowed" : "pointer", color: refreshing ? "rgba(232,213,163,0.3)" : "rgba(232,213,163,0.6)", fontSize: 16, padding: "2px 4px", lineHeight: 1, opacity: refreshing ? 0.5 : 1 }}>
+            {"↻"}
+          </button>
+        </div>
+      </div>
+      <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 18, fontWeight: 500, color: "#E8D5A3", fontStyle: "italic", lineHeight: 1.4, marginBottom: 16 }}>{data.picture}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+        {data.strengths.map((s) => (
+          <span key={s} style={{ padding: "4px 10px", background: "rgba(232,213,163,0.12)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#E8D5A3" }}>{s}</span>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+        {data.targetRoles.map((tr) => (
+          <div key={tr.role} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "rgba(232,213,163,0.85)" }}>{tr.role}</span>
+            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: tr.fit === "Strong match" ? "#4A8B6A" : tr.fit === "Good fit" ? "#C4A86A" : "rgba(232,213,163,0.5)", fontWeight: 500 }}>{tr.fit}</span>
+          </div>
+        ))}
+      </div>
+      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "rgba(232,213,163,0.55)", lineHeight: 1.55, borderTop: "1px solid rgba(232,213,163,0.1)", paddingTop: 12 }}>{data.honestNote}</p>
+    </div>
+  );
+}
 
 function LearningTab({ progress, setProgress }: {
   progress: Record<number, "none" | "inprogress" | "completed">;
@@ -689,7 +700,7 @@ function LearningTab({ progress, setProgress }: {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {cat.items.map((item) => {
               const prog = progress[item.id] || "none";
-              const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
+              const statusLabel = prog === "completed" ? "Completed" : prog === "inprogress" ? "In progress" : "Not started";
               const statusColor = prog === "completed" ? "#4A8B6A" : prog === "inprogress" ? "#C4A86A" : "#A09890";
               return (
                 <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
@@ -699,14 +710,14 @@ function LearningTab({ progress, setProgress }: {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
-                      {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
+                      {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#7A6020", fontWeight: 600 }}>Searchly pick</span>}
                     </div>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", marginBottom: 3 }}>{item.platform} {"·"} {item.duration} {"·"} {item.credential}</p>
                     <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: statusColor }}>{statusLabel}</p>
                   </div>
                   <button onClick={() => setProgress({ ...progress, [item.id]: prog === "none" ? "inprogress" : prog === "inprogress" ? "completed" : "inprogress" })}
                     style={{ padding: "7px 14px", background: prog === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: prog === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
-                    {prog === "completed" ? "Review →" : prog === "inprogress" ? "Complete →" : "Start →"}
+                    {prog === "completed" ? "Review" : prog === "inprogress" ? "Complete" : "Start"}
                   </button>
                 </div>
               );
@@ -717,8 +728,6 @@ function LearningTab({ progress, setProgress }: {
     </div>
   );
 }
-
-// ─── Tab: Resume Assets ───────────────────────────────────────────────────────
 
 interface ResumeRow {
   id: string;
@@ -731,216 +740,85 @@ interface ResumeRow {
   targetJobTitle?: string;
 }
 
-function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, suggestionsLoading }: {
+function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
   resumeUrl: string | null;
   uploading: boolean;
   onUpload: (file: File) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  suggestions: AISuggestion[];
-  suggestionsLoading: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const MAX_SLOTS = 5;
 
-  const resumes: ResumeRow[] = resumeUrl
-    ? [
-        {
-          id: "primary",
-          name: extractResumeName(resumeUrl),
-          url: resumeUrl,
-          isPrimary: true,
-          analysisComplete: true,
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        },
-      ]
-    : [];
-
   function extractResumeName(url: string) {
     try {
       const decoded = decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "");
-      // strip the timestamp prefix e.g. "resume-1234567890.pdf" → just show the original feel
       return decoded.replace(/^resume-\d+\./, "resume.") || "Resume";
-    } catch {
-      return "Resume";
-    }
+    } catch { return "Resume"; }
   }
+
+  const resumes: ResumeRow[] = resumeUrl
+    ? [{ id: "primary", name: extractResumeName(resumeUrl), url: resumeUrl, isPrimary: true, analysisComplete: true, updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() }]
+    : [];
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>RESUME</h2>
+          <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>RESUME</h2>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258", marginTop: 6 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#4A8B6A", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>
-              </span>
-              You have {resumes.length} resume{resumes.length !== 1 ? "s" : ""} saved out of {MAX_SLOTS} available slots.
-            </span>
+            You have {resumes.length} resume{resumes.length !== 1 ? "s" : ""} saved out of {MAX_SLOTS} available slots.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button
-            style={{
-              padding: "8px 16px",
-              background: "#F0FFF8",
-              color: "#1A7A4A",
-              border: "1px solid #A8DFC0",
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            ⚡ Upgrade to Turbo: Get Hired Faster ›
-          </button>
+          <button style={{ padding: "8px 16px", background: "#F0FFF8", color: "#1A7A4A", border: "1px solid #A8DFC0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Upgrade to Turbo</button>
           <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
-          <button
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            style={{
-              padding: "8px 16px",
-              background: "#FFFFFF",
-              color: "#1A1A1A",
-              border: "1px solid #D8D0C5",
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: uploading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              opacity: uploading ? 0.6 : 1,
-            }}
-          >
-            {uploading ? "Uploading…" : "+ Add Resume"}
+          <button onClick={() => inputRef.current?.click()} disabled={uploading} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#1A1A1A", border: "1px solid #D8D0C5", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.6 : 1 }}>
+            {uploading ? "Uploading..." : "+ Add Resume"}
           </button>
         </div>
       </div>
 
-      {/* Table */}
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
-        {/* Table header */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
-          padding: "10px 20px",
-          borderBottom: "1px solid #E5DDD0",
-          background: "#FAFAF8",
-        }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px", padding: "10px 20px", borderBottom: "1px solid #E5DDD0", background: "#FAFAF8" }}>
           {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
             <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890" }}>{col}</span>
           ))}
         </div>
-
-        {/* Rows */}
         {resumes.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
-            <button
-              onClick={() => inputRef.current?.click()}
-              disabled={uploading}
-              style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-            >
-              + Add Resume
-            </button>
+            <button onClick={() => inputRef.current?.click()} disabled={uploading} style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Add Resume</button>
           </div>
         ) : (
           resumes.map((r) => (
-            <div
-              key={r.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
-                padding: "14px 20px",
-                alignItems: "center",
-                borderBottom: "1px solid #F5F3EF",
-                position: "relative",
-              }}
-            >
-              {/* Name + badges */}
+            <div key={r.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px", padding: "14px 20px", alignItems: "center", borderBottom: "1px solid #F5F3EF", position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 6, background: "#1C3A2F",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <span style={{ color: "#E8D5A3", fontSize: 13, fontWeight: 700 }}>
-                    {r.name.charAt(0).toUpperCase()}
-                  </span>
+                <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1C3A2F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ color: "#E8D5A3", fontSize: 13, fontWeight: 700 }}>{r.name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
                   <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
-                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                    {r.isPrimary && (
-                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 10, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
-                        ★ PRIMARY
-                      </span>
-                    )}
-                    {r.analysisComplete && (
-                      <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 10, fontWeight: 500, color: "#1A7A4A" }}>
-                        Analysis Complete
-                      </span>
-                    )}
+                  <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                    {r.isPrimary && <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 10, fontWeight: 600, color: "#A08030" }}>PRIMARY</span>}
+                    {r.analysisComplete && <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 10, fontWeight: 500, color: "#1A7A4A" }}>Analysis Complete</span>}
                   </div>
                 </div>
               </div>
-
-              {/* Target job title */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>
-                {r.targetJobTitle ?? "—"}
-              </span>
-
-              {/* Last modified */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
-                {timeAgo(r.updatedAt)}
-              </span>
-
-              {/* Created */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
-                {timeAgo(r.createdAt)}
-              </span>
-
-              {/* Options menu */}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>{r.targetJobTitle ?? "—"}</span>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>{timeAgo(r.updatedAt)}</span>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>{timeAgo(r.createdAt)}</span>
               <div style={{ position: "relative" }}>
-                <button
-                  onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
-                >
-                  ···
-                </button>
+                <button onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}>{"⋯"}</button>
                 {menuOpen === r.id && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: 0,
-                      top: "calc(100% + 4px)",
-                      background: "#FFFFFF",
-                      border: "1px solid #E5DDD0",
-                      borderRadius: 7,
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                      minWidth: 160,
-                      zIndex: 100,
-                      overflow: "hidden",
-                    }}
-                  >
+                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 160, zIndex: 100, overflow: "hidden" }}>
                     {[
                       { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
                       { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
                       { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
                     ].map((item) => (
-                      <button
-                        key={item.label}
-                        onClick={item.action}
-                        style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
+                      <button key={item.label} onClick={item.action} style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                      >
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>
                         {item.label}
                       </button>
                     ))}
@@ -952,74 +830,28 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
         )}
       </div>
 
-      {/* Kimchi suggestions */}
       <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)", marginTop: 20 }}>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
-          <SparkleIcon /> Kimchi&apos;s suggestions
+          <SparkleIcon /> Searchly suggestions
         </p>
-        {suggestionsLoading ? (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your profile…</p>
-        ) : suggestions.length === 0 ? (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload a resume to get personalized suggestions.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {suggestions.map((s, i) => {
-              const pColor = s.priority === "high" ? "#C4574A" : s.priority === "medium" ? "#C4A86A" : "#A09890";
-              const pBg = s.priority === "high" ? "rgba(196,87,74,0.08)" : s.priority === "medium" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.05)";
-              return (
-                <div key={i} style={{ padding: "12px 14px", background: pBg, borderRadius: 6, borderLeft: `2px solid ${pColor}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: pColor, textTransform: "uppercase", letterSpacing: "1px" }}>{s.priority} &middot; {s.category}</span>
-                  </div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{s.title}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 4 }}>{s.detail}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", fontStyle: "italic" }}>&rarr; {s.impact}</p>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {PROFILE_SUGGESTIONS.map((s) => {
+            const pColor = s.priority === "high" ? "#C4574A" : s.priority === "medium" ? "#C4A86A" : "#A09890";
+            const pBg = s.priority === "high" ? "rgba(196,87,74,0.08)" : s.priority === "medium" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.05)";
+            return (
+              <div key={s.id} style={{ padding: "12px 14px", background: pBg, borderRadius: 6, borderLeft: `2px solid ${pColor}` }}>
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: pColor, textTransform: "uppercase", letterSpacing: "1px" }}>{s.priority} {"·"} {s.category}</span>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4, marginTop: 4 }}>{s.title}</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 4 }}>{s.detail}</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", fontStyle: "italic" }}>{s.impact}</p>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
-
-// ─── AI Readback Card ─────────────────────────────────────────────────────────
-
-function ReadbackCard({ data, loading }: { data: ReadbackData | null; loading: boolean }) {
-  if (!loading && !data) return null;
-  return (
-    <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: "16px 20px", marginBottom: 28 }}>
-      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
-        <SparkleIcon /> Kimchi&apos;s read on you
-      </p>
-      {loading ? (
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your profile…</p>
-      ) : data ? (
-        <>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
-          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
-            {data.strengths.map((s) => (
-              <span key={s} style={{ padding: "4px 10px", background: "rgba(28,58,47,0.08)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1C3A2F" }}>{s}</span>
-            ))}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
-            {data.targetRoles.map((r) => {
-              const c = r.fit === "Strong match" ? "#4A8B6A" : r.fit === "Good fit" ? "#C4A86A" : "#A09890";
-              const bg = r.fit === "Strong match" ? "rgba(74,139,106,0.08)" : r.fit === "Good fit" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.04)";
-              return (
-                <span key={r.role} style={{ padding: "4px 10px", background: bg, borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: c }}>{r.role} · {r.fit}</span>
-              );
-            })}
-          </div>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", fontStyle: "italic" }}>{data.honestNote}</p>
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 type PageTab = "dreamrole" | "about" | "learning" | "assets";
 type AboutSection = "personal" | "education" | "experience" | "skills";
@@ -1036,12 +868,13 @@ export function WorkspaceProfile() {
   const [upskillProgress, setUpskillProgress] = useState<Record<number, "none" | "inprogress" | "completed">>({});
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
-  const [readback, setReadback] = useState<ReadbackData | null>(null);
-  const [readbackLoading, setReadbackLoading] = useState(false);
-  const [profileSuggestions, setProfileSuggestions] = useState<AISuggestion[]>([]);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
+
+  const [readback, setReadback] = useState<ReadbackData | null>(null);
+  const [readbackLoading, setReadbackLoading] = useState(false);
+  const [readbackRefreshing, setReadbackRefreshing] = useState(false);
+  const readbackFetched = useRef(false);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -1049,7 +882,7 @@ export function WorkspaceProfile() {
       .then((data) => {
         if (!data.error) {
           setProfile(data);
-          setDreamList(data.targetRoles || []);
+          if (data.targetRoles?.length) setDreamList(data.targetRoles);
         }
       })
       .catch(() => {})
@@ -1057,26 +890,25 @@ export function WorkspaceProfile() {
   }, []);
 
   useEffect(() => {
-    if (!profile?.resumeUrl) return;
+    if (!profile?.resumeUrl || readbackFetched.current) return;
+    readbackFetched.current = true;
     setReadbackLoading(true);
     fetch("/api/ai/readback")
       .then((r) => r.json())
       .then((data) => { if (!data.error) setReadback(data); })
       .catch(() => {})
       .finally(() => setReadbackLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.resumeUrl]);
 
-  useEffect(() => {
-    if (!profile?.resumeUrl) return;
-    setSuggestionsLoading(true);
-    fetch("/api/ai/profile-suggestions")
-      .then((r) => r.json())
-      .then((data) => { if (data.suggestions) setProfileSuggestions(data.suggestions); })
-      .catch(() => {})
-      .finally(() => setSuggestionsLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.resumeUrl]);
+  const handleRefreshReadback = async () => {
+    setReadbackRefreshing(true);
+    try {
+      const res = await fetch("/api/ai/readback?force=true");
+      const data = await res.json();
+      if (!data.error) setReadback(data);
+    } catch { /* silent */ }
+    finally { setReadbackRefreshing(false); }
+  };
 
   const patchProfile = async (patch: Record<string, unknown>) => {
     await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
@@ -1131,14 +963,10 @@ export function WorkspaceProfile() {
   const goToSection = (section: AboutSection) => {
     setPage("about");
     setActiveSection(section);
-    // Wait for render if switching from another page, then scroll
     setTimeout(() => {
       const el = sectionRefs.current[section];
       const container = scrollRef.current;
-      if (el && container) {
-        const top = el.offsetTop - 16;
-        container.scrollTo({ top, behavior: "smooth" });
-      }
+      if (el && container) container.scrollTo({ top: el.offsetTop - 16, behavior: "smooth" });
     }, 50);
   };
 
@@ -1155,60 +983,33 @@ export function WorkspaceProfile() {
   ];
 
   const isAboutActive = page === "about";
+  void DreamRoleDetail;
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F2EDE3", animation: "fadeIn 0.3s ease both" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F2EDE3" }}>
       <div ref={scrollRef} style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
-        {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8 }}>
-            {loading ? "Loading…" : profile ? (profile.name || profile.email || "Your profile") : "Your profile"}
+            {loading ? "Loading..." : profile ? (profile.name || profile.email || "Your profile") : "Your profile"}
             {profile?.headline ? ` · ${profile.headline}` : ""}
           </p>
           <h1 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px" }}>
-            Your profile, through Kimchi&apos;s eyes.
+            Your profile, through Searchly eyes.
           </h1>
-          {profile && (() => {
-            const pct = profileCompleteness(profile);
-            return (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Profile completeness</span>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>{pct}%</span>
-                </div>
-                <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: 280 }}>
-                  <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#4A8B6A" : "#C4A86A", borderRadius: 2, transition: "width 0.4s ease" }} />
-                </div>
-              </div>
-            );
-          })()}
         </div>
 
-        {/* Tab bar */}
         <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto" }}>
           {PAGE_TABS.map(({ id, label, isSection }) => {
-            const active = isSection
-              ? isAboutActive && activeSection === id
-              : page === id;
+            const active = isSection ? isAboutActive && activeSection === id : page === id;
             return (
-              <button
-                key={id}
-                onClick={() => {
-                  if (isSection) {
-                    goToSection(id as AboutSection);
-                  } else {
-                    setPage(id as PageTab);
-                  }
-                }}
-                style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: active ? "#1A3A2F" : "transparent", color: active ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
-              >
+              <button key={id} onClick={() => { if (isSection) { goToSection(id as AboutSection); } else { setPage(id as PageTab); } }}
+                style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: active ? "#1A3A2F" : "transparent", color: active ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                 {label}
               </button>
             );
           })}
         </div>
 
-        {/* Tab content */}
         {page === "dreamrole" && (
           <DreamRoleTab
             dreamList={dreamList}
@@ -1220,42 +1021,33 @@ export function WorkspaceProfile() {
           />
         )}
 
-        {page === "about" && loading && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Loading…</p>
-        )}
-        {page === "about" && !loading && !profile && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
-        )}
+        {page === "about" && loading && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Loading...</p>}
+        {page === "about" && !loading && !profile && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>}
         {page === "about" && profile && (
           <div style={{ maxWidth: 600 }}>
-            <ReadbackCard data={readback} loading={readbackLoading} />
+            {(readbackLoading || readback) && (
+              <ReadbackCard data={readback} loading={readbackLoading} onRefresh={handleRefreshReadback} refreshing={readbackRefreshing} />
+            )}
             <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ paddingBottom: 48 }}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
-              ref={(el) => { sectionRefs.current.education = el; }}>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }} ref={(el) => { sectionRefs.current.education = el; }}>
               <EducationTab entries={education} onSave={handleEducationSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
-              ref={(el) => { sectionRefs.current.experience = el; }}>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }} ref={(el) => { sectionRefs.current.experience = el; }}>
               <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }}
-              ref={(el) => { sectionRefs.current.skills = el; }}>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }} ref={(el) => { sectionRefs.current.skills = el; }}>
               <SkillsTab skills={skills} onSave={handleSkillsSave} />
             </div>
           </div>
         )}
 
-        {page === "learning" && (
-          <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />
-        )}
+        {page === "learning" && <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />}
 
-        {page === "assets" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
-        )}
+        {page === "assets" && !profile && !loading && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>}
         {page === "assets" && profile && (
-          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
+          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} />
         )}
       </div>
     </div>
