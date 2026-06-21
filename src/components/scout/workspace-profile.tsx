@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  SKILLS_LIST,
   PROFILE_SUGGESTIONS,
-  ROLE_ARCHETYPES,
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
 } from "./workspace-data";
@@ -56,6 +54,13 @@ interface ReadbackData {
   strengths: string[];
   targetRoles: { role: string; fit: string }[];
   honestNote: string;
+}
+
+interface RoleAnalysis {
+  fitScore: number;
+  summary: string;
+  gaps: { skill: string; why: string }[];
+  nextSteps: string[];
 }
 
 
@@ -415,126 +420,189 @@ function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: stri
   );
 }
 
-// ─── Tab: Dream Role (original) ───────────────────────────────────────────────
+// ─── Tab: Dream Role ──────────────────────────────────────────────────────────
 
-function DreamRoleTab({ dreamList, setDreamList, dreamSelectedId, setDreamSelectedId, adding, setAdding, onSave }: {
+function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
   dreamList: string[];
   setDreamList: (l: string[]) => void;
-  dreamSelectedId: number | null;
-  setDreamSelectedId: (n: number | null) => void;
-  adding: boolean;
-  setAdding: (b: boolean) => void;
   onSave: (list: string[]) => void;
+  hasResume: boolean;
 }) {
-  const skillsSet = new Set(SKILLS_LIST);
-  const topMap: Record<number, string[]> = { 1: ["50%"], 2: ["28%", "72%"], 3: ["13%", "50%", "87%"] };
-  const tps = topMap[dreamList.length] || topMap[3];
+  const [expandedRole, setExpandedRole] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<Record<string, RoleAnalysis | "loading" | "error">>({});
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const addRole = (title: string) => {
-    if (dreamList.includes(title) || dreamList.length >= 3) { setAdding(false); return; }
+    if (dreamList.includes(title) || dreamList.length >= 3) return;
     const next = [...dreamList, title];
     setDreamList(next);
     onSave(next);
-    setAdding(false);
-    setDreamSelectedId(null);
+    setShowSearch(false);
+    setSearchQuery("");
   };
-  const removeRole = (idx: number) => {
-    const next = dreamList.filter((_, i) => i !== idx);
+
+  const removeRole = (title: string) => {
+    const next = dreamList.filter((r) => r !== title);
     setDreamList(next);
     onSave(next);
-    setDreamSelectedId(null);
+    if (expandedRole === title) setExpandedRole(null);
   };
 
-  return (
-    <div style={{ paddingBottom: 40 }}>
-      {dreamSelectedId !== null && dreamList[dreamSelectedId] && (
-        <DreamRoleDetail title={dreamList[dreamSelectedId]} skillsSet={skillsSet} onClose={() => setDreamSelectedId(null)} />
-      )}
-      {dreamSelectedId === null && (
-        <>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
-            Pick up to three roles you&apos;re aiming for. Kimchi will measure the gap, surface roles that match, and build a learning path to bridge what&apos;s missing.
-          </p>
-          <div style={{ position: "relative", height: 220, marginBottom: 24 }}>
-            {dreamList.map((title, i) => {
-              const arch = ROLE_ARCHETYPES[title];
-              if (!arch) return null;
-              const matched = arch.requires.filter((r) => skillsSet.has(r));
-              const readiness = Math.round((matched.length / arch.requires.length) * 100);
-              const rc = readiness >= 75 ? "#4A8B6A" : readiness >= 50 ? "#C4A86A" : "#A09890";
-              return (
-                <button key={title} onClick={() => setDreamSelectedId(i)} style={{ position: "absolute", top: 0, left: `${tps[i]}`, transform: "translateX(-50%)", width: 200, background: "#FFFFFF", borderRadius: 10, padding: "16px 16px 14px", border: `1.5px solid ${arch.color}30`, boxShadow: "0 4px 16px rgba(0,0,0,0.07)", cursor: "pointer", textAlign: "left" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: arch.color, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-                    <span style={{ color: "#FFFFFF", fontSize: 14, fontWeight: 600 }}>{readiness}%</span>
-                  </div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{title}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: rc, marginBottom: 8 }}>
-                    {readiness >= 75 ? "Strong foundation" : readiness >= 50 ? "Good progress" : "Building toward"}
-                  </p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268" }}>{arch.openRolesLabel}</p>
-                  <button onClick={(e) => { e.stopPropagation(); removeRole(i); }} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#A09890", padding: 0, lineHeight: 1 }}>x</button>
-                </button>
-              );
-            })}
-          </div>
-          <div>
-            {!adding ? (
-              dreamList.length < 3 && (
-                <button onClick={() => setAdding(true)} style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}>+ Add a role</button>
-              )
-            ) : (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {AVAILABLE_ROLES.filter((r) => !dreamList.includes(r)).map((r) => (
-                  <button key={r} onClick={() => addRole(r)} style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A1A1A", cursor: "pointer" }}>{r}</button>
-                ))}
-                <button onClick={() => setAdding(false)} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", cursor: "pointer" }}>Cancel</button>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+  const toggleExpand = async (role: string) => {
+    if (expandedRole === role) { setExpandedRole(null); return; }
+    setExpandedRole(role);
+    if (analysis[role] || !hasResume) return;
+    setAnalysis((prev) => ({ ...prev, [role]: "loading" }));
+    try {
+      const res = await fetch(`/api/ai/role-gap?role=${encodeURIComponent(role)}`);
+      const data = await res.json();
+      if (data.error) setAnalysis((prev) => ({ ...prev, [role]: "error" }));
+      else setAnalysis((prev) => ({ ...prev, [role]: data as RoleAnalysis }));
+    } catch {
+      setAnalysis((prev) => ({ ...prev, [role]: "error" }));
+    }
+  };
 
-function DreamRoleDetail({ title, skillsSet, onClose }: { title: string; skillsSet: Set<string>; onClose: () => void }) {
-  const arch = ROLE_ARCHETYPES[title];
-  if (!arch) return null;
-  const matched = arch.requires.filter((r) => skillsSet.has(r));
-  const needed = arch.requires.filter((r) => !skillsSet.has(r));
-  const readiness = Math.round((matched.length / arch.requires.length) * 100);
+  const filteredRoles = AVAILABLE_ROLES.filter(
+    (r) => !dreamList.includes(r) && r.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const scoreColor = (score: number) =>
+    score >= 70 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "#A09890";
+
+  const scoreLabel = (score: number) =>
+    score >= 70 ? "Strong fit" : score >= 50 ? "Good foundation" : "Gap to close";
+
   return (
-    <div style={{ paddingBottom: 40, animation: "fadeIn 0.3s ease both" }}>
-      <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F", padding: 0, marginBottom: 16 }}>&larr; Back to roles</button>
-      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: 28, border: `2px solid ${arch.color}`, boxShadow: "0 4px 16px rgba(0,0,0,0.07)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <div style={{ width: 48, height: 48, borderRadius: "50%", background: arch.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "#FFFFFF", fontSize: 18, fontWeight: 600 }}>{readiness}%</span>
-          </div>
-          <div>
-            <h2 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 28, fontWeight: 500, color: "#1A1A1A", fontStyle: "italic" }}>{title}</h2>
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A7268", marginTop: 2 }}>{arch.openRolesLabel}</p>
-          </div>
-        </div>
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.65, marginBottom: 22 }}>{arch.description}</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-          <div>
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>You have ({matched.length})</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {matched.map((s) => <span key={s} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.08)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A" }}>{s}</span>)}
+    <div style={{ maxWidth: 560, paddingBottom: 40 }}>
+      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
+        Pick up to three roles you&apos;re targeting. Expand any card to see your fit score, skill gaps, and next steps — powered by your resume.
+      </p>
+
+      {/* Role cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+        {dreamList.map((role) => {
+          const isOpen = expandedRole === role;
+          const result = analysis[role];
+          const loaded = result && result !== "loading" && result !== "error" ? result as RoleAnalysis : null;
+
+          return (
+            <div key={role} style={{ background: "#FFFFFF", borderRadius: 10, border: isOpen ? "1.5px solid #1A3A2F" : "1.5px solid rgba(0,0,0,0.08)", boxShadow: isOpen ? "0 4px 20px rgba(26,58,47,0.08)" : "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden", transition: "border-color 0.15s, box-shadow 0.15s" }}>
+              {/* Card header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
+                {loaded ? (
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 12, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}</span>
+                  </div>
+                ) : (
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
+                  {loaded ? (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: scoreColor(loaded.fitScore) }}>{scoreLabel(loaded.fitScore)}</p>
+                  ) : !hasResume ? (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Upload a resume to see your fit score</p>
+                  ) : result === "loading" ? (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Analyzing…</p>
+                  ) : result === "error" ? (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#C4A86A" }}>Analysis unavailable</p>
+                  ) : (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Click to analyze fit</p>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeRole(role); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#C0B8B0", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}
+                    aria-label={`Remove ${role}`}
+                  >×</button>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s", color: "#A09890" }}>
+                    <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Expanded panel */}
+              {isOpen && (
+                <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: "16px 16px 20px" }}>
+                  {result === "loading" && (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
+                  )}
+                  {result === "error" && (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
+                  )}
+                  {!hasResume && (
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
+                  )}
+                  {loaded && (
+                    <>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F", lineHeight: 1.65, marginBottom: 20 }}>{loaded.summary}</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                        <div>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Gaps to close</p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {loaded.gaps.map((g) => (
+                              <div key={g.skill}>
+                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
+                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", lineHeight: 1.5 }}>{g.why}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {loaded.nextSteps.map((step, i) => (
+                              <div key={i} style={{ display: "flex", gap: 8 }}>
+                                <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
+                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-          <div>
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>You&apos;ll need ({needed.length})</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {needed.map((s) => <span key={s} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020" }}>{s}</span>)}
-            </div>
-          </div>
-        </div>
-        <button style={{ padding: "12px 22px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <SparkleIcon /> Run Kimchi gap analysis &rarr;
-        </button>
+          );
+        })}
       </div>
+
+      {/* Add role area */}
+      {dreamList.length < 3 && (
+        <div>
+          {!showSearch ? (
+            <button
+              onClick={() => setShowSearch(true)}
+              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
+            >+ Add a role</button>
+          ) : (
+            <div>
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search roles…"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+              />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {filteredRoles.slice(0, 20).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => addRole(r)}
+                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A1A1A", cursor: "pointer" }}
+                  >{r}</button>
+                ))}
+                <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", cursor: "pointer" }}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -903,8 +971,6 @@ export function WorkspaceProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
-  const [dreamSelectedId, setDreamSelectedId] = useState<number | null>(null);
-  const [adding, setAdding] = useState(false);
   const [upskillProgress, setUpskillProgress] = useState<Record<number, "none" | "inprogress" | "completed">>({});
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
@@ -1069,7 +1135,7 @@ export function WorkspaceProfile() {
 
         {/* Tab content */}
         {page === "dreamrole" && (
-          <DreamRoleTab dreamList={dreamList} setDreamList={setDreamList} dreamSelectedId={dreamSelectedId} setDreamSelectedId={setDreamSelectedId} adding={adding} setAdding={setAdding} onSave={(list) => patchProfile({ targetRoles: list })} />
+          <DreamRoleTab dreamList={dreamList} setDreamList={setDreamList} onSave={(list) => patchProfile({ targetRoles: list })} hasResume={!!profile?.resumeUrl} />
         )}
 
         {page === "about" && loading && (
