@@ -34,6 +34,7 @@ const JOB_MOCKS = [
 export default function Home() {
   const router = useRouter();
   const [view, setView] = useState<View>("onboarding");
+  const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string>("USER");
@@ -56,7 +57,7 @@ export default function Home() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
+      if (!user) { setAuthChecked(true); return; }
       let headline: string | null = null;
       try {
         const res = await fetch("/api/profile");
@@ -83,6 +84,7 @@ export default function Home() {
         headline,
       });
       setView("workspace");
+      setAuthChecked(true);
     });
   }, []);
 
@@ -232,6 +234,11 @@ export default function Home() {
       }
     }
   };
+
+  /* ── Auth loading gate — prevents onboarding flash for logged-in users ── */
+  if (!authChecked) {
+    return <div style={{ height: "100vh", background: "#F2EDE3" }} />;
+  }
 
   /* ── Workspace view ── */
   if (view === "workspace") {
