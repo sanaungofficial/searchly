@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { WorkspaceOpportunities, type DrawerTool } from "./workspace-opportunities";
@@ -38,23 +38,9 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
 
-  const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage } = useJobs(INITIAL_KANBAN_CARDS);
+  const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage, removeJob } = useJobs(INITIAL_KANBAN_CARDS);
   const [drawerCardId, setDrawerCardId] = useState<number | null>(null);
   const [drawerTool, setDrawerTool] = useState<DrawerTool>(null);
-
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const check = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) setSidebarOpen(false);
-    };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   const notifUnreadCount = NOTIFICATIONS.filter((n) => !notifRead[n.id] && n.unread).length;
 
@@ -89,42 +75,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
         user={user}
         isAdmin={isAdmin}
         userRole={userRole}
-        isMobile={isMobile}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
       />
-
-      {/* Hamburger button — fixed top-left on mobile when sidebar is closed */}
-      {isMobile && !sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          style={{
-            position: "fixed",
-            top: 14,
-            left: 14,
-            zIndex: 900,
-            width: 38,
-            height: 38,
-            borderRadius: 8,
-            background: "#1A3A2F",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 4,
-            padding: 0,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-          }}
-          aria-label="Open menu"
-        >
-          <span style={{ width: 15, height: 1.5, background: "#E8D5A3", borderRadius: 1, display: "block" }} />
-          <span style={{ width: 15, height: 1.5, background: "#E8D5A3", borderRadius: 1, display: "block" }} />
-          <span style={{ width: 15, height: 1.5, background: "#E8D5A3", borderRadius: 1, display: "block" }} />
-        </button>
-      )}
-
       {activeSection === "opportunities" && (
         <WorkspaceOpportunities
           onOpenLive={() => navigate("live")}
@@ -136,6 +87,7 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
           setKanbanCards={setKanbanCards}
           addJob={addJob}
           updateStage={updateStage}
+          removeJob={removeJob}
         />
       )}
       {activeSection === "profile" && <WorkspaceProfile />}
