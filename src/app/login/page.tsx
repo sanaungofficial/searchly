@@ -76,7 +76,7 @@ function LoginContent() {
             marginBottom: 8,
           }}
         >
-          Searchly
+          Kimchi
         </div>
         <div style={{ fontSize: 14, color: "#6B7280", letterSpacing: "0.06em" }}>
           by Second Ladder
@@ -127,7 +127,7 @@ function LoginContent() {
               Welcome back.
             </h2>
             <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32, lineHeight: 1.5 }}>
-              Sign in to your Searchly workspace.
+              Sign in to your Kimchi workspace.
             </p>
 
             {/* LinkedIn */}
