@@ -34,7 +34,18 @@ interface DbJob {
   createdAt: string;
 }
 
+export interface JobMeta {
+  location?: string | null;
+  salary?: string | null;
+  description?: string | null;
+  requirements?: string[];
+}
+
 function dbJobToKanban(job: DbJob, index: number): KanbanCard {
+  let _meta: JobMeta | undefined;
+  if (job.notes) {
+    try { _meta = JSON.parse(job.notes) as JobMeta; } catch { /* ignore */ }
+  }
   return {
     id: index,
     company: job.company,
@@ -45,7 +56,8 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     jobRef: null,
     days: Math.floor((Date.now() - new Date(job.createdAt).getTime()) / 86400000),
     _dbId: job.id,
-  } as KanbanCard & { _dbId: string };
+    _meta,
+  } as KanbanCard & { _dbId: string; _meta?: JobMeta };
 }
 
 export function useJobs(fallback: KanbanCard[]) {
@@ -64,11 +76,12 @@ export function useJobs(fallback: KanbanCard[]) {
       .catch(() => setLoaded(true));
   }, []);
 
-  const addJob = useCallback(async (company: string, role: string, url?: string) => {
+  const addJob = useCallback(async (company: string, role: string, url?: string, meta?: JobMeta) => {
+    const notes = meta ? JSON.stringify(meta) : undefined;
     const res = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company, role, url }),
+      body: JSON.stringify({ company, role, url, notes }),
     });
     if (!res.ok) return;
     const job: DbJob = await res.json();
