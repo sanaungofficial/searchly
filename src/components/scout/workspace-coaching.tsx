@@ -37,6 +37,8 @@ export function WorkspaceCoaching() {
   const [tab, setTab] = useState<CoachingTab>("mycoach");
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [loadingCoaches, setLoadingCoaches] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
     setLoadingCoaches(true);
@@ -44,6 +46,11 @@ export function WorkspaceCoaching() {
       .then((r) => r.json())
       .then((data) => { setCoaches(data); setLoadingCoaches(false); })
       .catch(() => setLoadingCoaches(false));
+
+    fetch("/api/subscription")
+      .then((r) => r.json())
+      .then((d) => { if (d.isPro) setIsPro(true); })
+      .catch(() => {});
   }, []);
 
   return (
@@ -124,10 +131,29 @@ export function WorkspaceCoaching() {
         </div>
 
         {tab === "mycoach" ? (
-          <MyCoachTab featured={coaches.find((c) => c.featured) ?? null} loading={loadingCoaches} />
+          <MyCoachTab featured={coaches.find((c) => c.featured) ?? null} loading={loadingCoaches} isPro={isPro} onSubscribe={() => setShowUpgrade(true)} />
         ) : (
-          <CoachSearchTab coaches={coaches} loading={loadingCoaches} />
+          <CoachSearchTab coaches={coaches} loading={loadingCoaches} isPro={isPro} onSubscribe={() => setShowUpgrade(true)} />
         )}
+      </div>
+
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+    </div>
+  );
+}
+
+function UpgradeModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} />
+      <div style={{ position: "relative", background: "#fff", borderRadius: 14, padding: "36px 32px", maxWidth: 400, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", textAlign: "center" }}>
+        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#F2EDE3", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22 }}>🔒</div>
+        <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 22, fontWeight: 600, fontStyle: "italic", color: "#1a1a1a", marginBottom: 10 }}>Coaching is a paid feature</p>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#7a7268", lineHeight: 1.65, marginBottom: 28 }}>
+          Subscribe to Searchly to book 1:1 sessions with coaches, see their rates, and get personalized guidance on your job search.
+        </p>
+        <a href="/pricing" style={{ display: "block", padding: "12px 0", background: "#1A3A2F", color: "#E8D5A3", borderRadius: 8, fontFamily: "var(--font-dm-sans)", fontSize: 13, fontWeight: 600, textDecoration: "none", marginBottom: 10 }}>View plans →</a>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: 12, color: "#a09890" }}>Maybe later</button>
       </div>
     </div>
   );
@@ -165,7 +191,7 @@ function CoachAvatar({ coach, size }: { coach: Coach; size: number }) {
   );
 }
 
-function MyCoachTab({ featured, loading }: { featured: Coach | null; loading: boolean }) {
+function MyCoachTab({ featured, loading, isPro, onSubscribe }: { featured: Coach | null; loading: boolean; isPro: boolean; onSubscribe: () => void }) {
   if (loading) {
     return <p style={{ color: "#a09890", fontSize: 13 }}>Loading…</p>;
   }
@@ -204,9 +230,11 @@ function MyCoachTab({ featured, loading }: { featured: Coach | null; loading: bo
                 <span key={f} style={{ fontFamily: "var(--font-dm-sans)", fontSize: 11, color: "#1A3A2F", fontWeight: 500 }}>{f}</span>
               ))}
               {featured.hourlyRate && (
-                <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: 11, color: "#1A3A2F", fontWeight: 500 }}>
-                  ${featured.hourlyRate}/hr
-                </span>
+                isPro
+                  ? <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: 11, color: "#1A3A2F", fontWeight: 500 }}>${featured.hourlyRate}/hr</span>
+                  : <span onClick={onSubscribe} title="Subscribe to see rate" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, userSelect: "none" }}>
+                      <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: 11, fontWeight: 500, color: "#1A3A2F", filter: "blur(4px)", pointerEvents: "none" }}>${featured.hourlyRate}/hr</span>
+                    </span>
               )}
               {featured.location && (
                 <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: 11, color: "#7A7268" }}>{featured.location}</span>
@@ -232,11 +260,10 @@ function MyCoachTab({ featured, loading }: { featured: Coach | null; loading: bo
         )}
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            style={{ padding: "11px 22px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-dm-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-          >
-            Book a session →
-          </button>
+          {isPro
+            ? <button style={{ padding: "11px 22px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-dm-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Book a session →</button>
+            : <button onClick={onSubscribe} style={{ padding: "11px 22px", background: "#F2EDE3", color: "#7a7268", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 6, fontFamily: "var(--font-dm-sans)", fontSize: 12, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>🔒 Subscribe to book</button>
+          }
           {featured.linkedinUrl && (
             <a
               href={featured.linkedinUrl}
@@ -262,7 +289,7 @@ function MyCoachTab({ featured, loading }: { featured: Coach | null; loading: bo
   );
 }
 
-function CoachSearchTab({ coaches, loading }: { coaches: Coach[]; loading: boolean }) {
+function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coach[]; loading: boolean; isPro: boolean; onSubscribe: () => void }) {
   const [filter, setFilter] = useState("");
   const [selectedFirm, setSelectedFirm] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
@@ -325,6 +352,7 @@ function CoachSearchTab({ coaches, loading }: { coaches: Coach[]; loading: boole
 
       <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: 11, color: "#A09890", marginBottom: 14 }}>
         {filtered.length} coach{filtered.length !== 1 ? "es" : ""}
+        {!isPro && <span style={{ marginLeft: 10, color: "#b45309", fontSize: 10 }}>🔒 Subscribe to see rates and book sessions</span>}
       </p>
 
       {loading ? (
@@ -362,9 +390,12 @@ function CoachSearchTab({ coaches, loading }: { coaches: Coach[]; loading: boole
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     {c.hourlyRate ? (
-                      <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: 14, fontWeight: 600, color: "#1A3A2F" }}>
-                        ${c.hourlyRate}<span style={{ fontSize: 10, color: "#A09890", fontWeight: 400 }}>/hr</span>
-                      </p>
+                      isPro
+                        ? <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: 14, fontWeight: 600, color: "#1A3A2F" }}>${c.hourlyRate}<span style={{ fontSize: 10, color: "#A09890", fontWeight: 400 }}>/hr</span></p>
+                        : <p onClick={onSubscribe} title="Subscribe to see rate" style={{ cursor: "pointer", userSelect: "none" }}>
+                            <span style={{ fontFamily: "var(--font-dm-sans)", fontSize: 14, fontWeight: 600, color: "#1A3A2F", filter: "blur(5px)", pointerEvents: "none" }}>${c.hourlyRate}</span>
+                            <span style={{ fontSize: 10, color: "#A09890", filter: "blur(5px)", pointerEvents: "none" }}>/hr</span>
+                          </p>
                     ) : null}
                     {c.location && (
                       <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: 10, color: "#A09890" }}>{c.location}</p>
@@ -407,6 +438,11 @@ function CoachSearchTab({ coaches, loading }: { coaches: Coach[]; loading: boole
                       LinkedIn ↗
                     </a>
                   )}
+                  <span style={{ flex: 1 }} />
+                  {isPro
+                    ? <button style={{ padding: "8px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-dm-sans)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Book →</button>
+                    : <button onClick={onSubscribe} style={{ padding: "8px 16px", background: "#F2EDE3", color: "#7a7268", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, fontFamily: "var(--font-dm-sans)", fontSize: 11, fontWeight: 500, cursor: "pointer" }}>🔒 Book</button>
+                  }
                 </div>
               </div>
             </div>
