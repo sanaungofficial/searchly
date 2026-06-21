@@ -8,7 +8,6 @@ import {
   ScreenWelcome,
   ScreenTargetRoles,
   ScreenAboutYou,
-  ScreenTransition,
   DemoNextButton,
   ROLE_BUCKETS,
   type Screen,
@@ -122,11 +121,18 @@ export default function Home() {
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
-  const processFile = useCallback((file: File | undefined | null) => {
+  const processFile = useCallback(async (file: File | undefined | null) => {
     if (!file) return;
     setResumeFilename(file.name);
     setResumeUploaded(false);
-    window.setTimeout(() => setResumeUploaded(true), 1300);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/resume", { method: "POST", body: formData });
+      setResumeUploaded(res.ok);
+    } catch {
+      setResumeUploaded(false);
+    }
   }, []);
 
   const onDragOver = (e: React.DragEvent) => {
@@ -215,15 +221,15 @@ export default function Home() {
         priorities,
       }),
     }).catch(() => {});
-    goTo(3);
-  }, [employmentStatus, currentSalary, targetSalary, priorities, goTo]);
+    enterWorkspace();
+  }, [employmentStatus, currentSalary, targetSalary, priorities, enterWorkspace]);
 
   const demoAdvance = () => {
     if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
       window.setTimeout(() => setResumeUploaded(true), 1300);
-    } else if (screen === 1 || screen === 2) {
-      goTo((screen + 1) as Screen);
+    } else if (screen === 1) {
+      goTo(2);
     }
   };
 
@@ -300,8 +306,6 @@ export default function Home() {
               onContinue={onAboutYouContinue}
             />
           )}
-          {screen === 3 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
-
           {screen === 0 && (
             <p
               style={{

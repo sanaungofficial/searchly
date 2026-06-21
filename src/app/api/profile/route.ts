@@ -29,7 +29,7 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles, parsedData } = body;
+  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities } = body;
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -43,6 +43,10 @@ export async function PATCH(request: Request) {
   if (linkedinUrl !== undefined) profileUpdate.linkedinUrl = linkedinUrl;
   if (targetRoles !== undefined) profileUpdate.targetRoles = targetRoles;
   if (parsedData !== undefined) profileUpdate.parsedData = parsedData;
+  if (employmentStatus !== undefined) profileUpdate.employmentStatus = employmentStatus;
+  if (currentSalary !== undefined) profileUpdate.currentSalary = currentSalary;
+  if (targetSalary !== undefined) profileUpdate.targetSalary = targetSalary;
+  if (priorities !== undefined) profileUpdate.priorities = priorities;
 
   if (Object.keys(profileUpdate).length > 0) {
     await prisma.profile.upsert({
