@@ -89,15 +89,17 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [manualDesc, setManualDesc] = useState("");
 
-  useEffect(() => {
-    // Trigger slide-in
-    requestAnimationFrame(() => setVisible(true));
-
+  function generate(overrideDesc?: string) {
+    setLoading(true);
+    setError(null);
+    setData(null);
+    const desc = overrideDesc !== undefined ? overrideDesc : description;
     fetch("/api/ai/job-match", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle, company, description }),
+      body: JSON.stringify({ jobTitle, company, description: desc }),
     })
       .then((r) => r.json())
       .then((d) => {
@@ -106,6 +108,12 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
       })
       .catch(() => setError("Something went wrong"))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+    generate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobTitle, company, description]);
 
   function handleClose() {
@@ -121,7 +129,7 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.25)",
+          background: "rgba(0,0,0,0.1)",
           zIndex: 200,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.25s ease",
@@ -132,16 +140,18 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
       <div
         style={{
           position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
+          top: 8,
+          right: 8,
+          bottom: 8,
           width: 480,
           background: "#FAF7F2",
+          borderRadius: 12,
           zIndex: 201,
-          boxShadow: "-4px 0 24px rgba(0,0,0,0.12)",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
           display: "flex",
           flexDirection: "column",
-          transform: visible ? "translateX(0)" : "translateX(100%)",
+          overflow: "hidden",
+          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",
         }}
       >
@@ -168,13 +178,55 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
           )}
 
           {error && (
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A", padding: "20px 0" }}>
-              {error === "No resume found"
-                ? "Upload a resume in your profile to see your match."
-                : error === "No job description provided"
-                ? "This job doesn't have a description yet. Open the full job listing to load one."
-                : "Couldn't load match analysis. Try again."}
-            </p>
+            <div style={{ paddingTop: 20 }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A", marginBottom: error === "No job description provided" ? 14 : 0 }}>
+                {error === "No resume found"
+                  ? "Upload a resume in your profile to see your match."
+                  : error === "No job description provided"
+                  ? "This job doesn't have a description stored. Paste it below:"
+                  : "Couldn't load match analysis. Try again."}
+              </p>
+              {error === "No job description provided" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <textarea
+                    value={manualDesc}
+                    onChange={(e) => setManualDesc(e.target.value)}
+                    placeholder="Paste the job description here…"
+                    rows={8}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      borderRadius: 8,
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 12,
+                      color: "#1A1A1A",
+                      resize: "vertical",
+                      background: "#FFFFFF",
+                      lineHeight: 1.6,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <button
+                    onClick={() => { if (manualDesc.trim()) generate(manualDesc.trim()); }}
+                    disabled={!manualDesc.trim()}
+                    style={{
+                      padding: "11px",
+                      background: manualDesc.trim() ? "#1A3A2F" : "rgba(0,0,0,0.05)",
+                      color: manualDesc.trim() ? "#E8D5A3" : "#A09890",
+                      border: "none",
+                      borderRadius: 8,
+                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: manualDesc.trim() ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Analyze My Resume →
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {data && (
