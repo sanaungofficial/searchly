@@ -1,4 +1,4 @@
-// Searchly Workspace — static data (ported faithfully from Searchly Workspace.dc.html)
+// Kimchi Workspace — static data (ported faithfully from Kimchi Workspace.dc.html)
 // All copy is preserved verbatim from the original prototype.
 
 export interface Keyword {
@@ -1068,19 +1068,19 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
     items: [
       {
         id: 4,
-        platform: "Searchly",
+        platform: "Kimchi",
         platformInitial: "S",
         platformColor: "#1A3A2F",
         name: "LinkedIn Profile Audit",
         duration: "20 min",
         credential: "Recommendations",
         scoutPick: true,
-        why: "Searchly identified 4 specific improvements that could double your inbound recruiter reach.",
+        why: "Kimchi identified 4 specific improvements that could double your inbound recruiter reach.",
         closesGap: "Executive Communication",
       },
       {
         id: 5,
-        platform: "Searchly",
+        platform: "Kimchi",
         platformInitial: "S",
         platformColor: "#1A3A2F",
         name: "Portfolio Case Study Guide",
@@ -1114,7 +1114,7 @@ export const NOTIFICATIONS: Notification[] = [
     type: "role",
     company: "Notion",
     title: "New matching role found",
-    body: "Head of Product Operations — 82% match. Searchly surfaced this 2 minutes ago.",
+    body: "Head of Product Operations — 82% match. Kimchi surfaced this 2 minutes ago.",
     time: "Just now",
     unread: true,
     section: "opportunities",
@@ -1132,7 +1132,7 @@ export const NOTIFICATIONS: Notification[] = [
   {
     id: 2,
     type: "insight",
-    company: "Searchly",
+    company: "Kimchi",
     title: "Profile strength increased",
     body: "Your LinkedIn profile strength went from 65% → 72% based on recent updates.",
     time: "3h ago",
