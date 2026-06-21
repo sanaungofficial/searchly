@@ -957,22 +957,28 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Kimchi&apos;s suggestions
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {PROFILE_SUGGESTIONS.map((s) => {
-            const pColor = s.priority === "high" ? "#C4574A" : s.priority === "medium" ? "#C4A86A" : "#A09890";
-            const pBg = s.priority === "high" ? "rgba(196,87,74,0.08)" : s.priority === "medium" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.05)";
-            return (
-              <div key={s.id} style={{ padding: "12px 14px", background: pBg, borderRadius: 6, borderLeft: `2px solid ${pColor}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: pColor, textTransform: "uppercase", letterSpacing: "1px" }}>{s.priority} &middot; {s.category}</span>
+        {suggestionsLoading ? (
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your profile…</p>
+        ) : suggestions.length === 0 ? (
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload a resume to get personalized suggestions.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {suggestions.map((s, i) => {
+              const pColor = s.priority === "high" ? "#C4574A" : s.priority === "medium" ? "#C4A86A" : "#A09890";
+              const pBg = s.priority === "high" ? "rgba(196,87,74,0.08)" : s.priority === "medium" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.05)";
+              return (
+                <div key={i} style={{ padding: "12px 14px", background: pBg, borderRadius: 6, borderLeft: `2px solid ${pColor}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: pColor, textTransform: "uppercase", letterSpacing: "1px" }}>{s.priority} &middot; {s.category}</span>
+                  </div>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{s.title}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 4 }}>{s.detail}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", fontStyle: "italic" }}>&rarr; {s.impact}</p>
                 </div>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{s.title}</p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 4 }}>{s.detail}</p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", fontStyle: "italic" }}>&rarr; {s.impact}</p>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1032,6 +1038,8 @@ export function WorkspaceProfile() {
   const [resumeUploading, setResumeUploading] = useState(false);
   const [readback, setReadback] = useState<ReadbackData | null>(null);
   const [readbackLoading, setReadbackLoading] = useState(false);
+  const [profileSuggestions, setProfileSuggestions] = useState<AISuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
@@ -1056,6 +1064,17 @@ export function WorkspaceProfile() {
       .then((data) => { if (!data.error) setReadback(data); })
       .catch(() => {})
       .finally(() => setReadbackLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.resumeUrl]);
+
+  useEffect(() => {
+    if (!profile?.resumeUrl) return;
+    setSuggestionsLoading(true);
+    fetch("/api/ai/profile-suggestions")
+      .then((r) => r.json())
+      .then((data) => { if (data.suggestions) setProfileSuggestions(data.suggestions); })
+      .catch(() => {})
+      .finally(() => setSuggestionsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.resumeUrl]);
 
@@ -1236,7 +1255,7 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "assets" && profile && (
-          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} />
+          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
         )}
       </div>
     </div>
