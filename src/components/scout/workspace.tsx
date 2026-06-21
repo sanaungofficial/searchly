@@ -35,6 +35,14 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
   const rawTab = searchParams.get("tab") as Section | null;
   const activeSection: Section = rawTab && VALID_SECTIONS.includes(rawTab) ? rawTab : "opportunities";
 
+  type OppSubtab = "discover" | "companies" | "pipeline";
+  const VALID_SUBTABS: OppSubtab[] = ["discover", "companies", "pipeline"];
+  const rawSubtab = searchParams.get("subtab") as OppSubtab | null;
+  const activeSubtab: OppSubtab = rawSubtab && VALID_SUBTABS.includes(rawSubtab) ? rawSubtab : "discover";
+  const setSubtab = useCallback((t: OppSubtab) => {
+    router.push(`/?tab=opportunities&subtab=${t}`);
+  }, [router]);
+
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
 
@@ -88,6 +96,8 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
           addJob={addJob}
           updateStage={updateStage}
           removeJob={removeJob}
+          activeSubtab={activeSubtab}
+          setSubtab={setSubtab}
         />
       )}
       {activeSection === "profile" && <WorkspaceProfile />}
