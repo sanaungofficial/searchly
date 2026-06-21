@@ -6,13 +6,11 @@ import { createClient } from "@/utils/supabase/client";
 import {
   ScoutHeader,
   ScreenWelcome,
-  ScreenLinkedIn,
   ScreenReadBack,
-  ScreenTargetJobs,
   ScreenTransition,
   DemoNextButton,
   type Screen,
-  type Job,
+  type ReadBackData,
 } from "@/components/scout/screens";
 import { ScoutWorkspace } from "@/components/scout/workspace";
 
@@ -25,12 +23,6 @@ interface CurrentUser {
   headline?: string | null;
 }
 
-const JOB_MOCKS = [
-  { company: "Stripe", role: "Senior PM" },
-  { company: "Linear", role: "Product Lead" },
-  { company: "Figma", role: "Design Systems PM" },
-];
-
 export default function Home() {
   const router = useRouter();
   const [view, setView] = useState<View>("onboarding");
@@ -39,8 +31,6 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string>("USER");
 
-  // Supabase redirects auth errors back to the root URL with ?error= params.
-  // Detect and forward them to /login so the user sees a clear message.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -92,21 +82,14 @@ export default function Home() {
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
   const [resumeUploaded, setResumeUploaded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-
   const [liInput, setLiInput] = useState("");
-  const [liSubmitting, setLISubmitting] = useState(false);
 
-  const [jobInput, setJobInput] = useState("");
-  const [jobs, setJobs] = useState<Job[]>([]);
-
-  /* ── Auth ── */
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/login";
   }, []);
 
-  /* ── View toggle ── */
   const enterWorkspace = useCallback(() => {
     if (!currentUser) {
       router.push("/login");
@@ -114,35 +97,23 @@ export default function Home() {
     }
     setView("workspace");
   }, [currentUser, router]);
+
   const backToOnboarding = useCallback(() => {
     setView("onboarding");
     setScreen(0);
     setResumeFilename(null);
     setResumeUploaded(false);
     setLiInput("");
-    setLISubmitting(false);
-    setJobInput("");
-    setJobs([]);
   }, []);
 
-  /* ── Onboarding flow ── */
-  const goTo = useCallback((n: Screen) => {
-    setScreen(n);
-    setLISubmitting(false);
-  }, []);
+  const goTo = useCallback((n: Screen) => setScreen(n), []);
 
-  const processFile = useCallback(
-    (file: File | undefined | null) => {
-      if (!file) return;
-      setResumeFilename(file.name);
-      setResumeUploaded(false);
-      window.setTimeout(() => {
-        setResumeUploaded(true);
-        window.setTimeout(() => goTo(1), 700);
-      }, 1300);
-    },
-    [goTo],
-  );
+  const processFile = useCallback((file: File | undefined | null) => {
+    if (!file) return;
+    setResumeFilename(file.name);
+    setResumeUploaded(false);
+    window.setTimeout(() => setResumeUploaded(true), 1300);
+  }, []);
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -164,83 +135,47 @@ export default function Home() {
     if (f) processFile(f);
   };
 
-  const submitLI = () => {
-    if (!liInput.trim()) return;
-    setLISubmitting(true);
-    window.setTimeout(() => goTo(2), 2100);
-  };
   const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => setLiInput(e.target.value);
-  const onLIKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") submitLI();
-  };
 
-  const addJob = () => {
-    if (!jobInput.trim() || jobs.length >= 3) return;
-    const m = JOB_MOCKS[jobs.length] || { company: "Company", role: "PM Role" };
-    const id = Date.now() + jobs.length;
-    const job: Job = {
-      id,
-      company: m.company,
-      role: m.role,
-      initials: m.company.slice(0, 2).toUpperCase(),
-      state: "reading",
-    };
-    setJobs((prev) => [...prev, job]);
-    setJobInput("");
-    window.setTimeout(() => {
-      setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, state: "ready" } : j)));
-    }, 1900);
-  };
-  const onJobChange = (e: React.ChangeEvent<HTMLInputElement>) => setJobInput(e.target.value);
-  const onJobKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") addJob();
-  };
+  const onWelcomeContinue = useCallback(() => {
+    if (liInput.trim()) {
+      fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: liInput.trim() }),
+      }).catch(() => {});
+    }
+    goTo(resumeUploaded ? 1 : 2);
+  }, [liInput, resumeUploaded, goTo]);
+
+  const onLIKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && (resumeUploaded || liInput.trim())) onWelcomeContinue();
+  }, [resumeUploaded, liInput, onWelcomeContinue]);
+
+  const handleReadbackConfirm = useCallback((data: ReadBackData | null) => {
+    if (data?.targetRoles?.length) {
+      fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetRoles: data.targetRoles.map((r) => r.role) }),
+      }).catch(() => {});
+    }
+    goTo(2);
+  }, [goTo]);
 
   const demoAdvance = () => {
     if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
-      window.setTimeout(() => {
-        setResumeUploaded(true);
-        window.setTimeout(() => goTo(1), 700);
-      }, 1300);
+      window.setTimeout(() => setResumeUploaded(true), 1300);
     } else if (screen === 1) {
-      setLiInput("linkedin.com/in/sarahchen-pm");
-      setLISubmitting(true);
-      window.setTimeout(() => goTo(2), 2100);
-    } else if (screen === 2) {
-      goTo(3);
-    } else if (screen === 3) {
-      const allReady = jobs.length > 0 && jobs.every((j) => j.state === "ready");
-      if (allReady) {
-        goTo(4);
-        return;
-      }
-      if (jobs.length < 3) {
-        const now = Date.now();
-        const newJobs: Job[] = JOB_MOCKS.map((m, i) => ({
-          id: now + i,
-          company: m.company,
-          role: m.role,
-          initials: m.company.slice(0, 2).toUpperCase(),
-          state: "reading",
-        }));
-        setJobs(newJobs);
-        newJobs.forEach((job, i) => {
-          const jid = job.id;
-          window.setTimeout(() => {
-            setJobs((prev) => prev.map((j) => (j.id === jid ? { ...j, state: "ready" } : j)));
-          }, 1500 + i * 650);
-        });
-      }
+      goTo(2);
     }
   };
 
-  /* ── Auth loading gate — prevents onboarding flash for logged-in users ── */
   if (!authChecked) {
     return <div style={{ height: "100vh", background: "#F2EDE3" }} />;
   }
 
-  /* ── Workspace view ── */
   if (view === "workspace") {
     return (
       <Suspense>
@@ -249,10 +184,8 @@ export default function Home() {
     );
   }
 
-  /* ── Onboarding view ── */
   return (
     <div style={{ background: "#F2EDE3" }}>
-      {/* Hidden file input — used by Welcome screen via getElementById */}
       <input
         id="scout-file"
         type="file"
@@ -261,7 +194,6 @@ export default function Home() {
         onChange={onFileChange}
       />
 
-      {/* ── Interactive flow ── */}
       <div
         style={{
           minHeight: "100vh",
@@ -279,6 +211,10 @@ export default function Home() {
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
               isDragging={isDragging}
+              liInput={liInput}
+              onLIChange={onLIChange}
+              onLIKey={onLIKey}
+              onContinue={onWelcomeContinue}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
@@ -287,29 +223,12 @@ export default function Home() {
             />
           )}
           {screen === 1 && (
-            <ScreenLinkedIn
-              resumeFilename={resumeFilename}
-              liInput={liInput}
-              liSubmitting={liSubmitting}
-              onLIChange={onLIChange}
-              onLIKey={onLIKey}
-              onLISubmit={submitLI}
-              onSkip={() => goTo(3)}
+            <ScreenReadBack
+              onConfirm={handleReadbackConfirm}
+              onRefine={() => goTo(0)}
             />
           )}
-          {screen === 2 && <ScreenReadBack onConfirm={() => goTo(3)} onRefine={() => goTo(1)} />}
-          {screen === 3 && (
-            <ScreenTargetJobs
-              jobInput={jobInput}
-              jobs={jobs}
-              onJobChange={onJobChange}
-              onJobKey={onJobKey}
-              onAddJob={addJob}
-              onFinish={() => goTo(4)}
-              onSkip={() => goTo(4)}
-            />
-          )}
-          {screen === 4 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
+          {screen === 2 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
 
           {screen === 0 && (
             <p

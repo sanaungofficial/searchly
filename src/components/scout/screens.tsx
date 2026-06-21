@@ -15,7 +15,7 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4;
+export type Screen = 0 | 1 | 2;
 
 export interface Job {
   id: number;
@@ -26,7 +26,7 @@ export interface Job {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Header — Kimchi logo + progress segments
+   Header — Searchly logo + progress segments
    ────────────────────────────────────────────────────────────── */
 const FULL = "#1A3A2F";
 const EMPTY = "rgba(26,58,47,0.15)";
@@ -58,7 +58,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           title={onScoutClick ? "Go to workspace" : undefined}
         >
-          Kimchi
+          Searchly
         </button>
         <div
           style={{
@@ -75,7 +75,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
         </div>
       </div>
       <div className="flex gap-[5px] items-center" style={{ paddingTop: 6 }}>
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1].map((i) => (
           <div
             key={i}
             style={{
@@ -99,6 +99,10 @@ interface WelcomeProps {
   resumeFilename: string | null;
   resumeUploaded: boolean;
   isDragging: boolean;
+  liInput: string;
+  onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onContinue: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
@@ -110,6 +114,10 @@ export function ScreenWelcome({
   resumeFilename,
   resumeUploaded,
   isDragging,
+  liInput,
+  onLIChange,
+  onLIKey,
+  onContinue,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -119,9 +127,10 @@ export function ScreenWelcome({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropBorder = isDragging ? "#1A3A2F" : "rgba(26,58,47,0.22)";
   const dropBg = isDragging ? "rgba(26,58,47,0.04)" : "transparent";
+  const canContinue = resumeUploaded || liInput.trim().length > 0;
 
   return (
-    <div className="flex flex-col gap-[30px]">
+    <div className="flex flex-col gap-[28px]">
       <h1
         className="anim-fade-up"
         style={{
@@ -135,7 +144,7 @@ export function ScreenWelcome({
           animationDelay: "0.1s",
         }}
       >
-        Hello. I&apos;m Kimchi.
+        Hello. I&apos;m Searchly.
       </h1>
       <p
         className="anim-fade-up"
@@ -146,59 +155,116 @@ export function ScreenWelcome({
           color: "#52493F",
           lineHeight: 1.7,
           maxWidth: 460,
-          animationDelay: "0.5s",
+          animationDelay: "0.4s",
           textWrap: "pretty",
         }}
       >
-        I&apos;ll read your resume and get you set up to apply faster. Drop it below to get
-        started.
+        Drop your resume or share your LinkedIn — I&apos;ll use it to build your profile.
       </p>
 
       {/* Upload zone */}
-      <div className="anim-fade-up" style={{ animationDelay: "1.0s" }}>
-        <div
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          onClick={onFileClick}
-          style={{
-            border: `1.5px dashed ${dropBorder}`,
-            borderRadius: 10,
-            padding: "54px 40px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 16,
-            cursor: "pointer",
-            background: dropBg,
-            transition: "border-color 0.2s, background 0.2s",
-            userSelect: "none",
-          }}
-        >
-          <UploadIcon />
-          <div className="text-center flex flex-col gap-[5px]">
-            <span
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 15,
-                fontWeight: 400,
-                color: "#2E2820",
-              }}
-            >
-              Drop your resume here
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 12,
-                fontWeight: 300,
-                color: "#A09890",
-              }}
-            >
-              PDF or DOCX · click to browse
-            </span>
+      <div className="anim-fade-up" style={{ animationDelay: "0.75s" }}>
+        {!resumeFilename ? (
+          <div
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onClick={onFileClick}
+            style={{
+              border: `1.5px dashed ${dropBorder}`,
+              borderRadius: 10,
+              padding: "40px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 14,
+              cursor: "pointer",
+              background: dropBg,
+              transition: "border-color 0.2s, background 0.2s",
+              userSelect: "none",
+            }}
+          >
+            <UploadIcon />
+            <div className="text-center flex flex-col gap-[5px]">
+              <span
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 15,
+                  fontWeight: 400,
+                  color: "#2E2820",
+                }}
+              >
+                Drop your resume here
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 12,
+                  fontWeight: 300,
+                  color: "#A09890",
+                }}
+              >
+                PDF or DOCX · click to browse
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className="anim-fade-in"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "14px 20px",
+              background: "rgba(26,58,47,0.06)",
+              borderRadius: 8,
+            }}
+          >
+            <CheckCircleFilled />
+            <span
+              style={{
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 14,
+                fontWeight: 500,
+                color: "#1A3A2F",
+                flex: 1,
+              }}
+            >
+              {resumeFilename}
+            </span>
+            {!resumeUploaded ? (
+              <span
+                className="anim-pulse"
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 12,
+                  fontWeight: 300,
+                  color: "#A09890",
+                }}
+              >
+                Reading…
+              </span>
+            ) : (
+              <button
+                onClick={onFileClick}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 12,
+                  fontWeight: 300,
+                  color: "#A09890",
+                  cursor: "pointer",
+                  padding: 0,
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
+                }}
+              >
+                Change
+              </button>
+            )}
+          </div>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -208,42 +274,86 @@ export function ScreenWelcome({
         />
       </div>
 
-      {/* Uploaded state */}
-      {resumeUploaded && (
+      {/* Or divider */}
+      <div
+        className="anim-fade-up"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          animationDelay: "0.9s",
+        }}
+      >
+        <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
+        <span
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 11,
+            fontWeight: 400,
+            color: "#A09890",
+            letterSpacing: "0.5px",
+          }}
+        >
+          or
+        </span>
+        <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
+      </div>
+
+      {/* LinkedIn input */}
+      <div className="anim-fade-up" style={{ animationDelay: "1.0s" }}>
         <div
-          className="anim-fade-in"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            padding: "14px 20px",
-            background: "rgba(26,58,47,0.06)",
-            borderRadius: 8,
+            gap: 12,
+            borderBottom: "1.5px solid rgba(26,58,47,0.22)",
+            paddingBottom: 12,
           }}
         >
-          <CheckCircleFilled />
-          <span
+          <LinkedInIcon style={{ flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="linkedin.com/in/your-name"
+            value={liInput}
+            onChange={onLIChange}
+            onKeyDown={onLIKey}
             style={{
+              flex: 1,
+              border: "none",
+              background: "transparent",
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 15,
+              fontWeight: 400,
+              color: "#1A1A1A",
+              caretColor: "#1A3A2F",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Continue button */}
+      {canContinue && (
+        <div className="anim-fade-up">
+          <button
+            onClick={onContinue}
+            style={{
+              padding: "14px 30px",
+              background: "#1A3A2F",
+              color: "#E8D5A3",
+              border: "none",
+              borderRadius: 5,
               fontFamily: "var(--font-dm-sans), system-ui",
               fontSize: 14,
               fontWeight: 500,
-              color: "#1A3A2F",
-              flex: 1,
+              cursor: "pointer",
+              letterSpacing: "0.2px",
+              transition: "opacity 0.15s",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            {resumeFilename}
-          </span>
-          <span
-            className="anim-pulse"
-            style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 12,
-              fontWeight: 300,
-              color: "#A09890",
-            }}
-          >
-            Reading…
-          </span>
+            Continue →
+          </button>
         </div>
       )}
     </div>
@@ -447,16 +557,16 @@ export function ScreenLinkedIn({
 /* ──────────────────────────────────────────────────────────────
    Screen 2 — The Read-Back
    ────────────────────────────────────────────────────────────── */
-interface ReadBackProps {
-  onConfirm: () => void;
-  onRefine: () => void;
-}
-
-interface ReadBackData {
+export interface ReadBackData {
   picture: string;
   strengths: string[];
   targetRoles: { role: string; fit: string }[];
   honestNote: string;
+}
+
+interface ReadBackProps {
+  onConfirm: (data: ReadBackData | null) => void;
+  onRefine: () => void;
 }
 
 function fitColor(fit: string): string {
@@ -495,7 +605,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
             marginBottom: 14,
           }}
         >
-          Kimchi&apos;s read
+          Searchly&apos;s read
         </p>
         <h2
           style={{
@@ -704,7 +814,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
         </p>
         <div className="flex gap-[10px] items-center">
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(data)}
             style={{
               padding: "14px 30px",
               background: "#1A3A2F",
@@ -1073,7 +1183,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
           textWrap: "pretty",
         }}
       >
-        Kimchi has your background and knows the roles you want. Your workspace is ready.
+        Searchly has your background and knows what you&apos;re built for. Your workspace is ready.
       </p>
 
       {/* Workspace preview */}
@@ -1105,7 +1215,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
                 color: "#E8D5A3",
               }}
             >
-              Kimchi
+              Searchly
             </span>
             <span
               style={{
@@ -1211,7 +1321,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Get Interviews →
+          Open your workspace →
         </button>
       </div>
     </div>
