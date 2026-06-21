@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRef, useState } from "react";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
   COMPANIES,
@@ -35,6 +34,8 @@ interface OpportunitiesProps {
   addJob: (company: string, role: string, url?: string, meta?: JobMeta) => Promise<void>;
   updateStage: (cardId: number, stage: KanbanStage) => Promise<void>;
   removeJob: (cardId: number) => Promise<void>;
+  activeSubtab: OppTab;
+  setSubtab: (t: OppTab) => void;
 }
 
 export function WorkspaceOpportunities({
@@ -48,17 +49,11 @@ export function WorkspaceOpportunities({
   addJob,
   updateStage,
   removeJob,
+  activeSubtab,
+  setSubtab,
 }: OpportunitiesProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawSubtab = searchParams.get("subtab") as OppTab | null;
-  const VALID_SUBTABS: OppTab[] = ["discover", "companies", "pipeline"];
-  const tab: OppTab = rawSubtab && VALID_SUBTABS.includes(rawSubtab) ? rawSubtab : "discover";
-  const setTab = useCallback((t: OppTab) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("subtab", t);
-    router.push(`?${params.toString()}`);
-  }, [router, searchParams]);
+  const tab = activeSubtab;
+  const setTab = setSubtab;
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
   const [addJobLoading, setAddJobLoading] = useState(false);
