@@ -456,7 +456,7 @@ function DiscoverTab({
                 }}
               />
               <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
-                Searchly is analyzing this listing…
+                Kimchi is analyzing this listing…
               </p>
             </div>
           )}
@@ -577,7 +577,7 @@ function DiscoverTab({
                 textTransform: "uppercase",
               }}
             >
-              Searchly signals · updated weekly
+              Kimchi signals · updated weekly
             </p>
             <button
               onClick={refreshSignals}
@@ -626,7 +626,7 @@ function DiscoverTab({
                   color: "#1A3A2F",
                 }}
               >
-                Searchly is scanning the market…
+                Kimchi is scanning the market…
               </p>
             </div>
           )}
@@ -1056,7 +1056,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }}
             />
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
-              Searchly is analyzing {progress.done} of {progress.total} URLs…
+              Kimchi is analyzing {progress.done} of {progress.total} URLs…
             </p>
           </div>
           <div style={{ height: 4, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
@@ -1208,7 +1208,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
       {loading && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Searchly is analyzing this listing…</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Kimchi is analyzing this listing…</p>
         </div>
       )}
       {error && !loading && (
@@ -1786,7 +1786,7 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
                 </button>
               </div>
               <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
-                Searchly rewrote these bullets to align with what {card.company} screens for. Replace the originals on your resume.
+                Kimchi rewrote these bullets to align with what {card.company} screens for. Replace the originals on your resume.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
                 {job.bullets.map((b, i) => (
@@ -1911,7 +1911,7 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
                     marginBottom: 8,
                   }}
                 >
-                  Searchly&apos;s fit summary
+                  Kimchi&apos;s fit summary
                 </p>
                 <p
                   style={{
@@ -2152,7 +2152,7 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
                 fontSize: 12,
               }}
             >
-              <SparkleIcon /> Detailed analysis available for jobs Searchly has read.
+              <SparkleIcon /> Detailed analysis available for jobs Kimchi has read.
             </div>
           ) : null}
         </div>
