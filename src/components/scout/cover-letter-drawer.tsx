@@ -154,7 +154,11 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
 
           {error && (
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A", padding: "20px 0" }}>
-              {error === "No resume found" ? "Upload a resume in your profile to generate a cover letter." : "Couldn't generate a cover letter. Try again."}
+              {error === "No resume found"
+              ? "Upload a resume in your profile to generate a cover letter."
+              : error === "No job description provided"
+              ? "This job doesn't have a description yet. Open the full job listing to load one."
+              : "Couldn't generate a cover letter. Try again."}
             </p>
           )}
 
