@@ -39,7 +39,7 @@ export function WorkspaceNetwork() {
         <p
           style={{
             fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: 500,
             color: "#A09890",
             letterSpacing: "1.1px",
@@ -80,7 +80,7 @@ export function WorkspaceNetwork() {
             <p
               style={{
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: 600,
                 color: "#1A1A1A",
               }}
@@ -90,7 +90,7 @@ export function WorkspaceNetwork() {
             <p
               style={{
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
+                fontSize: 13,
                 color: "#7A7268",
                 marginTop: 2,
               }}
@@ -142,7 +142,7 @@ export function WorkspaceNetwork() {
                   border: "none",
                   borderRadius: 100,
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 500,
                   cursor: "pointer",
                 }}
@@ -193,7 +193,7 @@ export function WorkspaceNetwork() {
                     <span
                       style={{
                         fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 600,
                         color: "#E8D5A3",
                       }}
@@ -206,7 +206,7 @@ export function WorkspaceNetwork() {
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: 600,
                           color: "#1A1A1A",
                         }}
@@ -220,7 +220,7 @@ export function WorkspaceNetwork() {
                           color: degreeColor,
                           borderRadius: 100,
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: 600,
                         }}
                       >
@@ -230,7 +230,7 @@ export function WorkspaceNetwork() {
                     <p
                       style={{
                         fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 11,
+                        fontSize: 13,
                         color: "#7A7268",
                       }}
                     >
@@ -259,7 +259,7 @@ export function WorkspaceNetwork() {
                     <span
                       style={{
                         fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 9,
+                        fontSize: 11,
                         color: "#52493F",
                         textTransform: "capitalize",
                       }}
@@ -272,7 +272,7 @@ export function WorkspaceNetwork() {
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: 300,
                     color: "#52493F",
                     lineHeight: 1.5,
@@ -303,7 +303,7 @@ export function WorkspaceNetwork() {
                       <span
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: 600,
                           color: "#4A8B6A",
                           textTransform: "uppercase",
@@ -316,7 +316,7 @@ export function WorkspaceNetwork() {
                         <span
                           style={{
                             fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 9,
+                            fontSize: 11,
                             color: "#4A8B6A",
                           }}
                         >
@@ -329,7 +329,7 @@ export function WorkspaceNetwork() {
                         display: "flex",
                         gap: 14,
                         fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 10,
+                        fontSize: 12,
                         color: "#52493F",
                       }}
                     >
@@ -337,7 +337,7 @@ export function WorkspaceNetwork() {
                         <p
                           style={{
                             fontFamily: "var(--font-dm-mono), monospace",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                             color: "#1A3A2F",
                           }}
@@ -350,7 +350,7 @@ export function WorkspaceNetwork() {
                         <p
                           style={{
                             fontFamily: "var(--font-dm-mono), monospace",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                             color: "#1A3A2F",
                           }}
@@ -363,7 +363,7 @@ export function WorkspaceNetwork() {
                         <p
                           style={{
                             fontFamily: "var(--font-dm-mono), monospace",
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 500,
                             color: hmSuccessColor,
                           }}
@@ -385,7 +385,7 @@ export function WorkspaceNetwork() {
                       border: "none",
                       borderRadius: 5,
                       fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: 500,
                       cursor: "pointer",
                       flex: 1,
@@ -402,7 +402,7 @@ export function WorkspaceNetwork() {
                         border: "none",
                         borderRadius: 5,
                         fontFamily: "var(--font-dm-sans), system-ui",
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: 600,
                         cursor: "pointer",
                         flex: 1,
