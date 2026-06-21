@@ -32,7 +32,7 @@ export default function PricingPage() {
       {/* Nav */}
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <Link href="/" style={{ textDecoration: "none" }}>
-          <span style={{ fontSize: 18, fontWeight: 600, color: "#1C3A2F", letterSpacing: "-0.3px" }}>Searchly</span>
+          <span style={{ fontSize: 18, fontWeight: 600, color: "#1C3A2F", letterSpacing: "-0.3px" }}>Kimchi</span>
         </Link>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Link href="/login" style={{ fontSize: 14, color: "#52493F", textDecoration: "none", padding: "8px 16px" }}>Log in</Link>
