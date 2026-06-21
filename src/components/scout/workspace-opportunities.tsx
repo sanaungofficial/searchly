@@ -209,7 +209,7 @@ export function WorkspaceOpportunities({
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", gap: 3, background: "rgba(0,0,0,0.05)", padding: 3, borderRadius: 7 }}>
+        <div style={{ display: "flex", gap: 0 }}>
           {([
             ["discover", "Signals"],
             ["pipeline", "Pipeline"],
@@ -220,16 +220,17 @@ export function WorkspaceOpportunities({
                 key={id}
                 onClick={() => setTab(id)}
                 style={{
-                  padding: "7px 20px",
-                  borderRadius: 5,
+                  padding: "7px 18px",
                   border: "none",
-                  background: active ? "#1A3A2F" : "transparent",
-                  color: active ? "#E8D5A3" : "#52493F",
+                  borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
+                  background: "transparent",
+                  color: active ? "#1A3A2F" : "#A09890",
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 12,
-                  fontWeight: 500,
+                  fontSize: 13,
+                  fontWeight: active ? 600 : 400,
                   cursor: "pointer",
                   transition: "all 0.15s",
+                  letterSpacing: "0.1px",
                 }}
               >
                 {label}
@@ -644,10 +645,14 @@ function DiscoverTab({
             <>
               <div
                 style={{
-                  background: "#1A3A2F",
+                  background: "#FFFFFF",
                   borderRadius: 9,
-                  padding: "12px 16px",
+                  padding: "14px 18px",
                   marginBottom: 10,
+                  borderLeft: "3px solid #1A3A2F",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  borderLeftWidth: 3,
+                  borderLeftColor: "#1A3A2F",
                 }}
               >
                 <p
@@ -655,10 +660,10 @@ function DiscoverTab({
                     fontFamily: "var(--font-dm-sans), system-ui",
                     fontSize: 9,
                     fontWeight: 600,
-                    color: "rgba(232,213,163,0.5)",
+                    color: "#A09890",
                     textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    marginBottom: 4,
+                    letterSpacing: "1.1px",
+                    marginBottom: 6,
                   }}
                 >
                   This week&apos;s read
@@ -666,10 +671,10 @@ function DiscoverTab({
                 <p
                   style={{
                     fontFamily: "var(--font-cormorant), Georgia, serif",
-                    fontSize: 15,
-                    fontWeight: 500,
-                    color: "#E8D5A3",
-                    lineHeight: 1.5,
+                    fontSize: 18,
+                    fontWeight: 600,
+                    color: "#1A1A1A",
+                    lineHeight: 1.45,
                     textWrap: "pretty",
                   }}
                 >
@@ -749,8 +754,8 @@ function DiscoverTab({
                       </div>
                       <p
                         style={{
-                          fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 12,
+                          fontFamily: "var(--font-cormorant), Georgia, serif",
+                          fontSize: 15,
                           fontWeight: 600,
                           color: "#1A1A1A",
                           marginBottom: 5,
@@ -1339,14 +1344,14 @@ function PipelineTab({
               key={id}
               onClick={() => setFilter(id)}
               style={{
-                padding: "6px 14px",
-                background: active ? "#1A3A2F" : "rgba(0,0,0,0.05)",
-                color: active ? "#E8D5A3" : "#52493F",
-                border: "none",
+                padding: "5px 14px",
+                background: active ? "transparent" : "transparent",
+                color: active ? "#1A3A2F" : "#A09890",
+                border: active ? "1px solid #1A3A2F" : "1px solid rgba(0,0,0,0.1)",
                 borderRadius: 100,
                 fontFamily: "var(--font-dm-sans), system-ui",
                 fontSize: 11,
-                fontWeight: 500,
+                fontWeight: active ? 600 : 400,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
