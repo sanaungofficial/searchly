@@ -32,6 +32,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No resume found" }, { status: 404 });
   }
 
+  const declaredSkills: string[] = (dbUser?.profile?.parsedData as { skills?: string[] } | null)?.skills ?? [];
+
   const prompt = `You are a career coach analyzing a resume against a specific target role.
 
 TARGET ROLE: ${role}
@@ -39,13 +41,19 @@ TARGET ROLE: ${role}
 RESUME:
 ${resumeText.slice(0, 6000)}
 
-Analyze this person's fit for the target role. Be specific to what's actually in their resume — do not be generic.
+USER'S DECLARED SKILLS: ${declaredSkills.length > 0 ? declaredSkills.join(", ") : "none listed"}
+
+Analyze this person's fit for the target role. Factor in both the resume content AND the declared skills above.
 
 Return a JSON object with exactly these fields:
 
 {
-  "fitScore": <integer 0-100, honest assessment based on their actual background>,
+  "fitScore": <integer 0-100, honest assessment based on their resume and declared skills>,
   "summary": "<1 sentence in second person describing their fit, specific to their actual experience, under 25 words>",
+  "requiredSkills": [
+    "<skill>", "<skill>", "<skill>", "<skill>", "<skill>",
+    "<skill>", "<skill>", "<skill>", "<skill>", "<skill>"
+  ],
   "gaps": [
     { "skill": "<specific gap>", "why": "<1 sentence explaining why this matters for the target role>" },
     { "skill": "<specific gap>", "why": "<1 sentence>" },
@@ -63,7 +71,8 @@ Scoring guide:
 - 0-49: Significant gaps, needs a longer transition plan
 
 Rules:
-- gaps: exactly 3, the most impactful ones for THIS specific role given THEIR background
+- requiredSkills: exactly 10, the most important skills for THIS role (mix of technical and soft). Include skills they already have AND gaps. Use short, specific skill names (e.g. "SQL", "Stakeholder management", "P&L ownership").
+- gaps: exactly 3, the most impactful skills from requiredSkills that are missing from their resume and declared skills
 - nextSteps: actionable and specific, not generic career advice like "network more"
 - summary: must be specific to their actual resume, not a generic statement
 - Respond with only valid JSON, no explanation`;
