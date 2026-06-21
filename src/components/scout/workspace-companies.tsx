@@ -94,7 +94,7 @@ export function WorkspaceCompanies() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 17, color: "#1a1a1a" }}>Tracked Companies</div>
-          <div style={{ color: "#888", fontSize: 13, marginTop: 2 }}>
+          <div style={{ color: "#888", fontSize: 14, marginTop: 2 }}>
             {companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist
           </div>
         </div>
@@ -106,7 +106,7 @@ export function WorkspaceCompanies() {
             border: "none",
             borderRadius: 8,
             padding: "8px 16px",
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 500,
             cursor: "pointer",
           }}
@@ -130,7 +130,7 @@ export function WorkspaceCompanies() {
           }}
         >
           <div style={{ flex: 2 }}>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "#555", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#555", display: "block", marginBottom: 6 }}>
               Company name *
             </label>
             <input
@@ -151,7 +151,7 @@ export function WorkspaceCompanies() {
             />
           </div>
           <div style={{ flex: 2 }}>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "#555", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#555", display: "block", marginBottom: 6 }}>
               Website (optional)
             </label>
             <input
@@ -203,10 +203,10 @@ export function WorkspaceCompanies() {
           }}
         >
           <div style={{ fontSize: 32, marginBottom: 12 }}>🏢</div>
-          <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: 6 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 6 }}>
             No companies tracked yet
           </div>
-          <div style={{ color: "#888", fontSize: 13 }}>
+          <div style={{ color: "#888", fontSize: 14 }}>
             Add companies you want to monitor for open roles and signals.
           </div>
         </div>
@@ -251,7 +251,7 @@ export function WorkspaceCompanies() {
                       border: "none",
                       borderRadius: 6,
                       padding: "3px 8px",
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: 500,
                       cursor: "pointer",
                     }}
@@ -271,14 +271,14 @@ export function WorkspaceCompanies() {
                       justifyContent: "center",
                       color: "#fff",
                       fontWeight: 700,
-                      fontSize: 15,
+                      fontSize: 14,
                       flexShrink: 0,
                     }}
                   >
                     {initials}
                   </div>
                   <div style={{ overflow: "hidden" }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {company.name}
                     </div>
                     {company.website && (
@@ -286,7 +286,7 @@ export function WorkspaceCompanies() {
                         href={company.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ fontSize: 12, color: "#6366f1", textDecoration: "none" }}
+                        style={{ fontSize: 13, color: "#6366f1", textDecoration: "none" }}
                       >
                         {company.website.replace(/^https?:\/\//, "")}
                       </a>
@@ -300,7 +300,7 @@ export function WorkspaceCompanies() {
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
-                        fontSize: 12,
+                        fontSize: 13,
                         color: "#1a1a1a",
                         background: "#f3f4f6",
                         border: "none",
@@ -318,7 +318,7 @@ export function WorkspaceCompanies() {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      fontSize: 12,
+                      fontSize: 13,
                       color: "#0a66c2",
                       background: "#eff6ff",
                       border: "none",
