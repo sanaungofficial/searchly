@@ -453,7 +453,7 @@ function DreamRoleTab({ dreamList, setDreamList, dreamSelectedId, setDreamSelect
       {dreamSelectedId === null && (
         <>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
-            Pick up to three roles you&apos;re aiming for. Searchly will measure the gap, surface roles that match, and build a learning path to bridge what&apos;s missing.
+            Pick up to three roles you&apos;re aiming for. Kimchi will measure the gap, surface roles that match, and build a learning path to bridge what&apos;s missing.
           </p>
           <div style={{ position: "relative", height: 220, marginBottom: 24 }}>
             {dreamList.map((title, i) => {
@@ -532,7 +532,7 @@ function DreamRoleDetail({ title, skillsSet, onClose }: { title: string; skillsS
           </div>
         </div>
         <button style={{ padding: "12px 22px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <SparkleIcon /> Run Searchly gap analysis &rarr;
+          <SparkleIcon /> Run Kimchi gap analysis &rarr;
         </button>
       </div>
     </div>
@@ -577,7 +577,7 @@ function LearningTab({ progress, setProgress }: {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
-                      {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#7A6020", fontWeight: 600 }}>Searchly pick</span>}
+                      {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
                     </div>
                     <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
                     <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: statusColor }}>{statusLabel}</p>
@@ -828,10 +828,10 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
         )}
       </div>
 
-      {/* Searchly suggestions */}
+      {/* Kimchi suggestions */}
       <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)", marginTop: 20 }}>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
-          <SparkleIcon /> Searchly&apos;s suggestions
+          <SparkleIcon /> Kimchi&apos;s suggestions
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {PROFILE_SUGGESTIONS.map((s) => {
@@ -861,7 +861,7 @@ function ReadbackCard({ data, loading }: { data: ReadbackData | null; loading: b
   return (
     <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: "16px 20px", marginBottom: 28 }}>
       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
-        <SparkleIcon /> Searchly&apos;s read on you
+        <SparkleIcon /> Kimchi&apos;s read on you
       </p>
       {loading ? (
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your profile…</p>
@@ -1025,7 +1025,7 @@ export function WorkspaceProfile() {
             {profile?.headline ? ` · ${profile.headline}` : ""}
           </p>
           <h1 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px" }}>
-            Your profile, through Searchly&apos;s eyes.
+            Your profile, through Kimchi&apos;s eyes.
           </h1>
           {profile && (() => {
             const pct = profileCompleteness(profile);
