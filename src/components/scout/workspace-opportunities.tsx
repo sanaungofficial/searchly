@@ -19,6 +19,7 @@ import { PlusIcon, RefreshIcon, SparkleIcon, UploadIcon } from "./workspace-icon
 import { ResumeEditor } from "./resume-editor";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
+import { CoverLetterDrawer } from "./cover-letter-drawer";
 
 type OppTab = "discover" | "companies" | "pipeline";
 
@@ -1511,6 +1512,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
+  const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
   const setTool = (t: DrawerTool) => onToolChange?.(t);
@@ -1721,14 +1723,14 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
               <span style={{ fontSize: 12, opacity: 0.5 }}>›</span>
             </button>
             <button
-              onClick={() => setTool(tool === "cover" ? null : "cover")}
+              onClick={() => setCoverDrawerOpen(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
                 padding: "10px 12px",
-                background: tool === "cover" ? "#1A3A2F" : "#FFFFFF",
-                color: tool === "cover" ? "#E8D5A3" : "#1A1A1A",
+                background: "#FFFFFF",
+                color: "#1A1A1A",
                 border: "1px solid rgba(0,0,0,0.08)",
                 borderRadius: 7,
                 fontFamily: "var(--font-dm-sans), system-ui",
@@ -1744,7 +1746,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 Create cover letter
                 <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Make your application stand out</span>
               </span>
-              <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "cover" ? "▲" : "›"}</span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>›</span>
             </button>
             <button
               onClick={() => setTool(tool === "fit" ? null : "fit")}
@@ -2211,6 +2213,15 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           onTailorResume={() => {
             if (dbId) setResumeEditorOpen(true);
           }}
+        />
+      )}
+
+      {coverDrawerOpen && (
+        <CoverLetterDrawer
+          jobTitle={card.role}
+          company={card.company}
+          description={meta?.description ?? job?.description ?? ""}
+          onClose={() => setCoverDrawerOpen(false)}
         />
       )}
     </>
