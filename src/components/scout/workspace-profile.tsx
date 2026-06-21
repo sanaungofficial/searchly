@@ -861,7 +861,7 @@ const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal", educat
 
 export function WorkspaceProfile() {
   const [page, setPage] = useState<PageTab>("about");
-  const [activeSection, setActiveSection] = useState<AboutSection>("personal");
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
@@ -869,7 +869,6 @@ export function WorkspaceProfile() {
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
   const [readback, setReadback] = useState<ReadbackData | null>(null);
   const [readbackLoading, setReadbackLoading] = useState(false);
@@ -960,29 +959,18 @@ export function WorkspaceProfile() {
     finally { setResumeUploading(false); }
   };
 
-  const goToSection = (section: AboutSection) => {
-    setPage("about");
-    setActiveSection(section);
-    setTimeout(() => {
-      const el = sectionRefs.current[section];
-      const container = scrollRef.current;
-      if (el && container) container.scrollTo({ top: el.offsetTop - 16, behavior: "smooth" });
-    }, 50);
-  };
-
   const pd = profile?.parsedData;
   const education = pd?.education || [];
   const workExperience = pd?.workExperience || [];
   const skills = pd?.skills || [];
 
-  const PAGE_TABS: { id: PageTab | AboutSection; label: string; isSection?: boolean }[] = [
-    ...ABOUT_SECTIONS.map((s) => ({ id: s as PageTab | AboutSection, label: ABOUT_LABEL[s], isSection: true })),
+  const PAGE_TABS: { id: PageTab; label: string }[] = [
+    { id: "about", label: "About" },
     { id: "dreamrole", label: "Dream Role" },
     { id: "learning", label: "Learning Path" },
     { id: "assets", label: "Resume Assets" },
   ];
 
-  const isAboutActive = page === "about";
   void DreamRoleDetail;
 
   return (
@@ -999,15 +987,12 @@ export function WorkspaceProfile() {
         </div>
 
         <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto" }}>
-          {PAGE_TABS.map(({ id, label, isSection }) => {
-            const active = isSection ? isAboutActive && activeSection === id : page === id;
-            return (
-              <button key={id} onClick={() => { if (isSection) { goToSection(id as AboutSection); } else { setPage(id as PageTab); } }}
-                style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: active ? "#1A3A2F" : "transparent", color: active ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                {label}
-              </button>
-            );
-          })}
+          {PAGE_TABS.map(({ id, label }) => (
+            <button key={id} onClick={() => setPage(id)}
+              style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: page === id ? "#1A3A2F" : "transparent", color: page === id ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+              {label}
+            </button>
+          ))}
         </div>
 
         {page === "dreamrole" && (
@@ -1028,7 +1013,7 @@ export function WorkspaceProfile() {
             {(readbackLoading || readback) && (
               <ReadbackCard data={readback} loading={readbackLoading} onRefresh={handleRefreshReadback} refreshing={readbackRefreshing} />
             )}
-            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ paddingBottom: 48 }}>
+            <div style={{ paddingBottom: 48 }}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
             <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }} ref={(el) => { sectionRefs.current.education = el; }}>
@@ -1037,7 +1022,7 @@ export function WorkspaceProfile() {
             <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }} ref={(el) => { sectionRefs.current.experience = el; }}>
               <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }} ref={(el) => { sectionRefs.current.skills = el; }}>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }} >
               <SkillsTab skills={skills} onSave={handleSkillsSave} />
             </div>
           </div>
