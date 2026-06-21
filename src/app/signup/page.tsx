@@ -68,7 +68,7 @@ export default function SignupPage() {
             marginBottom: 8,
           }}
         >
-          Searchly
+          Kimchi
         </div>
         <div style={{ fontSize: 14, color: "#6B7280", letterSpacing: "0.06em" }}>
           by Second Ladder
