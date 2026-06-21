@@ -74,6 +74,9 @@ model Profile {
   targetRoles String[]
   targetSalary Int?
 
+  readbackData       Json?
+  readbackUpdatedAt  DateTime?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
