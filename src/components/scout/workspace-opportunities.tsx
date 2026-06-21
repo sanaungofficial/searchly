@@ -18,6 +18,7 @@ import {
 import { PlusIcon, RefreshIcon, SparkleIcon, UploadIcon } from "./workspace-icons";
 import { ResumeEditor } from "./resume-editor";
 import { WorkspaceCompanies } from "./workspace-companies";
+import { ResumeMatchDrawer } from "./resume-match-drawer";
 
 type OppTab = "discover" | "companies" | "pipeline";
 
@@ -233,7 +234,7 @@ export function WorkspaceOpportunities({
                   background: "transparent",
                   color: active ? "#1A3A2F" : "#A09890",
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: active ? 600 : 400,
                   cursor: "pointer",
                   transition: "all 0.15s",
@@ -255,7 +256,7 @@ export function WorkspaceOpportunities({
               border: "none",
               borderRadius: 5,
               fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 13,
+              fontSize: 11,
               fontWeight: 500,
               cursor: "pointer",
               letterSpacing: "0.2px",
@@ -276,7 +277,7 @@ export function WorkspaceOpportunities({
                 border: "1px solid rgba(26,58,47,0.2)",
                 borderRadius: 5,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 11,
                 fontWeight: 500,
                 cursor: "pointer",
                 letterSpacing: "0.2px",
@@ -441,7 +442,7 @@ function DiscoverTab({
                 borderRadius: 6,
                 background: "#FFFFFF",
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 12,
                 color: "#1A1A1A",
                 minWidth: 0,
               }}
@@ -455,7 +456,7 @@ function DiscoverTab({
                 border: "none",
                 borderRadius: 6,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 12,
                 cursor: "pointer",
                 flexShrink: 0,
               }}
@@ -474,7 +475,7 @@ function DiscoverTab({
                   animation: "pulse 1s ease infinite",
                 }}
               />
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A3A2F" }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
                 Kimchi is analyzing this listing…
               </p>
             </div>
@@ -490,7 +491,7 @@ function DiscoverTab({
                 border: "1px solid rgba(196,87,74,0.15)",
               }}
             >
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C4574A" }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A" }}>
                 {addJobError}
               </p>
             </div>
@@ -502,24 +503,24 @@ function DiscoverTab({
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 600, color: "#1A1A1A" }}>
                       {jobAnalysis.company ?? "Unknown company"}
                     </p>
                     {jobAnalysis.role && (
                       <>
-                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>·</span>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#52493F" }}>{jobAnalysis.role}</p>
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>{jobAnalysis.role}</p>
                       </>
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                     {jobAnalysis.location && (
-                      <span style={{ padding: "3px 10px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>
+                      <span style={{ padding: "3px 10px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#52493F" }}>
                         📍 {jobAnalysis.location}
                       </span>
                     )}
                     {jobAnalysis.salary && (
-                      <span style={{ padding: "3px 10px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#2D6B4A" }}>
+                      <span style={{ padding: "3px 10px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A" }}>
                         {jobAnalysis.salary}
                       </span>
                     )}
@@ -530,24 +531,24 @@ function DiscoverTab({
               <div style={{ display: "grid", gridTemplateColumns: jobAnalysis.description && jobAnalysis.requirements.length > 0 ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
                 {jobAnalysis.description && (
                   <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
                       Role Summary
                     </p>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.65, textWrap: "pretty" }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.65, textWrap: "pretty" }}>
                       {jobAnalysis.description}
                     </p>
                   </div>
                 )}
                 {jobAnalysis.requirements.length > 0 && (
                   <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
                       Key Requirements
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       {jobAnalysis.requirements.map((r: string, i: number) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
-                          <span style={{ color: "#4A8B6A", fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
+                          <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
                         </div>
                       ))}
                     </div>
@@ -558,13 +559,13 @@ function DiscoverTab({
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
                   onClick={addToKanban}
-                  style={{ padding: "10px 22px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  style={{ padding: "10px 22px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                 >
                   + Add to pipeline
                 </button>
                 <button
                   onClick={dismissJobAnalysis}
-                  style={{ padding: "10px 16px", background: "transparent", color: "#A09890", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, cursor: "pointer" }}
+                  style={{ padding: "10px 16px", background: "transparent", color: "#A09890", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
                 >
                   Dismiss
                 </button>
@@ -589,7 +590,7 @@ function DiscoverTab({
             <p
               style={{
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
+                fontSize: 9,
                 fontWeight: 500,
                 color: "#A09890",
                 letterSpacing: "1.1px",
@@ -605,7 +606,7 @@ function DiscoverTab({
                 border: "none",
                 cursor: "pointer",
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 12,
+                fontSize: 10,
                 color: "#1A3A2F",
                 padding: 0,
                 display: "flex",
@@ -641,7 +642,7 @@ function DiscoverTab({
               <p
                 style={{
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
+                  fontSize: 11,
                   color: "#1A3A2F",
                 }}
               >
@@ -666,7 +667,7 @@ function DiscoverTab({
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
+                    fontSize: 9,
                     fontWeight: 600,
                     color: "#A09890",
                     textTransform: "uppercase",
@@ -679,7 +680,7 @@ function DiscoverTab({
                 <p
                   style={{
                     fontFamily: "var(--font-cormorant), Georgia, serif",
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: 600,
                     color: "#1A1A1A",
                     lineHeight: 1.45,
@@ -739,7 +740,7 @@ function DiscoverTab({
                             borderRadius: 100,
                             background: sentimentBg,
                             fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 11,
+                            fontSize: 9,
                             fontWeight: 700,
                             color: sentimentColor,
                             textTransform: "uppercase",
@@ -751,7 +752,7 @@ function DiscoverTab({
                           <span
                             style={{
                               fontFamily: "var(--font-dm-sans), system-ui",
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: 600,
                               color: "#1A3A2F",
                             }}
@@ -763,7 +764,7 @@ function DiscoverTab({
                       <p
                         style={{
                           fontFamily: "var(--font-cormorant), Georgia, serif",
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: 600,
                           color: "#1A1A1A",
                           marginBottom: 5,
@@ -776,7 +777,7 @@ function DiscoverTab({
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: 300,
                           color: "#4A8B6A",
                           lineHeight: 1.5,
@@ -807,7 +808,7 @@ function DiscoverTab({
               <p
                 style={{
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight: 600,
                   color: "#A09890",
                   textTransform: "uppercase",
@@ -832,7 +833,7 @@ function DiscoverTab({
               <p
                 style={{
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
+                  fontSize: 11,
                   fontWeight: 300,
                   color: "#52493F",
                   lineHeight: 1.55,
@@ -855,7 +856,7 @@ function DiscoverTab({
               <p
                 style={{
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight: 600,
                   color: "#A09890",
                   textTransform: "uppercase",
@@ -874,7 +875,7 @@ function DiscoverTab({
                       background: "rgba(74,139,106,0.1)",
                       borderRadius: 100,
                       fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: 500,
                       color: "#2D6B4A",
                     }}
@@ -886,7 +887,7 @@ function DiscoverTab({
               <p
                 style={{
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight: 600,
                   color: "#A09890",
                   textTransform: "uppercase",
@@ -905,7 +906,7 @@ function DiscoverTab({
                       background: "rgba(160,152,144,0.12)",
                       borderRadius: 100,
                       fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 12,
+                      fontSize: 10,
                       color: "#7A7268",
                     }}
                   >
@@ -1017,7 +1018,7 @@ function StatusDropdown({
                   background: s === stage ? `${STAGE_COLORS[s]}10` : "transparent",
                   border: "none",
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
+                  fontSize: 11,
                   fontWeight: s === stage ? 600 : 400,
                   color: s === stage ? STAGE_COLORS[s] : "#2A2218",
                   cursor: "pointer",
@@ -1060,7 +1061,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
           Upload CSV — bulk add jobs
         </p>
         {!loading && (
@@ -1078,7 +1079,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
             <div
               style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }}
             />
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A3A2F" }}>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
               Kimchi is analyzing {progress.done} of {progress.total} URLs…
             </p>
           </div>
@@ -1088,8 +1089,8 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
         </div>
       ) : (
         <>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 10, maxWidth: 520 }}>
-            Upload a CSV file with job URLs. One URL per line, or columns: <code style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 12, background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: 3 }}>url,company,role</code>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 10, maxWidth: 520 }}>
+            Upload a CSV file with job URLs. One URL per line, or columns: <code style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: 3 }}>url,company,role</code>
           </p>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
@@ -1101,7 +1102,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
                 border: "none",
                 borderRadius: 5,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
                 display: "inline-flex",
@@ -1118,7 +1119,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               style={{ display: "none" }}
               onChange={onFileSelected}
             />
-            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
+            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
               .csv or .txt
             </span>
           </div>
@@ -1132,10 +1133,10 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               maxWidth: 520,
             }}
           >
-            <p style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 11, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 5 }}>
+            <p style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 9, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 5 }}>
               Example CSV
             </p>
-            <pre style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 12, color: "#52493F", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
+            <pre style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#52493F", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
 {`url,company,role
 https://stripe.com/jobs/...,Stripe,Senior PM
 https://linear.app/careers/...,Linear,Product Lead
@@ -1191,7 +1192,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             borderRadius: 6,
             background: "#FFFFFF",
             fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 13,
+            fontSize: 12,
             color: "#1A1A1A",
             minWidth: 0,
           }}
@@ -1205,7 +1206,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             border: "none",
             borderRadius: 6,
             fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 13,
+            fontSize: 12,
             cursor: "pointer",
             flexShrink: 0,
           }}
@@ -1220,7 +1221,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             color: "#A09890",
             border: "none",
             fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 13,
+            fontSize: 12,
             cursor: "pointer",
             flexShrink: 0,
           }}
@@ -1231,12 +1232,12 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
       {loading && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A3A2F" }}>Kimchi is analyzing this listing…</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Kimchi is analyzing this listing…</p>
         </div>
       )}
       {error && !loading && (
         <div style={{ padding: "8px 12px", background: "rgba(196,87,74,0.06)", borderRadius: 6, border: "1px solid rgba(196,87,74,0.15)", maxWidth: 560 }}>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C4574A" }}>{error}</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A" }}>{error}</p>
         </div>
       )}
       {analysis && !loading && (
@@ -1256,19 +1257,19 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
                 <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{analysis.company ?? "Unknown company"}</p>
                 {analysis.role && (
                   <>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>·</span>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>{analysis.role}</p>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>{analysis.role}</p>
                   </>
                 )}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {analysis.location && (
-                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#52493F" }}>
                     📍 {analysis.location}
                   </span>
                 )}
                 {analysis.salary && (
-                  <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#2D6B4A" }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A" }}>
                     {analysis.salary}
                   </span>
                 )}
@@ -1276,7 +1277,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             </div>
           </div>
           {analysis.description && (
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.6, marginBottom: 10, textWrap: "pretty" }}>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.6, marginBottom: 10, textWrap: "pretty" }}>
               {analysis.description}
             </p>
           )}
@@ -1289,7 +1290,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               border: "none",
               borderRadius: 5,
               fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 600,
               cursor: "pointer",
             }}
@@ -1358,7 +1359,7 @@ function PipelineTab({
                 border: active ? "1px solid #1A3A2F" : "1px solid rgba(0,0,0,0.1)",
                 borderRadius: 100,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 11,
                 fontWeight: active ? 600 : 400,
                 cursor: "pointer",
                 display: "inline-flex",
@@ -1367,7 +1368,7 @@ function PipelineTab({
               }}
             >
               {label}
-              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 12, opacity: 0.7 }}>{count}</span>
+              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, opacity: 0.7 }}>{count}</span>
             </button>
           );
         })}
@@ -1381,7 +1382,7 @@ function PipelineTab({
             textAlign: "center",
             color: "#A09890",
             fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 14,
+            fontSize: 13,
           }}
         >
           {cards.length === 0
@@ -1423,7 +1424,7 @@ function PipelineTab({
                         flexShrink: 0,
                       }}
                     >
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#E8D5A3" }}>
+                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#E8D5A3" }}>
                         {c.initials}
                       </span>
                     </div>
@@ -1431,17 +1432,17 @@ function PipelineTab({
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>
                         {c.role}
                       </p>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#7A7268" }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268" }}>
                         {c.company} · {job?.location || "Remote"} · {c.days === 0 ? "Today" : `${c.days} days ago`}
                       </p>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 20, fontWeight: 500, color: fitColor }}>
+                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
                         {c.fit}%
                       </span>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>fit</span>
+                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
                     </div>
                     <StatusDropdown stage={c.stage} onChange={(s) => onChangeStage(c.id, s)} />
                   </div>
@@ -1450,7 +1451,7 @@ function PipelineTab({
                   <p
                     style={{
                       fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 300,
                       color: "#52493F",
                       lineHeight: 1.6,
@@ -1471,7 +1472,7 @@ function PipelineTab({
                       border: "1px solid rgba(26,58,47,0.2)",
                       borderRadius: 5,
                       fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 13,
+                      fontSize: 11,
                       cursor: "pointer",
                     }}
                   >
@@ -1509,6 +1510,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
+  const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
   const setTool = (t: DrawerTool) => onToolChange?.(t);
@@ -1548,7 +1550,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <span
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 13,
+                    fontSize: 11,
                     fontWeight: 600,
                     color: "#E8D5A3",
                   }}
@@ -1570,7 +1572,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 13,
+                    fontSize: 11,
                     color: "#7A7268",
                     marginTop: 2,
                   }}
@@ -1585,7 +1587,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                fontSize: 20,
+                fontSize: 18,
                 color: "#A09890",
                 padding: 0,
                 lineHeight: 1,
@@ -1602,24 +1604,24 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 background: `${STAGE_COLORS[card.stage]}20`,
                 color: STAGE_COLORS[card.stage],
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: 600,
               }}
             >
               {STAGE_LABELS[card.stage]}
             </span>
             {card.fit > 0 && (
-              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 14, fontWeight: 500, color: fitColor }}>
+              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 13, fontWeight: 500, color: fitColor }}>
                 {card.fit}% fit
               </span>
             )}
             {(job?.salary || meta?.salary) && (
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
                 · {job?.salary || meta?.salary}
               </span>
             )}
             {cardUrl && (
-              <a href={cardUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#4A8B6A", textDecoration: "none", marginLeft: "auto" }}>
+              <a href={cardUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", textDecoration: "none", marginLeft: "auto" }}>
                 View posting →
               </a>
             )}
@@ -1627,7 +1629,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           {dbId && (
             <button
               onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
-              style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#C4574A", fontFamily: "var(--font-dm-sans), system-ui", padding: 0, textAlign: "left" }}
+              style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#C4574A", fontFamily: "var(--font-dm-sans), system-ui", padding: 0, textAlign: "left" }}
             >
               Remove job
             </button>
@@ -1640,7 +1642,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           <p
             style={{
               fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: 600,
               color: "#A09890",
               textTransform: "uppercase",
@@ -1663,7 +1665,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                   border: "1px solid rgba(0,0,0,0.1)",
                   borderRadius: 5,
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
+                  fontSize: 11,
                   color: "#1A1A1A",
                   cursor: "pointer",
                 }}
@@ -1677,7 +1679,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           <p
             style={{
               fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: 600,
               color: "#1A3A2F",
               textTransform: "uppercase",
@@ -1693,18 +1695,18 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
             <button
-              onClick={() => setTool(tool === "resume" ? null : "resume")}
+              onClick={() => setMatchDrawerOpen(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
                 padding: "10px 12px",
-                background: tool === "resume" ? "#1A3A2F" : "#FFFFFF",
-                color: tool === "resume" ? "#E8D5A3" : "#1A1A1A",
+                background: "#FFFFFF",
+                color: "#1A1A1A",
                 border: "1px solid rgba(0,0,0,0.08)",
                 borderRadius: 7,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
                 textAlign: "left",
@@ -1713,10 +1715,10 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
             >
               <span style={{ fontSize: 14, flexShrink: 0 }}>✦</span>
               <span style={{ flex: 1 }}>
-                Update resume
-                <span style={{ display: "block", fontSize: 12, fontWeight: 300, opacity: 0.7 }}>Maximize your interview chances</span>
+                Customize your resume
+                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>See your match & maximize interview chances</span>
               </span>
-              <span style={{ fontSize: 13, opacity: 0.5 }}>{tool === "resume" ? "▲" : "›"}</span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>›</span>
             </button>
             <button
               onClick={() => setTool(tool === "cover" ? null : "cover")}
@@ -1730,7 +1732,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 border: "1px solid rgba(0,0,0,0.08)",
                 borderRadius: 7,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
                 textAlign: "left",
@@ -1740,9 +1742,9 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
               <span style={{ fontSize: 14, flexShrink: 0 }}>✉</span>
               <span style={{ flex: 1 }}>
                 Create cover letter
-                <span style={{ display: "block", fontSize: 12, fontWeight: 300, opacity: 0.7 }}>Make your application stand out</span>
+                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Make your application stand out</span>
               </span>
-              <span style={{ fontSize: 13, opacity: 0.5 }}>{tool === "cover" ? "▲" : "›"}</span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "cover" ? "▲" : "›"}</span>
             </button>
             <button
               onClick={() => setTool(tool === "fit" ? null : "fit")}
@@ -1756,7 +1758,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 border: "1px solid rgba(0,0,0,0.08)",
                 borderRadius: 7,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
                 textAlign: "left",
@@ -1766,9 +1768,9 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
               <span style={{ fontSize: 14, flexShrink: 0 }}>👍</span>
               <span style={{ flex: 1 }}>
                 Tell me why I&apos;m a good fit
-                <span style={{ display: "block", fontSize: 12, fontWeight: 300, opacity: 0.7 }}>Understand your strengths & gaps</span>
+                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Understand your strengths & gaps</span>
               </span>
-              <span style={{ fontSize: 13, opacity: 0.5 }}>{tool === "fit" ? "▲" : "›"}</span>
+              <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "fit" ? "▲" : "›"}</span>
             </button>
             {dbId && (
               <button
@@ -1783,7 +1785,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                   border: "1px solid rgba(0,0,0,0.08)",
                   borderRadius: 7,
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 500,
                   cursor: "pointer",
                   textAlign: "left",
@@ -1793,9 +1795,9 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <span style={{ fontSize: 14, flexShrink: 0 }}>📄</span>
                 <span style={{ flex: 1 }}>
                   Tailored resume
-                  <span style={{ display: "block", fontSize: 12, fontWeight: 300, opacity: 0.7 }}>AI-tailored full resume for this role</span>
+                  <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>AI-tailored full resume for this role</span>
                 </span>
-                <span style={{ fontSize: 13, opacity: 0.5 }}>›</span>
+                <span style={{ fontSize: 12, opacity: 0.5 }}>›</span>
               </button>
             )}
           </div>
@@ -1804,68 +1806,34 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           {/* Coming-soon placeholder for DB jobs (no mock data) */}
           {tool !== null && !job && (
             <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, border: "1px solid rgba(0,0,0,0.07)", animation: "fadeIn 0.3s ease both", marginBottom: 14 }}>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 6 }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A", marginBottom: 6 }}>
                 {tool === "resume" ? "Resume tailoring" : tool === "cover" ? "Cover letter" : "Fit analysis"} — coming soon
               </p>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.6 }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.6 }}>
                 AI tools for manually added jobs are rolling out shortly. Upload your base resume in Profile so we can personalize output when it&apos;s ready.
               </p>
             </div>
           )}
 
-          {/* Tool view: Update resume */}
-          {tool === "resume" && job && (
-            <div style={{ animation: "fadeIn 0.3s ease both" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Updated resume bullets</p>
-                <button
-                  onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(job.bullets.map(b => "• " + b.tailored).join("\n\n")); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}
-                  style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
-                >
-                  {copied ? "Copied ✓" : "Copy all"}
-                </button>
-              </div>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
-                Kimchi rewrote these bullets to align with what {card.company} screens for. Replace the originals on your resume.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-                {job.bullets.map((b, i) => (
-                  <div key={i} style={{ padding: "12px 14px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 400, color: "#1A1A1A", lineHeight: 1.6, marginBottom: 8, textWrap: "pretty" }}>
-                      {b.tailored}
-                    </p>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", fontStyle: "italic" }}>
-                      Original: {b.original}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div style={{ padding: "14px", background: "rgba(196,168,106,0.08)", borderRadius: 7, borderLeft: "2px solid #C4A86A" }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#7A6020", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Suggested summary line</p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.6, fontStyle: "italic", textWrap: "pretty" }}>
-                  Senior PM with 8 years scaling API-first SaaS products — {card.company}-scale infrastructure experience with measurable revenue impact.
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Resume tool view removed — now handled by ResumeMatchDrawer overlay */}
 
           {/* Tool view: Create cover letter */}
           {tool === "cover" && job && (
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Cover letter</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px" }}>Cover letter</p>
                 <button
                   onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(job.coverLetter); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}
-                  style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
+                  style={{ padding: "4px 10px", background: copied ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: copied ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 4, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, cursor: "pointer" }}
                 >
                   {copied ? "Copied ✓" : "Copy"}
                 </button>
               </div>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 14, textWrap: "pretty" }}>
                 Tailored to {card.company} — references their priorities and your specific background.
               </p>
               <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, borderLeft: "3px solid #1A3A2F" }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#1A1A1A", lineHeight: 1.75, whiteSpace: "pre-wrap", textWrap: "pretty" }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#1A1A1A", lineHeight: 1.75, whiteSpace: "pre-wrap", textWrap: "pretty" }}>
                   {job.coverLetter}
                 </p>
               </div>
@@ -1875,7 +1843,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           {/* Tool view: Tell me why I'm a good fit */}
           {tool === "fit" && job && (
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>Fit analysis</p>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>Fit analysis</p>
 
               {/* Fit score breakdown */}
               <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, marginBottom: 14, display: "flex", alignItems: "center", gap: 16 }}>
@@ -1889,19 +1857,19 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                   </div>
                 </div>
                 <div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{card.fit >= 85 ? "Strong match" : card.fit >= 70 ? "Good fit" : "Fair match"}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{job.fitSummary}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{card.fit >= 85 ? "Strong match" : card.fit >= 70 ? "Good fit" : "Fair match"}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{job.fitSummary}</p>
                 </div>
               </div>
 
               {/* Why you fit */}
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Why you fit</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Why you fit</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {job.fitWorks.map((w, i) => (
                     <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "rgba(74,139,106,0.06)", borderRadius: 5 }}>
-                      <span style={{ color: "#4A8B6A", fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
+                      <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
                     </div>
                   ))}
                 </div>
@@ -1909,12 +1877,12 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
 
               {/* Watch outs */}
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Watch outs</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Watch outs</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {job.fitWatches.map((w, i) => (
                     <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "rgba(196,168,106,0.06)", borderRadius: 5 }}>
-                      <span style={{ color: "#C4A86A", fontSize: 13, flexShrink: 0, marginTop: 1 }}>△</span>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
+                      <span style={{ color: "#C4A86A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>△</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5, textWrap: "pretty" }}>{w}</p>
                     </div>
                   ))}
                 </div>
@@ -1922,12 +1890,12 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
 
               {/* Gaps */}
               <div>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#C4574A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Gaps to address</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#C4574A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Gaps to address</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {job.gaps.map((g, i) => (
                     <div key={i} style={{ padding: "10px 12px", background: "#FFFFFF", borderRadius: 5, borderLeft: "2px solid #C4574A" }}>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 3 }}>{g.title}</p>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{g.body}</p>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A1A1A", marginBottom: 3 }}>{g.title}</p>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 300, color: "#52493F", lineHeight: 1.5, textWrap: "pretty" }}>{g.body}</p>
                     </div>
                   ))}
                 </div>
@@ -1943,7 +1911,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
+                    fontSize: 9,
                     fontWeight: 600,
                     color: "#A09890",
                     textTransform: "uppercase",
@@ -1956,7 +1924,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: 300,
                     color: "#2A2218",
                     lineHeight: 1.65,
@@ -1972,7 +1940,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
+                    fontSize: 9,
                     fontWeight: 600,
                     color: "#4A8B6A",
                     textTransform: "uppercase",
@@ -1985,11 +1953,11 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   {job.fitWorks.map((w, i) => (
                     <div key={i} style={{ display: "flex", gap: 7, alignItems: "flex-start" }}>
-                      <span style={{ color: "#4A8B6A", fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
+                      <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 13,
+                          fontSize: 11,
                           fontWeight: 300,
                           color: "#2A2218",
                           lineHeight: 1.5,
@@ -2007,7 +1975,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
+                    fontSize: 9,
                     fontWeight: 600,
                     color: "#A09890",
                     textTransform: "uppercase",
@@ -2034,7 +2002,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 13,
+                          fontSize: 11,
                           fontWeight: 300,
                           color: "#1A1A1A",
                           lineHeight: 1.55,
@@ -2046,7 +2014,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 11,
+                          fontSize: 9,
                           color: "#A09890",
                           fontStyle: "italic",
                         }}
@@ -2071,7 +2039,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                   <p
                     style={{
                       fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 11,
+                      fontSize: 9,
                       fontWeight: 600,
                       color: "#A09890",
                       textTransform: "uppercase",
@@ -2093,7 +2061,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                       border: "none",
                       borderRadius: 4,
                       fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 12,
+                      fontSize: 10,
                       cursor: "pointer",
                     }}
                   >
@@ -2103,7 +2071,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 13,
+                    fontSize: 11,
                     fontWeight: 300,
                     color: "#1A1A1A",
                     lineHeight: 1.7,
@@ -2123,7 +2091,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
+                    fontSize: 9,
                     fontWeight: 600,
                     color: "#C4A86A",
                     textTransform: "uppercase",
@@ -2147,7 +2115,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: 600,
                           color: "#1A1A1A",
                           marginBottom: 4,
@@ -2158,7 +2126,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 13,
+                          fontSize: 11,
                           fontWeight: 300,
                           color: "#52493F",
                           lineHeight: 1.55,
@@ -2170,7 +2138,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                       <p
                         style={{
                           fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 12,
+                          fontSize: 10,
                           color: "#1A3A2F",
                           fontStyle: "italic",
                         }}
@@ -2186,38 +2154,38 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
               {meta.description && (
                 <div style={{ marginBottom: 18 }}>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
                     Role summary
                   </p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.7, textWrap: "pretty" }}>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.7, textWrap: "pretty" }}>
                     {meta.description}
                   </p>
                 </div>
               )}
               {meta.requirements && meta.requirements.length > 0 && (
                 <div style={{ marginBottom: 18 }}>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
                     Key requirements
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {meta.requirements.map((r, i) => (
                       <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "#FFFFFF", borderRadius: 5 }}>
-                        <span style={{ color: "#4A8B6A", fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
+                        <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
               <div style={{ padding: "12px 14px", background: "rgba(196,168,106,0.08)", borderRadius: 7, borderLeft: "2px solid #C4A86A" }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#7A6020", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>AI analysis</p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.55 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#7A6020", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>AI analysis</p>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55 }}>
                   Use the AI tools above to get a tailored resume update, cover letter, and fit analysis for this role.
                 </p>
               </div>
             </div>
           ) : tool === null ? (
-            <div style={{ padding: 24, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13 }}>
+            <div style={{ padding: 24, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12 }}>
               <SparkleIcon /> Detailed analysis available for jobs Searchly has read.
             </div>
           ) : null}
@@ -2231,6 +2199,18 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
           jobId={dbId}
           jobTitle={card.role}
           company={card.company}
+        />
+      )}
+
+      {matchDrawerOpen && (
+        <ResumeMatchDrawer
+          jobTitle={card.role}
+          company={card.company}
+          description={meta?.description ?? job?.description ?? ""}
+          onClose={() => setMatchDrawerOpen(false)}
+          onTailorResume={() => {
+            if (dbId) setResumeEditorOpen(true);
+          }}
         />
       )}
     </>
