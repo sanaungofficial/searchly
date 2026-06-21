@@ -494,6 +494,20 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
   const [searchQuery, setSearchQuery] = useState("");
   const [needsRefresh, setNeedsRefresh] = useState<Set<string>>(new Set());
 
+  // Pre-populate analysis from localStorage on mount so scores show immediately
+  useEffect(() => {
+    dreamList.forEach((role) => {
+      try {
+        const cached = localStorage.getItem(ANALYSIS_CACHE_KEY(role));
+        if (cached) {
+          const { data, cachedAt } = JSON.parse(cached);
+          setAnalysis((prev) => ({ ...prev, [role]: { ...data, _cachedAt: cachedAt } as RoleAnalysis }));
+        }
+      } catch {}
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const addRole = (title: string) => {
     if (dreamList.includes(title) || dreamList.length >= 3) return;
     const next = [...dreamList, title];
