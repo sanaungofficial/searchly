@@ -122,7 +122,8 @@ export function WorkspaceSidebar({
       >
         {/* Brand */}
         <div style={{ padding: "26px 22px 20px" }}>
-          {!user && (
+          {/* TEST LINK — remove when done testing */}
+          {(
             <button
               onClick={onBackToOnboarding}
               style={{
@@ -141,7 +142,7 @@ export function WorkspaceSidebar({
                 padding: 0,
               }}
             >
-              <ArrowLeftIcon /> Onboarding
+              <ArrowLeftIcon /> Preview onboarding
             </button>
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
