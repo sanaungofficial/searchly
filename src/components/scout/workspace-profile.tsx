@@ -2,10 +2,17 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  PROFILE_SUGGESTIONS,
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
 } from "./workspace-data";
+
+interface AISuggestion {
+  priority: "high" | "medium" | "low";
+  category: string;
+  title: string;
+  detail: string;
+  impact: string;
+}
 import { SparkleIcon } from "./workspace-icons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,6 +66,7 @@ interface ReadbackData {
 interface RoleAnalysis {
   fitScore: number;
   summary: string;
+  requiredSkills: string[];
   gaps: { skill: string; why: string }[];
   nextSteps: string[];
 }
@@ -422,16 +430,20 @@ function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: stri
 
 // ─── Tab: Dream Role ──────────────────────────────────────────────────────────
 
-function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
+function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, onAddSkill }: {
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
   hasResume: boolean;
+  userSkills: string[];
+  onAddSkill: (skill: string) => Promise<void>;
 }) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysis | "loading" | "error">>({});
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pendingSkills, setPendingSkills] = useState<Set<string>>(new Set());
+  const [needsRefresh, setNeedsRefresh] = useState<Set<string>>(new Set());
 
   const addRole = (title: string) => {
     if (dreamList.includes(title) || dreamList.length >= 3) return;
@@ -449,10 +461,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
     if (expandedRole === title) setExpandedRole(null);
   };
 
-  const toggleExpand = async (role: string) => {
-    if (expandedRole === role) { setExpandedRole(null); return; }
-    setExpandedRole(role);
-    if (analysis[role] || !hasResume) return;
+  const fetchAnalysis = async (role: string) => {
     setAnalysis((prev) => ({ ...prev, [role]: "loading" }));
     try {
       const res = await fetch(`/api/ai/role-gap?role=${encodeURIComponent(role)}`);
@@ -462,6 +471,25 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
     } catch {
       setAnalysis((prev) => ({ ...prev, [role]: "error" }));
     }
+  };
+
+  const toggleExpand = async (role: string) => {
+    if (expandedRole === role) { setExpandedRole(null); return; }
+    setExpandedRole(role);
+    if (analysis[role] || !hasResume) return;
+    await fetchAnalysis(role);
+  };
+
+  const handleAddSkill = async (skill: string, role: string) => {
+    setPendingSkills((prev) => new Set([...prev, skill]));
+    setNeedsRefresh((prev) => new Set([...prev, role]));
+    await onAddSkill(skill);
+  };
+
+  const handleRefresh = async (role: string) => {
+    setNeedsRefresh((prev) => { const n = new Set(prev); n.delete(role); return n; });
+    setPendingSkills(new Set());
+    await fetchAnalysis(role);
   };
 
   const filteredRoles = AVAILABLE_ROLES.filter(
@@ -474,10 +502,13 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
   const scoreLabel = (score: number) =>
     score >= 70 ? "Strong fit" : score >= 50 ? "Good foundation" : "Gap to close";
 
+  const hasSkill = (skill: string) =>
+    userSkills.some((s) => s.toLowerCase() === skill.toLowerCase()) || pendingSkills.has(skill);
+
   return (
     <div style={{ maxWidth: 560, paddingBottom: 40 }}>
       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
-        Pick up to three roles you&apos;re targeting. Expand any card to see your fit score, skill gaps, and next steps — powered by your resume.
+        Pick up to three roles you&apos;re targeting. Expand any card to see your fit score, required skills, and next steps — powered by your resume.
       </p>
 
       {/* Role cards */}
@@ -486,6 +517,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
           const isOpen = expandedRole === role;
           const result = analysis[role];
           const loaded = result && result !== "loading" && result !== "error" ? result as RoleAnalysis : null;
+          const roleNeedsRefresh = needsRefresh.has(role);
 
           return (
             <div key={role} style={{ background: "#FFFFFF", borderRadius: 10, border: isOpen ? "1.5px solid #1A3A2F" : "1.5px solid rgba(0,0,0,0.08)", boxShadow: isOpen ? "0 4px 20px rgba(26,58,47,0.08)" : "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden", transition: "border-color 0.15s, box-shadow 0.15s" }}>
@@ -493,7 +525,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
               <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
                 {loaded ? (
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 12, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}</span>
+                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 11, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
                   </div>
                 ) : (
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
@@ -501,7 +533,9 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
                   {loaded ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: scoreColor(loaded.fitScore) }}>{scoreLabel(loaded.fitScore)}</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: scoreColor(loaded.fitScore) }}>
+                      {scoreLabel(loaded.fitScore)}{roleNeedsRefresh ? " · score pending refresh" : ""}
+                    </p>
                   ) : !hasResume ? (
                     <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Upload a resume to see your fit score</p>
                   ) : result === "loading" ? (
@@ -539,28 +573,42 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
                   {loaded && (
                     <>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F", lineHeight: 1.65, marginBottom: 20 }}>{loaded.summary}</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                        <div>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Gaps to close</p>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {loaded.gaps.map((g) => (
-                              <div key={g.skill}>
-                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
-                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", lineHeight: 1.5 }}>{g.why}</p>
-                              </div>
-                            ))}
+
+                      {/* Required skills — interactive chips */}
+                      {loaded.requiredSkills?.length > 0 && (
+                        <div style={{ marginBottom: 20 }}>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Skills for this role</p>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {loaded.requiredSkills.map((skill) =>
+                              hasSkill(skill) ? (
+                                <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ fontSize: 10 }}>✓</span> {skill}
+                                </span>
+                              ) : (
+                                <button key={skill} onClick={() => handleAddSkill(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ color: "#1A3A2F", fontWeight: 700, fontSize: 13, lineHeight: 1 }}>+</span> {skill}
+                                </button>
+                              )
+                            )}
                           </div>
+                          {roleNeedsRefresh && (
+                            <button onClick={() => handleRefresh(role)} style={{ marginTop: 10, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#1A3A2F", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                              Refresh score with updated skills
+                            </button>
+                          )}
                         </div>
-                        <div>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {loaded.nextSteps.map((step, i) => (
-                              <div key={i} style={{ display: "flex", gap: 8 }}>
-                                <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
-                                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
-                              </div>
-                            ))}
-                          </div>
+                      )}
+
+                      {/* Next steps */}
+                      <div>
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {loaded.nextSteps.map((step, i) => (
+                            <div key={i} style={{ display: "flex", gap: 8 }}>
+                              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
+                              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </>
@@ -683,11 +731,13 @@ interface ResumeRow {
   targetJobTitle?: string;
 }
 
-function AssetsTab({ resumeUrl, uploading, onUpload, inputRef }: {
+function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, suggestionsLoading }: {
   resumeUrl: string | null;
   uploading: boolean;
   onUpload: (file: File) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  suggestions: AISuggestion[];
+  suggestionsLoading: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const MAX_SLOTS = 5;
@@ -1141,7 +1191,14 @@ export function WorkspaceProfile() {
 
         {/* Tab content */}
         {page === "dreamrole" && (
-          <DreamRoleTab dreamList={dreamList} setDreamList={setDreamList} onSave={(list) => patchProfile({ targetRoles: list })} hasResume={!!profile?.resumeUrl} />
+          <DreamRoleTab
+            dreamList={dreamList}
+            setDreamList={setDreamList}
+            onSave={(list) => patchProfile({ targetRoles: list })}
+            hasResume={!!profile?.resumeUrl}
+            userSkills={skills}
+            onAddSkill={async (skill) => handleSkillsSave([...skills, skill])}
+          />
         )}
 
         {page === "about" && loading && (
