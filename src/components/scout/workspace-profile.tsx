@@ -443,7 +443,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
       ) : (
         skills.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-2" style={{ fontSize: 10, letterSpacing: "1px" }}>My skills</p>
+            <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-2" style={{ fontSize: 12, letterSpacing: "1px" }}>My skills</p>
             <div className="flex flex-wrap gap-2">{skills.map((s) => <SkillChip key={s} label={s} />)}</div>
           </div>
         )
@@ -451,18 +451,18 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
 
       {!editing && skillGoals.length > 0 && (
         <div style={{ marginTop: skills.length > 0 ? 24 : 0 }}>
-          <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-3" style={{ fontSize: 10, letterSpacing: "1px" }}>Working on</p>
+          <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-3" style={{ fontSize: 12, letterSpacing: "1px" }}>Working on</p>
           <div className="space-y-2">
             {skillGoals.map((g) => (
               <div key={`${g.skill}-${g.role}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(196,168,106,0.08)", border: "1px solid rgba(196,168,106,0.25)", borderRadius: 8 }}>
                 <div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A6020" }}>for {g.role}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A6020" }}>for {g.role}</p>
                 </div>
                 <button
                   onClick={() => handleGraduate(g.skill)}
                   disabled={graduating === g.skill}
-                  style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, cursor: "pointer", opacity: graduating === g.skill ? 0.6 : 1 }}
+                  style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", opacity: graduating === g.skill ? 0.6 : 1 }}
                 >
                   {graduating === g.skill ? "Saving…" : "Mark as acquired"}
                 </button>
@@ -586,7 +586,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
 
   return (
     <div style={{ maxWidth: 560, paddingBottom: 40 }}>
-      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
+      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
         Pick up to three roles you&apos;re targeting. Expand any card to see your fit score, required skills, and next steps — powered by your resume.
       </p>
 
@@ -604,27 +604,27 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
               <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
                 {loaded ? (
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 11, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
+                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 13, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
                   </div>
                 ) : (
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
                   {loaded ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: scoreColor(loaded.fitScore) }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: scoreColor(loaded.fitScore) }}>
                       {scoreLabel(loaded.fitScore)}
                       {loaded._cachedAt ? ` · ${timeAgo(loaded._cachedAt)}` : ""}
                       {roleNeedsRefresh ? " · refresh score" : ""}
                     </p>
                   ) : !hasResume ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Upload a resume to see your fit score</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload a resume to see your fit score</p>
                   ) : result === "loading" ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Analyzing…</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing…</p>
                   ) : result === "error" ? (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#C4A86A" }}>Analysis unavailable</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4A86A" }}>Analysis unavailable</p>
                   ) : (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Click to analyze fit</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Click to analyze fit</p>
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -643,40 +643,40 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
               {isOpen && (
                 <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: "16px 16px 20px" }}>
                   {result === "loading" && (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
                   )}
                   {result === "error" && (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
                   )}
                   {!hasResume && (
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
                   )}
                   {loaded && (
                     <>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F", lineHeight: 1.65, marginBottom: 20 }}>{loaded.summary}</p>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.65, marginBottom: 20 }}>{loaded.summary}</p>
 
                       {/* Required skills — interactive chips */}
                       {loaded.requiredSkills?.length > 0 && (
                         <div style={{ marginBottom: 20 }}>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Skills for this role</p>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Skills for this role</p>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                             {loaded.requiredSkills.map((skill) =>
                               hasSkill(skill) ? (
-                                <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                  <span style={{ fontSize: 10 }}>✓</span> {skill}
+                                <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ fontSize: 12 }}>✓</span> {skill}
                                 </span>
                               ) : isInLearning(skill) ? (
-                                <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                  <span style={{ fontSize: 10 }}>→</span> {skill}
+                                <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ fontSize: 12 }}>→</span> {skill}
                                 </span>
                               ) : (
-                                <button key={skill} onClick={() => handleAddToLearning(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                  <span style={{ color: "#1A3A2F", fontWeight: 700, fontSize: 13, lineHeight: 1 }}>+</span> {skill}
+                                <button key={skill} onClick={() => handleAddToLearning(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ color: "#1A3A2F", fontWeight: 700, fontSize: 14, lineHeight: 1 }}>+</span> {skill}
                                 </button>
                               )
                             )}
                           </div>
-                          <button onClick={() => handleRefresh(role)} style={{ marginTop: 10, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890", background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <button onClick={() => handleRefresh(role)} style={{ marginTop: 10, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 4 }}>
                             ↻ Refresh analysis
                           </button>
                         </div>
@@ -684,12 +684,12 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
 
                       {/* Next steps */}
                       <div>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {loaded.nextSteps.map((step, i) => (
                             <div key={i} style={{ display: "flex", gap: 8 }}>
-                              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
-                              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
+                              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 12, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
+                              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
                             </div>
                           ))}
                         </div>
@@ -709,7 +709,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
           {!showSearch ? (
             <button
               onClick={() => setShowSearch(true)}
-              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
+              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, cursor: "pointer" }}
             >+ Add a role</button>
           ) : (
             <div>
@@ -718,23 +718,23 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search roles…"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
                   <button
                     onClick={() => addRole(searchQuery.trim())}
-                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#E8D5A3", cursor: "pointer" }}
+                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#E8D5A3", cursor: "pointer" }}
                   >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
                 )}
                 {filteredRoles.slice(0, 20).map((r) => (
                   <button
                     key={r}
                     onClick={() => addRole(r)}
-                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A1A1A", cursor: "pointer" }}
+                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A1A1A", cursor: "pointer" }}
                   >{r}</button>
                 ))}
-                <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890", cursor: "pointer" }}>Cancel</button>
               </div>
             </div>
           )}
@@ -767,7 +767,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate }: {
       {/* Skill goals section */}
       {skillGoals.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Skills I&apos;m working on</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Skills I&apos;m working on</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {skillGoals.map((g) => {
               const matchedCourse = UPSKILL_CATEGORIES.flatMap((c) => c.items).find(
@@ -777,11 +777,11 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate }: {
                 <div key={`${g.skill}-${g.role}`} style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(196,168,106,0.3)", display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>{g.skill}</p>
-                      <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{g.skill}</p>
+                      <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
                     </div>
                     {matchedCourse && (
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A" }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#4A8B6A" }}>
                         Suggested: {matchedCourse.name} on {matchedCourse.platform}
                       </p>
                     )}
@@ -789,7 +789,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate }: {
                   <button
                     onClick={() => handleGraduate(g.skill)}
                     disabled={graduating === g.skill}
-                    style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, cursor: "pointer", flexShrink: 0, opacity: graduating === g.skill ? 0.6 : 1 }}
+                    style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0, opacity: graduating === g.skill ? 0.6 : 1 }}
                   >
                     {graduating === g.skill ? "Saving…" : "Mark as acquired"}
                   </button>
@@ -802,8 +802,8 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate }: {
 
       <div style={{ background: "#1A3A2F", borderRadius: 10, padding: "16px 20px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Your learning progress</p>
-          <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 18, fontWeight: 500, color: "#E8D5A3" }}>{doneCount} of {total} complete</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Your learning progress</p>
+          <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 20, fontWeight: 500, color: "#E8D5A3" }}>{doneCount} of {total} complete</p>
         </div>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: `conic-gradient(#E8D5A3 ${(doneCount / total) * 360}deg, rgba(232,213,163,0.15) 0)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: 50, height: 50, borderRadius: "50%", background: "#1A3A2F", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -813,8 +813,8 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate }: {
       </div>
       {UPSKILL_CATEGORIES.map((cat) => (
         <div key={cat.title} style={{ marginBottom: 20 }}>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{cat.title}</p>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", marginBottom: 10 }}>{cat.subtitle}</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{cat.title}</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 10 }}>{cat.subtitle}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {cat.items.map((item) => {
               const prog = progress[item.id] || "none";
@@ -823,18 +823,18 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate }: {
               return (
                 <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 7, background: item.platformColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
-                      {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
+                      {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
                     </div>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: statusColor }}>{statusLabel}</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
                   </div>
                   <button onClick={() => setProgress({ ...progress, [item.id]: prog === "none" ? "inprogress" : prog === "inprogress" ? "completed" : "inprogress" })}
-                    style={{ padding: "7px 14px", background: prog === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: prog === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
+                    style={{ padding: "7px 14px", background: prog === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: prog === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
                     {prog === "completed" ? "Review →" : prog === "inprogress" ? "Complete →" : "Start →"}
                   </button>
                 </div>
@@ -901,10 +901,10 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>RESUME</h2>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258", marginTop: 6 }}>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258", marginTop: 6 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#4A8B6A", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>
+                <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>
               </span>
               You have {resumes.length} resume{resumes.length !== 1 ? "s" : ""} saved out of {MAX_SLOTS} available slots.
             </span>
@@ -918,7 +918,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
               color: "#1A7A4A",
               border: "1px solid #A8DFC0",
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 600,
               cursor: "pointer",
               display: "flex",
@@ -938,7 +938,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
               color: "#1A1A1A",
               border: "1px solid #D8D0C5",
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 600,
               cursor: uploading ? "not-allowed" : "pointer",
               display: "flex",
@@ -963,7 +963,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
           background: "#FAFAF8",
         }}>
           {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
-            <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#A09890" }}>{col}</span>
+            <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#A09890" }}>{col}</span>
           ))}
         </div>
 
@@ -974,7 +974,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
             <button
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
               + Add Resume
             </button>
@@ -999,20 +999,20 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
                 }}>
-                  <span style={{ color: "#E8D5A3", fontSize: 13, fontWeight: 700 }}>
+                  <span style={{ color: "#E8D5A3", fontSize: 14, fontWeight: 700 }}>
                     {r.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
                   <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
                     {r.isPrimary && (
-                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 10, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
+                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
                         ★ PRIMARY
                       </span>
                     )}
                     {r.analysisComplete && (
-                      <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 10, fontWeight: 500, color: "#1A7A4A" }}>
+                      <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 12, fontWeight: 500, color: "#1A7A4A" }}>
                         Analysis Complete
                       </span>
                     )}
@@ -1021,17 +1021,17 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
               </div>
 
               {/* Target job title */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>
                 {r.targetJobTitle ?? "—"}
               </span>
 
               {/* Last modified */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258" }}>
                 {timeAgo(r.updatedAt)}
               </span>
 
               {/* Created */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258" }}>
                 {timeAgo(r.createdAt)}
               </span>
 
@@ -1039,7 +1039,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
               <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
                 >
                   ···
                 </button>
@@ -1066,7 +1066,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
                       <button
                         key={item.label}
                         onClick={item.action}
-                        style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
+                        style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 14, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                       >
@@ -1083,13 +1083,13 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
 
       {/* Kimchi suggestions */}
       <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)", marginTop: 20 }}>
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Kimchi&apos;s suggestions
         </p>
         {suggestionsLoading ? (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your profile…</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Analyzing your profile…</p>
         ) : suggestions.length === 0 ? (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload a resume to get personalized suggestions.</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Upload a resume to get personalized suggestions.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {suggestions.map((s, i) => {
@@ -1098,11 +1098,11 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
               return (
                 <div key={i} style={{ padding: "12px 14px", background: pBg, borderRadius: 6, borderLeft: `2px solid ${pColor}` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: pColor, textTransform: "uppercase", letterSpacing: "1px" }}>{s.priority} &middot; {s.category}</span>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: pColor, textTransform: "uppercase", letterSpacing: "1px" }}>{s.priority} &middot; {s.category}</span>
                   </div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{s.title}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 4 }}>{s.detail}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", fontStyle: "italic" }}>&rarr; {s.impact}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{s.title}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 4 }}>{s.detail}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#4A8B6A", fontStyle: "italic" }}>&rarr; {s.impact}</p>
                 </div>
               );
             })}
@@ -1119,17 +1119,17 @@ function ReadbackCard({ data, loading }: { data: ReadbackData | null; loading: b
   if (!loading && !data) return null;
   return (
     <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: "16px 20px", marginBottom: 28 }}>
-      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
+      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
         <SparkleIcon /> Kimchi&apos;s read on you
       </p>
       {loading ? (
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing your profile…</p>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Analyzing your profile…</p>
       ) : data ? (
         <>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
             {data.strengths.map((s) => (
-              <span key={s} style={{ padding: "4px 10px", background: "rgba(28,58,47,0.08)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1C3A2F" }}>{s}</span>
+              <span key={s} style={{ padding: "4px 10px", background: "rgba(28,58,47,0.08)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1C3A2F" }}>{s}</span>
             ))}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
@@ -1137,11 +1137,11 @@ function ReadbackCard({ data, loading }: { data: ReadbackData | null; loading: b
               const c = r.fit === "Strong match" ? "#4A8B6A" : r.fit === "Good fit" ? "#C4A86A" : "#A09890";
               const bg = r.fit === "Strong match" ? "rgba(74,139,106,0.08)" : r.fit === "Good fit" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.04)";
               return (
-                <span key={r.role} style={{ padding: "4px 10px", background: bg, borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: c }}>{r.role} · {r.fit}</span>
+                <span key={r.role} style={{ padding: "4px 10px", background: bg, borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: c }}>{r.role} · {r.fit}</span>
               );
             })}
           </div>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", fontStyle: "italic" }}>{data.honestNote}</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890", fontStyle: "italic" }}>{data.honestNote}</p>
         </>
       ) : null}
     </div>
@@ -1320,7 +1320,7 @@ export function WorkspaceProfile() {
       <div ref={scrollRef} style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8 }}>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#A09890", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8 }}>
             {loading ? "Loading…" : profile ? (profile.name || profile.email || "Your profile") : "Your profile"}
             {profile?.headline ? ` · ${profile.headline}` : ""}
           </p>
@@ -1332,8 +1332,8 @@ export function WorkspaceProfile() {
             return (
               <div style={{ marginTop: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Profile completeness</span>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>{pct}%</span>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Profile completeness</span>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>{pct}%</span>
                 </div>
                 <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: 280 }}>
                   <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#4A8B6A" : "#C4A86A", borderRadius: 2, transition: "width 0.4s ease" }} />
@@ -1349,7 +1349,7 @@ export function WorkspaceProfile() {
             <button
               key={id}
               onClick={() => setPage(id)}
-              style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: page === id ? "#1A3A2F" : "transparent", color: page === id ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
+              style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: page === id ? "#1A3A2F" : "transparent", color: page === id ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
             >
               {label}
             </button>
@@ -1363,7 +1363,7 @@ export function WorkspaceProfile() {
               <button
                 key={s}
                 onClick={() => goToSection(s)}
-                style={{ padding: "6px 14px", border: "none", background: activeSection === s ? "rgba(28,58,47,0.1)" : "transparent", color: activeSection === s ? "#1C3A2F" : "#7A7268", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: activeSection === s ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, borderBottom: activeSection === s ? "2px solid #1C3A2F" : "2px solid transparent", transition: "all 0.15s" }}
+                style={{ padding: "6px 14px", border: "none", background: activeSection === s ? "rgba(28,58,47,0.1)" : "transparent", color: activeSection === s ? "#1C3A2F" : "#7A7268", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: activeSection === s ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, borderBottom: activeSection === s ? "2px solid #1C3A2F" : "2px solid transparent", transition: "all 0.15s" }}
               >
                 {ABOUT_LABEL[s]}
               </button>
@@ -1385,10 +1385,10 @@ export function WorkspaceProfile() {
         )}
 
         {page === "about" && loading && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Loading…</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Loading…</p>
         )}
         {page === "about" && !loading && !profile && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "about" && profile && (
           <div style={{ maxWidth: 600 }}>
@@ -1416,7 +1416,7 @@ export function WorkspaceProfile() {
         )}
 
         {page === "assets" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "assets" && profile && (
           <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
