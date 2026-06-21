@@ -68,7 +68,7 @@ const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  fontSize: 13,
+  fontSize: 14,
   background: "#fff",
   border: "1px solid rgba(26,58,47,0.12)",
   borderRadius: 8,
@@ -81,7 +81,7 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: 10,
+  fontSize: 12,
   color: "#a09890",
   textTransform: "uppercase",
   letterSpacing: "0.8px",
@@ -92,7 +92,7 @@ const labelStyle: React.CSSProperties = {
 function StageBadge({ stage }: { stage: JobStage }) {
   const { bg, color } = STAGE_COLORS[stage] ?? STAGE_COLORS.SAVED;
   return (
-    <span style={{ fontSize: 10, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, background: bg, color }}>
+    <span style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, background: bg, color }}>
       {stage.toLowerCase()}
     </span>
   );
@@ -117,7 +117,7 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
     <div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
         {value.map((t) => (
-          <span key={t} style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(26,58,47,0.08)", borderRadius: 4, padding: "2px 8px", fontSize: 12, color: "#1a3a2f" }}>
+          <span key={t} style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(26,58,47,0.08)", borderRadius: 4, padding: "2px 8px", fontSize: 13, color: "#1a3a2f" }}>
             {t}
             <button onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
           </span>
@@ -131,7 +131,7 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
           placeholder={placeholder ?? "Type and press Enter"}
           style={{ ...inputStyle, flex: 1 }}
         />
-        <button onClick={add} style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid rgba(26,58,47,0.15)", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1a3a2f", fontFamily: "var(--font-dm-sans)" }}>Add</button>
+        <button onClick={add} style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid rgba(26,58,47,0.15)", background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a3a2f", fontFamily: "var(--font-dm-sans)" }}>Add</button>
       </div>
     </div>
   );
@@ -178,10 +178,10 @@ function MyProfileTab() {
     setSaving(false);
   }
 
-  if (loading) return <p style={{ color: "#a09890", fontSize: 13, padding: "40px 0" }}>Loading…</p>;
+  if (loading) return <p style={{ color: "#a09890", fontSize: 14, padding: "40px 0" }}>Loading…</p>;
   if (!profile) return (
     <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: 24 }}>
-      <p style={{ fontSize: 13, color: "#7a7268" }}>No coach profile found linked to your account. Contact an admin to get set up.</p>
+      <p style={{ fontSize: 14, color: "#7a7268" }}>No coach profile found linked to your account. Contact an admin to get set up.</p>
     </div>
   );
 
@@ -189,7 +189,7 @@ function MyProfileTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 60 }}>
       {/* Basic info */}
       <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Basic Info</p>
+        <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Basic Info</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div>
             <label style={labelStyle}>Display Name *</label>
@@ -220,7 +220,7 @@ function MyProfileTab() {
 
       {/* Headline & bio */}
       <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>About</p>
+        <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>About</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={labelStyle}>Headline</label>
@@ -241,7 +241,7 @@ function MyProfileTab() {
 
       {/* Links */}
       <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Links</p>
+        <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Links</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div>
             <label style={labelStyle}>LinkedIn URL</label>
@@ -256,7 +256,7 @@ function MyProfileTab() {
 
       {/* Tags */}
       <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Background & Expertise</p>
+        <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Background & Expertise</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={labelStyle}>Firms (MBB, Big 4, etc.)</label>
@@ -281,11 +281,11 @@ function MyProfileTab() {
         <button
           onClick={save}
           disabled={saving}
-          style={{ padding: "10px 24px", background: saving ? "#d4c9b8" : "#1a3a2f", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "var(--font-dm-sans)" }}
+          style={{ padding: "10px 24px", background: saving ? "#d4c9b8" : "#1a3a2f", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "var(--font-dm-sans)" }}
         >
           {saving ? "Saving…" : "Save Changes"}
         </button>
-        {saved && <p style={{ fontSize: 12, color: "#2d7a50", fontFamily: "var(--font-dm-sans)" }}>Saved ✓</p>}
+        {saved && <p style={{ fontSize: 13, color: "#2d7a50", fontFamily: "var(--font-dm-sans)" }}>Saved ✓</p>}
       </div>
     </div>
   );
@@ -318,7 +318,7 @@ export function WorkspaceCoach() {
         const active = tab === id;
         return (
           <button key={id} onClick={() => { setTab(id); setSelected(null); }}
-            style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-dm-sans)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+            style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-dm-sans)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
             {label}
           </button>
         );
@@ -328,12 +328,12 @@ export function WorkspaceCoach() {
 
   if (loading && tab === "clients") return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: "#a09890", fontSize: 13 }}>Loading clients…</p>
+      <p style={{ color: "#a09890", fontSize: 14 }}>Loading clients…</p>
     </div>
   );
   if (error && tab === "clients") return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: "#a09890", fontSize: 13 }}>Failed to load clients.</p>
+      <p style={{ color: "#a09890", fontSize: 14 }}>Failed to load clients.</p>
     </div>
   );
 
@@ -345,7 +345,7 @@ export function WorkspaceCoach() {
       <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F2EDE3" }}>
         {tabBar}
         <button onClick={() => setSelected(null)}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 12, fontFamily: "var(--font-dm-sans)", marginBottom: 24, padding: 0 }}>
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 13, fontFamily: "var(--font-dm-sans)", marginBottom: 24, padding: 0 }}>
           ← All Clients
         </button>
 
@@ -354,19 +354,19 @@ export function WorkspaceCoach() {
             <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
               {selected.name ?? selected.email.split("@")[0]}
             </h1>
-            <p style={{ fontSize: 12, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{selected.email}</p>
-            {selected.profile?.headline && <p style={{ fontSize: 13, color: "#52493f", marginTop: 6 }}>{selected.profile.headline}</p>}
+            <p style={{ fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{selected.email}</p>
+            {selected.profile?.headline && <p style={{ fontSize: 14, color: "#52493f", marginTop: 6 }}>{selected.profile.headline}</p>}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {selected.profile?.linkedinUrl && (
               <a href={selected.profile.linkedinUrl} target="_blank" rel="noreferrer"
-                style={{ fontSize: 11, fontFamily: "var(--font-dm-mono)", padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(26,58,47,0.15)", color: "#1a3a2f", textDecoration: "none", background: "#fff" }}>
+                style={{ fontSize: 13, fontFamily: "var(--font-dm-mono)", padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(26,58,47,0.15)", color: "#1a3a2f", textDecoration: "none", background: "#fff" }}>
                 LinkedIn ↗
               </a>
             )}
             {selected.profile?.resumeUrl && (
               <a href={selected.profile.resumeUrl} target="_blank" rel="noreferrer"
-                style={{ fontSize: 11, fontFamily: "var(--font-dm-mono)", padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(26,58,47,0.15)", color: "#1a3a2f", textDecoration: "none", background: "#fff" }}>
+                style={{ fontSize: 13, fontFamily: "var(--font-dm-mono)", padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(26,58,47,0.15)", color: "#1a3a2f", textDecoration: "none", background: "#fff" }}>
                 Resume ↗
               </a>
             )}
@@ -381,7 +381,7 @@ export function WorkspaceCoach() {
             { label: "Tailored Resumes", value: selected._count.tailoredResumes },
           ].map(({ label, value }) => (
             <div key={label} style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "14px 18px" }}>
-              <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
+              <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
               <p style={{ fontSize: 24, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)", lineHeight: 1 }}>{value}</p>
             </div>
           ))}
@@ -389,22 +389,22 @@ export function WorkspaceCoach() {
 
         {selected.profile && (selected.profile.targetRoles.length > 0 || selected.profile.targetSalary) && (
           <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px", marginBottom: 20 }}>
-            <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 10 }}>Targets</p>
+            <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 10 }}>Targets</p>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
               {selected.profile.targetRoles.length > 0 && (
                 <div>
-                  <p style={{ fontSize: 11, color: "#a09890", marginBottom: 4 }}>Roles</p>
+                  <p style={{ fontSize: 13, color: "#a09890", marginBottom: 4 }}>Roles</p>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {selected.profile.targetRoles.map((r) => (
-                      <span key={r} style={{ fontSize: 11, background: "rgba(26,58,47,0.06)", color: "#1a3a2f", padding: "2px 8px", borderRadius: 4 }}>{r}</span>
+                      <span key={r} style={{ fontSize: 13, background: "rgba(26,58,47,0.06)", color: "#1a3a2f", padding: "2px 8px", borderRadius: 4 }}>{r}</span>
                     ))}
                   </div>
                 </div>
               )}
               {selected.profile.targetSalary && (
                 <div>
-                  <p style={{ fontSize: 11, color: "#a09890", marginBottom: 4 }}>Target Salary</p>
-                  <p style={{ fontSize: 13, color: "#1a1a1a", fontWeight: 500 }}>${selected.profile.targetSalary.toLocaleString()}</p>
+                  <p style={{ fontSize: 13, color: "#a09890", marginBottom: 4 }}>Target Salary</p>
+                  <p style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 500 }}>${selected.profile.targetSalary.toLocaleString()}</p>
                 </div>
               )}
             </div>
@@ -413,16 +413,16 @@ export function WorkspaceCoach() {
 
         <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           <div style={{ padding: "14px 20px", borderBottom: "1px solid #f0ece6" }}>
-            <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)" }}>Job Pipeline ({selected.jobs.length})</p>
+            <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)" }}>Job Pipeline ({selected.jobs.length})</p>
           </div>
           {selected.jobs.length === 0 ? (
-            <p style={{ padding: "24px 20px", color: "#a09890", fontSize: 13 }}>No jobs tracked yet.</p>
+            <p style={{ padding: "24px 20px", color: "#a09890", fontSize: 14 }}>No jobs tracked yet.</p>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #f0ece6" }}>
                   {["Company", "Role", "Stage", "Added"].map((h, i) => (
-                    <th key={h} style={{ padding: "9px 20px", textAlign: i === 3 ? "right" : "left", fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+                    <th key={h} style={{ padding: "9px 20px", textAlign: i === 3 ? "right" : "left", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -432,7 +432,7 @@ export function WorkspaceCoach() {
                     <td style={{ padding: "9px 20px", fontWeight: 500, color: "#1a1a1a" }}>{j.company}</td>
                     <td style={{ padding: "9px 20px", color: "#52493f" }}>{j.role}</td>
                     <td style={{ padding: "9px 20px" }}><StageBadge stage={j.stage} /></td>
-                    <td style={{ padding: "9px 20px", textAlign: "right", fontSize: 11, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{formatDate(j.createdAt)}</td>
+                    <td style={{ padding: "9px 20px", textAlign: "right", fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{formatDate(j.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -463,7 +463,7 @@ export function WorkspaceCoach() {
               { label: "In Interviews", value: clients.filter((c) => c.jobs.some((j) => j.stage === "INTERVIEWING")).length },
             ].map(({ label, value }) => (
               <div key={label} style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "14px 18px" }}>
-                <p style={{ fontSize: 10, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
+                <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
                 <p style={{ fontSize: 24, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)", lineHeight: 1 }}>{value}</p>
               </div>
             ))}
@@ -471,7 +471,7 @@ export function WorkspaceCoach() {
 
           <div style={{ marginBottom: 16 }}>
             <input type="text" placeholder="Search clients…" value={search} onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", fontSize: 13, background: "#fff", border: "1px solid rgba(26,58,47,0.12)", borderRadius: 8, padding: "9px 14px", outline: "none", fontFamily: "var(--font-dm-sans)", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, background: "#fff", border: "1px solid rgba(26,58,47,0.12)", borderRadius: 8, padding: "9px 14px", outline: "none", fontFamily: "var(--font-dm-sans)", boxSizing: "border-box" }} />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -488,20 +488,20 @@ export function WorkspaceCoach() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                         <p style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 14 }}>{client.name ?? client.email.split("@")[0]}</p>
-                        {hasOffer && <span style={{ fontSize: 10, background: "rgba(5,150,105,0.1)", color: "#059669", padding: "1px 7px", borderRadius: 4, fontFamily: "var(--font-dm-mono)" }}>offer</span>}
-                        {inInterview && !hasOffer && <span style={{ fontSize: 10, background: "rgba(124,58,237,0.1)", color: "#7c3aed", padding: "1px 7px", borderRadius: 4, fontFamily: "var(--font-dm-mono)" }}>interviewing</span>}
+                        {hasOffer && <span style={{ fontSize: 12, background: "rgba(5,150,105,0.1)", color: "#059669", padding: "1px 7px", borderRadius: 4, fontFamily: "var(--font-dm-mono)" }}>offer</span>}
+                        {inInterview && !hasOffer && <span style={{ fontSize: 12, background: "rgba(124,58,237,0.1)", color: "#7c3aed", padding: "1px 7px", borderRadius: 4, fontFamily: "var(--font-dm-mono)" }}>interviewing</span>}
                       </div>
-                      <p style={{ fontSize: 11, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{client.email}</p>
-                      {client.profile?.headline && <p style={{ fontSize: 12, color: "#52493f", marginTop: 4 }}>{client.profile.headline}</p>}
+                      <p style={{ fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{client.email}</p>
+                      {client.profile?.headline && <p style={{ fontSize: 13, color: "#52493f", marginTop: 4 }}>{client.profile.headline}</p>}
                     </div>
                     <div style={{ display: "flex", gap: 16, flexShrink: 0, marginLeft: 16 }}>
                       <div style={{ textAlign: "right" }}>
-                        <p style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{client._count.jobs}</p>
-                        <p style={{ fontSize: 10, color: "#a09890" }}>jobs</p>
+                        <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{client._count.jobs}</p>
+                        <p style={{ fontSize: 12, color: "#a09890" }}>jobs</p>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <p style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{activeJobs.length}</p>
-                        <p style={{ fontSize: 10, color: "#a09890" }}>active</p>
+                        <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{activeJobs.length}</p>
+                        <p style={{ fontSize: 12, color: "#a09890" }}>active</p>
                       </div>
                     </div>
                   </div>
@@ -509,17 +509,17 @@ export function WorkspaceCoach() {
                     <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                       {client.jobs.slice(0, 4).map((j) => (
                         <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 5, background: "#faf8f5", borderRadius: 5, padding: "3px 8px" }}>
-                          <span style={{ fontSize: 11, color: "#3d3530" }}>{j.company}</span>
+                          <span style={{ fontSize: 13, color: "#3d3530" }}>{j.company}</span>
                           <StageBadge stage={j.stage} />
                         </div>
                       ))}
-                      {client.jobs.length > 4 && <span style={{ fontSize: 11, color: "#a09890", padding: "3px 4px" }}>+{client.jobs.length - 4} more</span>}
+                      {client.jobs.length > 4 && <span style={{ fontSize: 13, color: "#a09890", padding: "3px 4px" }}>+{client.jobs.length - 4} more</span>}
                     </div>
                   )}
                 </button>
               );
             })}
-            {filtered.length === 0 && <p style={{ color: "#a09890", fontSize: 13, textAlign: "center", padding: "40px 0" }}>No clients found.</p>}
+            {filtered.length === 0 && <p style={{ color: "#a09890", fontSize: 14, textAlign: "center", padding: "40px 0" }}>No clients found.</p>}
           </div>
         </>
       )}
