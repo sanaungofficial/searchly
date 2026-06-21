@@ -32,6 +32,7 @@ interface OpportunitiesProps {
   setKanbanCards: React.Dispatch<React.SetStateAction<KanbanCard[]>>;
   addJob: (company: string, role: string, url?: string, meta?: JobMeta) => Promise<void>;
   updateStage: (cardId: number, stage: KanbanStage) => Promise<void>;
+  removeJob: (cardId: number) => Promise<void>;
 }
 
 export function WorkspaceOpportunities({
@@ -44,6 +45,7 @@ export function WorkspaceOpportunities({
   setKanbanCards,
   addJob,
   updateStage,
+  removeJob,
 }: OpportunitiesProps) {
   const [tab, setTab] = useState<OppTab>("discover");
   const [showAddPanel, setShowAddPanel] = useState(false);
@@ -358,6 +360,7 @@ export function WorkspaceOpportunities({
             setCopied={setCopied}
             tool={drawerTool}
             onToolChange={setDrawerTool}
+            onDelete={() => { removeJob(card.id); closeDrawer(); }}
           />
         );
       })()}
@@ -1481,14 +1484,16 @@ interface JobDrawerProps {
   card: KanbanCard;
   onClose: () => void;
   moveCard: (id: number, stage: KanbanStage) => void;
+  onDelete: () => void;
   copied: boolean;
   setCopied: (b: boolean) => void;
   tool?: DrawerTool;
   onToolChange?: (t: DrawerTool) => void;
 }
 
-function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
+function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
+  const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
@@ -1590,28 +1595,30 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
             >
               {STAGE_LABELS[card.stage]}
             </span>
-            <span
-              style={{
-                fontFamily: "var(--font-dm-mono), monospace",
-                fontSize: 13,
-                fontWeight: 500,
-                color: fitColor,
-              }}
-            >
-              {card.fit}% fit
-            </span>
+            {card.fit > 0 && (
+              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 13, fontWeight: 500, color: fitColor }}>
+                {card.fit}% fit
+              </span>
+            )}
             {(job?.salary || meta?.salary) && (
-              <span
-                style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 10,
-                  color: "#A09890",
-                }}
-              >
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
                 · {job?.salary || meta?.salary}
               </span>
             )}
+            {cardUrl && (
+              <a href={cardUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", textDecoration: "none", marginLeft: "auto" }}>
+                View posting →
+              </a>
+            )}
           </div>
+          {dbId && (
+            <button
+              onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
+              style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#C4574A", fontFamily: "var(--font-dm-sans), system-ui", padding: 0, textAlign: "left" }}
+            >
+              Remove job
+            </button>
+          )}
         </div>
 
         {/* Body */}
@@ -1781,6 +1788,18 @@ function JobDrawer({ card, onClose, moveCard, copied, setCopied, tool = null, on
           </div>
 
           {/* Tool views or standard drawer content */}
+          {/* Coming-soon placeholder for DB jobs (no mock data) */}
+          {tool !== null && !job && (
+            <div style={{ padding: "16px", background: "#FFFFFF", borderRadius: 7, border: "1px solid rgba(0,0,0,0.07)", animation: "fadeIn 0.3s ease both", marginBottom: 14 }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A", marginBottom: 6 }}>
+                {tool === "resume" ? "Resume tailoring" : tool === "cover" ? "Cover letter" : "Fit analysis"} — coming soon
+              </p>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.6 }}>
+                AI tools for manually added jobs are rolling out shortly. Upload your base resume in Profile so we can personalize output when it&apos;s ready.
+              </p>
+            </div>
+          )}
+
           {/* Tool view: Update resume */}
           {tool === "resume" && job && (
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
