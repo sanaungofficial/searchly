@@ -590,6 +590,12 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume }: {
                 style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
+                  <button
+                    onClick={() => addRole(searchQuery.trim())}
+                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#E8D5A3", cursor: "pointer" }}
+                  >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
+                )}
                 {filteredRoles.slice(0, 20).map((r) => (
                   <button
                     key={r}
