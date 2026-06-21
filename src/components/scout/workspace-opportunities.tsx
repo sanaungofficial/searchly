@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
   COMPANIES,
@@ -1513,6 +1513,8 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
   const setTool = (t: DrawerTool) => onToolChange?.(t);
@@ -1521,17 +1523,22 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
     <>
       <div
         onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.1)", zIndex: 60 }}
       />
       <div
         style={{
+          position: "fixed",
+          top: 8,
+          right: 8,
+          bottom: 8,
           width: 440,
           background: "#F8F6F2",
-          borderLeft: "1px solid rgba(0,0,0,0.07)",
+          borderRadius: 12,
           overflowY: "auto",
           zIndex: 70,
-          position: "relative",
-          animation: "slideInRight 0.25s ease both",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
+          transition: "transform 0.25s ease",
         }}
       >
         {/* Header */}
