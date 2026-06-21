@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { company, role, url, stage } = body;
+  const { company, role, url, stage, notes } = body;
 
   if (!company || !role) {
     return NextResponse.json({ error: "company and role are required" }, { status: 400 });
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       role,
       url: url ?? null,
       stage: stage ?? "SAVED",
+      notes: notes ?? null,
     },
   });
 
