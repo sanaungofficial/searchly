@@ -22,6 +22,7 @@ model User {
 
   profile          Profile?
   jobs             Job[]
+  trackedCompanies TrackedCompany[]
   subscription     Subscription?
   tailoredResumes  TailoredResume[]
   coachProfile     CoachProfile?
@@ -71,8 +72,11 @@ model Profile {
   linkedinUrl String?
   headline    String?
   summary     String?
-  targetRoles String[]
-  targetSalary Int?
+  targetRoles      String[]
+  targetSalary     String?
+  employmentStatus String?
+  currentSalary    String?
+  priorities       String[]
 
   readbackData       Json?
   readbackUpdatedAt  DateTime?
@@ -171,6 +175,21 @@ enum AiFeature {
   JOB_PARSE
   CHAT
   RESUME_TAILOR
+}
+
+model TrackedCompany {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  website   String?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model AiUsageLog {
