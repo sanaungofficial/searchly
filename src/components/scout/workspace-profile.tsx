@@ -1016,10 +1016,10 @@ export function WorkspaceProfile() {
             <div style={{ paddingBottom: 48 }}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }} ref={(el) => { sectionRefs.current.education = el; }}>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}>
               <EducationTab entries={education} onSave={handleEducationSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }} ref={(el) => { sectionRefs.current.experience = el; }}>
+            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}>
               <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
             </div>
             <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }} >
