@@ -12,10 +12,13 @@ function getAnthropic() {
   return _anthropic;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
+
+  const { searchParams } = new URL(request.url);
+  const force = searchParams.get("force") === "true";
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -25,6 +28,15 @@ export async function GET() {
     where: { email: user.email! },
     include: { profile: true, subscription: true },
   });
+
+  // Return cached result if available and not forced
+  if (!force && dbUser?.profile) {
+    const cached = dbUser.profile.readbackData as Record<string, unknown> | null;
+    const cachedAt = dbUser.profile.readbackUpdatedAt;
+    if (cached && cachedAt) {
+      return NextResponse.json({ ...cached, _cachedAt: cachedAt.toISOString() });
+    }
+  }
 
   const { allowed, used, limit } = await checkAndIncrementUsage(
     dbUser?.id ?? user.id,
@@ -92,6 +104,17 @@ Respond in this exact JSON format:
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found");
     const parsed = JSON.parse(jsonMatch[0]);
+
+    // Cache the result in the database
+    if (dbUser?.profile) {
+      const now = new Date();
+      await prisma.profile.update({
+        where: { id: dbUser.profile.id },
+        data: { readbackData: parsed, readbackUpdatedAt: now },
+      }).catch(() => {});
+      return NextResponse.json({ ...parsed, _cachedAt: now.toISOString() });
+    }
+
     return NextResponse.json(parsed);
   } catch {
     return NextResponse.json({ error: "Failed to parse response" }, { status: 500 });
