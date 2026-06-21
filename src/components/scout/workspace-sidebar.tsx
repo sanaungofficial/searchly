@@ -137,7 +137,7 @@ export function WorkspaceSidebar({
                 cursor: "pointer",
                 fontFamily: "var(--font-dm-sans), system-ui",
                 fontSize: 12,
-                color: "rgba(232,213,163,0.4)",
+                color: "rgba(232,213,163,0.75)",
                 letterSpacing: "0.4px",
                 padding: 0,
               }}
