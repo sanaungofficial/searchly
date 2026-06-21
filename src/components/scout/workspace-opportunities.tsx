@@ -1562,7 +1562,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                     marginTop: 2,
                   }}
                 >
-                  {card.company} · {job?.location || meta?.location || "Remote"}
+                  {card.company}{(job?.location || meta?.location) ? ` · ${job?.location || meta?.location}` : ""}
                 </p>
               </div>
             </div>
