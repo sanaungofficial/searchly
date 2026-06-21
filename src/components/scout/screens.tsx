@@ -1240,6 +1240,30 @@ const PRIORITIES = [
   "Specific location",
 ];
 
+const CAREER_MOTIVATIONS = [
+  "Higher compensation",
+  "More interesting work",
+  "Better work-life balance",
+  "Step up in level",
+  "A career pivot",
+];
+
+const JOB_TIMELINES = [
+  { value: "asap", label: "As soon as possible" },
+  { value: "3-6mo", label: "In the next 3–6 months" },
+  { value: "open", label: "Whenever the right role appears" },
+];
+
+const ATTRIBUTION_SOURCES = [
+  "LinkedIn",
+  "Twitter / X",
+  "Google search",
+  "Friend or colleague",
+  "Newsletter",
+  "YouTube",
+  "Other",
+];
+
 /* ──────────────────────────────────────────────────────────────
    Screen 1 — Target Roles
    ────────────────────────────────────────────────────────────── */
@@ -1436,26 +1460,34 @@ export function ScreenTargetRoles({
    Screen 2 — About You
    ────────────────────────────────────────────────────────────── */
 interface AboutYouProps {
-  employmentStatus: "active" | "exploring" | null;
+  careerMotivation: string;
+  jobTimeline: string;
   currentSalary: string;
   targetSalary: string;
   priorities: string[];
-  onEmploymentChange: (v: "active" | "exploring") => void;
+  attribution: string;
+  onCareerMotivationChange: (v: string) => void;
+  onJobTimelineChange: (v: string) => void;
   onCurrentSalaryChange: (v: string) => void;
   onTargetSalaryChange: (v: string) => void;
   onTogglePriority: (p: string) => void;
+  onAttributionChange: (v: string) => void;
   onContinue: () => void;
 }
 
 export function ScreenAboutYou({
-  employmentStatus,
+  careerMotivation,
+  jobTimeline,
   currentSalary,
   targetSalary,
   priorities,
-  onEmploymentChange,
+  attribution,
+  onCareerMotivationChange,
+  onJobTimelineChange,
   onCurrentSalaryChange,
   onTargetSalaryChange,
   onTogglePriority,
+  onAttributionChange,
   onContinue,
 }: AboutYouProps) {
   const salaryRows = [
@@ -1463,62 +1495,67 @@ export function ScreenAboutYou({
     { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
   ];
 
+  const chipBtn = (selected: boolean, onClick: () => void, label: string) => (
+    <button
+      key={label}
+      onClick={onClick}
+      style={{
+        padding: "8px 16px",
+        background: selected ? "rgba(26,58,47,0.1)" : "transparent",
+        color: selected ? "#1A3A2F" : "#52493F",
+        border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.2)"}`,
+        borderRadius: 100,
+        fontFamily: "var(--font-dm-sans), system-ui",
+        fontSize: 13,
+        fontWeight: selected ? 500 : 400,
+        cursor: "pointer",
+        transition: "all 0.15s",
+        whiteSpace: "nowrap" as const,
+      }}
+      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.4)"; }}
+      onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)"; }}
+    >
+      {label}
+    </button>
+  );
+
+  const sectionLabel = (text: string, optional?: boolean) => (
+    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase" as const, marginBottom: 12 }}>
+      {text}{optional && <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
+    </p>
+  );
+
   return (
     <div className="flex flex-col gap-8">
       <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
-        <h2
-          style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
-            fontSize: 50,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
-            lineHeight: 1.04,
-            letterSpacing: "-0.2px",
-            marginBottom: 14,
-          }}
-        >
+        <h2 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 50, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", lineHeight: 1.04, letterSpacing: "-0.2px", marginBottom: 14 }}>
           A few more things.
         </h2>
-        <p
-          style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 16,
-            fontWeight: 300,
-            color: "#52493F",
-            lineHeight: 1.65,
-            maxWidth: 440,
-          }}
-        >
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 300, color: "#52493F", lineHeight: 1.65, maxWidth: 440 }}>
           Helps us match you to the right roles and filter out the wrong ones.
         </p>
       </div>
 
-      {/* Employment status */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.3s" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 10,
-            fontWeight: 500,
-            color: "#A09890",
-            letterSpacing: "1px",
-            textTransform: "uppercase",
-            marginBottom: 12,
-          }}
-        >
-          Where are you right now?
-        </p>
-        <div style={{ display: "flex", gap: 10 }}>
-          {(["active", "exploring"] as const).map((s) => {
-            const label = s === "active" ? "Actively looking" : "Exploring options";
-            const selected = employmentStatus === s;
+      {/* Career motivation */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.2s" }}>
+        {sectionLabel("What's driving your move?")}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {CAREER_MOTIVATIONS.map((m) => chipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m))}
+        </div>
+      </div>
+
+      {/* Job timeline */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.35s" }}>
+        {sectionLabel("When do you want to make a move?")}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {JOB_TIMELINES.map(({ value, label }) => {
+            const selected = jobTimeline === value;
             return (
               <button
-                key={s}
-                onClick={() => onEmploymentChange(s)}
+                key={value}
+                onClick={() => onJobTimelineChange(selected ? "" : value)}
                 style={{
-                  padding: "12px 20px",
+                  padding: "12px 18px",
                   background: selected ? "#1A3A2F" : "transparent",
                   color: selected ? "#E8D5A3" : "#52493F",
                   border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
@@ -1528,13 +1565,10 @@ export function ScreenAboutYou({
                   fontWeight: selected ? 500 : 400,
                   cursor: "pointer",
                   transition: "all 0.15s",
+                  textAlign: "left" as const,
                 }}
-                onMouseEnter={(e) => {
-                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.5)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.22)";
-                }}
+                onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.5)"; }}
+                onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.22)"; }}
               >
                 {label}
               </button>
@@ -1547,50 +1581,17 @@ export function ScreenAboutYou({
       <div className="anim-fade-up" style={{ animationDelay: "0.5s", display: "flex", gap: 16, flexWrap: "wrap" }}>
         {salaryRows.map(({ label, value, onChange }) => (
           <div key={label} style={{ flex: "1 1 200px" }}>
-            <p
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 10,
-                fontWeight: 500,
-                color: "#A09890",
-                letterSpacing: "1px",
-                textTransform: "uppercase",
-                marginBottom: 8,
-              }}
-            >
-              {label}{" "}
-              <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" }}>
-                (optional)
-              </span>
-            </p>
+            {sectionLabel(label, true)}
             <div style={{ position: "relative" }}>
               <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "11px 36px 11px 14px",
-                  border: "1.5px solid rgba(26,58,47,0.22)",
-                  borderRadius: 6,
-                  background: "#FAF8F4",
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 14,
-                  fontWeight: 400,
-                  color: value ? "#1A1A1A" : "#A09890",
-                  cursor: "pointer",
-                  appearance: "none",
-                  outline: "none",
-                }}
+                style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#FAF8F4", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
               >
                 <option value="">Select a range</option>
-                {SALARY_RANGES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
+                {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
-              <svg
-                style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
-                width="12" height="7" viewBox="0 0 12 7" fill="none"
-              >
+              <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
                 <path d="M1 1L6 6L11 1" stroke="#A09890" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
@@ -1599,71 +1600,36 @@ export function ScreenAboutYou({
       </div>
 
       {/* Priorities */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.7s" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 10,
-            fontWeight: 500,
-            color: "#A09890",
-            letterSpacing: "1px",
-            textTransform: "uppercase",
-            marginBottom: 12,
-          }}
-        >
-          What matters most to you?{" "}
-          <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" }}>(optional)</span>
-        </p>
+      <div className="anim-fade-up" style={{ animationDelay: "0.65s" }}>
+        {sectionLabel("What matters most to you?", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {PRIORITIES.map((p) => {
-            const selected = priorities.includes(p);
-            return (
-              <button
-                key={p}
-                onClick={() => onTogglePriority(p)}
-                style={{
-                  padding: "8px 16px",
-                  background: selected ? "rgba(26,58,47,0.1)" : "transparent",
-                  color: selected ? "#1A3A2F" : "#52493F",
-                  border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.2)"}`,
-                  borderRadius: 100,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
-                  fontWeight: selected ? 500 : 400,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)";
-                }}
-              >
-                {p}
-              </button>
-            );
-          })}
+          {PRIORITIES.map((p) => chipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
+        </div>
+      </div>
+
+      {/* Attribution */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.8s" }}>
+        {sectionLabel("How did you hear about Searchly?", true)}
+        <div style={{ position: "relative", maxWidth: 280 }}>
+          <select
+            value={attribution}
+            onChange={(e) => onAttributionChange(e.target.value)}
+            style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#FAF8F4", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
+          >
+            <option value="">Select one</option>
+            {ATTRIBUTION_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
+            <path d="M1 1L6 6L11 1" stroke="#A09890" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
       </div>
 
       {/* CTA */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.9s" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.95s" }}>
         <button
           onClick={onContinue}
-          style={{
-            padding: "14px 30px",
-            background: "#1A3A2F",
-            color: "#E8D5A3",
-            border: "none",
-            borderRadius: 5,
-            fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: "pointer",
-            letterSpacing: "0.2px",
-            transition: "opacity 0.15s",
-          }}
+          style={{ padding: "14px 30px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 500, cursor: "pointer", letterSpacing: "0.2px", transition: "opacity 0.15s" }}
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >

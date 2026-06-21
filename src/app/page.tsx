@@ -86,10 +86,12 @@ export default function Home() {
 
   const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
-  const [employmentStatus, setEmploymentStatus] = useState<"active" | "exploring" | null>(null);
+  const [careerMotivation, setCareerMotivation] = useState("");
+  const [jobTimeline, setJobTimeline] = useState("");
   const [currentSalary, setCurrentSalary] = useState("");
   const [targetSalary, setTargetSalary] = useState("");
   const [priorities, setPriorities] = useState<string[]>([]);
+  const [attribution, setAttribution] = useState("");
 
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
@@ -113,10 +115,12 @@ export default function Home() {
     setLiInput("");
     setSelectedBuckets([]);
     setSelectedTitles([]);
-    setEmploymentStatus(null);
+    setCareerMotivation("");
+    setJobTimeline("");
     setCurrentSalary("");
     setTargetSalary("");
     setPriorities([]);
+    setAttribution("");
   }, []);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
@@ -215,14 +219,16 @@ export default function Home() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        employmentStatus: employmentStatus ?? null,
+        careerMotivation: careerMotivation || null,
+        jobTimeline: jobTimeline || null,
         currentSalary: currentSalary || null,
         targetSalary: targetSalary || null,
         priorities,
+        attribution: attribution || null,
       }),
     }).catch(() => {});
     enterWorkspace();
-  }, [employmentStatus, currentSalary, targetSalary, priorities, enterWorkspace]);
+  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, enterWorkspace]);
 
   const demoAdvance = () => {
     if (screen === 0) {
@@ -295,14 +301,18 @@ export default function Home() {
           )}
           {screen === 2 && (
             <ScreenAboutYou
-              employmentStatus={employmentStatus}
+              careerMotivation={careerMotivation}
+              jobTimeline={jobTimeline}
               currentSalary={currentSalary}
               targetSalary={targetSalary}
               priorities={priorities}
-              onEmploymentChange={setEmploymentStatus}
+              attribution={attribution}
+              onCareerMotivationChange={setCareerMotivation}
+              onJobTimelineChange={setJobTimeline}
               onCurrentSalaryChange={setCurrentSalary}
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
+              onAttributionChange={setAttribution}
               onContinue={onAboutYouContinue}
             />
           )}
