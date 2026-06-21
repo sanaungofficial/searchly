@@ -69,6 +69,13 @@ interface RoleAnalysis {
   requiredSkills: string[];
   gaps: { skill: string; why: string }[];
   nextSteps: string[];
+  _cachedAt?: string;
+}
+
+interface SkillGoal {
+  skill: string;
+  role: string;
+  addedAt: string;
 }
 
 
@@ -389,19 +396,31 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
 
 // ─── Tab: Skills (real data) ──────────────────────────────────────────────────
 
-function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: string[]) => Promise<void> }) {
+function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
+  skills: string[];
+  onSave: (skills: string[]) => Promise<void>;
+  skillGoals: SkillGoal[];
+  onGraduate: (skill: string) => Promise<void>;
+}) {
   const [editing, setEditing] = useState(false);
   const [list, setList] = useState<string[]>(skills);
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [graduating, setGraduating] = useState<string | null>(null);
 
   const addSkill = () => { const v = input.trim(); if (v && !list.includes(v)) setList((p) => [...p, v]); setInput(""); };
   const handleSave = async () => { setSaving(true); await onSave(list); setSaving(false); setEditing(false); };
 
+  const handleGraduate = async (skill: string) => {
+    setGraduating(skill);
+    await onGraduate(skill);
+    setGraduating(null);
+  };
+
   return (
     <div>
       <SectionHeader title="Skills" onEdit={() => setEditing(!editing)} />
-      {!editing && skills.length === 0 && (
+      {!editing && skills.length === 0 && skillGoals.length === 0 && (
         <EmptyState message="No skills yet" sub="Upload your resume to extract your skills automatically." />
       )}
       {editing ? (
@@ -422,7 +441,35 @@ function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: stri
           </div>
         </div>
       ) : (
-        skills.length > 0 && <div className="flex flex-wrap gap-2">{skills.map((s) => <SkillChip key={s} label={s} />)}</div>
+        skills.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-2" style={{ fontSize: 10, letterSpacing: "1px" }}>My skills</p>
+            <div className="flex flex-wrap gap-2">{skills.map((s) => <SkillChip key={s} label={s} />)}</div>
+          </div>
+        )
+      )}
+
+      {!editing && skillGoals.length > 0 && (
+        <div style={{ marginTop: skills.length > 0 ? 24 : 0 }}>
+          <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-3" style={{ fontSize: 10, letterSpacing: "1px" }}>Working on</p>
+          <div className="space-y-2">
+            {skillGoals.map((g) => (
+              <div key={`${g.skill}-${g.role}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(196,168,106,0.08)", border: "1px solid rgba(196,168,106,0.25)", borderRadius: 8 }}>
+                <div>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A6020" }}>for {g.role}</p>
+                </div>
+                <button
+                  onClick={() => handleGraduate(g.skill)}
+                  disabled={graduating === g.skill}
+                  style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, cursor: "pointer", opacity: graduating === g.skill ? 0.6 : 1 }}
+                >
+                  {graduating === g.skill ? "Saving…" : "Mark as acquired"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -430,19 +477,21 @@ function SkillsTab({ skills, onSave }: { skills: string[]; onSave: (skills: stri
 
 // ─── Tab: Dream Role ──────────────────────────────────────────────────────────
 
-function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, onAddSkill }: {
+const ANALYSIS_CACHE_KEY = (role: string) => `searchly_analysis_${role.replace(/\W+/g, "_")}`;
+
+function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, skillGoals, onAddToLearning }: {
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
   hasResume: boolean;
   userSkills: string[];
-  onAddSkill: (skill: string) => Promise<void>;
+  skillGoals: SkillGoal[];
+  onAddToLearning: (skill: string, role: string) => void;
 }) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysis | "loading" | "error">>({});
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pendingSkills, setPendingSkills] = useState<Set<string>>(new Set());
   const [needsRefresh, setNeedsRefresh] = useState<Set<string>>(new Set());
 
   const addRole = (title: string) => {
@@ -461,13 +510,28 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
     if (expandedRole === title) setExpandedRole(null);
   };
 
-  const fetchAnalysis = async (role: string) => {
+  const fetchAnalysis = async (role: string, force = false) => {
+    if (!force) {
+      try {
+        const cached = localStorage.getItem(ANALYSIS_CACHE_KEY(role));
+        if (cached) {
+          const { data, cachedAt } = JSON.parse(cached);
+          setAnalysis((prev) => ({ ...prev, [role]: { ...data, _cachedAt: cachedAt } as RoleAnalysis }));
+          return;
+        }
+      } catch {}
+    }
     setAnalysis((prev) => ({ ...prev, [role]: "loading" }));
     try {
       const res = await fetch(`/api/ai/role-gap?role=${encodeURIComponent(role)}`);
       const data = await res.json();
-      if (data.error) setAnalysis((prev) => ({ ...prev, [role]: "error" }));
-      else setAnalysis((prev) => ({ ...prev, [role]: data as RoleAnalysis }));
+      if (data.error) {
+        setAnalysis((prev) => ({ ...prev, [role]: "error" }));
+      } else {
+        const cachedAt = new Date().toISOString();
+        localStorage.setItem(ANALYSIS_CACHE_KEY(role), JSON.stringify({ data, cachedAt }));
+        setAnalysis((prev) => ({ ...prev, [role]: { ...data, _cachedAt: cachedAt } as RoleAnalysis }));
+      }
     } catch {
       setAnalysis((prev) => ({ ...prev, [role]: "error" }));
     }
@@ -480,16 +544,14 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
     await fetchAnalysis(role);
   };
 
-  const handleAddSkill = async (skill: string, role: string) => {
-    setPendingSkills((prev) => new Set([...prev, skill]));
+  const handleAddToLearning = (skill: string, role: string) => {
     setNeedsRefresh((prev) => new Set([...prev, role]));
-    await onAddSkill(skill);
+    onAddToLearning(skill, role);
   };
 
   const handleRefresh = async (role: string) => {
     setNeedsRefresh((prev) => { const n = new Set(prev); n.delete(role); return n; });
-    setPendingSkills(new Set());
-    await fetchAnalysis(role);
+    await fetchAnalysis(role, true);
   };
 
   const filteredRoles = AVAILABLE_ROLES.filter(
@@ -503,7 +565,10 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
     score >= 70 ? "Strong fit" : score >= 50 ? "Good foundation" : "Gap to close";
 
   const hasSkill = (skill: string) =>
-    userSkills.some((s) => s.toLowerCase() === skill.toLowerCase()) || pendingSkills.has(skill);
+    userSkills.some((s) => s.toLowerCase() === skill.toLowerCase());
+
+  const isInLearning = (skill: string) =>
+    skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase());
 
   return (
     <div style={{ maxWidth: 560, paddingBottom: 40 }}>
@@ -534,7 +599,9 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                   <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
                   {loaded ? (
                     <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: scoreColor(loaded.fitScore) }}>
-                      {scoreLabel(loaded.fitScore)}{roleNeedsRefresh ? " · score pending refresh" : ""}
+                      {scoreLabel(loaded.fitScore)}
+                      {loaded._cachedAt ? ` · ${timeAgo(loaded._cachedAt)}` : ""}
+                      {roleNeedsRefresh ? " · refresh score" : ""}
                     </p>
                   ) : !hasResume ? (
                     <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Upload a resume to see your fit score</p>
@@ -584,18 +651,20 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                                 <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
                                   <span style={{ fontSize: 10 }}>✓</span> {skill}
                                 </span>
+                              ) : isInLearning(skill) ? (
+                                <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ fontSize: 10 }}>→</span> {skill}
+                                </span>
                               ) : (
-                                <button key={skill} onClick={() => handleAddSkill(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                <button key={skill} onClick={() => handleAddToLearning(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
                                   <span style={{ color: "#1A3A2F", fontWeight: 700, fontSize: 13, lineHeight: 1 }}>+</span> {skill}
                                 </button>
                               )
                             )}
                           </div>
-                          {roleNeedsRefresh && (
-                            <button onClick={() => handleRefresh(role)} style={{ marginTop: 10, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#1A3A2F", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
-                              Refresh score with updated skills
-                            </button>
-                          )}
+                          <button onClick={() => handleRefresh(role)} style={{ marginTop: 10, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890", background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            ↻ Refresh analysis
+                          </button>
                         </div>
                       )}
 
@@ -663,14 +732,60 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
 
 // ─── Tab: Learning Path (original) ────────────────────────────────────────────
 
-function LearningTab({ progress, setProgress }: {
+function LearningTab({ progress, setProgress, skillGoals, onGraduate }: {
   progress: Record<number, "none" | "inprogress" | "completed">;
   setProgress: (p: Record<number, "none" | "inprogress" | "completed">) => void;
+  skillGoals: SkillGoal[];
+  onGraduate: (skill: string) => Promise<void>;
 }) {
+  const [graduating, setGraduating] = useState<string | null>(null);
   const doneCount = Object.values(progress).filter((v) => v === "completed").length;
   const total = UPSKILL_CATEGORIES.reduce((a, c) => a + c.items.length, 0);
+
+  const handleGraduate = async (skill: string) => {
+    setGraduating(skill);
+    await onGraduate(skill);
+    setGraduating(null);
+  };
+
   return (
     <div style={{ paddingBottom: 40 }}>
+      {/* Skill goals section */}
+      {skillGoals.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Skills I&apos;m working on</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {skillGoals.map((g) => {
+              const matchedCourse = UPSKILL_CATEGORIES.flatMap((c) => c.items).find(
+                (item) => item.closesGap && item.closesGap.toLowerCase() === g.skill.toLowerCase()
+              );
+              return (
+                <div key={`${g.skill}-${g.role}`} style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(196,168,106,0.3)", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>{g.skill}</p>
+                      <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
+                    </div>
+                    {matchedCourse && (
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A" }}>
+                        Suggested: {matchedCourse.name} on {matchedCourse.platform}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleGraduate(g.skill)}
+                    disabled={graduating === g.skill}
+                    style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, cursor: "pointer", flexShrink: 0, opacity: graduating === g.skill ? 0.6 : 1 }}
+                  >
+                    {graduating === g.skill ? "Saving…" : "Mark as acquired"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ background: "#1A3A2F", borderRadius: 10, padding: "16px 20px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Your learning progress</p>
@@ -1027,6 +1142,8 @@ type AboutSection = "personal" | "education" | "experience" | "skills";
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "skills"];
 const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", education: "Education", experience: "Work experience", skills: "Skills" };
 
+const SKILL_GOALS_KEY = "searchly_skill_goals";
+
 export function WorkspaceProfile() {
   const [page, setPage] = useState<PageTab>("about");
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
@@ -1034,6 +1151,7 @@ export function WorkspaceProfile() {
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
   const [upskillProgress, setUpskillProgress] = useState<Record<number, "none" | "inprogress" | "completed">>({});
+  const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [readback, setReadback] = useState<ReadbackData | null>(null);
@@ -1042,6 +1160,14 @@ export function WorkspaceProfile() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
+
+  // Load skill goals from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SKILL_GOALS_KEY);
+      if (stored) setSkillGoals(JSON.parse(stored));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -1109,6 +1235,27 @@ export function WorkspaceProfile() {
     const newParsedData = { ...(profile.parsedData || { education: [], workExperience: [] }), skills };
     await patchProfile({ parsedData: newParsedData });
     setProfile((p) => p ? { ...p, parsedData: newParsedData } : p);
+  };
+
+  const addSkillGoal = (skill: string, role: string) => {
+    setSkillGoals((prev) => {
+      if (prev.some((g) => g.skill.toLowerCase() === skill.toLowerCase())) return prev;
+      const next = [...prev, { skill, role, addedAt: new Date().toISOString() }];
+      try { localStorage.setItem(SKILL_GOALS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const graduateSkill = async (skill: string) => {
+    const currentSkills = profile?.parsedData?.skills || [];
+    if (!currentSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) {
+      await handleSkillsSave([...currentSkills, skill]);
+    }
+    setSkillGoals((prev) => {
+      const next = prev.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase());
+      try { localStorage.setItem(SKILL_GOALS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   const handleResumeUpload = async (file: File) => {
@@ -1218,7 +1365,8 @@ export function WorkspaceProfile() {
             onSave={(list) => patchProfile({ targetRoles: list })}
             hasResume={!!profile?.resumeUrl}
             userSkills={skills}
-            onAddSkill={async (skill) => handleSkillsSave([...skills, skill])}
+            skillGoals={skillGoals}
+            onAddToLearning={addSkillGoal}
           />
         )}
 
@@ -1244,13 +1392,13 @@ export function WorkspaceProfile() {
             </div>
             <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }}
               ref={(el) => { sectionRefs.current.skills = el; }}>
-              <SkillsTab skills={skills} onSave={handleSkillsSave} />
+              <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
             </div>
           </div>
         )}
 
         {page === "learning" && (
-          <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} />
+          <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} skillGoals={skillGoals} onGraduate={graduateSkill} />
         )}
 
         {page === "assets" && !profile && !loading && (
