@@ -15,7 +15,7 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2;
+export type Screen = 0 | 1 | 2 | 3;
 
 export interface Job {
   id: number;
@@ -75,7 +75,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
         </div>
       </div>
       <div className="flex gap-[5px] items-center" style={{ paddingTop: 6 }}>
-        {[0, 1].map((i) => (
+        {[0, 1, 2].map((i) => (
           <div
             key={i}
             style={{
@@ -103,6 +103,7 @@ interface WelcomeProps {
   onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onContinue: () => void;
+  onSkip: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
@@ -118,6 +119,7 @@ export function ScreenWelcome({
   onLIChange,
   onLIKey,
   onContinue,
+  onSkip,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -356,6 +358,26 @@ export function ScreenWelcome({
           </button>
         </div>
       )}
+
+      {/* Skip link */}
+      <button
+        onClick={onSkip}
+        style={{
+          background: "none",
+          border: "none",
+          fontFamily: "var(--font-dm-sans), system-ui",
+          fontSize: 13,
+          fontWeight: 400,
+          color: "#A09890",
+          cursor: "pointer",
+          padding: 0,
+          textAlign: "left",
+          textDecoration: "underline",
+          textUnderlineOffset: 3,
+        }}
+      >
+        Skip for now
+      </button>
     </div>
   );
 }
@@ -1134,7 +1156,526 @@ export function ScreenTargetJobs({
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Screen 4 — Transition
+   Role / preference data
+   ────────────────────────────────────────────────────────────── */
+export const ROLE_BUCKETS = [
+  {
+    id: "pm",
+    label: "Product Management",
+    titles: [
+      "Product Manager",
+      "Senior Product Manager",
+      "Principal / Staff Product Manager",
+      "Group Product Manager",
+      "Director of Product Management",
+      "VP of Product",
+      "Head of Product",
+      "Chief Product Officer (CPO)",
+    ],
+  },
+  {
+    id: "strategy",
+    label: "Corporate Strategy / CorpDev",
+    titles: [
+      "Strategy Manager",
+      "Senior Strategy Manager",
+      "Director of Strategy",
+      "VP of Corporate Strategy",
+      "Head of Corporate Development",
+      "Director of Corporate Development",
+      "Chief Strategy Officer (CSO)",
+      "Business Development Director",
+      "Chief of Staff",
+    ],
+  },
+  {
+    id: "ops",
+    label: "Operations / BizOps",
+    titles: [
+      "Business Operations Manager",
+      "Director of Operations",
+      "VP of Operations",
+      "Chief Operating Officer (COO)",
+      "Chief of Staff",
+      "Head of BizOps",
+      "General Manager",
+      "Director of Program Management",
+      "Transformation Director",
+    ],
+  },
+  {
+    id: "pevc",
+    label: "PE / VC Operations",
+    titles: [
+      "Operating Partner",
+      "Head of Portfolio Operations",
+      "Portfolio Operations Manager",
+      "Value Creation Manager",
+      "Chief of Staff (PE/VC-backed)",
+      "VP of Operations (PE-backed)",
+    ],
+  },
+];
+
+export const SALARY_RANGES = [
+  "Under $100K",
+  "$100K – $150K",
+  "$150K – $200K",
+  "$200K – $250K",
+  "$250K – $300K",
+  "$300K – $400K",
+  "$400K+",
+  "Prefer not to say",
+];
+
+const PRIORITIES = [
+  "Remote-first",
+  "Hybrid-friendly",
+  "Work-life balance",
+  "High compensation",
+  "Equity / ownership",
+  "Mission-driven",
+  "Fast growth",
+  "Strong team culture",
+  "Specific location",
+];
+
+/* ──────────────────────────────────────────────────────────────
+   Screen 1 — Target Roles
+   ────────────────────────────────────────────────────────────── */
+interface TargetRolesProps {
+  selectedBuckets: string[];
+  selectedTitles: string[];
+  onToggleBucket: (id: string) => void;
+  onToggleTitle: (title: string) => void;
+  onContinue: () => void;
+}
+
+export function ScreenTargetRoles({
+  selectedBuckets,
+  selectedTitles,
+  onToggleBucket,
+  onToggleTitle,
+  onContinue,
+}: TargetRolesProps) {
+  const availableTitles = ROLE_BUCKETS
+    .filter((b) => selectedBuckets.includes(b.id))
+    .flatMap((b) => b.titles)
+    .filter((t, i, arr) => arr.indexOf(t) === i);
+
+  const canContinue = selectedTitles.length > 0;
+  const atMax = selectedTitles.length >= 3;
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
+        <h2
+          style={{
+            fontFamily: "var(--font-cormorant), Georgia, serif",
+            fontSize: 50,
+            fontWeight: 500,
+            fontStyle: "italic",
+            color: "#1A1A1A",
+            lineHeight: 1.04,
+            letterSpacing: "-0.2px",
+            marginBottom: 14,
+          }}
+        >
+          What roles are you targeting?
+        </h2>
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 16,
+            fontWeight: 300,
+            color: "#52493F",
+            lineHeight: 1.65,
+            maxWidth: 440,
+          }}
+        >
+          Pick a category, then choose up to 3 specific titles.
+        </p>
+      </div>
+
+      {/* Bucket chips */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.35s" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#A09890",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: 12,
+          }}
+        >
+          Category
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {ROLE_BUCKETS.map((b) => {
+            const active = selectedBuckets.includes(b.id);
+            return (
+              <button
+                key={b.id}
+                onClick={() => onToggleBucket(b.id)}
+                style={{
+                  padding: "10px 18px",
+                  background: active ? "#1A3A2F" : "transparent",
+                  color: active ? "#E8D5A3" : "#52493F",
+                  border: `1.5px solid ${active ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
+                  borderRadius: 6,
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 13,
+                  fontWeight: active ? 500 : 400,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  letterSpacing: "0.1px",
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.borderColor = "rgba(26,58,47,0.5)";
+                    e.currentTarget.style.color = "#1A1A1A";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.borderColor = "rgba(26,58,47,0.22)";
+                    e.currentTarget.style.color = "#52493F";
+                  }
+                }}
+              >
+                {b.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Title chips — appear once a bucket is selected */}
+      {availableTitles.length > 0 && (
+        <div className="anim-fade-up">
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 10,
+              fontWeight: 500,
+              color: "#A09890",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: 12,
+            }}
+          >
+            {atMax ? "Specific role · max 3 selected" : "Specific role · pick up to 3"}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {availableTitles.map((title) => {
+              const selected = selectedTitles.includes(title);
+              const disabled = !selected && atMax;
+              return (
+                <button
+                  key={title}
+                  onClick={() => !disabled && onToggleTitle(title)}
+                  style={{
+                    padding: "8px 16px",
+                    background: selected ? "rgba(26,58,47,0.1)" : "transparent",
+                    color: disabled ? "#C5BFB7" : selected ? "#1A3A2F" : "#52493F",
+                    border: `1.5px solid ${selected ? "#1A3A2F" : disabled ? "rgba(26,58,47,0.1)" : "rgba(26,58,47,0.2)"}`,
+                    borderRadius: 100,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 13,
+                    fontWeight: selected ? 500 : 400,
+                    cursor: disabled ? "default" : "pointer",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!selected && !disabled) e.currentTarget.style.borderColor = "rgba(26,58,47,0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!selected && !disabled) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)";
+                  }}
+                >
+                  {title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Continue */}
+      {canContinue && (
+        <div className="anim-fade-up">
+          <button
+            onClick={onContinue}
+            style={{
+              padding: "14px 30px",
+              background: "#1A3A2F",
+              color: "#E8D5A3",
+              border: "none",
+              borderRadius: 5,
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: "pointer",
+              letterSpacing: "0.2px",
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            Continue →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Screen 2 — About You
+   ────────────────────────────────────────────────────────────── */
+interface AboutYouProps {
+  employmentStatus: "active" | "exploring" | null;
+  currentSalary: string;
+  targetSalary: string;
+  priorities: string[];
+  onEmploymentChange: (v: "active" | "exploring") => void;
+  onCurrentSalaryChange: (v: string) => void;
+  onTargetSalaryChange: (v: string) => void;
+  onTogglePriority: (p: string) => void;
+  onContinue: () => void;
+}
+
+export function ScreenAboutYou({
+  employmentStatus,
+  currentSalary,
+  targetSalary,
+  priorities,
+  onEmploymentChange,
+  onCurrentSalaryChange,
+  onTargetSalaryChange,
+  onTogglePriority,
+  onContinue,
+}: AboutYouProps) {
+  const salaryRows = [
+    { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
+    { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
+  ];
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
+        <h2
+          style={{
+            fontFamily: "var(--font-cormorant), Georgia, serif",
+            fontSize: 50,
+            fontWeight: 500,
+            fontStyle: "italic",
+            color: "#1A1A1A",
+            lineHeight: 1.04,
+            letterSpacing: "-0.2px",
+            marginBottom: 14,
+          }}
+        >
+          A few more things.
+        </h2>
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 16,
+            fontWeight: 300,
+            color: "#52493F",
+            lineHeight: 1.65,
+            maxWidth: 440,
+          }}
+        >
+          Helps us match you to the right roles and filter out the wrong ones.
+        </p>
+      </div>
+
+      {/* Employment status */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.3s" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#A09890",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: 12,
+          }}
+        >
+          Where are you right now?
+        </p>
+        <div style={{ display: "flex", gap: 10 }}>
+          {(["active", "exploring"] as const).map((s) => {
+            const label = s === "active" ? "Actively looking" : "Exploring options";
+            const selected = employmentStatus === s;
+            return (
+              <button
+                key={s}
+                onClick={() => onEmploymentChange(s)}
+                style={{
+                  padding: "12px 20px",
+                  background: selected ? "#1A3A2F" : "transparent",
+                  color: selected ? "#E8D5A3" : "#52493F",
+                  border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
+                  borderRadius: 6,
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 14,
+                  fontWeight: selected ? 500 : 400,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.5)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.22)";
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Salary dropdowns */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.5s", display: "flex", gap: 16, flexWrap: "wrap" }}>
+        {salaryRows.map(({ label, value, onChange }) => (
+          <div key={label} style={{ flex: "1 1 200px" }}>
+            <p
+              style={{
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 10,
+                fontWeight: 500,
+                color: "#A09890",
+                letterSpacing: "1px",
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              {label}{" "}
+              <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" }}>
+                (optional)
+              </span>
+            </p>
+            <div style={{ position: "relative" }}>
+              <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "11px 36px 11px 14px",
+                  border: "1.5px solid rgba(26,58,47,0.22)",
+                  borderRadius: 6,
+                  background: "#FAF8F4",
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 14,
+                  fontWeight: 400,
+                  color: value ? "#1A1A1A" : "#A09890",
+                  cursor: "pointer",
+                  appearance: "none",
+                  outline: "none",
+                }}
+              >
+                <option value="">Select a range</option>
+                {SALARY_RANGES.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <svg
+                style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+                width="12" height="7" viewBox="0 0 12 7" fill="none"
+              >
+                <path d="M1 1L6 6L11 1" stroke="#A09890" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Priorities */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.7s" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#A09890",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: 12,
+          }}
+        >
+          What matters most to you?{" "}
+          <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" }}>(optional)</span>
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {PRIORITIES.map((p) => {
+            const selected = priorities.includes(p);
+            return (
+              <button
+                key={p}
+                onClick={() => onTogglePriority(p)}
+                style={{
+                  padding: "8px 16px",
+                  background: selected ? "rgba(26,58,47,0.1)" : "transparent",
+                  color: selected ? "#1A3A2F" : "#52493F",
+                  border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.2)"}`,
+                  borderRadius: 100,
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 13,
+                  fontWeight: selected ? 500 : 400,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)";
+                }}
+              >
+                {p}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="anim-fade-up" style={{ animationDelay: "0.9s" }}>
+        <button
+          onClick={onContinue}
+          style={{
+            padding: "14px 30px",
+            background: "#1A3A2F",
+            color: "#E8D5A3",
+            border: "none",
+            borderRadius: 5,
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: "pointer",
+            letterSpacing: "0.2px",
+            transition: "opacity 0.15s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          Let&apos;s go →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Screen 3 — Transition
    ────────────────────────────────────────────────────────────── */
 export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () => void }) {
   return (

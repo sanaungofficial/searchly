@@ -6,11 +6,12 @@ import { createClient } from "@/utils/supabase/client";
 import {
   ScoutHeader,
   ScreenWelcome,
-  ScreenReadBack,
+  ScreenTargetRoles,
+  ScreenAboutYou,
   ScreenTransition,
   DemoNextButton,
+  ROLE_BUCKETS,
   type Screen,
-  type ReadBackData,
 } from "@/components/scout/screens";
 import { ScoutWorkspace } from "@/components/scout/workspace";
 
@@ -84,6 +85,13 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [liInput, setLiInput] = useState("");
 
+  const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
+  const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
+  const [employmentStatus, setEmploymentStatus] = useState<"active" | "exploring" | null>(null);
+  const [currentSalary, setCurrentSalary] = useState("");
+  const [targetSalary, setTargetSalary] = useState("");
+  const [priorities, setPriorities] = useState<string[]>([]);
+
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -104,6 +112,12 @@ export default function Home() {
     setResumeFilename(null);
     setResumeUploaded(false);
     setLiInput("");
+    setSelectedBuckets([]);
+    setSelectedTitles([]);
+    setEmploymentStatus(null);
+    setCurrentSalary("");
+    setTargetSalary("");
+    setPriorities([]);
   }, []);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
@@ -145,30 +159,71 @@ export default function Home() {
         body: JSON.stringify({ linkedinUrl: liInput.trim() }),
       }).catch(() => {});
     }
-    goTo(resumeUploaded ? 1 : 2);
-  }, [liInput, resumeUploaded, goTo]);
+    goTo(1);
+  }, [liInput, goTo]);
 
   const onLIKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && (resumeUploaded || liInput.trim())) onWelcomeContinue();
   }, [resumeUploaded, liInput, onWelcomeContinue]);
 
-  const handleReadbackConfirm = useCallback((data: ReadBackData | null) => {
-    if (data?.targetRoles?.length) {
+  const onSkipProfile = useCallback(() => goTo(1), [goTo]);
+
+  const onToggleBucket = useCallback((id: string) => {
+    const newBuckets = selectedBuckets.includes(id)
+      ? selectedBuckets.filter((b) => b !== id)
+      : [...selectedBuckets, id];
+    setSelectedBuckets(newBuckets);
+    const validTitles = new Set(
+      ROLE_BUCKETS.filter((b) => newBuckets.includes(b.id)).flatMap((b) => b.titles)
+    );
+    setSelectedTitles((prev) => prev.filter((t) => validTitles.has(t)));
+  }, [selectedBuckets]);
+
+  const onToggleTitle = useCallback((title: string) => {
+    setSelectedTitles((prev) => {
+      if (prev.includes(title)) return prev.filter((t) => t !== title);
+      if (prev.length >= 3) return prev;
+      return [...prev, title];
+    });
+  }, []);
+
+  const onRolesContinue = useCallback(() => {
+    if (selectedTitles.length) {
       fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetRoles: data.targetRoles.map((r) => r.role) }),
+        body: JSON.stringify({ targetRoles: selectedTitles }),
       }).catch(() => {});
     }
     goTo(2);
-  }, [goTo]);
+  }, [selectedTitles, goTo]);
+
+  const onTogglePriority = useCallback((p: string) => {
+    setPriorities((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  }, []);
+
+  const onAboutYouContinue = useCallback(() => {
+    fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employmentStatus: employmentStatus ?? null,
+        currentSalary: currentSalary || null,
+        targetSalary: targetSalary || null,
+        priorities,
+      }),
+    }).catch(() => {});
+    goTo(3);
+  }, [employmentStatus, currentSalary, targetSalary, priorities, goTo]);
 
   const demoAdvance = () => {
     if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
       window.setTimeout(() => setResumeUploaded(true), 1300);
-    } else if (screen === 1) {
-      goTo(2);
+    } else if (screen === 1 || screen === 2) {
+      goTo((screen + 1) as Screen);
     }
   };
 
@@ -215,6 +270,7 @@ export default function Home() {
               onLIChange={onLIChange}
               onLIKey={onLIKey}
               onContinue={onWelcomeContinue}
+              onSkip={onSkipProfile}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
@@ -223,12 +279,28 @@ export default function Home() {
             />
           )}
           {screen === 1 && (
-            <ScreenReadBack
-              onConfirm={handleReadbackConfirm}
-              onRefine={() => goTo(0)}
+            <ScreenTargetRoles
+              selectedBuckets={selectedBuckets}
+              selectedTitles={selectedTitles}
+              onToggleBucket={onToggleBucket}
+              onToggleTitle={onToggleTitle}
+              onContinue={onRolesContinue}
             />
           )}
-          {screen === 2 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
+          {screen === 2 && (
+            <ScreenAboutYou
+              employmentStatus={employmentStatus}
+              currentSalary={currentSalary}
+              targetSalary={targetSalary}
+              priorities={priorities}
+              onEmploymentChange={setEmploymentStatus}
+              onCurrentSalaryChange={setCurrentSalary}
+              onTargetSalaryChange={setTargetSalary}
+              onTogglePriority={onTogglePriority}
+              onContinue={onAboutYouContinue}
+            />
+          )}
+          {screen === 3 && <ScreenTransition onEnterWorkspace={enterWorkspace} />}
 
           {screen === 0 && (
             <p
