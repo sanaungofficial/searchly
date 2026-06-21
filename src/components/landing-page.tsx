@@ -8,7 +8,7 @@ export function LandingPage() {
       {/* Nav */}
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <div>
-          <span style={{ fontSize: 18, fontWeight: 600, color: "#1C3A2F", letterSpacing: "-0.3px" }}>Searchly</span>
+          <span style={{ fontSize: 18, fontWeight: 600, color: "#1C3A2F", letterSpacing: "-0.3px" }}>Kimchi</span>
           <span style={{ marginLeft: 8, fontSize: 10, color: "#A09890", letterSpacing: "0.8px", textTransform: "uppercase" }}>by Second Ladder</span>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -29,7 +29,7 @@ export function LandingPage() {
           Land your next role faster.
         </h1>
         <p style={{ margin: "0 0 40px", fontSize: 19, color: "#52493F", lineHeight: 1.65, maxWidth: 540, marginLeft: "auto", marginRight: "auto" }}>
-          Searchly reads your resume, tracks your pipeline, and generates tailored applications — cover letters, bullet points, and fit analysis — for every job you pursue.
+          Kimchi reads your resume, tracks your pipeline, and generates tailored applications — cover letters, bullet points, and fit analysis — for every job you pursue.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link href="/signup" style={{ fontSize: 15, fontWeight: 600, color: "#F2EDE3", background: "#1C3A2F", borderRadius: 12, padding: "14px 32px", textDecoration: "none", display: "inline-block" }}>
