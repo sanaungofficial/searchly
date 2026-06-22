@@ -149,7 +149,7 @@ export function WorkspaceDashboard() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: "#F2EDE3",
+        background: "#F7F5F2",
         animation: "fadeIn 0.3s ease both",
       }}
     >
