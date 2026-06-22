@@ -31,6 +31,14 @@ function getColor(name: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+const editableWrapStyle: React.CSSProperties = {
+  borderRadius: 6,
+  padding: "4px 6px",
+  margin: "-4px -6px",
+  transition: "background 0.15s",
+  cursor: "text",
+};
+
 function AutoTextarea({
   value,
   placeholder,
@@ -41,6 +49,8 @@ function AutoTextarea({
   onBlur: (v: string) => void;
 }) {
   const [local, setLocal] = useState(value);
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { setLocal(value); }, [value]);
@@ -53,27 +63,38 @@ function AutoTextarea({
   }, [local]);
 
   return (
-    <textarea
-      ref={ref}
-      value={local}
-      onChange={(e) => setLocal(e.target.value)}
-      onBlur={() => onBlur(local)}
-      placeholder={placeholder}
-      rows={1}
+    <div
       style={{
-        width: "100%",
-        fontFamily: "var(--font-dm-sans), system-ui",
-        fontSize: 12,
-        color: "#1a1a1a",
-        background: "transparent",
-        border: "none",
-        outline: "none",
-        resize: "none",
-        lineHeight: 1.55,
-        padding: 0,
-        overflow: "hidden",
+        ...editableWrapStyle,
+        background: focused ? "#fff" : hovered ? "#f5f3f0" : "transparent",
+        outline: focused ? "1.5px solid #c5b9af" : "none",
       }}
-    />
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <textarea
+        ref={ref}
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); onBlur(local); }}
+        placeholder={placeholder}
+        rows={1}
+        style={{
+          width: "100%",
+          fontFamily: "var(--font-dm-sans), system-ui",
+          fontSize: 12,
+          color: "#1a1a1a",
+          background: "transparent",
+          border: "none",
+          outline: "none",
+          resize: "none",
+          lineHeight: 1.55,
+          padding: 0,
+          overflow: "hidden",
+        }}
+      />
+    </div>
   );
 }
 
@@ -82,32 +103,48 @@ function InlineInput({
   placeholder,
   onBlur,
   mono,
+  bold,
 }: {
   value: string;
   placeholder: string;
   onBlur: (v: string) => void;
   mono?: boolean;
+  bold?: boolean;
 }) {
   const [local, setLocal] = useState(value);
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
   useEffect(() => { setLocal(value); }, [value]);
 
   return (
-    <input
-      value={local}
-      onChange={(e) => setLocal(e.target.value)}
-      onBlur={() => onBlur(local)}
-      placeholder={placeholder}
+    <div
       style={{
-        width: "100%",
-        fontFamily: mono ? "monospace" : "var(--font-dm-sans), system-ui",
-        fontSize: 12,
-        color: "#1a1a1a",
-        background: "transparent",
-        border: "none",
-        outline: "none",
-        padding: 0,
+        ...editableWrapStyle,
+        background: focused ? "#fff" : hovered ? "#f5f3f0" : "transparent",
+        outline: focused ? "1.5px solid #c5b9af" : "none",
       }}
-    />
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <input
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); onBlur(local); }}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          fontFamily: mono ? "monospace" : "var(--font-dm-sans), system-ui",
+          fontSize: mono ? 11 : 12,
+          fontWeight: bold ? 600 : 400,
+          color: mono ? "#6b7280" : "#1a1a1a",
+          background: "transparent",
+          border: "none",
+          outline: "none",
+          padding: 0,
+        }}
+      />
+    </div>
   );
 }
 
