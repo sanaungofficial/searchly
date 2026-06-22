@@ -32,7 +32,7 @@ const ROLE_FILTERS: (UserRole | "ALL")[] = ["ALL", "USER", "COACH", "RECRUITER",
 const SUB_FILTERS = ["ALL", "FREE", "PAID", "PAST_DUE"] as const;
 type SubFilter = (typeof SUB_FILTERS)[number];
 
-export function UsersTable({ users: initialUsers }: { users: UserRow[] }) {
+export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[]; canEdit: boolean }) {
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "ALL">("ALL");
@@ -201,6 +201,7 @@ export function UsersTable({ users: initialUsers }: { users: UserRow[] }) {
       {selectedUser && (
         <UserDrawer
           user={selectedUser}
+          canEdit={canEdit}
           onClose={() => setSelectedUser(null)}
           onRoleUpdate={handleRoleUpdate}
         />
