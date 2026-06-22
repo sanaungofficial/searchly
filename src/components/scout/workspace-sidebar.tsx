@@ -34,14 +34,17 @@ interface NavItem {
   label: string;
   path: string;
   Icon: (p: { className?: string }) => React.ReactElement;
+  prodOnly?: boolean; // hide on production when true
 }
+
+const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
 
 const NAV_ITEMS: NavItem[] = [
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
   { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
-  { id: "live", label: "Live", path: "/live", Icon: LiveIcon },
-  { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon },
-  { id: "network", label: "Network", path: "/network", Icon: NetworkIcon },
+  { id: "live", label: "Live", path: "/live", Icon: LiveIcon, prodOnly: true },
+  { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon, prodOnly: true },
+  { id: "network", label: "Network", path: "/network", Icon: NetworkIcon, prodOnly: true },
 ];
 
 function initials(name: string | null, email: string) {
@@ -288,7 +291,7 @@ export function WorkspaceSidebar({
             </button>
           )}
 
-          {isStaff && (
+          {isStaff && !IS_PROD && (
             <button
               onClick={() => navigate("/clients")}
               style={{
@@ -325,7 +328,7 @@ export function WorkspaceSidebar({
             </button>
           )}
 
-          {NAV_ITEMS.map(({ id, label, path, Icon }) => {
+          {NAV_ITEMS.filter(item => !(IS_PROD && item.prodOnly)).map(({ id, label, path, Icon }) => {
             const active = isActive(path);
             const bg = active ? "rgba(232,213,163,0.12)" : "transparent";
             const color = active ? "#E8D5A3" : "rgba(232,213,163,0.48)";
