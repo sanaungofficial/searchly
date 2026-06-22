@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Cormorant_Garamond, DM_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -53,6 +54,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <SpeedInsights />
       </body>
     </html>
   );
