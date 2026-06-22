@@ -1841,8 +1841,8 @@ export function WorkspaceProfile() {
 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
-    { id: "dreamrole", label: "Dream Role" },
-    { id: "learning", label: "Learning Path" },
+    { id: "dreamrole", label: "Target Roles" },
+    { id: "learning", label: "Upskilling" },
     { id: "assets", label: "Assets" },
   ];
 

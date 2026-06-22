@@ -11,6 +11,37 @@ import {
 } from "./workspace-data";
 import { PlusIcon, RefreshIcon } from "./workspace-icons";
 
+// Shared label style matching admin dashboard: font-mono, xs, uppercase, stone-400
+const SECTION_LABEL: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'Courier New', monospace",
+  fontSize: 11,
+  fontWeight: 500,
+  color: "#a8a29e",
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+  marginBottom: 12,
+};
+
+// Matching admin StatCard value: Playfair, 3xl, stone-800
+const STAT_VALUE: React.CSSProperties = {
+  fontFamily: "var(--font-playfair), Georgia, serif",
+  fontSize: 34,
+  fontWeight: 600,
+  color: "#1c1917",
+  lineHeight: 1,
+};
+
+// Matching admin StatCard label
+const STAT_LABEL: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'Courier New', monospace",
+  fontSize: 10,
+  fontWeight: 500,
+  color: "#a8a29e",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  marginTop: 6,
+};
+
 export function WorkspaceDashboard() {
   const { kanbanCards, addJob } = useWorkspace();
 
@@ -43,11 +74,11 @@ export function WorkspaceDashboard() {
     .filter((c) => c.days <= 7 && c.stage !== "closed")
     .sort((a, b) => a.days - b.days);
 
-  const funnelStages: { key: keyof typeof pipeline; label: string; color: string }[] = [
-    { key: "saved", label: "Saved", color: "#8B9E8B" },
-    { key: "applied", label: "Applied", color: "#5A8A6E" },
-    { key: "interview", label: "Interviewing", color: "#2D6B4A" },
-    { key: "offer", label: "Offer", color: "#1A3A2F" },
+  const funnelStages: { key: keyof typeof pipeline; label: string }[] = [
+    { key: "saved", label: "Saved" },
+    { key: "applied", label: "Applied" },
+    { key: "interview", label: "Interviewing" },
+    { key: "offer", label: "Offer" },
   ];
 
   function convRate(from: number, to: number) {
@@ -284,24 +315,24 @@ export function WorkspaceDashboard() {
               <div style={{ display: "grid", gridTemplateColumns: jobAnalysis.description && jobAnalysis.requirements.length > 0 ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
                 {jobAnalysis.description && (
                   <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                    <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, fontWeight: 600, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
                       Role Summary
                     </p>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.65, textWrap: "pretty" }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#2A2218", lineHeight: 1.65 }}>
                       {jobAnalysis.description}
                     </p>
                   </div>
                 )}
                 {jobAnalysis.requirements.length > 0 && (
                   <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
+                    <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, fontWeight: 600, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
                       Key Requirements
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       {jobAnalysis.requirements.map((r: string, i: number) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
                           <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
                         </div>
                       ))}
                     </div>
@@ -318,7 +349,7 @@ export function WorkspaceDashboard() {
                 </button>
                 <button
                   onClick={dismissJobAnalysis}
-                  style={{ padding: "10px 16px", background: "transparent", color: "#A09890", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
+                  style={{ padding: "10px 16px", background: "transparent", color: "#a8a29e", border: "none", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, cursor: "pointer" }}
                 >
                   Dismiss
                 </button>
@@ -330,103 +361,55 @@ export function WorkspaceDashboard() {
 
       {/* Main scrollable content */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-        <div style={{ padding: "24px 32px 48px" }}>
+        <div style={{ padding: "28px 32px 48px" }}>
 
-          {/* Pipeline funnel strip */}
-          <div style={{ marginBottom: 28 }}>
-            <p style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 9, fontWeight: 500, color: "#A09890",
-              letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 12,
-            }}>
-              Your pipeline
-            </p>
+          {/* Pipeline — admin StatCard style */}
+          <div style={{ marginBottom: 32 }}>
+            <p style={SECTION_LABEL}>Your pipeline</p>
 
             {total === 0 ? (
               <div style={{
-                background: "rgba(26,58,47,0.04)", borderRadius: 10, padding: "20px 24px",
-                border: "1px solid rgba(26,58,47,0.08)", textAlign: "center",
+                background: "#FFFFFF", borderRadius: 12, padding: "20px 24px",
+                border: "1px solid #e7e5e4", textAlign: "center",
               }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#a8a29e" }}>
                   No jobs tracked yet — add your first job above to start building your pipeline.
                 </p>
               </div>
             ) : (
               <>
-                {/* Funnel chips row */}
-                <div style={{ display: "flex", alignItems: "stretch", gap: 0, marginBottom: 16 }}>
+                {/* 4-column stat card grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
                   {funnelStages.map((stage, idx) => {
                     const count = pipeline[stage.key];
                     const prevCount = idx === 0 ? null : pipeline[funnelStages[idx - 1].key];
                     const rate = prevCount !== null ? convRate(prevCount, count) : null;
-                    const isLast = idx === funnelStages.length - 1;
                     return (
-                      <div key={stage.key} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
-                        {idx > 0 && (
-                          <div style={{
-                            display: "flex", flexDirection: "column", alignItems: "center",
-                            padding: "0 6px", flexShrink: 0,
-                          }}>
-                            <span style={{ fontSize: 10, color: "#C5B9AF", lineHeight: 1 }}>→</span>
-                            {rate !== null && (
-                              <span style={{
-                                fontFamily: "var(--font-dm-sans), system-ui",
-                                fontSize: 8, color: "#A09890", marginTop: 2, whiteSpace: "nowrap",
-                              }}>
-                                {rate}%
-                              </span>
-                            )}
-                          </div>
+                      <div
+                        key={stage.key}
+                        style={{
+                          background: "#FFFFFF",
+                          borderRadius: 12,
+                          border: "1px solid #e7e5e4",
+                          padding: "20px 24px",
+                        }}
+                      >
+                        <p style={STAT_LABEL}>{stage.label}</p>
+                        <p style={STAT_VALUE}>{count}</p>
+                        {rate !== null && (
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#a8a29e", marginTop: 4 }}>
+                            {rate}% from previous
+                          </p>
                         )}
-                        <div style={{
-                          flex: 1, background: "#FFFFFF",
-                          borderRadius: isLast ? "0 8px 8px 0" : idx === 0 ? "8px 0 0 8px" : 0,
-                          border: "1px solid rgba(0,0,0,0.07)",
-                          borderLeft: idx > 0 ? "none" : "1px solid rgba(0,0,0,0.07)",
-                          padding: "14px 16px", textAlign: "center",
-                        }}>
-                          <div style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 22, fontWeight: 700, color: stage.color, lineHeight: 1,
-                          }}>
-                            {count}
-                          </div>
-                          <div style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 10, color: "#A09890", marginTop: 4, fontWeight: 500,
-                          }}>
-                            {stage.label}
-                          </div>
-                        </div>
                       </div>
                     );
                   })}
-                  {pipeline.closed > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", marginLeft: 10, flexShrink: 0 }}>
-                      <div style={{
-                        background: "rgba(0,0,0,0.04)", borderRadius: 20,
-                        padding: "6px 12px", border: "1px solid rgba(0,0,0,0.06)",
-                        display: "flex", alignItems: "center", gap: 5,
-                      }}>
-                        <span style={{ fontSize: 10 }}>❌</span>
-                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
-                          {pipeline.closed} archived
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* 7-day activity feed */}
                 {recentActivity.length > 0 && (
                   <div>
-                    <p style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 9, fontWeight: 500, color: "#A09890",
-                      letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8,
-                    }}>
-                      Last 7 days
-                    </p>
+                    <p style={SECTION_LABEL}>Last 7 days</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {recentActivity.slice(0, 6).map((card: KanbanCard) => {
                         const stageLabel = card.stage === "saved" ? "Saved" : card.stage === "applied" ? "Applied" : card.stage === "interview" ? "Interviewing" : card.stage === "offer" ? "Offer" : card.stage;
@@ -434,40 +417,39 @@ export function WorkspaceDashboard() {
                         return (
                           <div key={card.id} style={{
                             display: "flex", alignItems: "center", gap: 10,
-                            padding: "8px 12px", background: "#FFFFFF",
-                            borderRadius: 7, border: "1px solid rgba(0,0,0,0.06)",
+                            padding: "10px 14px", background: "#FFFFFF",
+                            borderRadius: 8, border: "1px solid #e7e5e4",
                           }}>
-                            <div style={{
-                              width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: stageColor,
-                            }} />
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: stageColor }} />
                             <span style={{
                               fontFamily: "var(--font-dm-sans), system-ui",
-                              fontSize: 12, color: "#1A1A1A", fontWeight: 500, flex: 1, minWidth: 0,
+                              fontSize: 13, color: "#1c1917", fontWeight: 500, flex: 1, minWidth: 0,
                               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                             }}>
                               {card.company}
                             </span>
-                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#a8a29e" }}>·</span>
                             <span style={{
                               fontFamily: "var(--font-dm-sans), system-ui",
-                              fontSize: 11, color: "#52493F",
+                              fontSize: 12, color: "#57534e",
                               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180,
                             }}>
                               {card.role}
                             </span>
                             <span style={{
-                              fontFamily: "var(--font-dm-sans), system-ui",
+                              fontFamily: "ui-monospace, monospace",
                               fontSize: 10, color: stageColor,
-                              background: `${stageColor}14`,
+                              background: stageColor + "18",
                               padding: "2px 8px", borderRadius: 100, flexShrink: 0, fontWeight: 500,
+                              textTransform: "uppercase", letterSpacing: "0.05em",
                             }}>
                               {stageLabel}
                             </span>
                             <span style={{
                               fontFamily: "var(--font-dm-sans), system-ui",
-                              fontSize: 10, color: "#A09890", flexShrink: 0, marginLeft: 4,
+                              fontSize: 11, color: "#a8a29e", flexShrink: 0,
                             }}>
-                              {card.days === 0 ? "today" : card.days === 1 ? "1d ago" : `${card.days}d ago`}
+                              {card.days === 0 ? "today" : card.days === 1 ? "1d ago" : card.days + "d ago"}
                             </span>
                           </div>
                         );
@@ -482,18 +464,12 @@ export function WorkspaceDashboard() {
           {/* Market signals strip */}
           <div style={{ marginBottom: 28 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <p style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 9, fontWeight: 500, color: "#A09890",
-                letterSpacing: "1.1px", textTransform: "uppercase",
-              }}>
-                Kimchi signals · updated weekly
-              </p>
+              <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 11, fontWeight: 500, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 0 }}>Kimchi signals · updated weekly</p>
               <button
                 onClick={refreshSignals}
                 style={{
                   background: "none", border: "none", cursor: "pointer",
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#1A3A2F",
+                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F",
                   padding: 0, display: "flex", alignItems: "center", gap: 4,
                 }}
               >
@@ -503,14 +479,11 @@ export function WorkspaceDashboard() {
 
             {signalsLoading && (
               <div style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "12px 16px",
-                background: "#FFFFFF", borderRadius: 9, border: "1px solid rgba(0,0,0,0.06)",
+                display: "flex", alignItems: "center", gap: 8, padding: "14px 18px",
+                background: "#FFFFFF", borderRadius: 12, border: "1px solid #e7e5e4",
               }}>
-                <div style={{
-                  width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F",
-                  animation: "pulse 1s ease infinite", flexShrink: 0,
-                }} />
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
+                <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A3A2F" }}>
                   Kimchi is scanning the market…
                 </p>
               </div>
@@ -519,19 +492,13 @@ export function WorkspaceDashboard() {
             {signalsData && (
               <>
                 <div style={{
-                  background: "#FFFFFF", borderRadius: 9, padding: "14px 18px", marginBottom: 10,
-                  border: "1px solid rgba(0,0,0,0.06)", borderLeft: "3px solid #1A3A2F",
-                  borderLeftWidth: 3, borderLeftColor: "#1A3A2F",
+                  background: "#FFFFFF", borderRadius: 12, padding: "18px 22px", marginBottom: 12,
+                  border: "1px solid #e7e5e4", borderLeft: "3px solid #1A3A2F",
                 }}>
-                  <p style={{
-                    fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600,
-                    color: "#A09890", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 6,
-                  }}>
-                    This week&apos;s read
-                  </p>
+                  <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 11, fontWeight: 500, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>This week&apos;s read</p>
                   <p style={{
                     fontFamily: "var(--font-cormorant), Georgia, serif",
-                    fontSize: 18, fontWeight: 600, color: "#1A1A1A", lineHeight: 1.45, textWrap: "pretty",
+                    fontSize: 20, fontWeight: 600, color: "#1c1917", lineHeight: 1.45,
                   }}>
                     {signalsData.headline}
                   </p>
@@ -540,36 +507,35 @@ export function WorkspaceDashboard() {
                   {signalsData.signals.map((s: SignalItem, i: number) => {
                     const sentimentColor = s.sentiment === "positive" ? "#2D6B4A" : s.sentiment === "negative" ? "#8B3A3A" : "#7A6020";
                     const sentimentBg = s.sentiment === "positive" ? "rgba(45,107,74,0.08)" : s.sentiment === "negative" ? "rgba(139,58,58,0.08)" : "rgba(122,96,32,0.08)";
-                    const typeLabel = s.type === "hiring_surge" ? "↑ Hiring" : s.type === "hiring_freeze" ? "↓ Freeze" : s.type === "funding" ? "$ Funding" : s.type === "role_demand" ? "⬆ Demand" : s.type === "salary" ? "$ Salary" : "◎ Trend";
+                    const typeLabel = s.type === "hiring_surge" ? "Hiring" : s.type === "hiring_freeze" ? "Freeze" : s.type === "funding" ? "Funding" : s.type === "role_demand" ? "Demand" : s.type === "salary" ? "Salary" : "Trend";
                     return (
                       <div key={i} style={{
-                        flex: "none", width: 240, background: "#FFFFFF", borderRadius: 9,
-                        padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        flex: "none", width: 252, background: "#FFFFFF", borderRadius: 12,
+                        padding: "16px 18px", border: "1px solid #e7e5e4",
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
                           <span style={{
                             padding: "2px 8px", borderRadius: 100, background: sentimentBg,
-                            fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 700,
-                            color: sentimentColor, textTransform: "uppercase",
+                            fontFamily: "ui-monospace, monospace", fontSize: 9, fontWeight: 700,
+                            color: sentimentColor, textTransform: "uppercase", letterSpacing: "0.05em",
                           }}>
                             {typeLabel}
                           </span>
                           {s.company && (
-                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#1A3A2F" }}>
+                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F" }}>
                               {s.company}
                             </span>
                           )}
                         </div>
                         <p style={{
                           fontFamily: "var(--font-cormorant), Georgia, serif",
-                          fontSize: 15, fontWeight: 600, color: "#1A1A1A", marginBottom: 5, lineHeight: 1.4, textWrap: "pretty",
+                          fontSize: 16, fontWeight: 600, color: "#1c1917", marginBottom: 6, lineHeight: 1.4,
                         }}>
                           {s.title}
                         </p>
                         <p style={{
-                          fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10,
-                          fontWeight: 300, color: "#4A8B6A", lineHeight: 1.5,
+                          fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11,
+                          color: "#4A8B6A", lineHeight: 1.5,
                         }}>
                           → {s.actionable}
                         </p>
@@ -583,56 +549,38 @@ export function WorkspaceDashboard() {
 
           {/* Salary benchmark + hot/cold skills */}
           {signalsData && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 20 }}>
-              <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "16px 18px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                <p style={{
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600,
-                  color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8,
-                }}>
-                  Salary benchmark
-                </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
+              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "20px 22px", border: "1px solid #e7e5e4" }}>
+                <p style={SECTION_LABEL}>Salary benchmark</p>
                 <p style={{
                   fontFamily: "var(--font-cormorant), Georgia, serif",
-                  fontSize: 16, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", marginBottom: 4,
+                  fontSize: 18, fontWeight: 500, fontStyle: "italic", color: "#1c1917", marginBottom: 6,
                 }}>
                   {signalsData.salaryBenchmark.role}
                 </p>
-                <p style={{
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11,
-                  fontWeight: 300, color: "#52493F", lineHeight: 1.55, textWrap: "pretty",
-                }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#57534e", lineHeight: 1.6 }}>
                   {signalsData.salaryBenchmark.note}
                 </p>
               </div>
 
-              <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "16px 18px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                <p style={{
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600,
-                  color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8,
-                }}>
-                  Skills in demand
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "20px 22px", border: "1px solid #e7e5e4" }}>
+                <p style={SECTION_LABEL}>Skills in demand</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
                   {signalsData.hotSkills.map((s) => (
                     <span key={s} style={{
                       padding: "3px 10px", background: "rgba(74,139,106,0.1)", borderRadius: 100,
-                      fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A",
+                      fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, color: "#2D6B4A",
                     }}>
                       ↑ {s}
                     </span>
                   ))}
                 </div>
-                <p style={{
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600,
-                  color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6,
-                }}>
-                  Cooling
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 11, fontWeight: 500, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Cooling</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {signalsData.coldSkills.map((s) => (
                     <span key={s} style={{
                       padding: "3px 10px", background: "rgba(160,152,144,0.12)", borderRadius: 100,
-                      fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268",
+                      fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#78716c",
                     }}>
                       ↓ {s}
                     </span>
