@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
   COMPANIES,
@@ -23,37 +25,17 @@ import { CoverLetterDrawer } from "./cover-letter-drawer";
 
 type OppTab = "discover" | "companies" | "pipeline";
 
-interface OpportunitiesProps {
-  onOpenLive: () => void;
-  /** Controlled drawer state (lifted to parent so ChatWidget can open drawer from any section) */
-  drawerCardId: number | null;
-  setDrawerCardId: (id: number | null) => void;
-  drawerTool: DrawerTool;
-  setDrawerTool: (t: DrawerTool) => void;
-  /** Controlled kanban cards (lifted so ChatWidget can show job picker) */
-  kanbanCards: KanbanCard[];
-  setKanbanCards: React.Dispatch<React.SetStateAction<KanbanCard[]>>;
-  addJob: (company: string, role: string, url?: string, meta?: JobMeta) => Promise<void>;
-  updateStage: (cardId: number, stage: KanbanStage) => Promise<void>;
-  removeJob: (cardId: number) => Promise<void>;
-  activeSubtab: OppTab;
-  setSubtab: (t: OppTab) => void;
-}
+// Props now sourced from WorkspaceContext
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface OpportunitiesProps {}
 
-export function WorkspaceOpportunities({
-  onOpenLive,
-  drawerCardId,
-  setDrawerCardId,
-  drawerTool,
-  setDrawerTool,
-  kanbanCards,
-  setKanbanCards,
-  addJob,
-  updateStage,
-  removeJob,
-  activeSubtab,
-  setSubtab,
-}: OpportunitiesProps) {
+export function WorkspaceOpportunities() {
+  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool } = useWorkspace();
+  const router = useRouter();
+  const pathname = usePathname();
+  const onOpenLive = () => router.push("/live");
+  const activeSubtab: OppTab = pathname === "/opportunities/companies" ? "companies" : pathname === "/opportunities/pipeline" ? "pipeline" : "discover";
+  const setSubtab = (t: OppTab) => { if (t === "discover") router.push("/opportunities"); else router.push(`/opportunities/${t}`); };
   const tab = activeSubtab;
   const setTab = setSubtab;
   const [showAddPanel, setShowAddPanel] = useState(false);
