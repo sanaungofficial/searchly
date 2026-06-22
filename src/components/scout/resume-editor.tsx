@@ -253,7 +253,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "#F2EDE3",
+        background: "#F7F5F2",
         display: "flex",
         flexDirection: "column",
         fontFamily: "var(--font-dm-sans), system-ui, sans-serif",

@@ -23,5 +23,5 @@ export default function Home() {
     });
   }, [router]);
 
-  return <div style={{ height: "100vh", background: "#F2EDE3" }} />;
+  return <div style={{ height: "100vh", background: "#F7F5F2" }} />;
 }

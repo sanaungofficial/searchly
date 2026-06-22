@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export function LandingPage() {
   return (
-    <div style={{ background: "#F2EDE3", minHeight: "100vh", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+    <div style={{ background: "#F7F5F2", minHeight: "100vh", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
       {/* Nav */}
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <div>

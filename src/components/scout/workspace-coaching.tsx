@@ -60,7 +60,7 @@ export function WorkspaceCoaching() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: "#F2EDE3",
+        background: "#F7F5F2",
         animation: "fadeIn 0.3s ease both",
       }}
     >
@@ -147,7 +147,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
     <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} />
       <div style={{ position: "relative", background: "#fff", borderRadius: 14, padding: "36px 32px", maxWidth: 400, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", textAlign: "center" }}>
-        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#F2EDE3", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22 }}>🔒</div>
+        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22 }}>🔒</div>
         <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 22, fontWeight: 600, fontStyle: "italic", color: "#1a1a1a", marginBottom: 10 }}>Coaching is a paid feature</p>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#7a7268", lineHeight: 1.65, marginBottom: 28 }}>
           Subscribe to Kimchi to book 1:1 sessions with coaches, see their rates, and get personalized guidance on your job search.

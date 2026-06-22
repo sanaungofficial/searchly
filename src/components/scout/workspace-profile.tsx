@@ -205,7 +205,7 @@ function PersonalTab({ profile, onSave }: {
               className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => setEditing(false)} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F2EDE3] rounded-lg">Cancel</button>
+            <button onClick={() => setEditing(false)} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
           </div>
         </div>
       ) : (
@@ -275,7 +275,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
         <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-lg hover:border-[#1C3A2F]/40 transition-colors">+ Add education</button>
         <div className="flex gap-2 pt-1">
           <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F2EDE3] rounded-lg">Cancel</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
         </div>
       </div>
     </div>
@@ -348,7 +348,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
         <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-lg hover:border-[#1C3A2F]/40 transition-colors">+ Add experience</button>
         <div className="flex gap-2 pt-1">
           <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F2EDE3] rounded-lg">Cancel</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
         </div>
       </div>
     </div>
@@ -438,7 +438,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
           </div>
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F2EDE3] rounded-lg">Cancel</button>
+            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
           </div>
         </div>
       ) : (
@@ -1413,7 +1413,7 @@ export function WorkspaceProfile() {
   ];
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F2EDE3", animation: "fadeIn 0.3s ease both" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F7F5F2", animation: "fadeIn 0.3s ease both" }}>
       <div ref={scrollRef} style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
