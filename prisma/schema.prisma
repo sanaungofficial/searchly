@@ -99,6 +99,9 @@ model Job {
   stage        JobStage @default(SAVED)
   notes        String?
 
+  userNotes          String?
+  companyLinkedinUrl String?
+
   resumeUrl    String?
   coverLetter  String?
   fitAnalysis  String?
