@@ -4,12 +4,9 @@ import { useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
-  INITIAL_SIGNALS,
   type KanbanCard,
-  type SignalItem,
-  type SignalsData,
 } from "./workspace-data";
-import { PlusIcon, RefreshIcon } from "./workspace-icons";
+import { PlusIcon } from "./workspace-icons";
 
 // Shared label style matching admin dashboard: font-mono, xs, uppercase, stone-400
 const SECTION_LABEL: React.CSSProperties = {
@@ -58,8 +55,6 @@ export function WorkspaceDashboard() {
   }>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
-  const [signalsData, setSignalsData] = useState<SignalsData | null>(INITIAL_SIGNALS);
-  const [signalsLoading, setSignalsLoading] = useState(false);
 
   const pipeline = {
     saved: kanbanCards.filter((c) => c.stage === "saved").length,
@@ -133,15 +128,6 @@ export function WorkspaceDashboard() {
     setAddJobError(null);
   };
 
-  const refreshSignals = () => {
-    setSignalsLoading(true);
-    setSignalsData(null);
-    window.setTimeout(() => {
-      setSignalsData(INITIAL_SIGNALS);
-      setSignalsLoading(false);
-    }, 1500);
-  };
-
   return (
     <div
       style={{
@@ -149,7 +135,7 @@ export function WorkspaceDashboard() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: "#F2EDE3",
+        background: "#F7F5F2",
         animation: "fadeIn 0.3s ease both",
       }}
     >
@@ -461,134 +447,6 @@ export function WorkspaceDashboard() {
             )}
           </div>
 
-          {/* Market signals strip */}
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 11, fontWeight: 500, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 0 }}>Kimchi signals · updated weekly</p>
-              <button
-                onClick={refreshSignals}
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F",
-                  padding: 0, display: "flex", alignItems: "center", gap: 4,
-                }}
-              >
-                <RefreshIcon /> Refresh →
-              </button>
-            </div>
-
-            {signalsLoading && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "14px 18px",
-                background: "#FFFFFF", borderRadius: 12, border: "1px solid #e7e5e4",
-              }}>
-                <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A3A2F" }}>
-                  Kimchi is scanning the market…
-                </p>
-              </div>
-            )}
-
-            {signalsData && (
-              <>
-                <div style={{
-                  background: "#FFFFFF", borderRadius: 12, padding: "18px 22px", marginBottom: 12,
-                  border: "1px solid #e7e5e4", borderLeft: "3px solid #1A3A2F",
-                }}>
-                  <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 11, fontWeight: 500, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>This week&apos;s read</p>
-                  <p style={{
-                    fontFamily: "var(--font-cormorant), Georgia, serif",
-                    fontSize: 20, fontWeight: 600, color: "#1c1917", lineHeight: 1.45,
-                  }}>
-                    {signalsData.headline}
-                  </p>
-                </div>
-                <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
-                  {signalsData.signals.map((s: SignalItem, i: number) => {
-                    const sentimentColor = s.sentiment === "positive" ? "#2D6B4A" : s.sentiment === "negative" ? "#8B3A3A" : "#7A6020";
-                    const sentimentBg = s.sentiment === "positive" ? "rgba(45,107,74,0.08)" : s.sentiment === "negative" ? "rgba(139,58,58,0.08)" : "rgba(122,96,32,0.08)";
-                    const typeLabel = s.type === "hiring_surge" ? "Hiring" : s.type === "hiring_freeze" ? "Freeze" : s.type === "funding" ? "Funding" : s.type === "role_demand" ? "Demand" : s.type === "salary" ? "Salary" : "Trend";
-                    return (
-                      <div key={i} style={{
-                        flex: "none", width: 252, background: "#FFFFFF", borderRadius: 12,
-                        padding: "16px 18px", border: "1px solid #e7e5e4",
-                      }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-                          <span style={{
-                            padding: "2px 8px", borderRadius: 100, background: sentimentBg,
-                            fontFamily: "ui-monospace, monospace", fontSize: 9, fontWeight: 700,
-                            color: sentimentColor, textTransform: "uppercase", letterSpacing: "0.05em",
-                          }}>
-                            {typeLabel}
-                          </span>
-                          {s.company && (
-                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A3A2F" }}>
-                              {s.company}
-                            </span>
-                          )}
-                        </div>
-                        <p style={{
-                          fontFamily: "var(--font-cormorant), Georgia, serif",
-                          fontSize: 16, fontWeight: 600, color: "#1c1917", marginBottom: 6, lineHeight: 1.4,
-                        }}>
-                          {s.title}
-                        </p>
-                        <p style={{
-                          fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11,
-                          color: "#4A8B6A", lineHeight: 1.5,
-                        }}>
-                          → {s.actionable}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Salary benchmark + hot/cold skills */}
-          {signalsData && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
-              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "20px 22px", border: "1px solid #e7e5e4" }}>
-                <p style={SECTION_LABEL}>Salary benchmark</p>
-                <p style={{
-                  fontFamily: "var(--font-cormorant), Georgia, serif",
-                  fontSize: 18, fontWeight: 500, fontStyle: "italic", color: "#1c1917", marginBottom: 6,
-                }}>
-                  {signalsData.salaryBenchmark.role}
-                </p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#57534e", lineHeight: 1.6 }}>
-                  {signalsData.salaryBenchmark.note}
-                </p>
-              </div>
-
-              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "20px 22px", border: "1px solid #e7e5e4" }}>
-                <p style={SECTION_LABEL}>Skills in demand</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-                  {signalsData.hotSkills.map((s) => (
-                    <span key={s} style={{
-                      padding: "3px 10px", background: "rgba(74,139,106,0.1)", borderRadius: 100,
-                      fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, color: "#2D6B4A",
-                    }}>
-                      ↑ {s}
-                    </span>
-                  ))}
-                </div>
-                <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 11, fontWeight: 500, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Cooling</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {signalsData.coldSkills.map((s) => (
-                    <span key={s} style={{
-                      padding: "3px 10px", background: "rgba(160,152,144,0.12)", borderRadius: 100,
-                      fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#78716c",
-                    }}>
-                      ↓ {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
         </div>
       </div>

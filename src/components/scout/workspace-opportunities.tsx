@@ -786,7 +786,6 @@ function PipelineTab({
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {sortedCards.map((c) => {
             const job = c.jobRef !== null ? JOBS[c.jobRef] : null;
-            const fitColor = c.fit >= 90 ? "#4A8B6A" : c.fit >= 85 ? "#C4A86A" : "#A09890";
             const stageColor = STAGE_COLORS[c.stage];
             return (
               <div
@@ -826,35 +825,14 @@ function PipelineTab({
                         {c.role}
                       </p>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268" }}>
-                        {c.company} · {job?.location || "Remote"} · {c.days === 0 ? "Today" : `${c.days} days ago`}
+                        {c.company} · {c.days === 0 ? "Today" : `${c.days} days ago`}
                       </p>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 500, color: fitColor }}>
-                        {c.fit}%
-                      </span>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>fit</span>
-                    </div>
                     <StatusDropdown stage={c.stage} onChange={(s) => onChangeStage(c.id, s)} />
                   </div>
                 </div>
-                {job && (
-                  <p
-                    style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 12,
-                      fontWeight: 300,
-                      color: "#52493F",
-                      lineHeight: 1.6,
-                      marginBottom: 14,
-                      textWrap: "pretty",
-                    }}
-                  >
-                    {job.fitSummary}
-                  </p>
-                )}
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button
                     onClick={() => onOpenDrawer(c.id)}
@@ -1048,11 +1026,6 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
             >
               {STAGE_LABELS[card.stage]}
             </span>
-            {card.fit > 0 && (
-              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 13, fontWeight: 500, color: fitColor }}>
-                {card.fit}% fit
-              </span>
-            )}
             {(job?.salary || meta?.salary) && (
               <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
                 · {job?.salary || meta?.salary}
@@ -1679,7 +1652,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
         <ResumeMatchDrawer
           jobTitle={card.role}
           company={card.company}
-          description={meta?.description ?? job?.description ?? ""}
+          description={meta?.description ?? ""}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             if (dbId) setResumeEditorOpen(true);
@@ -1691,7 +1664,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
         <CoverLetterDrawer
           jobTitle={card.role}
           company={card.company}
-          description={meta?.description ?? job?.description ?? ""}
+          description={meta?.description ?? ""}
           onClose={() => setCoverDrawerOpen(false)}
         />
       )}
