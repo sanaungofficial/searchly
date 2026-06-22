@@ -156,11 +156,12 @@ function PriorityBadge({
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -171,10 +172,19 @@ function PriorityBadge({
     : value === "LOW" ? { bg: "#f0fdf4", text: "#16a34a" }
     : { bg: "#f3f4f6", text: "#6b7280" };
 
+  function handleOpen() {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setCoords({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen((o) => !o);
+  }
+
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+    <div style={{ position: "relative", display: "inline-block" }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{
           background: color.bg,
           color: color.text,
@@ -192,14 +202,14 @@ function PriorityBadge({
       </button>
       {open && (
         <div style={{
-          position: "absolute",
-          top: "calc(100% + 4px)",
-          left: 0,
+          position: "fixed",
+          top: coords.top,
+          left: coords.left,
           background: "#fff",
           border: "1px solid #e5e7eb",
           borderRadius: 8,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-          zIndex: 100,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+          zIndex: 9999,
           minWidth: 100,
           overflow: "hidden",
         }}>
