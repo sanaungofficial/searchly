@@ -21,6 +21,12 @@ export async function GET() {
     headline: dbUser?.profile?.headline || null,
     targetRoles: dbUser?.profile?.targetRoles || [],
     parsedData: dbUser?.profile?.parsedData || null,
+    employmentStatus: dbUser?.profile?.employmentStatus || null,
+    currentSalary: dbUser?.profile?.currentSalary || null,
+    targetSalary: dbUser?.profile?.targetSalary || null,
+    careerMotivation: dbUser?.profile?.careerMotivation || null,
+    jobTimeline: dbUser?.profile?.jobTimeline || null,
+    priorities: dbUser?.profile?.priorities || [],
   });
 }
 
