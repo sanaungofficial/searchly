@@ -1523,6 +1523,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
   const extCard = card as KanbanCard & { _dbId?: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string };
   const [urlValue, setUrlValue] = useState(extCard._url ?? "");
   const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
+  const [descValue, setDescValue] = useState(meta?.description ?? "");
   const companyLinkedinUrl = extCard._companyLinkedinUrl ||
     `https://www.linkedin.com/company/${card.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
 
@@ -1534,6 +1535,16 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
       body: JSON.stringify(fields),
     });
     onCardUpdate(fields);
+  }
+
+  function patchDescription(value: string) {
+    if (!dbId) return;
+    const updatedMeta = { ...(meta ?? {}), description: value || null };
+    fetch(`/api/jobs/${dbId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: JSON.stringify(updatedMeta) }),
+    });
   }
 
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
@@ -1804,7 +1815,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
             >
               <span style={{ fontSize: 14, flexShrink: 0 }}>✉</span>
               <span style={{ flex: 1 }}>
-                Create cover letter
+                Build Cover Letter
                 <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Make your application stand out</span>
               </span>
               <span style={{ fontSize: 12, opacity: 0.5 }}>›</span>
@@ -1830,39 +1841,11 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
             >
               <span style={{ fontSize: 14, flexShrink: 0 }}>👍</span>
               <span style={{ flex: 1 }}>
-                Tell me why I&apos;m a good fit
-                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Understand your strengths & gaps</span>
+                Analyze How Well You Fit
+                <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>Understand your strength & weakness</span>
               </span>
               <span style={{ fontSize: 12, opacity: 0.5 }}>{tool === "fit" ? "▲" : "›"}</span>
             </button>
-            {dbId && (
-              <button
-                onClick={() => setResumeEditorOpen(true)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 12px",
-                  background: "#FFFFFF",
-                  color: "#1A1A1A",
-                  border: "1px solid rgba(0,0,0,0.08)",
-                  borderRadius: 7,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s",
-                }}
-              >
-                <span style={{ fontSize: 14, flexShrink: 0 }}>📄</span>
-                <span style={{ flex: 1 }}>
-                  Tailored resume
-                  <span style={{ display: "block", fontSize: 10, fontWeight: 300, opacity: 0.7 }}>AI-tailored full resume for this role</span>
-                </span>
-                <span style={{ fontSize: 12, opacity: 0.5 }}>›</span>
-              </button>
-            )}
           </div>
 
           {/* Tool views or standard drawer content */}
@@ -2213,19 +2196,38 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
                 </div>
               </div>
             </>
-          ) : tool === null && meta ? (
+          ) : tool === null ? (
             <div style={{ animation: "fadeIn 0.3s ease both" }}>
-              {meta.description && (
-                <div style={{ marginBottom: 18 }}>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                    Role summary
-                  </p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#2A2218", lineHeight: 1.7, textWrap: "pretty" }}>
-                    {meta.description}
-                  </p>
-                </div>
-              )}
-              {meta.requirements && meta.requirements.length > 0 && (
+              {/* Editable job description */}
+              <div style={{ marginBottom: 18 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+                  Job Description
+                </p>
+                <textarea
+                  value={descValue}
+                  onChange={(e) => setDescValue(e.target.value)}
+                  onBlur={() => patchDescription(descValue)}
+                  placeholder="Paste or type the job description here. AI will fill this in automatically later."
+                  rows={8}
+                  style={{
+                    width: "100%",
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 11,
+                    fontWeight: 300,
+                    color: "#1A1A1A",
+                    background: "#FFFFFF",
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    borderRadius: 7,
+                    padding: "10px 12px",
+                    resize: "vertical",
+                    outline: "none",
+                    lineHeight: 1.6,
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              {/* Key requirements (from scraped meta) */}
+              {meta?.requirements && meta.requirements.length > 0 && (
                 <div style={{ marginBottom: 18 }}>
                   <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
                     Key requirements
@@ -2240,16 +2242,6 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
                   </div>
                 </div>
               )}
-              <div style={{ padding: "12px 14px", background: "rgba(196,168,106,0.08)", borderRadius: 7, borderLeft: "2px solid #C4A86A" }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#7A6020", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>AI analysis</p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55 }}>
-                  Use the AI tools above to get a tailored resume update, cover letter, and fit analysis for this role.
-                </p>
-              </div>
-            </div>
-          ) : tool === null ? (
-            <div style={{ padding: 24, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12 }}>
-              <SparkleIcon /> Detailed analysis available for jobs Kimchi has read.
             </div>
           ) : null}
 
