@@ -372,6 +372,9 @@ export function WorkspaceOpportunities({
             tool={drawerTool}
             onToolChange={setDrawerTool}
             onDelete={() => { removeJob(card.id); closeDrawer(); }}
+            onCardUpdate={(fields) => setKanbanCards((prev) =>
+              prev.map((c) => c.id === card.id ? { ...c, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`_${k}`, v ?? undefined])) } : c)
+            )}
           />
         );
       })()}
@@ -1500,13 +1503,14 @@ interface JobDrawerProps {
   onClose: () => void;
   moveCard: (id: number, stage: KanbanStage) => void;
   onDelete: () => void;
+  onCardUpdate: (fields: Record<string, string | null>) => void;
   copied: boolean;
   setCopied: (b: boolean) => void;
   tool?: DrawerTool;
   onToolChange?: (t: DrawerTool) => void;
 }
 
-function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
+function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, setCopied, tool = null, onToolChange }: JobDrawerProps) {
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
@@ -1529,6 +1533,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(fields),
     });
+    onCardUpdate(fields);
   }
 
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
