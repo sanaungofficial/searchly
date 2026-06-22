@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   OpportunitiesIcon,
   ProfileIcon,
@@ -10,20 +11,11 @@ import {
   BellIcon,
   ArrowLeftIcon,
 } from "./workspace-icons";
-import { NOTIFICATIONS, type Section } from "./workspace-data";
+import { NOTIFICATIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
+import { useWorkspace } from "@/contexts/workspace-context";
 
 interface SidebarProps {
-  activeSection: Section;
-  onNavigate: (s: Section) => void;
-  onBackToOnboarding: () => void;
-  onSignOut?: () => void;
-  notifOpen: boolean;
-  notifUnreadCount: number;
-  onToggleNotif: () => void;
-  onNavigateNotif: (s: Section) => void;
-  isAdmin?: boolean;
-  userRole?: string;
   isMobile?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
@@ -33,20 +25,23 @@ interface SidebarProps {
     avatarUrl: string | null;
     headline?: string | null;
   };
+  isAdmin?: boolean;
+  userRole?: string;
 }
 
 interface NavItem {
-  id: Section;
+  id: string;
   label: string;
+  path: string;
   Icon: (p: { className?: string }) => React.ReactElement;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "opportunities", label: "Opportunities", Icon: OpportunitiesIcon },
-  { id: "profile", label: "Profile", Icon: ProfileIcon },
-  { id: "live", label: "Live", Icon: LiveIcon },
-  { id: "coaching", label: "Coaching", Icon: CoachingIcon },
-  { id: "network", label: "Network", Icon: NetworkIcon },
+  { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
+  { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
+  { id: "live", label: "Live", path: "/live", Icon: LiveIcon },
+  { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon },
+  { id: "network", label: "Network", path: "/network", Icon: NetworkIcon },
 ];
 
 function initials(name: string | null, email: string) {
@@ -60,30 +55,60 @@ function initials(name: string | null, email: string) {
 }
 
 export function WorkspaceSidebar({
-  activeSection,
-  onNavigate,
-  onBackToOnboarding,
-  onSignOut,
-  notifOpen,
-  notifUnreadCount,
-  onToggleNotif,
-  onNavigateNotif,
-  isAdmin,
-  userRole,
   isMobile = false,
   isOpen,
   onClose,
-  user,
+  user: userProp,
+  isAdmin: isAdminProp,
+  userRole: userRoleProp,
 }: SidebarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const {
+    user: ctxUser,
+    isAdmin: ctxIsAdmin,
+    userRole: ctxUserRole,
+    notifOpen,
+    setNotifOpen,
+    notifRead,
+    setNotifRead,
+    notifUnreadCount,
+    handleSignOut,
+  } = useWorkspace();
+
+  const user = userProp ?? ctxUser ?? undefined;
+  const isAdmin = isAdminProp ?? ctxIsAdmin;
+  const userRole = userRoleProp ?? ctxUserRole;
+
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const hasLiveNow = true; // LIVE_SESSIONS has one isLive session
+  const hasLiveNow = true;
 
   const sidebarVisible = isMobile ? (isOpen ?? false) : true;
 
+  const navigate = (path: string) => {
+    router.push(path);
+    if (isMobile && onClose) onClose();
+  };
+
+  const isActive = (path: string) => {
+    if (path === "/opportunities") return pathname.startsWith("/opportunities");
+    return pathname === path;
+  };
+
+  const onToggleNotif = () => setNotifOpen((p) => !p);
+
+  const onNavigateNotif = (section: string) => {
+    const path = section === "opportunities" ? "/opportunities" : `/${section}`;
+    router.push(path);
+    const allRead: Record<number, boolean> = {};
+    NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));
+    setNotifRead(allRead);
+    setNotifOpen(false);
+  };
+
   return (
     <>
-      {/* Backdrop — mobile only, when sidebar is open */}
       {isMobile && sidebarVisible && (
         <div
           onClick={onClose}
@@ -105,7 +130,6 @@ export function WorkspaceSidebar({
           flexShrink: 0,
           borderRight: "1px solid rgba(232,213,163,0.08)",
           height: "100vh",
-          // Mobile: fixed overlay drawer
           ...(isMobile
             ? {
                 position: "fixed",
@@ -122,29 +146,26 @@ export function WorkspaceSidebar({
       >
         {/* Brand */}
         <div style={{ padding: "26px 22px 20px" }}>
-          {/* TEST LINK — remove when done testing */}
-          {(
-            <button
-              onClick={onBackToOnboarding}
-              style={{
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: 18,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 12,
-                color: "rgba(232,213,163,0.75)",
-                letterSpacing: "0.4px",
-                padding: 0,
-              }}
-            >
-              <ArrowLeftIcon /> Preview onboarding
-            </button>
-          )}
+          <button
+            onClick={() => router.push("/")}
+            style={{
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 18,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 12,
+              color: "rgba(232,213,163,0.75)",
+              letterSpacing: "0.4px",
+              padding: 0,
+            }}
+          >
+            <ArrowLeftIcon /> Preview onboarding
+          </button>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <div
@@ -155,7 +176,7 @@ export function WorkspaceSidebar({
                   color: "#E8D5A3",
                 }}
               >
-                Searchly
+                Kimchi
               </div>
               <div
                 style={{
@@ -171,7 +192,6 @@ export function WorkspaceSidebar({
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-              {/* Mobile close (×) button */}
               {isMobile && (
                 <button
                   onClick={onClose}
@@ -231,15 +251,14 @@ export function WorkspaceSidebar({
 
         {/* Nav items */}
         <div style={{ padding: "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* Admin item — top of nav, admins only */}
           {isAdmin && (
             <button
-              onClick={() => onNavigate("admin")}
+              onClick={() => navigate("/admin")}
               style={{
                 padding: "10px 14px",
                 borderRadius: 7,
                 cursor: "pointer",
-                background: activeSection === "admin" ? "rgba(232,213,163,0.12)" : "transparent",
+                background: pathname === "/admin" ? "rgba(232,213,163,0.12)" : "transparent",
                 display: "flex",
                 alignItems: "center",
                 gap: 11,
@@ -250,7 +269,7 @@ export function WorkspaceSidebar({
             >
               <svg
                 width="15" height="15" viewBox="0 0 24 24" fill="none"
-                stroke={activeSection === "admin" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
+                stroke={pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
               >
                 <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -262,22 +281,21 @@ export function WorkspaceSidebar({
                 fontFamily: "var(--font-dm-sans), system-ui",
                 fontSize: 15,
                 fontWeight: 400,
-                color: activeSection === "admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
+                color: pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
               }}>
                 Admin
               </span>
             </button>
           )}
 
-          {/* Clients item — visible to COACH / RECRUITER / ADMIN */}
           {isStaff && (
             <button
-              onClick={() => onNavigate("clients")}
+              onClick={() => navigate("/clients")}
               style={{
                 padding: "10px 14px",
                 borderRadius: 7,
                 cursor: "pointer",
-                background: activeSection === "clients" ? "rgba(232,213,163,0.12)" : "transparent",
+                background: pathname === "/clients" ? "rgba(232,213,163,0.12)" : "transparent",
                 display: "flex",
                 alignItems: "center",
                 gap: 11,
@@ -288,7 +306,7 @@ export function WorkspaceSidebar({
             >
               <svg
                 width="15" height="15" viewBox="0 0 24 24" fill="none"
-                stroke={activeSection === "clients" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
+                stroke={pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
               >
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -300,22 +318,22 @@ export function WorkspaceSidebar({
                 fontFamily: "var(--font-dm-sans), system-ui",
                 fontSize: 15,
                 fontWeight: 400,
-                color: activeSection === "clients" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
+                color: pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
               }}>
                 Clients
               </span>
             </button>
           )}
 
-          {NAV_ITEMS.map(({ id, label, Icon }) => {
-            const active = activeSection === id;
+          {NAV_ITEMS.map(({ id, label, path, Icon }) => {
+            const active = isActive(path);
             const bg = active ? "rgba(232,213,163,0.12)" : "transparent";
             const color = active ? "#E8D5A3" : "rgba(232,213,163,0.48)";
             const iconColor = active ? "#E8D5A3" : "rgba(232,213,163,0.38)";
             return (
               <button
                 key={id}
-                onClick={() => onNavigate(id)}
+                onClick={() => navigate(path)}
                 style={{
                   padding: "10px 14px",
                   borderRadius: 7,
@@ -347,14 +365,7 @@ export function WorkspaceSidebar({
                     />
                   )}
                 </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 15,
-                    fontWeight: 400,
-                    color,
-                  }}
-                >
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 400, color }}>
                   {label}
                 </span>
               </button>
@@ -382,7 +393,7 @@ export function WorkspaceSidebar({
           </a>
         </div>
 
-        {/* User badge — click to open settings */}
+        {/* User badge */}
         <button
           onClick={() => setSettingsOpen(true)}
           style={{
@@ -442,23 +453,17 @@ export function WorkspaceSidebar({
           </svg>
         </button>
 
-        {/* Settings modal */}
         {settingsOpen && user && (
           <UserSettingsModal
             user={user}
             onClose={() => setSettingsOpen(false)}
-            onSignOut={() => { setSettingsOpen(false); onSignOut?.(); }}
+            onSignOut={() => { setSettingsOpen(false); handleSignOut(); }}
           />
         )}
 
-        {/* Notifications popover */}
         {notifOpen && (
           <>
-            {/* click-away catcher */}
-            <div
-              onClick={onToggleNotif}
-              style={{ position: "fixed", inset: 0, zIndex: 40 }}
-            />
+            <div onClick={onToggleNotif} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
             <div
               style={{
                 position: "absolute",
@@ -473,48 +478,21 @@ export function WorkspaceSidebar({
                 animation: "fadeIn 0.2s ease both",
               }}
             >
-              <div
-                style={{
-                  padding: "14px 18px",
-                  borderBottom: "1px solid #EEE9E2",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1A1A1A",
-                  }}
-                >
-                  Notifications
-                </p>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid #EEE9E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>Notifications</p>
                 {notifUnreadCount > 0 && (
-                  <span
-                    style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 12,
-                      color: "#A09890",
-                    }}
-                  >
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
                     {notifUnreadCount} unread
                   </span>
                 )}
               </div>
               <div style={{ maxHeight: 360, overflowY: "auto" }}>
                 {NOTIFICATIONS.map((n) => {
-                  const dotColor =
-                    n.type === "role" ? "#4A8B6A" : n.type === "deadline" ? "#C4574A" : "#C4A86A";
+                  const dotColor = n.type === "role" ? "#4A8B6A" : n.type === "deadline" ? "#C4574A" : "#C4A86A";
                   return (
                     <button
                       key={n.id}
-                      onClick={() => {
-                        onNavigateNotif(n.section);
-                        onToggleNotif();
-                      }}
+                      onClick={() => { onNavigateNotif(n.section); }}
                       style={{
                         width: "100%",
                         textAlign: "left",
@@ -527,60 +505,14 @@ export function WorkspaceSidebar({
                         gap: 10,
                       }}
                     >
-                      <div
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: "50%",
-                          background: dotColor,
-                          marginTop: 6,
-                          flexShrink: 0,
-                          opacity: n.unread ? 1 : 0.3,
-                        }}
-                      />
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, marginTop: 6, flexShrink: 0, opacity: n.unread ? 1 : 0.3 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", gap: 6, alignItems: "baseline", marginBottom: 2 }}>
-                          <span
-                            style={{
-                              fontFamily: "var(--font-dm-sans), system-ui",
-                              fontSize: 14,
-                              fontWeight: 600,
-                              color: "#1A1A1A",
-                            }}
-                          >
-                            {n.title}
-                          </span>
-                          <span
-                            style={{
-                              fontFamily: "var(--font-dm-sans), system-ui",
-                              fontSize: 12,
-                              color: "#A09890",
-                            }}
-                          >
-                            · {n.company}
-                          </span>
+                          <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{n.title}</span>
+                          <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>· {n.company}</span>
                         </div>
-                        <p
-                          style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 13,
-                            fontWeight: 300,
-                            color: "#52493F",
-                            lineHeight: 1.45,
-                            marginBottom: 4,
-                          }}
-                        >
-                          {n.body}
-                        </p>
-                        <span
-                          style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 12,
-                            color: "#A09890",
-                          }}
-                        >
-                          {n.time}
-                        </span>
+                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.45, marginBottom: 4 }}>{n.body}</p>
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>{n.time}</span>
                       </div>
                     </button>
                   );
