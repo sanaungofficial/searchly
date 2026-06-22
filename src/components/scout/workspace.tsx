@@ -28,12 +28,15 @@ interface WorkspaceProps {
 }
 
 const VALID_SECTIONS: Section[] = ["opportunities", "profile", "coaching", "network", "live", "admin", "clients"];
+const BETA_SECTIONS: Section[] = ["coaching", "network", "live"];
 
 export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, userRole }: WorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const showBeta = process.env.NEXT_PUBLIC_SHOW_BETA === "true";
   const rawTab = searchParams.get("tab") as Section | null;
-  const activeSection: Section = rawTab && VALID_SECTIONS.includes(rawTab) ? rawTab : "opportunities";
+  const resolvedTab: Section = rawTab && VALID_SECTIONS.includes(rawTab) ? rawTab : "opportunities";
+  const activeSection: Section = !showBeta && BETA_SECTIONS.includes(resolvedTab) ? "opportunities" : resolvedTab;
 
   type OppSubtab = "discover" | "companies" | "pipeline";
   const VALID_SUBTABS: OppSubtab[] = ["discover", "companies", "pipeline"];
@@ -101,9 +104,9 @@ export function ScoutWorkspace({ onBackToOnboarding, onSignOut, user, isAdmin, u
         />
       )}
       {activeSection === "profile" && <WorkspaceProfile />}
-      {activeSection === "coaching" && <WorkspaceCoaching />}
-      {activeSection === "network" && <WorkspaceNetwork />}
-      {activeSection === "live" && <WorkspaceLive />}
+      {showBeta && activeSection === "coaching" && <WorkspaceCoaching />}
+      {showBeta && activeSection === "network" && <WorkspaceNetwork />}
+      {showBeta && activeSection === "live" && <WorkspaceLive />}
       {activeSection === "admin" && isAdmin && <WorkspaceAdmin />}
       {activeSection === "clients" && (userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN") && <WorkspaceCoach />}
 
