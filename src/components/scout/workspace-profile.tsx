@@ -953,7 +953,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
       </div>
 
       {/* Table */}
-      <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "visible", position: "relative" }}>
+      <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
         {/* Table header */}
         <div style={{
           display: "grid",
@@ -961,8 +961,6 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
           padding: "10px 20px",
           borderBottom: "1px solid #E5DDD0",
           background: "#FAFAF8",
-          borderTopLeftRadius: 10,
-          borderTopRightRadius: 10,
         }}>
           {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
             <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#A09890" }}>{col}</span>
@@ -985,7 +983,6 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
           resumes.map((r) => (
             <div
               key={r.id}
-              onClick={() => window.open(r.url, "_blank")}
               style={{
                 display: "grid",
                 gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
@@ -993,10 +990,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
                 alignItems: "center",
                 borderBottom: "1px solid #F5F3EF",
                 position: "relative",
-                cursor: "pointer",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#FAFAF8")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               {/* Name + badges */}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1042,7 +1036,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
               </span>
 
               {/* Options menu */}
-              <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
                   style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
@@ -1371,18 +1365,18 @@ export function WorkspaceProfile() {
         {page === "about" && profile && (
           <div style={{ maxWidth: 600 }}>
             <ReadbackCard data={readback} loading={readbackLoading} />
-            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ paddingBottom: 48 }}>
+            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
               ref={(el) => { sectionRefs.current.education = el; }}>
               <EducationTab entries={education} onSave={handleEducationSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 48 }}
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
               ref={(el) => { sectionRefs.current.experience = el; }}>
               <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
             </div>
-            <div style={{ borderTop: "1px solid #E5DDD0", paddingTop: 40, paddingBottom: 60 }}
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
               ref={(el) => { sectionRefs.current.skills = el; }}>
               <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
             </div>
