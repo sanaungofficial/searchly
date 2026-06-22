@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { name, website, notes } = body;
+  const { name, website, notes, type, hqLocation, priority, cultureMission, candidateEdge, targetRoles } = body;
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
 
@@ -37,6 +37,12 @@ export async function POST(request: Request) {
       name,
       website: website ?? null,
       notes: notes ?? null,
+      type: type ?? null,
+      hqLocation: hqLocation ?? null,
+      priority: priority ?? null,
+      cultureMission: cultureMission ?? null,
+      candidateEdge: candidateEdge ?? null,
+      targetRoles: targetRoles ?? null,
     },
   });
 
