@@ -1515,6 +1515,22 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
+
+  const extCard = card as KanbanCard & { _dbId?: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string };
+  const [urlValue, setUrlValue] = useState(extCard._url ?? "");
+  const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
+  const companyLinkedinUrl = extCard._companyLinkedinUrl ||
+    `https://www.linkedin.com/company/${card.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
+
+  function patchField(fields: Record<string, string | null>) {
+    if (!dbId) return;
+    fetch(`/api/jobs/${dbId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
+    });
+  }
+
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
   const fitColor = card.fit >= 90 ? "#4A8B6A" : card.fit >= 85 ? "#C4A86A" : "#A09890";
   const setTool = (t: DrawerTool) => onToolChange?.(t);
@@ -1586,7 +1602,15 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                     marginTop: 2,
                   }}
                 >
-                  {card.company}{(job?.location || meta?.location) ? ` · ${job?.location || meta?.location}` : ""}
+                  <a
+                    href={companyLinkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "inherit", textDecoration: "none", borderBottom: "1px dotted rgba(0,0,0,0.25)" }}
+                  >
+                    {card.company}
+                  </a>
+                  {(job?.location || meta?.location) ? ` · ${job?.location || meta?.location}` : ""}
                 </p>
               </div>
             </div>
@@ -1629,11 +1653,36 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
                 · {job?.salary || meta?.salary}
               </span>
             )}
-            {cardUrl && (
-              <a href={cardUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#4A8B6A", textDecoration: "none", marginLeft: "auto" }}>
-                View posting →
-              </a>
-            )}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+              <input
+                value={urlValue}
+                onChange={(e) => setUrlValue(e.target.value)}
+                onBlur={() => patchField({ url: urlValue || null })}
+                placeholder="Paste job URL…"
+                style={{
+                  width: 160,
+                  fontSize: 10,
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  color: "#52493F",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: "1px solid rgba(0,0,0,0.15)",
+                  outline: "none",
+                  padding: "2px 0",
+                }}
+              />
+              {urlValue && (
+                <a
+                  href={urlValue}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#4A8B6A", fontSize: 12, lineHeight: 1, textDecoration: "none", flexShrink: 0 }}
+                  title="Open link"
+                >
+                  ↗
+                </a>
+              )}
+            </div>
           </div>
           {dbId && (
             <button
@@ -2195,9 +2244,38 @@ function JobDrawer({ card, onClose, moveCard, onDelete, copied, setCopied, tool 
             </div>
           ) : tool === null ? (
             <div style={{ padding: 24, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12 }}>
-              <SparkleIcon /> Detailed analysis available for jobs Searchly has read.
+              <SparkleIcon /> Detailed analysis available for jobs Kimchi has read.
             </div>
           ) : null}
+
+          {/* Notes */}
+          <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid rgba(0,0,0,0.07)" }}>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+              Notes
+            </p>
+            <textarea
+              value={notesValue}
+              onChange={(e) => setNotesValue(e.target.value)}
+              onBlur={() => patchField({ userNotes: notesValue || null })}
+              placeholder="Recruiter contacts, next steps, impressions…"
+              rows={4}
+              style={{
+                width: "100%",
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 11,
+                fontWeight: 300,
+                color: "#1A1A1A",
+                background: "#FFFFFF",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: 7,
+                padding: "10px 12px",
+                resize: "vertical",
+                outline: "none",
+                lineHeight: 1.6,
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
         </div>
       </div>
 
