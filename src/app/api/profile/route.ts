@@ -15,6 +15,7 @@ export async function GET() {
   return NextResponse.json({
     name: dbUser?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
     email: user.email,
+    avatarUrl: dbUser?.avatarUrl || null,
     resumeUrl: dbUser?.profile?.resumeUrl || null,
     linkedinUrl: dbUser?.profile?.linkedinUrl || null,
     headline: dbUser?.profile?.headline || null,

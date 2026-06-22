@@ -21,11 +21,11 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
   } = useWorkspace();
 
   if (!authChecked) {
-    return <div style={{ height: "100vh", background: "#F2EDE3" }} />;
+    return <div style={{ height: "100vh", background: "#F7F5F2" }} />;
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#F2EDE3" }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#F7F5F2" }}>
       <WorkspaceSidebar user={user ?? undefined} isAdmin={isAdmin} userRole={userRole} />
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
         {children}

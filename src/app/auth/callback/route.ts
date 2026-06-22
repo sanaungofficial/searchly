@@ -36,9 +36,11 @@ export async function GET(request: Request) {
       null;
 
     const existing = await prisma.user.findUnique({ where: { email: user.email } });
+    // If the user already has a custom-uploaded avatar, don't overwrite it with the OAuth one
+    const preservedAvatar = existing?.avatarUrl ?? avatarUrl;
     await prisma.user.upsert({
       where: { email: user.email },
-      update: { name, avatarUrl },
+      update: { name, avatarUrl: preservedAvatar },
       create: { email: user.email, name, avatarUrl },
     });
     // Send welcome email only on first sign-in

@@ -7,7 +7,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!admin) redirect("/");
 
   return (
-    <div className="h-full overflow-auto bg-[#F2EDE3]">
+    <div className="h-full overflow-auto bg-[#F7F5F2]">
       <header className="border-b border-stone-200 bg-white/60 backdrop-blur-sm px-8 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <span className="font-semibold text-stone-800 tracking-tight" style={{ fontFamily: "var(--font-playfair)" }}>

@@ -47,7 +47,7 @@ export default function SignupPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#F2EDE3",
+        background: "#F7F5F2",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
