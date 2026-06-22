@@ -330,11 +330,7 @@ export interface KanbanCard {
   days: number;
 }
 
-export const INITIAL_KANBAN_CARDS: KanbanCard[] = [
-  { id: 0, company: "Stripe", initials: "ST", role: "Sr. PM — Revenue Recognition", stage: "saved", fit: 91, jobRef: 0, days: 2 },
-  { id: 1, company: "Linear", initials: "LN", role: "Product Lead", stage: "saved", fit: 87, jobRef: 1, days: 5 },
-  { id: 2, company: "Figma", initials: "FG", role: "Design Systems PM", stage: "interview", fit: 84, jobRef: 2, days: 7 },
-];
+export const INITIAL_KANBAN_CARDS: KanbanCard[] = [];
 
 /* ── Market signals ────────────────────────────────────────── */
 export interface SignalItem {
@@ -1108,45 +1104,4 @@ export interface Notification {
   section: Section;
 }
 
-export const NOTIFICATIONS: Notification[] = [
-  {
-    id: 0,
-    type: "role",
-    company: "Notion",
-    title: "New matching role found",
-    body: "Head of Product Operations — 82% match. Kimchi surfaced this 2 minutes ago.",
-    time: "Just now",
-    unread: true,
-    section: "opportunities",
-  },
-  {
-    id: 1,
-    type: "deadline",
-    company: "Stripe",
-    title: "Application window closing",
-    body: "Revenue recognition role closes in 5 days. Your application package is ready.",
-    time: "1h ago",
-    unread: true,
-    section: "opportunities",
-  },
-  {
-    id: 2,
-    type: "insight",
-    company: "Kimchi",
-    title: "Profile strength increased",
-    body: "Your LinkedIn profile strength went from 65% → 72% based on recent updates.",
-    time: "3h ago",
-    unread: false,
-    section: "profile",
-  },
-  {
-    id: 3,
-    type: "update",
-    company: "Linear",
-    title: "Compensation updated",
-    body: "Linear bumped their Product Lead salary range to $170–220k + equity.",
-    time: "Yesterday",
-    unread: false,
-    section: "opportunities",
-  },
-];
+export const NOTIFICATIONS: Notification[] = [];
