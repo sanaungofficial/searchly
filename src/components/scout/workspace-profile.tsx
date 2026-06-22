@@ -477,7 +477,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
 
 // ─── Tab: Dream Role ──────────────────────────────────────────────────────────
 
-const ANALYSIS_CACHE_KEY = (role: string) => `searchly_analysis_${role.replace(/\W+/g, "_")}`;
+const ANALYSIS_CACHE_KEY = (role: string) => `kimchi_analysis_${role.replace(/\W+/g, "_")}`;
 
 function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, skillGoals, onAddToLearning }: {
   dreamList: string[];
@@ -1081,34 +1081,6 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
         )}
       </div>
 
-      {/* Kimchi suggestions */}
-      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.06)", marginTop: 20 }}>
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>
-          <SparkleIcon /> Kimchi&apos;s suggestions
-        </p>
-        {suggestionsLoading ? (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Analyzing your profile…</p>
-        ) : suggestions.length === 0 ? (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>Upload a resume to get personalized suggestions.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {suggestions.map((s, i) => {
-              const pColor = s.priority === "high" ? "#C4574A" : s.priority === "medium" ? "#C4A86A" : "#A09890";
-              const pBg = s.priority === "high" ? "rgba(196,87,74,0.08)" : s.priority === "medium" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.05)";
-              return (
-                <div key={i} style={{ padding: "12px 14px", background: pBg, borderRadius: 6, borderLeft: `2px solid ${pColor}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: pColor, textTransform: "uppercase", letterSpacing: "1px" }}>{s.priority} &middot; {s.category}</span>
-                  </div>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{s.title}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 4 }}>{s.detail}</p>
-                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#4A8B6A", fontStyle: "italic" }}>&rarr; {s.impact}</p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -1156,7 +1128,7 @@ type AboutSection = "personal" | "education" | "experience" | "skills";
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "skills"];
 const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", education: "Education", experience: "Work experience", skills: "Skills" };
 
-const SKILL_GOALS_KEY = "searchly_skill_goals";
+const SKILL_GOALS_KEY = "kimchi_skill_goals";
 
 export function WorkspaceProfile() {
   const [page, setPage] = useState<PageTab>("about");
@@ -1312,7 +1284,7 @@ export function WorkspaceProfile() {
     { id: "about", label: "About" },
     { id: "dreamrole", label: "Dream Role" },
     { id: "learning", label: "Learning Path" },
-    { id: "assets", label: "Resume Assets" },
+    { id: "assets", label: "Assets" },
   ];
 
   return (
