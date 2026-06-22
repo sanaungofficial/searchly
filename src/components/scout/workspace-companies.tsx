@@ -219,7 +219,8 @@ export function WorkspaceCompanies() {
         body: JSON.stringify({ name: newName.trim() }),
       });
       if (res.ok) {
-        setCompanies((prev) => [await res.json(), ...prev]);
+        const created = await res.json();
+        setCompanies((prev) => [created, ...prev]);
         setNewName("");
         setShowAdd(false);
       }
