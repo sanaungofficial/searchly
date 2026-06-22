@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { SubscriptionStatus } from "@prisma/client";
 import { FREE_AI_LIMIT } from "@/lib/usage";
-import { microsToDollars } from "@/lib/ai-cost";
+import { formatCostUsd } from "@/lib/ai-cost";
 import { UsersTable } from "./users-table";
 
 async function getAdminData() {
@@ -27,13 +27,13 @@ async function getAdminData() {
     }),
     prisma.aiUsageLog.aggregate({
       where: { createdAt: { gte: startOfMonth } },
-      _sum: { inputTokens: true, outputTokens: true, costUsdMicros: true },
+      _sum: { tokensIn: true, tokensOut: true, costUsd: true },
       _count: { _all: true },
     }),
     prisma.aiUsageLog.groupBy({
       by: ["feature"],
       where: { createdAt: { gte: startOfMonth } },
-      _sum: { costUsdMicros: true, inputTokens: true, outputTokens: true },
+      _sum: { costUsd: true, tokensIn: true, tokensOut: true },
       _count: { _all: true },
     }),
   ]);
@@ -63,9 +63,9 @@ async function getAdminData() {
   const usersWithFitAnalysis = await prisma.job.count({ where: { fitAnalysis: { not: null } } });
 
   const totalAiThisMonth = monthlyUsage._sum.count ?? 0;
-  const totalCostMicros = aiCostThisMonth._sum.costUsdMicros ?? 0;
-  const totalInputTokens = aiCostThisMonth._sum.inputTokens ?? 0;
-  const totalOutputTokens = aiCostThisMonth._sum.outputTokens ?? 0;
+  const totalCostUsd = aiCostThisMonth._sum.costUsd ?? 0;
+  const totalTokensIn = aiCostThisMonth._sum.tokensIn ?? 0;
+  const totalTokensOut = aiCostThisMonth._sum.tokensOut ?? 0;
   const usersAtLimit = users.filter((u) => {
     if (u.subscription) return false; // pro users don't have a cap
     const used = u.monthlyUsage[0]?.count ?? 0;
@@ -87,9 +87,9 @@ async function getAdminData() {
     totalAiThisMonth,
     usersAtLimit,
     currentMonth,
-    totalCostMicros,
-    totalInputTokens,
-    totalOutputTokens,
+    totalCostUsd,
+    totalTokensIn,
+    totalTokensOut,
     aiCostByFeature,
   };
 }
@@ -211,17 +211,17 @@ export default async function AdminPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <StatCard
             label="Total Cost"
-            value={microsToDollars(data.totalCostMicros)}
+            value={formatCostUsd(data.totalCostUsd)}
             sub="estimated from token usage"
           />
           <StatCard
             label="Input Tokens"
-            value={data.totalInputTokens.toLocaleString()}
+            value={data.totalTokensIn.toLocaleString()}
             sub="across all features"
           />
           <StatCard
             label="Output Tokens"
-            value={data.totalOutputTokens.toLocaleString()}
+            value={data.totalTokensOut.toLocaleString()}
             sub="across all features"
           />
         </div>
@@ -248,9 +248,9 @@ export default async function AdminPage() {
                 <tr key={row.feature} className="border-b border-stone-50 last:border-0">
                   <td className="px-6 py-3 font-mono text-stone-700">{row.feature}</td>
                   <td className="px-6 py-3 text-right font-mono text-stone-500">{row._count._all}</td>
-                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.inputTokens ?? 0).toLocaleString()}</td>
-                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.outputTokens ?? 0).toLocaleString()}</td>
-                  <td className="px-6 py-3 text-right font-mono text-stone-700 font-medium">{microsToDollars(row._sum.costUsdMicros ?? 0)}</td>
+                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.tokensIn ?? 0).toLocaleString()}</td>
+                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.tokensOut ?? 0).toLocaleString()}</td>
+                  <td className="px-6 py-3 text-right font-mono text-stone-700 font-medium">{formatCostUsd(row._sum.costUsd ?? 0)}</td>
                 </tr>
               ))}
             </tbody>

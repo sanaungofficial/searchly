@@ -6,12 +6,10 @@ const MODEL_PRICING: Record<string, { inputPerMTok: number; outputPerMTok: numbe
   "claude-haiku-4-5-20251001":  { inputPerMTok: 0.80,  outputPerMTok: 4.00  },
 };
 
-export function calcCostMicros(model: string, inputTokens: number, outputTokens: number): number {
+export function calcCostUsd(model: string, inputTokens: number, outputTokens: number): number {
   const pricing = MODEL_PRICING[model] ?? { inputPerMTok: 3.00, outputPerMTok: 15.00 };
-  const costUsd =
-    (inputTokens  / 1_000_000) * pricing.inputPerMTok +
-    (outputTokens / 1_000_000) * pricing.outputPerMTok;
-  return Math.round(costUsd * 1_000_000); // store as microdollars (millionths)
+  return (inputTokens / 1_000_000) * pricing.inputPerMTok +
+         (outputTokens / 1_000_000) * pricing.outputPerMTok;
 }
 
 export async function logAiUsage({
@@ -22,17 +20,17 @@ export async function logAiUsage({
   outputTokens,
 }: {
   userId: string;
-  feature: "chat" | "readback" | "parse-job";
+  feature: string;
   model: string;
   inputTokens: number;
   outputTokens: number;
 }) {
-  const costUsdMicros = calcCostMicros(model, inputTokens, outputTokens);
+  const costUsd = calcCostUsd(model, inputTokens, outputTokens);
   await prisma.aiUsageLog.create({
-    data: { userId, feature, model, inputTokens, outputTokens, costUsdMicros },
+    data: { userId, feature: feature as never, model, tokensIn: inputTokens, tokensOut: outputTokens, costUsd },
   });
 }
 
-export function microsToDollars(micros: number): string {
-  return `$${(micros / 1_000_000).toFixed(4)}`;
+export function formatCostUsd(usd: number): string {
+  return `$${usd.toFixed(4)}`;
 }
