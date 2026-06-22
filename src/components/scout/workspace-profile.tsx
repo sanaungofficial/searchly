@@ -1601,47 +1601,47 @@ function CareerPreferencesPanel({ profile, onSave }: {
           No preferences set yet. Click the pencil to add your search criteria.
         </p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {profile.employmentStatus && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 3 }}>Status</p>
-              <p style={{ fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{statusLabel || profile.employmentStatus}</p>
+              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Status</p>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{statusLabel || profile.employmentStatus}</span>
             </div>
           )}
           {profile.jobTimeline && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 3 }}>Timeline</p>
-              <p style={{ fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{timelineLabel || profile.jobTimeline}</p>
+              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Timeline</p>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{timelineLabel || profile.jobTimeline}</span>
             </div>
           )}
           {(profile.currentSalary || profile.targetSalary) && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {profile.currentSalary && (
                 <div>
-                  <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 3 }}>Current</p>
-                  <p style={{ fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{profile.currentSalary}</p>
+                  <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Current</p>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{profile.currentSalary}</span>
                 </div>
               )}
               {profile.targetSalary && (
                 <div>
-                  <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 3 }}>Target</p>
-                  <p style={{ fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{profile.targetSalary}</p>
+                  <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Target</p>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{profile.targetSalary}</span>
                 </div>
               )}
             </div>
           )}
           {profile.careerMotivation && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 3 }}>Looking for</p>
-              <p style={{ fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{profile.careerMotivation}</p>
+              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Looking for</p>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{profile.careerMotivation}</span>
             </div>
           )}
           {(profile.priorities || []).length > 0 && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 8 }}>Priorities</p>
+              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Priorities</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {profile.priorities.map((p) => (
-                  <span key={p} style={{ padding: "4px 10px", borderRadius: 100, background: "rgba(28,58,47,0.08)", fontSize: 12, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{p}</span>
+                  <span key={p} style={{ padding: "5px 11px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 12, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui" }}>{p}</span>
                 ))}
               </div>
             </div>
@@ -1841,8 +1841,8 @@ export function WorkspaceProfile() {
 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
-    { id: "dreamrole", label: "Dream Role" },
-    { id: "learning", label: "Learning Path" },
+    { id: "dreamrole", label: "Target Roles" },
+    { id: "learning", label: "Upskilling" },
     { id: "assets", label: "Assets" },
   ];
 
