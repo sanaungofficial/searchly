@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
@@ -1131,8 +1132,20 @@ const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal informat
 const SKILL_GOALS_KEY = "kimchi_skill_goals";
 
 export function WorkspaceProfile() {
-  const [page, setPage] = useState<PageTab>("about");
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
+  const router = useRouter();
+  const pathname = usePathname();
+  const page: PageTab =
+    pathname === "/profile/dream-role" ? "dreamrole" :
+    pathname === "/profile/learning-path" ? "learning" :
+    pathname === "/profile/assets" ? "assets" :
+    "about";
+  const setPage = (tab: PageTab) => {
+    if (tab === "about") router.push("/profile");
+    else if (tab === "dreamrole") router.push("/profile/dream-role");
+    else if (tab === "learning") router.push("/profile/learning-path");
+    else if (tab === "assets") router.push("/profile/assets");
+  };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
@@ -1262,7 +1275,7 @@ export function WorkspaceProfile() {
   };
 
   const goToSection = (section: AboutSection) => {
-    setPage("about");
+    if (page !== "about") router.push("/profile");
     setActiveSection(section);
     // Wait for render if switching from another page, then scroll
     setTimeout(() => {
