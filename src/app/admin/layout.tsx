@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { AdminNav } from "./admin-nav";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
 
@@ -20,6 +21,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </span>
           <span className="text-stone-300">/</span>
           <span className="text-sm text-stone-500 font-medium">Admin</span>
+          <span className="text-stone-300">/</span>
+          <AdminNav />
         </div>
         <span className="text-xs text-stone-400 font-mono">super admin</span>
       </header>
