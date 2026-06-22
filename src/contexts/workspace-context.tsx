@@ -37,6 +37,7 @@ interface WorkspaceContextValue {
   setNotifRead: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
   notifUnreadCount: number;
   handleSignOut: () => Promise<void>;
+  updateAvatarUrl: (url: string) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -72,11 +73,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       let headline: string | null = null;
+      let dbAvatarUrl: string | null = null;
       try {
         const res = await fetch("/api/profile");
         if (res.ok) {
           const data = await res.json();
           headline = data?.headline ?? null;
+          dbAvatarUrl = data?.avatarUrl ?? null;
         }
       } catch {}
       try {
@@ -93,12 +96,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setUser({
         name: authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? null,
         email: authUser.email!,
-        avatarUrl: authUser.user_metadata?.avatar_url ?? null,
+        // Prefer the DB value — it holds custom-uploaded avatars that survive OAuth re-logins
+        avatarUrl: dbAvatarUrl ?? authUser.user_metadata?.avatar_url ?? null,
         headline,
       });
       setAuthChecked(true);
     });
   }, [router]);
+
+  const updateAvatarUrl = useCallback((url: string) => {
+    setUser((prev) => prev ? { ...prev, avatarUrl: url } : prev);
+  }, []);
 
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
@@ -128,6 +136,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setNotifRead,
         notifUnreadCount,
         handleSignOut,
+        updateAvatarUrl,
       }}
     >
       {children}
