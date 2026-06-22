@@ -1,24 +1,15 @@
-import { createClient } from "@/utils/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PROMPT_META, PROMPT_DEFAULTS, invalidatePromptCache } from "@/lib/prompts";
 import { NextResponse } from "next/server";
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  if (!ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "")) return null;
-  return user;
-}
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ key: string }> }
 ) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = admin;
 
   const { key } = await params;
   if (!PROMPT_META[key]) return NextResponse.json({ error: "Unknown prompt key" }, { status: 400 });
@@ -61,8 +52,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ key: string }> }
 ) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { key } = await params;
 

@@ -1,16 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 import { AdminNav } from "./admin-nav";
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
-
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || !ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "")) {
-    redirect("/");
-  }
+  const admin = await requireAdmin();
+  if (!admin) redirect("/");
 
   return (
     <div className="min-h-screen bg-[#F2EDE3]">

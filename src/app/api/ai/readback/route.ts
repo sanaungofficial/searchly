@@ -40,8 +40,7 @@ export async function GET(request: Request) {
 
   const { allowed, used, limit } = await checkAndIncrementUsage(
     dbUser?.id ?? user.id,
-    isPro(dbUser?.subscription ?? null),
-    user.email ?? undefined
+    isPro(dbUser?.subscription ?? null) || dbUser?.role === "ADMIN",
   );
 
   if (!allowed) {

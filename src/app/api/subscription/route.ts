@@ -29,15 +29,14 @@ export async function GET() {
 
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
-  const isAdmin = adminEmails.includes((user.email ?? "").toLowerCase());
-  const proUser = isAdmin || isPro(dbUser.subscription);
+  const adminUser = dbUser.role === "ADMIN";
+  const proUser = adminUser || isPro(dbUser.subscription);
   const usage = proUser ? { used: 0, limit: Infinity } : await getUsage(dbUser.id);
 
   return NextResponse.json({
     isPro: proUser,
-    isAdmin,
-    status: isAdmin ? "admin" : (dbUser.subscription?.status ?? null),
+    isAdmin: adminUser,
+    status: adminUser ? "admin" : (dbUser.subscription?.status ?? null),
     currentPeriodEnd: dbUser.subscription?.stripeCurrentPeriodEnd ?? null,
     usage: {
       used: usage.used,
