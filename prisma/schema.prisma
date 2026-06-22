@@ -27,6 +27,7 @@ model User {
   tailoredResumes  TailoredResume[]
   coachProfile     CoachProfile?
   aiUsageLogs      AiUsageLog[]
+  monthlyUsage     MonthlyUsage[]
 }
 
 enum UserRole {
@@ -217,6 +218,18 @@ model AiUsageLog {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model MonthlyUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month     String
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month])
+  @@index([userId])
 }
 
 model PromptConfig {
