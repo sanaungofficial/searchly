@@ -193,6 +193,7 @@ export function WorkspaceOpportunities({
     applied: kanbanCards.filter((c) => c.stage === "applied").length,
     interview: kanbanCards.filter((c) => c.stage === "interview").length,
     offer: kanbanCards.filter((c) => c.stage === "offer").length,
+    closed: kanbanCards.filter((c) => c.stage === "closed").length,
   };
 
   return (
@@ -331,6 +332,7 @@ export function WorkspaceOpportunities({
             addToKanban={addToKanban}
             dismissJobAnalysis={() => { setJobAnalysis(null); setAddJobError(null); }}
             pipeline={pipeline}
+            kanbanCards={kanbanCards}
             signalsData={signalsData}
             signalsLoading={signalsLoading}
             refreshSignals={refreshSignals}
@@ -394,7 +396,8 @@ interface DiscoverTabProps {
   jobAnalysis: OpportunitiesProps extends never ? never : any;
   addToKanban: () => void;
   dismissJobAnalysis: () => void;
-  pipeline: { saved: number; applied: number; interview: number; offer: number };
+  pipeline: { saved: number; applied: number; interview: number; offer: number; closed: number };
+  kanbanCards: KanbanCard[];
   signalsData: SignalsData | null;
   signalsLoading: boolean;
   refreshSignals: () => void;
@@ -413,6 +416,7 @@ function DiscoverTab({
   addToKanban,
   dismissJobAnalysis,
   pipeline,
+  kanbanCards,
   signalsData,
   signalsLoading,
   refreshSignals,
@@ -420,6 +424,23 @@ function DiscoverTab({
   onSelectCompany,
   addJobError,
 }: DiscoverTabProps) {
+  const total = pipeline.saved + pipeline.applied + pipeline.interview + pipeline.offer;
+  const recentActivity = kanbanCards
+    .filter((c) => c.days <= 7 && c.stage !== "closed")
+    .sort((a, b) => a.days - b.days);
+
+  const funnelStages: { key: keyof typeof pipeline; label: string; color: string }[] = [
+    { key: "saved", label: "Saved", color: "#8B9E8B" },
+    { key: "applied", label: "Applied", color: "#5A8A6E" },
+    { key: "interview", label: "Interviewing", color: "#2D6B4A" },
+    { key: "offer", label: "Offer", color: "#1A3A2F" },
+  ];
+
+  function convRate(from: number, to: number) {
+    if (from === 0) return null;
+    return Math.round((to / from) * 100);
+  }
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
       {/* Add job panel */}
@@ -581,6 +602,158 @@ function DiscoverTab({
 
       {/* Welcome / dashboard content */}
       <div style={{ padding: "24px 32px 48px" }}>
+
+        {/* Pipeline funnel strip */}
+        <div style={{ marginBottom: 28 }}>
+          <p style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 9, fontWeight: 500, color: "#A09890",
+            letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 12,
+          }}>
+            Your pipeline
+          </p>
+
+          {total === 0 ? (
+            <div style={{
+              background: "rgba(26,58,47,0.04)", borderRadius: 10, padding: "20px 24px",
+              border: "1px solid rgba(26,58,47,0.08)", textAlign: "center",
+            }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
+                No jobs tracked yet — add your first job above to start building your pipeline.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Funnel chips row */}
+              <div style={{ display: "flex", alignItems: "stretch", gap: 0, marginBottom: 16 }}>
+                {funnelStages.map((stage, idx) => {
+                  const count = pipeline[stage.key];
+                  const prevCount = idx === 0 ? null : pipeline[funnelStages[idx - 1].key];
+                  const rate = prevCount !== null ? convRate(prevCount, count) : null;
+                  const isLast = idx === funnelStages.length - 1;
+                  return (
+                    <div key={stage.key} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+                      {/* Conversion arrow */}
+                      {idx > 0 && (
+                        <div style={{
+                          display: "flex", flexDirection: "column", alignItems: "center",
+                          padding: "0 6px", flexShrink: 0,
+                        }}>
+                          <span style={{ fontSize: 10, color: "#C5B9AF", lineHeight: 1 }}>→</span>
+                          {rate !== null && (
+                            <span style={{
+                              fontFamily: "var(--font-dm-sans), system-ui",
+                              fontSize: 8, color: "#A09890", marginTop: 2, whiteSpace: "nowrap",
+                            }}>
+                              {rate}%
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {/* Stage chip */}
+                      <div style={{
+                        flex: 1, background: "#FFFFFF", borderRadius: isLast ? "0 8px 8px 0" : idx === 0 ? "8px 0 0 8px" : 0,
+                        border: "1px solid rgba(0,0,0,0.07)",
+                        borderLeft: idx > 0 ? "none" : "1px solid rgba(0,0,0,0.07)",
+                        padding: "14px 16px", textAlign: "center",
+                      }}>
+                        <div style={{
+                          fontFamily: "var(--font-dm-sans), system-ui",
+                          fontSize: 22, fontWeight: 700, color: stage.color,
+                          lineHeight: 1,
+                        }}>
+                          {count}
+                        </div>
+                        <div style={{
+                          fontFamily: "var(--font-dm-sans), system-ui",
+                          fontSize: 10, color: "#A09890", marginTop: 4, fontWeight: 500,
+                        }}>
+                          {stage.label}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Archived pill */}
+                {pipeline.closed > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", marginLeft: 10, flexShrink: 0 }}>
+                    <div style={{
+                      background: "rgba(0,0,0,0.04)", borderRadius: 20,
+                      padding: "6px 12px", border: "1px solid rgba(0,0,0,0.06)",
+                      display: "flex", alignItems: "center", gap: 5,
+                    }}>
+                      <span style={{ fontSize: 10 }}>❌</span>
+                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
+                        {pipeline.closed} archived
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 7-day activity feed */}
+              {recentActivity.length > 0 && (
+                <div>
+                  <p style={{
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 9, fontWeight: 500, color: "#A09890",
+                    letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8,
+                  }}>
+                    Last 7 days
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {recentActivity.slice(0, 6).map((card) => {
+                      const stageLabel = card.stage === "saved" ? "Saved" : card.stage === "applied" ? "Applied" : card.stage === "interview" ? "Interviewing" : card.stage === "offer" ? "Offer" : card.stage;
+                      const stageColor = card.stage === "offer" ? "#1A3A2F" : card.stage === "interview" ? "#2D6B4A" : card.stage === "applied" ? "#5A8A6E" : "#8B9E8B";
+                      return (
+                        <div key={card.id} style={{
+                          display: "flex", alignItems: "center", gap: 10,
+                          padding: "8px 12px", background: "#FFFFFF",
+                          borderRadius: 7, border: "1px solid rgba(0,0,0,0.06)",
+                        }}>
+                          <div style={{
+                            width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                            background: stageColor,
+                          }} />
+                          <span style={{
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontSize: 12, color: "#1A1A1A", fontWeight: 500, flex: 1, minWidth: 0,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {card.company}
+                          </span>
+                          <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+                          <span style={{
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontSize: 11, color: "#52493F",
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180,
+                          }}>
+                            {card.role}
+                          </span>
+                          <span style={{
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontSize: 10, color: stageColor,
+                            background: `${stageColor}14`,
+                            padding: "2px 8px", borderRadius: 100, flexShrink: 0, fontWeight: 500,
+                          }}>
+                            {stageLabel}
+                          </span>
+                          <span style={{
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontSize: 10, color: "#A09890", flexShrink: 0, marginLeft: 4,
+                          }}>
+                            {card.days === 0 ? "today" : card.days === 1 ? "1d ago" : `${card.days}d ago`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* Market signals strip */}
         <div style={{ marginBottom: 28 }}>
           <div
