@@ -32,9 +32,9 @@ export default function Home() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        router.push("/opportunities");
+        router.replace("/opportunities");
       } else {
-        setAuthChecked(true);
+        router.replace("/login");
       }
     });
   }, [router]);
@@ -229,12 +229,6 @@ export default function Home() {
               onAttributionChange={setAttribution}
               onContinue={onAboutYouContinue}
             />
-          )}
-          {screen === 0 && (
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#A09890", marginTop: 28 }}>
-              Already have an account?{" "}
-              <a href="/login" style={{ color: "#1A3A2F", textDecoration: "underline", fontWeight: 400 }}>Sign in</a>
-            </p>
           )}
         </div>
       </div>
