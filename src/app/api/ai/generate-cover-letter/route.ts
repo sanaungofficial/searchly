@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -39,34 +40,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No job description provided" }, { status: 400 });
   }
 
-  const candidateName = dbUser?.profile?.fullName || dbUser?.name || "the candidate";
+  const candidateName = dbUser?.name || "the candidate";
 
-  const prompt = `You are a professional cover letter writer. Write a compelling, personalized cover letter for this candidate.
-
-JOB:
-Title: ${jobTitle || "Unknown"}
-Company: ${company || "Unknown"}
-Description:
-${description.slice(0, 3000)}
-
-CANDIDATE RESUME:
-${resumeText.slice(0, 3000)}
-
-Write a 3-paragraph cover letter that:
-1. Opens with a specific hook referencing something real about the company or role (not generic)
-2. Highlights 2-3 concrete achievements from the resume most relevant to this role with specific metrics where available
-3. Closes with genuine enthusiasm and a clear call to action
-
-Rules:
-- Do NOT use the phrase "I am writing to express my interest"
-- Do NOT use "I am excited about this opportunity" or similar filler
-- Do NOT use em dashes
-- Write in first person as ${candidateName}
-- Keep it under 300 words
-- Professional but not stiff — conversational and direct
-- No salutation (Dear Hiring Manager) or sign-off — just the body paragraphs
-
-Return ONLY the cover letter text, no JSON, no labels, no extra commentary.`;
+  const template = await getPrompt("COVER_LETTER_FULL");
+  const prompt = interpolate(template, {
+    jobTitle: jobTitle || "Unknown",
+    company: company || "Unknown",
+    description: description.slice(0, 3000),
+    resumeSlice: resumeText.slice(0, 3000),
+    candidateName,
+  });
 
   const message = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",

@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -39,33 +40,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No job description provided" }, { status: 400 });
   }
 
-  const prompt = `You are analyzing how well a candidate's resume matches a job posting.
-
-JOB:
-Title: ${jobTitle || "Unknown"}
-Company: ${company || "Unknown"}
-Description:
-${description.slice(0, 4000)}
-
-CANDIDATE RESUME:
-${resumeText.slice(0, 4000)}
-
-Analyze the match and return a JSON object with this exact shape:
-{
-  "score": <number 0-10, one decimal place>,
-  "scoreLabel": <"Poor" | "Fair" | "Good" | "Strong" | "Excellent">,
-  "jobTitle": "${jobTitle || "Unknown"}",
-  "resumeTitle": <candidate's most recent/relevant job title from resume>,
-  "yoeRequired": <years of experience the job requires, as string e.g. "4+ years" or "Not specified">,
-  "yoeCandidate": <candidate's total years of relevant experience, as string e.g. "8 years">,
-  "yoeMatch": <true if candidate meets or exceeds requirement>,
-  "industries": <array of industry strings the job mentions>,
-  "industryMatch": <true if candidate has relevant industry experience>,
-  "keywords": <array of up to 12 objects: { "text": string, "matched": boolean } — pull the most important keywords/skills from the job, mark matched:true if found in resume>,
-  "summaryNote": <1 sentence assessment of the candidate's summary/objective alignment with this role>
-}
-
-Return ONLY the JSON object, no markdown.`;
+  const template = await getPrompt("JOB_MATCH");
+  const prompt = interpolate(template, {
+    jobTitle: jobTitle || "Unknown",
+    company: company || "Unknown",
+    description: description.slice(0, 4000),
+    resumeSlice: resumeText.slice(0, 4000),
+  });
 
   const message = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",

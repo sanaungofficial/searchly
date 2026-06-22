@@ -150,7 +150,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
         <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#F2EDE3", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22 }}>🔒</div>
         <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 22, fontWeight: 600, fontStyle: "italic", color: "#1a1a1a", marginBottom: 10 }}>Coaching is a paid feature</p>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#7a7268", lineHeight: 1.65, marginBottom: 28 }}>
-          Subscribe to Searchly to book 1:1 sessions with coaches, see their rates, and get personalized guidance on your job search.
+          Subscribe to Kimchi to book 1:1 sessions with coaches, see their rates, and get personalized guidance on your job search.
         </p>
         <a href="/pricing" style={{ display: "block", padding: "12px 0", background: "#1A3A2F", color: "#E8D5A3", borderRadius: 8, fontFamily: "var(--font-dm-sans)", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 10 }}>View plans →</a>
         <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: 13, color: "#a09890" }}>Maybe later</button>

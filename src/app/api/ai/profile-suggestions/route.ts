@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -39,32 +40,14 @@ export async function GET() {
     ? (profile.targetRoles as string[]).join(", ")
     : "";
 
-  const prompt = `You are analyzing a professional profile to generate specific, actionable improvement suggestions.
-
-PROFILE DATA:
-Resume:
-${resumeText.slice(0, 5000)}
-
-LinkedIn URL: ${linkedinUrl || "Not provided"}
-Headline: ${headline || "Not provided"}
-Skills listed: ${skills || "None listed"}
-Target roles: ${targetRoles || "Not specified"}
-
-Generate 5-7 specific suggestions based on actual content from their profile above. Not generic advice.
-
-Categories must be one of: "LinkedIn", "Resume", "Skills"
-Priority must be one of: "high", "medium", "low"
-
-Return ONLY a JSON array ordered by priority (high first):
-[
-  {
-    "priority": "high",
-    "category": "Resume",
-    "title": "Concise suggestion title",
-    "detail": "Specific detail referencing their actual profile content",
-    "impact": "3-6 word impact phrase"
-  }
-]`;
+  const template = await getPrompt("PROFILE_SUGGESTIONS");
+  const prompt = interpolate(template, {
+    resumeSlice: resumeText.slice(0, 5000),
+    linkedinUrl: linkedinUrl || "Not provided",
+    headline: headline || "Not provided",
+    skills: skills || "None listed",
+    targetRoles: targetRoles || "Not specified",
+  });
 
   const message = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",

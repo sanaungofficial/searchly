@@ -155,7 +155,7 @@ export function WorkspaceSidebar({
                   color: "#E8D5A3",
                 }}
               >
-                Searchly
+                Kimchi
               </div>
               <div
                 style={{

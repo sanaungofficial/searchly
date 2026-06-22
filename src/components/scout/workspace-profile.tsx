@@ -860,6 +860,103 @@ interface ResumeRow {
   targetJobTitle?: string;
 }
 
+function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
+  onClose: () => void;
+  onUpload: () => void;
+  uploading: boolean;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 1000,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#FFFFFF", borderRadius: 16, padding: "48px 40px 40px",
+          width: 540, maxWidth: "90vw", position: "relative",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+        }}
+      >
+        {/* Close */}
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute", top: 14, right: 14,
+            width: 32, height: 32, borderRadius: "50%",
+            background: "#1A1A1A", border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#FFFFFF", fontSize: 16, fontWeight: 700,
+          }}
+        >
+          ✕
+        </button>
+
+        {/* Title */}
+        <h2 style={{
+          fontFamily: "var(--font-dm-sans), system-ui",
+          fontSize: 22, fontWeight: 700, color: "#1A1A1A",
+          margin: "0 0 32px", textAlign: "center",
+        }}>
+          Upload Resume to Get Started
+        </h2>
+
+        {/* Drop zone */}
+        <div
+          onClick={() => inputRef.current?.click()}
+          style={{
+            width: 140, height: 140, display: "flex",
+            alignItems: "center", justifyContent: "center",
+            cursor: "pointer", marginBottom: 32,
+          }}
+        >
+          <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="10" width="65" height="82" rx="6" fill="#F5F5F5" stroke="#D0D0D0" strokeWidth="2"/>
+            <rect x="28" y="24" width="42" height="4" rx="2" fill="#D0D0D0"/>
+            <rect x="28" y="34" width="36" height="4" rx="2" fill="#D0D0D0"/>
+            <rect x="28" y="44" width="40" height="4" rx="2" fill="#D0D0D0"/>
+            <rect x="28" y="54" width="32" height="4" rx="2" fill="#D0D0D0"/>
+            <circle cx="85" cy="85" r="20" fill="#1A1A1A"/>
+            <path d="M85 77v16M77 85l8-8 8 8" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        {/* Note */}
+        <p style={{
+          fontFamily: "var(--font-dm-sans), system-ui",
+          fontSize: 13, color: "#A09890", textAlign: "center",
+          margin: "0 0 24px",
+        }}>
+          Files should be in PDF or Word format and must not exceed 10MB in size.
+        </p>
+
+        {/* Upload button */}
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          style={{
+            width: "100%", padding: "14px 0",
+            background: "#1A1A1A", color: "#FFFFFF",
+            border: "none", borderRadius: 8,
+            fontSize: 15, fontWeight: 600,
+            cursor: uploading ? "not-allowed" : "pointer",
+            opacity: uploading ? 0.6 : 1,
+            fontFamily: "var(--font-dm-sans), system-ui",
+          }}
+        >
+          {uploading ? "Uploading…" : "Upload"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, suggestionsLoading }: {
   resumeUrl: string | null;
   uploading: boolean;
@@ -869,6 +966,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
   suggestionsLoading: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const MAX_SLOTS = 5;
 
   const resumes: ResumeRow[] = resumeUrl
@@ -928,9 +1026,9 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
           >
             ⚡ Upgrade to Turbo: Get Hired Faster ›
           </button>
-          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
+          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { onUpload(f); setShowUploadModal(false); } }} />
           <button
-            onClick={() => inputRef.current?.click()}
+            onClick={() => setShowUploadModal(true)}
             disabled={uploading}
             style={{
               padding: "8px 16px",
@@ -953,7 +1051,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
       </div>
 
       {/* Table */}
-      <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
+      <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "visible", position: "relative" }}>
         {/* Table header */}
         <div style={{
           display: "grid",
@@ -961,6 +1059,8 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
           padding: "10px 20px",
           borderBottom: "1px solid #E5DDD0",
           background: "#FAFAF8",
+          borderTopLeftRadius: 10,
+          borderTopRightRadius: 10,
         }}>
           {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
             <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#A09890" }}>{col}</span>
@@ -972,7 +1072,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
             <button
-              onClick={() => inputRef.current?.click()}
+              onClick={() => setShowUploadModal(true)}
               disabled={uploading}
               style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
@@ -983,6 +1083,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
           resumes.map((r) => (
             <div
               key={r.id}
+              onClick={() => window.open(r.url, "_blank")}
               style={{
                 display: "grid",
                 gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
@@ -990,7 +1091,10 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
                 alignItems: "center",
                 borderBottom: "1px solid #F5F3EF",
                 position: "relative",
+                cursor: "pointer",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#FAFAF8")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               {/* Name + badges */}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1036,7 +1140,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
               </span>
 
               {/* Options menu */}
-              <div style={{ position: "relative" }}>
+              <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
                   style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
@@ -1081,6 +1185,14 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
         )}
       </div>
 
+      {showUploadModal && (
+        <UploadResumeModal
+          onClose={() => setShowUploadModal(false)}
+          onUpload={() => inputRef.current?.click()}
+          uploading={uploading}
+          inputRef={inputRef}
+        />
+      )}
     </div>
   );
 }

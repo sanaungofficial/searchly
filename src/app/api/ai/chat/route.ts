@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 
 let _anthropic: Anthropic | null = null;
@@ -25,7 +26,6 @@ export async function POST(request: Request) {
     focusedJob?: { company: string; role: string } | null;
   };
 
-  // Load user's profile + resume text for context
   const dbUser = await prisma.user.findUnique({
     where: { email: user.email! },
     include: { profile: true },
@@ -41,16 +41,11 @@ export async function POST(request: Request) {
     : "";
 
   const resumeContext = resumeText
-    ? `\n\nUser's resume:\n${resumeText.slice(0, 6000)}` // cap at 6k chars to stay within context budget
+    ? `\n\nUser's resume:\n${resumeText.slice(0, 6000)}`
     : "";
 
-  const systemPrompt = `You are Scout, an AI job search coach built into Kimchi — a job search workspace for senior professionals targeting roles in Product Management, Corporate Strategy, and Operations.
-
-Your job is to help the user land their next role. You're direct, practical, and honest — not a cheerleader. You give specific, actionable advice. You know how hiring actually works at senior levels.
-
-You know about the user's job search:${pipelineContext}${focusContext}${resumeContext}
-
-When discussing specific jobs, reference what you know about them. When the user asks about their background, qualifications, or experience, use their resume to give specific answers. Keep responses concise — 2-4 short paragraphs max unless they ask for something longer. No corporate fluff.`;
+  const template = await getPrompt("CHAT_SYSTEM");
+  const systemPrompt = interpolate(template, { pipelineContext, focusContext, resumeContext });
 
   const CHAT_MODEL = "claude-sonnet-4-6";
   const stream = await getAnthropic().messages.stream({
@@ -71,10 +66,7 @@ When discussing specific jobs, reference what you know about them. When the user
   const readable = new ReadableStream({
     async start(controller) {
       for await (const chunk of stream) {
-        if (
-          chunk.type === "content_block_delta" &&
-          chunk.delta.type === "text_delta"
-        ) {
+        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
           controller.enqueue(encoder.encode(chunk.delta.text));
         }
       }
@@ -82,7 +74,5 @@ When discussing specific jobs, reference what you know about them. When the user
     },
   });
 
-  return new Response(readable, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  });
+  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
 }

@@ -58,7 +58,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           title={onScoutClick ? "Go to workspace" : undefined}
         >
-          Searchly
+          Kimchi
         </button>
         <div
           style={{
@@ -146,7 +146,7 @@ export function ScreenWelcome({
           animationDelay: "0.1s",
         }}
       >
-        Hello. I&apos;m Searchly.
+        Hello. I&apos;m Kimchi.
       </h1>
       <p
         className="anim-fade-up"
@@ -627,7 +627,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
             marginBottom: 14,
           }}
         >
-          Searchly&apos;s read
+          Kimchi&apos;s read
         </p>
         <h2
           style={{
@@ -1609,7 +1609,7 @@ export function ScreenAboutYou({
 
       {/* Attribution */}
       <div className="anim-fade-up" style={{ animationDelay: "0.8s" }}>
-        {sectionLabel("How did you hear about Searchly?", true)}
+        {sectionLabel("How did you hear about Kimchi?", true)}
         <div style={{ position: "relative", maxWidth: 280 }}>
           <select
             value={attribution}
@@ -1690,7 +1690,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
           textWrap: "pretty",
         }}
       >
-        Searchly has your background and knows what you&apos;re built for. Your workspace is ready.
+        Kimchi has your background and knows what you&apos;re built for. Your workspace is ready.
       </p>
 
       {/* Workspace preview */}
@@ -1722,7 +1722,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
                 color: "#E8D5A3",
               }}
             >
-              Searchly
+              Kimchi
             </span>
             <span
               style={{

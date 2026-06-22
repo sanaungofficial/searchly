@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 
 let _a: Anthropic | null = null;
@@ -32,34 +33,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
 
   const resumeText = profile?.resumeText || "";
 
-  const anthropic = getAnthropic();
-  const message = await anthropic.messages.create({
+  const template = await getPrompt("RESUME_TAILOR");
+  const promptContent = interpolate(template, {
+    company: job.company || "",
+    role: job.role || "",
+    jobNotes: job.notes || "",
+    resumeText: resumeText || "(no resume provided)",
+  });
+
+  const message = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 4096,
-    messages: [{
-      role: "user",
-      content: `You are a professional resume writer. Parse and tailor this resume for the given job.
-
-JOB:
-Company: ${job.company || ""}
-Role: ${job.role || ""}
-Notes: ${job.notes || ""}
-
-BASE RESUME TEXT:
-${resumeText || "(no resume provided)"}
-
-Return a JSON array of resume sections. Each section:
-{ "id": "unique-id", "title": "Section Title", "type": "text"|"bullets"|"header", "content": "content string" }
-
-For "bullets" type, content is newline-separated bullet points (no dashes).
-For "header" type, content is the person's name/contact info.
-For "text" type, content is a paragraph.
-
-Include sections: Personal Info (header), Professional Summary (text), Experience (bullets), Education (text), Skills (bullets).
-Tailor the Professional Summary and highlight relevant Experience to match the job role and company.
-
-Return ONLY the JSON array, no other text.`,
-    }],
+    messages: [{ role: "user", content: promptContent }],
   });
 
   const text = message.content[0].type === "text" ? message.content[0].text : "[]";

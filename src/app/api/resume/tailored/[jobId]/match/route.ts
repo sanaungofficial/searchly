@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 
 let _a: Anthropic | null = null;
@@ -35,19 +36,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
     return NextResponse.json({ score: 0, matched: [], missing: [], total: 0 });
   }
 
+  const template = await getPrompt("RESUME_MATCH");
+  const promptContent = interpolate(template, { jobContext });
+
   const message = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 512,
-    messages: [{
-      role: "user",
-      content: `Extract the 12-15 most important skills, technologies, and qualifications from this job description. Focus on specific, concrete terms (not vague phrases like "communication skills" or "team player").
-
-JOB:
-${jobContext}
-
-Return ONLY a JSON array of strings, e.g. ["SQL", "product roadmap", "stakeholder management", "Python"]
-Return ONLY the JSON array, no other text.`,
-    }],
+    messages: [{ role: "user", content: promptContent }],
   });
 
   const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "[]";
