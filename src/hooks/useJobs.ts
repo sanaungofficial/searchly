@@ -31,6 +31,8 @@ interface DbJob {
   stage: string;
   url: string | null;
   notes: string | null;
+  userNotes: string | null;
+  companyLinkedinUrl: string | null;
   createdAt: string;
 }
 
@@ -56,8 +58,11 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     jobRef: null,
     days: Math.floor((Date.now() - new Date(job.createdAt).getTime()) / 86400000),
     _dbId: job.id,
+    _url: job.url ?? undefined,
+    _userNotes: job.userNotes ?? undefined,
+    _companyLinkedinUrl: job.companyLinkedinUrl ?? undefined,
     _meta,
-  } as KanbanCard & { _dbId: string; _meta?: JobMeta };
+  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _meta?: JobMeta };
 }
 
 export function useJobs(fallback: KanbanCard[]) {
