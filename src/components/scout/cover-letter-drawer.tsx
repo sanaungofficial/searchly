@@ -46,6 +46,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
   const [manualDesc, setManualDesc] = useState("");
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [visible, setVisible] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -154,6 +155,24 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
     } catch { /* silent */ } finally {
       setDownloading(false);
     }
+  }
+
+  function handleDownloadPDF() {
+    if (!letter) return;
+    setShowDownloadMenu(false);
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const paras = (letter ?? "")
+      .split("\n\n").filter(Boolean)
+      .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+      .join("");
+    const html = "<!DOCTYPE html><html><head><title>Cover Letter</title>"
+      + "<style>body{font-family:Georgia,serif;max-width:680px;margin:60px auto;"
+      + "color:#1A1A1A;line-height:1.75;font-size:14px}p{margin-bottom:18px}"
+      + "@media print{body{margin:40px}}</style></head>"
+      + "<body>" + paras + "<script>window.onload=function(){window.print()}<\/script></body></html>";
+    win.document.write(html);
+    win.document.close();
   }
 
   const letterParas = (letter ?? "").split("\n\n").filter(Boolean);
