@@ -15,3 +15,11 @@ export async function requireAdmin(): Promise<User | null> {
 export async function isAdmin(): Promise<boolean> {
   return (await requireAdmin()) !== null;
 }
+
+export function isSuperAdmin(email: string | null | undefined): boolean {
+  const configured = process.env.SUPER_ADMIN_EMAILS;
+  const list = configured
+    ? configured.split(",").map((e) => e.trim()).filter(Boolean)
+    : ["sanhaung1@gmail.com"];
+  return !!email && list.includes(email);
+}

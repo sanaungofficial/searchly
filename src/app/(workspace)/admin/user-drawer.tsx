@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 
 export type DrawerUser = {
@@ -46,7 +47,11 @@ const STATUS_STYLES: Record<SubscriptionStatus, string> = {
 
 function fmt(d: Date | string | null | undefined) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
@@ -61,16 +66,36 @@ function Row({ label, value }: { label: string; value: string | null | undefined
 
 export function UserDrawer({
   user,
+  canEdit,
   onClose,
   onRoleUpdate,
 }: {
   user: DrawerUser;
+  canEdit: boolean;
   onClose: () => void;
   onRoleUpdate: (id: string, role: UserRole) => void;
 }) {
   const [role, setRole] = useState<UserRole>(user.role);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // reset role when user changes
+    setRole(user.role);
+  }, [user.id, user.role]);
+
+  // close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  if (!mounted) return null;
 
   const isDirty = role !== user.role;
   const aiThisMonth = user.monthlyUsage[0]?.count ?? 0;
@@ -94,25 +119,33 @@ export function UserDrawer({
     }
   }
 
-  return (
+  const drawer = (
     <>
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/25 z-[100]"
+        onClick={onClose}
+      />
 
-      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-[#F2EDE3] border-l border-stone-200 z-50 overflow-y-auto shadow-xl flex flex-col">
+      {/* Panel */}
+      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-[#F2EDE3] border-l border-stone-200 z-[101] overflow-y-auto shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-stone-200 bg-white/60 backdrop-blur-sm sticky top-0 z-10">
-          <div>
-            <p className="font-semibold text-stone-800 text-lg leading-tight" style={{ fontFamily: "var(--font-playfair)" }}>
+          <div className="min-w-0 flex-1 pr-4">
+            <p
+              className="font-semibold text-stone-800 text-lg leading-tight truncate"
+              style={{ fontFamily: "var(--font-playfair)" }}
+            >
               {user.name ?? "Unnamed User"}
             </p>
-            <p className="text-xs text-stone-400 font-mono mt-1">{user.email}</p>
+            <p className="text-xs text-stone-400 font-mono mt-1 truncate">{user.email}</p>
             {user.profile?.headline && (
               <p className="text-xs text-stone-500 mt-1 italic">{user.profile.headline}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-600 ml-4 text-lg leading-none mt-0.5"
+            className="text-stone-400 hover:text-stone-700 text-lg leading-none shrink-0 mt-0.5 w-7 h-7 flex items-center justify-center rounded hover:bg-stone-100"
           >
             ✕
           </button>
@@ -122,53 +155,69 @@ export function UserDrawer({
           {/* Quick stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white rounded-xl border border-stone-200 px-4 py-3 text-center">
-              <p className="text-2xl font-semibold text-stone-800" style={{ fontFamily: "var(--font-playfair)" }}>
+              <p
+                className="text-2xl font-semibold text-stone-800"
+                style={{ fontFamily: "var(--font-playfair)" }}
+              >
                 {user._count.jobs}
               </p>
               <p className="text-xs text-stone-400 font-mono mt-0.5">jobs</p>
             </div>
             <div className="bg-white rounded-xl border border-stone-200 px-4 py-3 text-center">
-              <p className="text-2xl font-semibold text-stone-800" style={{ fontFamily: "var(--font-playfair)" }}>
+              <p
+                className="text-2xl font-semibold text-stone-800"
+                style={{ fontFamily: "var(--font-playfair)" }}
+              >
                 {aiThisMonth}
               </p>
               <p className="text-xs text-stone-400 font-mono mt-0.5">AI / mo</p>
             </div>
-            <div className="bg-white rounded-xl border border-stone-200 px-4 py-3 text-center flex flex-col items-center justify-center">
+            <div className="bg-white rounded-xl border border-stone-200 px-4 py-3 text-center flex flex-col items-center justify-center gap-1">
               {user.subscription ? (
-                <span className={`text-xs font-mono px-2 py-0.5 rounded border ${STATUS_STYLES[user.subscription.status]}`}>
+                <span
+                  className={`text-xs font-mono px-2 py-0.5 rounded border ${STATUS_STYLES[user.subscription.status]}`}
+                >
                   {user.subscription.status.toLowerCase()}
                 </span>
               ) : (
                 <span className="text-xs text-stone-400 font-mono">free</span>
               )}
-              <p className="text-xs text-stone-400 font-mono mt-1">plan</p>
+              <p className="text-xs text-stone-400 font-mono">plan</p>
             </div>
           </div>
 
           {/* Role */}
           <div className="bg-white rounded-xl border border-stone-200 p-4">
             <p className="text-xs text-stone-400 font-mono uppercase tracking-wider mb-3">Role</p>
-            <div className="flex items-center gap-2">
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                className="flex-1 text-sm bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-mono"
-              >
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-              {isDirty && (
-                <button
-                  onClick={handleRoleSave}
-                  disabled={saving}
-                  className="text-xs bg-stone-800 text-white px-4 py-2 rounded-lg hover:bg-stone-700 disabled:opacity-50 font-mono whitespace-nowrap"
+            {canEdit ? (
+              <div className="flex items-center gap-2">
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as UserRole)}
+                  className="flex-1 text-sm bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-mono"
                 >
-                  {saving ? "Saving…" : "Save"}
-                </button>
-              )}
-              {saved && <span className="text-xs text-emerald-600 font-mono">Saved</span>}
-            </div>
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+                {isDirty && (
+                  <button
+                    onClick={handleRoleSave}
+                    disabled={saving}
+                    className="text-xs bg-stone-800 text-white px-4 py-2 rounded-lg hover:bg-stone-700 disabled:opacity-50 font-mono whitespace-nowrap"
+                  >
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                )}
+                {saved && (
+                  <span className="text-xs text-emerald-600 font-mono">Saved</span>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm font-mono text-stone-700">{user.role}</span>
+            )}
           </div>
 
           {/* Account */}
@@ -179,24 +228,46 @@ export function UserDrawer({
             {user.subscription?.stripeCurrentPeriodEnd && (
               <Row label="Renews" value={fmt(user.subscription.stripeCurrentPeriodEnd)} />
             )}
-            <Row label="Resume" value={user.profile?.resumeUrl ? "Uploaded" : undefined} />
-            <Row label="LinkedIn" value={user.profile?.linkedinUrl?.replace("https://www.linkedin.com/in/", "@") ?? undefined} />
+            <Row
+              label="Resume"
+              value={user.profile?.resumeUrl ? "Uploaded ✓" : undefined}
+            />
+            {user.profile?.linkedinUrl && (
+              <div className="flex items-start gap-3 py-1.5 border-b border-stone-50 last:border-0">
+                <span className="text-xs text-stone-400 font-mono w-28 shrink-0 pt-0.5">LinkedIn</span>
+                <a
+                  href={user.profile.linkedinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline font-mono truncate"
+                >
+                  {user.profile.linkedinUrl.replace(/https?:\/\/(www\.)?linkedin\.com\/in\//, "@")}
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Profile */}
           {user.profile && (
             <div className="bg-white rounded-xl border border-stone-200 p-4">
-              <p className="text-xs text-stone-400 font-mono uppercase tracking-wider mb-3">Profile</p>
+              <p className="text-xs text-stone-400 font-mono uppercase tracking-wider mb-3">
+                Profile
+              </p>
               <Row label="Status" value={user.profile.employmentStatus} />
               <Row label="Current comp" value={user.profile.currentSalary} />
               <Row label="Target comp" value={user.profile.targetSalary} />
               <Row label="Timeline" value={user.profile.jobTimeline} />
               {user.profile.targetRoles.length > 0 && (
                 <div className="flex items-start gap-3 py-1.5 border-b border-stone-50">
-                  <span className="text-xs text-stone-400 font-mono w-28 shrink-0 pt-0.5">Target roles</span>
+                  <span className="text-xs text-stone-400 font-mono w-28 shrink-0 pt-0.5">
+                    Target roles
+                  </span>
                   <div className="flex flex-wrap gap-1">
                     {user.profile.targetRoles.map((r) => (
-                      <span key={r} className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded font-mono">
+                      <span
+                        key={r}
+                        className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded font-mono"
+                      >
                         {r}
                       </span>
                     ))}
@@ -206,13 +277,17 @@ export function UserDrawer({
               {user.profile.careerMotivation && (
                 <div className="py-1.5">
                   <p className="text-xs text-stone-400 font-mono mb-1">Motivation</p>
-                  <p className="text-xs text-stone-700 leading-relaxed">{user.profile.careerMotivation}</p>
+                  <p className="text-xs text-stone-700 leading-relaxed">
+                    {user.profile.careerMotivation}
+                  </p>
                 </div>
               )}
               {user.profile.summary && (
                 <div className="py-1.5 border-t border-stone-50">
                   <p className="text-xs text-stone-400 font-mono mb-1">Summary</p>
-                  <p className="text-xs text-stone-700 leading-relaxed line-clamp-5">{user.profile.summary}</p>
+                  <p className="text-xs text-stone-700 leading-relaxed line-clamp-5">
+                    {user.profile.summary}
+                  </p>
                 </div>
               )}
             </div>
@@ -222,11 +297,17 @@ export function UserDrawer({
           {user.jobs.length > 0 && (
             <div className="bg-white rounded-xl border border-stone-200 p-4">
               <p className="text-xs text-stone-400 font-mono uppercase tracking-wider mb-3">
-                Jobs{user._count.jobs > user.jobs.length ? ` (showing ${user.jobs.length} of ${user._count.jobs})` : ` (${user._count.jobs})`}
+                Jobs
+                {user._count.jobs > user.jobs.length
+                  ? ` (showing ${user.jobs.length} of ${user._count.jobs})`
+                  : ` (${user._count.jobs})`}
               </p>
-              <div className="space-y-0">
+              <div>
                 {user.jobs.map((job) => (
-                  <div key={job.id} className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0">
+                  <div
+                    key={job.id}
+                    className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0"
+                  >
                     <div>
                       <p className="text-xs font-medium text-stone-700">{job.company}</p>
                       <p className="text-xs text-stone-400 font-mono">{job.role}</p>
@@ -239,8 +320,16 @@ export function UserDrawer({
               </div>
             </div>
           )}
+
+          {!canEdit && (
+            <p className="text-xs text-stone-400 font-mono text-center pb-2">
+              View only · contact super admin to make changes
+            </p>
+          )}
         </div>
       </div>
     </>
   );
+
+  return createPortal(drawer, document.body);
 }

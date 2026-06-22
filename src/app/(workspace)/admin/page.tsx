@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { SubscriptionStatus, UserRole } from "@prisma/client";
+import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { UsersTable } from "./users-table";
 
 async function getAdminData() {
@@ -107,7 +108,8 @@ function pct(n: number, total: number) {
 }
 
 export default async function AdminPage() {
-  const data = await getAdminData();
+  const [data, currentAdmin] = await Promise.all([getAdminData(), requireAdmin()]);
+  const canEdit = isSuperAdmin(currentAdmin?.email);
 
   return (
     <div className="space-y-10">
@@ -212,7 +214,7 @@ export default async function AdminPage() {
       {/* Users table */}
       <section>
         <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">All Users</h2>
-        <UsersTable users={data.users} />
+        <UsersTable users={data.users} canEdit={canEdit} />
       </section>
     </div>
   );
