@@ -152,26 +152,28 @@ export function WorkspaceSidebar({
       >
         {/* Brand */}
         <div style={{ padding: "26px 22px 20px" }}>
-          <button
-            onClick={() => router.push("/onboarding")}
-            style={{
-              textDecoration: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 18,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 12,
-              color: "rgba(232,213,163,0.75)",
-              letterSpacing: "0.4px",
-              padding: 0,
-            }}
-          >
-            <ArrowLeftIcon /> Preview onboarding
-          </button>
+          {!IS_PROD && (
+            <button
+              onClick={() => router.push("/onboarding")}
+              style={{
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 18,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 12,
+                color: "rgba(232,213,163,0.75)",
+                letterSpacing: "0.4px",
+                padding: 0,
+              }}
+            >
+              <ArrowLeftIcon /> Preview onboarding
+            </button>
+          )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <div

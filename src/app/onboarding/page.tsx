@@ -153,11 +153,11 @@ export default function OnboardingPage() {
   };
 
   if (!authChecked) {
-    return <div style={{ height: "100vh", background: "#F2EDE3" }} />;
+    return <div style={{ height: "100vh", background: "#F7F5F2" }} />;
   }
 
   return (
-    <div style={{ background: "#F2EDE3" }}>
+    <div style={{ background: "#F7F5F2" }}>
       <input
         id="scout-file"
         type="file"

@@ -17,31 +17,66 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [manualDesc, setManualDesc] = useState("");
+  const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  function generate(overrideDesc?: string) {
+  async function generate(overrideDesc?: string) {
     setLoading(true);
+    setStreaming(false);
     setError(null);
     setLetter(null);
 
     abortRef.current = new AbortController();
     const desc = overrideDesc !== undefined ? overrideDesc : description;
 
-    fetch("/api/ai/generate-cover-letter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle, company, description: desc }),
-      signal: abortRef.current.signal,
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.error) setError(d.error);
-        else setLetter(d.letter);
-      })
-      .catch((e) => {
-        if (e.name !== "AbortError") setError("Something went wrong");
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetch("/api/ai/generate-cover-letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobTitle, company, description: desc }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({ error: "Something went wrong" }));
+        setError(d.error ?? "Something went wrong");
+        setLoading(false);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setError("Something went wrong");
+        setLoading(false);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      let first = true;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (first) {
+          setLoading(false);
+          setStreaming(true);
+          first = false;
+        }
+        accumulated += decoder.decode(value, { stream: true });
+        setLetter(accumulated);
+      }
+      accumulated += decoder.decode();
+      setLetter(accumulated || null);
+      setStreaming(false);
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name !== "AbortError") {
+        setError("Something went wrong");
+      }
+    } finally {
+      setLoading(false);
+      setStreaming(false);
+    }
   }
 
   useEffect(() => {
@@ -133,7 +168,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>Cover Letter</p>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{jobTitle} · {company}</p>
           </div>
-          {letter && (
+          {letter && !streaming && (
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               <button
                 onClick={() => generate()}
@@ -229,14 +264,18 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                   }}
                 >
                   {para}
+                  {streaming && i === letter.split("\n\n").length - 1 && (
+                    <span style={{ display: "inline-block", width: 2, height: "1em", background: "#1A3A2F", marginLeft: 2, verticalAlign: "text-bottom", animation: "blink 1s step-end infinite" }} />
+                  )}
                 </p>
               ))}
+              <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        {letter && (
+        {letter && !streaming && (
           <div style={{ padding: "14px 20px", borderTop: "1px solid rgba(0,0,0,0.08)", flexShrink: 0, display: "flex", gap: 8 }}>
             <button
               onClick={handleCopy}
