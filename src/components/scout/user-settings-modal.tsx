@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
 
 type SettingsTab = "profile" | "security" | "subscription";
@@ -14,6 +14,7 @@ interface Props {
   };
   onClose: () => void;
   onSignOut: () => void;
+  onAvatarChange?: (url: string) => void;
 }
 
 function initials(name: string | null, email: string) {
@@ -26,8 +27,12 @@ function initials(name: string | null, email: string) {
   return email.slice(0, 2).toUpperCase();
 }
 
-export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
+export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: Props) {
   const [tab, setTab] = useState<SettingsTab>("profile");
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { isPro, isAdmin, status, currentPeriodEnd, usage, loading, startCheckout, openPortal } = useSubscription();
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
@@ -66,6 +71,24 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
   const periodEndFormatted = currentPeriodEnd
     ? new Date(currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : null;
+
+  async function handleAvatarUpload(file: File) {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/avatar", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setAvatarUrl(data.url);
+      onAvatarChange?.(data.url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <>
@@ -112,33 +135,34 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
             padding: "20px 0",
           }}
         >
-          {/* User avatar */}
+          {/* User avatar — clickable to upload */}
           <div style={{ padding: "0 16px 20px", borderBottom: "1px solid #EEE9E2" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name ?? ""}
-                  style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    background: "#1A3A2F",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#E8D5A3" }}>
-                    {initials(user.name, user.email)}
-                  </span>
-                </div>
-              )}
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={user.name ?? ""}
+                    style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", display: "block" }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "#1A3A2F",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#E8D5A3" }}>
+                      {initials(user.name, user.email)}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {user.name ?? user.email.split("@")[0]}
@@ -192,7 +216,7 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
             ))}
           </div>
 
-          {/* Bottom: sign out + privacy */}
+          {/* Bottom: sign out */}
           <div style={{ padding: "0 8px" }}>
             <button
               onClick={onSignOut}
@@ -266,6 +290,103 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             {tab === "profile" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {/* Avatar upload */}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                    Profile Photo
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    {/* Avatar preview */}
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt=""
+                          style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", display: "block", border: "2px solid #EEE9E2" }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: "50%",
+                            background: "#1A3A2F",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "2px solid #EEE9E2",
+                          }}
+                        >
+                          <span style={{ fontSize: 20, fontWeight: 600, color: "#E8D5A3" }}>
+                            {initials(user.name, user.email)}
+                          </span>
+                        </div>
+                      )}
+                      {uploading && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            borderRadius: "50%",
+                            background: "rgba(0,0,0,0.45)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83">
+                              <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" />
+                            </path>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    {/* Upload button */}
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleAvatarUpload(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          border: "1px solid #D5CFC8",
+                          background: "transparent",
+                          color: "#52493F",
+                          fontSize: 12,
+                          fontWeight: 500,
+                          cursor: uploading ? "not-allowed" : "pointer",
+                          opacity: uploading ? 0.6 : 1,
+                          transition: "background 0.15s",
+                          marginBottom: 6,
+                          display: "block",
+                        }}
+                        onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.background = "#F7F5F2"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        {uploading ? "Uploading…" : "Upload photo"}
+                      </button>
+                      <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
+                        JPG, PNG, WebP or GIF · Max 5 MB
+                      </p>
+                      {uploadError && (
+                        <p style={{ fontSize: 11, color: "#C4574A", margin: "6px 0 0" }}>{uploadError}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <Field label="Full Name" value={user.name ?? "—"} />
                 <Field label="Email" value={user.email} />
                 {user.headline && <Field label="Headline" value={user.headline} />}
@@ -293,7 +414,7 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
                     You signed in with {user.email.includes("google") ? "Google" : "email"}. Password changes are managed through your email provider.
                   </p>
                   <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
-                    To reset your password, sign out and use the "Forgot password" link on the login page.
+                    To reset your password, sign out and use the &quot;Forgot password&quot; link on the login page.
                   </p>
                 </div>
               </div>
@@ -326,7 +447,7 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
                             letterSpacing: "0.3px",
                           }}
                         >
-                          {loading ? "Loading…" : isAdmin ? "SEARCHLY ADMIN" : isPro ? "SEARCHLY PRO" : "SEARCHLY FREE"}
+                          {loading ? "Loading…" : isAdmin ? "KIMCHI ADMIN" : isPro ? "KIMCHI PRO" : "KIMCHI FREE"}
                         </span>
                         {(isPro || isAdmin) && (
                           <span
@@ -439,7 +560,7 @@ export function UserSettingsModal({ user, onClose, onSignOut }: Props) {
                   </div>
                 )}
 
-                {/* What's included */}
+                {/* What&apos;s included */}
                 {!isPro && !isAdmin && (
                   <div
                     style={{

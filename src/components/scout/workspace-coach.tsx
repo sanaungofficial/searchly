@@ -342,7 +342,7 @@ export function WorkspaceCoach() {
     const activeJobs = selected.jobs.filter((j) => activeStage(j.stage));
     const appliedJobs = selected.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
     return (
-      <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F2EDE3" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F7F5F2" }}>
         {tabBar}
         <button onClick={() => setSelected(null)}
           style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 13, fontFamily: "var(--font-dm-sans)", marginBottom: 24, padding: 0 }}>
@@ -444,7 +444,7 @@ export function WorkspaceCoach() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F2EDE3" }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F7F5F2" }}>
       <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 600, color: "#1a1a1a", marginBottom: 20 }}>
         {tab === "clients" ? "Clients" : "My Profile"}
       </h1>

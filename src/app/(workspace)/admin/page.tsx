@@ -1,104 +1,99 @@
 import { prisma } from "@/lib/prisma";
-import { SubscriptionStatus } from "@prisma/client";
-import { FREE_AI_LIMIT } from "@/lib/usage";
-import { formatCostUsd } from "@/lib/ai-cost";
+import { SubscriptionStatus, UserRole } from "@prisma/client";
 import { UsersTable } from "./users-table";
 
 async function getAdminData() {
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  const startOfMonth = new Date(`${currentMonth}-01T00:00:00Z`);
-
-  const [users, jobs, subscriptions, monthlyUsage, aiCostThisMonth, aiCostByFeature] = await Promise.all([
+  const [users, subscriptions] = await Promise.all([
     prisma.user.findMany({
       include: {
-        subscription: true,
+        subscription: { select: { status: true, stripeCurrentPeriodEnd: true } },
         monthlyUsage: { where: { month: currentMonth } },
+        profile: {
+          select: {
+            headline: true,
+            summary: true,
+            linkedinUrl: true,
+            targetRoles: true,
+            targetSalary: true,
+            employmentStatus: true,
+            currentSalary: true,
+            careerMotivation: true,
+            jobTimeline: true,
+            attribution: true,
+            resumeUrl: true,
+          },
+        },
+        jobs: {
+          select: { id: true, company: true, role: true, stage: true },
+          orderBy: { createdAt: "desc" },
+          take: 8,
+        },
         _count: { select: { jobs: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.job.findMany({ select: { stage: true, createdAt: true } }),
     prisma.subscription.findMany({ select: { status: true } }),
-    prisma.monthlyUsage.aggregate({
-      where: { month: currentMonth },
-      _sum: { count: true },
-      _count: { _all: true },
-    }),
-    prisma.aiUsageLog.aggregate({
-      where: { createdAt: { gte: startOfMonth } },
-      _sum: { tokensIn: true, tokensOut: true, costUsd: true },
-      _count: { _all: true },
-    }),
-    prisma.aiUsageLog.groupBy({
-      by: ["feature"],
-      where: { createdAt: { gte: startOfMonth } },
-      _sum: { costUsd: true, tokensIn: true, tokensOut: true },
-      _count: { _all: true },
-    }),
   ]);
 
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const newUsersThisWeek = users.filter((u) => new Date(u.createdAt) >= sevenDaysAgo).length;
-  const newUsersThisMonth = users.filter((u) => new Date(u.createdAt) >= thirtyDaysAgo).length;
+  const newThisWeek = users.filter((u) => new Date(u.createdAt) >= sevenDaysAgo).length;
+  const newThisMonth = users.filter((u) => new Date(u.createdAt) >= thirtyDaysAgo).length;
+
+  const roleCounts: Record<UserRole, number> = {
+    USER: 0,
+    COACH: 0,
+    RECRUITER: 0,
+    ADMIN: 0,
+  };
+  users.forEach((u) => roleCounts[u.role]++);
+
+  const usersWithJobs = users.filter((u) => u._count.jobs > 0).length;
+  const usersWithResume = users.filter((u) => u.profile?.resumeUrl != null).length;
+  const usersWithAi = users.filter((u) => (u.monthlyUsage[0]?.count ?? 0) > 0).length;
 
   const subCounts = {
     active: subscriptions.filter((s) => s.status === SubscriptionStatus.ACTIVE).length,
     trialing: subscriptions.filter((s) => s.status === SubscriptionStatus.TRIALING).length,
-    canceled: subscriptions.filter((s) => s.status === SubscriptionStatus.CANCELED).length,
     pastDue: subscriptions.filter((s) => s.status === SubscriptionStatus.PAST_DUE).length,
+    canceled: subscriptions.filter((s) => s.status === SubscriptionStatus.CANCELED).length,
   };
-
-  const stageCounts = jobs.reduce<Record<string, number>>((acc, j) => {
-    acc[j.stage] = (acc[j.stage] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const usersWithJobs = users.filter((u) => u._count.jobs > 0).length;
-  const usersWithResume = await prisma.profile.count({ where: { resumeUrl: { not: null } } });
-  const usersWithCoverLetter = await prisma.job.count({ where: { coverLetter: { not: null } } });
-  const usersWithFitAnalysis = await prisma.job.count({ where: { fitAnalysis: { not: null } } });
-
-  const totalAiThisMonth = monthlyUsage._sum.count ?? 0;
-  const totalCostUsd = aiCostThisMonth._sum.costUsd ?? 0;
-  const totalTokensIn = aiCostThisMonth._sum.tokensIn ?? 0;
-  const totalTokensOut = aiCostThisMonth._sum.tokensOut ?? 0;
-  const usersAtLimit = users.filter((u) => {
-    if (u.subscription) return false; // pro users don't have a cap
-    const used = u.monthlyUsage[0]?.count ?? 0;
-    return used >= FREE_AI_LIMIT;
-  }).length;
 
   return {
     users,
     totalUsers: users.length,
-    newUsersThisWeek,
-    newUsersThisMonth,
-    totalJobs: jobs.length,
-    stageCounts,
-    subCounts,
+    newThisWeek,
+    newThisMonth,
+    roleCounts,
     usersWithJobs,
     usersWithResume,
-    usersWithCoverLetter,
-    usersWithFitAnalysis,
-    totalAiThisMonth,
-    usersAtLimit,
-    currentMonth,
-    totalCostUsd,
-    totalTokensIn,
-    totalTokensOut,
-    aiCostByFeature,
+    usersWithAi,
+    subCounts,
   };
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function StatCard({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  accent?: string;
+}) {
   return (
     <div className="bg-white rounded-xl border border-stone-200 px-6 py-5">
       <p className="text-xs text-stone-400 uppercase tracking-widest font-mono mb-1">{label}</p>
-      <p className="text-3xl font-semibold text-stone-800" style={{ fontFamily: "var(--font-playfair)" }}>
+      <p
+        className={`text-3xl font-semibold ${accent ?? "text-stone-800"}`}
+        style={{ fontFamily: "var(--font-playfair)" }}
+      >
         {value}
       </p>
       {sub && <p className="text-xs text-stone-400 mt-1">{sub}</p>}
@@ -106,16 +101,10 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   );
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  SAVED: "Saved",
-  APPLYING: "Applying",
-  APPLIED: "Applied",
-  SCREENING: "Screening",
-  INTERVIEWING: "Interviewing",
-  OFFER: "Offer",
-  REJECTED: "Rejected",
-  WITHDRAWN: "Withdrawn",
-};
+function pct(n: number, total: number) {
+  if (total === 0) return "0%";
+  return `${Math.round((n / total) * 100)}%`;
+}
 
 export default async function AdminPage() {
   const data = await getAdminData();
@@ -123,20 +112,74 @@ export default async function AdminPage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold text-stone-800 mb-1" style={{ fontFamily: "var(--font-playfair)" }}>
+        <h1
+          className="text-2xl font-semibold text-stone-800 mb-1"
+          style={{ fontFamily: "var(--font-playfair)" }}
+        >
           Admin Dashboard
         </h1>
-        <p className="text-sm text-stone-400">Super admin view — live data from production</p>
+        <p className="text-sm text-stone-400">Live data · {data.totalUsers} registered users</p>
       </div>
 
-      {/* Users */}
+      {/* Growth */}
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Users</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Growth</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <StatCard label="Total Users" value={data.totalUsers} />
-          <StatCard label="New This Week" value={data.newUsersThisWeek} />
-          <StatCard label="New This Month" value={data.newUsersThisMonth} />
-          <StatCard label="With Jobs" value={data.usersWithJobs} sub={`${Math.round((data.usersWithJobs / Math.max(data.totalUsers, 1)) * 100)}% of users`} />
+          <StatCard label="New This Week" value={data.newThisWeek} />
+          <StatCard label="New This Month" value={data.newThisMonth} />
+        </div>
+      </section>
+
+      {/* Role breakdown */}
+      <section>
+        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Roles</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            label="Users"
+            value={data.roleCounts.USER}
+            sub={pct(data.roleCounts.USER, data.totalUsers)}
+          />
+          <StatCard
+            label="Coaches"
+            value={data.roleCounts.COACH}
+            sub={pct(data.roleCounts.COACH, data.totalUsers)}
+            accent="text-blue-700"
+          />
+          <StatCard
+            label="Recruiters"
+            value={data.roleCounts.RECRUITER}
+            sub={pct(data.roleCounts.RECRUITER, data.totalUsers)}
+            accent="text-purple-700"
+          />
+          <StatCard
+            label="Admins"
+            value={data.roleCounts.ADMIN}
+            sub={pct(data.roleCounts.ADMIN, data.totalUsers)}
+            accent="text-amber-700"
+          />
+        </div>
+      </section>
+
+      {/* Activation */}
+      <section>
+        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Activation</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <StatCard
+            label="Added a Job"
+            value={data.usersWithJobs}
+            sub={`${pct(data.usersWithJobs, data.totalUsers)} of users`}
+          />
+          <StatCard
+            label="Uploaded Resume"
+            value={data.usersWithResume}
+            sub={`${pct(data.usersWithResume, data.totalUsers)} of users`}
+          />
+          <StatCard
+            label="Used AI This Month"
+            value={data.usersWithAi}
+            sub={`${pct(data.usersWithAi, data.totalUsers)} of users`}
+          />
         </div>
       </section>
 
@@ -144,117 +187,25 @@ export default async function AdminPage() {
       <section>
         <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Subscriptions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Active" value={data.subCounts.active} />
-          <StatCard label="Trialing" value={data.subCounts.trialing} />
-          <StatCard label="Past Due" value={data.subCounts.pastDue} />
-          <StatCard label="Canceled" value={data.subCounts.canceled} />
-        </div>
-      </section>
-
-      {/* Usage */}
-      <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Usage</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Jobs" value={data.totalJobs} />
-          <StatCard label="Resumes Uploaded" value={data.usersWithResume} />
-          <StatCard label="Cover Letters Generated" value={data.usersWithCoverLetter} />
-          <StatCard label="Fit Analyses Run" value={data.usersWithFitAnalysis} />
-        </div>
-      </section>
-
-      {/* AI Credits */}
-      <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">
-          AI Usage — {data.currentMonth}
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <StatCard label="Total AI Requests" value={data.totalAiThisMonth} sub="across all users this month" />
-          <StatCard label="Free Users at Limit" value={data.usersAtLimit} sub={`${FREE_AI_LIMIT} req/mo cap`} />
-          <StatCard label="Free Limit" value={`${FREE_AI_LIMIT} / mo`} sub="per free user" />
-        </div>
-      </section>
-
-      {/* Job stages */}
-      <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Jobs by Stage</h2>
-        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-stone-100">
-                <th className="text-left px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Stage</th>
-                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Count</th>
-                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">% of Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(STAGE_LABELS).map(([key, label]) => {
-                const count = data.stageCounts[key] ?? 0;
-                const pct = data.totalJobs > 0 ? Math.round((count / data.totalJobs) * 100) : 0;
-                return (
-                  <tr key={key} className="border-b border-stone-50 last:border-0 hover:bg-stone-50/50">
-                    <td className="px-6 py-3 text-stone-700">{label}</td>
-                    <td className="px-6 py-3 text-right text-stone-700 font-mono">{count}</td>
-                    <td className="px-6 py-3 text-right text-stone-400 font-mono">{pct}%</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* AI Cost Breakdown */}
-      <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">
-          AI Cost — {data.currentMonth}
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <StatCard
-            label="Total Cost"
-            value={formatCostUsd(data.totalCostUsd)}
-            sub="estimated from token usage"
+            label="Active"
+            value={data.subCounts.active}
+            accent="text-emerald-700"
           />
           <StatCard
-            label="Input Tokens"
-            value={data.totalTokensIn.toLocaleString()}
-            sub="across all features"
+            label="Trialing"
+            value={data.subCounts.trialing}
+            accent="text-blue-700"
           />
           <StatCard
-            label="Output Tokens"
-            value={data.totalTokensOut.toLocaleString()}
-            sub="across all features"
+            label="Past Due"
+            value={data.subCounts.pastDue}
+            accent={data.subCounts.pastDue > 0 ? "text-amber-600" : undefined}
           />
-        </div>
-        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-stone-100">
-                <th className="text-left px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Feature</th>
-                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Calls</th>
-                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Input Tok</th>
-                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Output Tok</th>
-                <th className="text-right px-6 py-3 text-xs text-stone-400 font-mono uppercase tracking-wider">Est. Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.aiCostByFeature.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-6 text-center text-stone-400 text-sm">
-                    No AI usage logged yet this month
-                  </td>
-                </tr>
-              )}
-              {data.aiCostByFeature.map((row) => (
-                <tr key={row.feature} className="border-b border-stone-50 last:border-0">
-                  <td className="px-6 py-3 font-mono text-stone-700">{row.feature}</td>
-                  <td className="px-6 py-3 text-right font-mono text-stone-500">{row._count._all}</td>
-                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.tokensIn ?? 0).toLocaleString()}</td>
-                  <td className="px-6 py-3 text-right font-mono text-stone-500">{(row._sum.tokensOut ?? 0).toLocaleString()}</td>
-                  <td className="px-6 py-3 text-right font-mono text-stone-700 font-medium">{formatCostUsd(row._sum.costUsd ?? 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <StatCard
+            label="Canceled"
+            value={data.subCounts.canceled}
+          />
         </div>
       </section>
 

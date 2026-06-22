@@ -49,7 +49,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable} ${dmMono.variable} antialiased`}
-        style={{ background: "#F2EDE3", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
+        style={{ background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}
       >
         {children}
         <Toaster />

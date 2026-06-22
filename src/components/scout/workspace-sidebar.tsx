@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
+  DashboardIcon,
   OpportunitiesIcon,
   ProfileIcon,
   LiveIcon,
@@ -40,6 +41,7 @@ interface NavItem {
 const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
 
 const NAV_ITEMS: NavItem[] = [
+  { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
   { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
   { id: "live", label: "Live", path: "/live", Icon: LiveIcon, prodOnly: true },
@@ -77,6 +79,7 @@ export function WorkspaceSidebar({
     setNotifRead,
     notifUnreadCount,
     handleSignOut,
+    updateAvatarUrl,
   } = useWorkspace();
 
   const user = userProp ?? ctxUser ?? undefined;
@@ -150,7 +153,7 @@ export function WorkspaceSidebar({
         {/* Brand */}
         <div style={{ padding: "26px 22px 20px" }}>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/onboarding")}
             style={{
               textDecoration: "none",
               display: "flex",
@@ -461,6 +464,7 @@ export function WorkspaceSidebar({
             user={user}
             onClose={() => setSettingsOpen(false)}
             onSignOut={() => { setSettingsOpen(false); handleSignOut(); }}
+            onAvatarChange={updateAvatarUrl}
           />
         )}
 

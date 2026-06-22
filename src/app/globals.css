@@ -47,7 +47,7 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #F2EDE3;
+  --background: #F7F5F2;
   --foreground: #1A1A1A;
 
   /* Searchly brand tokens */
@@ -129,7 +129,7 @@
   }
   body {
     @apply text-foreground;
-    background: #F2EDE3;
+    background: #F7F5F2;
     font-family: var(--font-dm-sans), system-ui, sans-serif;
   }
   input::placeholder {
