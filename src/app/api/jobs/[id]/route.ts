@@ -27,7 +27,10 @@ export async function PATCH(
     where: { id },
     data: {
       ...(body.stage && { stage: body.stage }),
+      ...(body.url !== undefined && { url: body.url }),
       ...(body.notes !== undefined && { notes: body.notes }),
+      ...(body.userNotes !== undefined && { userNotes: body.userNotes }),
+      ...(body.companyLinkedinUrl !== undefined && { companyLinkedinUrl: body.companyLinkedinUrl }),
       ...(body.coverLetter !== undefined && { coverLetter: body.coverLetter }),
       ...(body.fitAnalysis !== undefined && { fitAnalysis: body.fitAnalysis }),
       ...(body.resumeUrl !== undefined && { resumeUrl: body.resumeUrl }),
