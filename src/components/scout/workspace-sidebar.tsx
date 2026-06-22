@@ -79,6 +79,7 @@ export function WorkspaceSidebar({
     setNotifRead,
     notifUnreadCount,
     handleSignOut,
+    updateAvatarUrl,
   } = useWorkspace();
 
   const user = userProp ?? ctxUser ?? undefined;
@@ -463,6 +464,7 @@ export function WorkspaceSidebar({
             user={user}
             onClose={() => setSettingsOpen(false)}
             onSignOut={() => { setSettingsOpen(false); handleSignOut(); }}
+            onAvatarChange={updateAvatarUrl}
           />
         )}
 
