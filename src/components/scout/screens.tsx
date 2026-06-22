@@ -1322,7 +1322,7 @@ export function ScreenTargetRoles({
       </div>
 
       {/* Bucket chips */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.35s" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
         <p
           style={{
             fontFamily: "var(--font-dm-sans), system-ui",
@@ -1378,7 +1378,7 @@ export function ScreenTargetRoles({
 
       {/* Title chips — appear once a bucket is selected */}
       {availableTitles.length > 0 && (
-        <div className="anim-fade-up">
+        <div className="anim-fade-up" style={{ background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
           <p
             style={{
               fontFamily: "var(--font-dm-sans), system-ui",
@@ -1537,7 +1537,7 @@ export function ScreenAboutYou({
       </div>
 
       {/* Career motivation */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.2s" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("What's driving your move?")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {CAREER_MOTIVATIONS.map((m) => chipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m))}
@@ -1545,7 +1545,7 @@ export function ScreenAboutYou({
       </div>
 
       {/* Job timeline */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.35s" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("When do you want to make a move?")}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {JOB_TIMELINES.map(({ value, label }) => {
@@ -1578,29 +1578,31 @@ export function ScreenAboutYou({
       </div>
 
       {/* Salary dropdowns */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.5s", display: "flex", gap: 16, flexWrap: "wrap" }}>
-        {salaryRows.map(({ label, value, onChange }) => (
-          <div key={label} style={{ flex: "1 1 200px" }}>
-            {sectionLabel(label, true)}
-            <div style={{ position: "relative" }}>
-              <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#FAF8F4", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
-              >
-                <option value="">Select a range</option>
-                {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
-                <path d="M1 1L6 6L11 1" stroke="#A09890" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+      <div className="anim-fade-up" style={{ animationDelay: "0.5s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          {salaryRows.map(({ label, value, onChange }) => (
+            <div key={label} style={{ flex: "1 1 200px" }}>
+              {sectionLabel(label, true)}
+              <div style={{ position: "relative" }}>
+                <select
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
+                >
+                  <option value="">Select a range</option>
+                  {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
+                  <path d="M1 1L6 6L11 1" stroke="#A09890" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Priorities */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.65s" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.65s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("What matters most to you?", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {PRIORITIES.map((p) => chipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
@@ -1608,13 +1610,13 @@ export function ScreenAboutYou({
       </div>
 
       {/* Attribution */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.8s" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.8s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("How did you hear about Kimchi?", true)}
         <div style={{ position: "relative", maxWidth: 280 }}>
           <select
             value={attribution}
             onChange={(e) => onAttributionChange(e.target.value)}
-            style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#FAF8F4", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
+            style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
           >
             <option value="">Select one</option>
             {ATTRIBUTION_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
