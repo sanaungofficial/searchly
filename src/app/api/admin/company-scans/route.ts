@@ -8,6 +8,7 @@ import {
   isIntelScanStale,
 } from "@/lib/company-scan-config";
 import { getIntelCareersUrl } from "@/lib/company-intel";
+import { getCatalogCompany } from "@/lib/company-catalog";
 import { parseJobsCache } from "@/lib/company-jobs-scan";
 
 export async function GET() {
@@ -26,10 +27,13 @@ export async function GET() {
   const companies = intels.map((intel) => {
     const cache = parseJobsCache(intel.jobsCache);
     const careersUrl = getIntelCareersUrl(intel);
+    const catalog = getCatalogCompany(intel.slug);
+    const website = intel.website ?? catalog?.website ?? null;
     return {
       id: intel.id,
       name: intel.name,
       slug: intel.slug,
+      website,
       careersUrl,
       watchlistCount: intel._count.trackedCompanies,
       jobCount: cache?.jobs.length ?? 0,

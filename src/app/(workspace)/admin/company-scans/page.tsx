@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CompanyScanSettingsPanel } from "@/components/admin/company-scan-settings-panel";
+import { CompanyLogo } from "@/components/scout/company-logo";
 import { COMPANY_SCAN_SETTINGS_SIDEBAR } from "@/lib/company-scan-config";
 
 type IntelRow = {
   id: string;
   name: string;
   slug: string;
+  website: string | null;
   careersUrl: string | null;
   watchlistCount: number;
   jobCount: number;
@@ -31,6 +33,8 @@ function formatWhen(iso: string | null) {
 export default function CompanyScansAdminPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [backfilling, setBackfilling] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,6 +47,23 @@ export default function CompanyScansAdminPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function backfillWebsites() {
+    setBackfilling(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/company-scans/backfill-websites", { method: "POST" });
+      const body = await res.json();
+      if (res.ok) {
+        setMessage(`Backfilled ${body.updated} catalog websites (${body.skipped} had no catalog match).`);
+        await load();
+      } else {
+        setMessage(body.error ?? "Backfill failed.");
+      }
+    } finally {
+      setBackfilling(false);
+    }
+  }
 
   if (loading || !data) {
     return <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading company scan dashboard…</p>;
@@ -64,6 +85,10 @@ export default function CompanyScansAdminPage() {
           (Companies).
         </p>
       </div>
+
+      {message && (
+        <div className="rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">{message}</div>
+      )}
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -93,8 +118,16 @@ export default function CompanyScansAdminPage() {
       </section>
 
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-stone-100">
+        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between gap-4">
           <h2 className="text-sm font-semibold text-stone-800">Shared company intel</h2>
+          <button
+            type="button"
+            onClick={backfillWebsites}
+            disabled={backfilling}
+            className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-700 disabled:opacity-50"
+          >
+            {backfilling ? "Backfilling…" : "Backfill catalog websites"}
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -110,7 +143,12 @@ export default function CompanyScansAdminPage() {
             <tbody>
               {data.companies.map((row) => (
                 <tr key={row.id} className="border-b border-stone-50">
-                  <td className="px-6 py-3 font-medium text-stone-800">{row.name}</td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-3">
+                      <CompanyLogo name={row.name} website={row.website} careersUrl={row.careersUrl} size={28} />
+                      <span className="font-medium text-stone-800">{row.name}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-stone-600">{row.watchlistCount}</td>
                   <td className="px-4 py-3 text-stone-600">{row.scannable ? row.jobCount : "—"}</td>
                   <td className="px-4 py-3 text-stone-500">{formatWhen(row.lastScannedAt)}</td>
