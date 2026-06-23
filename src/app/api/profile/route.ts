@@ -27,6 +27,9 @@ export async function GET() {
     careerMotivation: dbUser?.profile?.careerMotivation || null,
     jobTimeline: dbUser?.profile?.jobTimeline || null,
     priorities: dbUser?.profile?.priorities || [],
+    learningProgress: dbUser?.profile?.learningProgress || {},
+    learningCustomItems: dbUser?.profile?.learningCustomItems || [],
+    learningSkillGoals: dbUser?.profile?.learningSkillGoals || [],
   });
 }
 
@@ -36,7 +39,7 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution } = body;
+  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, learningProgress, learningCustomItems, learningSkillGoals } = body;
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -57,6 +60,9 @@ export async function PATCH(request: Request) {
   if (careerMotivation !== undefined) profileUpdate.careerMotivation = careerMotivation;
   if (jobTimeline !== undefined) profileUpdate.jobTimeline = jobTimeline;
   if (attribution !== undefined) profileUpdate.attribution = attribution;
+  if (learningProgress !== undefined) profileUpdate.learningProgress = learningProgress;
+  if (learningCustomItems !== undefined) profileUpdate.learningCustomItems = learningCustomItems;
+  if (learningSkillGoals !== undefined) profileUpdate.learningSkillGoals = learningSkillGoals;
 
   if (Object.keys(profileUpdate).length > 0) {
     await prisma.profile.upsert({

@@ -86,6 +86,10 @@ model Profile {
   readbackData       Json?
   readbackUpdatedAt  DateTime?
 
+  learningProgress    Json?
+  learningCustomItems Json?
+  learningSkillGoals  Json?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

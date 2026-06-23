@@ -1574,6 +1574,7 @@ export interface UpskillItem {
   platformInitial: string;
   platformColor: string;
   name: string;
+  url: string;
   duration: string;
   credential: string;
   scoutPick: boolean;
@@ -1601,6 +1602,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "C",
         platformColor: "#0056D2",
         name: "Strategic Management & Planning",
+        url: "https://www.coursera.org/learn/strategic-management",
         duration: "8 weeks",
         credential: "Certificate",
         scoutPick: true,
@@ -1613,6 +1615,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "W",
         platformColor: "#1B3A6B",
         name: "Financial Modeling & Valuation",
+        url: "https://www.wallstreetprep.com/self-study-programs/premium-package/",
         duration: "60 hours",
         credential: "Certificate",
         scoutPick: true,
@@ -1625,6 +1628,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "R",
         platformColor: "#000000",
         name: "Product Strategy",
+        url: "https://www.reforge.com/courses/product-strategy",
         duration: "6 weeks",
         credential: "Certificate",
         scoutPick: true,
@@ -1637,6 +1641,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "in",
         platformColor: "#0A66C2",
         name: "Stakeholder Management & Influence",
+        url: "https://www.linkedin.com/learning/topics/stakeholder-management",
         duration: "3h 45m",
         credential: "Badge",
         scoutPick: true,
@@ -1655,6 +1660,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "G",
         platformColor: "#4285F4",
         name: "Project Management Certificate",
+        url: "https://grow.google/certificates/project-management/",
         duration: "6 months",
         credential: "Certificate",
         scoutPick: true,
@@ -1667,6 +1673,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "C",
         platformColor: "#0056D2",
         name: "Lean Six Sigma Green Belt",
+        url: "https://www.coursera.org/learn/six-sigma-green-belt",
         duration: "4 months",
         credential: "Certificate",
         scoutPick: false,
@@ -1679,6 +1686,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "H",
         platformColor: "#A51C30",
         name: "Business Analytics",
+        url: "https://online.hbs.edu/courses/business-analytics/",
         duration: "8 weeks",
         credential: "Certificate",
         scoutPick: true,
@@ -1691,6 +1699,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "P",
         platformColor: "#E85D04",
         name: "Change Management Certification",
+        url: "https://www.prosci.com/training/programs/change-practitioner-program",
         duration: "3 days",
         credential: "Certification",
         scoutPick: false,
@@ -1709,6 +1718,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "M",
         platformColor: "#4E6AF6",
         name: "SQL for Analytics",
+        url: "https://mode.com/sql-tutorial/",
         duration: "10 hours",
         credential: "Badge",
         scoutPick: true,
@@ -1721,6 +1731,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "C",
         platformColor: "#0056D2",
         name: "Executive Communication & Presence",
+        url: "https://www.coursera.org/learn/communicating-as-a-leader",
         duration: "4 weeks",
         credential: "Certificate",
         scoutPick: false,
@@ -1733,6 +1744,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "PI",
         platformColor: "#006BB6",
         name: "Market & Competitive Intelligence",
+        url: "https://www.pragmaticinstitute.com/product/market/",
         duration: "2 days",
         credential: "Badge",
         scoutPick: false,
@@ -1745,6 +1757,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         platformInitial: "in",
         platformColor: "#0A66C2",
         name: "Managing Teams & Driving Results",
+        url: "https://www.linkedin.com/learning/topics/team-management",
         duration: "4h 20m",
         credential: "Badge",
         scoutPick: false,

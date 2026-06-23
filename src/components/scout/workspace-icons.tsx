@@ -139,6 +139,17 @@ export function DashboardIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/* Learning — open book */
+export function LearningIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" {...props}>
+      <path d="M7.5 3L1.5 6l6 3 6-3-6-3z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M1.5 6v4M13.5 6v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M4.5 7.5v3a3 3 0 006 0v-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /* Sparkle — Searchly signature */
 export function SparkleIcon(props: SVGProps<SVGSVGElement>) {
   return (

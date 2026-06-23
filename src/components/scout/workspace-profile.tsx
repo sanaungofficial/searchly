@@ -795,19 +795,16 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
 
 // ─── Tab: Upskilling ──────────────────────────────────────────────────────────
 
-const CUSTOM_LEARNING_KEY = "kimchi_custom_learning";
-
-function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRoles }: {
+function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRoles, customItems, onCustomItemsChange }: {
   progress: Record<number, "none" | "inprogress" | "completed">;
   setProgress: (p: Record<number, "none" | "inprogress" | "completed">) => void;
   skillGoals: SkillGoal[];
   onGraduate: (skill: string) => Promise<void>;
   targetRoles: string[];
+  customItems: CustomLearningItem[];
+  onCustomItemsChange: (items: CustomLearningItem[]) => void;
 }) {
   const [graduating, setGraduating] = useState<string | null>(null);
-  const [customItems, setCustomItems] = useState<CustomLearningItem[]>(() => {
-    try { return JSON.parse(localStorage.getItem(CUSTOM_LEARNING_KEY) || "[]"); } catch { return []; }
-  });
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
@@ -824,11 +821,6 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
     setGraduating(null);
   };
 
-  const saveCustomItems = (items: CustomLearningItem[]) => {
-    setCustomItems(items);
-    try { localStorage.setItem(CUSTOM_LEARNING_KEY, JSON.stringify(items)); } catch {}
-  };
-
   const addCustomItem = () => {
     if (!newName.trim()) return;
     const item: CustomLearningItem = {
@@ -840,18 +832,18 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
       status: "none",
       addedAt: new Date().toISOString(),
     };
-    saveCustomItems([...customItems, item]);
+    onCustomItemsChange([...customItems, item]);
     setNewName(""); setNewUrl(""); setNewPlatform(""); setNewDuration("");
     setShowAddForm(false);
   };
 
   const updateCustomStatus = (id: string) => {
-    saveCustomItems(customItems.map((i) =>
+    onCustomItemsChange(customItems.map((i) =>
       i.id === id ? { ...i, status: i.status === "none" ? "inprogress" : i.status === "inprogress" ? "completed" : "inprogress" } : i
     ));
   };
 
-  const removeCustomItem = (id: string) => saveCustomItems(customItems.filter((i) => i.id !== id));
+  const removeCustomItem = (id: string) => onCustomItemsChange(customItems.filter((i) => i.id !== id));
 
   return (
     <div style={{ maxWidth: 620, paddingBottom: 40 }}>
@@ -932,7 +924,11 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", textDecoration: "none" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
+                          {item.name}
+                        </a>
                         {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
                         {relevantRole && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 500 }}>for {relevantRole}</span>}
                       </div>
@@ -1660,8 +1656,6 @@ type AboutSection = "personal" | "education" | "experience" | "skills";
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "skills"];
 const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", education: "Education", experience: "Work experience", skills: "Skills" };
 
-const SKILL_GOALS_KEY = "kimchi_skill_goals";
-
 export function WorkspaceProfile() {
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
   const router = useRouter();
@@ -1682,6 +1676,7 @@ export function WorkspaceProfile() {
   const [dreamList, setDreamList] = useState<string[]>([]);
   const [upskillProgress, setUpskillProgress] = useState<Record<number, "none" | "inprogress" | "completed">>({});
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
+  const [customLearningItems, setCustomLearningItems] = useState<CustomLearningItem[]>([]);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [readback, setReadback] = useState<ReadbackData | null>(null);
@@ -1691,14 +1686,6 @@ export function WorkspaceProfile() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
-  // Load skill goals from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(SKILL_GOALS_KEY);
-      if (stored) setSkillGoals(JSON.parse(stored));
-    } catch {}
-  }, []);
-
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
@@ -1706,6 +1693,9 @@ export function WorkspaceProfile() {
         if (!data.error) {
           setProfile(data);
           setDreamList(data.targetRoles || []);
+          setUpskillProgress(data.learningProgress || {});
+          setSkillGoals(data.learningSkillGoals || []);
+          setCustomLearningItems(data.learningCustomItems || []);
         }
       })
       .catch(() => {})
@@ -1786,7 +1776,7 @@ export function WorkspaceProfile() {
     setSkillGoals((prev) => {
       if (prev.some((g) => g.skill.toLowerCase() === skill.toLowerCase())) return prev;
       const next = [...prev, { skill, role, addedAt: new Date().toISOString() }];
-      try { localStorage.setItem(SKILL_GOALS_KEY, JSON.stringify(next)); } catch {}
+      patchProfile({ learningSkillGoals: next });
       return next;
     });
   };
@@ -1798,9 +1788,19 @@ export function WorkspaceProfile() {
     }
     setSkillGoals((prev) => {
       const next = prev.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase());
-      try { localStorage.setItem(SKILL_GOALS_KEY, JSON.stringify(next)); } catch {}
+      patchProfile({ learningSkillGoals: next });
       return next;
     });
+  };
+
+  const updateLearningProgress = (p: Record<number, "none" | "inprogress" | "completed">) => {
+    setUpskillProgress(p);
+    patchProfile({ learningProgress: p });
+  };
+
+  const updateCustomLearningItems = (items: CustomLearningItem[]) => {
+    setCustomLearningItems(items);
+    patchProfile({ learningCustomItems: items });
   };
 
   const handleResumeUpload = async (file: File) => {
@@ -1950,7 +1950,7 @@ export function WorkspaceProfile() {
         )}
 
         {page === "learning" && (
-          <LearningTab progress={upskillProgress} setProgress={setUpskillProgress} skillGoals={skillGoals} onGraduate={graduateSkill} targetRoles={dreamList} />
+          <LearningTab progress={upskillProgress} setProgress={updateLearningProgress} skillGoals={skillGoals} onGraduate={graduateSkill} targetRoles={dreamList} customItems={customLearningItems} onCustomItemsChange={updateCustomLearningItems} />
         )}
 
         {page === "assets" && !profile && !loading && (
