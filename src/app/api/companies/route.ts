@@ -1,18 +1,13 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { ensureDbUser } from "@/lib/ensure-db-user";
 import { mergeTrackedWithIntel, resolveCompanyIntelFromInput } from "@/lib/company-intel";
 import { getCatalogCompany } from "@/lib/company-catalog";
 
-async function getDbUser(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  return prisma.user.findUnique({ where: { email: user.email! } });
-}
-
 export async function GET() {
   const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -25,13 +20,22 @@ export async function GET() {
     return NextResponse.json(companies.map((row) => mergeTrackedWithIntel(row, row.companyIntel)));
   } catch (err) {
     console.error("[companies GET]", err);
-    return NextResponse.json({ error: "Couldn't load companies." }, { status: 500 });
+    try {
+      const companies = await prisma.trackedCompany.findMany({
+        where: { userId: dbUser.id },
+        orderBy: { createdAt: "desc" },
+      });
+      return NextResponse.json(companies);
+    } catch (fallbackErr) {
+      console.error("[companies GET fallback]", fallbackErr);
+      return NextResponse.json({ error: "Couldn't load companies." }, { status: 500 });
+    }
   }
 }
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
