@@ -43,6 +43,7 @@ export default function OnboardingPage() {
   const [targetSalary, setTargetSalary] = useState("");
   const [priorities, setPriorities] = useState<string[]>([]);
   const [attribution, setAttribution] = useState("");
+  const [resumeError, setResumeError] = useState(false);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
@@ -50,15 +51,23 @@ export default function OnboardingPage() {
     if (!file) return;
     setResumeFilename(file.name);
     setResumeUploaded(false);
+    setResumeError(false);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/resume", { method: "POST", body: formData });
-      setResumeUploaded(res.ok);
+      if (res.ok) {
+        setResumeUploaded(true);
+        goTo(1);
+      } else {
+        setResumeError(true);
+        setResumeFilename(null);
+      }
     } catch {
-      setResumeUploaded(false);
+      setResumeError(true);
+      setResumeFilename(null);
     }
-  }, []);
+  }, [goTo]);
 
   const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
@@ -192,6 +201,7 @@ export default function OnboardingPage() {
             <ScreenWelcome
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
+              resumeError={resumeError}
               isDragging={isDragging}
               liInput={liInput}
               onLIChange={onLIChange}
