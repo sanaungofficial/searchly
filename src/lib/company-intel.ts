@@ -2,6 +2,30 @@ import { prisma } from "@/lib/prisma";
 import type { CompanyIntel, TrackedCompany } from "@prisma/client";
 import { getCatalogCompany, normalizeCompanySlug, type CatalogCompany } from "@/lib/company-catalog";
 
+export async function backfillIntelWebsitesFromCatalog(): Promise<{ updated: number; skipped: number }> {
+  const rows = await prisma.companyIntel.findMany({ where: { website: null } });
+  let updated = 0;
+  let skipped = 0;
+
+  for (const intel of rows) {
+    const catalog = getCatalogCompany(intel.slug);
+    if (!catalog?.website) {
+      skipped++;
+      continue;
+    }
+    await prisma.companyIntel.update({
+      where: { id: intel.id },
+      data: {
+        website: catalog.website,
+        careersUrl: intel.careersUrl ?? catalog.careersUrl ?? null,
+      },
+    });
+    updated++;
+  }
+
+  return { updated, skipped };
+}
+
 export type TrackedCompanyView = TrackedCompany & {
   companyIntelId: string | null;
 };
@@ -12,10 +36,12 @@ export function mergeTrackedWithIntel(
 ): TrackedCompany {
   if (!intel) return tracked;
 
+  const catalog = getCatalogCompany(intel.slug);
+
   return {
     ...tracked,
-    website: tracked.website ?? intel.website,
-    careersUrl: tracked.careersUrl ?? intel.careersUrl,
+    website: tracked.website ?? intel.website ?? catalog?.website ?? null,
+    careersUrl: tracked.careersUrl ?? intel.careersUrl ?? catalog?.careersUrl ?? null,
     jobsCache: intel.jobsCache ?? tracked.jobsCache,
     lastJobsFetchedAt: intel.lastJobsFetchedAt ?? tracked.lastJobsFetchedAt,
     enrichmentCache: intel.enrichmentCache ?? tracked.enrichmentCache,

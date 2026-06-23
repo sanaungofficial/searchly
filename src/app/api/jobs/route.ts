@@ -1,38 +1,62 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import {
+  createSupabaseFromRequest,
+  extensionPreflightResponse,
+  withExtensionCors,
+} from "@/lib/extension-api";
 
-async function getDbUser(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
+async function getDbUser(request: Request) {
+  const supabase = createSupabaseFromRequest(request);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
   return prisma.user.findUnique({ where: { email: user.email! } });
 }
 
 // GET /api/jobs — list all jobs for current user
-export async function GET() {
-  const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
-  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(request: Request) {
+  const preflight = extensionPreflightResponse(request);
+  if (preflight) return preflight;
+
+  const dbUser = await getDbUser(request);
+  if (!dbUser) {
+    return withExtensionCors(
+      request,
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    );
+  }
 
   const jobs = await prisma.job.findMany({
     where: { userId: dbUser.id },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(jobs);
+  return withExtensionCors(request, NextResponse.json(jobs));
 }
 
 // POST /api/jobs — create a new job
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
-  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const preflight = extensionPreflightResponse(request);
+  if (preflight) return preflight;
+
+  const dbUser = await getDbUser(request);
+  if (!dbUser) {
+    return withExtensionCors(
+      request,
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    );
+  }
 
   const body = await request.json();
   const { company, role, url, stage, notes } = body;
 
   if (!company || !role) {
-    return NextResponse.json({ error: "company and role are required" }, { status: 400 });
+    return withExtensionCors(
+      request,
+      NextResponse.json({ error: "company and role are required" }, { status: 400 })
+    );
   }
 
   const job = await prisma.job.create({
@@ -46,5 +70,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json(job, { status: 201 });
+  return withExtensionCors(request, NextResponse.json(job, { status: 201 }));
 }
