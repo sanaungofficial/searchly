@@ -407,7 +407,7 @@ Return ONLY a valid JSON object with this exact structure (use null for unknown 
   "totalFunding": "e.g. '$500M' or 'Public' or 'Unknown'",
   "keyInvestors": ["investor1", "investor2"],
   "leadership": [
-    {"name": "Full Name", "title": "Title"}
+    {"name": "Full Name", "title": "Title", "linkedinUrl": "https://linkedin.com/in/... or null"}
   ],
   "recentNews": [
     {"title": "News headline", "date": "YYYY or YYYY-MM", "summary": "1 sentence summary"}

@@ -14,7 +14,7 @@ interface JobsCache {
   scanned_url: string;
 }
 
-interface EnrichmentLeader { name: string; title: string; }
+interface EnrichmentLeader { name: string; title: string; linkedinUrl?: string | null; }
 interface EnrichmentNews { title: string; date: string; summary: string; }
 interface EnrichmentCache {
   description: string | null;
@@ -179,6 +179,80 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
   );
 }
 
+// ── Table-only helpers ───────────────────────────────────────────────────────
+
+function LinkedInIcon({ href }: { href: string }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn profile" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, background: "#0a66c2", borderRadius: 3, color: "#fff", textDecoration: "none", flexShrink: 0 }}>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+    </a>
+  );
+}
+
+function UrlChip({ url, label }: { url: string | null; label: string }) {
+  if (!url) return <div style={{ fontFamily: "monospace", fontSize: 10, color: "#d1d5db", lineHeight: 1.8 }}>{label} —</div>;
+  const href = url.startsWith("http") ? url : `https://${url}`;
+  const display = url.replace(/^https?:\/\//, "").replace(/\/$/, "").split("?")[0];
+  const short = display.length > 28 ? display.slice(0, 28) + "…" : display;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={url} style={{ fontFamily: "monospace", fontSize: 10, color: "#6b7280", textDecoration: "none", display: "block", lineHeight: 1.8 }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
+      ↗ {short}
+    </a>
+  );
+}
+
+function TableJobsCell({ company, userTargetRoles, onRefreshed }: { company: TrackedCompany; userTargetRoles: string[]; onRefreshed: (updated: TrackedCompany) => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const cache = company.jobsCache as JobsCache | null;
+
+  async function handleScan(e: React.MouseEvent) {
+    e.stopPropagation();
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch(`/api/companies/${company.id}/refresh`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Scan failed."); } else { onRefreshed(data); }
+    } catch { setError("Error."); } finally { setLoading(false); }
+  }
+
+  if (!cache) {
+    return (
+      <div onClick={(e) => e.stopPropagation()}>
+        <button onClick={handleScan} disabled={loading} style={{ background: "transparent", color: "#6b7280", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 10px", fontSize: 11, cursor: loading ? "not-allowed" : "pointer", fontFamily: "var(--font-dm-sans), system-ui" }}>
+          {loading ? "Scanning…" : "Scan roles"}
+        </button>
+        {error && <div style={{ fontSize: 10, color: "#dc2626", marginTop: 3, fontFamily: "var(--font-dm-sans), system-ui" }}>{error}</div>}
+      </div>
+    );
+  }
+
+  const allJobs = cache.jobs ?? [];
+  const matched = allJobs.filter((j) => isJobMatch(j.title, userTargetRoles));
+  const shown = matched.slice(0, 3);
+  const extra = matched.length - shown.length;
+
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {shown.length === 0 ? (
+        <span style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui" }}>
+          {allJobs.length} {allJobs.length === 1 ? "role" : "roles"}{userTargetRoles.length > 0 ? ", 0 matches" : ""}
+        </span>
+      ) : (
+        <>
+          {shown.map((j, i) => (
+            <span key={i} style={{ fontSize: 11, background: "#f0fdf4", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontFamily: "var(--font-dm-sans), system-ui", display: "block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.title}</span>
+          ))}
+          {extra > 0 && <span style={{ fontSize: 10, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui" }}>+{extra} more</span>}
+        </>
+      )}
+      <button onClick={handleScan} disabled={loading} style={{ fontSize: 10, color: "#9ca3af", background: "none", border: "none", cursor: loading ? "not-allowed" : "pointer", padding: 0, textAlign: "left", fontFamily: "var(--font-dm-sans), system-ui", marginTop: 2 }}>
+        {loading ? "Scanning…" : `↻ ${allJobs.length} total`}
+      </button>
+    </div>
+  );
+}
+
 // ── Company Detail Drawer ────────────────────────────────────────────────────
 
 function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -329,8 +403,13 @@ function CompanyDrawer({
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {intel.leadership.map((l, i) => (
                         <div key={i} style={{ background: "#fff", border: "1px solid #e8e3dd", borderRadius: 7, padding: "7px 12px", minWidth: 120 }}>
-                          <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{l.name}</div>
-                          <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#6b7280" }}>{l.title}</div>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6 }}>
+                            <div>
+                              <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{l.name}</div>
+                              <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#6b7280" }}>{l.title}</div>
+                            </div>
+                            {l.linkedinUrl && <LinkedInIcon href={l.linkedinUrl} />}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -579,18 +658,14 @@ export function WorkspaceCompanies() {
         </div>
       ) : (
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e8e3dd" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: 175 }}>Company</th>
-                <th style={{ ...thStyle, width: 130 }}>Type</th>
-                <th style={{ ...thStyle, width: 120 }}>HQ / Location</th>
-                <th style={{ ...thStyle, width: 85 }}>Priority</th>
-                <th style={{ ...thStyle, width: 200 }}>{"Culture & Mission"}</th>
-                <th style={{ ...thStyle, width: 200 }}>{"Candidate's Edge"}</th>
-                <th style={{ ...thStyle, width: 150 }}>Target Roles</th>
-                <th style={{ ...thStyle, width: 170 }}>Open Roles</th>
-                <th style={{ ...thStyle, width: 48 }}></th>
+                <th style={{ ...thStyle, width: 220 }}>Company</th>
+                <th style={{ ...thStyle, width: 180 }}>Website / Careers</th>
+                <th style={{ ...thStyle, width: 90 }}>Priority</th>
+                <th style={thStyle}>Matching Roles</th>
+                <th style={{ ...thStyle, width: 40 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -599,38 +674,31 @@ export function WorkspaceCompanies() {
                 const initials = getInitials(c.name);
                 const isLast = i === companies.length - 1;
                 const rowTd: React.CSSProperties = { ...tdStyle, borderBottom: isLast ? "none" : tdStyle.borderBottom };
-                const jobCount = (c.jobsCache as JobsCache | null)?.jobs?.length ?? 0;
-                const matchCount = (c.jobsCache as JobsCache | null)?.jobs?.filter((j) => isJobMatch(j.title, userTargetRoles)).length ?? 0;
                 return (
-                  <tr key={c.id} style={{ background: selectedId === c.id ? "#faf8f5" : "#fff" }}>
+                  <tr
+                    key={c.id}
+                    onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
+                    style={{ background: selectedId === c.id ? "#faf8f5" : "#fff", cursor: "pointer" }}
+                    onMouseEnter={(e) => { if (selectedId !== c.id) (e.currentTarget as HTMLTableRowElement).style.background = "#fdfcfb"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = selectedId === c.id ? "#faf8f5" : "#fff"; }}
+                  >
                     <td style={rowTd}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-                        {/* Avatar — click to open drawer */}
-                        <button onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} title="View company details" style={{ width: 30, height: 30, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11, flexShrink: 0, marginTop: 2, border: selectedId === c.id ? "2px solid #1a1a1a" : "2px solid transparent", cursor: "pointer", padding: 0 }}>{initials}</button>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <InlineInput value={c.name} placeholder="Company name" onBlur={(v) => v.trim() && patchField(c.id, "name", v)} bold />
-                          <InlineInput value={c.website ?? ""} placeholder="Website" onBlur={(v) => patchField(c.id, "website", v)} mono />
-                          <InlineInput value={c.careersUrl ?? ""} placeholder="Careers URL" onBlur={(v) => patchField(c.id, "careersUrl", v)} mono />
-                        </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>{initials}</div>
+                        <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{c.name}</div>
                       </div>
                     </td>
-                    <td style={rowTd}><AutoTextarea value={c.type ?? ""} placeholder="e.g. Media / Technology" onBlur={(v) => patchField(c.id, "type", v)} /></td>
-                    <td style={rowTd}><InlineInput value={c.hqLocation ?? ""} placeholder="e.g. Philadelphia, PA" onBlur={(v) => patchField(c.id, "hqLocation", v)} /></td>
-                    <td style={rowTd}><PriorityBadge value={c.priority ?? ""} onChange={(v) => patchField(c.id, "priority", v)} /></td>
-                    <td style={rowTd}><AutoTextarea value={c.cultureMission ?? ""} placeholder="Describe culture and mission…" onBlur={(v) => patchField(c.id, "cultureMission", v)} /></td>
-                    <td style={rowTd}><AutoTextarea value={c.candidateEdge ?? ""} placeholder="Why you're a strong fit…" onBlur={(v) => patchField(c.id, "candidateEdge", v)} /></td>
-                    <td style={rowTd}><AutoTextarea value={c.targetRoles ?? ""} placeholder="e.g. Director Business Operations…" onBlur={(v) => patchField(c.id, "targetRoles", v)} /></td>
                     <td style={rowTd}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <JobsCell company={c} onRefreshed={handleRefreshed} />
-                        {jobCount > 0 && matchCount > 0 && (
-                          <button onClick={() => setSelectedId(c.id)} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#16a34a", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", textDecoration: "underline" }}>
-                            {matchCount} match{matchCount !== 1 ? "es" : ""} for your roles
-                          </button>
-                        )}
-                      </div>
+                      <UrlChip url={c.website} label="Website" />
+                      <UrlChip url={c.careersUrl} label="Careers" />
                     </td>
-                    <td style={{ ...rowTd, textAlign: "center" }}>
+                    <td style={{ ...rowTd }} onClick={(e) => e.stopPropagation()}>
+                      <PriorityBadge value={c.priority ?? ""} onChange={(v) => patchField(c.id, "priority", v)} />
+                    </td>
+                    <td style={rowTd}>
+                      <TableJobsCell company={c} userTargetRoles={userTargetRoles} onRefreshed={handleRefreshed} />
+                    </td>
+                    <td style={{ ...rowTd, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => handleRemove(c.id)} title="Remove company" style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 5, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>×</button>
                     </td>
                   </tr>
