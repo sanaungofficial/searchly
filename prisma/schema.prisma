@@ -198,9 +198,11 @@ model TrackedCompany {
   cultureMission    String?
   candidateEdge     String?
   targetRoles       String?
-  careersUrl        String?
-  jobsCache         Json?
-  lastJobsFetchedAt DateTime?
+  careersUrl           String?
+  jobsCache            Json?
+  lastJobsFetchedAt    DateTime?
+  enrichmentCache      Json?
+  enrichmentFetchedAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

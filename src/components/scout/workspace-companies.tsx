@@ -14,6 +14,23 @@ interface JobsCache {
   scanned_url: string;
 }
 
+interface EnrichmentLeader { name: string; title: string; }
+interface EnrichmentNews { title: string; date: string; summary: string; }
+interface EnrichmentCache {
+  description: string | null;
+  founded: string | null;
+  headquarters: string | null;
+  employeeCount: string | null;
+  industry: string | null;
+  fundingStage: string | null;
+  totalFunding: string | null;
+  keyInvestors: string[];
+  leadership: EnrichmentLeader[];
+  recentNews: EnrichmentNews[];
+  glassdoorRating: string | null;
+  websiteUrl: string | null;
+}
+
 interface TrackedCompany {
   id: string;
   name: string;
@@ -28,6 +45,8 @@ interface TrackedCompany {
   careersUrl: string | null;
   jobsCache: JobsCache | null;
   lastJobsFetchedAt: string | null;
+  enrichmentCache: EnrichmentCache | null;
+  enrichmentFetchedAt: string | null;
   createdAt: string;
 }
 
@@ -192,10 +211,22 @@ function CompanyDrawer({
 }) {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichError, setEnrichError] = useState<string | null>(null);
   const color = getColor(company.name);
   const initials = getInitials(company.name);
   const cache = company.jobsCache as JobsCache | null;
   const jobs = cache?.jobs ?? [];
+  const intel = company.enrichmentCache as EnrichmentCache | null;
+
+  async function handleEnrich() {
+    setEnriching(true); setEnrichError(null);
+    try {
+      const res = await fetch(`/api/companies/${company.id}/enrich`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setEnrichError(data.error ?? "Enrichment failed."); } else { onRefreshed(data); }
+    } catch { setEnrichError("Network error."); } finally { setEnriching(false); }
+  }
 
   // Sort: matched jobs first
   const sorted = [...jobs].sort((a, b) => {
@@ -249,6 +280,85 @@ function CompanyDrawer({
 
         {/* Body */}
         <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto" }}>
+
+          {/* Company Intel */}
+          <DrawerSection title="Company Intel">
+            {!intel ? (
+              <div>
+                <button onClick={handleEnrich} disabled={enriching} style={{ background: enriching ? "#f3f4f6" : "#1a1a1a", color: enriching ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-dm-sans), system-ui", fontWeight: 500 }}>
+                  {enriching ? "Researching…" : "✦ Enrich with AI"}
+                </button>
+                {enrichError && <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
+                <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", marginTop: 6 }}>Pulls company overview, funding, leadership, and recent news from AI.</div>
+              </div>
+            ) : (
+              <div>
+                {/* Description */}
+                {intel.description && <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#374151", lineHeight: 1.6, margin: "0 0 14px 0" }}>{intel.description}</p>}
+
+                {/* Quick stats row */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                  {intel.founded && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-dm-sans), system-ui" }}>📅 Founded {intel.founded}</span>}
+                  {intel.headquarters && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-dm-sans), system-ui" }}>📍 {intel.headquarters}</span>}
+                  {intel.employeeCount && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-dm-sans), system-ui" }}>👥 {intel.employeeCount}</span>}
+                  {intel.industry && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-dm-sans), system-ui" }}>{intel.industry}</span>}
+                  {intel.glassdoorRating && <span style={{ background: "#f0fdf4", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#16a34a", fontFamily: "var(--font-dm-sans), system-ui", fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
+                </div>
+
+                {/* Funding */}
+                {(intel.fundingStage || intel.totalFunding || (intel.keyInvestors?.length > 0)) && (
+                  <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+                    <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Funding</div>
+                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                      {intel.fundingStage && <div><div style={{ fontSize: 10, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui" }}>Stage</div><div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-dm-sans), system-ui" }}>{intel.fundingStage}</div></div>}
+                      {intel.totalFunding && <div><div style={{ fontSize: 10, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui" }}>Total</div><div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-dm-sans), system-ui" }}>{intel.totalFunding}</div></div>}
+                      {intel.keyInvestors?.length > 0 && <div><div style={{ fontSize: 10, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui" }}>Investors</div><div style={{ fontSize: 12, color: "#374151", fontFamily: "var(--font-dm-sans), system-ui" }}>{intel.keyInvestors.join(", ")}</div></div>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Leadership */}
+                {intel.leadership?.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Leadership</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {intel.leadership.map((l, i) => (
+                        <div key={i} style={{ background: "#fff", border: "1px solid #e8e3dd", borderRadius: 7, padding: "7px 12px", minWidth: 120 }}>
+                          <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{l.name}</div>
+                          <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#6b7280" }}>{l.title}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent News */}
+                {intel.recentNews?.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Recent News</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {intel.recentNews.map((n, i) => (
+                        <div key={i} style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 7, padding: "8px 12px" }}>
+                          <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#1a1a1a" }}>{n.title}</div>
+                          <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#6b7280", marginTop: 2 }}>{n.summary} <span style={{ color: "#A09890" }}>· {n.date}</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Re-enrich */}
+                <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 11, color: "#6b7280", background: "none", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-dm-sans), system-ui" }}>
+                    {enriching ? "Refreshing…" : "↻ Refresh intel"}
+                  </button>
+                  {company.enrichmentFetchedAt && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>Updated {timeAgo(company.enrichmentFetchedAt)}</span>}
+                </div>
+                {enrichError && <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
+                <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#d1d5db", marginTop: 6 }}>AI-generated · may not reflect latest data</div>
+              </div>
+            )}
+          </DrawerSection>
 
           {/* Open Roles */}
           <DrawerSection title="Open Roles">
