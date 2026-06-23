@@ -1,0 +1,37 @@
+{
+  "firstName": "Bill",
+  "lastName": "Gates",
+  "publicIdentifier": "williamhgates",
+  "linkedinUrl": "https://www.linkedin.com/in/williamhgates",
+  "headline": "Chair, Gates Foundation and Founder, Breakthrough Energy",
+  "about": "Chair of the Gates Foundation. Founder of Breakthrough Energy. Co-founder of Microsoft.",
+  "location": {
+    "linkedinText": "Seattle, Washington, United States",
+    "parsed": { "text": "Seattle, WA, United States" }
+  },
+  "experience": [
+    {
+      "position": "Co-chair",
+      "companyName": "Gates Foundation",
+      "duration": "26 yrs 6 mos",
+      "startDate": { "text": "2000", "year": 2000 },
+      "endDate": { "text": "Present" }
+    },
+    {
+      "position": "Co-founder",
+      "companyName": "Microsoft",
+      "duration": "51 yrs 6 mos",
+      "startDate": { "text": "1975", "year": 1975 },
+      "endDate": { "text": "Present" }
+    }
+  ],
+  "education": [
+    {
+      "schoolName": "Harvard University",
+      "period": "1973 - 1975",
+      "startDate": { "text": "1973", "year": 1973 },
+      "endDate": { "text": "1975", "year": 1975 }
+    }
+  ],
+  "skills": []
+}
