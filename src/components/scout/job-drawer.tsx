@@ -1,6 +1,7 @@
 "use client";
 
-import { useLayoutEffect, useEffect, useState } from "react";
+import { useLayoutEffect, useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
@@ -50,6 +51,165 @@ function extractCardDomain(website: string | null): string | null {
   } catch {
     return null;
   }
+}
+
+function guessCompanyWebsite(jobUrl: string | null): string | null {
+  if (!jobUrl) return null;
+  try {
+    const u = new URL(jobUrl.startsWith("http") ? jobUrl : `https://${jobUrl}`);
+    const host = u.hostname.replace(/^www\./, "");
+    if (/lever\.co|greenhouse\.io|ashbyhq\.com|workday|myworkdayjobs|linkedin\.com|indeed\.com|job-boards/i.test(host)) {
+      return null;
+    }
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
+type TrackedCompanySummary = { id: string; name: string };
+
+function normalizeCompanyName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function CompanyTrackPanel({
+  companyName,
+  jobUrl,
+  hqLocation,
+}: {
+  companyName: string;
+  jobUrl: string | null;
+  hqLocation: string | null;
+}) {
+  const router = useRouter();
+  const [tracked, setTracked] = useState<TrackedCompanySummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadTracked = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/companies");
+      if (!res.ok) {
+        setError("Couldn't load your tracked companies.");
+        return;
+      }
+      const list = (await res.json()) as TrackedCompanySummary[];
+      const match = list.find((c) => normalizeCompanyName(c.name) === normalizeCompanyName(companyName));
+      setTracked(match ?? null);
+    } catch {
+      setError("Network error — try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [companyName]);
+
+  useEffect(() => {
+    loadTracked();
+  }, [loadTracked]);
+
+  async function handleTrack() {
+    setSaving(true);
+    setError(null);
+    try {
+      const website = guessCompanyWebsite(jobUrl);
+      const res = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: companyName.trim(),
+          website,
+          hqLocation: hqLocation?.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError((data as { error?: string }).error ?? "Couldn't track company.");
+        return;
+      }
+      const created = (await res.json()) as TrackedCompanySummary;
+      setTracked(created);
+    } catch {
+      setError("Network error — company not tracked.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 20, paddingTop: 20, borderTop: border }}>
+      {loading ? (
+        <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>Checking watchlist…</p>
+      ) : tracked ? (
+        <>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              background: mintLight,
+              borderRadius: 20,
+              marginBottom: 12,
+            }}
+          >
+            <span style={{ fontSize: 12, color: mint }}>✓</span>
+            <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#2A4A3A" }}>On your watchlist</span>
+          </div>
+          <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
+            Scan open roles, enrich company intel, and manage notes from Companies.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/opportunities/companies")}
+            style={{
+              padding: "10px 18px",
+              background: mintBtn,
+              color: "#FFF",
+              border: "none",
+              borderRadius: 10,
+              fontFamily: sans,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Open in Companies →
+          </button>
+        </>
+      ) : (
+        <>
+          <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
+            Add {companyName} to your watchlist to scan careers pages for new roles and keep company notes in one place.
+          </p>
+          {error && (
+            <p style={{ fontFamily: sans, fontSize: 13, color: "#B45309", margin: "0 0 10px" }}>{error}</p>
+          )}
+          <button
+            type="button"
+            onClick={handleTrack}
+            disabled={saving}
+            style={{
+              padding: "10px 18px",
+              background: saving ? "rgba(26,58,47,0.35)" : mintBtn,
+              color: "#FFF",
+              border: "none",
+              borderRadius: 10,
+              fontFamily: sans,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: saving ? "default" : "pointer",
+            }}
+          >
+            {saving ? "Adding…" : "Track company"}
+          </button>
+        </>
+      )}
+    </div>
+  );
 }
 
 function CompanyLogo({ name, website, size = 48 }: { name: string; website: string | null; size?: number }) {
@@ -443,9 +603,11 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 >
                   View on LinkedIn ↗
                 </a>
-                <p style={{ fontFamily: sans, fontSize: 15, color: "var(--scout-muted)", lineHeight: 1.65, marginTop: 16 }}>
-                  Track this company and open roles from the Companies tab in Opportunities.
-                </p>
+                <CompanyTrackPanel
+                  companyName={card.company}
+                  jobUrl={urlValue || cardUrl}
+                  hqLocation={location ?? null}
+                />
               </div>
             </div>
         ) : (
