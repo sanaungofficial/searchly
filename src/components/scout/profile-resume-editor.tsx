@@ -17,6 +17,12 @@ import {
   SectionsPanel,
   type ReportIssue,
 } from "./profile-resume-editor-panels";
+import {
+  ResumeAnalysisReportDrawer,
+  buildFullReport,
+  GradeBadgeRow,
+  type ReportHighlightCategory,
+} from "./profile-resume-analysis-report";
 
 interface ProfileResumeEditorProps {
   open: boolean;
@@ -41,6 +47,8 @@ interface AnalysisData {
   gaps?: string[];
   tips?: string[];
   improvements?: { priority: string; title: string; detail: string }[];
+  highlights?: ReportHighlightCategory[];
+  _cachedAt?: string;
   error?: string;
 }
 
@@ -82,6 +90,7 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
   const [activeSection, setActiveSection] = useState<ResumeSectionId>("experience");
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [mobileTab, setMobileTab] = useState<"report" | "preview" | "edit">("preview");
@@ -98,6 +107,32 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     title: `Missing ${m}`,
     detail: `Add ${m.toLowerCase()} to strengthen your resume.`,
   }));
+
+  const fullReport = buildFullReport({
+    score: report?.score ?? completeness.pct,
+    headline: report?.headline,
+    strengths: report?.strengths,
+    issues: reportIssues,
+    highlights: analysis?.highlights,
+    updatedAt: analysis?._cachedAt,
+  });
+
+  function openFullReport() {
+    setReportOpen(true);
+  }
+
+  function beginImprovements() {
+    setReportOpen(false);
+    if (isMobile) setMobileTab("edit");
+    const firstUrgent = fullReport.highlights
+      .flatMap((g) => g.items)
+      .find((i) => i.severity === "Urgent" || i.severity === "Critical");
+    const title = firstUrgent?.title.toLowerCase() || "";
+    if (/summary|skill|keyword/.test(title)) setActiveSection("summary");
+    else if (/education|degree/.test(title)) setActiveSection("education");
+    else if (/skill/.test(title)) setActiveSection("skills");
+    else setActiveSection("experience");
+  }
 
   const loadAnalysis = useCallback(async (id: string, force = false) => {
     setAnalysisLoading(true);
@@ -182,6 +217,7 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     if (open && assetId) loadAsset(assetId);
     if (!open) {
       setAnalysis(null);
+      setReportOpen(false);
       setMobileTab("preview");
     }
   }, [open, assetId, loadAsset]);
@@ -349,6 +385,7 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
                 loading={analysisLoading}
                 error={analysis?.error}
                 onRefresh={() => assetId && loadAnalysis(assetId, true)}
+                onViewFullReport={openFullReport}
               />
             </div>
           )}
@@ -377,6 +414,9 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
                     <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: JR.muted }}>Contact</p>
                     {headerFields}
                   </div>
+                  <div className="resume-print-hide" style={{ width: "100%", maxWidth: 720 }}>
+                    <GradeBadgeRow score={report?.score ?? completeness.pct} onViewReport={openFullReport} />
+                  </div>
                   <ResumePreview data={parsedData} />
                 </>
               )}
@@ -394,6 +434,17 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
             </div>
           )}
         </div>
+
+        <ResumeAnalysisReportDrawer
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          report={fullReport}
+          loading={analysisLoading}
+          error={analysisLoading ? undefined : analysis?.error && !reportIssues.length ? analysis.error : undefined}
+          onBeginImprovements={beginImprovements}
+          onRefresh={() => assetId && loadAnalysis(assetId, true)}
+          aiUnavailable={!!analysis?.error && reportIssues.length > 0}
+        />
 
         <style>{`
           @media print {
