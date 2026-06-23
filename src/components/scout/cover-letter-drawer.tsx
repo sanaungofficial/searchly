@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useWorkspace } from "@/contexts/workspace-context";
 
 interface CoverLetterDrawerProps {
@@ -48,7 +49,12 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
   const [downloading, setDownloading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function generate(overrideDesc?: string) {
     setLoading(true);
@@ -128,6 +134,11 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function handleClose() {
+    setVisible(false);
+    setTimeout(onClose, 280);
+  }
+
   function handleCopy() {
     if (!letter) return;
     navigator.clipboard.writeText(letter).then(() => {
@@ -178,38 +189,107 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
   const letterParas = (letter ?? "").split("\n\n").filter(Boolean);
   const isReady = !loading && !streaming && !!letter;
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        onClick={onClose}
+        onClick={handleClose}
         style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
-          zIndex: 300,
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          zIndex: 200,
           opacity: visible ? 1 : 0,
-          transition: "opacity 0.2s ease",
+          transition: "opacity 0.28s ease",
         }}
       />
 
-      {/* Modal */}
+      {/* Side drawer — matches ResumeMatchDrawer */}
       <div
         style={{
-          position: "fixed", inset: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 301, padding: "24px 32px",
-          pointerEvents: "none",
+          position: "fixed",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: "min(960px, 85vw)",
+          background: "#FFFFFF",
+          zIndex: 201,
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
+          transform: visible ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.28s cubic-bezier(0.32, 0, 0.16, 1)",
         }}
       >
+        {/* Header */}
         <div
           style={{
-            width: "100%", maxWidth: 1160, height: "100%", maxHeight: 840,
-            display: "flex", borderRadius: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "16px 24px",
+            borderBottom: "1px solid rgba(0,0,0,0.07)",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 9,
+                background: "#1A3A2F",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#E8D5A3",
+                flexShrink: 0,
+              }}
+            >
+              {company.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+                Cover Letter
+              </p>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", margin: "2px 0 0" }}>
+                {jobTitle} · {company}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleClose}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              border: "1px solid rgba(0,0,0,0.1)",
+              background: "rgba(0,0,0,0.03)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+              color: "#52493F",
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Body: document preview + controls */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            minHeight: 0,
             overflow: "hidden",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
-            pointerEvents: "auto",
-            transform: visible ? "scale(1)" : "scale(0.97)",
-            opacity: visible ? 1 : 0,
-            transition: "transform 0.2s ease, opacity 0.2s ease",
           }}
         >
 
@@ -298,37 +378,9 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
               display: "flex",
               flexDirection: "column",
               borderLeft: "1px solid rgba(0,0,0,0.08)",
+              minWidth: 0,
             }}
           >
-            {/* Right header */}
-            <div style={{
-              padding: "18px 22px",
-              borderBottom: "1px solid rgba(0,0,0,0.07)",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              flexShrink: 0,
-            }}>
-              <div>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>
-                  Cover Letter
-                </p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>
-                  {jobTitle} · {company}
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                style={{
-                  width: 30, height: 30, borderRadius: "50%",
-                  border: "1px solid rgba(0,0,0,0.1)",
-                  background: "#FFFFFF", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 16, color: "#6B7280",
-                }}
-              >
-                ×
-              </button>
-            </div>
-
             {/* Tabs */}
             <div style={{
               display: "flex",
@@ -647,6 +699,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
