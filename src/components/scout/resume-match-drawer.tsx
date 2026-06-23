@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -54,7 +55,23 @@ const STEPS = [
   { n: 3 as Step, label: "Review Your New Resume" },
 ];
 
+function matchArticle(label: string): "a" | "an" {
+  return /^[aeiou]/i.test(label.trim()) ? "an" : "a";
+}
+
 function Stepper({ step }: { step: Step }) {
+  const isMobile = useIsMobile();
+  const current = STEPS.find((s) => s.n === step)!;
+
+  if (isMobile) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", gap: 12 }}>
+        <span style={{ fontFamily: fontSans, fontSize: DT.caption, fontWeight: 600, color: color.muted }}>Step {step} of 3</span>
+        <span style={{ fontFamily: fontSans, fontSize: DT.caption, fontWeight: 600, color: color.ink, textAlign: "right" }}>{current.label}</span>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", alignItems: "flex-start", padding: "20px 32px 16px" }}>
       {STEPS.map((s, i) => (
@@ -209,6 +226,7 @@ function Row({
   right: React.ReactNode;
   status: RowStatus;
 }) {
+  const isMobile = useIsMobile();
   const icon = status === "ok" ? "✓" : status === "fail" ? "✗" : status === "warn" ? "!" : "–";
   const iconColor =
     status === "ok" ? "#3D7A5B"
@@ -230,6 +248,25 @@ function Row({
     : status === "fail" ? "#C4574A"
     : status === "warn" ? "#C4A86A"
     : "transparent";
+
+  if (isMobile) {
+    return (
+      <div style={{ padding: "13px 16px", borderBottom: "1px solid rgba(0,0,0,0.05)", background: rowBg, borderLeft: status !== "neutral" ? `3px solid ${leftBorderColor}` : "3px solid transparent" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ width: 22, height: 22, borderRadius: "50%", background: iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fontSans, fontSize: 14, fontWeight: 700, color: iconColor, flexShrink: 0 }}>{icon}</div>
+          <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: "#52493F" }}>{label}</span>
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 700, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 4px" }}>Job requires</p>
+          <div style={{ fontFamily: fontSans, fontSize: 14, color: "#1A1A1A", lineHeight: 1.55 }}>{left}</div>
+        </div>
+        <div>
+          <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 700, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 4px" }}>Your resume</p>
+          <div style={{ fontFamily: fontSans, fontSize: 14, color: "#52493F", lineHeight: 1.55 }}>{right}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -346,6 +383,7 @@ export function ResumeMatchDrawer({
   onClose,
   onTailorResume,
 }: ResumeMatchDrawerProps) {
+  const isMobile = useIsMobile();
   const [data, setData] = useState<MatchData | null>(initialMatchData ?? null);
   const [loading, setLoading] = useState(!initialMatchData);
   const [error, setError] = useState<string | null>(null);
@@ -522,7 +560,7 @@ export function ResumeMatchDrawer({
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.4)",
-          zIndex: 200,
+          zIndex: isMobile ? 300 : 200,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.28s ease",
         }}
@@ -535,9 +573,10 @@ export function ResumeMatchDrawer({
           right: 0,
           top: 0,
           bottom: 0,
-          width: "min(960px, 85vw)",
+          left: isMobile ? 0 : undefined,
+          width: isMobile ? "100vw" : "min(960px, 85vw)",
           background: "#FFFFFF",
-          zIndex: 201,
+          zIndex: isMobile ? 301 : 201,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
@@ -628,7 +667,7 @@ export function ResumeMatchDrawer({
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: step === 3 && tailoredData ? "24px 28px" : "28px 32px",
+            padding: step === 3 && tailoredData ? (isMobile ? "16px" : "24px 28px") : isMobile ? "16px" : "28px 32px",
           }}
         >
           {/* ── STEP 1 ── */}
@@ -746,31 +785,21 @@ export function ResumeMatchDrawer({
                       <div
                         style={{
                           display: "flex",
-                          alignItems: "center",
+                          flexDirection: isMobile ? "column" : "row",
+                          alignItems: isMobile ? "stretch" : "center",
                           justifyContent: "space-between",
                           marginBottom: 20,
-                          padding: "24px 28px",
+                          padding: isMobile ? "20px 16px" : "24px 28px",
                           background: "#FAF7F2",
                           borderRadius: 12,
                           border: "1px solid rgba(0,0,0,0.05)",
+                          gap: isMobile ? 16 : 0,
                         }}
                       >
                         <div style={{ flex: 1 }}>
-                          <p
-                            style={{
-                              fontFamily: fontSans,
-                              fontSize: 24,
-                              fontWeight: 700,
-                              color: "#1A1A1A",
-                              marginBottom: 8,
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            Your Resume is a{" "}
-                            <span style={{ color: scoreColor }}>
-                              {data.scoreLabel}
-                            </span>{" "}
-                            Match
+                          <p style={{ fontFamily: fontSans, fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.3 }}>
+                            Your Resume is {matchArticle(data.scoreLabel)}{" "}
+                            <span style={{ color: scoreColor }}>{data.scoreLabel}</span> Match
                           </p>
                           {data.score < 6 && (
                             <div
@@ -831,7 +860,7 @@ export function ResumeMatchDrawer({
                             </p>
                           )}
                         </div>
-                        <div style={{ flexShrink: 0, marginLeft: 24 }}>
+                        <div style={{ flexShrink: 0, marginLeft: isMobile ? 0 : 24, alignSelf: isMobile ? "center" : undefined }}>
                           <BigScoreGauge score={data.score} />
                         </div>
                       </div>
@@ -853,6 +882,7 @@ export function ResumeMatchDrawer({
                           overflow: "hidden",
                         }}
                       >
+                        {!isMobile && (
                         <div
                           style={{
                             display: "grid",
@@ -927,6 +957,7 @@ export function ResumeMatchDrawer({
                             )}
                           </div>
                         </div>
+                        )}
 
                         <Row
                           label="Job Title"

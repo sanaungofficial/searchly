@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { fontSans, drawerType as DT } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CoverLetterDrawerProps {
   jobTitle: string;
@@ -38,6 +39,7 @@ async function streamInto(
 
 export function CoverLetterDrawer({ jobTitle, company, description, onClose }: CoverLetterDrawerProps) {
   const { user } = useWorkspace();
+  const isMobile = useIsMobile();
   const [letter, setLetter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState(false);
@@ -201,7 +203,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.4)",
-          zIndex: 200,
+          zIndex: isMobile ? 300 : 200,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.28s ease",
         }}
@@ -214,9 +216,10 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
           right: 0,
           top: 0,
           bottom: 0,
-          width: "min(960px, 85vw)",
+          left: isMobile ? 0 : undefined,
+          width: isMobile ? "100vw" : "min(960px, 85vw)",
           background: "#FFFFFF",
-          zIndex: 201,
+          zIndex: isMobile ? 301 : 201,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
@@ -230,7 +233,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "16px 24px",
+            padding: isMobile ? "14px 16px" : "16px 24px",
             borderBottom: "1px solid rgba(0,0,0,0.07)",
             flexShrink: 0,
           }}
