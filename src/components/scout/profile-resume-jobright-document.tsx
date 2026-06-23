@@ -7,6 +7,7 @@ import {
   type ResumeSectionId,
 } from "@/lib/resume-parse";
 import { JR } from "./profile-resume-editor-panels";
+import { MatchTag } from "./profile-resume-match-panel";
 
 const SECTION_LABELS: Record<ResumeSectionId, string> = {
   summary: "Professional Summary",
@@ -26,11 +27,12 @@ const fieldStyle: React.CSSProperties = {
   padding: 0,
 };
 
-function SectionActions({ onFix }: { onFix: () => void }) {
+function SectionActions({ onFix, onImpact }: { onFix: () => void; onImpact?: () => void }) {
   return (
     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
       <button
         type="button"
+        onClick={onImpact}
         style={{
           padding: "4px 10px",
           fontSize: 11,
@@ -64,25 +66,14 @@ function SectionActions({ onFix }: { onFix: () => void }) {
   );
 }
 
-function SectionHeader({ title, onFix }: { title: string; onFix: () => void }) {
+function SectionHeader({ title, onFix, onImpact, showMatch }: { title: string; onFix: () => void; onImpact?: () => void; showMatch?: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
-      <p
-        style={{
-          margin: 0,
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: 1,
-          color: JR.text,
-          borderBottom: `1px solid ${JR.text}`,
-          paddingBottom: 3,
-          flex: 1,
-        }}
-      >
-        {title}
-      </p>
-      <SectionActions onFix={onFix} />
+      <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: JR.text, borderBottom: `1px solid ${JR.text}`, paddingBottom: 3 }}>{title}</p>
+        {showMatch && <MatchTag />}
+      </div>
+      <SectionActions onFix={onFix} onImpact={onImpact} />
     </div>
   );
 }
@@ -115,18 +106,26 @@ export function JobrightResumeDocument({
   data,
   onChange,
   onFixSection,
+  onImpactSection,
+  onOpenAiAnalysis,
   score,
   grade,
   gradeLabel,
   onViewReport,
+  sectionMatches,
+  entryMatches,
 }: {
   data: ParsedResumeData;
   onChange: (next: ParsedResumeData) => void;
   onFixSection: (sectionId: ResumeSectionId, entryLabel?: string) => void;
+  onImpactSection?: (sectionId: ResumeSectionId, entryLabel?: string) => void;
+  onOpenAiAnalysis?: () => void;
   score: number;
   grade: string;
   gradeLabel: string;
   onViewReport: () => void;
+  sectionMatches?: Partial<Record<ResumeSectionId, boolean>>;
+  entryMatches?: Record<string, boolean>;
 }) {
   const sectionOrder = data.sectionOrder?.length ? data.sectionOrder : DEFAULT_SECTION_ORDER;
   const skillGroups = data.skillGroups.length
@@ -166,10 +165,11 @@ export function JobrightResumeDocument({
       }}
     >
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        {["AI Analysis", "Formatting", "Add Section"].map((label) => (
+        {[{ label: "AI Analysis", action: onOpenAiAnalysis }, { label: "Formatting", action: undefined }, { label: "Add Section", action: undefined }].map(({ label, action }) => (
           <button
             key={label}
             type="button"
+            onClick={action}
             style={{
               padding: "6px 12px",
               fontSize: 12,
@@ -235,7 +235,7 @@ export function JobrightResumeDocument({
         if (sectionId === "summary") {
           return (
             <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.summary} onFix={() => onFixSection("summary")} />
+              <SectionHeader title={SECTION_LABELS.summary} onFix={() => onFixSection("summary")} onImpact={() => onImpactSection?.("summary")} showMatch={sectionMatches?.summary} />
               <textarea
                 rows={4}
                 style={{ ...fieldStyle, width: "100%", resize: "vertical", fontSize: 11, lineHeight: 1.55 }}
@@ -250,7 +250,7 @@ export function JobrightResumeDocument({
         if (sectionId === "skills") {
           return (
             <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.skills} onFix={() => onFixSection("skills")} />
+              <SectionHeader title={SECTION_LABELS.skills} onFix={() => onFixSection("skills")} onImpact={() => onImpactSection?.("skills")} showMatch={sectionMatches?.skills} />
               {skillGroups.map((g) => (
                 <div key={g.id} style={{ marginBottom: 10 }}>
                   <input
@@ -305,7 +305,7 @@ export function JobrightResumeDocument({
         if (sectionId === "experience") {
           return (
             <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.experience} onFix={() => onFixSection("experience")} />
+              <SectionHeader title={SECTION_LABELS.experience} onFix={() => onFixSection("experience")} onImpact={() => onImpactSection?.("experience")} showMatch={sectionMatches?.experience} />
               {data.workExperience.map((w) => (
                 <div key={w.id} style={{ marginBottom: 16, padding: "12px 0", borderBottom: `1px solid ${JR.border}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
@@ -314,7 +314,8 @@ export function JobrightResumeDocument({
                       <input style={{ ...fieldStyle, fontStyle: "italic", marginTop: 4 }} value={w.company} placeholder="Company" onChange={(e) => patch({ workExperience: data.workExperience.map((row) => (row.id === w.id ? { ...row, company: e.target.value } : row)) })} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                      <SectionActions onFix={() => onFixSection("experience", w.company || w.title)} />
+                      <SectionActions onFix={() => onFixSection("experience", w.company || w.title)} onImpact={() => onImpactSection?.("experience", w.company || w.title)} />
+                      {entryMatches?.[w.id] && <MatchTag />}
                       <span style={{ fontSize: 10, color: JR.muted }}>{formatDateRange(w.from, w.to)}</span>
                     </div>
                   </div>
@@ -341,7 +342,7 @@ export function JobrightResumeDocument({
         if (sectionId === "education") {
           return (
             <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.education} onFix={() => onFixSection("education")} />
+              <SectionHeader title={SECTION_LABELS.education} onFix={() => onFixSection("education")} onImpact={() => onImpactSection?.("education")} showMatch={sectionMatches?.education} />
               {data.education.map((e) => (
                 <div key={e.id} style={{ marginBottom: 10 }}>
                   <input style={{ ...fieldStyle, fontWeight: 700 }} value={e.degree} placeholder="Degree" onChange={(ev) => patch({ education: data.education.map((row) => (row.id === e.id ? { ...row, degree: ev.target.value } : row)) })} />
@@ -355,7 +356,7 @@ export function JobrightResumeDocument({
         if (sectionId === "certifications") {
           return (
             <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.certifications} onFix={() => onFixSection("certifications")} />
+              <SectionHeader title={SECTION_LABELS.certifications} onFix={() => onFixSection("certifications")} onImpact={() => onImpactSection?.("certifications")} showMatch={sectionMatches?.certifications} />
               {data.certifications.map((c) => (
                 <input
                   key={c.id}

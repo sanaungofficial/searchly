@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
-import { X, Download, Loader2, Check, RefreshCw } from "lucide-react";
+import { X, Download, Loader2, Check, RefreshCw, Share2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   type ParsedResumeData,
@@ -18,7 +18,13 @@ import {
   type ReportHighlightCategory,
 } from "./profile-resume-analysis-report";
 import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobright-document";
+import { ResumeMatchPanel } from "./profile-resume-match-panel";
 import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
+import {
+  computeExperienceEntryMatches,
+  computeSectionMatches,
+  type JobMatchResult,
+} from "@/lib/resume-match";
 
 interface ProfileResumeEditorProps {
   open: boolean;
@@ -86,7 +92,13 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [fixSection, setFixSection] = useState<{ sectionId: ResumeSectionId; entryLabel?: string } | null>(null);
+  const [fixSection, setFixSection] = useState<{ sectionId: ResumeSectionId; entryLabel?: string; mode?: "all" | "impact" } | null>(null);
+  const [jobDescription, setJobDescription] = useState("");
+  const [matchResult, setMatchResult] = useState<JobMatchResult | null>(null);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [matchPanelOpen, setMatchPanelOpen] = useState(true);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,22 +124,23 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     updatedAt: analysis?._cachedAt,
   });
 
-
   function beginImprovements() {
     setReportOpen(false);
     const firstUrgent = fullReport.highlights
       .flatMap((g) => g.items)
       .find((i) => i.severity === "Urgent" || i.severity === "Critical");
     const title = firstUrgent?.title.toLowerCase() || "";
-    if (/summary|skill|keyword/.test(title)) setFixSection({ sectionId: "summary" });
-    else if (/education|degree/.test(title)) setFixSection({ sectionId: "education" });
-    else if (/skill/.test(title)) setFixSection({ sectionId: "skills" });
-    else setFixSection({ sectionId: "experience" });
+    if (/summary|skill|keyword/.test(title)) setFixSection({ sectionId: "summary", mode: "all" });
+    else if (/education|degree/.test(title)) setFixSection({ sectionId: "education", mode: "all" });
+    else if (/skill/.test(title)) setFixSection({ sectionId: "skills", mode: "all" });
+    else setFixSection({ sectionId: "experience", mode: "all" });
   }
 
   const displayScore = report?.score ?? completeness.pct;
   const { grade, label: gradeLabel } = scoreToGrade(displayScore);
-  const fixIssues = fixSection ? getSectionFixIssues(fixSection.sectionId, fullReport) : [];
+  const fixIssues = fixSection ? getSectionFixIssues(fixSection.sectionId, fullReport, fixSection.mode ?? "all") : [];
+  const sectionMatches = matchResult?.keywords?.length ? computeSectionMatches(parsedData, matchResult.keywords) : {};
+  const entryMatches = matchResult?.keywords?.length ? computeExperienceEntryMatches(parsedData, matchResult.keywords) : {};
 
   const loadAnalysis = useCallback(async (id: string, force = false) => {
     setAnalysisLoading(true);
@@ -171,6 +184,46 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     saveTimer.current = setTimeout(() => void saveParsedData(next), 600);
   }, [saveParsedData]);
 
+  const runMatchAnalysis = useCallback(async () => {
+    if (!assetId || !jobDescription.trim()) return;
+    setMatchLoading(true);
+    setMatchError(null);
+    try {
+      localStorage.setItem(`resume-match-jd-${assetId}`, jobDescription);
+      const res = await fetch(`/api/assets/${assetId}/match`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: jobDescription }),
+      });
+      const data = await res.json();
+      if (res.ok) setMatchResult(data as JobMatchResult);
+      else setMatchError(data.error || "Match analysis failed");
+    } catch {
+      setMatchError("Could not run match analysis");
+    } finally {
+      setMatchLoading(false);
+    }
+  }, [assetId, jobDescription]);
+
+  const shareResume = useCallback(async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: assetName || "Resume", url });
+        setShareMsg("Shared");
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        setShareMsg("Link copied");
+      } else {
+        setShareMsg("Copy URL from address bar");
+      }
+    } catch {
+      setShareMsg(null);
+      return;
+    }
+    setTimeout(() => setShareMsg(null), 2000);
+  }, [assetName]);
+
   const loadAsset = useCallback(async (id: string) => {
     setLoading(true);
     setParseError(null);
@@ -202,6 +255,8 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
       if (!hasResumeBodyContent(pd)) {
         setParseError(parseErr || "Resume sections are empty. Use the editor panel to add content.");
       }
+      const savedJd = localStorage.getItem(`resume-match-jd-${id}`);
+      if (savedJd) setJobDescription(savedJd);
       loadAnalysis(id);
     } finally {
       setLoading(false);
@@ -214,6 +269,10 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
       setAnalysis(null);
       setReportOpen(false);
       setFixSection(null);
+      setMatchResult(null);
+      setMatchError(null);
+      setJobDescription("");
+      setShareMsg(null);
     }
   }, [open, assetId, loadAsset]);
 
@@ -242,130 +301,60 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     }
   }
 
-
   return (
     <div className="resume-print-outer" style={{ position: "fixed", inset: 0, zIndex: 1000, fontFamily: "var(--font-ui), sans-serif" }}>
-      <div
-        className="resume-print-backdrop"
-        onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,0.35)", opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }}
-      />
-      <div
-        className="resume-print-target"
-        style={{
-          position: "absolute",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
-          width: isMobile ? "100vw" : "min(94vw, calc(100vw - 16px))",
-          background: JR.bg,
-          borderRadius: isMobile ? 0 : 14,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          boxShadow: isMobile ? "none" : "0 12px 48px rgba(0,0,0,0.18)",
-          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
-          transition: "transform 0.25s ease",
-        }}
-      >
-        <div
-          className="resume-print-hide"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: isMobile ? "0 12px" : "0 20px",
-            height: 52,
-            borderBottom: `1px solid ${JR.border}`,
-            background: JR.panel,
-            flexShrink: 0,
-            gap: 12,
-          }}
-        >
+      <div className="resume-print-backdrop" onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(17,24,39,0.35)", opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }} />
+      <div className="resume-print-target" style={{ position: "absolute", top: isMobile ? 0 : 8, right: isMobile ? 0 : 8, bottom: isMobile ? 0 : 8, left: isMobile ? 0 : undefined, width: isMobile ? "100vw" : "min(94vw, calc(100vw - 16px))", background: JR.bg, borderRadius: isMobile ? 0 : 14, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: isMobile ? "none" : "0 12px 48px rgba(0,0,0,0.18)", transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))", transition: "transform 0.25s ease" }}>
+        <div className="resume-print-hide" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "0 12px" : "0 20px", height: 52, borderBottom: `1px solid ${JR.border}`, background: JR.panel, flexShrink: 0, gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-            <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: JR.muted, display: "flex" }}>
-              <X size={18} />
-            </button>
+            <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: JR.muted, display: "flex" }}><X size={18} /></button>
             <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: JR.muted }}>RESUME</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: JR.text, padding: "4px 10px", background: JR.bg, borderRadius: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
-              {assetName}
-            </span>
-            {isPrimary && (
-              <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", background: JR.greenLight, color: JR.greenDark, borderRadius: 999 }}>Primary</span>
-            )}
+            <span style={{ fontSize: 13, fontWeight: 600, color: JR.text, padding: "4px 10px", background: JR.bg, borderRadius: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{assetName}</span>
+            {isPrimary && <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", background: JR.greenLight, color: JR.greenDark, borderRadius: 999 }}>Primary</span>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <JobrightScorePill score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} />
             {saved && <span style={{ fontSize: 13, color: JR.green, display: "flex", alignItems: "center", gap: 4 }}><Check size={13} /> Saved</span>}
             {saving && <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: JR.muted }} />}
-            <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
-              Preview
-            </button>
+            <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>
+            {shareMsg && <span style={{ fontSize: 12, color: JR.green }}>{shareMsg}</span>}
+            <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, fontSize: 12, cursor: "pointer" }}>Preview</button>
             <button type="button" onClick={downloadDocx} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />}
-              Download
+              {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />} Download
             </button>
           </div>
         </div>
-
         {parseError && !loading && !reparsing && (
           <div className="resume-print-hide" style={{ padding: "10px 16px", background: JR.criticalBg, borderBottom: `1px solid ${JR.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <span style={{ fontSize: 13, color: JR.text }}>{parseError}</span>
-            <button type="button" onClick={() => assetId && loadAsset(assetId)} style={{ padding: "6px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 6, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              <RefreshCw size={12} /> Retry
-            </button>
+            <button type="button" onClick={() => assetId && loadAsset(assetId)} style={{ padding: "6px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 6, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><RefreshCw size={12} /> Retry</button>
           </div>
         )}
-
-        <div className="resume-print-center" style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px 12px" : "24px 32px", display: "flex", flexDirection: "column", alignItems: "center", background: JR.bg }}>
-          {loading || reparsing ? (
-            <div style={{ marginTop: 80, textAlign: "center", color: JR.muted }}>
-              <Loader2 size={28} style={{ animation: "spin 1s linear infinite", marginBottom: 12 }} />
-              <p style={{ fontSize: 14 }}>{reparsing ? "Parsing resume structure…" : "Loading resume…"}</p>
-            </div>
+        <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
+          <div className="resume-print-center" style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px 12px" : "24px 32px", display: "flex", flexDirection: "column", alignItems: "center", background: JR.bg }}>
+            {loading || reparsing ? (
+              <div style={{ marginTop: 80, textAlign: "center", color: JR.muted }}>
+                <Loader2 size={28} style={{ animation: "spin 1s linear infinite", marginBottom: 12 }} />
+                <p style={{ fontSize: 14 }}>{reparsing ? "Parsing resume structure…" : "Loading resume…"}</p>
+              </div>
+            ) : (
+              <JobrightResumeDocument data={parsedData} onChange={queueSave} onFixSection={(sectionId, entryLabel) => setFixSection({ sectionId, entryLabel, mode: "all" })} onImpactSection={(sectionId, entryLabel) => setFixSection({ sectionId, entryLabel, mode: "impact" })} onOpenAiAnalysis={() => setReportOpen(true)} score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} sectionMatches={sectionMatches} entryMatches={entryMatches} />
+            )}
+          </div>
+          {!isMobile && (matchPanelOpen ? (
+            <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} onToggle={() => setMatchPanelOpen(false)} />
           ) : (
-            <JobrightResumeDocument
-              data={parsedData}
-              onChange={queueSave}
-              onFixSection={(sectionId, entryLabel) => setFixSection({ sectionId, entryLabel })}
-              score={displayScore}
-              grade={grade}
-              gradeLabel={gradeLabel}
-              onViewReport={() => setReportOpen(true)}
-            />
-          )}
+            <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} collapsed onToggle={() => setMatchPanelOpen(true)} />
+          ))}
         </div>
-
-        <ResumeAnalysisReportDrawer
-          open={reportOpen}
-          onClose={() => setReportOpen(false)}
-          report={fullReport}
-          loading={analysisLoading}
-          error={analysisLoading ? undefined : analysis?.error && !reportIssues.length ? analysis.error : undefined}
-          onBeginImprovements={beginImprovements}
-          onRefresh={() => assetId && loadAnalysis(assetId, true)}
-          aiUnavailable={!!analysis?.error && reportIssues.length > 0}
-        />
-
-        <ResumeSectionFixDrawer
-          open={!!fixSection}
-          sectionId={fixSection?.sectionId ?? null}
-          entryLabel={fixSection?.entryLabel}
-          issues={fixIssues}
-          onClose={() => setFixSection(null)}
-        />
-
-        <style>{`
-          @media print {
-            body > *:not(.resume-print-outer) { display: none !important; }
-            .resume-print-outer { position: static !important; display: block !important; }
-            .resume-print-backdrop, .resume-print-hide { display: none !important; }
-            .resume-print-target { position: static !important; width: 100% !important; height: auto !important; box-shadow: none !important; border-radius: 0 !important; transform: none !important; }
-            .resume-print-center { padding: 0 !important; overflow: visible !important; }
-          }
-          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        `}</style>
+        {isMobile && (
+          <div className="resume-print-hide">
+            <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} embedded />
+          </div>
+        )}
+        <ResumeAnalysisReportDrawer open={reportOpen} onClose={() => setReportOpen(false)} report={fullReport} loading={analysisLoading} error={analysisLoading ? undefined : analysis?.error && !reportIssues.length ? analysis.error : undefined} onBeginImprovements={beginImprovements} onRefresh={() => assetId && loadAnalysis(assetId, true)} aiUnavailable={!!analysis?.error && reportIssues.length > 0} />
+        <ResumeSectionFixDrawer open={!!fixSection} sectionId={fixSection?.sectionId ?? null} entryLabel={fixSection?.entryLabel} issues={fixIssues} onClose={() => setFixSection(null)} />
+        <style>{`@media print { body > *:not(.resume-print-outer) { display: none !important; } .resume-print-outer { position: static !important; display: block !important; } .resume-print-backdrop, .resume-print-hide { display: none !important; } .resume-print-target { position: static !important; width: 100% !important; height: auto !important; box-shadow: none !important; border-radius: 0 !important; transform: none !important; } .resume-print-center { padding: 0 !important; overflow: visible !important; } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   );

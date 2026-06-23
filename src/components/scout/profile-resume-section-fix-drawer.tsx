@@ -34,6 +34,7 @@ const SECTION_PATTERNS: Record<ResumeSectionId, RegExp> = {
 export function getSectionFixIssues(
   sectionId: ResumeSectionId,
   fullReport: FullAnalysisReport,
+  mode: "all" | "impact" = "all",
 ): SectionFixIssue[] {
   const pattern = SECTION_PATTERNS[sectionId];
   const fromHighlights = fullReport.highlights.flatMap((group) =>
@@ -49,9 +50,7 @@ export function getSectionFixIssues(
       })),
   );
 
-  if (fromHighlights.length) return fromHighlights;
-
-  return fullReport.issues
+  const fromIssues = fullReport.issues
     .filter((issue) => pattern.test(`${issue.title} ${issue.detail}`))
     .map((issue, i) => ({
       id: `${sectionId}-i-${i}`,
@@ -61,6 +60,12 @@ export function getSectionFixIssues(
       whyItMatters: issue.detail,
       howToImprove: issue.detail,
     }));
+
+  const combined = fromHighlights.length ? fromHighlights : fromIssues;
+  if (mode === "impact") {
+    return combined.filter((issue) => issue.severity === "Urgent" || issue.severity === "Critical");
+  }
+  return combined;
 }
 
 function severityLabel(severity: SectionFixIssue["severity"]) {
