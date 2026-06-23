@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown, Copy, FileText } from "lucide-react";
+import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown, Copy, FileText, GripVertical } from "lucide-react";
 
 interface ResumeSection {
   id: string;
