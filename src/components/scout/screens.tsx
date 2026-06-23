@@ -1645,7 +1645,10 @@ export function ScreenAboutYou({
 /* ──────────────────────────────────────────────────────────────
    Screen 3 — Transition
    ────────────────────────────────────────────────────────────── */
-export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () => void }) {
+export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnterWorkspace: () => void; targetRoles?: string[] }) {
+  const previewRoles = (targetRoles.length > 0 ? targetRoles : ["Director of Strategy", "VP of Operations", "Chief of Staff"]).slice(0, 3);
+  const roleCount = previewRoles.length;
+
   return (
     <div
       className="flex flex-col gap-10 anim-fade-up"
@@ -1747,15 +1750,11 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
               textTransform: "uppercase",
             }}
           >
-            3 roles tracked
+            {roleCount} role{roleCount !== 1 ? "s" : ""} queued
           </span>
         </div>
         <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 9 }}>
-          {[
-            { role: "Senior PM · Stripe", match: "Resume match: 91%", status: "Draft ready", ready: true },
-            { role: "Product Lead · Linear", match: "Resume match: 87%", status: "Draft ready", ready: true },
-            { role: "Design Systems PM · Figma", match: "Tailoring…", status: "In progress", ready: false },
-          ].map((row, i) => (
+          {previewRoles.map((role, i) => (
             <div
               key={i}
               style={{
@@ -1765,7 +1764,7 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
                 padding: "13px 18px",
                 background: "#F8F6F2",
                 borderRadius: 7,
-                opacity: row.ready ? 1 : 0.5,
+                opacity: i === 0 ? 1 : 0.6,
               }}
             >
               <div>
@@ -1778,10 +1777,10 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
                     marginBottom: 2,
                   }}
                 >
-                  {row.role}
+                  {role}
                 </p>
                 <p
-                  className={row.ready ? "" : "anim-pulse"}
+                  className="anim-pulse"
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
                     fontSize: 11,
@@ -1789,21 +1788,21 @@ export function ScreenTransition({ onEnterWorkspace }: { onEnterWorkspace: () =>
                     color: "#A09890",
                   }}
                 >
-                  {row.match}
+                  {i === 0 ? "Setting up your workspace…" : "Queued"}
                 </p>
               </div>
               <span
                 style={{
                   padding: "4px 11px",
-                  background: row.ready ? "rgba(26,58,47,0.08)" : "rgba(0,0,0,0.05)",
+                  background: "rgba(0,0,0,0.05)",
                   borderRadius: 100,
                   fontFamily: "var(--font-dm-sans), system-ui",
                   fontSize: 11,
-                  fontWeight: row.ready ? 500 : 400,
-                  color: row.ready ? "#1A3A2F" : "#A09890",
+                  fontWeight: 400,
+                  color: "#A09890",
                 }}
               >
-                {row.status}
+                {i === 0 ? "Preparing" : "Queued"}
               </span>
             </div>
           ))}
