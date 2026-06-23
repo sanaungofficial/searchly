@@ -359,3 +359,40 @@ export function shouldReplaceNameWithResumeName(
   if (metadataName && normalized === metadataName.trim().toLowerCase()) return true;
   return false;
 }
+
+export function sectionTextBlob(data: ParsedResumeData, sectionId: ResumeSectionId, entryId?: string): string {
+  if (sectionId === "summary") return data.summary || "";
+  if (sectionId === "skills") {
+    const groups = data.skillGroups.length
+      ? data.skillGroups
+      : data.skills.length
+        ? [{ id: "skills_0", label: "Skills", skills: data.skills }]
+        : [];
+    return groups.map((g) => `${g.label} ${g.skills.join(" ")}`).join(" ");
+  }
+  if (sectionId === "experience") {
+    const entries = entryId ? data.workExperience.filter((w) => w.id === entryId) : data.workExperience;
+    return entries.map((w) => `${w.title} ${w.company} ${w.bullets.join(" ")}`).join(" ");
+  }
+  if (sectionId === "education") {
+    return data.education.map((e) => `${e.degree} ${e.school}`).join(" ");
+  }
+  return data.certifications.map((c) => c.name).join(" ");
+}
+
+export function parsedResumeToText(data: ParsedResumeData): string {
+  const parts = [
+    data.name,
+    data.email,
+    data.phone,
+    data.location,
+    data.linkedinUrl,
+    data.website,
+    data.summary,
+    sectionTextBlob(data, "skills"),
+    sectionTextBlob(data, "experience"),
+    sectionTextBlob(data, "education"),
+    sectionTextBlob(data, "certifications"),
+  ];
+  return parts.filter(Boolean).join("\n");
+}
