@@ -15,6 +15,7 @@ import {
 } from "./workspace-icons";
 import { NOTIFICATIONS, LIVE_SESSIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
+import { GrowthDiscoveryModal } from "./growth-discovery-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -94,6 +95,7 @@ export function WorkspaceSidebar({
   const { isPro, isAdmin: subscriptionIsAdmin, loading: subLoading } = useSubscription();
   const showUpgrade = !subLoading && !isPro && !isAdmin && !subscriptionIsAdmin;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
 
   // On mobile: collapsed = hidden (off-screen). On desktop: collapsed = icon rail.
@@ -438,6 +440,59 @@ export function WorkspaceSidebar({
           </div>
         )}
 
+        {/* ── Talk to team (above user badge) ── */}
+        {!isRail ? (
+          <div style={{ padding: "0 14px 12px" }}>
+            <button
+              type="button"
+              onClick={() => setDiscoveryOpen(true)}
+              data-offer="discovery"
+              data-trigger="sidebar_help"
+              style={{
+                display: "block",
+                width: "100%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(232,213,163,0.12)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "rgba(232,213,163,0.85)", letterSpacing: "0.2px" }}>
+                Stuck on the search?
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.38)", lineHeight: 1.5 }}>
+                Talk to our team →
+              </p>
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDiscoveryOpen(true)}
+            title="Talk to our team"
+            data-offer="discovery"
+            data-trigger="sidebar_help"
+            style={{
+              margin: "0 auto 8px",
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              border: "1px solid rgba(232,213,163,0.15)",
+              background: "rgba(255,255,255,0.04)",
+              color: "rgba(232,213,163,0.7)",
+              fontSize: 16,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ✉
+          </button>
+        )}
+
         {/* ── User badge ── */}
         <button
           onClick={() => setSettingsOpen(true)}
@@ -495,6 +550,13 @@ export function WorkspaceSidebar({
             onClose={() => setSettingsOpen(false)}
             onSignOut={() => { setSettingsOpen(false); handleSignOut(); }}
             onAvatarChange={updateAvatarUrl}
+          />
+        )}
+
+        {discoveryOpen && (
+          <GrowthDiscoveryModal
+            trigger="sidebar_help"
+            onClose={() => setDiscoveryOpen(false)}
           />
         )}
 
