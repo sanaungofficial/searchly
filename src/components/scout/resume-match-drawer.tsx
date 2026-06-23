@@ -129,30 +129,42 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.1)",
+          background: "rgba(0,0,0,0.35)",
           zIndex: 200,
           opacity: visible ? 1 : 0,
-          transition: "opacity 0.25s ease",
+          transition: "opacity 0.2s ease",
         }}
       />
 
-      {/* Drawer */}
+      {/* Centering wrapper */}
       <div
         style={{
           position: "fixed",
-          top: 8,
-          right: 8,
-          bottom: 8,
-          width: 480,
-          background: "#FAF7F2",
-          borderRadius: 12,
+          inset: 0,
           zIndex: 201,
-          boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+          pointerEvents: "none",
+        }}
+      >
+      {/* Modal */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 580,
+          maxHeight: "85vh",
+          background: "#FAF7F2",
+          borderRadius: 14,
+          boxShadow: "0 8px 40px rgba(0,0,0,0.22)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
-          transition: "transform 0.25s ease",
+          transform: visible ? "scale(1)" : "scale(0.96)",
+          opacity: visible ? 1 : 0,
+          transition: "transform 0.2s ease, opacity 0.2s ease",
+          pointerEvents: "auto",
         }}
       >
         {/* Header */}
@@ -353,6 +365,7 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
             </button>
           </div>
         )}
+      </div>
       </div>
     </>
   );
