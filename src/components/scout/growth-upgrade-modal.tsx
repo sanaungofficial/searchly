@@ -9,8 +9,8 @@ const COPY: Record<
   { title: string; body: string; primary: string; secondary?: string }
 > = {
   limit_hit: {
-    title: "You've used your free AI runs this month",
-    body: "Pro unlocks unlimited fit analysis, cover letters, and resume tailoring — so every application gets the full treatment.",
+    title: "You're out of credits this month",
+    body: "Free includes 15 AI credits per month — match analysis, tailoring, cover letters, and Scout chat. Pro unlocks unlimited everything.",
     primary: "Upgrade to Pro — $29/mo",
   },
   low_match: {
@@ -20,8 +20,8 @@ const COPY: Record<
     secondary: "Find a coach",
   },
   usage_warning: {
-    title: "Running low on AI runs",
-    body: "You have a few free AI requests left this month. Upgrade now so you don't hit a wall mid-application.",
+    title: "Running low on credits",
+    body: "You have a few AI credits left this month. Upgrade to Pro for unlimited match analysis, cover letters, and Scout chat.",
     primary: "Upgrade to Pro",
   },
   coaching: {
@@ -223,7 +223,7 @@ export function GrowthMatchOffer({
       }}
     >
       <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", margin: "0 0 12px", lineHeight: 1.55 }}>
-        Pro tailors your resume for this role without counting against your limit. Or talk to someone who&apos;s placed candidates like you.
+        Pro tailors your resume for this role without using another credit. Or talk to someone who&apos;s placed candidates like you.
       </p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button

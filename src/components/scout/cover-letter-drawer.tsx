@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { fontSans, drawerType as DT } from "@/lib/typography";
+import { CreditsStatusBar } from "@/components/scout/credits-display";
+import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
+import { notifyCreditsChanged } from "@/lib/credits";
 
 interface CoverLetterDrawerProps {
   jobTitle: string;
@@ -51,6 +54,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -73,6 +77,10 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({ error: "Something went wrong" }));
+        if (res.status === 402) {
+          notifyCreditsChanged();
+          setShowUpgrade(true);
+        }
         setError(d.error ?? "Something went wrong");
         setLoading(false);
         return;
@@ -85,6 +93,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
         setLetter(acc);
       }, abortRef.current.signal);
       setStreaming(false);
+      notifyCreditsChanged();
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== "AbortError") setError("Something went wrong");
     } finally {
@@ -105,12 +114,21 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
         body: JSON.stringify({ currentLetter: letter, prompt, jobTitle, company, description }),
         signal: abortRef.current.signal,
       });
-      if (!res.ok) { setRefining(false); setStreaming(false); return; }
+      if (!res.ok) {
+        if (res.status === 402) {
+          notifyCreditsChanged();
+          setShowUpgrade(true);
+        }
+        setRefining(false);
+        setStreaming(false);
+        return;
+      }
       let acc = "";
       await streamInto(res, (chunk) => {
         acc += chunk;
         setLetter(acc);
       }, abortRef.current.signal);
+      notifyCreditsChanged();
     } catch (e: unknown) {
       if (!(e instanceof Error && e.name === "AbortError")) {
         // silently ignore refinement errors
@@ -282,6 +300,10 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
           >
             ×
           </button>
+        </div>
+
+        <div style={{ padding: "12px 24px 0", flexShrink: 0 }}>
+          <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
         </div>
 
         {/* Body: document preview + controls */}
@@ -700,6 +722,9 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
           </div>
         </div>
       </div>
+      {showUpgrade && (
+        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />
+      )}
     </>,
     document.body,
   );

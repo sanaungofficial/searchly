@@ -15,6 +15,7 @@ import {
 import { ResumeEditor } from "./resume-editor";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
+import { CreditsStatusBar } from "./credits-display";
 import { fontSans, fontDisplay, fontMono, color, type as T, drawerType as DT } from "@/lib/typography";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
@@ -416,12 +417,14 @@ function AiToolCard({
   subtitle,
   buttonLabel,
   highlighted,
+  creditCost,
   onClick,
 }: {
   title: string;
   subtitle: string;
   buttonLabel: string;
   highlighted?: boolean;
+  creditCost?: number;
   onClick: () => void;
 }) {
   return (
@@ -434,7 +437,14 @@ function AiToolCard({
         marginBottom: 12,
       }}
     >
-      <p style={{ fontFamily: sans, fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: "0 0 6px" }}>{title}</p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+        <p style={{ fontFamily: sans, fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{title}</p>
+        {creditCost ? (
+          <span style={{ fontFamily: sans, fontSize: 11, fontWeight: 600, color: "var(--scout-muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
+            {creditCost} credit{creditCost !== 1 ? "s" : ""}
+          </span>
+        ) : null}
+      </div>
       <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
       <button
         onClick={onClick}
@@ -920,20 +930,24 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.3 }}>
                   Boost your interview chances
                 </p>
+              <CreditsStatusBar />
               <AiToolCard
                 highlighted
+                creditCost={1}
                 title="Improve resume match"
                 subtitle="See your match score and tailor your resume for this role."
                 buttonLabel="Optimize my resume"
                 onClick={() => setMatchDrawerOpen(true)}
               />
               <AiToolCard
+                creditCost={1}
                 title="Build cover letter"
                 subtitle="Make your application stand out with a tailored letter."
                 buttonLabel="Build cover letter"
                 onClick={() => setCoverDrawerOpen(true)}
               />
               <AiToolCard
+                creditCost={1}
                 title="Analyze how well you fit"
                 subtitle="Understand your strengths and gaps for this role."
                 buttonLabel="Analyze fit"

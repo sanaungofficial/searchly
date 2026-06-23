@@ -17,6 +17,10 @@ interface AISuggestion {
 }
 import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
+import { CreditsStatusBar } from "./credits-display";
+import { GrowthUpgradeModal } from "./growth-upgrade-modal";
+import { notifyCreditsChanged } from "@/lib/credits";
+import { useCredits } from "@/hooks/useCredits";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1503,6 +1507,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
 
 function ReadbackCard({ data, loading, onRefresh, embedded }: { data: ReadbackData | null; loading: boolean; onRefresh: () => void; embedded?: boolean }) {
   const isMobile = useIsMobile();
+  const { showCredits } = useCredits();
   if (!loading && !data) return null;
   return (
     <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: embedded ? 0 : (isMobile ? 16 : 28), height: embedded && !isMobile ? "100%" : undefined }}>
@@ -1510,13 +1515,18 @@ function ReadbackCard({ data, loading, onRefresh, embedded }: { data: ReadbackDa
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Kimchi&apos;s read on you
         </p>
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          style={{ display: "flex", alignItems: "center", gap: 4, padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, background: "transparent", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}
-        >
-          <span style={{ fontSize: 14 }}>↻</span> {loading ? "Refreshing…" : "Refresh"}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "flex-start" : "flex-end", gap: 4 }}>
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            style={{ display: "flex", alignItems: "center", gap: 4, padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, background: "transparent", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}
+          >
+            <span style={{ fontSize: 14 }}>↻</span> {loading ? "Refreshing…" : "Refresh"}
+          </button>
+          {showCredits && !loading && (
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--scout-muted)" }}>Uses 1 credit</span>
+          )}
+        </div>
       </div>
       {loading ? (
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing your profile…</p>
@@ -1819,6 +1829,7 @@ export function WorkspaceProfile() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [readbackNudge, setReadbackNudge] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
@@ -1876,9 +1887,19 @@ export function WorkspaceProfile() {
   const refreshReadback = () => {
     if (!profile?.resumeUrl) return;
     setReadbackLoading(true);
-    fetch("/api/ai/readback")
-      .then((r) => r.json())
-      .then((data) => { if (!data.error) setReadback(data); })
+    fetch("/api/ai/readback?force=true")
+      .then(async (r) => {
+        if (r.status === 402) {
+          notifyCreditsChanged();
+          setShowUpgrade(true);
+          return;
+        }
+        const data = await r.json();
+        if (!data.error) {
+          setReadback(data);
+          notifyCreditsChanged();
+        }
+      })
       .catch(() => {})
       .finally(() => setReadbackLoading(false));
   };
@@ -2071,7 +2092,10 @@ export function WorkspaceProfile() {
             Your profile, through Kimchi&apos;s eyes.
           </h1>
           {showReadbackHero && (
-            <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} />
+            <>
+              <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
+              <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} />
+            </>
           )}
           {profile && (() => {
             const pct = profileCompleteness(profile);
@@ -2291,6 +2315,9 @@ export function WorkspaceProfile() {
             .catch(() => {});
         }}
       />
+      {showUpgrade && (
+        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />
+      )}
     </div>
   );
 }

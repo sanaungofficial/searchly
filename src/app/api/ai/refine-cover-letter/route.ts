@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,9 +13,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getAuthedUserForAi();
+  if ("error" in auth) return auth.error;
+  const { dbUser } = auth;
+
+  const quotaError = await requireAiQuota(dbUser);
+  if (quotaError) return quotaError;
 
   const body = await req.json();
   const { currentLetter, prompt, jobTitle, company, description } = body as {

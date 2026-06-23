@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown, Copy, FileText } from "lucide-react";
+import { CreditsStatusBar } from "@/components/scout/credits-display";
+import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
+import { notifyCreditsChanged } from "@/lib/credits";
 import { fontSans, fontMono } from "@/lib/typography";
 
 interface ResumeSection {
@@ -44,6 +47,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [fitLoading, setFitLoading] = useState(false);
   const [fitOpen, setFitOpen] = useState(false);
   const [fitCopied, setFitCopied] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -185,9 +189,15 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tool: "cover", company, role: jobTitle, jobId }),
       });
-      if (res.ok) {
+      if (res.status === 402) {
+        notifyCreditsChanged();
+        setShowUpgrade(true);
+      } else if (res.ok) {
         const d = await res.json();
-        if (d.text) setCoverLetter(d.text);
+        if (d.text) {
+          setCoverLetter(d.text);
+          notifyCreditsChanged();
+        }
       }
     } finally {
       setCoverLoading(false);
@@ -228,9 +238,15 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tool: "fit", company, role: jobTitle, jobId }),
       });
-      if (res.ok) {
+      if (res.status === 402) {
+        notifyCreditsChanged();
+        setShowUpgrade(true);
+      } else if (res.ok) {
         const d = await res.json();
-        if (d.text) setFitAnalysis(d.text);
+        if (d.text) {
+          setFitAnalysis(d.text);
+          notifyCreditsChanged();
+        }
       }
     } finally {
       setFitLoading(false);
@@ -368,6 +384,9 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             background: "#FDFAF5",
           }}
         >
+          <div style={{ marginBottom: 16 }}>
+            <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
+          </div>
           {company && (
             <div style={{ marginBottom: 20 }}>
               <div
@@ -982,6 +1001,9 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+      {showUpgrade && (
+        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />
+      )}
     </div>
     </div>
   );

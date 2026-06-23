@@ -18,6 +18,7 @@ import { UserSettingsModal } from "./user-settings-modal";
 import { GrowthDiscoveryModal } from "./growth-discovery-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useSubscription } from "@/hooks/useSubscription";
+import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -92,7 +93,7 @@ export function WorkspaceSidebar({
   const userRole = userRoleProp ?? ctxUserRole;
 
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
-  const { isPro, isAdmin: subscriptionIsAdmin, loading: subLoading } = useSubscription();
+  const { isPro, isAdmin: subscriptionIsAdmin, loading: subLoading, credits, startCheckout } = useSubscription();
   const showUpgrade = !subLoading && !isPro && !isAdmin && !subscriptionIsAdmin;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
@@ -425,18 +426,13 @@ export function WorkspaceSidebar({
 
         <div style={{ flex: 1 }} />
 
-        {/* ── Upgrade CTA (free users only, hidden when rail) ── */}
-        {!isRail && showUpgrade && (
-          <div style={{ padding: "0 14px 12px" }}>
-            <a
-              href="/pricing"
-              data-offer="pro"
-              data-trigger="sidebar"
-              style={{ display: "block", background: "rgba(232,213,163,0.08)", border: "1px solid rgba(232,213,163,0.15)", borderRadius: 10, padding: "10px 14px", textDecoration: "none" }}
-            >
-              <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.3px" }}>Upgrade to Pro</p>
-              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.4)", lineHeight: 1.5 }}>Unlimited AI tools &amp; chat</p>
-            </a>
+        {/* ── Credits + upgrade (free users) ── */}
+        {showUpgrade && credits && !isRail && (
+          <CreditsSidebarBlock credits={credits} onUpgrade={() => startCheckout()} />
+        )}
+        {showUpgrade && credits && isRail && (
+          <div style={{ padding: "0 0 8px", textAlign: "center" }} title={`${credits.remaining} credits left`}>
+            <CreditsMeter credits={credits} compact />
           </div>
         )}
 
