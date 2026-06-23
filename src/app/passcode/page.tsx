@@ -34,13 +34,13 @@ export default function PasscodePage() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      fontFamily: "var(--font-source-sans), system-ui, sans-serif",
+      fontFamily: "var(--font-ui), sans-serif",
     }}>
       <div style={{ marginBottom: 32, textAlign: "center" }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: "#1A3A2F", marginBottom: 4 }}>
           KIMCHI
         </div>
-        <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: "0.08em" }}>BY SECOND LADDER</div>
+        <div style={{ fontSize: 12, color: "#6B7280", letterSpacing: "0.08em" }}>BY SECOND LADDER</div>
       </div>
 
       <div style={{
