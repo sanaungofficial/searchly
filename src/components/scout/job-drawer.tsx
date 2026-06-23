@@ -16,6 +16,7 @@ import { ResumeEditor } from "./resume-editor";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { fontSans, fontDisplay, fontMono, color, type as T, drawerType as DT } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -362,7 +363,15 @@ function daysLabel(days: number): string {
   return `${days} days ago`;
 }
 
-function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => void }) {
+function MatchScoreCard({
+  fit,
+  onRunMatch,
+  hideAction,
+}: {
+  fit: number;
+  onRunMatch?: () => void;
+  hideAction?: boolean;
+}) {
   const fitColor = fit >= 85 ? mint : fit >= 70 ? "#C4A86A" : "var(--scout-muted)";
   const label = fit >= 85 ? "STRONG MATCH" : fit >= 70 ? "GOOD MATCH" : "FAIR MATCH";
   const exp = fit;
@@ -374,10 +383,11 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
       <div style={{ background: "#F0F2F1", borderRadius: 14, padding: "20px 22px", minWidth: 220, border }}>
         <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>Match score</p>
         <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
-        {onRunMatch && (
+        {onRunMatch && !hideAction && (
           <button
+            type="button"
             onClick={onRunMatch}
-            style={{ width: "100%", padding: "11px 14px", background: mintBtn, color: "#FFF", border: "none", borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            style={{ width: "100%", padding: "11px 14px", minHeight: 44, background: mintBtn, color: "#FFF", border: "none", borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
             Analyze match
           </button>
@@ -459,6 +469,8 @@ function AiToolCard({
 
 export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, tool = null, onToolChange }: JobDrawerProps) {
   const { openFitChat } = useWorkspace();
+  const isMobile = useIsMobile();
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
@@ -533,24 +545,24 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
       <div
         style={{
           position: "fixed",
-          top: 8,
-          right: 8,
-          bottom: 8,
-          width: DRAWER_WIDTH,
-          maxWidth: "calc(100vw - 16px)",
+          top: isMobile ? 0 : 8,
+          right: isMobile ? 0 : 8,
+          bottom: isMobile ? 0 : 8,
+          left: isMobile ? 0 : undefined,
+          width: isMobile ? "100vw" : DRAWER_WIDTH,
+          maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: pageBg,
-          borderRadius: 14,
+          borderRadius: isMobile ? 0 : 14,
           overflow: "hidden",
           zIndex: 70,
-          boxShadow: "0 12px 48px rgba(0,0,0,0.16)",
+          boxShadow: isMobile ? "none" : "0 12px 48px rgba(0,0,0,0.16)",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        {/* Top bar — tabs + actions (JobRight-style) */}
-        <div style={{ padding: "14px 28px", background: cardBg, borderBottom: border, display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+        <div style={{ padding: isMobile ? "12px 16px" : "14px 28px", background: cardBg, borderBottom: border, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, flexShrink: 0 }}>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -583,42 +595,24 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               );
             })}
           </div>
+          {!isMobile && (
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
             {urlValue && (
-              <a
-                href={urlValue}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
-              >
+              <a href={urlValue} target="_blank" rel="noopener noreferrer" style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
                 Original job post ↗
               </a>
             )}
             {urlValue && (
-              <a
-                href={urlValue}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  padding: "10px 20px",
-                  background: mintBtn,
-                  color: "#FFF",
-                  borderRadius: 10,
-                  fontFamily: sans,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  letterSpacing: "0.2px",
-                }}
-              >
+              <a href={urlValue} target="_blank" rel="noopener noreferrer" style={{ padding: "10px 20px", background: mintBtn, color: "#FFF", borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 700, textDecoration: "none", letterSpacing: "0.2px" }}>
                 APPLY NOW
               </a>
             )}
           </div>
+          )}
         </div>
 
         {drawerTab === "company" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "20px 16px" : "28px 32px" }}>
               <SectionTitle>Company</SectionTitle>
               <div style={{ background: cardBg, border, borderRadius: 12, padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
@@ -645,14 +639,13 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
             </div>
         ) : (
           /* Overview — left: job posting · right: pipeline, notes, AI */
-          <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
-            <div style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
-              {/* Hero — title + match score */}
-              <div style={{ padding: "28px 32px 24px", background: cardBg, borderBottom: border }}>
-                <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: 0, overflow: isMobile ? "auto" : "hidden" }}>
+            <div style={{ flex: isMobile ? "none" : 1, minWidth: 0, overflowY: isMobile ? "visible" : "auto", overflowX: "hidden" }}>
+              <div style={{ padding: isMobile ? "20px 16px 18px" : "28px 32px 24px", background: cardBg, borderBottom: border }}>
+                <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24, alignItems: isMobile ? "stretch" : "flex-start" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
-                      <CompanyLogo name={card.company} website={cardUrl} size={56} />
+                      <CompanyLogo name={card.company} website={cardUrl} size={isMobile ? 48 : 56} />
                       <div>
                         <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
                           <a href={companyLinkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
@@ -662,10 +655,10 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                         </p>
                       </div>
                     </div>
-                    <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 700, color: "#1A1A1A", margin: "0 0 16px", lineHeight: 1.2 }}>
+                    <h2 style={{ fontFamily: serif, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "#1A1A1A", margin: "0 0 16px", lineHeight: 1.2 }}>
                       {card.role}
                     </h2>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 24px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: "10px 24px" }}>
                       {location && <MetaRow icon={<IconPin />} label={location} />}
                       {remoteLabel && <MetaRow icon={<IconHome />} label={remoteLabel} />}
                       {jobType && <MetaRow icon={<IconClock />} label={jobType} />}
@@ -673,12 +666,12 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                       {salary && <MetaRow icon={<IconDollar />} label={salary} />}
                     </div>
                   </div>
-                  <MatchScoreCard fit={card.fit} onRunMatch={dbId ? () => setMatchDrawerOpen(true) : undefined} />
+                  <MatchScoreCard fit={card.fit} onRunMatch={dbId ? () => setMatchDrawerOpen(true) : undefined} hideAction={isMobile} />
                 </div>
               </div>
 
               {/* Main job content — posting only */}
-              <div style={{ padding: "28px 32px 36px" }}>
+              <div style={{ padding: isMobile ? "20px 16px 24px" : "28px 32px 36px" }}>
                   {summary && (
                     <div style={{ marginBottom: 22 }}>
                       <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{summary}</p>
@@ -808,12 +801,13 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
             {/* Right — pipeline, notes, AI tools */}
             <div
               style={{
-                width: AI_SIDEBAR_WIDTH,
+                width: isMobile ? "100%" : AI_SIDEBAR_WIDTH,
                 flexShrink: 0,
-                padding: "24px 20px 32px",
-                borderLeft: border,
+                padding: isMobile ? "20px 16px 24px" : "24px 20px 32px",
+                borderLeft: isMobile ? "none" : border,
+                borderTop: isMobile ? border : "none",
                 background: cardBg,
-                overflowY: "auto",
+                overflowY: isMobile ? "visible" : "auto",
                 overflowX: "hidden",
                 display: "flex",
                 flexDirection: "column",
@@ -876,14 +870,14 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   onChange={(e) => setNextStepValue(e.target.value)}
                   onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
                   placeholder="e.g. Follow up with recruiter…"
-                  style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, marginBottom: 8, boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, marginBottom: 8, boxSizing: "border-box" }}
                 />
                 <input
                   type="date"
                   value={nextStepDueValue}
                   onChange={(e) => setNextStepDueValue(e.target.value)}
                   onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                  style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, boxSizing: "border-box" }}
                 />
               </div>
 
@@ -915,7 +909,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 />
               </div>
 
-              {/* AI tools */}
+              {!isMobile && (
               <div>
                 <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.3 }}>
                   Boost your interview chances
@@ -940,7 +934,36 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 onClick={() => openFitChat(card.id)}
               />
               </div>
+              )}
             </div>
+          </div>
+        )}
+
+        {isMobile && drawerTab === "overview" && (
+          <div style={{ padding: "12px 16px max(12px, env(safe-area-inset-bottom))", borderTop: border, background: cardBg, flexShrink: 0 }}>
+            {dbId ? (
+              <button type="button" onClick={() => setMatchDrawerOpen(true)} style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: mintBtn, color: "#FFF", border: "none", borderRadius: 10, fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                {card.fit <= 0 ? "See how you match →" : `Improve match (${card.fit}%) →`}
+              </button>
+            ) : urlValue ? (
+              <a href={urlValue} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "14px 16px", minHeight: 48, background: mintBtn, color: "#FFF", borderRadius: 10, fontFamily: sans, fontSize: 15, fontWeight: 700, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>
+                Apply now →
+              </a>
+            ) : null}
+            {dbId && mobileToolsOpen && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                <button type="button" onClick={() => setCoverDrawerOpen(true)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: "#FFF", border, borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>Build cover letter</button>
+                <button type="button" onClick={() => openFitChat(card.id)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: "#FFF", border, borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>Analyze fit</button>
+                {urlValue && (
+                  <a href={urlValue} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "12px 16px", minHeight: 44, background: "#FFF", border, borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>Original job post ↗</a>
+                )}
+              </div>
+            )}
+            {dbId && (
+              <button type="button" onClick={() => setMobileToolsOpen((v) => !v)} style={{ width: "100%", marginTop: 8, padding: "10px 16px", minHeight: 40, background: "transparent", border: "none", fontFamily: sans, fontSize: 14, fontWeight: 500, color: "#8A8278", cursor: "pointer" }}>
+                {mobileToolsOpen ? "Hide tools" : "More tools"}
+              </button>
+            )}
           </div>
         )}
       </div>

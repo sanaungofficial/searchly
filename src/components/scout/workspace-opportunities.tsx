@@ -15,6 +15,7 @@ import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { fontSans, fontMono, color, type as T } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export type { DrawerTool };
 
@@ -778,12 +779,17 @@ function PipelineTab({
   onChangeStage,
   onOpenDrawer,
 }: PipelineTabProps) {
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const visibleCards = filter === "all" ? cards : cards.filter((c) => c.stage === filter);
   const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer", "closed"];
   const sortedCards = [...visibleCards].sort((a, b) => {
     return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
   });
+
+  useEffect(() => {
+    if (isMobile) setViewMode("list");
+  }, [isMobile]);
 
   const filterChips: ["all" | KanbanStage, string][] = [
     ["all", "All"],
@@ -795,7 +801,7 @@ function PipelineTab({
   ];
 
   return (
-    <div style={{ padding: "24px 32px 48px" }}>
+    <div style={{ padding: isMobile ? "16px 16px 48px" : "24px 32px 48px" }}>
       {/* Filter chips + view toggle */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
@@ -828,6 +834,7 @@ function PipelineTab({
           })}
         </div>
         {/* View toggle */}
+        {!isMobile && (
         <div style={{ display: "flex", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
           {(["list", "kanban"] as const).map((mode) => (
             <button
@@ -849,6 +856,7 @@ function PipelineTab({
             </button>
           ))}
         </div>
+        )}
       </div>
 
       {/* Empty state */}
