@@ -244,8 +244,12 @@ function PersonalTab({ profile, onSave }: {
               {href && value !== "—" ? (
                 <a href={href.startsWith("http") ? href : `https://${href}`} target="_blank" rel="noopener noreferrer"
                   className="text-sm text-[#1C3A2F] underline underline-offset-2 break-all">{value}</a>
+              ) : value === "—" ? (
+                <button onClick={() => setEditing(true)} className="text-sm text-[#C0B8B0] hover:text-[#C4A86A] transition-colors" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "var(--font-dm-sans), system-ui" }}>
+                  Add →
+                </button>
               ) : (
-                <span className={`text-sm break-all ${value === "—" ? "text-[#C0B8B0]" : "text-[#1C3A2F]"}`}>{value}</span>
+                <span className="text-sm break-all text-[#1C3A2F]">{value}</span>
               )}
             </div>
           ))}
@@ -304,7 +308,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
     <div>
       <SectionHeader title="Education" onEdit={() => setEditing(true)} />
       {entries.length === 0 ? (
-        <EmptyState message="No education added yet" sub="Upload your resume and we'll fill this in automatically." />
+        <EmptyState message="No education history" sub="Resume upload auto-fills this. Kimchi uses it to verify your credentials when scoring job fit." />
       ) : (
         <div className="space-y-4">
           {entries.map((entry, i) => (
@@ -377,7 +381,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
     <div>
       <SectionHeader title="Work Experience" onEdit={() => setEditing(true)} />
       {entries.length === 0 ? (
-        <EmptyState message="No experience added yet" sub="Upload your resume and we'll fill this in automatically." />
+        <EmptyState message="No work experience" sub="Resume upload auto-fills this. Kimchi scores job fit based on your background and years of experience." />
       ) : (
         <div className="space-y-5">
           {entries.map((entry, i) => (
@@ -441,7 +445,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
     <div>
       <SectionHeader title="Skills" onEdit={() => setEditing(!editing)} />
       {!editing && skills.length === 0 && skillGoals.length === 0 && (
-        <EmptyState message="No skills yet" sub="Upload your resume to extract your skills automatically." />
+        <EmptyState message="No skills listed yet" sub="Kimchi uses your skills to calculate fit scores for each target role. Resume upload extracts them automatically." />
       )}
       {editing ? (
         <div className="space-y-3">
@@ -863,7 +867,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {skillGoals.map((g) => {
               const matchedCourse = UPSKILL_CATEGORIES.flatMap((c) => c.items).find(
-                (item) => item.closesGap && item.closesGap.toLowerCase() === g.skill.toLowerCase()
+                (item) => item.closesGap?.some((s) => s.toLowerCase() === g.skill.toLowerCase())
               );
               return (
                 <div key={`${g.skill}-${g.role}`} style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(196,168,106,0.3)", display: "flex", alignItems: "center", gap: 12 }}>
@@ -913,18 +917,23 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 16 }}>
           Curated by Kimchi based on what hiring managers look for. Partner certifications will be added here as we grow.
         </p>
-        {UPSKILL_CATEGORIES.map((cat) => (
+        {UPSKILL_CATEGORIES.map((cat) => {
+          const gapSkills = new Set(skillGoals.map((g) => g.skill.toLowerCase()));
+          const sorted = [...cat.items].sort((a, b) => {
+            const aMatch = a.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ? 1 : 0;
+            const bMatch = b.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ? 1 : 0;
+            return bMatch - aMatch;
+          });
+          return (
           <div key={cat.title} style={{ marginBottom: 20 }}>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{cat.title}</p>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 10 }}>{cat.subtitle}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {cat.items.map((item) => {
+              {sorted.map((item) => {
                 const prog = progress[item.id] || "none";
                 const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
                 const statusColor = prog === "completed" ? "#4A8B6A" : prog === "inprogress" ? "#C4A86A" : "#A09890";
-                const relevantRole = targetRoles.find((r) =>
-                  item.closesGap && r.toLowerCase().includes(item.closesGap.split(" ")[0].toLowerCase())
-                );
+                const isGapMatch = item.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ?? false;
                 return (
                   <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 7, background: item.platformColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -934,8 +943,23 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
                         {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
-                        {relevantRole && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 500 }}>for {relevantRole}</span>}
+                        {isGapMatch && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 500 }}>closes gap</span>}
                       </div>
+                      {item.closesGap && item.closesGap.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+                          {item.closesGap.map((skill) => {
+                            const isSkillGap = gapSkills.has(skill.toLowerCase());
+                            return (
+                              <span key={skill} className={isSkillGap
+                                ? "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#4A8B6A]/10 text-[#2D6B4A]"
+                                : "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#E8D5A3]/50 text-[#52493F]"
+                              }>
+                                {skill}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
                     </div>
@@ -948,7 +972,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
               })}
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
       {/* Section C — My Learning */}
@@ -1597,9 +1621,17 @@ function CareerPreferencesPanel({ profile, onSave }: {
           </div>
         </div>
       ) : !hasAnyData ? (
-        <p style={{ fontSize: 13, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", paddingTop: 4 }}>
-          No preferences set yet. Click the pencil to add your search criteria.
-        </p>
+        <div style={{ paddingTop: 4 }}>
+          <p style={{ fontSize: 13, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 6 }}>
+            No preferences set yet.{" "}
+            <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: "#C4A86A", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-dm-sans), system-ui", padding: 0 }}>
+              Add them →
+            </button>
+          </p>
+          <p style={{ fontSize: 12, color: "#C0B8B0", fontFamily: "var(--font-dm-sans), system-ui" }}>
+            Kimchi uses these to filter and rank matched roles by what matters to you.
+          </p>
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {profile.employmentStatus && (
@@ -1688,6 +1720,7 @@ export function WorkspaceProfile() {
   const [readbackLoading, setReadbackLoading] = useState(false);
   const [profileSuggestions, setProfileSuggestions] = useState<AISuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
@@ -1860,15 +1893,58 @@ export function WorkspaceProfile() {
           </h1>
           {profile && (() => {
             const pct = profileCompleteness(profile);
+            const missing: { label: string; points: number; action: () => void }[] = [];
+            if (!profile.resumeUrl) missing.push({ label: "Upload your resume", points: 2, action: () => setPage("assets") });
+            if (!profile.parsedData?.phone) missing.push({ label: "Add phone number", points: 1, action: () => goToSection("personal") });
+            if (!profile.parsedData?.location) missing.push({ label: "Add your location", points: 1, action: () => goToSection("personal") });
+            if (!profile.linkedinUrl) missing.push({ label: "Link your LinkedIn", points: 1, action: () => goToSection("personal") });
+            if (!(profile.parsedData?.education || []).length) missing.push({ label: "Add education history", points: 1, action: () => goToSection("education") });
+            if (!(profile.parsedData?.workExperience || []).length) missing.push({ label: "Add work experience", points: 1, action: () => goToSection("experience") });
+            if (!(profile.parsedData?.skills || []).length) missing.push({ label: "Add your skills", points: 1, action: () => goToSection("skills") });
+            if (!profile.jobTimeline) missing.push({ label: "Set your job timeline", points: 1, action: () => { if (page !== "about") router.push("/profile"); } });
+            if (!profile.targetSalary) missing.push({ label: "Set your target salary", points: 1, action: () => { if (page !== "about") router.push("/profile"); } });
+            if (!(profile.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: () => { if (page !== "about") router.push("/profile"); } });
+
             return (
               <div style={{ marginTop: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>Profile completeness</span>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>{pct}%</span>
-                </div>
-                <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: 280 }}>
-                  <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#4A8B6A" : "#C4A86A", borderRadius: 2, transition: "width 0.4s ease" }} />
-                </div>
+                <button
+                  onClick={() => missing.length > 0 && setShowChecklist(s => !s)}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5, maxWidth: 280 }}>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
+                      Profile completeness
+                      {missing.length > 0 && <span style={{ marginLeft: 6, color: "#C0B8B0" }}>· {missing.length} missing</span>}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>
+                      {pct}%{missing.length > 0 ? (showChecklist ? " ▲" : " ▼") : " ✓"}
+                    </span>
+                  </div>
+                  <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: 280 }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#4A8B6A" : "#C4A86A", borderRadius: 2, transition: "width 0.4s ease" }} />
+                  </div>
+                </button>
+
+                {showChecklist && missing.length > 0 && (
+                  <div style={{ marginTop: 8, maxWidth: 280, border: "1px solid #E8D5A3", borderRadius: 8, background: "#FFFDF9", overflow: "hidden" }}>
+                    {missing.map((item, i) => (
+                      <button
+                        key={item.label}
+                        onClick={() => { item.action(); setShowChecklist(false); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", width: "100%",
+                          textAlign: "left", background: "none", border: "none",
+                          borderBottom: i < missing.length - 1 ? "1px solid #F0EBE3" : "none",
+                          cursor: "pointer", fontFamily: "var(--font-dm-sans), system-ui",
+                        }}
+                      >
+                        <span style={{ width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #C0B8B0", flexShrink: 0 }} />
+                        <span style={{ flex: 1, fontSize: 12, color: "#52493F" }}>{item.label}</span>
+                        <span style={{ fontSize: 11, color: "#C4A86A", flexShrink: 0 }}>+{item.points}pt{item.points !== 1 ? "s" : ""} →</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })()}
