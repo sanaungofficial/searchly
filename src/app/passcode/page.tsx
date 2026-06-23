@@ -34,7 +34,7 @@ export default function PasscodePage() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
+      fontFamily: "var(--font-source-sans), system-ui, sans-serif",
     }}>
       <div style={{ marginBottom: 32, textAlign: "center" }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: "#1A3A2F", marginBottom: 4 }}>

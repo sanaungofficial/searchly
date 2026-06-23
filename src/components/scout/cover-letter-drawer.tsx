@@ -244,7 +244,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 15,
                 fontWeight: 700,
                 color: "#E8D5A3",
@@ -254,10 +254,10 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
               {company.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
                 Cover Letter
               </p>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", margin: "2px 0 0" }}>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", margin: "2px 0 0" }}>
                 {jobTitle} · {company}
               </p>
             </div>
@@ -314,7 +314,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                   <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
                 </div>
               ) : error && !letter ? (
-                <div style={{ color: "#C4574A", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, paddingTop: 40 }}>
+                <div style={{ color: "#C4574A", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, paddingTop: 40 }}>
                   {error === "No resume found"
                     ? "Upload a resume in your profile first."
                     : error === "No job description provided"
@@ -334,10 +334,10 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                 >
                   {/* Letterhead */}
                   <div style={{ marginBottom: 36, textAlign: "right" }}>
-                    <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 700, color: "#1A1A1A", letterSpacing: "-0.01em" }}>
+                    <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 15, fontWeight: 700, color: "#1A1A1A", letterSpacing: "-0.01em" }}>
                       {user?.name ?? ""}
                     </div>
-                    <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B7280", marginTop: 3 }}>
+                    <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#6B7280", marginTop: 3 }}>
                       {user?.email ?? ""}
                     </div>
                   </div>
@@ -397,7 +397,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                     background: "none",
                     border: "none",
                     borderBottom: activeTab === tab ? "2px solid #1C3A2F" : "2px solid transparent",
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     fontWeight: activeTab === tab ? 600 : 400,
                     color: activeTab === tab ? "#1C3A2F" : "#9CA3AF",
@@ -424,7 +424,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                       borderRadius: 10,
                       padding: "14px 16px",
                       marginBottom: 20,
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 12,
                       color: "#1C3A2F",
                       lineHeight: 1.5,
@@ -451,7 +451,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                           style={{
                             width: "100%", padding: "10px 12px",
                             border: "1px solid rgba(0,0,0,0.12)", borderRadius: 8,
-                            fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12,
+                            fontFamily: "var(--font-source-sans), system-ui", fontSize: 12,
                             color: "#1A1A1A", resize: "none", background: "#FFFFFF",
                             lineHeight: 1.5, boxSizing: "border-box",
                           }}
@@ -464,7 +464,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                             background: manualDesc.trim() ? "#1C3A2F" : "rgba(0,0,0,0.05)",
                             color: manualDesc.trim() ? "#E8D5A3" : "#A09890",
                             border: "none", borderRadius: 8,
-                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontFamily: "var(--font-source-sans), system-ui",
                             fontSize: 12, fontWeight: 600,
                             cursor: manualDesc.trim() ? "pointer" : "not-allowed",
                           }}
@@ -487,7 +487,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                               background: "#FFFFFF",
                               border: "1px solid rgba(0,0,0,0.1)",
                               borderRadius: 8,
-                              fontFamily: "var(--font-dm-sans), system-ui",
+                              fontFamily: "var(--font-source-sans), system-ui",
                               fontSize: 12,
                               color: "#1A1A1A",
                               cursor: "pointer",
@@ -513,7 +513,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                             background: "none",
                             border: "1px dashed rgba(0,0,0,0.12)",
                             borderRadius: 8,
-                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontFamily: "var(--font-source-sans), system-ui",
                             fontSize: 12,
                             color: "#9CA3AF",
                             cursor: "pointer",
@@ -547,7 +547,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                       style={{
                         flex: 1, padding: "10px 12px",
                         border: "1px solid rgba(0,0,0,0.12)", borderRadius: 8,
-                        fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12,
+                        fontFamily: "var(--font-source-sans), system-ui", fontSize: 12,
                         color: "#1A1A1A", resize: "none", lineHeight: 1.4,
                         background: (!letter || streaming) ? "#F5F3EF" : "#FFFFFF",
                         outline: "none",
@@ -561,7 +561,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                         background: (chatInput.trim() && letter && !streaming) ? "#1C3A2F" : "rgba(0,0,0,0.06)",
                         color: (chatInput.trim() && letter && !streaming) ? "#E8D5A3" : "#A09890",
                         border: "none", borderRadius: 8,
-                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontFamily: "var(--font-source-sans), system-ui",
                         fontSize: 12, fontWeight: 600,
                         cursor: (chatInput.trim() && letter && !streaming) ? "pointer" : "not-allowed",
                         whiteSpace: "nowrap", flexShrink: 0,
@@ -584,7 +584,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     flexShrink: 0,
                   }}>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#6B7280", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                    <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#6B7280", letterSpacing: "0.05em", textTransform: "uppercase" }}>
                       Cover Letter Text
                     </span>
                     <button
@@ -594,7 +594,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                         background: copied ? "#1C3A2F" : "#FFFFFF",
                         color: copied ? "#E8D5A3" : "#1A1A1A",
                         border: "1px solid rgba(0,0,0,0.12)", borderRadius: 6,
-                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontFamily: "var(--font-source-sans), system-ui",
                         fontSize: 11, fontWeight: 500, cursor: "pointer",
                         transition: "all 0.15s",
                       }}
@@ -640,7 +640,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                       style={{
                         display: "block", width: "100%", textAlign: "left",
                         padding: "12px 16px", background: "none", border: "none",
-                        fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13,
+                        fontFamily: "var(--font-source-sans), system-ui", fontSize: 13,
                         color: "#1A1A1A", cursor: "pointer",
                       }}
                       onMouseOver={(e) => (e.currentTarget.style.background = "#F5F3EF")}
@@ -654,7 +654,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                       style={{
                         display: "block", width: "100%", textAlign: "left",
                         padding: "12px 16px", background: "none", border: "none",
-                        fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13,
+                        fontFamily: "var(--font-source-sans), system-ui", fontSize: 13,
                         color: "#1A1A1A", cursor: "pointer",
                       }}
                       onMouseOver={(e) => (e.currentTarget.style.background = "#F5F3EF")}
@@ -672,7 +672,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                   flex: 1, padding: "11px 14px", background: "#FFFFFF",
                   color: (letter && !streaming) ? "#1A1A1A" : "#A09890",
                   border: "1px solid rgba(0,0,0,0.15)", borderRadius: 24,
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500,
+                  fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500,
                   cursor: (letter && !streaming && !downloading) ? "pointer" : "not-allowed",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                   transition: "all 0.15s",
@@ -688,7 +688,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
                   background: streaming ? "rgba(0,0,0,0.06)" : "#22C55E",
                   color: streaming ? "#A09890" : "#FFFFFF",
                   border: "none", borderRadius: 24,
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700,
+                  fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 700,
                   cursor: streaming ? "not-allowed" : "pointer",
                   transition: "all 0.15s",
                 }}

@@ -54,7 +54,7 @@ const DISPLAY_H2: React.CSSProperties = {
 };
 
 const ONBOARDING_BODY: React.CSSProperties = {
-  fontFamily: "var(--font-dm-sans), system-ui",
+  fontFamily: "var(--font-source-sans), system-ui",
   fontSize: "clamp(1rem, 2.5vw, 1.125rem)",
   fontWeight: 300,
   color: "#52493F",
@@ -71,7 +71,7 @@ const PRIMARY_CTA: React.CSSProperties = {
   color: "#E8D5A3",
   border: "none",
   borderRadius: 5,
-  fontFamily: "var(--font-dm-sans), system-ui",
+  fontFamily: "var(--font-source-sans), system-ui",
   fontSize: 14,
   fontWeight: 500,
   cursor: "pointer",
@@ -111,7 +111,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
         </button>
         <div
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 9,
             fontWeight: 400,
             color: "#A09890",
@@ -233,7 +233,7 @@ export function ScreenWelcome({
             <div className="text-center flex flex-col gap-[5px]">
               <span
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 15,
                   fontWeight: 400,
                   color: "#2E2820",
@@ -243,7 +243,7 @@ export function ScreenWelcome({
               </span>
               <span
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
@@ -268,7 +268,7 @@ export function ScreenWelcome({
             <CheckCircleFilled />
             <span
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 14,
                 fontWeight: 500,
                 color: "#1A3A2F",
@@ -281,7 +281,7 @@ export function ScreenWelcome({
               <span
                 className="anim-pulse"
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
@@ -295,7 +295,7 @@ export function ScreenWelcome({
                 style={{
                   background: "none",
                   border: "none",
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
@@ -318,7 +318,7 @@ export function ScreenWelcome({
           onChange={onFileChange}
         />
         {resumeError && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C0392B", marginTop: 10, fontWeight: 300 }}>
+          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#C0392B", marginTop: 10, fontWeight: 300 }}>
             Upload failed — please try again or paste your LinkedIn below.
           </p>
         )}
@@ -337,7 +337,7 @@ export function ScreenWelcome({
         <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
         <span
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 11,
             fontWeight: 400,
             color: "#A09890",
@@ -353,7 +353,7 @@ export function ScreenWelcome({
       <div className="anim-fade-up" style={{ animationDelay: "1.0s" }}>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -384,7 +384,7 @@ export function ScreenWelcome({
               flex: 1,
               border: "none",
               background: "transparent",
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 16,
               fontWeight: 400,
               color: "#1A1A1A",
@@ -394,7 +394,7 @@ export function ScreenWelcome({
         </div>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 12,
             fontWeight: 300,
             color: "#A09890",
@@ -447,7 +447,7 @@ export function ScreenWelcome({
         style={{
           background: "none",
           border: "none",
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 13,
           fontWeight: 400,
           color: "#A09890",
@@ -504,7 +504,7 @@ export function ScreenLinkedIn({
         <CheckCircleTiny />
         <span
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 12,
             fontWeight: 500,
             color: "#1A3A2F",
@@ -532,7 +532,7 @@ export function ScreenLinkedIn({
       <p
         className="anim-fade-up"
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 17,
           fontWeight: 300,
           color: "#52493F",
@@ -569,7 +569,7 @@ export function ScreenLinkedIn({
                 flex: 1,
                 border: "none",
                 background: "transparent",
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 16,
                 fontWeight: 400,
                 color: "#1A1A1A",
@@ -594,7 +594,7 @@ export function ScreenLinkedIn({
           </div>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 12,
               fontWeight: 300,
               color: "#A09890",
@@ -623,7 +623,7 @@ export function ScreenLinkedIn({
           <p
             className="anim-pulse"
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 16,
               fontWeight: 300,
               color: "#52493F",
@@ -641,7 +641,7 @@ export function ScreenLinkedIn({
           style={{
             background: "none",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 13,
             fontWeight: 400,
             color: "#A09890",
@@ -702,7 +702,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
       <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -736,7 +736,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
         >
           {loading && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>
                 Reading your resume...
               </p>
               {[180, 220, 140].map((w, i) => (
@@ -751,7 +751,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
 
           {!loading && (error || !data) && (
             <>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 8 }}>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 8 }}>
                 We couldn&apos;t generate your read right now — that happens sometimes. You can keep going and add a job; upload a resume anytime from Profile → Assets for the full read.
               </p>
               <button
@@ -763,7 +763,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                   color: "#E8D5A3",
                   border: "none",
                   borderRadius: 5,
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 14,
                   fontWeight: 500,
                   cursor: "pointer",
@@ -778,7 +778,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
             <>
               <p
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 10,
                   fontWeight: 500,
                   color: "#A09890",
@@ -822,7 +822,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                       padding: "6px 14px",
                       background: "#F5F3EF",
                       borderRadius: 100,
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 12,
                       color: "#2A2218",
                     }}
@@ -842,7 +842,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               >
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 10,
                     fontWeight: 500,
                     color: "#A09890",
@@ -871,7 +871,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                       </span>
                       <span
                         style={{
-                          fontFamily: "var(--font-dm-sans), system-ui",
+                          fontFamily: "var(--font-source-sans), system-ui",
                           fontSize: 11,
                           fontWeight: 400,
                           color: fitColor(r.fit),
@@ -888,7 +888,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               <div style={{ padding: "18px 22px", background: "#FBF8F2", borderRadius: 7 }}>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 10,
                     fontWeight: 500,
                     color: "#A09890",
@@ -901,7 +901,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                 </p>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 13,
                     fontWeight: 300,
                     color: "#6B6258",
@@ -952,7 +952,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               color: "#52493F",
               border: "1px solid rgba(26,58,47,0.2)",
               borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 14,
               fontWeight: 400,
               cursor: "pointer",
@@ -1015,7 +1015,7 @@ export function ScreenTargetJobs({
       <p
         className="anim-fade-up"
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 17,
           fontWeight: 300,
           color: "#52493F",
@@ -1052,7 +1052,7 @@ export function ScreenTargetJobs({
                 flex: 1,
                 border: "none",
                 background: "transparent",
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 15,
                 fontWeight: 400,
                 color: "#1A1A1A",
@@ -1080,7 +1080,7 @@ export function ScreenTargetJobs({
           </div>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 12,
               fontWeight: 300,
               color: "#A09890",
@@ -1123,7 +1123,7 @@ export function ScreenTargetJobs({
               >
                 <span
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 11,
                     fontWeight: 600,
                     color: "#3A3020",
@@ -1135,7 +1135,7 @@ export function ScreenTargetJobs({
               <div>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 14,
                     fontWeight: 500,
                     color: "#1A1A1A",
@@ -1146,7 +1146,7 @@ export function ScreenTargetJobs({
                 </p>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     fontWeight: 400,
                     color: "#A09890",
@@ -1161,7 +1161,7 @@ export function ScreenTargetJobs({
                 <span
                   className="anim-pulse"
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     fontWeight: 300,
                     color: "#A09890",
@@ -1179,7 +1179,7 @@ export function ScreenTargetJobs({
                   <CheckCircleSmall />
                   <span
                     style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 12,
                       fontWeight: 500,
                       color: "#1A3A2F",
@@ -1205,7 +1205,7 @@ export function ScreenTargetJobs({
               color: "#E8D5A3",
               border: "none",
               borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 15,
               fontWeight: 500,
               cursor: "pointer",
@@ -1227,7 +1227,7 @@ export function ScreenTargetJobs({
           style={{
             background: "none",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 13,
             fontWeight: 400,
             color: "#A09890",
@@ -1410,7 +1410,7 @@ export function ScreenTargetRoles({
       <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -1435,7 +1435,7 @@ export function ScreenTargetRoles({
                   color: active ? "#E8D5A3" : "#52493F",
                   border: `1.5px solid ${active ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
                   borderRadius: 6,
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 13,
                   fontWeight: active ? 500 : 400,
                   cursor: "pointer",
@@ -1467,7 +1467,7 @@ export function ScreenTargetRoles({
         <div className="anim-fade-up" style={{ background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 10,
               fontWeight: 500,
               color: "#A09890",
@@ -1493,7 +1493,7 @@ export function ScreenTargetRoles({
                     color: disabled ? "#C5BFB7" : selected ? "#1A3A2F" : "#52493F",
                     border: `1.5px solid ${selected ? "#1A3A2F" : disabled ? "rgba(26,58,47,0.1)" : "rgba(26,58,47,0.2)"}`,
                     borderRadius: 100,
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 13,
                     fontWeight: selected ? 500 : 400,
                     cursor: disabled ? "default" : "pointer",
@@ -1536,7 +1536,7 @@ export function ScreenTargetRoles({
           style={{
             background: "none",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 13,
             fontWeight: 400,
             color: "#A09890",
@@ -1608,7 +1608,7 @@ export function ScreenAboutYou({
         color: selected ? "#1A3A2F" : "#52493F",
         border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.2)"}`,
         borderRadius: 100,
-        fontFamily: "var(--font-dm-sans), system-ui",
+        fontFamily: "var(--font-source-sans), system-ui",
         fontSize: 13,
         fontWeight: selected ? 500 : 400,
         cursor: "pointer",
@@ -1624,11 +1624,11 @@ export function ScreenAboutYou({
 
   const sectionLabel = (text: string, hint?: string, optional?: boolean) => (
     <div style={{ marginBottom: 12 }}>
-      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase" as const }}>
+      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase" as const }}>
         {text}{optional && <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
       </p>
       {hint && (
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#A09890", marginTop: 6, lineHeight: 1.5 }}>
+        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#A09890", marginTop: 6, lineHeight: 1.5 }}>
           {hint}
         </p>
       )}
@@ -1671,7 +1671,7 @@ export function ScreenAboutYou({
                   color: selected ? "#E8D5A3" : "#52493F",
                   border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
                   borderRadius: 6,
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 14,
                   fontWeight: selected ? 500 : 400,
                   cursor: "pointer",
@@ -1698,7 +1698,7 @@ export function ScreenAboutYou({
                 <select
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
-                  style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-source-sans), system-ui", fontSize: 16, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
                 >
                   <option value="">Select a range</option>
                   {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -1727,7 +1727,7 @@ export function ScreenAboutYou({
           <select
             value={attribution}
             onChange={(e) => onAttributionChange(e.target.value)}
-            style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
+            style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-source-sans), system-ui", fontSize: 16, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
           >
             <option value="">Select one</option>
             {ATTRIBUTION_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -1743,7 +1743,7 @@ export function ScreenAboutYou({
         {showFilterNudge && (
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 13,
               fontWeight: 300,
               color: "#6B6258",
@@ -1772,7 +1772,7 @@ export function ScreenAboutYou({
             marginTop: 16,
             background: "none",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 13,
             fontWeight: 400,
             color: "#A09890",
@@ -1835,7 +1835,7 @@ export function ScreenTransition({
       <div>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -1860,7 +1860,7 @@ export function ScreenTransition({
         <div className="anim-fade-up">
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 10,
               fontWeight: 500,
               color: "#A09890",
@@ -1879,7 +1879,7 @@ export function ScreenTransition({
                   padding: "6px 14px",
                   background: "rgba(26,58,47,0.08)",
                   borderRadius: 100,
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   color: "#1A3A2F",
                 }}
@@ -1903,7 +1903,7 @@ export function ScreenTransition({
       >
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -1934,7 +1934,7 @@ export function ScreenTransition({
               border: "1.5px solid rgba(26,58,47,0.22)",
               borderRadius: 6,
               background: "#F7F5F2",
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 16,
               color: "#1A1A1A",
               boxSizing: "border-box",
@@ -1961,7 +1961,7 @@ export function ScreenTransition({
           <p
             className="anim-pulse"
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 13,
               fontWeight: 300,
               color: "#52493F",
@@ -1975,7 +1975,7 @@ export function ScreenTransition({
         {error && !loading && (
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 13,
               color: "#C4574A",
               marginTop: 14,
@@ -1998,7 +1998,7 @@ export function ScreenTransition({
           >
             <p
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 15,
                 fontWeight: 600,
                 color: "#1A1A1A",
@@ -2009,7 +2009,7 @@ export function ScreenTransition({
             </p>
             <p
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 14,
                 fontWeight: 400,
                 color: "#52493F",
@@ -2021,7 +2021,7 @@ export function ScreenTransition({
             {(analysis.location || analysis.salary) && (
               <p
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
@@ -2050,7 +2050,7 @@ export function ScreenTransition({
           style={{
             background: "none",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 13,
             fontWeight: 400,
             color: "#A09890",
@@ -2072,7 +2072,7 @@ export function ScreenTransition({
               display: "block",
               background: "none",
               border: "none",
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 13,
               fontWeight: 400,
               color: "#A09890",
@@ -2109,7 +2109,7 @@ export function DemoNextButton({ onClick }: { onClick: () => void }) {
           color: "rgba(232,213,163,0.88)",
           border: "none",
           borderRadius: 6,
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 12,
           fontWeight: 500,
           cursor: "pointer",

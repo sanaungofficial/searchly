@@ -178,7 +178,7 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ece6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontFamily: "var(--font-playfair)", fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>User Detail</p>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onEdit} style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Edit</button>
+            <button onClick={onEdit} style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Edit</button>
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 20, lineHeight: 1 }}>×</button>
           </div>
         </div>
@@ -327,7 +327,7 @@ function EditPanel({ user, onClose, onSaved }: { user: AdminUser; onClose: () =>
 
   const inputStyle: React.CSSProperties = {
     width: "100%", fontSize: 14, background: "#faf8f5", border: "1px solid #e8e2da",
-    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-dm-sans)",
+    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-source-sans)",
     color: "#1a1a1a", boxSizing: "border-box",
   };
 
@@ -355,8 +355,8 @@ function EditPanel({ user, onClose, onSaved }: { user: AdminUser; onClose: () =>
         </div>
         {err && <p style={{ fontSize: 13, color: "#b45309", margin: 0 }}>{err}</p>}
         <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-dm-sans)" }}>{saving ? "Saving…" : "Save"}</button>
+          <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-source-sans)" }}>{saving ? "Saving…" : "Save"}</button>
         </div>
       </div>
     </div>
@@ -386,7 +386,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
 
   const inputStyle: React.CSSProperties = {
     width: "100%", fontSize: 14, background: "#faf8f5", border: "1px solid #e8e2da",
-    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-dm-sans)", color: "#1a1a1a", boxSizing: "border-box",
+    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-source-sans)", color: "#1a1a1a", boxSizing: "border-box",
   };
 
   return (
@@ -401,7 +401,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
           <div style={{ textAlign: "center", padding: "16px 0" }}>
             <p style={{ fontSize: 22, marginBottom: 8 }}>✓</p>
             <p style={{ fontSize: 14, color: "#2d7a50", fontWeight: 500 }}>Invite sent to {email}</p>
-            <button onClick={onClose} style={{ marginTop: 16, padding: "8px 20px", borderRadius: 8, border: "none", background: "#1a3a2f", color: "#fff", cursor: "pointer", fontSize: 14, fontFamily: "var(--font-dm-sans)" }}>Done</button>
+            <button onClick={onClose} style={{ marginTop: 16, padding: "8px 20px", borderRadius: 8, border: "none", background: "#1a3a2f", color: "#fff", cursor: "pointer", fontSize: 14, fontFamily: "var(--font-source-sans)" }}>Done</button>
           </div>
         ) : (
           <>
@@ -421,8 +421,8 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
             </div>
             {err && <p style={{ fontSize: 13, color: "#b45309", margin: 0 }}>{err}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Cancel</button>
-              <button onClick={send} disabled={sending} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: sending ? "#d4c9b8" : "#1a3a2f", cursor: sending ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-dm-sans)" }}>{sending ? "Sending…" : "Send Invite"}</button>
+              <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Cancel</button>
+              <button onClick={send} disabled={sending} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: sending ? "#d4c9b8" : "#1a3a2f", cursor: sending ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-source-sans)" }}>{sending ? "Sending…" : "Send Invite"}</button>
             </div>
           </>
         )}
@@ -467,7 +467,7 @@ const COACH_STATUS_STYLES: Record<CoachStatus, { color: string; background: stri
 
 const coachInputStyle: React.CSSProperties = {
   width: "100%", fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da",
-  borderRadius: 7, padding: "7px 10px", outline: "none", fontFamily: "var(--font-dm-sans)",
+  borderRadius: 7, padding: "7px 10px", outline: "none", fontFamily: "var(--font-source-sans)",
   boxSizing: "border-box", color: "#1a1a1a",
 };
 
@@ -495,7 +495,7 @@ function CoachTagInput({ value, onChange }: { value: string[]; onChange: (v: str
       </div>
       <div style={{ display: "flex", gap: 5 }}>
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} placeholder="Type & Enter" style={{ ...coachInputStyle, flex: 1 }} />
-        <button onClick={add} style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>+</button>
+        <button onClick={add} style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>+</button>
       </div>
     </div>
   );
@@ -575,7 +575,7 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
               <input type="checkbox" id="featured-chk" checked={form.featured ?? false} onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))} style={{ width: 14, height: 14, cursor: "pointer" }} />
-              <label htmlFor="featured-chk" style={{ fontSize: 13, color: "#3d3530", cursor: "pointer", fontFamily: "var(--font-dm-sans)" }}>Featured (shown first)</label>
+              <label htmlFor="featured-chk" style={{ fontSize: 13, color: "#3d3530", cursor: "pointer", fontFamily: "var(--font-source-sans)" }}>Featured (shown first)</label>
             </div>
           </div>
 
@@ -618,13 +618,13 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
 
         <div style={{ padding: "16px 24px", borderTop: "1px solid #f0ece6", display: "flex", gap: 8 }}>
           {!isNew && (
-            <button onClick={remove} disabled={deleting} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(220,38,38,0.3)", background: "transparent", cursor: deleting ? "default" : "pointer", fontSize: 13, color: "#dc2626", fontFamily: "var(--font-dm-sans)" }}>
+            <button onClick={remove} disabled={deleting} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(220,38,38,0.3)", background: "transparent", cursor: deleting ? "default" : "pointer", fontSize: 13, color: "#dc2626", fontFamily: "var(--font-source-sans)" }}>
               {deleting ? "Deleting…" : "Delete"}
             </button>
           )}
           <div style={{ flex: 1 }} />
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 13, color: "#fff", fontFamily: "var(--font-dm-sans)", fontWeight: 600 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 13, color: "#fff", fontFamily: "var(--font-source-sans)", fontWeight: 600 }}>
             {saving ? "Saving…" : isNew ? "Create" : "Save"}
           </button>
         </div>
@@ -664,13 +664,13 @@ function CoachesPanel() {
   return (
     <div>
       <SectionLabel action={
-        <button onClick={() => setEditCoach("new")} style={{ fontSize: 13, fontFamily: "var(--font-dm-sans)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ New Coach</button>
+        <button onClick={() => setEditCoach("new")} style={{ fontSize: 13, fontFamily: "var(--font-source-sans)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ New Coach</button>
       }>Coaches ({coaches.length})</SectionLabel>
 
       {loading ? <p style={{ fontSize: 13, color: "#a09890" }}>Loading…</p> : (
         <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           <div style={{ padding: "10px 16px", borderBottom: "1px solid #f0ece6" }}>
-            <input type="text" placeholder="Search coaches…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: "100%", fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-dm-sans)", boxSizing: "border-box" }} />
+            <input type="text" placeholder="Search coaches…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: "100%", fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-source-sans)", boxSizing: "border-box" }} />
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
@@ -702,7 +702,7 @@ function CoachesPanel() {
                       <span style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, ...ss }}>{c.status.toLowerCase()}</span>
                     </td>
                     <td style={{ padding: "10px 20px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => setEditCoach(c)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Edit</button>
+                      <button onClick={() => setEditCoach(c)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Edit</button>
                     </td>
                   </tr>
                 );
@@ -820,7 +820,7 @@ function PromptsPanel() {
             <div style={{ padding: "8px 14px", fontSize: 11, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>{cat}</div>
             {prompts.filter((p) => p.category === cat).map((p) => (
               <button key={p.key} onClick={() => selectPrompt(p.key)}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}>
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-source-sans)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}>
                 {p.label}
               </button>
             ))}
@@ -833,7 +833,7 @@ function PromptsPanel() {
         {current ? (
           <>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontFamily: "var(--font-dm-sans)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{current.label}</div>
+              <div style={{ fontFamily: "var(--font-source-sans)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{current.label}</div>
               <div style={{ fontSize: 13, color: "#7a7268" }}>{current.description}</div>
               {current.variables.length > 0 && (
                 <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -850,11 +850,11 @@ function PromptsPanel() {
             />
             <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={handleSave} disabled={saving}
-                style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
+                style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-source-sans)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Saving…" : "Save"}
               </button>
               <button onClick={handleReset} disabled={saving}
-                style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "#7a7268", fontFamily: "var(--font-dm-sans)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
+                style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "#7a7268", fontFamily: "var(--font-source-sans)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
                 Reset to default
               </button>
               {saveStatus === "saved" && <span style={{ fontSize: 13, color: "#2d7a50" }}>Saved</span>}
@@ -945,7 +945,7 @@ export function WorkspaceAdmin() {
           const active = adminView === id;
           return (
             <button key={id} onClick={() => setAdminView(id)}
-              style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-dm-sans)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+              style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-source-sans)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
               {label}
             </button>
           );
@@ -1079,12 +1079,12 @@ export function WorkspaceAdmin() {
 
       {/* All Users */}
       <SectionLabel action={
-        <button onClick={() => setInviteOpen(true)} style={{ fontSize: 13, fontFamily: "var(--font-dm-sans)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ Invite User</button>
+        <button onClick={() => setInviteOpen(true)} style={{ fontSize: 13, fontFamily: "var(--font-source-sans)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ Invite User</button>
       }>All Users</SectionLabel>
 
       <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #f0ece6" }}>
-          <input type="text" placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-dm-sans)" }} />
+          <input type="text" placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-source-sans)" }} />
           <div style={{ display: "flex", gap: 4, fontSize: 12, fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>
             {(["date", "jobs"] as const).map((s) => (
               <button key={s} onClick={() => setSort(s)} style={{ padding: "4px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: sort === s ? "#f0ece6" : "transparent", color: sort === s ? "#3d3530" : "#a09890" }}>{s === "date" ? "newest" : "most jobs"}</button>
@@ -1126,7 +1126,7 @@ export function WorkspaceAdmin() {
                   </td>
                   <td style={{ padding: "10px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#3d3530" }}>{u.jobCount}</td>
                   <td style={{ padding: "10px 20px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => setEditUser(u)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-dm-sans)" }}>Edit</button>
+                    <button onClick={() => setEditUser(u)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Edit</button>
                   </td>
                 </tr>
               );

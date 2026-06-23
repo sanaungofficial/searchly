@@ -6,7 +6,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS, type KanbanCard } from "./workspace-data";
 import type { DrawerTool } from "./workspace-opportunities";
 
-const sans = "var(--font-dm-sans), system-ui";
+const sans = "var(--font-source-sans), system-ui";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 

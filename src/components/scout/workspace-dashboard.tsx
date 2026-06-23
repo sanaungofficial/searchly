@@ -12,24 +12,25 @@ import {
   type SignalsData,
 } from "./workspace-data";
 import { PlusIcon, RefreshIcon } from "./workspace-icons";
+import { fontSans, fontMono, color, type as T } from "@/lib/typography";
 
 const SECTION_LABEL: React.CSSProperties = {
-  fontFamily: "ui-monospace, 'Courier New', monospace",
-  fontSize: 12,
+  fontFamily: fontSans,
+  fontSize: T.label,
   fontWeight: 600,
-  color: "#57534e",
+  color: color.muted,
   textTransform: "uppercase",
-  letterSpacing: "0.1em",
+  letterSpacing: "0.06em",
   marginBottom: 14,
 };
 
 const STAT_LABEL: React.CSSProperties = {
-  fontFamily: "ui-monospace, 'Courier New', monospace",
-  fontSize: 11,
+  fontFamily: fontSans,
+  fontSize: T.label,
   fontWeight: 600,
-  color: "#78716c",
+  color: color.muted,
   textTransform: "uppercase",
-  letterSpacing: "0.1em",
+  letterSpacing: "0.06em",
   marginBottom: 10,
 };
 
@@ -104,7 +105,7 @@ function ActivityFeedItem({
           <div style={{ flex: 1, minWidth: 0 }}>
             <p
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 15,
                 color: "#1c1917",
                 fontWeight: 600,
@@ -116,7 +117,7 @@ function ActivityFeedItem({
             </p>
             <p
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 13,
                 color: "#57534e",
                 margin: "4px 0 0",
@@ -131,12 +132,12 @@ function ActivityFeedItem({
           <span
             style={{
               fontFamily: "ui-monospace, monospace",
-              fontSize: 10,
+              fontSize: T.label,
               color: stageColor,
               background: stageColor + "20",
               padding: "4px 10px",
               borderRadius: 100,
-              fontWeight: 700,
+              fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
             }}
@@ -145,7 +146,7 @@ function ActivityFeedItem({
           </span>
           <span
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 12,
               color: "#78716c",
             }}
@@ -178,7 +179,7 @@ function ActivityFeedItem({
       <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: stageColor }} />
       <span
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 15,
           color: "#1c1917",
           fontWeight: 500,
@@ -191,10 +192,10 @@ function ActivityFeedItem({
       >
         {card.company}
       </span>
-      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#c7c4bf" }}>·</span>
+      <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#c7c4bf" }}>·</span>
       <span
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 14,
           color: "#44403c",
           overflow: "hidden",
@@ -208,13 +209,13 @@ function ActivityFeedItem({
       <span
         style={{
           fontFamily: "ui-monospace, monospace",
-          fontSize: 11,
+          fontSize: T.label,
           color: stageColor,
           background: stageColor + "20",
           padding: "3px 10px",
           borderRadius: 100,
           flexShrink: 0,
-          fontWeight: 700,
+          fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.05em",
         }}
@@ -223,7 +224,7 @@ function ActivityFeedItem({
       </span>
       <span
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 13,
           color: "#78716c",
           flexShrink: 0,
@@ -279,7 +280,7 @@ export function WorkspaceDashboard() {
   const headerPad = isMobile ? "12px 16px 12px 56px" : "12px 28px";
   const panelPad = isMobile ? "12px 16px" : "12px 28px";
   const contentPad = isMobile ? "20px 16px 40px" : "28px 32px 48px";
-  const statValueSize = isMobile ? 36 : 48;
+  const statValueSize = isMobile ? 36 : T.stat;
   const statCardPad = isMobile ? "16px 18px" : "20px 24px";
 
   function convRate(from: number, to: number) {
@@ -379,7 +380,7 @@ export function WorkspaceDashboard() {
           <span
             style={{
               padding: isMobile ? "7px 0" : "7px 18px",
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: isMobile ? 15 : 13,
               fontWeight: 600,
               color: "#1A3A2F",
@@ -400,7 +401,7 @@ export function WorkspaceDashboard() {
             color: "#E8D5A3",
             border: "none",
             borderRadius: 5,
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 11,
             fontWeight: 500,
             cursor: "pointer",
@@ -449,7 +450,7 @@ export function WorkspaceDashboard() {
                 border: "1px solid rgba(26,58,47,0.2)",
                 borderRadius: 6,
                 background: "#FFFFFF",
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 16,
                 color: "#1A1A1A",
                 minWidth: 0,
@@ -467,7 +468,7 @@ export function WorkspaceDashboard() {
                 color: "#E8D5A3",
                 border: "none",
                 borderRadius: 6,
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 13,
                 cursor: addJobUrl.trim() ? "pointer" : "not-allowed",
                 flexShrink: 0,
@@ -489,7 +490,7 @@ export function WorkspaceDashboard() {
                   animation: "pulse 1s ease infinite",
                 }}
               />
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
                 Kimchi is analyzing this listing…
               </p>
             </div>
@@ -505,7 +506,7 @@ export function WorkspaceDashboard() {
                 border: "1px solid rgba(196,87,74,0.15)",
               }}
             >
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A" }}>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#C4574A" }}>
                 {addJobError}
               </p>
             </div>
@@ -516,24 +517,24 @@ export function WorkspaceDashboard() {
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 600, color: "#1A1A1A" }}>
+                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 15, fontWeight: 600, color: "#1A1A1A" }}>
                       {jobAnalysis.company ?? "Unknown company"}
                     </p>
                     {jobAnalysis.role && (
                       <>
-                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>{jobAnalysis.role}</p>
+                        <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
+                        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#52493F" }}>{jobAnalysis.role}</p>
                       </>
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                     {jobAnalysis.location && (
-                      <span style={{ padding: "3px 10px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#52493F" }}>
+                      <span style={{ padding: "3px 10px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, color: "#52493F" }}>
                         📍 {jobAnalysis.location}
                       </span>
                     )}
                     {jobAnalysis.salary && (
-                      <span style={{ padding: "3px 10px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A" }}>
+                      <span style={{ padding: "3px 10px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A" }}>
                         {jobAnalysis.salary}
                       </span>
                     )}
@@ -544,24 +545,20 @@ export function WorkspaceDashboard() {
               <div style={{ display: "grid", gridTemplateColumns: jobAnalysisColumns, gap: 14, marginBottom: 14 }}>
                 {jobAnalysis.description && (
                   <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, fontWeight: 600, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
-                      Role Summary
-                    </p>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#2A2218", lineHeight: 1.65 }}>
+                    <p style={SECTION_LABEL}>Role Summary</p>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.65 }}>
                       {jobAnalysis.description}
                     </p>
                   </div>
                 )}
                 {jobAnalysis.requirements.length > 0 && (
                   <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, fontWeight: 600, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
-                      Key Requirements
-                    </p>
+                    <p style={{ ...SECTION_LABEL, marginBottom: 10 }}>Key Requirements</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       {jobAnalysis.requirements.map((r: string, i: number) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
                           <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
+                          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
                         </div>
                       ))}
                     </div>
@@ -579,7 +576,7 @@ export function WorkspaceDashboard() {
                     color: "#E8D5A3",
                     border: "none",
                     borderRadius: 6,
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -596,7 +593,7 @@ export function WorkspaceDashboard() {
                     background: "transparent",
                     color: "#a8a29e",
                     border: "none",
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     cursor: "pointer",
                   }}
@@ -636,7 +633,7 @@ export function WorkspaceDashboard() {
               >
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 13,
                     color: "#a8a29e",
                     marginBottom: isMobile ? 16 : 0,
@@ -656,7 +653,7 @@ export function WorkspaceDashboard() {
                       color: "#E8D5A3",
                       border: "none",
                       borderRadius: 6,
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 13,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -693,17 +690,18 @@ export function WorkspaceDashboard() {
                         <p style={STAT_LABEL}>{stage.label}</p>
                         <p
                           style={{
-                            fontFamily: "var(--font-playfair), Georgia, serif",
+                            fontFamily: fontSans,
                             fontSize: statValueSize,
                             fontWeight: 600,
-                            color: "#1c1917",
+                            color: color.ink,
                             lineHeight: 1,
+                            fontVariantNumeric: "tabular-nums",
                           }}
                         >
                           {count}
                         </p>
                         {rate !== null && (
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#a8a29e", marginTop: 4 }}>
+                          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 4 }}>
                             {rate}% from previous
                           </p>
                         )}
@@ -750,7 +748,7 @@ export function WorkspaceDashboard() {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 13,
                   color: "#1A3A2F",
                   padding: isMobile ? "8px 0" : 0,
@@ -777,7 +775,7 @@ export function WorkspaceDashboard() {
                 }}
               >
                 <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A3A2F" }}>
+                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#1A3A2F" }}>
                   Kimchi is scanning the market…
                 </p>
               </div>
@@ -857,7 +855,7 @@ export function WorkspaceDashboard() {
                             {typeLabel}
                           </span>
                           {s.company && (
-                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
+                            <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
                               {s.company}
                             </span>
                           )}
@@ -876,7 +874,7 @@ export function WorkspaceDashboard() {
                         </p>
                         <p
                           style={{
-                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontFamily: "var(--font-source-sans), system-ui",
                             fontSize: 13,
                             color: "#2D6B4A",
                             lineHeight: 1.55,
@@ -916,7 +914,7 @@ export function WorkspaceDashboard() {
                 >
                   {signalsData.salaryBenchmark.role}
                 </p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#44403c", lineHeight: 1.6 }}>
+                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#44403c", lineHeight: 1.6 }}>
                   {signalsData.salaryBenchmark.note}
                 </p>
               </div>
@@ -931,7 +929,7 @@ export function WorkspaceDashboard() {
                         padding: "4px 12px",
                         background: "rgba(74,139,106,0.1)",
                         borderRadius: 100,
-                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontFamily: "var(--font-source-sans), system-ui",
                         fontSize: 13,
                         fontWeight: 500,
                         color: "#2D6B4A",
@@ -952,7 +950,7 @@ export function WorkspaceDashboard() {
                         padding: "4px 12px",
                         background: "rgba(160,152,144,0.12)",
                         borderRadius: 100,
-                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontFamily: "var(--font-source-sans), system-ui",
                         fontSize: 13,
                         color: "#57534e",
                       }}

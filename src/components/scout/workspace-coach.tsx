@@ -74,7 +74,7 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 8,
   padding: "9px 12px",
   outline: "none",
-  fontFamily: "var(--font-dm-sans)",
+  fontFamily: "var(--font-source-sans)",
   boxSizing: "border-box",
   color: "#1a1a1a",
 };
@@ -131,7 +131,7 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
           placeholder={placeholder ?? "Type and press Enter"}
           style={{ ...inputStyle, flex: 1 }}
         />
-        <button onClick={add} style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid rgba(26,58,47,0.15)", background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a3a2f", fontFamily: "var(--font-dm-sans)" }}>Add</button>
+        <button onClick={add} style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid rgba(26,58,47,0.15)", background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a3a2f", fontFamily: "var(--font-source-sans)" }}>Add</button>
       </div>
     </div>
   );
@@ -281,11 +281,11 @@ function MyProfileTab() {
         <button
           onClick={save}
           disabled={saving}
-          style={{ padding: "10px 24px", background: saving ? "#d4c9b8" : "#1a3a2f", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "var(--font-dm-sans)" }}
+          style={{ padding: "10px 24px", background: saving ? "#d4c9b8" : "#1a3a2f", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "var(--font-source-sans)" }}
         >
           {saving ? "Saving…" : "Save Changes"}
         </button>
-        {saved && <p style={{ fontSize: 13, color: "#2d7a50", fontFamily: "var(--font-dm-sans)" }}>Saved ✓</p>}
+        {saved && <p style={{ fontSize: 13, color: "#2d7a50", fontFamily: "var(--font-source-sans)" }}>Saved ✓</p>}
       </div>
     </div>
   );
@@ -318,7 +318,7 @@ export function WorkspaceCoach() {
         const active = tab === id;
         return (
           <button key={id} onClick={() => { setTab(id); setSelected(null); }}
-            style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-dm-sans)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+            style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-source-sans)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
             {label}
           </button>
         );
@@ -345,7 +345,7 @@ export function WorkspaceCoach() {
       <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F7F5F2" }}>
         {tabBar}
         <button onClick={() => setSelected(null)}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 13, fontFamily: "var(--font-dm-sans)", marginBottom: 24, padding: 0 }}>
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 13, fontFamily: "var(--font-source-sans)", marginBottom: 24, padding: 0 }}>
           ← All Clients
         </button>
 
@@ -471,7 +471,7 @@ export function WorkspaceCoach() {
 
           <div style={{ marginBottom: 16 }}>
             <input type="text" placeholder="Search clients…" value={search} onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", fontSize: 14, background: "#fff", border: "1px solid rgba(26,58,47,0.12)", borderRadius: 8, padding: "9px 14px", outline: "none", fontFamily: "var(--font-dm-sans)", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, background: "#fff", border: "1px solid rgba(26,58,47,0.12)", borderRadius: 8, padding: "9px 14px", outline: "none", fontFamily: "var(--font-source-sans)", boxSizing: "border-box" }} />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

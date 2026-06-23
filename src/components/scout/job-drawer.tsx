@@ -14,6 +14,7 @@ import {
 import { ResumeEditor } from "./resume-editor";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
+import { fontSans, fontDisplay, fontMono } from "@/lib/typography";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -29,9 +30,9 @@ interface JobDrawerProps {
 
 type DrawerTab = "overview" | "company";
 
-const sans = "var(--font-dm-sans), system-ui";
-const serif = "var(--font-playfair), Georgia, serif";
-const mono = "var(--font-dm-mono), monospace";
+const sans = fontSans;
+const serif = fontDisplay;
+const mono = fontMono;
 const mint = "#4A8B6A";
 const mintLight = "rgba(74,139,106,0.12)";
 const mintBtn = "#3D7A5C";
@@ -69,7 +70,7 @@ function CompanyLogo({ name, website, size = 48 }: { name: string; website: stri
   }
   return (
     <div style={{ width: size, height: size, borderRadius: br, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontFamily: sans, fontSize: size <= 36 ? 11 : 14, fontWeight: 700, color: "#FFF" }}>{initials}</span>
+      <span style={{ fontFamily: sans, fontSize: size <= 36 ? 12 : 14, fontWeight: 700, color: "#FFF" }}>{initials}</span>
     </div>
   );
 }
