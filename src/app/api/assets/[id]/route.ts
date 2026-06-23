@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
+import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -8,9 +9,9 @@ import { NextResponse } from "next/server";
 async function getOwnedAsset(id: string, email: string) {
   const dbUser = await prisma.user.findUnique({ where: { email } });
   if (!dbUser) return null;
-  const asset = await prisma.userAsset.findFirst({ where: { id, userId: dbUser.id } });
-  if (!asset) return null;
-  return { dbUser, asset };
+  const hydrated = await hydrateResumeAsset(id, dbUser.id);
+  if (!hydrated) return null;
+  return { dbUser, asset: hydrated };
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
