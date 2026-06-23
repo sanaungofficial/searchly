@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
 import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
+import { CreditsStatusBar } from "@/components/scout/credits-display";
+import { notifyCreditsChanged } from "@/lib/credits";
 import { useSubscription } from "@/hooks/useSubscription";
 
 interface MatchData {
@@ -414,12 +416,16 @@ export function ResumeMatchDrawer({
       .then(async (r) => {
         const d = await r.json();
         if (r.status === 402) {
+          notifyCreditsChanged();
           setShowUpgrade(true);
           setError(d.error ?? "Monthly AI limit reached");
           return;
         }
         if (d.error) setError(d.error);
-        else setData(d);
+        else {
+          setData(d);
+          notifyCreditsChanged();
+        }
       })
       .catch(() => setError("Something went wrong"))
       .finally(() => setLoading(false));
@@ -462,13 +468,17 @@ export function ResumeMatchDrawer({
         }),
       });
       if (res.status === 402) {
+        notifyCreditsChanged();
         setShowUpgrade(true);
         setGenerateError("Monthly AI limit reached");
         return;
       }
       const json = await res.json();
       if (json.error) setGenerateError(json.error);
-      else setTailoredData(json);
+      else {
+        setTailoredData(json);
+        notifyCreditsChanged();
+      }
     } catch {
       setGenerateError("Something went wrong. Please try again.");
     } finally {
@@ -631,6 +641,7 @@ export function ResumeMatchDrawer({
             padding: step === 3 && tailoredData ? "24px 28px" : "28px 32px",
           }}
         >
+          <CreditsStatusBar />
           {/* ── STEP 1 ── */}
           {step === 1 && (
             <>

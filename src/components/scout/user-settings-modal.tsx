@@ -34,7 +34,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { isPro, isAdmin, status, currentPeriodEnd, usage, loading, startCheckout, openPortal } = useSubscription();
+  const { isPro, isAdmin, status, currentPeriodEnd, credits, loading, startCheckout, openPortal } = useSubscription();
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -478,7 +478,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       )}
                       {!isPro && !isAdmin && (
                         <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
-                          Unlock unlimited AI tools &amp; job tracking
+                          Unlock unlimited AI credits
                         </p>
                       )}
                     </div>
@@ -524,8 +524,8 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   </div>
                 </div>
 
-                {/* AI usage meter — free users only */}
-                {!isPro && !isAdmin && usage && (
+                {/* AI credits — free users only */}
+                {!isPro && !isAdmin && credits && (
                   <div
                     style={{
                       padding: "14px 16px",
@@ -536,31 +536,36 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
                       <p style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
-                        AI requests this month
+                        AI credits this month
                       </p>
-                      <span style={{ fontSize: 14, color: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#8A7F72" }}>
-                        {usage.used} / {usage.limit ?? 10}
+                      <span style={{ fontSize: 14, color: credits.remaining <= 0 ? "#C4574A" : "#8A7F72" }}>
+                        {credits.remaining} left · {credits.used}/{credits.limit} used
                       </span>
                     </div>
                     <div style={{ height: 6, background: "#EEE9E2", borderRadius: 4, overflow: "hidden" }}>
                       <div
                         style={{
                           height: "100%",
-                          width: `${Math.min(100, ((usage.used) / (usage.limit ?? 10)) * 100)}%`,
-                          background: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#4A8B6A",
+                          width: `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
+                          background: credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#4A8B6A",
                           borderRadius: 4,
                           transition: "width 0.3s ease",
                         }}
                       />
                     </div>
-                    {usage.used >= (usage.limit ?? 10) && (
+                    {credits.remaining <= 0 && (
                       <p style={{ fontSize: 14, color: "#C4574A", margin: "8px 0 0" }}>
-                        Limit reached — upgrade for unlimited AI access.
+                        Out of credits — upgrade for unlimited AI.
                       </p>
                     )}
-                    {!isPro && !isAdmin && usage.used >= Math.ceil((usage.limit ?? 10) * 0.8) && usage.used < (usage.limit ?? 10) && (
+                    {credits.remaining > 0 && credits.remaining <= 3 && (
                       <p style={{ fontSize: 14, color: "#7A6020", margin: "8px 0 0", lineHeight: 1.5 }}>
-                        Running low — {Math.max(0, (usage.limit ?? 10) - usage.used)} AI run{(usage.limit ?? 10) - usage.used !== 1 ? "s" : ""} left this month.
+                        Running low — {credits.remaining} credit{credits.remaining !== 1 ? "s" : ""} left. Each AI action uses 1 credit.
+                      </p>
+                    )}
+                    {credits.remaining > 3 && (
+                      <p style={{ fontSize: 13, color: "#8A7F72", margin: "8px 0 0", lineHeight: 1.5 }}>
+                        1 credit per match, tailor, cover letter, or Scout message. Resets monthly.
                       </p>
                     )}
                   </div>
@@ -580,10 +585,10 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       Pro includes:
                     </p>
                     {[
+                      "Unlimited AI credits",
                       "Unlimited job tracking",
-                      "AI fit analysis on every role",
-                      "AI-generated cover letters",
-                      "Resume tailoring per application",
+                      "Fit analysis on every role",
+                      "Cover letters & resume tailoring",
                       "Priority support",
                     ].map((feat) => (
                       <div key={feat} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
