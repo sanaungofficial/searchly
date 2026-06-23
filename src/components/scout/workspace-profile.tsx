@@ -1686,7 +1686,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type PageTab = "dreamrole" | "about" | "learning" | "assets";
+type PageTab = "dreamrole" | "about" | "learning" | "assets" | "preferences";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "skills"];
@@ -1702,12 +1702,14 @@ export function WorkspaceProfile() {
     pathname === "/profile/dream-role" ? "dreamrole" :
     pathname === "/profile/learning-path" ? "learning" :
     pathname === "/profile/assets" ? "assets" :
+    pathname === "/profile/preferences" ? "preferences" :
     "about";
   const setPage = (tab: PageTab) => {
     if (tab === "about") router.push("/profile");
     else if (tab === "dreamrole") router.push("/profile/dream-role");
     else if (tab === "learning") router.push("/profile/learning-path");
     else if (tab === "assets") router.push("/profile/assets");
+    else if (tab === "preferences") router.push("/profile/preferences");
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);

@@ -35,11 +35,9 @@ function parseGreenhouseUrl(url: string): { company: string; jobId: string } | n
   try {
     const u = new URL(url);
     if (!u.hostname.includes("greenhouse.io")) return null;
-    // Embed form: ?for=company&token=jobId
     const forParam = u.searchParams.get("for");
     const tokenParam = u.searchParams.get("token");
     if (forParam && tokenParam) return { company: forParam, jobId: tokenParam };
-    // Board URL: /company/jobs/jobId
     const parts = u.pathname.split("/").filter(Boolean);
     const jobsIdx = parts.lastIndexOf("jobs");
     if (jobsIdx >= 0 && parts[jobsIdx + 1]) {
@@ -63,7 +61,6 @@ async function fetchGreenhouseJob(company: string, jobId: string) {
     location?: { name?: string };
     departments?: { name: string }[];
     offices?: { name: string; location?: string }[];
-    metadata?: { name: string; value: string | string[] | null }[];
   }>;
 }
 
@@ -72,7 +69,6 @@ function parseLeverUrl(url: string): { company: string; jobId: string } | null {
   try {
     const u = new URL(url);
     if (!u.hostname.includes("lever.co")) return null;
-    // https://jobs.lever.co/company/job-uuid
     const parts = u.pathname.split("/").filter(Boolean);
     if (parts.length >= 2) return { company: parts[0], jobId: parts[1] };
   } catch { /* ignore */ }
@@ -94,6 +90,59 @@ async function fetchLeverJob(company: string, jobId: string) {
   }>;
 }
 
+// ── Jina Reader (JS-rendering fallback) ──────────────────────────────────────
+async function fetchViaJina(url: string): Promise<string> {
+  const res = await fetch(`https://r.jina.ai/${url}`, {
+    headers: {
+      "Accept": "text/plain",
+      "X-With-Images-Summary": "false",
+      "X-No-Cache": "true",
+      ...(process.env.JINA_API_KEY ? { "Authorization": `Bearer ${process.env.JINA_API_KEY}` } : {}),
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`Jina ${res.status}`);
+  return res.text();
+}
+
+// ── AI parse helper ───────────────────────────────────────────────────────────
+async function aiParseJobContent(
+  pageText: string,
+  url: string,
+  anthropic: Anthropic
+): Promise<Record<string, unknown>> {
+  const prompt = `Extract job posting details from this content. Return ONLY valid JSON, no other text.
+
+Page URL: ${url}
+Content:
+${pageText.slice(0, 15000)}
+
+Return this exact JSON shape (all fields required, use null if not found):
+{
+  "company": "company name",
+  "role": "job title",
+  "location": "city, state or Remote or null",
+  "salary": "e.g. $130K-$150K/yr or null",
+  "jobType": "Full-time or Part-time or Contract or null",
+  "remote": true or false or null,
+  "seniority": "Senior or Mid or Entry or Director or VP or null",
+  "description": "complete job description as plain text — include all overview paragraphs, responsibilities, requirements, and qualifications. Do NOT summarize. Minimum 200 words if available.",
+  "requirements": ["key skill or requirement 1", "key skill or requirement 2"],
+  "tags": ["department or industry tag"]
+}`;
+
+  const message = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2000,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const text = message.content[0].type === "text" ? message.content[0].text : "";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON in AI response");
+  return JSON.parse(jsonMatch[0]);
+}
+
 // ── Main handler ─────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -107,6 +156,8 @@ export async function POST(request: Request) {
 
   const { url } = await request.json();
   if (!url) return NextResponse.json({ error: "URL required" }, { status: 400 });
+
+  const anthropic = getAnthropic();
 
   // ── 1. Greenhouse API ─────────────────────────────────────────────────────
   const ghMatch = parseGreenhouseUrl(url);
@@ -167,79 +218,66 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 3. Generic HTML fetch + AI parse ─────────────────────────────────────
+  // ── 3. Jina Reader (handles JS-rendered pages, LinkedIn, Workday, etc.) ───
   let pageText = "";
+  let scrapeSource = "html";
+
   try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!res.ok) {
-      return NextResponse.json({ error: `Could not fetch page (${res.status}). Try pasting the job details manually.` }, { status: 422 });
+    const jinaText = await fetchViaJina(url);
+    if (jinaText && jinaText.length > 200) {
+      pageText = jinaText;
+      scrapeSource = "jina";
     }
-
-    const html = await res.text();
-    pageText = html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 15000);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    if (message.includes("timeout") || message.includes("abort")) {
-      return NextResponse.json({ error: "Page took too long to load. Try a different URL." }, { status: 422 });
+    console.warn("Jina fetch failed, trying plain HTML:", err);
+  }
+
+  // ── 4. Plain HTML fetch (last resort) ────────────────────────────────────
+  if (!pageText) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.5",
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (res.ok) {
+        const html = await res.text();
+        pageText = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        scrapeSource = "html";
+      }
+    } catch (err) {
+      console.warn("Plain HTML fetch also failed:", err);
     }
-    return NextResponse.json({ error: "Could not reach that URL. It may require login." }, { status: 422 });
   }
 
-  if (!pageText || pageText.length < 100) {
-    return NextResponse.json({ error: "Page content too short — may require login (LinkedIn, Workday)." }, { status: 422 });
+  if (!pageText || pageText.length < 150) {
+    return NextResponse.json(
+      { error: "Could not load this page. It may require login (LinkedIn) or be a protected site. Try pasting the job description instead." },
+      { status: 422 }
+    );
   }
 
-  const promptContent = `Extract job posting details from this page content. Return ONLY valid JSON, no other text.
-
-Page URL: ${url}
-Page content:
-${pageText}
-
-Return this exact JSON shape (all fields required, use null if not found):
-{
-  "company": "company name",
-  "role": "job title",
-  "location": "city, state or Remote or null",
-  "salary": "e.g. $130K-$150K/yr or null",
-  "jobType": "Full-time or Part-time or Contract or null",
-  "remote": true or false or null,
-  "seniority": "Senior or Mid or Entry or Director or VP or null",
-  "description": "complete job description as plain text — include all overview paragraphs, responsibilities, requirements, and qualifications. Do NOT summarize. Minimum 200 words if available.",
-  "requirements": ["key skill or requirement 1", "key skill or requirement 2"],
-  "tags": ["department or industry tag"]
-}`;
-
-  const PARSE_MODEL = "claude-haiku-4-5-20251001";
-  const message = await getAnthropic().messages.create({
-    model: PARSE_MODEL,
-    max_tokens: 2000,
-    messages: [{ role: "user", content: promptContent }],
-  });
-
-  if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", PARSE_MODEL, message.usage.input_tokens, message.usage.output_tokens);
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
-
+  // ── 5. AI parse ───────────────────────────────────────────────────────────
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
-    const parsed = JSON.parse(jsonMatch[0]);
-    return NextResponse.json(parsed);
+    const parsed = await aiParseJobContent(pageText, url, anthropic);
+    if (dbUser) {
+      // token logging is approximate since we refactored to a helper
+      logAiUsage(dbUser.id, "JOB_PARSE", "claude-haiku-4-5-20251001", 0, 0);
+    }
+    return NextResponse.json({ ...parsed, _source: scrapeSource });
   } catch {
-    return NextResponse.json({ error: "Could not parse job details. Try adding manually." }, { status: 422 });
+    return NextResponse.json(
+      { error: "Could not extract job details. Try pasting the description instead." },
+      { status: 422 }
+    );
   }
 }
