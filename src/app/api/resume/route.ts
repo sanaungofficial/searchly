@@ -2,9 +2,8 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt } from "@/lib/prompts";
+import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import {
-  mergeParsedWithReadback,
-  normalizeParsedResumeData,
   shouldReplaceNameWithResumeName,
   type ParsedResumeData,
 } from "@/lib/resume-parse";
@@ -109,23 +108,6 @@ export async function POST(request: Request) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
   }
 
-  await prisma.profile.upsert({
-    where: { userId: dbUser.id },
-    update: {
-      resumeUrl: publicUrl,
-      ...(resumeText ? { resumeText } : {}),
-      ...(parsedData ? { parsedData } : {}),
-    },
-    create: {
-      userId: dbUser.id,
-      resumeUrl: publicUrl,
-      resumeText: resumeText || undefined,
-      parsedData: parsedData ?? undefined,
-      targetRoles: [],
-      priorities: [],
-    },
-  });
-
   await prisma.userAsset.updateMany({
     where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
     data: { isPrimary: false },
@@ -138,8 +120,12 @@ export async function POST(request: Request) {
       name: file.name.replace(/\.[^/.]+$/, "") || "Resume",
       url: publicUrl,
       isPrimary: true,
+      resumeText: resumeText || null,
+      parsedData: parsedData ?? undefined,
     },
   });
+
+  await syncPrimaryResumeToProfile(dbUser.id);
 
   return NextResponse.json({
     url: publicUrl,
