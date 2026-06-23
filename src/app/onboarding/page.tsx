@@ -8,7 +8,8 @@ import {
   ScreenWelcome,
   ScreenReadBack,
   ScreenTargetRoles,
-  ScreenAboutYou,
+  ScreenAboutYouSearch,
+  ScreenAboutYouPreferences,
   ScreenTransition,
   DemoNextButton,
   ROLE_BUCKETS,
@@ -194,9 +195,16 @@ export default function OnboardingPage() {
     setPriorities((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   }, []);
 
+  const goToPreferences = useCallback(() => goTo(4), [goTo]);
+
   const goToTransition = useCallback(() => {
     saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
-    goTo(4);
+    goTo(5);
+  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, goTo]);
+
+  const skipAboutYouToTransition = useCallback(() => {
+    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
+    goTo(5);
   }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, goTo]);
 
   const analyzeFirstJob = useCallback(async () => {
@@ -337,6 +345,8 @@ export default function OnboardingPage() {
       goTo(3);
     } else if (screen === 3) {
       goTo(4);
+    } else if (screen === 4) {
+      goTo(5);
     }
   };
 
@@ -398,15 +408,22 @@ export default function OnboardingPage() {
             />
           )}
           {screen === 3 && (
-            <ScreenAboutYou
+            <ScreenAboutYouSearch
               careerMotivation={careerMotivation}
+              jobTimeline={jobTimeline}
+              onCareerMotivationChange={setCareerMotivation}
+              onJobTimelineChange={setJobTimeline}
+              onContinue={goToPreferences}
+              onSkip={skipAboutYouToTransition}
+            />
+          )}
+          {screen === 4 && (
+            <ScreenAboutYouPreferences
               jobTimeline={jobTimeline}
               currentSalary={currentSalary}
               targetSalary={targetSalary}
               priorities={priorities}
               attribution={attribution}
-              onCareerMotivationChange={setCareerMotivation}
-              onJobTimelineChange={setJobTimeline}
               onCurrentSalaryChange={setCurrentSalary}
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
@@ -415,7 +432,7 @@ export default function OnboardingPage() {
               onSkip={goToTransition}
             />
           )}
-          {screen === 4 && (
+          {screen === 5 && (
             <ScreenTransition
               targetRoles={selectedTitles}
               jobUrl={jobUrl}

@@ -15,9 +15,9 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5;
 
-const ONBOARDING_STEP_COUNT = 5;
+const ONBOARDING_STEP_COUNT = 6;
 
 export interface Job {
   id: number;
@@ -1556,48 +1556,10 @@ export function ScreenTargetRoles({
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Screen 2 — About You
+   Screen 3–4 — About You (split for scroll)
    ────────────────────────────────────────────────────────────── */
-interface AboutYouProps {
-  careerMotivation: string;
-  jobTimeline: string;
-  currentSalary: string;
-  targetSalary: string;
-  priorities: string[];
-  attribution: string;
-  onCareerMotivationChange: (v: string) => void;
-  onJobTimelineChange: (v: string) => void;
-  onCurrentSalaryChange: (v: string) => void;
-  onTargetSalaryChange: (v: string) => void;
-  onTogglePriority: (p: string) => void;
-  onAttributionChange: (v: string) => void;
-  onContinue: () => void;
-  onSkip: () => void;
-}
-
-export function ScreenAboutYou({
-  careerMotivation,
-  jobTimeline,
-  currentSalary,
-  targetSalary,
-  priorities,
-  attribution,
-  onCareerMotivationChange,
-  onJobTimelineChange,
-  onCurrentSalaryChange,
-  onTargetSalaryChange,
-  onTogglePriority,
-  onAttributionChange,
-  onContinue,
-  onSkip,
-}: AboutYouProps) {
-  const salaryRows = [
-    { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
-    { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
-  ];
-  const showFilterNudge = !jobTimeline && !targetSalary;
-
-  const chipBtn = (selected: boolean, onClick: () => void, label: string) => (
+function aboutYouChipBtn(selected: boolean, onClick: () => void, label: string) {
+  return (
     <button
       key={label}
       className="onboarding-chip"
@@ -1621,8 +1583,10 @@ export function ScreenAboutYou({
       {label}
     </button>
   );
+}
 
-  const sectionLabel = (text: string, hint?: string, optional?: boolean) => (
+function aboutYouSectionLabel(text: string, hint?: string, optional?: boolean) {
+  return (
     <div style={{ marginBottom: 12 }}>
       <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "var(--scout-muted)", letterSpacing: "1px", textTransform: "uppercase" as const }}>
         {text}{optional && <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
@@ -1634,29 +1598,64 @@ export function ScreenAboutYou({
       )}
     </div>
   );
+}
 
+const ABOUT_YOU_SKIP_LINK: React.CSSProperties = {
+  display: "block",
+  marginTop: 16,
+  background: "none",
+  border: "none",
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  fontWeight: 400,
+  color: "var(--scout-muted)",
+  cursor: "pointer",
+  padding: "8px 0",
+  minHeight: 44,
+  textAlign: "left",
+  textDecoration: "underline",
+  textUnderlineOffset: 3,
+};
+
+interface AboutYouSearchProps {
+  careerMotivation: string;
+  jobTimeline: string;
+  onCareerMotivationChange: (v: string) => void;
+  onJobTimelineChange: (v: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+}
+
+export function ScreenAboutYouSearch({
+  careerMotivation,
+  jobTimeline,
+  onCareerMotivationChange,
+  onJobTimelineChange,
+  onContinue,
+  onSkip,
+}: AboutYouSearchProps) {
   return (
     <div className="flex flex-col gap-8 onboarding-screen-gap">
       <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
         <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 14 }}>
-          A few more things.
+          Your search.
         </h2>
         <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, maxWidth: 440 }}>
-          Two quick picks help Kimchi rank opportunities and skip bad fits. Salary and the rest are optional.
+          Two quick picks help Kimchi rank opportunities and skip bad fits.
         </p>
       </div>
 
-      {/* Career motivation */}
       <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What's driving your move?", "Surfaces roles that match why you're leaving — not just your title.")}
+        {aboutYouSectionLabel("What's driving your move?", "Surfaces roles that match why you're leaving — not just your title.")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {CAREER_MOTIVATIONS.map((m) => chipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m))}
+          {CAREER_MOTIVATIONS.map((m) =>
+            aboutYouChipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m)
+          )}
         </div>
       </div>
 
-      {/* Job timeline */}
       <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("When do you want to make a move?", "Helps Kimchi prioritize urgent openings vs. long-shots.")}
+        {aboutYouSectionLabel("When do you want to make a move?", "Helps Kimchi prioritize urgent openings vs. long-shots.")}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {JOB_TIMELINES.map(({ value, label }) => {
             const selected = jobTimeline === value;
@@ -1688,12 +1687,73 @@ export function ScreenAboutYou({
         </div>
       </div>
 
-      {/* Salary dropdowns */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.5s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.5s" }}>
+        <button
+          className="onboarding-cta"
+          onClick={onContinue}
+          style={PRIMARY_CTA}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          Continue →
+        </button>
+        <button type="button" onClick={onSkip} style={ABOUT_YOU_SKIP_LINK}>
+          Skip for now — you can add this on your profile later
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface AboutYouPreferencesProps {
+  jobTimeline: string;
+  currentSalary: string;
+  targetSalary: string;
+  priorities: string[];
+  attribution: string;
+  onCurrentSalaryChange: (v: string) => void;
+  onTargetSalaryChange: (v: string) => void;
+  onTogglePriority: (p: string) => void;
+  onAttributionChange: (v: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+}
+
+export function ScreenAboutYouPreferences({
+  jobTimeline,
+  currentSalary,
+  targetSalary,
+  priorities,
+  attribution,
+  onCurrentSalaryChange,
+  onTargetSalaryChange,
+  onTogglePriority,
+  onAttributionChange,
+  onContinue,
+  onSkip,
+}: AboutYouPreferencesProps) {
+  const salaryRows = [
+    { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
+    { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
+  ];
+  const showFilterNudge = !jobTimeline && !targetSalary;
+
+  return (
+    <div className="flex flex-col gap-8 onboarding-screen-gap">
+      <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
+        <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 14 }}>
+          Your preferences.
+        </h2>
+        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, maxWidth: 440 }}>
+          All optional — helps Kimchi filter listings that clash with how you want to work.
+        </p>
+      </div>
+
+      <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           {salaryRows.map(({ label, value, onChange }) => (
             <div key={label} style={{ flex: "1 1 200px" }}>
-              {sectionLabel(label, undefined, true)}
+              {aboutYouSectionLabel(label, undefined, true)}
               <div style={{ position: "relative" }}>
                 <select
                   value={value}
@@ -1712,17 +1772,15 @@ export function ScreenAboutYou({
         </div>
       </div>
 
-      {/* Priorities */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.65s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What matters most to you?", "Filters listings that clash with how you want to work.", true)}
+      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
+        {aboutYouSectionLabel("What matters most to you?", "Filters listings that clash with how you want to work.", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {PRIORITIES.map((p) => chipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
+          {PRIORITIES.map((p) => aboutYouChipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
         </div>
       </div>
 
-      {/* Attribution */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.8s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("How did you hear about Kimchi?", undefined, true)}
+      <div className="anim-fade-up" style={{ animationDelay: "0.5s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
+        {aboutYouSectionLabel("How did you hear about Kimchi?", undefined, true)}
         <div style={{ position: "relative", maxWidth: 280, width: "100%" }}>
           <select
             value={attribution}
@@ -1738,8 +1796,7 @@ export function ScreenAboutYou({
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.95s" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.65s" }}>
         {showFilterNudge && (
           <p
             style={{
@@ -1764,35 +1821,15 @@ export function ScreenAboutYou({
         >
           Continue →
         </button>
-        <button
-          type="button"
-          onClick={onSkip}
-          style={{
-            display: "block",
-            marginTop: 16,
-            background: "none",
-            border: "none",
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            cursor: "pointer",
-            padding: "8px 0",
-            minHeight: 44,
-            textAlign: "left",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-          }}
-        >
+        <button type="button" onClick={onSkip} style={ABOUT_YOU_SKIP_LINK}>
           Skip for now — you can add this on your profile later
         </button>
       </div>
     </div>
   );
 }
-
 /* ──────────────────────────────────────────────────────────────
-   Screen 4 — Transition + first job
+   Screen 5 — Transition + first job
    ────────────────────────────────────────────────────────────── */
 export interface TransitionJobAnalysis {
   company: string | null;
