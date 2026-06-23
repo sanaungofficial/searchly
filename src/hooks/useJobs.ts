@@ -39,8 +39,14 @@ interface DbJob {
 export interface JobMeta {
   location?: string | null;
   salary?: string | null;
+  jobType?: string | null;
+  remote?: boolean | null;
+  seniority?: string | null;
   description?: string | null;
   requirements?: string[];
+  tags?: string[];
+  nextStep?: string | null;
+  nextStepDue?: string | null;
 }
 
 function dbJobToKanban(job: DbJob, index: number): KanbanCard {
