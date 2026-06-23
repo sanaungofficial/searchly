@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { CompanyScanSettingsPanel } from "@/components/admin/company-scan-settings-panel";
+import { COMPANY_SCAN_SETTINGS_KEY, COMPANY_SCAN_SETTINGS_SIDEBAR } from "@/lib/company-scan-config";
 
 type PromptItem = {
   key: string;
@@ -13,6 +16,32 @@ type PromptItem = {
   updatedAt: string | null;
 };
 
+type SidebarItem =
+  | { kind: "prompt"; key: string; label: string; category: string }
+  | { kind: "settings"; key: typeof COMPANY_SCAN_SETTINGS_KEY; label: string; category: string };
+
+function buildSidebarItems(prompts: PromptItem[]): SidebarItem[] {
+  const items: SidebarItem[] = [];
+  const categories = Array.from(new Set(prompts.map((p) => p.category)));
+
+  for (const cat of categories) {
+    const inCat = prompts.filter((p) => p.category === cat);
+    for (const p of inCat) {
+      items.push({ kind: "prompt", key: p.key, label: p.label, category: cat });
+      if (p.key === "COMPANY_JOBS_SCAN") {
+        items.push({
+          kind: "settings",
+          key: COMPANY_SCAN_SETTINGS_KEY,
+          label: COMPANY_SCAN_SETTINGS_SIDEBAR.label,
+          category: cat,
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
 export default function PromptsPage() {
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,23 +50,32 @@ export default function PromptsPage() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
 
+  const sidebarItems = useMemo(() => buildSidebarItems(prompts), [prompts]);
+  const isSettingsView = selected === COMPANY_SCAN_SETTINGS_KEY;
+  const current = prompts.find((p) => p.key === selected) ?? null;
+
   useEffect(() => {
     fetch("/api/admin/prompts")
       .then((r) => r.json())
       .then((data: PromptItem[]) => {
         setPrompts(data);
-        if (data.length > 0) {
-          setSelected(data[0].key);
-          setDraft(data[0].content);
+        const companiesPrompt = data.find((p) => p.key === "COMPANY_JOBS_SCAN");
+        const first = companiesPrompt ?? data[0];
+        if (first) {
+          setSelected(first.key);
+          setDraft(first.content);
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const current = prompts.find((p) => p.key === selected) ?? null;
-
-  function selectPrompt(key: string) {
+  function selectItem(key: string) {
+    if (key === COMPANY_SCAN_SETTINGS_KEY) {
+      setSelected(key);
+      setSaveStatus("idle");
+      return;
+    }
     const p = prompts.find((x) => x.key === key);
     if (!p) return;
     setSelected(key);
@@ -46,7 +84,7 @@ export default function PromptsPage() {
   }
 
   async function handleSave() {
-    if (!selected) return;
+    if (!selected || isSettingsView) return;
     setSaving(true);
     setSaveStatus("idle");
     try {
@@ -71,7 +109,7 @@ export default function PromptsPage() {
   }
 
   async function handleReset() {
-    if (!selected || !confirm("Reset this prompt to its default?")) return;
+    if (!selected || isSettingsView || !confirm("Reset this prompt to its default?")) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/prompts/${selected}/reset`, { method: "POST" });
@@ -91,7 +129,7 @@ export default function PromptsPage() {
     }
   }
 
-  const categories = Array.from(new Set(prompts.map((p) => p.category)));
+  const categories = Array.from(new Set(sidebarItems.map((i) => i.category)));
 
   if (loading) {
     return <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading prompts…</p>;
@@ -104,42 +142,78 @@ export default function PromptsPage() {
           AI Prompts
         </h1>
         <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>
-          Edit the prompts used by every AI feature. Changes take effect immediately (60-second cache).
+          Edit AI prompts and company scan automation. Changes take effect immediately (60-second cache).
         </p>
       </div>
 
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-        {/* Left: prompt list */}
         <div style={{ width: 220, flexShrink: 0, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           {categories.map((cat) => (
             <div key={cat}>
               <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>
                 {cat}
               </div>
-              {prompts
-                .filter((p) => p.category === cat)
-                .map((p) => (
+              {sidebarItems
+                .filter((i) => i.category === cat)
+                .map((item) => (
                   <button
-                    key={p.key}
-                    onClick={() => selectPrompt(p.key)}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}
+                    key={item.key}
+                    onClick={() => selectItem(item.key)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "9px 14px",
+                      border: "none",
+                      borderBottom: "1px solid #f7f4f0",
+                      background: selected === item.key ? "#f0ece6" : "transparent",
+                      cursor: "pointer",
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 13,
+                      color: selected === item.key ? "#1a1a1a" : item.kind === "settings" ? "#5a4a3a" : "#3d3530",
+                      fontStyle: item.kind === "settings" ? "italic" : "normal",
+                    }}
                   >
-                    {p.label}
+                    {item.label}
                   </button>
                 ))}
             </div>
           ))}
         </div>
 
-        {/* Right: editor */}
         <div style={{ flex: 1, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: 20 }}>
-          {current ? (
+          {isSettingsView ? (
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
+                  {COMPANY_SCAN_SETTINGS_SIDEBAR.label}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--scout-muted)" }}>{COMPANY_SCAN_SETTINGS_SIDEBAR.description}</div>
+              </div>
+              <CompanyScanSettingsPanel />
+              <p style={{ marginTop: 20, fontSize: 12, color: "var(--scout-muted)" }}>
+                <Link href="/admin/company-scans" style={{ color: "#1a3a2f" }}>
+                  View full scan dashboard →
+                </Link>{" "}
+                (intel catalog, stale status, manual run history)
+              </p>
+            </>
+          ) : current ? (
             <>
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
                   {current.label}
                 </div>
                 <div style={{ fontSize: 13, color: "var(--scout-muted)" }}>{current.description}</div>
+                {current.key === "COMPANY_JOBS_SCAN" && (
+                  <button
+                    type="button"
+                    onClick={() => selectItem(COMPANY_SCAN_SETTINGS_KEY)}
+                    style={{ marginTop: 10, padding: 0, border: "none", background: "none", fontFamily: "var(--font-ui)", fontSize: 13, color: "#1a3a2f", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Edit scan schedule & automation →
+                  </button>
+                )}
                 {current.variables.length > 0 && (
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {current.variables.map((v) => (

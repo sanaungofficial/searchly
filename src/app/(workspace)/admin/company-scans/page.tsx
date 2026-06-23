@@ -2,20 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-
-type CompanyScanSettings = {
-  refreshIntervalDays: number;
-  maxCompaniesPerCronRun: number;
-  autoScanOnAdd: boolean;
-  cronEnabled: boolean;
-  lastCronRunAt: string | null;
-  lastCronSummary: {
-    scanned: number;
-    skipped: number;
-    failed: number;
-    errors: string[];
-  } | null;
-};
+import { CompanyScanSettingsPanel } from "@/components/admin/company-scan-settings-panel";
+import { COMPANY_SCAN_SETTINGS_SIDEBAR } from "@/lib/company-scan-config";
 
 type IntelRow = {
   id: string;
@@ -30,7 +18,6 @@ type IntelRow = {
 };
 
 type Dashboard = {
-  settings: CompanyScanSettings;
   vercelCronSchedule: string;
   companies: IntelRow[];
   totals: { intelCount: number; scannable: number; stale: number; withJobs: number };
@@ -44,9 +31,6 @@ function formatWhen(iso: string | null) {
 export default function CompanyScansAdminPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,50 +44,11 @@ export default function CompanyScansAdminPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function saveSettings() {
-    if (!data) return;
-    setSaving(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/admin/company-scans", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data.settings),
-      });
-      if (res.ok) {
-        const { settings } = await res.json();
-        setData((prev) => (prev ? { ...prev, settings } : prev));
-        setMessage("Settings saved.");
-      } else {
-        setMessage("Couldn't save settings.");
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function runNow() {
-    setRunning(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/admin/company-scans/run", { method: "POST" });
-      const body = await res.json();
-      if (res.ok) {
-        setMessage(`Manual run complete — scanned ${body.summary.scanned}, skipped ${body.summary.skipped}, failed ${body.summary.failed}.`);
-        await load();
-      } else {
-        setMessage(body.error ?? "Run failed.");
-      }
-    } finally {
-      setRunning(false);
-    }
-  }
-
   if (loading || !data) {
     return <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading company scan dashboard…</p>;
   }
 
-  const { settings, totals } = data;
+  const { totals } = data;
 
   return (
     <div className="space-y-8">
@@ -112,13 +57,13 @@ export default function CompanyScansAdminPage() {
           Company job scans
         </h1>
         <p className="text-sm text-stone-500">
-          Shared careers scans for the dream-companies watchlist. One scan per company benefits all users tracking it.
+          Shared careers scans for the dream-companies watchlist. Edit the prompt and schedule under{" "}
+          <Link href="/admin/prompts" className="text-stone-700 underline">
+            Admin → Prompts
+          </Link>{" "}
+          (Companies).
         </p>
       </div>
-
-      {message && (
-        <div className="rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">{message}</div>
-      )}
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -134,100 +79,17 @@ export default function CompanyScansAdminPage() {
         ))}
       </section>
 
-      <section className="bg-white rounded-xl border border-stone-200 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-stone-800">Scan configuration</h2>
-        <p className="text-xs text-stone-500">
-          Vercel cron: <code className="font-mono">{data.vercelCronSchedule}</code>
-        </p>
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <label className="block text-sm text-stone-600">
-            Refresh if older than (days)
-            <input
-              type="number"
-              min={1}
-              max={90}
-              value={settings.refreshIntervalDays}
-              onChange={(e) =>
-                setData({
-                  ...data,
-                  settings: { ...settings, refreshIntervalDays: Number(e.target.value) || 7 },
-                })
-              }
-              className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block text-sm text-stone-600">
-            Max companies per cron run
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={settings.maxCompaniesPerCronRun}
-              onChange={(e) =>
-                setData({
-                  ...data,
-                  settings: { ...settings, maxCompaniesPerCronRun: Number(e.target.value) || 20 },
-                })
-              }
-              className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-wrap gap-6 text-sm text-stone-700">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={settings.autoScanOnAdd}
-              onChange={(e) => setData({ ...data, settings: { ...settings, autoScanOnAdd: e.target.checked } })}
-            />
-            Auto-scan when a user adds a company (if cache is stale)
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={settings.cronEnabled}
-              onChange={(e) => setData({ ...data, settings: { ...settings, cronEnabled: e.target.checked } })}
-            />
-            Weekly cron enabled
-          </label>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={saveSettings}
-            disabled={saving}
-            className="rounded-lg bg-stone-900 text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save settings"}
-          </button>
-          <button
-            type="button"
-            onClick={runNow}
-            disabled={running}
-            className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium disabled:opacity-50"
-          >
-            {running ? "Running…" : "Run stale scans now"}
-          </button>
-          <Link href="/admin/prompts" className="rounded-lg border border-stone-200 px-4 py-2 text-sm text-stone-600 self-center">
-            Edit scan prompt →
+      <section className="bg-white rounded-xl border border-stone-200 p-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-stone-800">{COMPANY_SCAN_SETTINGS_SIDEBAR.label}</h2>
+            <p className="text-xs text-stone-500 mt-1">Same settings as Admin → Prompts → Companies.</p>
+          </div>
+          <Link href="/admin/prompts" className="text-sm text-stone-600 underline shrink-0">
+            Open in Prompts →
           </Link>
         </div>
-
-        <div className="text-xs text-stone-500 border-t border-stone-100 pt-4 space-y-1">
-          <p>Last cron run: {formatWhen(settings.lastCronRunAt)}</p>
-          {settings.lastCronSummary && (
-            <p>
-              Last result: scanned {settings.lastCronSummary.scanned}, skipped {settings.lastCronSummary.skipped}, failed{" "}
-              {settings.lastCronSummary.failed}
-              {settings.lastCronSummary.errors.length > 0 && (
-                <span className="block mt-1 text-red-600">{settings.lastCronSummary.errors.slice(0, 3).join(" · ")}</span>
-              )}
-            </p>
-          )}
-        </div>
+        <CompanyScanSettingsPanel onSaved={load} />
       </section>
 
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
@@ -267,10 +129,6 @@ export default function CompanyScansAdminPage() {
           </table>
         </div>
       </section>
-
-      <p className="text-xs text-stone-400">
-        The extraction prompt lives under Admin → Prompts → <strong>Company Careers Scan</strong> (category: Companies).
-      </p>
     </div>
   );
 }
