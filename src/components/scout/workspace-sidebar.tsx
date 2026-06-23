@@ -433,7 +433,7 @@ export function WorkspaceSidebar({
           <CreditsSidebarBlock credits={credits} unlimitedAi={unlimitedAi} onUpgrade={() => startCheckout()} />
         )}
         {showCredits && credits && isRail && (
-          <div style={{ padding: "0 0 8px", textAlign: "center" }} title={`${credits.remaining} credits left${unlimitedAi ? " · admin unlimited" : ""}`}>
+          <div style={{ padding: "0 0 8px", textAlign: "center" }} title={unlimitedAi ? "Unlimited AI — admin account" : `${credits.remaining} credits left`}>
             <CreditsMeter credits={credits} compact unlimitedAi={unlimitedAi} />
           </div>
         )}

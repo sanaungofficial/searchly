@@ -36,7 +36,12 @@ export function useCredits() {
   };
 }
 
-export function creditsSummary(credits: CreditBalance): string {
+export function creditsSummary(credits: CreditBalance, unlimitedAi = false): string {
+  if (unlimitedAi) return "Unlimited AI";
   if (credits.remaining <= 0) return "No credits left this month";
   return `${credits.remaining} credit${credits.remaining === 1 ? "" : "s"} left`;
+}
+
+export function creditsReferenceLabel(credits: CreditBalance): string {
+  return `Free plan is ${credits.limit}/mo · tracker shows ${credits.used} used`;
 }
