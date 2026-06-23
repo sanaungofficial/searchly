@@ -31,11 +31,57 @@ export interface Job {
 const FULL = "#1A3A2F";
 const EMPTY = "rgba(26,58,47,0.15)";
 
+const DISPLAY_H1: React.CSSProperties = {
+  fontFamily: "var(--font-cormorant), Georgia, serif",
+  fontSize: "clamp(2.25rem, 9vw, 3.5rem)",
+  fontWeight: 500,
+  fontStyle: "italic",
+  color: "#1A1A1A",
+  lineHeight: 1.03,
+  letterSpacing: "-0.3px",
+};
+
+const DISPLAY_H2: React.CSSProperties = {
+  fontFamily: "var(--font-cormorant), Georgia, serif",
+  fontSize: "clamp(1.875rem, 8vw, 3.125rem)",
+  fontWeight: 500,
+  fontStyle: "italic",
+  color: "#1A1A1A",
+  lineHeight: 1.05,
+  letterSpacing: "-0.2px",
+};
+
+const ONBOARDING_BODY: React.CSSProperties = {
+  fontFamily: "var(--font-dm-sans), system-ui",
+  fontSize: "clamp(1rem, 2.5vw, 1.125rem)",
+  fontWeight: 300,
+  color: "#52493F",
+  lineHeight: 1.7,
+  textWrap: "pretty",
+};
+
+const ONBOARDING_CARD_PAD = "clamp(18px, 4vw, 40px)";
+const ONBOARDING_SECTION_PAD = "clamp(16px, 4vw, 24px)";
+
+const PRIMARY_CTA: React.CSSProperties = {
+  padding: "14px 30px",
+  background: "#1A3A2F",
+  color: "#E8D5A3",
+  border: "none",
+  borderRadius: 5,
+  fontFamily: "var(--font-dm-sans), system-ui",
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: "pointer",
+  letterSpacing: "0.2px",
+  transition: "opacity 0.15s",
+};
+
 export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutClick?: () => void }) {
   return (
     <div
-      className="w-full max-w-[720px] flex justify-between items-start"
-      style={{ paddingTop: 40, paddingBottom: 0 }}
+      className="w-full max-w-[720px] flex justify-between items-start onboarding-header"
+      style={{ paddingTop: "clamp(24px, 6vw, 40px)", paddingBottom: 0 }}
     >
       <div>
         <button
@@ -134,17 +180,11 @@ export function ScreenWelcome({
   const canContinue = resumeUploaded || liInput.trim().length > 0;
 
   return (
-    <div className="flex flex-col gap-[28px]">
+    <div className="flex flex-col gap-[28px] onboarding-screen-gap">
       <h1
         className="anim-fade-up"
         style={{
-          fontFamily: "var(--font-cormorant), Georgia, serif",
-          fontSize: 56,
-          fontWeight: 500,
-          fontStyle: "italic",
-          color: "#1A1A1A",
-          lineHeight: 1.03,
-          letterSpacing: "-0.3px",
+          ...DISPLAY_H1,
           animationDelay: "0.1s",
         }}
       >
@@ -153,14 +193,9 @@ export function ScreenWelcome({
       <p
         className="anim-fade-up"
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
-          fontSize: 18,
-          fontWeight: 300,
-          color: "#52493F",
-          lineHeight: 1.7,
+          ...ONBOARDING_BODY,
           maxWidth: 460,
           animationDelay: "0.4s",
-          textWrap: "pretty",
         }}
       >
         Drop your resume or share your LinkedIn — I&apos;ll use it to build your profile.
@@ -177,7 +212,7 @@ export function ScreenWelcome({
             style={{
               border: `1.5px dashed ${dropBorder}`,
               borderRadius: 10,
-              padding: "40px",
+              padding: ONBOARDING_CARD_PAD,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -331,7 +366,7 @@ export function ScreenWelcome({
               border: "none",
               background: "transparent",
               fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: 400,
               color: "#1A1A1A",
               caretColor: "#1A3A2F",
@@ -344,20 +379,9 @@ export function ScreenWelcome({
       {canContinue && (
         <div className="anim-fade-up">
           <button
+            className="onboarding-cta"
             onClick={onContinue}
-            style={{
-              padding: "14px 30px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
-              border: "none",
-              borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-              letterSpacing: "0.2px",
-              transition: "opacity 0.15s",
-            }}
+            style={PRIMARY_CTA}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
@@ -377,7 +401,8 @@ export function ScreenWelcome({
           fontWeight: 400,
           color: "#A09890",
           cursor: "pointer",
-          padding: 0,
+          padding: "8px 0",
+          minHeight: 44,
           textAlign: "left",
           textDecoration: "underline",
           textUnderlineOffset: 3,
@@ -638,13 +663,8 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
         </p>
         <h2
           style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
-            fontSize: 50,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
+            ...DISPLAY_H2,
             lineHeight: 1.04,
-            letterSpacing: "-0.2px",
           }}
         >
           Here&apos;s what I see.
@@ -657,7 +677,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
           style={{
             background: "#FFFFFF",
             borderRadius: 10,
-            padding: 40,
+            padding: ONBOARDING_CARD_PAD,
             boxShadow: "0 2px 4px rgba(0,0,0,0.04), 0 10px 28px rgba(0,0,0,0.07)",
             minHeight: loading ? 320 : undefined,
           }}
@@ -841,28 +861,18 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
         >
           Does this feel like you?
         </p>
-        <div className="flex gap-[10px] items-center">
+        <div className="onboarding-readback-actions">
           <button
+            className="onboarding-cta"
             onClick={() => onConfirm(data)}
-            style={{
-              padding: "14px 30px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
-              border: "none",
-              borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-              letterSpacing: "0.2px",
-              transition: "opacity 0.15s",
-            }}
+            style={PRIMARY_CTA}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Yes, carry on →
           </button>
           <button
+            className="onboarding-cta"
             onClick={onRefine}
             style={{
               padding: "14px 24px",
@@ -1298,17 +1308,12 @@ export function ScreenTargetRoles({
   const atMax = selectedTitles.length >= 3;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 onboarding-screen-gap">
       <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
         <h2
           style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
-            fontSize: 50,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
+            ...DISPLAY_H2,
             lineHeight: 1.04,
-            letterSpacing: "-0.2px",
             marginBottom: 14,
           }}
         >
@@ -1316,10 +1321,8 @@ export function ScreenTargetRoles({
         </h2>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 16,
-            fontWeight: 300,
-            color: "#52493F",
+            ...ONBOARDING_BODY,
+            fontSize: "clamp(0.9375rem, 2.5vw, 1rem)",
             lineHeight: 1.65,
             maxWidth: 440,
           }}
@@ -1329,7 +1332,7 @@ export function ScreenTargetRoles({
       </div>
 
       {/* Bucket chips */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         <p
           style={{
             fontFamily: "var(--font-dm-sans), system-ui",
@@ -1349,6 +1352,7 @@ export function ScreenTargetRoles({
             return (
               <button
                 key={b.id}
+                className="onboarding-chip"
                 onClick={() => onToggleBucket(b.id)}
                 style={{
                   padding: "10px 18px",
@@ -1385,7 +1389,7 @@ export function ScreenTargetRoles({
 
       {/* Title chips — appear once a bucket is selected */}
       {availableTitles.length > 0 && (
-        <div className="anim-fade-up" style={{ background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+        <div className="anim-fade-up" style={{ background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
           <p
             style={{
               fontFamily: "var(--font-dm-sans), system-ui",
@@ -1406,6 +1410,7 @@ export function ScreenTargetRoles({
               return (
                 <button
                   key={title}
+                  className="onboarding-chip"
                   onClick={() => !disabled && onToggleTitle(title)}
                   style={{
                     padding: "8px 16px",
@@ -1438,20 +1443,9 @@ export function ScreenTargetRoles({
       {canContinue && (
         <div className="anim-fade-up">
           <button
+            className="onboarding-cta"
             onClick={onContinue}
-            style={{
-              padding: "14px 30px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
-              border: "none",
-              borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-              letterSpacing: "0.2px",
-              transition: "opacity 0.15s",
-            }}
+            style={PRIMARY_CTA}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
@@ -1505,6 +1499,7 @@ export function ScreenAboutYou({
   const chipBtn = (selected: boolean, onClick: () => void, label: string) => (
     <button
       key={label}
+      className="onboarding-chip"
       onClick={onClick}
       style={{
         padding: "8px 16px",
@@ -1533,18 +1528,18 @@ export function ScreenAboutYou({
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 onboarding-screen-gap">
       <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
-        <h2 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 50, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", lineHeight: 1.04, letterSpacing: "-0.2px", marginBottom: 14 }}>
+        <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 14 }}>
           A few more things.
         </h2>
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 300, color: "#52493F", lineHeight: 1.65, maxWidth: 440 }}>
+        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, maxWidth: 440 }}>
           Helps us match you to the right roles and filter out the wrong ones.
         </p>
       </div>
 
       {/* Career motivation */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("What's driving your move?")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {CAREER_MOTIVATIONS.map((m) => chipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m))}
@@ -1552,7 +1547,7 @@ export function ScreenAboutYou({
       </div>
 
       {/* Job timeline */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("When do you want to make a move?")}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {JOB_TIMELINES.map(({ value, label }) => {
@@ -1560,6 +1555,7 @@ export function ScreenAboutYou({
             return (
               <button
                 key={value}
+                className="onboarding-chip"
                 onClick={() => onJobTimelineChange(selected ? "" : value)}
                 style={{
                   padding: "12px 18px",
@@ -1585,7 +1581,7 @@ export function ScreenAboutYou({
       </div>
 
       {/* Salary dropdowns */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.5s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.5s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           {salaryRows.map(({ label, value, onChange }) => (
             <div key={label} style={{ flex: "1 1 200px" }}>
@@ -1594,7 +1590,7 @@ export function ScreenAboutYou({
                 <select
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
-                  style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
+                  style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
                 >
                   <option value="">Select a range</option>
                   {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -1609,7 +1605,7 @@ export function ScreenAboutYou({
       </div>
 
       {/* Priorities */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.65s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.65s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("What matters most to you?", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {PRIORITIES.map((p) => chipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
@@ -1617,13 +1613,13 @@ export function ScreenAboutYou({
       </div>
 
       {/* Attribution */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.8s", background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ animationDelay: "0.8s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         {sectionLabel("How did you hear about Kimchi?", true)}
-        <div style={{ position: "relative", maxWidth: 280 }}>
+        <div style={{ position: "relative", maxWidth: 280, width: "100%" }}>
           <select
             value={attribution}
             onChange={(e) => onAttributionChange(e.target.value)}
-            style={{ width: "100%", padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none" }}
+            style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
           >
             <option value="">Select one</option>
             {ATTRIBUTION_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -1637,8 +1633,9 @@ export function ScreenAboutYou({
       {/* CTA */}
       <div className="anim-fade-up" style={{ animationDelay: "0.95s" }}>
         <button
+          className="onboarding-cta"
           onClick={onContinue}
-          style={{ padding: "14px 30px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 500, cursor: "pointer", letterSpacing: "0.2px", transition: "opacity 0.15s" }}
+          style={PRIMARY_CTA}
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
