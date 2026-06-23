@@ -1579,10 +1579,9 @@ export interface UpskillItem {
   credential: string;
   scoutPick: boolean;
   why: string;
-  /** Skill from ROLE_ARCHETYPES that this course helps close.
-   *  If the user is missing this skill for any of their dream roles, the
-   *  Learning tab will show "Closes your gap: <skill>" on the card. */
-  closesGap?: string;
+  /** Skills this course helps close. Shown as chips on the card.
+   *  Gap-matched chips (matching user's skill goals) are highlighted green. */
+  closesGap?: string[];
 }
 
 export interface UpskillCategory {
@@ -1607,7 +1606,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: true,
         why: "Covers competitive analysis, market entry, and executive decision-making frameworks used in Strategy roles at top companies.",
-        closesGap: "Strategic Analysis",
+        closesGap: ["Strategic Analysis", "Market Research", "Executive Communication"],
       },
       {
         id: 1,
@@ -1620,7 +1619,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: true,
         why: "The industry standard for financial modeling — covers DCF, LBO, and M&A analysis used in CorpDev and FP&A roles.",
-        closesGap: "Financial Modeling",
+        closesGap: ["Financial Modeling", "Data Analysis", "Strategic Analysis"],
       },
       {
         id: 2,
@@ -1633,7 +1632,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: true,
         why: "Built for senior PMs — covers bet-sizing, market strategy, and how to think about product direction at scale.",
-        closesGap: "Product Strategy",
+        closesGap: ["Product Strategy", "Market Research", "Stakeholder Management"],
       },
       {
         id: 3,
@@ -1646,7 +1645,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Badge",
         scoutPick: true,
         why: "Stakeholder management is the #1 competency gap in senior-level interviews across every role track.",
-        closesGap: "Stakeholder Management",
+        closesGap: ["Stakeholder Management", "Executive Communication", "Team Management"],
       },
     ],
   },
@@ -1665,7 +1664,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: true,
         why: "Covers OKR frameworks, project planning, and stakeholder communication — recognized across all major employers.",
-        closesGap: "OKR Frameworks",
+        closesGap: ["OKR Frameworks", "Stakeholder Management", "Process Design", "Team Management"],
       },
       {
         id: 5,
@@ -1678,7 +1677,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: false,
         why: "Process improvement certification with strong signal value in Ops, BizOps, and transformation roles.",
-        closesGap: "Process Design",
+        closesGap: ["Process Design", "Change Management", "Data Analysis"],
       },
       {
         id: 6,
@@ -1691,7 +1690,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: true,
         why: "Harvard-backed credential covering data analysis, regression, and decision modeling for non-technical managers.",
-        closesGap: "Data Analysis",
+        closesGap: ["Data Analysis", "Financial Modeling", "Strategic Analysis"],
       },
       {
         id: 7,
@@ -1704,7 +1703,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certification",
         scoutPick: false,
         why: "The ADKAR model from Prosci is a recognized standard in enterprise transformation and large-scale change programs.",
-        closesGap: "Change Management",
+        closesGap: ["Change Management", "Stakeholder Management", "Process Design"],
       },
     ],
   },
@@ -1723,7 +1722,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Badge",
         scoutPick: true,
         why: "SQL fluency is now expected at Senior Manager+ in Strategy, Ops, and PM roles — especially at data-forward companies.",
-        closesGap: "SQL",
+        closesGap: ["SQL", "Data Analysis"],
       },
       {
         id: 9,
@@ -1736,7 +1735,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Certificate",
         scoutPick: false,
         why: "Board-ready communication and executive presence is consistently cited as a gap in promotion feedback for Director+ candidates.",
-        closesGap: "Executive Communication",
+        closesGap: ["Executive Communication", "Stakeholder Management", "Team Management"],
       },
       {
         id: 10,
@@ -1749,7 +1748,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Badge",
         scoutPick: false,
         why: "Covers customer research, competitive positioning, and market sizing — foundational for BD and corporate strategy roles.",
-        closesGap: "Market Research",
+        closesGap: ["Market Research", "Product Strategy", "Strategic Analysis"],
       },
       {
         id: 11,
@@ -1762,7 +1761,7 @@ export const UPSKILL_CATEGORIES: UpskillCategory[] = [
         credential: "Badge",
         scoutPick: false,
         why: "Director+ roles require demonstrated team management — covers delegation, performance management, and leading through change.",
-        closesGap: "Team Management",
+        closesGap: ["Team Management", "Stakeholder Management", "Executive Communication"],
       },
     ],
   },
