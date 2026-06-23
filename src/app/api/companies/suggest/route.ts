@@ -3,16 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { searchCatalog, normalizeCompanySlug } from "@/lib/company-catalog";
 import { catalogToSuggestItem } from "@/lib/company-intel";
-
-async function getDbUser(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  return prisma.user.findUnique({ where: { email: user.email! } });
-}
+import { ensureDbUser } from "@/lib/ensure-db-user";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
