@@ -1,4 +1,8 @@
-import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
+import { getAuthedUserForAiFromRequest, requireAiQuota } from "@/lib/ai-guard";
+import {
+  extensionPreflightResponse,
+  withExtensionCors,
+} from "@/lib/extension-api";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,21 +13,34 @@ function getAnthropic() {
   return _a;
 }
 
+function jsonWithCors(request: Request, body: unknown, status = 200) {
+  return withExtensionCors(request, NextResponse.json(body, { status }));
+}
+
+export async function OPTIONS(request: Request) {
+  const preflight = extensionPreflightResponse(request);
+  if (preflight) return preflight;
+  return new NextResponse(null, { status: 204 });
+}
+
 export async function POST(req: NextRequest) {
+  const preflight = extensionPreflightResponse(req);
+  if (preflight) return preflight;
+
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
+    return jsonWithCors(req, { error: "AI not configured" }, 503);
   }
 
-  const auth = await getAuthedUserForAi();
-  if ("error" in auth) return auth.error;
+  const auth = await getAuthedUserForAiFromRequest(req);
+  if ("error" in auth) return withExtensionCors(req, auth.error);
   const { dbUser } = auth;
 
   const quotaError = await requireAiQuota(dbUser);
-  if (quotaError) return quotaError;
+  if (quotaError) return withExtensionCors(req, quotaError);
 
   const resumeText = dbUser.profile?.resumeText;
   if (!resumeText) {
-    return NextResponse.json({ error: "No resume found" }, { status: 404 });
+    return jsonWithCors(req, { error: "No resume found" }, 404);
   }
 
   const body = await req.json();
@@ -34,7 +51,7 @@ export async function POST(req: NextRequest) {
   };
 
   if (!description) {
-    return NextResponse.json({ error: "No job description provided" }, { status: 400 });
+    return jsonWithCors(req, { error: "No job description provided" }, 400);
   }
 
   const template = await getPrompt("JOB_MATCH");
@@ -53,15 +70,15 @@ export async function POST(req: NextRequest) {
 
   const content = message.content[0];
   if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
+    return jsonWithCors(req, { error: "Unexpected response" }, 500);
   }
 
   try {
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found");
     const result = JSON.parse(jsonMatch[0]);
-    return NextResponse.json(result);
+    return jsonWithCors(req, result);
   } catch {
-    return NextResponse.json({ error: "Failed to parse response" }, { status: 500 });
+    return jsonWithCors(req, { error: "Failed to parse response" }, 500);
   }
 }

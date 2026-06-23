@@ -1,4 +1,5 @@
 import { saveJob } from "../lib/api";
+import { fetchJobMatch } from "../lib/match";
 import { broadcastAuthState, checkAuth, logout, openLoginTab } from "../lib/auth";
 import type {
   BackgroundMessage,
@@ -12,8 +13,12 @@ async function parseViaInjection(tabId: number): Promise<ParsedJob | null> {
   try {
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: () => {
-        const win = window as unknown as { __kimchiParsePage?: () => unknown };
+      func: async () => {
+        const win = window as unknown as {
+          __kimchiParsePage?: () => unknown;
+          __kimchiParsePageAsync?: () => Promise<unknown>;
+        };
+        if (win.__kimchiParsePageAsync) return win.__kimchiParsePageAsync();
         return win.__kimchiParsePage?.() ?? null;
       },
     });
@@ -32,12 +37,16 @@ async function parseViaInjection(tabId: number): Promise<ParsedJob | null> {
       files: ["content.js"],
     });
 
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 800));
 
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: () => {
-        const win = window as unknown as { __kimchiParsePage?: () => unknown };
+      func: async () => {
+        const win = window as unknown as {
+          __kimchiParsePage?: () => unknown;
+          __kimchiParsePageAsync?: () => Promise<unknown>;
+        };
+        if (win.__kimchiParsePageAsync) return win.__kimchiParsePageAsync();
         return win.__kimchiParsePage?.() ?? null;
       },
     });
@@ -125,6 +134,10 @@ chrome.runtime.onMessage.addListener((message: BackgroundMessage, _sender, sendR
       }
       case "PARSE_PAGE": {
         sendResponse({ type: "PARSED_JOB", payload: await parseTab(message.payload.tabId) });
+        return;
+      }
+      case "JOB_MATCH": {
+        sendResponse(await fetchJobMatch(message.payload));
         return;
       }
       default:
