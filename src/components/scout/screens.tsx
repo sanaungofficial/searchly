@@ -621,6 +621,7 @@ export interface ReadBackData {
 interface ReadBackProps {
   onConfirm: (data: ReadBackData | null) => void;
   onRefine: () => void;
+  onSkip: () => void;
 }
 
 function fitColor(fit: string): string {
@@ -629,7 +630,7 @@ function fitColor(fit: string): string {
   return "#8A7A6A";
 }
 
-export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
+export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
   const [data, setData] = React.useState<ReadBackData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -698,9 +699,28 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
           )}
 
           {!loading && (error || !data) && (
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6 }}>
-              We couldn&apos;t generate a profile read — your resume may not have uploaded correctly. You can continue and update your profile in the workspace.
-            </p>
+            <>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 16 }}>
+                We couldn&apos;t generate a profile read right now — that&apos;s okay. You can fill in your profile in the next steps.
+              </p>
+              <button
+                type="button"
+                onClick={onSkip}
+                style={{
+                  padding: "12px 22px",
+                  background: "#1A3A2F",
+                  color: "#E8D5A3",
+                  border: "none",
+                  borderRadius: 5,
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Continue →
+              </button>
+            </>
           )}
 
           {!loading && data && (
@@ -846,7 +866,8 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
         </div>
       </div>
 
-      {/* Follow-up + CTA */}
+      {/* Follow-up + CTA — only when readback loaded successfully */}
+      {!loading && data && !error && (
       <div className="anim-fade-up" style={{ animationDelay: "0.85s" }}>
         <p
           style={{
@@ -893,6 +914,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -1290,6 +1312,7 @@ interface TargetRolesProps {
   onToggleBucket: (id: string) => void;
   onToggleTitle: (title: string) => void;
   onContinue: () => void;
+  onSkip: () => void;
 }
 
 export function ScreenTargetRoles({
@@ -1298,6 +1321,7 @@ export function ScreenTargetRoles({
   onToggleBucket,
   onToggleTitle,
   onContinue,
+  onSkip,
 }: TargetRolesProps) {
   const availableTitles = ROLE_BUCKETS
     .filter((b) => selectedBuckets.includes(b.id))
@@ -1452,6 +1476,29 @@ export function ScreenTargetRoles({
             Continue →
           </button>
         </div>
+      )}
+
+      {!canContinue && (
+        <button
+          type="button"
+          onClick={onSkip}
+          style={{
+            background: "none",
+            border: "none",
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
+            cursor: "pointer",
+            padding: "8px 0",
+            minHeight: 44,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Skip for now
+        </button>
       )}
     </div>
   );

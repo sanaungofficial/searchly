@@ -47,6 +47,11 @@ export default function OnboardingPage() {
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
+  /** Readback needs parsed resume text; LinkedIn-only or full skip bypasses it. */
+  const goAfterWelcome = useCallback(() => {
+    goTo(resumeUploaded ? 1 : 2);
+  }, [resumeUploaded, goTo]);
+
   const processFile = useCallback(async (file: File | undefined | null) => {
     if (!file) return;
     setResumeFilename(file.name);
@@ -95,14 +100,14 @@ export default function OnboardingPage() {
         body: JSON.stringify({ linkedinUrl: liInput.trim() }),
       }).catch(() => {});
     }
-    goTo(1);
-  }, [liInput, goTo]);
+    goAfterWelcome();
+  }, [liInput, goAfterWelcome]);
 
   const onLIKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && (resumeUploaded || liInput.trim())) onWelcomeContinue();
   }, [resumeUploaded, liInput, onWelcomeContinue]);
 
-  const onSkipProfile = useCallback(() => goTo(1), [goTo]);
+  const onSkipProfile = useCallback(() => goTo(2), [goTo]);
 
   const onToggleBucket = useCallback((id: string) => {
     const newBuckets = selectedBuckets.includes(id)
@@ -127,6 +132,8 @@ export default function OnboardingPage() {
     goTo(2);
   }, [goTo]);
 
+  const onReadBackSkip = useCallback(() => goTo(2), [goTo]);
+
   const onReadBackRefine = useCallback(() => {
     goTo(0);
   }, [goTo]);
@@ -141,6 +148,8 @@ export default function OnboardingPage() {
     }
     goTo(3);
   }, [selectedTitles, goTo]);
+
+  const onRolesSkip = useCallback(() => goTo(3), [goTo]);
 
   const onTogglePriority = useCallback((p: string) => {
     setPriorities((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
@@ -216,6 +225,7 @@ export default function OnboardingPage() {
             <ScreenReadBack
               onConfirm={onReadBackConfirm}
               onRefine={onReadBackRefine}
+              onSkip={onReadBackSkip}
             />
           )}
           {screen === 2 && (
@@ -225,6 +235,7 @@ export default function OnboardingPage() {
               onToggleBucket={onToggleBucket}
               onToggleTitle={onToggleTitle}
               onContinue={onRolesContinue}
+              onSkip={onRolesSkip}
             />
           )}
           {screen === 3 && (
