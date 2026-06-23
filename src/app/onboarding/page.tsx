@@ -140,7 +140,7 @@ export default function OnboardingPage() {
         attribution: attribution || null,
       }),
     }).catch(() => {});
-    router.push("/opportunities");
+    router.push("/dashboard");
   }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, router]);
 
   const demoAdvance = () => {

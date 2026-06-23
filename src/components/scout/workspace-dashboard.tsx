@@ -43,7 +43,7 @@ const STAT_LABEL: React.CSSProperties = {
 };
 
 export function WorkspaceDashboard() {
-  const { kanbanCards, addJob } = useWorkspace();
+  const { kanbanCards, addJob, user } = useWorkspace();
 
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
@@ -70,6 +70,35 @@ export function WorkspaceDashboard() {
   };
 
   const total = pipeline.saved + pipeline.applied + pipeline.interview + pipeline.offer;
+
+  const offerCards = kanbanCards.filter((c) => c.stage === "offer");
+  const interviewCards = kanbanCards.filter((c) => c.stage === "interview");
+  const staleApplied = kanbanCards.filter((c) => c.stage === "applied" && c.days >= 7);
+
+  function getNextAction(): string {
+    if (total === 0) return "Add a role you're interested in to get started. Paste a job URL above and we'll analyze it for you.";
+    if (offerCards.length > 0) {
+      const co = offerCards[0].company;
+      return `You have an offer${offerCards.length === 1 ? ` from ${co}` : ""}. Now's the time to negotiate — open the job drawer for support.`;
+    }
+    if (interviewCards.length > 0) {
+      const co = interviewCards.length === 1 ? interviewCards[0].company : `${interviewCards.length} companies`;
+      return `You're interviewing at ${co}. Use the prep tools in the job drawer to get ready.`;
+    }
+    if (staleApplied.length > 0) {
+      return `${staleApplied.length} application${staleApplied.length !== 1 ? "s have" : " has"} been out for 7+ days. Might be worth a follow-up.`;
+    }
+    if (pipeline.applied > 0) {
+      return `${pipeline.applied} application${pipeline.applied !== 1 ? "s" : ""} out. Keep adding roles to widen your options.`;
+    }
+    if (pipeline.saved > 0) {
+      return `You've saved ${pipeline.saved} role${pipeline.saved !== 1 ? "s" : ""}. Ready to apply to any of them?`;
+    }
+    return "Keep building your pipeline — the more roles you track, the better your odds.";
+  }
+
+  const nextAction = getNextAction();
+  const firstName = user?.name?.split(" ")[0] ?? null;
   const recentActivity = kanbanCards
     .filter((c) => c.days <= 7 && c.stage !== "closed")
     .sort((a, b) => a.days - b.days);
@@ -362,6 +391,37 @@ export function WorkspaceDashboard() {
       {/* Main scrollable content */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
         <div style={{ padding: "28px 32px 48px" }}>
+
+          {/* Concierge strip */}
+          <div style={{ marginBottom: 28 }}>
+            {firstName && (
+              <p style={{
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 13,
+                color: "#78716c",
+                marginBottom: 10,
+              }}>
+                Hey, {firstName}.
+              </p>
+            )}
+            <div style={{
+              background: "#FFFFFF",
+              borderRadius: 12,
+              padding: "18px 22px",
+              border: "1px solid #d6d3d1",
+              borderLeft: "3px solid #1A3A2F",
+            }}>
+              <p style={{
+                fontFamily: "var(--font-cormorant), Georgia, serif",
+                fontSize: 20,
+                fontWeight: 600,
+                color: "#1c1917",
+                lineHeight: 1.45,
+              }}>
+                {nextAction}
+              </p>
+            </div>
+          </div>
 
           {/* Pipeline — admin StatCard style */}
           <div style={{ marginBottom: 32 }}>
