@@ -6,11 +6,13 @@ import { createClient } from "@/utils/supabase/client";
 import {
   ScoutHeader,
   ScreenWelcome,
+  ScreenReadBack,
   ScreenTargetRoles,
   ScreenAboutYou,
   DemoNextButton,
   ROLE_BUCKETS,
   type Screen,
+  type ReadBackData,
 } from "@/components/scout/screens";
 
 export default function OnboardingPage() {
@@ -41,6 +43,7 @@ export default function OnboardingPage() {
   const [targetSalary, setTargetSalary] = useState("");
   const [priorities, setPriorities] = useState<string[]>([]);
   const [attribution, setAttribution] = useState("");
+  const [resumeError, setResumeError] = useState(false);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
@@ -48,15 +51,23 @@ export default function OnboardingPage() {
     if (!file) return;
     setResumeFilename(file.name);
     setResumeUploaded(false);
+    setResumeError(false);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/resume", { method: "POST", body: formData });
-      setResumeUploaded(res.ok);
+      if (res.ok) {
+        setResumeUploaded(true);
+        goTo(1);
+      } else {
+        setResumeError(true);
+        setResumeFilename(null);
+      }
     } catch {
-      setResumeUploaded(false);
+      setResumeError(true);
+      setResumeFilename(null);
     }
-  }, []);
+  }, [goTo]);
 
   const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
@@ -112,6 +123,14 @@ export default function OnboardingPage() {
     });
   }, []);
 
+  const onReadBackConfirm = useCallback((_data: ReadBackData | null) => {
+    goTo(2);
+  }, [goTo]);
+
+  const onReadBackRefine = useCallback(() => {
+    goTo(0);
+  }, [goTo]);
+
   const onRolesContinue = useCallback(() => {
     if (selectedTitles.length) {
       fetch("/api/profile", {
@@ -120,7 +139,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({ targetRoles: selectedTitles }),
       }).catch(() => {});
     }
-    goTo(2);
+    goTo(3);
   }, [selectedTitles, goTo]);
 
   const onTogglePriority = useCallback((p: string) => {
@@ -149,6 +168,8 @@ export default function OnboardingPage() {
       window.setTimeout(() => setResumeUploaded(true), 1300);
     } else if (screen === 1) {
       goTo(2);
+    } else if (screen === 2) {
+      goTo(3);
     }
   };
 
@@ -180,6 +201,7 @@ export default function OnboardingPage() {
             <ScreenWelcome
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
+              resumeError={resumeError}
               isDragging={isDragging}
               liInput={liInput}
               onLIChange={onLIChange}
@@ -194,6 +216,12 @@ export default function OnboardingPage() {
             />
           )}
           {screen === 1 && (
+            <ScreenReadBack
+              onConfirm={onReadBackConfirm}
+              onRefine={onReadBackRefine}
+            />
+          )}
+          {screen === 2 && (
             <ScreenTargetRoles
               selectedBuckets={selectedBuckets}
               selectedTitles={selectedTitles}
@@ -202,7 +230,7 @@ export default function OnboardingPage() {
               onContinue={onRolesContinue}
             />
           )}
-          {screen === 2 && (
+          {screen === 3 && (
             <ScreenAboutYou
               careerMotivation={careerMotivation}
               jobTimeline={jobTimeline}
