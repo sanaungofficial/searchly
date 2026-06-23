@@ -443,7 +443,7 @@ export function ResumeMatchDrawer({
         body: JSON.stringify({
           jobTitle,
           company,
-          description,
+          description: description || manualDesc || undefined,
           jobId,
           selectedSections: Array.from(selectedSections),
           missingKeywords: selectedMissingKw,
