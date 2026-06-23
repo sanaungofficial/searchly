@@ -30,6 +30,16 @@ export interface ParsedCertificationEntry {
   date?: string | null;
 }
 
+export type ResumeSectionId = "summary" | "skills" | "experience" | "education" | "certifications";
+
+export const DEFAULT_SECTION_ORDER: ResumeSectionId[] = [
+  "summary",
+  "skills",
+  "experience",
+  "education",
+  "certifications",
+];
+
 export interface ParsedResumeData {
   name?: string | null;
   email?: string | null;
@@ -43,6 +53,7 @@ export interface ParsedResumeData {
   skills: string[];
   skillGroups: ParsedSkillGroup[];
   certifications: ParsedCertificationEntry[];
+  sectionOrder?: ResumeSectionId[];
 }
 
 function asStringOrNull(value: unknown): string | null {
@@ -154,7 +165,16 @@ export function emptyParsedResumeData(): ParsedResumeData {
     skills: [],
     skillGroups: [],
     certifications: [],
+    sectionOrder: [...DEFAULT_SECTION_ORDER],
   };
+}
+
+function normalizeSectionOrder(raw: unknown): ResumeSectionId[] {
+  if (!Array.isArray(raw)) return [...DEFAULT_SECTION_ORDER];
+  const allowed = new Set<ResumeSectionId>(DEFAULT_SECTION_ORDER);
+  const ordered = raw.filter((id): id is ResumeSectionId => typeof id === "string" && allowed.has(id as ResumeSectionId));
+  const missing = DEFAULT_SECTION_ORDER.filter((id) => !ordered.includes(id));
+  return ordered.length ? [...ordered, ...missing] : [...DEFAULT_SECTION_ORDER];
 }
 
 function normalizeWorkExperience(raw: unknown): ParsedWorkEntry[] {
@@ -227,6 +247,7 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
   );
   const skillGroups = normalizeSkillGroups(obj.skillGroups ?? obj.skill_groups, skills);
   const certifications = normalizeCertifications(obj.certifications);
+  const sectionOrder = normalizeSectionOrder(obj.sectionOrder);
 
   const normalized: ParsedResumeData = {
     name: asStringOrNull(obj.name),
@@ -241,6 +262,7 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
     skills,
     skillGroups,
     certifications,
+    sectionOrder,
   };
 
   const hasContent =

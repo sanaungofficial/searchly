@@ -447,9 +447,15 @@ Rules:
   "score": 0-100 integer,
   "headline": "one-line overall assessment",
   "strengths": ["strength 1", "strength 2"],
-  "gaps": ["gap or weakness 1"],
-  "tips": ["actionable improvement tip 1", "tip 2", "tip 3"]
+  "improvements": [
+    { "priority": "Urgent", "title": "short issue title", "detail": "actionable fix" },
+    { "priority": "Critical", "title": "short issue title", "detail": "actionable fix" },
+    { "priority": "Optional", "title": "short issue title", "detail": "actionable fix" }
+  ]
 }
+
+Use priority values exactly: Urgent, Critical, or Optional.
+Include 3-6 improvements ordered by severity.
 
 Resume:
 {{resumeSlice}}
