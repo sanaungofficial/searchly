@@ -755,7 +755,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           )}
         </div>
 
-        {/* Right — section editor */}
+        {/* Right — section editor + style */}
         <div
           className="resume-print-hide"
           style={{
@@ -767,96 +767,216 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             flexShrink: 0,
           }}
         >
-          <div style={{ padding: "20px 20px 0", borderBottom: "1px solid #E5DDD0", paddingBottom: 16 }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", letterSpacing: 1, textTransform: "uppercase", margin: 0 }}>Sections</p>
-          </div>
-
-          <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-            {activeSections.map((section) => (
-              <div key={section.id}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 20px",
-                    background: editingId === section.id ? "#F0EDE8" : "transparent",
-                    borderLeft: editingId === section.id ? "2px solid #1C3A2F" : "2px solid transparent",
-                  }}
-                >
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "#1A1A1A", flex: 1 }}>{section.title}</span>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button
-                      onClick={() => {
-                        if (editingId === section.id) {
-                          setEditingId(null);
-                        } else {
-                          setEditingId(section.id);
-                          setEditDraft(section.content);
-                        }
-                      }}
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#A09890", display: "flex", alignItems: "center" }}
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      onClick={() => deleteSection(section.id)}
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#A09890", display: "flex", alignItems: "center" }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                {editingId === section.id && (
-                  <div style={{ padding: "8px 20px 14px" }}>
-                    <textarea
-                      value={editDraft}
-                      onChange={(e) => setEditDraft(e.target.value)}
-                      onBlur={() => updateSection(section.id, editDraft)}
-                      rows={6}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        border: "1px solid #D8D0C5",
-                        borderRadius: 5,
-                        fontSize: 11,
-                        fontFamily: "var(--font-dm-sans), system-ui",
-                        color: "#1A1A1A",
-                        resize: "vertical",
-                        background: "#FFFFFF",
-                        boxSizing: "border-box",
-                        outline: "none",
-                      }}
-                      placeholder={section.type === "bullets" ? "One bullet per line..." : "Section content..."}
-                    />
-                  </div>
-                )}
-              </div>
+          {/* Tab bar */}
+          <div style={{ display: "flex", borderBottom: "1px solid #E5DDD0" }}>
+            {(["editor", "style"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setRightTab(tab)}
+                style={{
+                  flex: 1,
+                  padding: "12px 0",
+                  background: "none",
+                  border: "none",
+                  borderBottom: rightTab === tab ? "2px solid #1C3A2F" : "2px solid transparent",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: rightTab === tab ? "#1C3A2F" : "#A09890",
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  marginBottom: -1,
+                }}
+              >
+                {tab === "editor" ? "Editor" : "Style"}
+              </button>
             ))}
           </div>
 
-          <div style={{ padding: "12px 20px", borderTop: "1px solid #E5DDD0" }}>
-            <button
-              onClick={addSection}
-              style={{
-                width: "100%",
-                padding: "8px 0",
-                background: "transparent",
-                border: "1px dashed #D8D0C5",
-                borderRadius: 5,
-                fontSize: 12,
-                color: "#6B6258",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-              }}
-            >
-              <Plus size={13} /> Add
-            </button>
-          </div>
+          {rightTab === "editor" ? (
+            <>
+              <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+                {activeSections.map((section) => (
+                  <div
+                    key={section.id}
+                    draggable
+                    onDragStart={() => handleDragStart(section.id)}
+                    onDragOver={(e) => handleDragOver(e, section.id)}
+                    onDrop={() => handleDrop(section.id)}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 12px 10px 8px",
+                        background: dragOverId === section.id ? "#EAE6E0" : editingId === section.id ? "#F0EDE8" : "transparent",
+                        borderLeft: editingId === section.id ? "2px solid #1C3A2F" : "2px solid transparent",
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ color: "#C0B8B0", cursor: "grab", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                        <GripVertical size={13} />
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: "#1A1A1A", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{section.title}</span>
+                      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                        <button
+                          onClick={() => {
+                            if (editingId === section.id) {
+                              setEditingId(null);
+                            } else {
+                              setEditingId(section.id);
+                              setEditDraft(section.content);
+                            }
+                          }}
+                          style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#A09890", display: "flex", alignItems: "center" }}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => deleteSection(section.id)}
+                          style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#A09890", display: "flex", alignItems: "center" }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {editingId === section.id && (
+                      <div style={{ padding: "8px 20px 14px" }}>
+                        <textarea
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          onBlur={() => updateSection(section.id, editDraft)}
+                          rows={6}
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            border: "1px solid #D8D0C5",
+                            borderRadius: 5,
+                            fontSize: 11,
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            color: "#1A1A1A",
+                            resize: "vertical",
+                            background: "#FFFFFF",
+                            boxSizing: "border-box",
+                            outline: "none",
+                          }}
+                          placeholder={section.type === "bullets" ? "One bullet per line..." : "Section content..."}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ padding: "12px 20px", borderTop: "1px solid #E5DDD0" }}>
+                <button
+                  onClick={addSection}
+                  style={{
+                    width: "100%",
+                    padding: "8px 0",
+                    background: "transparent",
+                    border: "1px dashed #D8D0C5",
+                    borderRadius: 5,
+                    fontSize: 12,
+                    color: "#6B6258",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Plus size={13} /> Add
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+              {/* Template picker */}
+              <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", letterSpacing: 1, textTransform: "uppercase", margin: "0 0 10px" }}>Template</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
+                {(["standard", "compact", "centered"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTemplate(t)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 12px",
+                      border: template === t ? "1.5px solid #1C3A2F" : "1.5px solid #E5DDD0",
+                      borderRadius: 6,
+                      background: template === t ? "#EEF3F1" : "#FFFFFF",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{
+                      width: 28, height: 22, background: "#F5F2EE", borderRadius: 3, flexShrink: 0,
+                      display: "flex", flexDirection: "column", gap: 2, padding: 3, justifyContent: t === "centered" ? "center" : "flex-start", alignItems: t === "centered" ? "center" : "flex-start",
+                    }}>
+                      <div style={{ height: 3, width: t === "compact" ? "80%" : "90%", background: "#C0B8B0", borderRadius: 1 }} />
+                      <div style={{ height: 2, width: "60%", background: "#D8D0C5", borderRadius: 1 }} />
+                      <div style={{ height: 2, width: "70%", background: "#D8D0C5", borderRadius: 1 }} />
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: template === t ? "#1C3A2F" : "#1A1A1A", textTransform: "capitalize" }}>{t}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Accent color */}
+              <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", letterSpacing: 1, textTransform: "uppercase", margin: "0 0 10px" }}>Accent Color</p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+                {ACCENT_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    onClick={() => setAccentColor(c.value)}
+                    title={c.label}
+                    style={{
+                      width: 26, height: 26, borderRadius: "50%",
+                      background: c.value,
+                      border: accentColor === c.value ? "2.5px solid #1C3A2F" : "2.5px solid transparent",
+                      outline: accentColor === c.value ? `2px solid ${c.value}` : "none",
+                      outlineOffset: 1,
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Font */}
+              <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", letterSpacing: 1, textTransform: "uppercase", margin: "0 0 10px" }}>Font</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {([["sans", "Sans-Serif"], ["serif", "Serif"], ["mono", "Mono"]] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setResumeFont(val)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      border: resumeFont === val ? "1.5px solid #1C3A2F" : "1.5px solid #E5DDD0",
+                      borderRadius: 6,
+                      background: resumeFont === val ? "#EEF3F1" : "#FFFFFF",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 500, color: resumeFont === val ? "#1C3A2F" : "#1A1A1A" }}>{label}</span>
+                    <span style={{
+                      fontSize: 13,
+                      color: "#6B6258",
+                      fontFamily: val === "sans" ? "system-ui, sans-serif" : val === "serif" ? "Georgia, serif" : "monospace",
+                    }}>Aa</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
