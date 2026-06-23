@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -80,21 +81,8 @@ export async function POST(
     );
   }
 
-  const prompt = `You are extracting job listings from a company careers page.
-
-Page URL: ${careersUrl}
-Page text (truncated):
-${pageText}
-
-Extract all visible job listings. For each job return:
-- title: job title (string)
-- location: city/state or "Remote" (string, null if not shown)
-- department: team or department (string, null if not shown)
-- url: direct link to the job posting (string, null if not extractable)
-
-Return ONLY a JSON object: { "jobs": [...], "scanned_url": "${careersUrl}" }
-If no jobs are found, return { "jobs": [], "scanned_url": "${careersUrl}" }
-Do not include any explanation outside the JSON.`;
+  const template = await getPrompt("COMPANY_JOBS_SCAN");
+  const prompt = interpolate(template, { careersUrl, pageText });
 
   const message = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",

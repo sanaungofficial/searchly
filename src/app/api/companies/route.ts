@@ -18,7 +18,26 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(companies);
+  if (companies.length === 0) return NextResponse.json([]);
+
+  // Batch-lookup shared CompanyIntel by name
+  const names = companies.map((c) => c.name);
+  const intelRows = await prisma.companyIntel.findMany({
+    where: { name: { in: names } },
+    select: { name: true, enrichmentCache: true, enrichmentFetchedAt: true },
+  });
+  const intelMap = new Map(intelRows.map((r) => [r.name, r]));
+
+  const result = companies.map((c) => {
+    const intel = intelMap.get(c.name);
+    return {
+      ...c,
+      enrichmentCache: intel?.enrichmentCache ?? null,
+      enrichmentFetchedAt: intel?.enrichmentFetchedAt ?? null,
+    };
+  });
+
+  return NextResponse.json(result);
 }
 
 export async function POST(request: Request) {
@@ -46,5 +65,14 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json(company, { status: 201 });
+  // Check if shared intel already exists for this name
+  const intel = await prisma.companyIntel.findUnique({
+    where: { name },
+    select: { enrichmentCache: true, enrichmentFetchedAt: true },
+  });
+
+  return NextResponse.json(
+    { ...company, enrichmentCache: intel?.enrichmentCache ?? null, enrichmentFetchedAt: intel?.enrichmentFetchedAt ?? null },
+    { status: 201 }
+  );
 }

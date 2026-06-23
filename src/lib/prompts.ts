@@ -93,6 +93,18 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Resume",
     variables: [],
   },
+  COMPANY_ENRICH: {
+    label: "Company Enrichment",
+    description: "Generates business intelligence for a tracked company: description, founding info, leadership, funding, and recent news.",
+    category: "Companies",
+    variables: ["companyName"],
+  },
+  COMPANY_JOBS_SCAN: {
+    label: "Company Jobs Scan",
+    description: "Extracts job listings from a company careers page.",
+    category: "Companies",
+    variables: ["careersUrl", "pageText"],
+  },
 };
 
 /* ── Default prompt content ── */
@@ -381,6 +393,50 @@ JOB:
 
 Return ONLY a JSON array of strings, e.g. ["SQL", "product roadmap", "stakeholder management", "Python"]
 Return ONLY the JSON array, no other text.`,
+
+  COMPANY_ENRICH: `You are a business intelligence tool. Provide factual information about the company "{{companyName}}".
+
+Return ONLY a valid JSON object with this exact structure (use null for unknown fields):
+{
+  "description": "2-3 sentence overview of what the company does",
+  "founded": "year as string, e.g. '1977'",
+  "headquarters": "City, State/Country",
+  "employeeCount": "range or number as string, e.g. '10,000-50,000' or 'Unknown'",
+  "industry": "primary industry/sector",
+  "fundingStage": "e.g. 'Public (NYSE: ORCL)', 'Series C', 'Private', 'Acquired by [Company]'",
+  "totalFunding": "e.g. '$500M' or 'Public' or 'Unknown'",
+  "keyInvestors": ["investor1", "investor2"],
+  "leadership": [
+    {"name": "Full Name", "title": "Title"}
+  ],
+  "recentNews": [
+    {"title": "News headline", "date": "YYYY or YYYY-MM", "summary": "1 sentence summary"}
+  ],
+  "glassdoorRating": "rating as string e.g. '4.1' or null if unknown",
+  "websiteUrl": "official website URL or null"
+}
+
+Rules:
+- leadership: include CEO and up to 4 other key executives
+- recentNews: up to 3 notable recent events or announcements (from your training data)
+- Only include information you are confident about — use null rather than guessing
+- Do not include any text outside the JSON object`,
+
+  COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
+
+Page URL: {{careersUrl}}
+Page text (truncated):
+{{pageText}}
+
+Extract all visible job listings. For each job return:
+- title: job title (string)
+- location: city/state or "Remote" (string, null if not shown)
+- department: team or department (string, null if not shown)
+- url: direct link to the job posting (string, null if not extractable)
+
+Return ONLY a JSON object: { "jobs": [...], "scanned_url": "{{careersUrl}}" }
+If no jobs are found, return { "jobs": [], "scanned_url": "{{careersUrl}}" }
+Do not include any explanation outside the JSON.`,
 
   RESUME_PARSE: `Extract the following from this resume and return ONLY valid JSON, no markdown, no explanation:
 

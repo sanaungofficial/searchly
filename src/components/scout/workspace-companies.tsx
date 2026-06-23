@@ -466,6 +466,9 @@ export function WorkspaceCompanies() {
   const [saving, setSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [userTargetRoles, setUserTargetRoles] = useState<string[]>([]);
+  const [intelResults, setIntelResults] = useState<Array<{ name: string; hasIntel: boolean }>>([]);
+  const [showIntelDropdown, setShowIntelDropdown] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     try { const res = await fetch("/api/companies"); if (res.ok) setCompanies(await res.json()); } catch { /* ignore */ } finally { setLoading(false); }
@@ -479,11 +482,23 @@ export function WorkspaceCompanies() {
     }).catch(() => {});
   }, []);
 
+  function searchIntel(q: string) {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!q.trim()) { setIntelResults([]); setShowIntelDropdown(false); return; }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/companies/intel?q=${encodeURIComponent(q.trim())}`);
+        if (res.ok) { const data = await res.json(); setIntelResults(data); setShowIntelDropdown(data.length > 0); }
+      } catch { /* ignore */ }
+    }, 300);
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault(); if (!newName.trim()) return; setSaving(true);
+    setShowIntelDropdown(false);
     try {
       const res = await fetch("/api/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName.trim() }) });
-      if (res.ok) { const created = await res.json(); setCompanies((prev) => [created, ...prev]); setNewName(""); setShowAdd(false); }
+      if (res.ok) { const created = await res.json(); setCompanies((prev) => [created, ...prev]); setNewName(""); setShowAdd(false); setIntelResults([]); }
     } catch { /* ignore */ } finally { setSaving(false); }
   }
 
@@ -520,9 +535,35 @@ export function WorkspaceCompanies() {
 
       {showAdd && (
         <form onSubmit={handleAdd} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, position: "relative" }}>
             <label style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#555", display: "block", marginBottom: 5 }}>Company name *</label>
-            <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Comcast, Aramark, Deloitte" style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-dm-sans), system-ui" }} required />
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => { setNewName(e.target.value); searchIntel(e.target.value); }}
+              onBlur={() => setTimeout(() => setShowIntelDropdown(false), 150)}
+              onFocus={() => { if (intelResults.length > 0) setShowIntelDropdown(true); }}
+              placeholder="e.g. Comcast, Aramark, Deloitte"
+              style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-dm-sans), system-ui" }}
+              required
+            />
+            {showIntelDropdown && intelResults.length > 0 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 7, zIndex: 50, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", marginTop: 2, overflow: "hidden" }}>
+                {intelResults.map((r) => (
+                  <button
+                    key={r.name}
+                    type="button"
+                    onMouseDown={() => { setNewName(r.name); setShowIntelDropdown(false); }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, textAlign: "left" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f7f4")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  >
+                    <span>{r.name}</span>
+                    {r.hasIntel && <span style={{ fontSize: 10, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "1px 6px" }}>Intel ready</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-dm-sans), system-ui" }}>{saving ? "Adding…" : "Add"}</button>
         </form>
