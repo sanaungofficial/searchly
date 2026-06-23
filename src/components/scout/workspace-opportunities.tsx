@@ -14,6 +14,7 @@ import {
 import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
+import { CompanyLogo } from "./company-logo";
 import { fontSans, fontMono, color, type as T } from "@/lib/typography";
 
 export type { DrawerTool };
@@ -724,40 +725,6 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Company logo helper — Clearbit with colored-initials fallback
-   ────────────────────────────────────────────────────────────── */
-function extractCardDomain(website: string | null): string | null {
-  if (!website) return null;
-  try {
-    const u = new URL(website.startsWith("http") ? website : `https://${website}`);
-    return u.hostname.replace(/^www\./, "");
-  } catch { return null; }
-}
-
-function CompanyLogoCard({ name, website, size = 38 }: { name: string; website: string | null; size?: number }) {
-  const [err, setErr] = useState(false);
-  const domain = extractCardDomain(website);
-  const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-  const palette = ["#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#10b981", "#0ea5e9", "#f43f5e", "#84cc16"];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const bg = palette[Math.abs(hash) % palette.length];
-  const br = size <= 30 ? 6 : 8;
-  if (domain && !err) {
-    return (
-      <div style={{ width: size, height: size, borderRadius: br, background: "#F4F2EF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)" }}>
-        <img src={`https://logo.clearbit.com/${domain}`} alt={name} width={size - 10} height={size - 10} style={{ objectFit: "contain" }} onError={() => setErr(true)} />
-      </div>
-    );
-  }
-  return (
-    <div style={{ width: size, height: size, borderRadius: br, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: size <= 30 ? 9 : 11, fontWeight: 600, color: "#FFFFFF" }}>{initials}</span>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────
    Pipeline tab — flat list with stage filter + status dropdowns
    ────────────────────────────────────────────────────────────── */
 interface PipelineTabProps {
@@ -886,7 +853,7 @@ function PipelineTab({
                         style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(0,0,0,0.06)", borderTop: `2px solid ${stageColor}`, cursor: "pointer", transition: "box-shadow 0.15s" }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <CompanyLogoCard name={c.company} website={url} size={28} />
+                          <CompanyLogo name={c.company} website={url} size={28} />
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.role}</p>
                             <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.company}</p>
@@ -931,7 +898,7 @@ function PipelineTab({
                   onClick={() => onOpenDrawer(c.id)}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-                    <CompanyLogoCard name={c.company} website={url} size={38} />
+                    <CompanyLogo name={c.company} website={url} size={38} />
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 2 }}>{c.role}</p>
                       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: meta?.location || meta?.salary ? 6 : 0 }}>
