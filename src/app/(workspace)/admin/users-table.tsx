@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 import { UserDrawer, DrawerUser } from "./user-drawer";
 
 export type UserRow = DrawerUser;
+
+const PAGE_SIZE = 25;
 
 const ROLE_STYLES: Record<UserRole, string> = {
   USER: "bg-stone-100 text-stone-600 border-stone-200",
@@ -32,6 +34,130 @@ const ROLE_FILTERS: (UserRole | "ALL")[] = ["ALL", "USER", "COACH", "RECRUITER",
 const SUB_FILTERS = ["ALL", "FREE", "PAID", "PAST_DUE"] as const;
 type SubFilter = (typeof SUB_FILTERS)[number];
 
+function InviteModal({
+  onClose,
+  onInvited,
+}: {
+  onClose: () => void;
+  onInvited: (user: UserRow) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<UserRole>("USER");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name: name || null, role }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to invite user");
+      }
+      const user = await res.json();
+      onInvited(user);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-[100]" onClick={onClose} />
+      <div className="fixed inset-0 flex items-center justify-center z-[101] p-4">
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-md p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2
+              className="text-base font-semibold text-stone-800"
+              style={{ fontFamily: "var(--font-playfair)" }}
+            >
+              Invite user
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-stone-400 hover:text-stone-700 w-7 h-7 flex items-center justify-center rounded hover:bg-stone-100 text-lg leading-none"
+            >
+              ✕
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs text-stone-500 font-mono mb-1.5">Email *</label>
+              <input
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="user@example.com"
+                className="w-full text-sm bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-stone-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-stone-500 font-mono mb-1.5">Name (optional)</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full name"
+                className="w-full text-sm bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-stone-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-stone-500 font-mono mb-1.5">Role</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as UserRole)}
+                className="w-full text-sm bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-mono"
+              >
+                <option value="USER">user</option>
+                <option value="COACH">coach</option>
+                <option value="RECRUITER">recruiter</option>
+                <option value="ADMIN">admin</option>
+              </select>
+            </div>
+            {error && <p className="text-xs text-red-600 font-mono">{error}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm text-stone-500 px-4 py-2 rounded-lg hover:bg-stone-50 border border-stone-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="text-sm bg-stone-800 text-white px-4 py-2 rounded-lg hover:bg-stone-700 disabled:opacity-50 font-medium"
+              >
+                {loading ? "Sending…" : "Send invite"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[]; canEdit: boolean }) {
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState("");
@@ -39,6 +165,8 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
   const [subFilter, setSubFilter] = useState<SubFilter>("ALL");
   const [sort, setSort] = useState<"date" | "jobs">("date");
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
+  const [page, setPage] = useState(1);
+  const [showInvite, setShowInvite] = useState(false);
 
   const filtered = users
     .filter((u) => {
@@ -55,9 +183,34 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter, subFilter, sort]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   function handleRoleUpdate(id: string, role: UserRole) {
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
     setSelectedUser((prev) => (prev?.id === id ? { ...prev, role } : prev));
+  }
+
+  function handleInvited(newUser: UserRow) {
+    setUsers((prev) => {
+      const exists = prev.find((u) => u.id === newUser.id);
+      if (exists) return prev.map((u) => (u.id === newUser.id ? { ...u, ...newUser } : u));
+      return [
+        {
+          ...newUser,
+          monthlyUsage: [],
+          jobs: [],
+          _count: { jobs: 0 },
+          subscription: null,
+          profile: null,
+        },
+        ...prev,
+      ];
+    });
   }
 
   return (
@@ -85,6 +238,14 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
                 </button>
               ))}
             </div>
+            {canEdit && (
+              <button
+                onClick={() => setShowInvite(true)}
+                className="shrink-0 text-xs bg-stone-800 text-white px-3 py-2 rounded-lg hover:bg-stone-700 font-medium"
+              >
+                + Invite
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
@@ -144,14 +305,14 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
+              {paginated.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-10 text-center text-stone-400 text-sm">
                     No users found
                   </td>
                 </tr>
               )}
-              {filtered.map((user) => (
+              {paginated.map((user) => (
                 <tr
                   key={user.id}
                   onClick={() => setSelectedUser(user)}
@@ -196,7 +357,40 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-3 border-t border-stone-100 flex items-center justify-between">
+            <span className="text-xs text-stone-400 font-mono">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="text-xs px-3 py-1.5 rounded border border-stone-200 text-stone-500 hover:border-stone-300 disabled:opacity-40 disabled:cursor-not-allowed font-mono"
+              >
+                ← prev
+              </button>
+              <span className="text-xs text-stone-400 font-mono px-2">{page} / {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="text-xs px-3 py-1.5 rounded border border-stone-200 text-stone-500 hover:border-stone-300 disabled:opacity-40 disabled:cursor-not-allowed font-mono"
+              >
+                next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {showInvite && (
+        <InviteModal
+          onClose={() => setShowInvite(false)}
+          onInvited={handleInvited}
+        />
+      )}
 
       {selectedUser && (
         <UserDrawer
