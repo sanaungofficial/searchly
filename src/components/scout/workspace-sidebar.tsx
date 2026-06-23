@@ -156,7 +156,7 @@ export function WorkspaceSidebar({
           borderRight: "1px solid rgba(232,213,163,0.08)",
           height: "100vh",
           transition: "width 0.22s ease, transform 0.22s ease",
-          overflow: "hidden",
+          overflow: isMobile ? "hidden" : "visible",
           ...(isMobile
             ? {
                 position: "fixed",
@@ -171,6 +171,45 @@ export function WorkspaceSidebar({
               }),
         }}
       >
+        {/* ── Desktop edge-tab toggle ── */}
+        {!isMobile && (
+          <button
+            onClick={onToggle}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            style={{
+              position: "absolute",
+              top: 72,
+              right: -16,
+              zIndex: 10,
+              width: 16,
+              height: 48,
+              borderRadius: "0 8px 8px 0",
+              background: "#1A3A2F",
+              border: "1px solid rgba(232,213,163,0.2)",
+              borderLeft: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "rgba(232,213,163,0.6)",
+              transition: "background 0.15s, color 0.15s, width 0.15s",
+              boxShadow: "3px 0 10px rgba(0,0,0,0.2)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#254d3e";
+              e.currentTarget.style.color = "#E8D5A3";
+              e.currentTarget.style.width = "20px";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#1A3A2F";
+              e.currentTarget.style.color = "rgba(232,213,163,0.6)";
+              e.currentTarget.style.width = "16px";
+            }}
+          >
+            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+          </button>
+        )}
+
         {/* ── Header ── */}
         <div style={{ padding: isRail ? "20px 0 16px" : "26px 22px 20px" }}>
           {!IS_PROD && !isRail && (
@@ -197,32 +236,31 @@ export function WorkspaceSidebar({
           )}
 
           {isRail ? (
-            /* Rail header: just the toggle button centered */
+            /* Rail header: bell only (edge tab handles expand) */
             <div style={{ display: "flex", justifyContent: "center" }}>
               <button
-                onClick={onToggle}
-                title="Expand sidebar"
+                onClick={onToggleNotif}
                 style={{
+                  position: "relative",
                   cursor: "pointer",
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: "rgba(232,213,163,0.1)",
+                  padding: 6,
+                  borderRadius: 6,
+                  background: "none",
                   border: "none",
-                  color: "rgba(232,213,163,0.7)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  color: "rgba(232,213,163,0.65)",
                   transition: "background 0.15s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.18)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
               >
-                <ChevronRight />
+                <BellIcon />
+                {notifUnreadCount > 0 && (
+                  <div style={{ position: "absolute", top: 3, right: 3, width: 8, height: 8, borderRadius: "50%", background: "#C4574A", border: "1.5px solid #1A3A2F" }} />
+                )}
               </button>
             </div>
           ) : (
-            /* Full header: brand + actions */
+            /* Full header: brand + bell (+ mobile close) */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 22, fontWeight: 500, color: "#E8D5A3" }}>
@@ -233,44 +271,22 @@ export function WorkspaceSidebar({
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                {/* Collapse toggle */}
-                <button
-                  onClick={onToggle}
-                  title={isMobile ? "Close menu" : "Collapse sidebar"}
-                  style={{
-                    cursor: "pointer",
-                    padding: 6,
-                    borderRadius: 6,
-                    background: "none",
-                    border: "none",
-                    color: "rgba(232,213,163,0.65)",
-                    lineHeight: 1,
-                    transition: "background 0.15s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                >
-                  {isMobile ? (
+                {isMobile && (
+                  <button
+                    onClick={onToggle}
+                    title="Close menu"
+                    style={{ cursor: "pointer", padding: 6, borderRadius: 6, background: "none", border: "none", color: "rgba(232,213,163,0.65)", lineHeight: 1, transition: "background 0.15s" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  >
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                     </svg>
-                  ) : (
-                    <ChevronLeft />
-                  )}
-                </button>
-                {/* Bell */}
+                  </button>
+                )}
                 <button
                   onClick={onToggleNotif}
-                  style={{
-                    position: "relative",
-                    cursor: "pointer",
-                    padding: 6,
-                    borderRadius: 6,
-                    background: "none",
-                    border: "none",
-                    color: "rgba(232,213,163,0.65)",
-                    transition: "background 0.15s",
-                  }}
+                  style={{ position: "relative", cursor: "pointer", padding: 6, borderRadius: 6, background: "none", border: "none", color: "rgba(232,213,163,0.65)", transition: "background 0.15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                 >
