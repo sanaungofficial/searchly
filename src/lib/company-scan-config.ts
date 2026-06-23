@@ -28,11 +28,18 @@ export const DEFAULT_COMPANY_SCAN_SETTINGS: CompanyScanSettings = {
   lastCronSummary: null,
 };
 
-const SETTINGS_META = {
-  label: "Company jobs scan settings",
+export const COMPANY_SCAN_SETTINGS_SIDEBAR = {
+  key: COMPANY_SCAN_SETTINGS_KEY,
+  label: "Scan schedule & automation",
   description:
-    "Shared careers-page scan cadence for CompanyIntel. Cron schedule is configured in vercel.json (weekly by default).",
+    "Refresh interval, cron batch size, and auto-scan on add. Cron schedule itself is in vercel.json (weekly by default).",
   category: "Companies",
+} as const;
+
+const SETTINGS_META = {
+  label: COMPANY_SCAN_SETTINGS_SIDEBAR.label,
+  description: COMPANY_SCAN_SETTINGS_SIDEBAR.description,
+  category: COMPANY_SCAN_SETTINGS_SIDEBAR.category,
 };
 
 function parseSettings(content: string | undefined | null): CompanyScanSettings {
