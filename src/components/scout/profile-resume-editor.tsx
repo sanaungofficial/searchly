@@ -253,7 +253,7 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
 
       setParsedData(pd);
       if (!hasResumeBodyContent(pd)) {
-        setParseError(parseErr || "Resume sections are empty. Use the editor panel to add content.");
+        setParseError(parseErr || "Could not extract resume sections. Try re-uploading your PDF or DOCX, or use Retry.");
       }
       const savedJd = localStorage.getItem(`resume-match-jd-${id}`);
       if (savedJd) setJobDescription(savedJd);

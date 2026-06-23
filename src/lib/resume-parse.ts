@@ -360,6 +360,145 @@ export function shouldReplaceNameWithResumeName(
   return false;
 }
 
+const SECTION_MARKERS: { id: ResumeSectionId; re: RegExp }[] = [
+  { id: "summary", re: /^(?:professional\s+)?summary(?:\s+of\s+qualifications)?\s*$/i },
+  { id: "skills", re: /^(?:areas\s+of\s+)?(?:emphasis|skills|core\s+competencies|technical\s+skills)\s*$/i },
+  { id: "experience", re: /^(?:professional\s+)?(?:work\s+)?experience\s*$/i },
+  { id: "education", re: /^education(?:\s*(?:&|and)\s*training)?\s*$/i },
+  { id: "certifications", re: /^certifications?\s*$/i },
+];
+
+function splitResumeSections(text: string): Partial<Record<ResumeSectionId, string>> {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const sections: Partial<Record<ResumeSectionId, string[]>> = {};
+  let current: ResumeSectionId | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (current) (sections[current] ||= []).push("");
+      continue;
+    }
+    const marker = SECTION_MARKERS.find((m) => m.re.test(trimmed));
+    if (marker) {
+      current = marker.id;
+      sections[current] ||= [];
+      continue;
+    }
+    if (current) (sections[current] ||= []).push(trimmed);
+  }
+
+  const out: Partial<Record<ResumeSectionId, string>> = {};
+  for (const [key, value] of Object.entries(sections)) {
+    out[key as ResumeSectionId] = value.join("\n").trim();
+  }
+  return out;
+}
+
+function parseExperienceBlock(block: string): ParsedWorkEntry[] {
+  const chunks = block.split(/\n(?=\S)/).map((c) => c.trim()).filter(Boolean);
+  const entries: ParsedWorkEntry[] = [];
+  let chunkIndex = 0;
+
+  for (const chunk of chunks) {
+    const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) continue;
+
+    const dateLine = lines.find((l) => /\b(19|20)\d{2}\b/.test(l) && l.length < 40);
+    const bulletLines = lines.filter((l) => /^[•\-\*–—]/.test(l) || /^\d+\.\s/.test(l));
+    const contentLines = lines.filter((l) => l !== dateLine && !bulletLines.includes(l));
+
+    if (contentLines.length >= 1) {
+      entries.push({
+        id: `exp_${chunkIndex++}`,
+        title: contentLines[0] || "Role",
+        company: contentLines[1] || "",
+        from: dateLine?.match(/\b(19|20)\d{2}\b/)?.[0] || null,
+        to: dateLine?.includes("Present") ? "Present" : null,
+        bullets: bulletLines.map((b) => b.replace(/^[•\-\*–—]\s*/, "").replace(/^\d+\.\s*/, "")),
+      });
+    }
+  }
+
+  if (!entries.length && block.trim()) {
+    entries.push({
+      id: "exp_0",
+      title: "Experience",
+      company: "",
+      bullets: block.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 12),
+    });
+  }
+
+  return entries;
+}
+
+function parseEducationBlock(block: string): ParsedEducationEntry[] {
+  return block
+    .split(/\n(?=\S)/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((chunk, i) => {
+      const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
+      return {
+        id: `edu_${i}`,
+        degree: lines[0] || "Degree",
+        school: lines[1] || lines[0] || "School",
+      };
+    });
+}
+
+function parseSkillsBlock(block: string): { skills: string[]; groups: ParsedSkillGroup[] } {
+  const skills = block
+    .split(/[,;|\n•\-\*–—]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 1 && s.length < 60);
+  if (!skills.length) return { skills: [], groups: [] };
+  return {
+    skills,
+    groups: [{ id: "sg_0", label: "Skills", skills }],
+  };
+}
+
+/** Best-effort structure when AI is unavailable or returns empty sections. */
+export function fallbackParseResumeFromText(rawText: string): ParsedResumeData {
+  const text = rawText.replace(/\r\n/g, "\n").trim();
+  const data = emptyParsedResumeData();
+  if (!text) return data;
+
+  data.email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
+  data.phone = text.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)?.[0] ?? null;
+  data.linkedinUrl = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s)]+/i)?.[0] ?? null;
+
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const headerLine = lines.find((l) => !l.includes("@") && !/^https?:\/\//i.test(l) && l.length < 80);
+  if (headerLine) data.name = headerLine;
+
+  const sections = splitResumeSections(text);
+
+  if (sections.summary) data.summary = sections.summary;
+  if (sections.experience) data.workExperience = parseExperienceBlock(sections.experience);
+  if (sections.education) data.education = parseEducationBlock(sections.education);
+  if (sections.skills) {
+    const { skills, groups } = parseSkillsBlock(sections.skills);
+    data.skills = skills;
+    data.skillGroups = groups;
+  }
+  if (sections.certifications) {
+    data.certifications = sections.certifications
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((name, i) => ({ id: `cert_${i}`, name }));
+  }
+
+  if (!hasResumeBodyContent(data)) {
+    const withoutHeader = lines.slice(lines.indexOf(headerLine || "") + 1).join("\n").trim();
+    data.summary = (sections.summary || withoutHeader || text).slice(0, 8000);
+  }
+
+  return data;
+}
+
 export function sectionTextBlob(data: ParsedResumeData, sectionId: ResumeSectionId, entryId?: string): string {
   if (sectionId === "summary") return data.summary || "";
   if (sectionId === "skills") {
