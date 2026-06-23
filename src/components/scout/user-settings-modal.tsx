@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
+import { fontSans } from "@/lib/typography";
 
 type SettingsTab = "profile" | "security" | "subscription";
 
@@ -157,7 +158,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       justifyContent: "center",
                     }}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#E8D5A3" }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#E8D5A3" }}>
                       {initials(user.name, user.email)}
                     </span>
                   </div>
@@ -292,7 +293,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 {/* Avatar upload */}
                 <div>
-                  <p style={{ fontSize: 12, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
                     Profile Photo
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -364,7 +365,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                           border: "1px solid #D5CFC8",
                           background: "transparent",
                           color: "#52493F",
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: 500,
                           cursor: uploading ? "not-allowed" : "pointer",
                           opacity: uploading ? 0.6 : 1,
@@ -377,11 +378,11 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       >
                         {uploading ? "Uploading…" : "Upload photo"}
                       </button>
-                      <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
+                      <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
                         JPG, PNG, WebP or GIF · Max 5 MB
                       </p>
                       {uploadError && (
-                        <p style={{ fontSize: 12, color: "#C4574A", margin: "6px 0 0" }}>{uploadError}</p>
+                        <p style={{ fontSize: 14, color: "#C4574A", margin: "6px 0 0" }}>{uploadError}</p>
                       )}
                     </div>
                   </div>
@@ -395,7 +396,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     padding: "12px 16px",
                     background: "#F7F5F2",
                     borderRadius: 8,
-                    fontSize: 12,
+                    fontSize: 14,
                     color: "#8A7F72",
                     lineHeight: 1.5,
                   }}
@@ -410,10 +411,10 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 <Field label="Email" value={user.email} />
                 <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>Password</p>
-                  <p style={{ fontSize: 12, color: "#8A7F72", margin: "0 0 12px" }}>
+                  <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px" }}>
                     You signed in with {user.email.includes("google") ? "Google" : "email"}. Password changes are managed through your email provider.
                   </p>
-                  <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
+                  <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
                     To reset your password, sign out and use the &quot;Forgot password&quot; link on the login page.
                   </p>
                 </div>
@@ -424,7 +425,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {/* Current plan */}
                 <div>
-                  <p style={{ fontSize: 12, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
                     Current Plan
                   </p>
                   <div
@@ -466,17 +467,17 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         )}
                       </div>
                       {isPro && !isAdmin && periodEndFormatted && (
-                        <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
                           Renews {periodEndFormatted}
                         </p>
                       )}
                       {isAdmin && (
-                        <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
                           Unlimited access · all features enabled
                         </p>
                       )}
                       {!isPro && !isAdmin && (
-                        <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
                           Unlock unlimited AI tools &amp; job tracking
                         </p>
                       )}
@@ -490,7 +491,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                           border: "1px solid #D5CFC8",
                           background: "transparent",
                           color: "#52493F",
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: 500,
                           cursor: "pointer",
                           transition: "background 0.15s",
@@ -509,7 +510,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                           border: "none",
                           background: "#1A3A2F",
                           color: "#E8D5A3",
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: 600,
                           cursor: "pointer",
                           transition: "opacity 0.15s",
@@ -534,10 +535,10 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
                         AI requests this month
                       </p>
-                      <span style={{ fontSize: 12, color: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#8A7F72" }}>
+                      <span style={{ fontSize: 14, color: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#8A7F72" }}>
                         {usage.used} / {usage.limit ?? 10}
                       </span>
                     </div>
@@ -553,7 +554,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       />
                     </div>
                     {usage.used >= (usage.limit ?? 10) && (
-                      <p style={{ fontSize: 12, color: "#C4574A", margin: "8px 0 0" }}>
+                      <p style={{ fontSize: 14, color: "#C4574A", margin: "8px 0 0" }}>
                         Limit reached — upgrade for unlimited AI access.
                       </p>
                     )}
@@ -570,7 +571,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       borderRadius: 10,
                     }}
                   >
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "#1A3A2F", margin: "0 0 10px" }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3A2F", margin: "0 0 10px" }}>
                       Pro includes:
                     </p>
                     {[
@@ -584,7 +585,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4A8B6A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
-                        <span style={{ fontSize: 12, color: "#52493F" }}>{feat}</span>
+                        <span style={{ fontSize: 14, color: "#52493F" }}>{feat}</span>
                       </div>
                     ))}
                   </div>
@@ -600,10 +601,10 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     textAlign: "center",
                   }}
                 >
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#52493F", margin: "0 0 4px" }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#52493F", margin: "0 0 4px" }}>
                     Not seeing your updated subscription?
                   </p>
-                  <p style={{ fontSize: 12, color: "#8A7F72", margin: "0 0 10px", lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 10px", lineHeight: 1.5 }}>
                     If you just upgraded, refresh the page to sync your plan status.
                   </p>
                   <button
@@ -614,7 +615,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       border: "1px solid #D5CFC8",
                       background: "white",
                       color: "#52493F",
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: 500,
                       cursor: "pointer",
                     }}
@@ -634,7 +635,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p style={{ fontSize: 12, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
         {label}
       </p>
       <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "#F7F5F2", borderRadius: 7, border: "1px solid #EEE9E2" }}>

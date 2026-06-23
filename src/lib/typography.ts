@@ -25,3 +25,17 @@ export const type = {
   label: 12,
   stat: 40,
 } as const;
+
+/** Drawers & modals — bumped one step for dense comparison UI */
+export const drawerType = {
+  hero: 26,
+  title: 16,
+  subtitle: 14,
+  body: 14,
+  caption: 13,
+  label: 12,
+  tableHeader: 13,
+  tableCell: 14,
+  chip: 13,
+  button: 15,
+} as const;

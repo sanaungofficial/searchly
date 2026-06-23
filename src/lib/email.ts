@@ -21,7 +21,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </head>
-        <body style="margin:0;padding:0;background:#F2EDE3;font-family:'DM Sans',system-ui,sans-serif;">
+        <body style="margin:0;padding:0;background:#F2EDE3;font-family:'Source Sans 3',system-ui,sans-serif;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#F2EDE3;padding:48px 0;">
             <tr>
               <td align="center">
