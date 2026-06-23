@@ -2,6 +2,13 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt } from "@/lib/prompts";
+import {
+  mergeParsedWithReadback,
+  normalizeParsedResumeData,
+  shouldReplaceNameWithResumeName,
+  type ParsedResumeData,
+} from "@/lib/resume-parse";
+import { PARSE_MODEL, parseResumePdf, parseResumeText } from "@/lib/resume-extract";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -11,72 +18,13 @@ function getAnthropic() {
   return _anthropic;
 }
 
-const PARSE_MODEL = "claude-haiku-4-5-20251001";
-
-async function extractFromPdf(base64: string, structuredPrompt: string): Promise<{ text: string; parsed: object | null; tokensIn: number; tokensOut: number }> {
-  try {
-    const [textMsg, structuredMsg] = await Promise.all([
-      getAnthropic().messages.create({
-        model: PARSE_MODEL,
-        max_tokens: 4096,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-            { type: "text", text: "Extract all text from this resume exactly as written. Output only the extracted text, nothing else." },
-          ],
-        }],
-      }),
-      getAnthropic().messages.create({
-        model: PARSE_MODEL,
-        max_tokens: 4096,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-            { type: "text", text: structuredPrompt },
-          ],
-        }],
-      }),
-    ]);
-
-    const text = textMsg.content[0]?.type === "text" ? textMsg.content[0].text : "";
-    let parsed: object | null = null;
-    if (structuredMsg.content[0]?.type === "text") {
-      try { parsed = JSON.parse(structuredMsg.content[0].text); } catch { parsed = null; }
-    }
-    const tokensIn = textMsg.usage.input_tokens + structuredMsg.usage.input_tokens;
-    const tokensOut = textMsg.usage.output_tokens + structuredMsg.usage.output_tokens;
-    return { text, parsed, tokensIn, tokensOut };
-  } catch {
-    return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
-  }
-}
-
-async function extractFromText(rawText: string, structuredPrompt: string): Promise<{ text: string; parsed: object | null; tokensIn: number; tokensOut: number }> {
-  try {
-    const msg = await getAnthropic().messages.create({
-      model: PARSE_MODEL,
-      max_tokens: 4096,
-      messages: [{ role: "user", content: `${structuredPrompt}\n\nResume text:\n${rawText.slice(0, 8000)}` }],
-    });
-    let parsed: object | null = null;
-    if (msg.content[0]?.type === "text") {
-      try { parsed = JSON.parse(msg.content[0].text); } catch { parsed = null; }
-    }
-    return { text: rawText, parsed, tokensIn: msg.usage.input_tokens, tokensOut: msg.usage.output_tokens };
-  } catch {
-    return { text: rawText, parsed: null, tokensIn: 0, tokensOut: 0 };
-  }
-}
-
-async function extractResume(file: File, structuredPrompt: string): Promise<{ text: string; parsed: object | null; tokensIn: number; tokensOut: number }> {
+async function extractResume(file: File, structuredPrompt: string): Promise<{ text: string; parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number }> {
   const bytes = await file.arrayBuffer();
   const ext = file.name.split(".").pop()?.toLowerCase();
 
   if (ext === "pdf") {
     const base64 = Buffer.from(bytes).toString("base64");
-    return extractFromPdf(base64, structuredPrompt);
+    return parseResumePdf(getAnthropic(), base64, structuredPrompt);
   }
 
   if (ext === "docx") {
@@ -84,7 +32,8 @@ async function extractResume(file: File, structuredPrompt: string): Promise<{ te
       const mammoth = await import("mammoth");
       const { value: rawText } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
       if (!rawText.trim()) return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
-      return extractFromText(rawText, structuredPrompt);
+      const { parsed, tokensIn, tokensOut } = await parseResumeText(getAnthropic(), rawText, structuredPrompt);
+      return { text: rawText, parsed, tokensIn, tokensOut };
     } catch {
       return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
     }
@@ -92,7 +41,8 @@ async function extractResume(file: File, structuredPrompt: string): Promise<{ te
 
   if (ext === "txt") {
     const rawText = Buffer.from(bytes).toString("utf-8");
-    return extractFromText(rawText, structuredPrompt);
+    const { parsed, tokensIn, tokensOut } = await parseResumeText(getAnthropic(), rawText, structuredPrompt);
+    return { text: rawText, parsed, tokensIn, tokensOut };
   }
 
   return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
@@ -129,7 +79,7 @@ export async function POST(request: Request) {
 
   const structuredPrompt = process.env.ANTHROPIC_API_KEY ? await getPrompt("RESUME_PARSE") : "";
 
-  const { text: resumeText, parsed: parsedData, tokensIn: rTokIn, tokensOut: rTokOut } = process.env.ANTHROPIC_API_KEY
+  const { text: resumeText, parsed: parsedRaw, tokensIn: rTokIn, tokensOut: rTokOut } = process.env.ANTHROPIC_API_KEY
     ? await extractResume(file, structuredPrompt)
     : { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
 
@@ -146,8 +96,16 @@ export async function POST(request: Request) {
 
   if (resumeText) logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, rTokIn, rTokOut);
 
-  const extractedName = (parsedData as Record<string, unknown> | null)?.name as string | undefined;
-  if (extractedName && !dbUser.name) {
+  const parsedData = parsedRaw;
+
+  const extractedName = parsedData?.name;
+  const metadataName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    (user.user_metadata?.name as string | undefined);
+  if (
+    extractedName &&
+    shouldReplaceNameWithResumeName(dbUser.name, user.email!, metadataName)
+  ) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
   }
 
@@ -183,5 +141,10 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ url: publicUrl, parsed: !!parsedData, asset });
+  return NextResponse.json({
+    url: publicUrl,
+    parsed: !!parsedData,
+    parsedData,
+    asset,
+  });
 }
