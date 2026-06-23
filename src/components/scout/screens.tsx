@@ -80,6 +80,7 @@ const PRIMARY_CTA: React.CSSProperties = {
 };
 
 export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutClick?: () => void }) {
+  const logoTitle = onScoutClick ? "Go to workspace" : "Finish setup first";
   return (
     <div
       className="w-full max-w-[720px] flex justify-between items-start onboarding-header"
@@ -104,7 +105,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
           }}
           onMouseEnter={(e) => onScoutClick && (e.currentTarget.style.opacity = "0.6")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          title={onScoutClick ? "Go to workspace" : undefined}
+          title={logoTitle}
         >
           Kimchi
         </button>
@@ -750,8 +751,8 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
 
           {!loading && (error || !data) && (
             <>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 16 }}>
-                We couldn&apos;t generate a profile read right now — that&apos;s okay. You can fill in your profile in the next steps.
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 8 }}>
+                We couldn&apos;t generate your read right now — that happens sometimes. You can keep going and add a job; upload a resume anytime from Profile → Assets for the full read.
               </p>
               <button
                 type="button"
@@ -1401,7 +1402,7 @@ export function ScreenTargetRoles({
             maxWidth: 440,
           }}
         >
-          Pick a category, then choose up to 3 specific titles.
+          Pick a category, then choose up to 3 specific titles. We&apos;ll use these when you add jobs and score your fit.
         </p>
       </div>
 
@@ -1594,6 +1595,7 @@ export function ScreenAboutYou({
     { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
     { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
   ];
+  const showFilterNudge = !jobTimeline && !targetSalary;
 
   const chipBtn = (selected: boolean, onClick: () => void, label: string) => (
     <button
@@ -1738,6 +1740,21 @@ export function ScreenAboutYou({
 
       {/* CTA */}
       <div className="anim-fade-up" style={{ animationDelay: "0.95s" }}>
+        {showFilterNudge && (
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 13,
+              fontWeight: 300,
+              color: "#6B6258",
+              lineHeight: 1.55,
+              marginBottom: 16,
+              maxWidth: 440,
+            }}
+          >
+            Adding a timeline and target salary helps Kimchi filter bad-fit roles — optional, but worth a quick pick.
+          </p>
+        )}
         <button
           className="onboarding-cta"
           onClick={onContinue}
@@ -1777,7 +1794,15 @@ export function ScreenAboutYou({
 /* ──────────────────────────────────────────────────────────────
    Screen 3 — Transition
    ────────────────────────────────────────────────────────────── */
-export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnterWorkspace: () => void; targetRoles?: string[] }) {
+export function ScreenTransition({
+  onEnterWorkspace,
+  onReviewProfile,
+  targetRoles = [],
+}: {
+  onEnterWorkspace: () => void;
+  onReviewProfile?: () => void;
+  targetRoles?: string[];
+}) {
   const previewRoles = (targetRoles.length > 0 ? targetRoles : ["Director of Strategy", "VP of Operations"]).slice(0, 2);
 
   return (
@@ -1801,13 +1826,8 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
         </p>
         <h2
           style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
-            fontSize: 58,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
+            ...DISPLAY_H2,
             lineHeight: 1.02,
-            letterSpacing: "-0.4px",
           }}
         >
           Let&apos;s get you
@@ -1817,16 +1837,12 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
       </div>
       <p
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
-          fontSize: 18,
-          fontWeight: 300,
-          color: "#52493F",
-          lineHeight: 1.65,
-          maxWidth: 400,
-          textWrap: "pretty",
+          ...ONBOARDING_BODY,
+          fontSize: "clamp(1rem, 2.5vw, 1.125rem)",
+          maxWidth: 420,
         }}
       >
-        Kimchi has your background{targetRoles.length > 0 ? " and target roles" : ""}. Next: paste a job you&apos;re considering — I&apos;ll score how well you fit.
+        You&apos;re set up. Add a job you&apos;re considering — Kimchi will score your fit in under a minute.
       </p>
 
       {/* Workspace preview */}
@@ -2010,8 +2026,32 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Add your first job →
+          Add my first job →
         </button>
+        {onReviewProfile && (
+          <button
+            type="button"
+            onClick={onReviewProfile}
+            style={{
+              display: "block",
+              marginTop: 16,
+              background: "none",
+              border: "none",
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 13,
+              fontWeight: 400,
+              color: "#A09890",
+              cursor: "pointer",
+              padding: "8px 0",
+              minHeight: 44,
+              textAlign: "left",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Review your profile
+          </button>
+        )}
       </div>
     </div>
   );

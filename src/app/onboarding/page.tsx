@@ -194,6 +194,11 @@ export default function OnboardingPage() {
     router.push("/opportunities?addJob=1");
   }, [router]);
 
+  const onReviewProfile = useCallback(() => {
+    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
+    router.push("/profile");
+  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, router]);
+
   const demoAdvance = () => {
     if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
@@ -286,6 +291,7 @@ export default function OnboardingPage() {
             <ScreenTransition
               targetRoles={selectedTitles}
               onEnterWorkspace={onEnterWorkspace}
+              onReviewProfile={onReviewProfile}
             />
           )}
         </div>
