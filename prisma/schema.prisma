@@ -208,10 +208,30 @@ enum AiFeature {
   RESUME_TAILOR
 }
 
+model CompanyIntel {
+  id                   String    @id @default(cuid())
+  name                 String
+  slug                 String    @unique
+  website              String?
+  careersUrl           String?
+  jobsCache            Json?
+  lastJobsFetchedAt    DateTime?
+  enrichmentCache      Json?
+  enrichmentFetchedAt  DateTime?
+
+  trackedCompanies TrackedCompany[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model TrackedCompany {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyIntelId       String?
+  companyIntel         CompanyIntel? @relation(fields: [companyIntelId], references: [id], onDelete: SetNull)
 
   name              String
   website           String?
@@ -232,6 +252,7 @@ model TrackedCompany {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([companyIntelId])
 }
 
 model AiUsageLog {
