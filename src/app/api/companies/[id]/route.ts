@@ -31,6 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ...(body.cultureMission !== undefined && { cultureMission: body.cultureMission }),
       ...(body.candidateEdge !== undefined && { candidateEdge: body.candidateEdge }),
       ...(body.targetRoles !== undefined && { targetRoles: body.targetRoles }),
+      ...(body.careersUrl !== undefined && { careersUrl: body.careersUrl }),
     },
   });
 

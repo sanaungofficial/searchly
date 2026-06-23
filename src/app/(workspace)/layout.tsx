@@ -21,10 +21,14 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
   } = useWorkspace();
 
   const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setCollapsed(true);
+    };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -41,13 +45,14 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         isAdmin={isAdmin}
         userRole={userRole}
         isMobile={isMobile}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((p) => !p)}
       />
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        {isMobile && (
+        {/* Mobile hamburger — only shows when sidebar is collapsed on mobile */}
+        {isMobile && collapsed && (
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setCollapsed(false)}
             style={{
               position: "absolute",
               top: 14,
