@@ -273,8 +273,8 @@ export function ResumeMatchDrawer({
     setLoading(true);
     setError(null);
     setData(null);
-    const body = jobId && !overrideDesc
-      ? { jobId, jobTitle, company }
+    const body = jobId
+      ? { jobId, jobTitle, company, description: overrideDesc !== undefined ? overrideDesc : (description || undefined) }
       : { jobTitle, company, description: overrideDesc !== undefined ? overrideDesc : description };
     fetch("/api/ai/job-match", {
       method: "POST",
@@ -1121,3 +1121,4 @@ export function ResumeMatchDrawer({
     document.body
   );
 }
+
