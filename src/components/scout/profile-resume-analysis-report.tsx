@@ -31,7 +31,7 @@ export interface FullAnalysisReport {
   updatedAt?: string | null;
 }
 
-function scoreToGrade(score: number): { grade: string; label: string } {
+export function scoreToGrade(score: number): { grade: string; label: string } {
   if (score >= 90) return { grade: "A", label: "EXCELLENT" };
   if (score >= 80) return { grade: "B", label: "GOOD" };
   if (score >= 70) return { grade: "C", label: "FAIR" };

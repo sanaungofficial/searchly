@@ -5,6 +5,8 @@ export type CreditBalance = {
   used: number;
   limit: number;
   remaining: number;
+  /** Paid Pro / admin — usage tracked, no cap */
+  unlimited?: boolean;
 };
 
 export function toCreditBalance(used: number, limit: number): CreditBalance {
@@ -13,6 +15,19 @@ export function toCreditBalance(used: number, limit: number): CreditBalance {
     limit,
     remaining: Math.max(0, limit - used),
   };
+}
+
+export function toUnlimitedBalance(used: number): CreditBalance {
+  return {
+    used,
+    limit: 0,
+    remaining: 0,
+    unlimited: true,
+  };
+}
+
+export function isUnlimitedBalance(balance: CreditBalance): boolean {
+  return balance.unlimited === true;
 }
 
 /** Shown on pricing / settings — what consumes a credit. */
@@ -27,10 +42,12 @@ export const CREDIT_ACTIONS = [
 export const CREDITS_EXHAUSTED_ERROR = "Out of credits for this month";
 
 export function isCreditsLow(balance: CreditBalance): boolean {
+  if (isUnlimitedBalance(balance)) return false;
   return balance.remaining > 0 && balance.remaining <= Math.ceil(balance.limit * 0.2);
 }
 
 export function isCreditsExhausted(balance: CreditBalance): boolean {
+  if (isUnlimitedBalance(balance)) return false;
   return balance.remaining <= 0;
 }
 

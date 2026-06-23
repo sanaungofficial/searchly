@@ -2,17 +2,19 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt } from "@/lib/prompts";
-import { normalizeParsedResumeData } from "@/lib/resume-parse";
+import { normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
 import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
 import {
   fetchResumeBytes,
-  isPdfBuffer,
+  fileExtFromUrl,
+  extractRawResumeText,
   PARSE_MODEL,
-  parseResumePdf,
-  parseResumeText,
+  parseResumeFile,
+  parseResumeFromText,
 } from "@/lib/resume-extract";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import Anthropic from "@anthropic-ai/sdk";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 let _anthropic: Anthropic | null = null;
@@ -22,10 +24,6 @@ function getAnthropic() {
 }
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
-  }
-
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,40 +35,57 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const asset = await hydrateResumeAsset(id, dbUser.id);
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const structuredPrompt = await getPrompt("RESUME_PARSE");
   let resumeText = asset.resumeText?.trim() || "";
-  let parsed = null;
-  let tokensIn = 0;
-  let tokensOut = 0;
+  let bytes: Buffer | null = null;
 
-  if (resumeText) {
-    ({ parsed, tokensIn, tokensOut } = await parseResumeText(getAnthropic(), resumeText, structuredPrompt));
-  } else if (asset.url) {
-    const bytes = await fetchResumeBytes(asset.url);
-    if (bytes && isPdfBuffer(bytes)) {
-      const result = await parseResumePdf(getAnthropic(), bytes.toString("base64"), structuredPrompt);
-      resumeText = result.text;
-      parsed = result.parsed;
-      tokensIn = result.tokensIn;
-      tokensOut = result.tokensOut;
+  if (asset.url) {
+    bytes = await fetchResumeBytes(asset.url);
+    if (!resumeText && bytes) {
+      resumeText = await extractRawResumeText(bytes, fileExtFromUrl(asset.url));
     }
   }
 
-  if (!resumeText && !parsed) {
+  if (!resumeText) {
     return NextResponse.json({ error: "No resume text or PDF to parse" }, { status: 404 });
   }
 
-  logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
+  const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
+  const structuredPrompt = anthropic ? await getPrompt("RESUME_PARSE") : "";
+  const ext = asset.url ? fileExtFromUrl(asset.url) : "txt";
+
+  let parsed: ParsedResumeData | null = null;
+  let tokensIn = 0;
+  let tokensOut = 0;
+  let usedFallback = false;
+
+  if (bytes) {
+    const result = await parseResumeFile(anthropic, bytes, ext, structuredPrompt);
+    resumeText = result.text || resumeText;
+    parsed = result.parsed;
+    tokensIn = result.tokensIn;
+    tokensOut = result.tokensOut;
+    usedFallback = result.usedFallback;
+  } else {
+    const result = await parseResumeFromText(anthropic, resumeText, structuredPrompt);
+    parsed = result.parsed;
+    tokensIn = result.tokensIn;
+    tokensOut = result.tokensOut;
+    usedFallback = result.usedFallback;
+  }
 
   if (!parsed) {
     return NextResponse.json({ error: "Could not parse resume" }, { status: 422 });
   }
 
+  if (tokensIn > 0) {
+    logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
+  }
+
   const updated = await prisma.userAsset.update({
     where: { id },
     data: {
-      parsedData: parsed,
-      ...(resumeText ? { resumeText } : {}),
+      parsedData: parsed as unknown as Prisma.InputJsonValue,
+      resumeText,
     },
   });
 
@@ -78,5 +93,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     await syncPrimaryResumeToProfile(dbUser.id);
   }
 
-  return NextResponse.json({ parsedData: normalizeParsedResumeData(updated.parsedData) });
+  return NextResponse.json({
+    parsedData: normalizeParsedResumeData(updated.parsedData),
+    _fallback: usedFallback,
+  });
 }

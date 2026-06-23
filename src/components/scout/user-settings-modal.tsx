@@ -539,23 +539,25 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         {isAdmin ? "Your AI access" : "AI credits this month"}
                       </p>
                       <span style={{ fontSize: 14, color: isAdmin ? "#6B4A8A" : credits.remaining <= 0 ? "#C4574A" : "#8A7F72" }}>
-                        {isAdmin ? "Unlimited" : `${credits.remaining} left · ${credits.used}/${credits.limit} used`}
+                        {isAdmin ? `${credits.used} / unlimited` : `${credits.remaining} left · ${credits.used}/${credits.limit} used`}
                       </span>
                     </div>
+                    {!isAdmin && (
                     <div style={{ height: 6, background: "#EEE9E2", borderRadius: 4, overflow: "hidden" }}>
                       <div
                         style={{
                           height: "100%",
-                          width: isAdmin ? "100%" : `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
-                          background: isAdmin ? "#6B4A8A" : credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#4A8B6A",
+                          width: `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
+                          background: credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#4A8B6A",
                           borderRadius: 4,
                           transition: "width 0.3s ease",
                         }}
                       />
                     </div>
+                    )}
                     {isAdmin && (
-                      <p style={{ fontSize: 13, color: "#6B4A8A", margin: "8px 0 0", lineHeight: 1.5 }}>
-                        You have unlimited AI as admin. The {credits.limit}/month figure is what free users get — not a cap on you.
+                      <p style={{ fontSize: 13, color: "#8A7F72", margin: "8px 0 0", lineHeight: 1.5 }}>
+                        1 credit per AI action · Resets monthly
                       </p>
                     )}
                     {!isAdmin && credits.remaining <= 0 && (
