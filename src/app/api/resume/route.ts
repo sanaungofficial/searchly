@@ -163,6 +163,8 @@ export async function POST(request: Request) {
       resumeUrl: publicUrl,
       resumeText: resumeText || undefined,
       parsedData: parsedData ?? undefined,
+      targetRoles: [],
+      priorities: [],
     },
   });
 
