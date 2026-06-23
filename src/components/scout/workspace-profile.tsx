@@ -1721,6 +1721,7 @@ export function WorkspaceProfile() {
   const [profileSuggestions, setProfileSuggestions] = useState<AISuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [readbackNudge, setReadbackNudge] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
@@ -1848,6 +1849,8 @@ export function WorkspaceProfile() {
         const profileData = await profileRes.json();
         if (!profileData.error) setProfile(profileData);
         else setProfile((p) => p ? { ...p, resumeUrl: data.url } : p);
+        setReadbackNudge(true);
+        setTimeout(() => setReadbackNudge(false), 8000);
       }
     } catch { /* silent */ }
     finally { setResumeUploading(false); }
@@ -1877,6 +1880,7 @@ export function WorkspaceProfile() {
     { id: "dreamrole", label: "Target Roles" },
     { id: "learning", label: "Upskilling" },
     { id: "assets", label: "Assets" },
+    { id: "preferences", label: "Preferences" },
   ];
 
   return (
@@ -1901,9 +1905,9 @@ export function WorkspaceProfile() {
             if (!(profile.parsedData?.education || []).length) missing.push({ label: "Add education history", points: 1, action: () => goToSection("education") });
             if (!(profile.parsedData?.workExperience || []).length) missing.push({ label: "Add work experience", points: 1, action: () => goToSection("experience") });
             if (!(profile.parsedData?.skills || []).length) missing.push({ label: "Add your skills", points: 1, action: () => goToSection("skills") });
-            if (!profile.jobTimeline) missing.push({ label: "Set your job timeline", points: 1, action: () => { if (page !== "about") router.push("/profile"); } });
-            if (!profile.targetSalary) missing.push({ label: "Set your target salary", points: 1, action: () => { if (page !== "about") router.push("/profile"); } });
-            if (!(profile.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: () => { if (page !== "about") router.push("/profile"); } });
+            if (!profile.jobTimeline) missing.push({ label: "Set your job timeline", points: 1, action: () => setPage("preferences") });
+            if (!profile.targetSalary) missing.push({ label: "Set your target salary", points: 1, action: () => setPage("preferences") });
+            if (!(profile.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: () => setPage("preferences") });
 
             return (
               <div style={{ marginTop: 14 }}>
@@ -1949,6 +1953,23 @@ export function WorkspaceProfile() {
             );
           })()}
         </div>
+
+        {/* AI Readback hero — shown above tabs when resume is present */}
+        {(readback || readbackLoading) && (
+          <div style={{ maxWidth: 640, marginBottom: 16 }}>
+            <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} />
+          </div>
+        )}
+
+        {/* Resume upload nudge */}
+        {readbackNudge && (
+          <div style={{ maxWidth: 640, marginBottom: 12, padding: "10px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A7A4A", margin: 0 }}>
+              ✓ Resume uploaded — Kimchi is generating your profile analysis above.
+            </p>
+            <button onClick={() => setReadbackNudge(false)} style={{ background: "none", border: "none", color: "#1A7A4A", cursor: "pointer", fontSize: 16, padding: "0 4px", opacity: 0.6, flexShrink: 0 }}>✕</button>
+          </div>
+        )}
 
         {/* Main tab bar */}
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto", marginBottom: page === "about" ? 0 : 24 }}>
@@ -1998,30 +2019,31 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "about" && profile && (
-          <div style={{ display: "flex", gap: 24, alignItems: "flex-start", paddingBottom: 40 }}>
-            {/* Left column — resume-based sections */}
-            <div style={{ flex: "0 0 auto", width: "min(600px, 100%)" }}>
-              <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} />
-              <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}>
-                <PersonalTab profile={profile} onSave={handlePersonalSave} />
-              </div>
-              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
-                ref={(el) => { sectionRefs.current.education = el; }}>
-                <EducationTab entries={education} onSave={handleEducationSave} />
-              </div>
-              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
-                ref={(el) => { sectionRefs.current.experience = el; }}>
-                <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
-              </div>
-              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
-                ref={(el) => { sectionRefs.current.skills = el; }}>
-                <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
-              </div>
+          <div style={{ maxWidth: 640, paddingBottom: 40 }}>
+            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}>
+              <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
-            {/* Right column — career preferences */}
-            <div style={{ flex: 1, minWidth: 260, maxWidth: 340 }}>
-              <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
+              ref={(el) => { sectionRefs.current.education = el; }}>
+              <EducationTab entries={education} onSave={handleEducationSave} />
             </div>
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
+              ref={(el) => { sectionRefs.current.experience = el; }}>
+              <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
+            </div>
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
+              ref={(el) => { sectionRefs.current.skills = el; }}>
+              <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
+            </div>
+          </div>
+        )}
+
+        {page === "preferences" && !profile && !loading && (
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+        )}
+        {page === "preferences" && profile && (
+          <div style={{ maxWidth: 480, paddingBottom: 40, paddingTop: 8 }}>
+            <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
           </div>
         )}
 
