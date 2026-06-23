@@ -644,7 +644,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               </div>
             </div>
         ) : (
-          /* Overview — JobRight-style: scrollable main column + fixed AI sidebar */
+          /* Overview — left: job posting · right: pipeline, notes, AI */
           <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
             <div style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
               {/* Hero — title + match score */}
@@ -675,31 +675,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   </div>
                   <MatchScoreCard fit={card.fit} onRunMatch={dbId ? () => setMatchDrawerOpen(true) : undefined} />
                 </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18, flexWrap: "wrap" }}>
-                  <span style={{
-                    padding: "5px 14px",
-                    borderRadius: 100,
-                    background: `${STAGE_COLORS[card.stage]}18`,
-                    color: STAGE_COLORS[card.stage],
-                    fontFamily: sans,
-                    fontSize: 13,
-                    fontWeight: 700,
-                  }}>
-                    {STAGE_LABELS[card.stage]}
-                  </span>
-                  {dbId && (
-                    <button
-                      onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#C4574A", fontFamily: sans, padding: 0 }}
-                    >
-                      Remove job
-                    </button>
-                  )}
-                </div>
               </div>
 
-              {/* Main job content */}
+              {/* Main job content — posting only */}
               <div style={{ padding: "28px 32px 36px" }}>
                   {summary && (
                     <div style={{ marginBottom: 22 }}>
@@ -751,49 +729,6 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                       </div>
                     </div>
                   )}
-
-                  {/* Pipeline controls — compact */}
-                  <div style={{ background: cardBg, border, borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
-                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Move to</p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                      {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => moveCard(card.id, s)}
-                          style={{
-                            padding: "8px 14px",
-                            background: "#FFF",
-                            border,
-                            borderRadius: 8,
-                            fontFamily: sans,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: "#1A1A1A",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {STAGE_LABELS[s]}
-                        </button>
-                      ))}
-                    </div>
-                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>Next action</p>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <input
-                        value={nextStepValue}
-                        onChange={(e) => setNextStepValue(e.target.value)}
-                        onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                        placeholder="e.g. Follow up with recruiter…"
-                        style={{ flex: 1, padding: "11px 13px", border, borderRadius: 8, fontFamily: sans, fontSize: 14, outline: "none", background: "#FFF" }}
-                      />
-                      <input
-                        type="date"
-                        value={nextStepDueValue}
-                        onChange={(e) => setNextStepDueValue(e.target.value)}
-                        onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                        style={{ width: 150, padding: "11px 13px", border, borderRadius: 8, fontFamily: sans, fontSize: 14, outline: "none", background: "#FFF", flexShrink: 0 }}
-                      />
-                    </div>
-                  </div>
 
                   {/* Mock job tool views */}
                   {tool !== null && !job && (
@@ -858,32 +793,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                     </div>
                   ) : null}
 
-                  <div style={{ marginTop: 8 }}>
-                    <SectionTitle>Notes</SectionTitle>
-                    <textarea
-                      value={notesValue}
-                      onChange={(e) => setNotesValue(e.target.value)}
-                      onBlur={() => patchField({ userNotes: notesValue || null })}
-                      placeholder="Recruiter contacts, next steps, impressions…"
-                      rows={4}
-                      style={{
-                        width: "100%",
-                        fontFamily: sans,
-                        fontSize: 15,
-                        background: cardBg,
-                        border,
-                        borderRadius: 12,
-                        padding: "16px 18px",
-                        resize: "vertical",
-                        outline: "none",
-                        lineHeight: 1.65,
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-
-                  {/* Hidden URL field for editing */}
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: border }}>
                     <input
                       value={urlValue}
                       onChange={(e) => setUrlValue(e.target.value)}
@@ -895,21 +805,121 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 </div>
               </div>
 
-            {/* AI sidebar — JobRight "Boost your interview chances" */}
+            {/* Right — pipeline, notes, AI tools */}
             <div
               style={{
                 width: AI_SIDEBAR_WIDTH,
                 flexShrink: 0,
-                padding: "28px 24px 32px",
+                padding: "24px 20px 32px",
                 borderLeft: border,
                 background: cardBg,
                 overflowY: "auto",
                 overflowX: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                gap: 24,
               }}
             >
-              <p style={{ fontFamily: sans, fontSize: 17, fontWeight: 700, color: "#1A1A1A", margin: "0 0 18px", lineHeight: 1.3 }}>
-                Boost your interview chances
-              </p>
+              {/* Pipeline */}
+              <div>
+                <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
+                  Pipeline
+                </p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                  <span style={{
+                    padding: "5px 12px",
+                    borderRadius: 100,
+                    background: `${STAGE_COLORS[card.stage]}18`,
+                    color: STAGE_COLORS[card.stage],
+                    fontFamily: sans,
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}>
+                    {STAGE_LABELS[card.stage]}
+                  </span>
+                  {dbId && (
+                    <button
+                      type="button"
+                      onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#C4574A", fontFamily: sans, padding: 0 }}
+                    >
+                      Remove job
+                    </button>
+                  )}
+                </div>
+                <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Move to</p>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                  {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => moveCard(card.id, s)}
+                      style={{
+                        padding: "6px 10px",
+                        background: pageBg,
+                        border,
+                        borderRadius: 7,
+                        fontFamily: sans,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: "#1A1A1A",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {STAGE_LABELS[s]}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Next action</p>
+                <input
+                  value={nextStepValue}
+                  onChange={(e) => setNextStepValue(e.target.value)}
+                  onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+                  placeholder="e.g. Follow up with recruiter…"
+                  style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, marginBottom: 8, boxSizing: "border-box" }}
+                />
+                <input
+                  type="date"
+                  value={nextStepDueValue}
+                  onChange={(e) => setNextStepDueValue(e.target.value)}
+                  onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+                  style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, boxSizing: "border-box" }}
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
+                  Notes
+                </p>
+                <textarea
+                  value={notesValue}
+                  onChange={(e) => setNotesValue(e.target.value)}
+                  onBlur={() => patchField({ userNotes: notesValue || null })}
+                  placeholder="Recruiter contacts, impressions…"
+                  rows={5}
+                  style={{
+                    width: "100%",
+                    fontFamily: sans,
+                    fontSize: 13,
+                    background: pageBg,
+                    border,
+                    borderRadius: 10,
+                    padding: "12px 14px",
+                    resize: "vertical",
+                    outline: "none",
+                    lineHeight: 1.55,
+                    boxSizing: "border-box",
+                    minHeight: 100,
+                  }}
+                />
+              </div>
+
+              {/* AI tools */}
+              <div>
+                <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.3 }}>
+                  Boost your interview chances
+                </p>
               <AiToolCard
                 highlighted
                 title="Improve resume match"
@@ -929,6 +939,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 buttonLabel="Analyze fit"
                 onClick={() => openFitChat(card.id)}
               />
+              </div>
             </div>
           </div>
         )}
