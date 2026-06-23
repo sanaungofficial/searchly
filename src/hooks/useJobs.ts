@@ -41,6 +41,8 @@ export interface JobMeta {
   salary?: string | null;
   description?: string | null;
   requirements?: string[];
+  nextStep?: string | null;
+  nextStepDue?: string | null;
 }
 
 function dbJobToKanban(job: DbJob, index: number): KanbanCard {

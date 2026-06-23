@@ -697,6 +697,40 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
 }
 
 /* ──────────────────────────────────────────────────────────────
+   Company logo helper — Clearbit with colored-initials fallback
+   ────────────────────────────────────────────────────────────── */
+function extractCardDomain(website: string | null): string | null {
+  if (!website) return null;
+  try {
+    const u = new URL(website.startsWith("http") ? website : `https://${website}`);
+    return u.hostname.replace(/^www\./, "");
+  } catch { return null; }
+}
+
+function CompanyLogoCard({ name, website, size = 38 }: { name: string; website: string | null; size?: number }) {
+  const [err, setErr] = useState(false);
+  const domain = extractCardDomain(website);
+  const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const palette = ["#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#10b981", "#0ea5e9", "#f43f5e", "#84cc16"];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const bg = palette[Math.abs(hash) % palette.length];
+  const br = size <= 30 ? 6 : 8;
+  if (domain && !err) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: br, background: "#F4F2EF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)" }}>
+        <img src={`https://logo.clearbit.com/${domain}`} alt={name} width={size - 10} height={size - 10} style={{ objectFit: "contain" }} onError={() => setErr(true)} />
+      </div>
+    );
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: br, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: size <= 30 ? 9 : 11, fontWeight: 600, color: "#FFFFFF" }}>{initials}</span>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
    Pipeline tab — flat list with stage filter + status dropdowns
    ────────────────────────────────────────────────────────────── */
 interface PipelineTabProps {
@@ -719,6 +753,7 @@ function PipelineTab({
   onChangeStage,
   onOpenDrawer,
 }: PipelineTabProps) {
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const visibleCards = filter === "all" ? cards : cards.filter((c) => c.stage === filter);
   const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer", "closed"];
   const sortedCards = [...visibleCards].sort((a, b) => {
@@ -736,119 +771,172 @@ function PipelineTab({
 
   return (
     <div style={{ padding: "24px 32px 48px" }}>
-      {/* Filter chips */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-        {filterChips.map(([id, label]) => {
-          const active = filter === id;
-          const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
-          return (
+      {/* Filter chips + view toggle */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
+          {filterChips.map(([id, label]) => {
+            const active = filter === id;
+            const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
+            return (
+              <button
+                key={id}
+                onClick={() => setFilter(id)}
+                style={{
+                  padding: "5px 14px",
+                  color: active ? "#1A3A2F" : "#A09890",
+                  border: active ? "1px solid #1A3A2F" : "1px solid rgba(0,0,0,0.1)",
+                  borderRadius: 100,
+                  background: "transparent",
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 11,
+                  fontWeight: active ? 600 : 400,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                {label}
+                <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, opacity: 0.7 }}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+        {/* View toggle */}
+        <div style={{ display: "flex", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+          {(["list", "kanban"] as const).map((mode) => (
             <button
-              key={id}
-              onClick={() => setFilter(id)}
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              title={mode === "list" ? "List view" : "Board view"}
               style={{
-                padding: "5px 14px",
-                background: active ? "transparent" : "transparent",
-                color: active ? "#1A3A2F" : "#A09890",
-                border: active ? "1px solid #1A3A2F" : "1px solid rgba(0,0,0,0.1)",
-                borderRadius: 100,
+                padding: "5px 10px",
+                background: viewMode === mode ? "#1A3A2F" : "transparent",
+                color: viewMode === mode ? "#E8D5A3" : "#A09890",
+                border: "none",
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
-                fontWeight: active ? 600 : 400,
+                fontSize: 13,
                 cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
+                lineHeight: 1,
               }}
             >
-              {label}
-              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, opacity: 0.7 }}>{count}</span>
+              {mode === "list" ? "☰" : "⊞"}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
       {/* Empty state */}
-      {sortedCards.length === 0 ? (
-        <div
-          style={{
-            padding: 80,
-            textAlign: "center",
-            color: "#A09890",
-            fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 13,
-          }}
-        >
-          {cards.length === 0
-            ? "No jobs yet. Click \"+ Add job\" above to paste a URL, or \"Upload CSV\" to bulk-add jobs."
-            : "No jobs match this filter."}
+      {cards.length === 0 ? (
+        <div style={{ padding: 80, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13 }}>
+          No jobs yet. Click &quot;+ Add job&quot; above to paste a URL, or &quot;Upload CSV&quot; to bulk-add jobs.
+        </div>
+      ) : sortedCards.length === 0 ? (
+        <div style={{ padding: 60, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13 }}>
+          No jobs match this filter.
+        </div>
+      ) : viewMode === "kanban" ? (
+        /* ── Kanban board ── */
+        <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 20, alignItems: "flex-start" }}>
+          {stageOrder.map((stage) => {
+            const colCards = cards.filter((c) => c.stage === stage);
+            const stageColor = STAGE_COLORS[stage];
+            return (
+              <div key={stage} style={{ minWidth: 210, maxWidth: 210, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, padding: "0 2px" }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: stageColor, flexShrink: 0 }} />
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: stageColor }}>{STAGE_LABELS[stage]}</span>
+                  <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#A09890", marginLeft: "auto" }}>{colCards.length}</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {colCards.map((c) => {
+                    const meta = (c as KanbanCard & { _meta?: JobMeta })._meta;
+                    const url = (c as KanbanCard & { _url?: string })._url ?? null;
+                    const nextStepDue = meta?.nextStepDue;
+                    const isOverdue = nextStepDue ? new Date(nextStepDue) < new Date() : false;
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => onOpenDrawer(c.id)}
+                        style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(0,0,0,0.06)", borderTop: `2px solid ${stageColor}`, cursor: "pointer", transition: "box-shadow 0.15s" }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                          <CompanyLogoCard name={c.company} website={url} size={28} />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.role}</p>
+                            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.company}</p>
+                          </div>
+                        </div>
+                        {meta?.location && (
+                          <span style={{ display: "inline-block", padding: "1px 7px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#52493F", marginBottom: meta?.salary ? 3 : 0 }}>
+                            📍 {meta.location}
+                          </span>
+                        )}
+                        {meta?.nextStep && (
+                          <div style={{ marginTop: 6, padding: "4px 7px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 4, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#4A8B6A"}` }}>
+                            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
+                              {isOverdue ? "⚠ " : "→ "}{meta.nextStep}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        /* ── List view ── */
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {sortedCards.map((c) => {
-            const job = c.jobRef !== null ? JOBS[c.jobRef] : null;
+            const meta = (c as KanbanCard & { _meta?: JobMeta })._meta;
+            const url = (c as KanbanCard & { _url?: string })._url ?? null;
             const stageColor = STAGE_COLORS[c.stage];
+            const nextStepDue = meta?.nextStepDue;
+            const isOverdue = nextStepDue ? new Date(nextStepDue) < new Date() : false;
             return (
               <div
                 key={c.id}
-                style={{
-                  background: "#FFFFFF",
-                  borderRadius: 10,
-                  padding: "18px 22px",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  borderLeft: `3px solid ${stageColor}`,
-                }}
+                style={{ background: "#FFFFFF", borderRadius: 10, padding: "16px 20px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", borderLeft: `3px solid ${stageColor}` }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 12 }}>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1, minWidth: 0 }}
-                    onClick={() => onOpenDrawer(c.id)}
-                  >
-                    <div
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 8,
-                        background: "#1A3A2F",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#E8D5A3" }}>
-                        {c.initials}
-                      </span>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>
-                        {c.role}
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}
+                  onClick={() => onOpenDrawer(c.id)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                    <CompanyLogoCard name={c.company} website={url} size={38} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{c.role}</p>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: meta?.location || meta?.salary ? 6 : 0 }}>
+                        {c.company} · {c.days === 0 ? "Today" : `${c.days}d ago`}
                       </p>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268" }}>
-                        {c.company} · {c.days === 0 ? "Today" : `${c.days} days ago`}
-                      </p>
+                      {(meta?.location || meta?.salary) && (
+                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                          {meta?.location && (
+                            <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#52493F" }}>
+                              📍 {meta.location}
+                            </span>
+                          )}
+                          {meta?.salary && (
+                            <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.08)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A" }}>
+                              {meta.salary}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {meta?.nextStep && (
+                        <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 5, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#4A8B6A"}` }}>
+                          <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
+                            {isOverdue ? "⚠ " : "→ "}{meta.nextStep}
+                            {meta.nextStepDue ? ` · ${meta.nextStepDue}` : ""}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                    <StatusDropdown stage={c.stage} onChange={(s) => onChangeStage(c.id, s)} />
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button
-                    onClick={() => onOpenDrawer(c.id)}
-                    style={{
-                      padding: "7px 14px",
-                      background: "transparent",
-                      color: "#1A3A2F",
-                      border: "1px solid rgba(26,58,47,0.2)",
-                      borderRadius: 5,
-                      fontFamily: "var(--font-dm-sans), system-ui",
-                      fontSize: 11,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Open detail
-                  </button>
+                  <StatusDropdown stage={c.stage} onChange={(s) => { onChangeStage(c.id, s); }} />
                 </div>
               </div>
             );
@@ -891,6 +979,18 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
   const [urlValue, setUrlValue] = useState(extCard._url ?? "");
   const [notesValue, setNotesValue] = useState(extCard._userNotes ?? "");
   const [descValue, setDescValue] = useState(meta?.description ?? "");
+  const [nextStepValue, setNextStepValue] = useState(meta?.nextStep ?? "");
+  const [nextStepDueValue, setNextStepDueValue] = useState(meta?.nextStepDue ?? "");
+
+  function patchNextStep(nextStep: string, nextStepDue: string) {
+    if (!dbId) return;
+    const updatedMeta = { ...(meta ?? {}), nextStep: nextStep || null, nextStepDue: nextStepDue || null };
+    fetch(`/api/jobs/${dbId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: JSON.stringify(updatedMeta) }),
+    });
+  }
   const companyLinkedinUrl = extCard._companyLinkedinUrl ||
     `https://www.linkedin.com/company/${card.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
 
@@ -930,7 +1030,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
           top: 8,
           right: 8,
           bottom: 8,
-          width: 440,
+          width: 560,
           background: "#F8F6F2",
           borderRadius: 12,
           overflowY: "auto",
@@ -944,28 +1044,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
         <div style={{ padding: "20px 24px 18px", borderBottom: "1px solid rgba(0,0,0,0.07)", background: "#FFFFFF" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 7,
-                  background: "#1A3A2F",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "#E8D5A3",
-                  }}
-                >
-                  {card.initials}
-                </span>
-              </div>
+              <CompanyLogoCard name={card.company} website={cardUrl} size={36} />
               <div>
                 <p
                   style={{
@@ -1109,6 +1188,27 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
                 {STAGE_LABELS[s]}
               </button>
             ))}
+          </div>
+
+          {/* Next step */}
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>
+            Next action
+          </p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "flex-start" }}>
+            <input
+              value={nextStepValue}
+              onChange={(e) => setNextStepValue(e.target.value)}
+              onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+              placeholder="e.g. Follow up with recruiter, prep case…"
+              style={{ flex: 1, padding: "8px 10px", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A1A1A", background: "#FFFFFF", outline: "none" }}
+            />
+            <input
+              type="date"
+              value={nextStepDueValue}
+              onChange={(e) => setNextStepDueValue(e.target.value)}
+              onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+              style={{ width: 130, padding: "8px 10px", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 6, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A1A1A", background: "#FFFFFF", outline: "none", flexShrink: 0 }}
+            />
           </div>
 
           {/* AI Tools — 3 buttons */}
