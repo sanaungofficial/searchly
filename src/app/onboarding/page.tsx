@@ -15,6 +15,7 @@ import {
   type Screen,
   type ReadBackData,
   type TransitionJobAnalysis,
+  type TransitionJobMatch,
 } from "@/components/scout/screens";
 
 function saveLinkedIn(url: string) {
@@ -79,8 +80,11 @@ export default function OnboardingPage() {
   const [resumeError, setResumeError] = useState(false);
   const [jobUrl, setJobUrl] = useState("");
   const [jobLoading, setJobLoading] = useState(false);
+  const [jobLoadingPhase, setJobLoadingPhase] = useState<"parse" | "match" | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [jobMatchError, setJobMatchError] = useState<string | null>(null);
   const [jobAnalysis, setJobAnalysis] = useState<TransitionJobAnalysis | null>(null);
+  const [jobMatch, setJobMatch] = useState<TransitionJobMatch | null>(null);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
@@ -199,8 +203,11 @@ export default function OnboardingPage() {
     const url = jobUrl.trim();
     if (!url) return;
     setJobLoading(true);
+    setJobLoadingPhase("parse");
     setJobError(null);
+    setJobMatchError(null);
     setJobAnalysis(null);
+    setJobMatch(null);
     try {
       const res = await fetch("/api/ai/parse-job", {
         method: "POST",
@@ -210,68 +217,106 @@ export default function OnboardingPage() {
       const data = await res.json();
       if (!res.ok) {
         setJobError(data.error ?? "Could not read that URL. Try another listing link.");
-      } else {
-        setJobAnalysis(data);
+        return;
+      }
+
+      const analysis: TransitionJobAnalysis = {
+        company: data.company ?? null,
+        role: data.role ?? null,
+        location: data.location ?? null,
+        salary: data.salary ?? null,
+        description: data.description ?? null,
+        requirements: data.requirements ?? [],
+      };
+      setJobAnalysis(analysis);
+
+      if (!analysis.description) {
+        setJobMatchError("We saved the listing details but couldn't score your fit without a job description.");
+        return;
+      }
+
+      setJobLoadingPhase("match");
+      const matchRes = await fetch("/api/ai/job-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobTitle: analysis.role ?? "Unknown Role",
+          company: analysis.company ?? "Unknown Company",
+          description: analysis.description,
+        }),
+      });
+      const matchData = await matchRes.json();
+      if (!matchRes.ok) {
+        if (matchRes.status === 404) {
+          setJobMatchError("Upload a resume to see your match score — you can still add this job to your pipeline.");
+        } else if (matchRes.status === 503) {
+          setJobMatchError("Fit scoring isn't available here yet — add the job and we'll score it in your workspace.");
+        } else {
+          setJobMatchError(matchData.error ?? "Couldn't score your fit right now. You can still add this job.");
+        }
+        return;
+      }
+
+      if (typeof matchData.score === "number") {
+        setJobMatch({
+          score: matchData.score,
+          scoreLabel: matchData.scoreLabel ?? "Fair",
+          summaryNote: matchData.summaryNote ?? "",
+        });
       }
     } catch {
       setJobError("Network error — please try again.");
     } finally {
       setJobLoading(false);
+      setJobLoadingPhase(null);
     }
   }, [jobUrl]);
 
-  const addFirstJob = useCallback(async () => {
-    if (!jobAnalysis) return;
-    const url = jobUrl.trim();
-    const company = jobAnalysis.company ?? "Unknown Company";
-    const role = jobAnalysis.role ?? "Unknown Role";
-    const notes = JSON.stringify({
-      location: jobAnalysis.location,
-      salary: jobAnalysis.salary,
-      description: jobAnalysis.description,
-      requirements: jobAnalysis.requirements,
-    });
-    setJobLoading(true);
-    setJobError(null);
-    try {
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company, role, url, notes }),
+  const saveFirstJob = useCallback(
+    async (tool: "resume" | "cover" | null) => {
+      if (!jobAnalysis) return;
+      const url = jobUrl.trim();
+      const company = jobAnalysis.company ?? "Unknown Company";
+      const role = jobAnalysis.role ?? "Unknown Role";
+      const notes = JSON.stringify({
+        location: jobAnalysis.location,
+        salary: jobAnalysis.salary,
+        description: jobAnalysis.description,
+        requirements: jobAnalysis.requirements,
       });
-      const job = await res.json();
-      if (!res.ok) {
-        setJobError(job.error ?? "Could not save this job.");
-        return;
-      }
-      if (jobAnalysis.description && job.id) {
-        fetch("/api/ai/job-match", {
+      setJobLoading(true);
+      setJobError(null);
+      try {
+        const res = await fetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jobTitle: role,
-            company,
-            description: jobAnalysis.description,
-          }),
-        })
-          .then((r) => r.json())
-          .then((matchData: { score?: number }) => {
-            if (!matchData.score || !job.id) return;
-            fetch(`/api/jobs/${job.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: matchData.score }) }),
-            }).catch(() => {});
-          })
-          .catch(() => {});
+          body: JSON.stringify({ company, role, url, notes }),
+        });
+        const job = await res.json();
+        if (!res.ok) {
+          setJobError(job.error ?? "Could not save this job.");
+          return;
+        }
+
+        if (jobMatch && job.id) {
+          await fetch(`/api/jobs/${job.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: jobMatch.score }) }),
+          }).catch(() => {});
+        }
+
+        const params = new URLSearchParams({ job: job.id });
+        if (tool) params.set("tool", tool);
+        router.push(`/opportunities/pipeline?${params.toString()}`);
+      } catch {
+        setJobError("Network error — please try again.");
+      } finally {
+        setJobLoading(false);
       }
-      router.push(`/opportunities/pipeline?job=${job.id}`);
-    } catch {
-      setJobError("Network error — please try again.");
-    } finally {
-      setJobLoading(false);
-    }
-  }, [jobAnalysis, jobUrl, router]);
+    },
+    [jobAnalysis, jobUrl, jobMatch, router]
+  );
 
   const skipToWorkspace = useCallback(() => {
     router.push("/opportunities/pipeline");
@@ -377,15 +422,22 @@ export default function OnboardingPage() {
               onJobUrlChange={(v) => {
                 setJobUrl(v);
                 if (jobAnalysis) setJobAnalysis(null);
+                if (jobMatch) setJobMatch(null);
                 if (jobError) setJobError(null);
+                if (jobMatchError) setJobMatchError(null);
               }}
               onAnalyze={analyzeFirstJob}
-              onAddJob={addFirstJob}
+              onTailorResume={() => saveFirstJob("resume")}
+              onWriteCoverLetter={() => saveFirstJob("cover")}
+              onAddJob={() => saveFirstJob(null)}
               onSkip={skipToWorkspace}
               onReviewProfile={onReviewProfile}
               loading={jobLoading}
+              loadingPhase={jobLoadingPhase}
               error={jobError}
+              matchError={jobMatchError}
               analysis={jobAnalysis}
+              match={jobMatch}
             />
           )}
         </div>

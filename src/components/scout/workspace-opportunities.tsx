@@ -53,6 +53,7 @@ export function WorkspaceOpportunities() {
   useEffect(() => {
     const openAdd = searchParams.get("addJob") === "1";
     const jobId = searchParams.get("job");
+    const tool = searchParams.get("tool");
 
     if (openAdd) {
       setShowAddPanel(true);
@@ -65,13 +66,18 @@ export function WorkspaceOpportunities() {
       });
       if (card) {
         setDrawerCardId(card.id);
+        if (tool === "resume" || tool === "cover" || tool === "fit") {
+          setDrawerTool(tool);
+        }
+        router.replace("/opportunities/pipeline");
+        return;
       }
     }
 
-    if (openAdd || jobId) {
+    if (openAdd && !jobId) {
       router.replace("/opportunities/pipeline");
     }
-  }, [searchParams, kanbanCards, router, setDrawerCardId]);
+  }, [searchParams, kanbanCards, router, setDrawerCardId, setDrawerTool]);
 
   // CSV upload state
   const [showCsvPanel, setShowCsvPanel] = useState(false);

@@ -1803,17 +1803,74 @@ export interface TransitionJobAnalysis {
   requirements: string[];
 }
 
+export interface TransitionJobMatch {
+  score: number;
+  scoreLabel: string;
+  summaryNote: string;
+}
+
+function TransitionScoreGauge({ score }: { score: number }) {
+  const color =
+    score >= 8 ? "#4A8B6A" : score >= 6 ? "#C4A86A" : score >= 4 ? "#C4574A" : "#9B3A2A";
+  const pct = Math.min(score / 10, 1);
+  const r = 22;
+  const circ = 2 * Math.PI * r;
+
+  return (
+    <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
+      <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
+        <circle cx="28" cy="28" r={r} stroke="rgba(0,0,0,0.08)" strokeWidth="5" fill="none" />
+        <circle
+          cx="28"
+          cy="28"
+          r={r}
+          stroke={color}
+          strokeWidth="5"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${circ * pct} ${circ}`}
+        />
+      </svg>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-source-sans), system-ui",
+            fontSize: 15,
+            fontWeight: 700,
+            color,
+          }}
+        >
+          {score.toFixed(1)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 interface TransitionProps {
   targetRoles?: string[];
   jobUrl: string;
   onJobUrlChange: (value: string) => void;
   onAnalyze: () => void;
+  onTailorResume: () => void;
+  onWriteCoverLetter: () => void;
   onAddJob: () => void;
   onSkip: () => void;
   onReviewProfile?: () => void;
   loading: boolean;
+  loadingPhase?: "parse" | "match" | null;
   error: string | null;
+  matchError: string | null;
   analysis: TransitionJobAnalysis | null;
+  match: TransitionJobMatch | null;
 }
 
 export function ScreenTransition({
@@ -1821,14 +1878,27 @@ export function ScreenTransition({
   jobUrl,
   onJobUrlChange,
   onAnalyze,
+  onTailorResume,
+  onWriteCoverLetter,
   onAddJob,
   onSkip,
   onReviewProfile,
   loading,
+  loadingPhase = null,
   error,
+  matchError,
   analysis,
+  match,
 }: TransitionProps) {
   const canAnalyze = jobUrl.trim().length > 0 && !loading;
+  const scoreColor =
+    match && match.score >= 8
+      ? "#4A8B6A"
+      : match && match.score >= 6
+      ? "#C4A86A"
+      : match && match.score >= 4
+      ? "#C4574A"
+      : "#9B3A2A";
 
   return (
     <div className="flex flex-col gap-8 anim-fade-up onboarding-screen-gap" style={{ animationDuration: "0.9s" }}>
@@ -1923,7 +1993,8 @@ export function ScreenTransition({
             onChange={(e) => onJobUrlChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                if (analysis) onAddJob();
+                if (analysis && match) onTailorResume();
+                else if (analysis) onAddJob();
                 else if (canAnalyze) onAnalyze();
               }
             }}
@@ -1968,7 +2039,9 @@ export function ScreenTransition({
               marginTop: 14,
             }}
           >
-            Kimchi is reading the listing…
+            {loadingPhase === "match"
+              ? "Scoring your fit against this role…"
+              : "Kimchi is reading the listing…"}
           </p>
         )}
 
@@ -2025,20 +2098,170 @@ export function ScreenTransition({
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
-                  marginBottom: 14,
+                  marginBottom: match ? 16 : 14,
                 }}
               >
                 {[analysis.location, analysis.salary].filter(Boolean).join(" · ")}
               </p>
             )}
-            <button
-              type="button"
-              className="onboarding-cta"
-              onClick={onAddJob}
-              style={PRIMARY_CTA}
-            >
-              Add to my pipeline →
-            </button>
+
+            {match && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  padding: "14px 16px",
+                  marginBottom: 14,
+                  background: "#FAF7F2",
+                  borderRadius: 8,
+                  border: "1px solid rgba(0,0,0,0.05)",
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: "#1A1A1A",
+                      marginBottom: 6,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    Your resume is a{" "}
+                    <span style={{ color: scoreColor }}>{match.scoreLabel}</span> match
+                  </p>
+                  {match.score < 6 ? (
+                    <p
+                      style={{
+                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontSize: 12,
+                        color: "#C4574A",
+                        lineHeight: 1.5,
+                        margin: 0,
+                      }}
+                    >
+                      Resumes under 6.0 are often filtered out — let&apos;s fix yours fast.
+                    </p>
+                  ) : match.score < 8 ? (
+                    <p
+                      style={{
+                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontSize: 12,
+                        color: "#52493F",
+                        lineHeight: 1.5,
+                        margin: 0,
+                      }}
+                    >
+                      Solid foundation. A few targeted tweaks could push you into strong match territory.
+                    </p>
+                  ) : (
+                    <p
+                      style={{
+                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontSize: 12,
+                        color: "#52493F",
+                        lineHeight: 1.5,
+                        margin: 0,
+                      }}
+                    >
+                      You&apos;re a strong candidate for this role.
+                    </p>
+                  )}
+                  {match.summaryNote && (
+                    <p
+                      style={{
+                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontSize: 12,
+                        fontWeight: 300,
+                        color: "#A09890",
+                        lineHeight: 1.5,
+                        marginTop: 8,
+                        marginBottom: 0,
+                      }}
+                    >
+                      {match.summaryNote}
+                    </p>
+                  )}
+                </div>
+                <TransitionScoreGauge score={match.score} />
+              </div>
+            )}
+
+            {matchError && !match && (
+              <p
+                style={{
+                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontSize: 12,
+                  color: "#A09890",
+                  lineHeight: 1.5,
+                  marginBottom: 14,
+                }}
+              >
+                {matchError}
+              </p>
+            )}
+
+            {match ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  className="onboarding-cta"
+                  onClick={onTailorResume}
+                  style={PRIMARY_CTA}
+                >
+                  Tailor my resume →
+                </button>
+                <button
+                  type="button"
+                  onClick={onWriteCoverLetter}
+                  style={{
+                    width: "100%",
+                    minHeight: 44,
+                    padding: "11px 16px",
+                    background: "#FFFFFF",
+                    border: "1.5px solid rgba(26,58,47,0.22)",
+                    borderRadius: 6,
+                    fontFamily: "var(--font-source-sans), system-ui",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#1A3A2F",
+                    cursor: "pointer",
+                  }}
+                >
+                  Write cover letter
+                </button>
+                <button
+                  type="button"
+                  onClick={onAddJob}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontFamily: "var(--font-source-sans), system-ui",
+                    fontSize: 12,
+                    color: "#A09890",
+                    cursor: "pointer",
+                    padding: "6px 0",
+                    textAlign: "center",
+                    textDecoration: "underline",
+                    textUnderlineOffset: 3,
+                  }}
+                >
+                  Save to pipeline only
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="onboarding-cta"
+                onClick={onAddJob}
+                style={PRIMARY_CTA}
+              >
+                Add to my pipeline →
+              </button>
+            )}
           </div>
         )}
       </div>
