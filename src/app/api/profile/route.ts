@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -12,6 +13,8 @@ export async function GET() {
     include: { profile: true },
   });
 
+  const parsedData = normalizeParsedResumeData(dbUser?.profile?.parsedData ?? null);
+
   return NextResponse.json({
     name: dbUser?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
     email: user.email,
@@ -20,7 +23,7 @@ export async function GET() {
     linkedinUrl: dbUser?.profile?.linkedinUrl || null,
     headline: dbUser?.profile?.headline || null,
     targetRoles: dbUser?.profile?.targetRoles || [],
-    parsedData: dbUser?.profile?.parsedData || null,
+    parsedData,
     employmentStatus: dbUser?.profile?.employmentStatus || null,
     currentSalary: dbUser?.profile?.currentSalary || null,
     targetSalary: dbUser?.profile?.targetSalary || null,

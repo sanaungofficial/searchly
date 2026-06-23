@@ -319,12 +319,12 @@ export default function OnboardingPage() {
   );
 
   const skipToWorkspace = useCallback(() => {
-    router.push("/opportunities/pipeline");
+    router.push("/profile?from=onboarding");
   }, [router]);
 
   const onReviewProfile = useCallback(() => {
     saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
-    router.push("/profile");
+    router.push("/profile?from=onboarding");
   }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, router]);
 
   const demoAdvance = () => {
