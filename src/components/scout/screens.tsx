@@ -93,6 +93,82 @@ const PRIMARY_CTA: React.CSSProperties = {
   transition: "opacity 0.15s",
 };
 
+function OnboardingHeroIntro({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.1s" }}>
+      <h1 style={{ ...DISPLAY_H1, lineHeight: 1.03, marginBottom: 12 }}>{title}</h1>
+      <p style={{ ...ONBOARDING_BODY, margin: 0, maxWidth: 460, color: ONBOARDING_TEXT_SECONDARY }}>{body}</p>
+    </div>
+  );
+}
+
+function OnboardingEyebrowIntro({ eyebrow, title, body }: { eyebrow?: string; title: string; body?: string }) {
+  return (
+    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.1s" }}>
+      {eyebrow && (
+        <p
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontWeight: 600,
+            color: ONBOARDING_TEXT_SECONDARY,
+            letterSpacing: "1.1px",
+            textTransform: "uppercase",
+            marginBottom: 12,
+            marginTop: 0,
+          }}
+        >
+          {eyebrow}
+        </p>
+      )}
+      <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: body ? 12 : 0 }}>{title}</h2>
+      {body && (
+        <p style={{ ...ONBOARDING_BODY, margin: 0, color: ONBOARDING_TEXT_SECONDARY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65 }}>
+          {body}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const ONBOARDING_SKIP_LINK: React.CSSProperties = {
+  display: "block",
+  marginTop: 16,
+  background: "none",
+  border: "none",
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  fontWeight: 400,
+  color: ONBOARDING_TEXT_SECONDARY,
+  cursor: "pointer",
+  padding: "8px 0",
+  minHeight: 44,
+  textAlign: "left",
+  textDecoration: "underline",
+  textUnderlineOffset: 3,
+};
+
+function OnboardingActions({
+  children,
+  skipLabel,
+  onSkip,
+}: {
+  children: React.ReactNode;
+  skipLabel?: string;
+  onSkip?: () => void;
+}) {
+  return (
+    <div className="anim-fade-up" style={ONBOARDING_CARD}>
+      {children}
+      {skipLabel && onSkip && (
+        <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
+          {skipLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutClick?: () => void }) {
   const logoTitle = onScoutClick ? "Go to workspace" : "Finish setup first";
   return (
@@ -194,35 +270,33 @@ export function ScreenWelcome({
   onFileChange,
 }: WelcomeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.22)";
-  const dropBg = resumeError ? "rgba(192,57,43,0.04)" : isDragging ? "rgba(26,58,47,0.04)" : "transparent";
+  const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.35)";
+  const dropBg = resumeError ? "rgba(192,57,43,0.06)" : isDragging ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG;
   const canContinueWithResume = resumeUploaded;
   const canSaveLinkedInOnly = liInput.trim().length > 0 && !resumeUploaded;
 
   return (
-    <div className="flex flex-col gap-[28px] onboarding-screen-gap">
-      <h1
-        className="anim-fade-up"
-        style={{
-          ...DISPLAY_H1,
-          animationDelay: "0.1s",
-        }}
-      >
-        Hello. I&apos;m Kimchi.
-      </h1>
-      <p
-        className="anim-fade-up"
-        style={{
-          ...ONBOARDING_BODY,
-          maxWidth: 460,
-          animationDelay: "0.4s",
-        }}
-      >
-        Drop your resume and I&apos;ll read it — then I&apos;ll tell you what I see about your career.
-      </p>
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <OnboardingHeroIntro
+        title="Hello. I'm Kimchi."
+        body="Drop your resume and I'll read it — then I'll tell you what I see about your career."
+      />
 
-      {/* Upload zone */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.75s" }}>
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontWeight: 600,
+            color: ONBOARDING_LABEL_COLOR,
+            letterSpacing: "0.6px",
+            textTransform: "uppercase",
+            marginBottom: 12,
+            marginTop: 0,
+          }}
+        >
+          Your resume
+        </p>
         {!resumeFilename ? (
           <div
             onDragOver={onDragOver}
@@ -230,8 +304,8 @@ export function ScreenWelcome({
             onDrop={onDrop}
             onClick={onFileClick}
             style={{
-              border: `1.5px dashed ${dropBorder}`,
-              borderRadius: 10,
+              border: `2px dashed ${dropBorder}`,
+              borderRadius: 8,
               padding: ONBOARDING_CARD_PAD,
               display: "flex",
               flexDirection: "column",
@@ -245,24 +319,10 @@ export function ScreenWelcome({
           >
             <UploadIcon />
             <div className="text-center flex flex-col gap-[5px]">
-              <span
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 15,
-                  fontWeight: 400,
-                  color: "#2E2820",
-                }}
-              >
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: ONBOARDING_TEXT }}>
                 Drop your resume here
               </span>
-              <span
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "var(--scout-muted)",
-                }}
-              >
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY }}>
                 PDF or DOCX · click to browse
               </span>
             </div>
@@ -274,33 +334,18 @@ export function ScreenWelcome({
               display: "flex",
               alignItems: "center",
               gap: 10,
-              padding: "14px 20px",
-              background: "rgba(26,58,47,0.06)",
+              padding: "14px 18px",
+              background: ONBOARDING_FIELD_BG,
+              border: ONBOARDING_FIELD_BORDER,
               borderRadius: 8,
             }}
           >
             <CheckCircleFilled />
-            <span
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#1A3A2F",
-                flex: 1,
-              }}
-            >
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A3A2F", flex: 1 }}>
               {resumeFilename}
             </span>
             {!resumeUploaded ? (
-              <span
-                className="anim-pulse"
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "var(--scout-muted)",
-                }}
-              >
+              <span className="anim-pulse" style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY }}>
                 Reading…
               </span>
             ) : (
@@ -310,9 +355,9 @@ export function ScreenWelcome({
                   background: "none",
                   border: "none",
                   fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "var(--scout-muted)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: ONBOARDING_TEXT_SECONDARY,
                   cursor: "pointer",
                   padding: 0,
                   textDecoration: "underline",
@@ -332,59 +377,36 @@ export function ScreenWelcome({
           onChange={onFileChange}
         />
         {resumeError && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#C0392B", marginTop: 10, fontWeight: 400 }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#C0392B", marginTop: 12, marginBottom: 0, fontWeight: 500 }}>
             Upload failed — please try again or paste your LinkedIn below.
           </p>
         )}
       </div>
 
-      {/* Or divider */}
-      <div
-        className="anim-fade-up"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          animationDelay: "0.9s",
-        }}
-      >
-        <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
-        <span
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            letterSpacing: "0.5px",
-          }}
-        >
-          or
-        </span>
-        <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
-      </div>
-
-      {/* LinkedIn input — saved to profile only; does not power readback */}
-      <div className="anim-fade-up" style={{ animationDelay: "1.0s" }}>
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.5s" }}>
         <p
           style={{
             fontFamily: "var(--font-ui)",
             fontSize: 13,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1px",
+            fontWeight: 600,
+            color: ONBOARDING_LABEL_COLOR,
+            letterSpacing: "0.6px",
             textTransform: "uppercase",
-            marginBottom: 10,
+            marginBottom: 12,
+            marginTop: 0,
           }}
         >
-          LinkedIn <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none" }}>(optional)</span>
+          LinkedIn <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", color: ONBOARDING_TEXT_SECONDARY }}>(optional)</span>
         </p>
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 12,
-            borderBottom: "1.5px solid rgba(26,58,47,0.22)",
-            paddingBottom: 12,
+            padding: "12px 14px",
+            background: ONBOARDING_FIELD_BG,
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: 8,
           }}
         >
           <LinkedInIcon style={{ flexShrink: 0 }} />
@@ -400,81 +422,60 @@ export function ScreenWelcome({
               background: "transparent",
               fontFamily: "var(--font-ui)",
               fontSize: 16,
-              fontWeight: 400,
-              color: "#1A1A1A",
+              fontWeight: 500,
+              color: ONBOARDING_TEXT,
               caretColor: "#1A3A2F",
+              outline: "none",
             }}
           />
         </div>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            marginTop: 10,
-            lineHeight: 1.5,
-          }}
-        >
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 12, marginBottom: 0, lineHeight: 1.55 }}>
           We&apos;ll save this on your profile. Kimchi&apos;s read comes from your resume, not LinkedIn.
         </p>
       </div>
 
-      {/* Continue after resume upload → readback */}
-      {canContinueWithResume && (
-        <div className="anim-fade-up">
-          <button
-            className="onboarding-cta"
-            onClick={onContinue}
-            style={PRIMARY_CTA}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            See what Kimchi read →
+      {(canContinueWithResume || canSaveLinkedInOnly) && (
+        <OnboardingActions skipLabel="Skip for now" onSkip={onSkip}>
+          {canContinueWithResume && (
+            <button
+              className="onboarding-cta"
+              onClick={onContinue}
+              style={{ ...PRIMARY_CTA, width: "100%" }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              See what Kimchi read →
+            </button>
+          )}
+          {canSaveLinkedInOnly && (
+            <button
+              type="button"
+              className="onboarding-cta"
+              onClick={onLinkedInOnly}
+              style={{
+                ...PRIMARY_CTA,
+                width: "100%",
+                marginTop: canContinueWithResume ? 10 : 0,
+                background: ONBOARDING_FIELD_BG,
+                color: ONBOARDING_TEXT,
+                border: ONBOARDING_FIELD_BORDER,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+            >
+              Save LinkedIn &amp; continue without resume
+            </button>
+          )}
+        </OnboardingActions>
+      )}
+
+      {!canContinueWithResume && !canSaveLinkedInOnly && (
+        <div className="anim-fade-up" style={ONBOARDING_CARD}>
+          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+            Skip for now
           </button>
         </div>
       )}
-
-      {canSaveLinkedInOnly && (
-        <div className="anim-fade-up">
-          <button
-            type="button"
-            className="onboarding-cta"
-            onClick={onLinkedInOnly}
-            style={{
-              ...PRIMARY_CTA,
-              background: "transparent",
-              color: "#52493F",
-              border: "1.5px solid rgba(26,58,47,0.22)",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            Save LinkedIn &amp; continue without resume
-          </button>
-        </div>
-      )}
-
-      {/* Skip link */}
-      <button
-        onClick={onSkip}
-        style={{
-          background: "none",
-          border: "none",
-          fontFamily: "var(--font-ui)",
-          fontSize: 13,
-          fontWeight: 400,
-          color: "var(--scout-muted)",
-          cursor: "pointer",
-          padding: "8px 0",
-          minHeight: 44,
-          textAlign: "left",
-          textDecoration: "underline",
-          textUnderlineOffset: 3,
-        }}
-      >
-        Skip for now
-      </button>
     </div>
   );
 }
@@ -712,45 +713,13 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-9">
-      <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1.1px",
-            textTransform: "uppercase",
-            marginBottom: 14,
-          }}
-        >
-          Kimchi&apos;s read
-        </p>
-        <h2
-          style={{
-            ...DISPLAY_H2,
-            lineHeight: 1.04,
-          }}
-        >
-          Here&apos;s what I see.
-        </h2>
-      </div>
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <OnboardingEyebrowIntro eyebrow="Kimchi's read" title="Here's what I see." />
 
-      {/* Profile card */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.45s" }}>
-        <div
-          style={{
-            background: "#FFFFFF",
-            borderRadius: 10,
-            padding: ONBOARDING_CARD_PAD,
-            boxShadow: "0 2px 4px rgba(0,0,0,0.04), 0 10px 28px rgba(0,0,0,0.07)",
-            minHeight: loading ? 320 : undefined,
-          }}
-        >
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s", minHeight: loading ? 320 : undefined }}>
           {loading && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "var(--scout-muted)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: ONBOARDING_LABEL_COLOR, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
                 Reading your resume...
               </p>
               {[180, 220, 140].map((w, i) => (
@@ -765,23 +734,13 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
 
           {!loading && (error || !data) && (
             <>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 8 }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.6, marginBottom: 16, marginTop: 0 }}>
                 We couldn&apos;t generate your read right now — that happens sometimes. You can keep going and add a job; upload a resume anytime from Profile → Assets for the full read.
               </p>
               <button
                 type="button"
                 onClick={onSkip}
-                style={{
-                  padding: "12px 22px",
-                  background: "#1A3A2F",
-                  color: "#E8D5A3",
-                  border: "none",
-                  borderRadius: 5,
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
+                style={{ ...PRIMARY_CTA, width: "100%" }}
               >
                 Continue →
               </button>
@@ -794,11 +753,12 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                 style={{
                   fontFamily: "var(--font-ui)",
                   fontSize: 13,
-                  fontWeight: 500,
-                  color: "var(--scout-muted)",
-                  letterSpacing: "1px",
+                  fontWeight: 600,
+                  color: ONBOARDING_LABEL_COLOR,
+                  letterSpacing: "0.6px",
                   textTransform: "uppercase",
-                  marginBottom: 20,
+                  marginBottom: 16,
+                  marginTop: 0,
                 }}
               >
                 A picture of you
@@ -833,12 +793,14 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                   <span
                     key={s}
                     style={{
-                      padding: "6px 14px",
-                      background: "#F5F3EF",
-                      borderRadius: 100,
+                      padding: "8px 14px",
+                      background: ONBOARDING_FIELD_BG,
+                      border: ONBOARDING_FIELD_BORDER,
+                      borderRadius: 8,
                       fontFamily: "var(--font-ui)",
-                      fontSize: 12,
-                      color: "#2A2218",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: ONBOARDING_TEXT,
                     }}
                   >
                     {s}
@@ -849,20 +811,24 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               {/* Target roles */}
               <div
                 style={{
-                  borderLeft: "2px solid #1A3A2F",
-                  paddingLeft: 20,
-                  marginBottom: 28,
+                  marginBottom: 24,
+                  padding: "14px 16px",
+                  background: ONBOARDING_FIELD_BG,
+                  borderRadius: 8,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderLeft: "3px solid #1A3A2F",
                 }}
               >
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
                     fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--scout-muted)",
-                    letterSpacing: "0.9px",
+                    fontWeight: 600,
+                    color: ONBOARDING_LABEL_COLOR,
+                    letterSpacing: "0.6px",
                     textTransform: "uppercase",
-                    marginBottom: 14,
+                    marginBottom: 12,
+                    marginTop: 0,
                   }}
                 >
                   You&apos;d thrive as
@@ -899,16 +865,17 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               </div>
 
               {/* One honest note */}
-              <div style={{ padding: "18px 22px", background: "#FBF8F2", borderRadius: 7 }}>
+              <div style={{ padding: "14px 16px", background: ONBOARDING_FIELD_BG, borderRadius: 8, border: ONBOARDING_FIELD_BORDER }}>
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
                     fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--scout-muted)",
-                    letterSpacing: "0.9px",
+                    fontWeight: 600,
+                    color: ONBOARDING_LABEL_COLOR,
+                    letterSpacing: "0.6px",
                     textTransform: "uppercase",
                     marginBottom: 9,
+                    marginTop: 0,
                   }}
                 >
                   One honest note
@@ -916,11 +883,12 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: 400,
-                    color: "#6B6258",
+                    color: ONBOARDING_TEXT_SECONDARY,
                     lineHeight: 1.6,
                     textWrap: "pretty",
+                    margin: 0,
                   }}
                 >
                   {data.honestNote}
@@ -928,57 +896,60 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               </div>
             </>
           )}
-        </div>
       </div>
 
-      {/* Follow-up + CTA — only when readback loaded successfully */}
       {!loading && data && !error && (
-      <div className="anim-fade-up" style={{ animationDelay: "0.85s" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 21,
-            fontStyle: "italic",
-            fontWeight: 400,
-            color: "#52493F",
-            lineHeight: 1.55,
-            marginBottom: 24,
-          }}
-        >
-          Does this feel like you?
-        </p>
-        <div className="onboarding-readback-actions">
-          <button
-            className="onboarding-cta"
-            onClick={() => onConfirm(data)}
-            style={PRIMARY_CTA}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            Yes, carry on →
-          </button>
-          <button
-            className="onboarding-cta"
-            onClick={onRefine}
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.55s" }}>
+          <p
             style={{
-              padding: "14px 24px",
-              background: "transparent",
-              color: "#52493F",
-              border: "1px solid rgba(26,58,47,0.2)",
-              borderRadius: 5,
-              fontFamily: "var(--font-ui)",
-              fontSize: 14,
+              fontFamily: "var(--font-display)",
+              fontSize: 21,
+              fontStyle: "italic",
               fontWeight: 400,
-              cursor: "pointer",
-              transition: "background 0.15s",
+              color: ONBOARDING_TEXT_SECONDARY,
+              lineHeight: 1.55,
+              marginBottom: 20,
+              marginTop: 0,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            Refine this
+            Does this feel like you?
+          </p>
+          <div className="onboarding-readback-actions">
+            <button
+              className="onboarding-cta"
+              onClick={() => onConfirm(data)}
+              style={{ ...PRIMARY_CTA, flex: 1 }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              Yes, carry on →
+            </button>
+            <button
+              className="onboarding-cta"
+              onClick={onRefine}
+              style={{
+                padding: "14px 24px",
+                background: ONBOARDING_FIELD_BG,
+                color: ONBOARDING_TEXT,
+                border: ONBOARDING_FIELD_BORDER,
+                borderRadius: 8,
+                fontFamily: "var(--font-ui)",
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background 0.15s",
+                flex: 1,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+            >
+              Refine this
+            </button>
+          </div>
+          <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
+            Skip for now
           </button>
         </div>
-      </div>
       )}
     </div>
   );
@@ -1527,26 +1498,11 @@ export function ScreenTargetRoles({
       )}
 
       {!canContinue && (
-        <button
-          type="button"
-          onClick={onSkip}
-          style={{
-            background: "none",
-            border: "none",
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            cursor: "pointer",
-            padding: "8px 0",
-            minHeight: 44,
-            textAlign: "left",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-          }}
-        >
-          Skip for now
-        </button>
+        <div className="anim-fade-up" style={ONBOARDING_CARD}>
+          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+            Skip for now
+          </button>
+        </div>
       )}
     </div>
   );
@@ -2306,47 +2262,12 @@ export function ScreenTransition({
         )}
       </div>
 
-      <div className="anim-fade-up">
-        <button
-          type="button"
-          onClick={onSkip}
-          style={{
-            background: "none",
-            border: "none",
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            cursor: "pointer",
-            padding: "8px 0",
-            minHeight: 44,
-            textAlign: "left",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-          }}
-        >
+      <div className="anim-fade-up" style={ONBOARDING_CARD}>
+        <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
           I&apos;ll add a job later — take me to my workspace
         </button>
         {onReviewProfile && (
-          <button
-            type="button"
-            onClick={onReviewProfile}
-            style={{
-              display: "block",
-              background: "none",
-              border: "none",
-              fontFamily: "var(--font-ui)",
-              fontSize: 13,
-              fontWeight: 400,
-              color: "var(--scout-muted)",
-              cursor: "pointer",
-              padding: "8px 0",
-              minHeight: 44,
-              textAlign: "left",
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
-            }}
-          >
+          <button type="button" onClick={onReviewProfile} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 8 }}>
             Review your profile
           </button>
         )}
