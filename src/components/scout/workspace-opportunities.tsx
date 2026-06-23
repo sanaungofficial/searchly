@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRef, useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
@@ -27,6 +27,7 @@ export function WorkspaceOpportunities() {
   const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const activeSubtab: OppTab = pathname === "/opportunities/companies" ? "companies" : "pipeline";
   const setSubtab = (t: OppTab) => { router.push(`/opportunities/${t}`); };
   const tab = activeSubtab;
@@ -47,6 +48,13 @@ export function WorkspaceOpportunities() {
     tags: string[];
   }>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("addJob") === "1") {
+      setShowAddPanel(true);
+      router.replace("/opportunities/pipeline");
+    }
+  }, [searchParams, router]);
 
   // CSV upload state
   const [showCsvPanel, setShowCsvPanel] = useState(false);

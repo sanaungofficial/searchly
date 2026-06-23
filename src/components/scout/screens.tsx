@@ -15,7 +15,9 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3;
+export type Screen = 0 | 1 | 2 | 3 | 4;
+
+const ONBOARDING_STEP_COUNT = 5;
 
 export interface Job {
   id: number;
@@ -121,7 +123,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
         </div>
       </div>
       <div className="flex gap-[5px] items-center" style={{ paddingTop: 6 }}>
-        {[0, 1, 2, 3].map((i) => (
+        {Array.from({ length: ONBOARDING_STEP_COUNT }, (_, i) => i).map((i) => (
           <div
             key={i}
             style={{
@@ -150,6 +152,7 @@ interface WelcomeProps {
   onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onContinue: () => void;
+  onLinkedInOnly: () => void;
   onSkip: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
@@ -167,6 +170,7 @@ export function ScreenWelcome({
   onLIChange,
   onLIKey,
   onContinue,
+  onLinkedInOnly,
   onSkip,
   onDragOver,
   onDragLeave,
@@ -177,7 +181,8 @@ export function ScreenWelcome({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.22)";
   const dropBg = resumeError ? "rgba(192,57,43,0.04)" : isDragging ? "rgba(26,58,47,0.04)" : "transparent";
-  const canContinue = resumeUploaded || liInput.trim().length > 0;
+  const canContinueWithResume = resumeUploaded;
+  const canSaveLinkedInOnly = liInput.trim().length > 0 && !resumeUploaded;
 
   return (
     <div className="flex flex-col gap-[28px] onboarding-screen-gap">
@@ -198,7 +203,7 @@ export function ScreenWelcome({
           animationDelay: "0.4s",
         }}
       >
-        Drop your resume or share your LinkedIn — I&apos;ll use it to build your profile.
+        Drop your resume and I&apos;ll read it — then I&apos;ll tell you what I see about your career.
       </p>
 
       {/* Upload zone */}
@@ -343,8 +348,21 @@ export function ScreenWelcome({
         <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
       </div>
 
-      {/* LinkedIn input */}
+      {/* LinkedIn input — saved to profile only; does not power readback */}
       <div className="anim-fade-up" style={{ animationDelay: "1.0s" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#A09890",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}
+        >
+          LinkedIn <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" }}>(optional)</span>
+        </p>
         <div
           style={{
             display: "flex",
@@ -373,10 +391,22 @@ export function ScreenWelcome({
             }}
           />
         </div>
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 12,
+            fontWeight: 300,
+            color: "#A09890",
+            marginTop: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          We&apos;ll save this on your profile. Kimchi&apos;s read comes from your resume, not LinkedIn.
+        </p>
       </div>
 
-      {/* Continue button */}
-      {canContinue && (
+      {/* Continue after resume upload → readback */}
+      {canContinueWithResume && (
         <div className="anim-fade-up">
           <button
             className="onboarding-cta"
@@ -385,7 +415,27 @@ export function ScreenWelcome({
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            Continue →
+            See what Kimchi read →
+          </button>
+        </div>
+      )}
+
+      {canSaveLinkedInOnly && (
+        <div className="anim-fade-up">
+          <button
+            type="button"
+            className="onboarding-cta"
+            onClick={onLinkedInOnly}
+            style={{
+              ...PRIMARY_CTA,
+              background: "transparent",
+              color: "#52493F",
+              border: "1.5px solid rgba(26,58,47,0.22)",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            Save LinkedIn &amp; continue without resume
           </button>
         </div>
       )}
@@ -1521,6 +1571,7 @@ interface AboutYouProps {
   onTogglePriority: (p: string) => void;
   onAttributionChange: (v: string) => void;
   onContinue: () => void;
+  onSkip: () => void;
 }
 
 export function ScreenAboutYou({
@@ -1537,6 +1588,7 @@ export function ScreenAboutYou({
   onTogglePriority,
   onAttributionChange,
   onContinue,
+  onSkip,
 }: AboutYouProps) {
   const salaryRows = [
     { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
@@ -1568,10 +1620,17 @@ export function ScreenAboutYou({
     </button>
   );
 
-  const sectionLabel = (text: string, optional?: boolean) => (
-    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase" as const, marginBottom: 12 }}>
-      {text}{optional && <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
-    </p>
+  const sectionLabel = (text: string, hint?: string, optional?: boolean) => (
+    <div style={{ marginBottom: 12 }}>
+      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase" as const }}>
+        {text}{optional && <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
+      </p>
+      {hint && (
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#A09890", marginTop: 6, lineHeight: 1.5 }}>
+          {hint}
+        </p>
+      )}
+    </div>
   );
 
   return (
@@ -1581,13 +1640,13 @@ export function ScreenAboutYou({
           A few more things.
         </h2>
         <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, maxWidth: 440 }}>
-          Helps us match you to the right roles and filter out the wrong ones.
+          Two quick picks help Kimchi rank opportunities and skip bad fits. Salary and the rest are optional.
         </p>
       </div>
 
       {/* Career motivation */}
       <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What's driving your move?")}
+        {sectionLabel("What's driving your move?", "Surfaces roles that match why you're leaving — not just your title.")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {CAREER_MOTIVATIONS.map((m) => chipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m))}
         </div>
@@ -1595,7 +1654,7 @@ export function ScreenAboutYou({
 
       {/* Job timeline */}
       <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("When do you want to make a move?")}
+        {sectionLabel("When do you want to make a move?", "Helps Kimchi prioritize urgent openings vs. long-shots.")}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {JOB_TIMELINES.map(({ value, label }) => {
             const selected = jobTimeline === value;
@@ -1632,7 +1691,7 @@ export function ScreenAboutYou({
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           {salaryRows.map(({ label, value, onChange }) => (
             <div key={label} style={{ flex: "1 1 200px" }}>
-              {sectionLabel(label, true)}
+              {sectionLabel(label, undefined, true)}
               <div style={{ position: "relative" }}>
                 <select
                   value={value}
@@ -1653,7 +1712,7 @@ export function ScreenAboutYou({
 
       {/* Priorities */}
       <div className="anim-fade-up" style={{ animationDelay: "0.65s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What matters most to you?", true)}
+        {sectionLabel("What matters most to you?", "Filters listings that clash with how you want to work.", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {PRIORITIES.map((p) => chipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
         </div>
@@ -1661,7 +1720,7 @@ export function ScreenAboutYou({
 
       {/* Attribution */}
       <div className="anim-fade-up" style={{ animationDelay: "0.8s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("How did you hear about Kimchi?", true)}
+        {sectionLabel("How did you hear about Kimchi?", undefined, true)}
         <div style={{ position: "relative", maxWidth: 280, width: "100%" }}>
           <select
             value={attribution}
@@ -1686,7 +1745,29 @@ export function ScreenAboutYou({
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Let&apos;s go →
+          Continue →
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          style={{
+            display: "block",
+            marginTop: 16,
+            background: "none",
+            border: "none",
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
+            cursor: "pointer",
+            padding: "8px 0",
+            minHeight: 44,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Skip for now — you can add this on your profile later
         </button>
       </div>
     </div>
@@ -1697,8 +1778,7 @@ export function ScreenAboutYou({
    Screen 3 — Transition
    ────────────────────────────────────────────────────────────── */
 export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnterWorkspace: () => void; targetRoles?: string[] }) {
-  const previewRoles = (targetRoles.length > 0 ? targetRoles : ["Director of Strategy", "VP of Operations", "Chief of Staff"]).slice(0, 3);
-  const roleCount = previewRoles.length;
+  const previewRoles = (targetRoles.length > 0 ? targetRoles : ["Director of Strategy", "VP of Operations"]).slice(0, 2);
 
   return (
     <div
@@ -1746,7 +1826,7 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
           textWrap: "pretty",
         }}
       >
-        Kimchi has your background and knows what you&apos;re built for. Your workspace is ready.
+        Kimchi has your background{targetRoles.length > 0 ? " and target roles" : ""}. Next: paste a job you&apos;re considering — I&apos;ll score how well you fit.
       </p>
 
       {/* Workspace preview */}
@@ -1801,10 +1881,58 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
               textTransform: "uppercase",
             }}
           >
-            {roleCount} role{roleCount !== 1 ? "s" : ""} queued
+            Next step
           </span>
         </div>
         <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 9 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "13px 18px",
+              background: "rgba(26,58,47,0.08)",
+              borderRadius: 7,
+              border: "1px solid rgba(26,58,47,0.12)",
+            }}
+          >
+            <div>
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#1A3A2F",
+                  marginBottom: 2,
+                }}
+              >
+                Paste a job URL
+              </p>
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 11,
+                  fontWeight: 300,
+                  color: "#6B6258",
+                }}
+              >
+                Get a fit score and tailored materials
+              </p>
+            </div>
+            <span
+              style={{
+                padding: "4px 11px",
+                background: "#1A3A2F",
+                borderRadius: 100,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 11,
+                fontWeight: 500,
+                color: "#E8D5A3",
+              }}
+            >
+              Start here
+            </span>
+          </div>
           {previewRoles.map((role, i) => (
             <div
               key={i}
@@ -1839,7 +1967,7 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
                     color: "#A09890",
                   }}
                 >
-                  {i === 0 ? "Setting up your workspace…" : "Queued"}
+                  {i === 0 ? "Target role saved" : "Target role saved"}
                 </p>
               </div>
               <span
@@ -1853,7 +1981,7 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
                   color: "#A09890",
                 }}
               >
-                {i === 0 ? "Preparing" : "Queued"}
+                Saved
               </span>
             </div>
           ))}
@@ -1862,6 +1990,7 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
 
       <div className="anim-fade-up" style={{ animationDelay: "0.65s" }}>
         <button
+          className="onboarding-cta"
           onClick={onEnterWorkspace}
           style={{
             display: "inline-block",
@@ -1876,11 +2005,12 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
             cursor: "pointer",
             letterSpacing: "0.2px",
             transition: "opacity 0.15s",
+            minHeight: 48,
           }}
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Open your workspace →
+          Add your first job →
         </button>
       </div>
     </div>

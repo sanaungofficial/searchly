@@ -9,11 +9,43 @@ import {
   ScreenReadBack,
   ScreenTargetRoles,
   ScreenAboutYou,
+  ScreenTransition,
   DemoNextButton,
   ROLE_BUCKETS,
   type Screen,
   type ReadBackData,
 } from "@/components/scout/screens";
+
+function saveLinkedIn(url: string) {
+  if (!url.trim()) return;
+  fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ linkedinUrl: url.trim() }),
+  }).catch(() => {});
+}
+
+function saveAboutYou(fields: {
+  careerMotivation: string;
+  jobTimeline: string;
+  currentSalary: string;
+  targetSalary: string;
+  priorities: string[];
+  attribution: string;
+}) {
+  fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      careerMotivation: fields.careerMotivation || null,
+      jobTimeline: fields.jobTimeline || null,
+      currentSalary: fields.currentSalary || null,
+      targetSalary: fields.targetSalary || null,
+      priorities: fields.priorities,
+      attribution: fields.attribution || null,
+    }),
+  }).catch(() => {});
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -47,11 +79,6 @@ export default function OnboardingPage() {
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
-  /** Readback needs parsed resume text; LinkedIn-only or full skip bypasses it. */
-  const goAfterWelcome = useCallback(() => {
-    goTo(resumeUploaded ? 1 : 2);
-  }, [resumeUploaded, goTo]);
-
   const processFile = useCallback(async (file: File | undefined | null) => {
     if (!file) return;
     setResumeFilename(file.name);
@@ -63,6 +90,7 @@ export default function OnboardingPage() {
       const res = await fetch("/api/resume", { method: "POST", body: formData });
       if (res.ok) {
         setResumeUploaded(true);
+        if (liInput.trim()) saveLinkedIn(liInput);
         goTo(1);
       } else {
         setResumeError(true);
@@ -72,7 +100,7 @@ export default function OnboardingPage() {
       setResumeError(true);
       setResumeFilename(null);
     }
-  }, [goTo]);
+  }, [goTo, liInput]);
 
   const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
@@ -93,19 +121,21 @@ export default function OnboardingPage() {
   const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => setLiInput(e.target.value);
 
   const onWelcomeContinue = useCallback(() => {
-    if (liInput.trim()) {
-      fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkedinUrl: liInput.trim() }),
-      }).catch(() => {});
-    }
-    goAfterWelcome();
-  }, [liInput, goAfterWelcome]);
+    if (!resumeUploaded) return;
+    if (liInput.trim()) saveLinkedIn(liInput);
+    goTo(1);
+  }, [liInput, resumeUploaded, goTo]);
+
+  const onLinkedInOnly = useCallback(() => {
+    saveLinkedIn(liInput);
+    goTo(2);
+  }, [liInput, goTo]);
 
   const onLIKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && (resumeUploaded || liInput.trim())) onWelcomeContinue();
-  }, [resumeUploaded, liInput, onWelcomeContinue]);
+    if (e.key !== "Enter") return;
+    if (resumeUploaded) onWelcomeContinue();
+    else if (liInput.trim()) onLinkedInOnly();
+  }, [resumeUploaded, liInput, onWelcomeContinue, onLinkedInOnly]);
 
   const onSkipProfile = useCallback(() => goTo(2), [goTo]);
 
@@ -155,21 +185,14 @@ export default function OnboardingPage() {
     setPriorities((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   }, []);
 
-  const onAboutYouContinue = useCallback(() => {
-    fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        careerMotivation: careerMotivation || null,
-        jobTimeline: jobTimeline || null,
-        currentSalary: currentSalary || null,
-        targetSalary: targetSalary || null,
-        priorities,
-        attribution: attribution || null,
-      }),
-    }).catch(() => {});
-    router.push("/profile");
-  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, router]);
+  const goToTransition = useCallback(() => {
+    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
+    goTo(4);
+  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, goTo]);
+
+  const onEnterWorkspace = useCallback(() => {
+    router.push("/opportunities?addJob=1");
+  }, [router]);
 
   const demoAdvance = () => {
     if (screen === 0) {
@@ -179,6 +202,8 @@ export default function OnboardingPage() {
       goTo(2);
     } else if (screen === 2) {
       goTo(3);
+    } else if (screen === 3) {
+      goTo(4);
     }
   };
 
@@ -201,7 +226,7 @@ export default function OnboardingPage() {
         onChange={onFileChange}
       />
       <div className="onboarding-shell">
-        <ScoutHeader screen={screen} onScoutClick={() => router.push("/opportunities")} />
+        <ScoutHeader screen={screen} />
         <div className="onboarding-content">
           {screen === 0 && (
             <ScreenWelcome
@@ -213,6 +238,7 @@ export default function OnboardingPage() {
               onLIChange={onLIChange}
               onLIKey={onLIKey}
               onContinue={onWelcomeContinue}
+              onLinkedInOnly={onLinkedInOnly}
               onSkip={onSkipProfile}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
@@ -252,7 +278,14 @@ export default function OnboardingPage() {
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
               onAttributionChange={setAttribution}
-              onContinue={onAboutYouContinue}
+              onContinue={goToTransition}
+              onSkip={goToTransition}
+            />
+          )}
+          {screen === 4 && (
+            <ScreenTransition
+              targetRoles={selectedTitles}
+              onEnterWorkspace={onEnterWorkspace}
             />
           )}
         </div>
