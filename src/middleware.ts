@@ -31,6 +31,16 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Passcode gate — bypass for the passcode page itself and static assets
+  if (!pathname.startsWith("/passcode") && !pathname.startsWith("/api/")) {
+    const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
+    if (!passcodeValid) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/passcode";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Allow public routes through always
   if (
     pathname === "/" ||
@@ -38,7 +48,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/auth") ||
-    pathname.startsWith("/api/") // API routes handle their own auth and must return JSON, not HTML redirects
+    pathname.startsWith("/api/")
   ) {
     return supabaseResponse;
   }
