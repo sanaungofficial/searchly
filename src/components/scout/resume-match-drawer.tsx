@@ -21,6 +21,8 @@ interface ResumeMatchDrawerProps {
   jobTitle: string;
   company: string;
   description: string;
+  jobId?: string;
+  initialMatchData?: MatchData | null;
   onClose: () => void;
   onTailorResume: () => void;
 }
@@ -201,11 +203,13 @@ export function ResumeMatchDrawer({
   jobTitle,
   company,
   description,
+  jobId,
+  initialMatchData,
   onClose,
   onTailorResume,
 }: ResumeMatchDrawerProps) {
-  const [data, setData] = useState<MatchData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<MatchData | null>(initialMatchData ?? null);
+  const [loading, setLoading] = useState(!initialMatchData);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState<Step>(1);
@@ -222,11 +226,14 @@ export function ResumeMatchDrawer({
     setLoading(true);
     setError(null);
     setData(null);
-    const desc = overrideDesc !== undefined ? overrideDesc : description;
+    // Prefer jobId lookup (persists results) over passing description inline
+    const body = jobId && !overrideDesc
+      ? { jobId, jobTitle, company }
+      : { jobTitle, company, description: overrideDesc !== undefined ? overrideDesc : description };
     fetch("/api/ai/job-match", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle, company, description: desc }),
+      body: JSON.stringify(body),
     })
       .then((r) => r.json())
       .then((d) => {
@@ -239,7 +246,9 @@ export function ResumeMatchDrawer({
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
-    generate();
+    if (!initialMatchData) {
+      generate();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobTitle, company, description]);
 

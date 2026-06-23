@@ -31,6 +31,16 @@ interface DbJob {
   stage: string;
   url: string | null;
   notes: string | null;
+  // Dedicated parsed fields (replaces JSON-in-notes hack)
+  location: string | null;
+  salary: string | null;
+  description: string | null;
+  requirements: string[];
+  // AI analysis
+  fitScore: number | null;
+  matchData: unknown | null;
+  tags: string[];
+  // User fields
   userNotes: string | null;
   companyLinkedinUrl: string | null;
   createdAt: string;
@@ -44,25 +54,51 @@ export interface JobMeta {
 }
 
 function dbJobToKanban(job: DbJob, index: number): KanbanCard {
-  let _meta: JobMeta | undefined;
-  if (job.notes) {
-    try { _meta = JSON.parse(job.notes) as JobMeta; } catch { /* ignore */ }
+  // Read from dedicated fields; fall back to parsing legacy JSON notes for old rows
+  let meta: JobMeta = {
+    location: job.location,
+    salary: job.salary,
+    description: job.description,
+    requirements: job.requirements ?? [],
+  };
+
+  // Legacy fallback: if no dedicated fields, try parsing old JSON-in-notes
+  if (!job.location && !job.description && job.notes) {
+    try {
+      const parsed = JSON.parse(job.notes) as JobMeta;
+      if (parsed && typeof parsed === "object" && (parsed.description || parsed.location)) {
+        meta = parsed;
+      }
+    } catch { /* plain text notes, not JSON */ }
   }
+
   return {
     id: index,
     company: job.company,
     initials: job.company.slice(0, 2).toUpperCase(),
     role: job.role,
     stage: DB_TO_KANBAN[job.stage] ?? "saved",
-    fit: 0,
+    fit: job.fitScore ? Math.round(job.fitScore * 10) : 0,
     jobRef: null,
     days: Math.floor((Date.now() - new Date(job.createdAt).getTime()) / 86400000),
     _dbId: job.id,
     _url: job.url ?? undefined,
     _userNotes: job.userNotes ?? undefined,
     _companyLinkedinUrl: job.companyLinkedinUrl ?? undefined,
-    _meta,
-  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _meta?: JobMeta };
+    _meta: meta,
+    _fitScore: job.fitScore ?? undefined,
+    _matchData: job.matchData ?? undefined,
+    _tags: job.tags ?? [],
+  } as KanbanCard & {
+    _dbId: string;
+    _url?: string;
+    _userNotes?: string;
+    _companyLinkedinUrl?: string;
+    _meta?: JobMeta;
+    _fitScore?: number;
+    _matchData?: unknown;
+    _tags?: string[];
+  };
 }
 
 export function useJobs(fallback: KanbanCard[]) {
@@ -82,11 +118,18 @@ export function useJobs(fallback: KanbanCard[]) {
   }, []);
 
   const addJob = useCallback(async (company: string, role: string, url?: string, meta?: JobMeta) => {
-    const notes = meta ? JSON.stringify(meta) : undefined;
     const res = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company, role, url, notes }),
+      body: JSON.stringify({
+        company,
+        role,
+        url,
+        location: meta?.location,
+        salary: meta?.salary,
+        description: meta?.description,
+        requirements: meta?.requirements,
+      }),
     });
     if (!res.ok) return;
     const job: DbJob = await res.json();
