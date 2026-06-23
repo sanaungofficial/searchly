@@ -1652,6 +1652,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
           jobTitle={card.role}
           company={card.company}
           description={meta?.description ?? ""}
+          jobId={dbId ?? undefined}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             if (dbId) setResumeEditorOpen(true);
