@@ -8,6 +8,7 @@ interface MatchData {
   scoreLabel: string;
   jobTitle: string;
   resumeTitle: string;
+  jobTitleMatch?: boolean;
   yoeRequired: string;
   yoeCandidate: string;
   yoeMatch: boolean;
@@ -15,6 +16,12 @@ interface MatchData {
   industryMatch: boolean;
   keywords: { text: string; matched: boolean }[];
   summaryNote: string;
+}
+
+interface ResumeAsset {
+  id: string;
+  name: string;
+  isPrimary: boolean;
 }
 
 interface ResumeMatchDrawerProps {
@@ -28,6 +35,7 @@ interface ResumeMatchDrawerProps {
 }
 
 type Step = 1 | 2 | 3;
+type RowStatus = "ok" | "fail" | "warn" | "neutral";
 
 const STEPS = [
   { n: 1 as Step, label: "See Your Difference" },
@@ -102,28 +110,37 @@ function BigScoreGauge({ score }: { score: number }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <div style={{ position: "relative", width: 130, height: 72, overflow: "hidden" }}>
+      <div style={{ position: "relative", width: 140, height: 76, overflow: "hidden" }}>
         <svg
-          width="130"
-          height="130"
+          width="140"
+          height="140"
           viewBox="0 0 130 130"
           style={{ position: "absolute", top: 0, left: 0, transform: "rotate(180deg)" }}
         >
+          <defs>
+            <linearGradient id="gauge-bg-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#C4574A" stopOpacity="0.25" />
+              <stop offset="45%" stopColor="#C4A86A" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#4A8B6A" stopOpacity="0.25" />
+            </linearGradient>
+          </defs>
+          {/* Gradient background track showing full spectrum */}
           <circle
             cx="65" cy="65" r={r}
-            stroke="rgba(0,0,0,0.07)" strokeWidth="12" fill="none"
+            stroke="url(#gauge-bg-grad)" strokeWidth="14" fill="none"
             strokeDasharray={`${circ * 0.5} ${circ * 0.5}`}
             strokeLinecap="round"
           />
+          {/* Active fill — solid color matching score level */}
           <circle
             cx="65" cy="65" r={r}
-            stroke={color} strokeWidth="12" fill="none"
+            stroke={color} strokeWidth="14" fill="none"
             strokeDasharray={`${arcLen} ${circ - arcLen}`}
             strokeLinecap="round"
           />
         </svg>
         <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 30, fontWeight: 700, color, lineHeight: 1 }}>
+          <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 32, fontWeight: 700, color, lineHeight: 1 }}>
             {score.toFixed(1)}
           </span>
         </div>
@@ -144,33 +161,47 @@ function Row({
   label: string;
   left: React.ReactNode;
   right: React.ReactNode;
-  status: "ok" | "warn" | "neutral";
+  status: RowStatus;
 }) {
-  const icon = status === "ok" ? "✓" : status === "warn" ? "!" : "–";
+  const icon = status === "ok" ? "✓" : status === "fail" ? "✗" : status === "warn" ? "!" : "–";
   const iconColor =
-    status === "ok" ? "#4A8B6A" : status === "warn" ? "#C4A86A" : "#A09890";
+    status === "ok" ? "#3D7A5B"
+    : status === "fail" ? "#B84040"
+    : status === "warn" ? "#B88A30"
+    : "#A09890";
   const iconBg =
-    status === "ok"
-      ? "rgba(74,139,106,0.12)"
-      : status === "warn"
-      ? "rgba(196,168,106,0.12)"
-      : "rgba(0,0,0,0.05)";
+    status === "ok" ? "rgba(61,122,91,0.13)"
+    : status === "fail" ? "rgba(184,64,64,0.12)"
+    : status === "warn" ? "rgba(184,138,48,0.12)"
+    : "rgba(0,0,0,0.05)";
+  const rowBg =
+    status === "ok" ? "rgba(74,139,106,0.045)"
+    : status === "fail" ? "rgba(196,87,74,0.045)"
+    : status === "warn" ? "rgba(196,168,106,0.04)"
+    : "transparent";
+  const leftBorderColor =
+    status === "ok" ? "#4A8B6A"
+    : status === "fail" ? "#C4574A"
+    : status === "warn" ? "#C4A86A"
+    : "transparent";
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "140px 28px 1fr 1fr",
+        gridTemplateColumns: "136px 30px 1fr 1fr",
         gap: 12,
         alignItems: "start",
-        padding: "12px 0",
+        padding: "13px 16px",
         borderBottom: "1px solid rgba(0,0,0,0.05)",
+        background: rowBg,
+        borderLeft: status !== "neutral" ? `3px solid ${leftBorderColor}` : "3px solid transparent",
       }}
     >
-      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#52493F" }}>
+      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, color: "#52493F" }}>
         {label}
       </span>
-      <span
+      <div
         style={{
           width: 22,
           height: 22,
@@ -188,13 +219,13 @@ function Row({
         }}
       >
         {icon}
-      </span>
-      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A1A1A", lineHeight: 1.55 }}>
+      </div>
+      <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A1A1A", lineHeight: 1.55 }}>
         {left}
-      </span>
-      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F", lineHeight: 1.55 }}>
+      </div>
+      <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
         {right}
-      </span>
+      </div>
     </div>
   );
 }
@@ -218,15 +249,27 @@ export function ResumeMatchDrawer({
   const [customKeywords, setCustomKeywords] = useState<string[]>([]);
   const [newKw, setNewKw] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [resumeAssets, setResumeAssets] = useState<ResumeAsset[]>([]);
   const kwInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Fetch user's resume assets for the selector
+  useEffect(() => {
+    fetch("/api/assets")
+      .then((r) => r.json())
+      .then((assets: ResumeAsset[]) => {
+        if (Array.isArray(assets)) {
+          setResumeAssets(assets.filter((a: ResumeAsset & { type?: string }) => (a as ResumeAsset & { type?: string }).type === "RESUME"));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function generate(overrideDesc?: string) {
     setLoading(true);
     setError(null);
     setData(null);
-    // Prefer jobId lookup (persists results) over passing description inline
     const body = jobId && !overrideDesc
       ? { jobId, jobTitle, company }
       : { jobTitle, company, description: overrideDesc !== undefined ? overrideDesc : description };
@@ -260,7 +303,6 @@ export function ResumeMatchDrawer({
   function handleAlign() {
     setStep(2);
     setAligning(true);
-    // Brief transition then open the editor
     setTimeout(() => {
       setStep(3);
       setAligning(false);
@@ -272,12 +314,21 @@ export function ResumeMatchDrawer({
     setTimeout(onTailorResume, 280);
   }
 
+  // Derive job title match if AI didn't return it explicitly
+  function deriveJobTitleMatch(d: MatchData): boolean {
+    if (d.jobTitleMatch !== undefined) return d.jobTitleMatch;
+    const reqWords = d.jobTitle.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
+    if (!reqWords.length) return true;
+    const resumeLower = d.resumeTitle.toLowerCase();
+    return reqWords.filter((w) => resumeLower.includes(w)).length >= Math.ceil(reqWords.length * 0.5);
+  }
+
   const scoreColor =
-    data && data.score >= 8
-      ? "#4A8B6A"
-      : data && data.score >= 6
-      ? "#C4A86A"
-      : "#C4574A";
+    data && data.score >= 8 ? "#4A8B6A"
+    : data && data.score >= 6 ? "#C4A86A"
+    : "#C4574A";
+
+  const primaryResume = resumeAssets.find((a) => a.isPrimary) ?? resumeAssets[0];
 
   if (!mounted) return null;
 
@@ -303,7 +354,7 @@ export function ResumeMatchDrawer({
           right: 0,
           top: 0,
           bottom: 0,
-          width: "min(860px, 78vw)",
+          width: "min(960px, 85vw)",
           background: "#FFFFFF",
           zIndex: 201,
           display: "flex",
@@ -327,15 +378,15 @@ export function ResumeMatchDrawer({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
+                width: 38,
+                height: 38,
+                borderRadius: 9,
                 background: "#1A3A2F",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 700,
                 color: "#E8D5A3",
                 flexShrink: 0,
@@ -444,232 +495,288 @@ export function ResumeMatchDrawer({
                 </div>
               )}
 
-              {data && (
-                <>
-                  {/* Score hero */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: 20,
-                      padding: "24px 28px",
-                      background: "#FAF7F2",
-                      borderRadius: 12,
-                      border: "1px solid rgba(0,0,0,0.05)",
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <p
-                        style={{
-                          fontFamily: "var(--font-dm-sans), system-ui",
-                          fontSize: 22,
-                          fontWeight: 700,
-                          color: "#1A1A1A",
-                          marginBottom: 8,
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        Your Resume is a{" "}
-                        <span style={{ color: scoreColor }}>{data.scoreLabel}</span> Match
-                      </p>
-                      {data.score < 6 && (
-                        <div
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            padding: "6px 12px",
-                            background: "rgba(196,87,74,0.08)",
-                            borderRadius: 6,
-                            border: "1px solid rgba(196,87,74,0.15)",
-                          }}
-                        >
-                          <span style={{ fontSize: 11, color: "#C4574A", fontFamily: "var(--font-dm-sans), system-ui" }}>ⓘ</span>
-                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A" }}>
-                            Resumes under 6.0 are likely to be filtered out — we&apos;ll help you fix it fast.
-                          </p>
-                        </div>
-                      )}
-                      {data.score >= 6 && data.score < 8 && (
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
-                          Solid foundation. A few targeted tweaks could push you into strong match territory.
-                        </p>
-                      )}
-                      {data.score >= 8 && (
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
-                          You&apos;re a strong candidate for this role.
-                        </p>
-                      )}
-                    </div>
-                    <div style={{ flexShrink: 0, marginLeft: 24 }}>
-                      <BigScoreGauge score={data.score} />
-                    </div>
-                  </div>
+              {data && (() => {
+                const matchedKwCount = data.keywords.filter((k) => k.matched).length;
+                const totalKwCount = data.keywords.length + customKeywords.length;
+                const kwMatchPct = totalKwCount > 0 ? matchedKwCount / totalKwCount : 0;
+                const kwStatus: RowStatus = kwMatchPct >= 0.7 ? "ok" : kwMatchPct >= 0.4 ? "warn" : "fail";
+                const jobTitleMatch = deriveJobTitleMatch(data);
+                const summaryStatus: RowStatus = data.score >= 7 ? "ok" : data.score >= 5 ? "warn" : "fail";
 
-                  {/* Comparison table */}
-                  <div
-                    style={{
-                      background: "#FFFFFF",
-                      borderRadius: 10,
-                      border: "1px solid rgba(0,0,0,0.07)",
-                      marginBottom: 20,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* Column headers */}
+                return (
+                  <>
+                    {/* Score hero */}
                     <div
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "140px 28px 1fr 1fr",
-                        gap: 12,
-                        padding: "10px 16px",
-                        background: "rgba(0,0,0,0.02)",
-                        borderBottom: "1px solid rgba(0,0,0,0.06)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 20,
+                        padding: "24px 28px",
+                        background: "#FAF7F2",
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.05)",
                       }}
                     >
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px" }}>Overview</span>
-                      <span />
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px" }}>Job Requires</span>
-                      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px" }}>Your Resume</span>
+                      <div style={{ flex: 1 }}>
+                        <p
+                          style={{
+                            fontFamily: "var(--font-dm-sans), system-ui",
+                            fontSize: 24,
+                            fontWeight: 700,
+                            color: "#1A1A1A",
+                            marginBottom: 8,
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          Your Resume is a{" "}
+                          <span style={{ color: scoreColor }}>{data.scoreLabel}</span> Match
+                        </p>
+                        {data.score < 6 && (
+                          <div
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "6px 12px",
+                              background: "rgba(196,87,74,0.08)",
+                              borderRadius: 6,
+                              border: "1px solid rgba(196,87,74,0.15)",
+                            }}
+                          >
+                            <span style={{ fontSize: 11, color: "#C4574A", fontFamily: "var(--font-dm-sans), system-ui" }}>ⓘ</span>
+                            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A" }}>
+                              Resumes under 6.0 are likely to be filtered out — we&apos;ll help you fix it fast.
+                            </p>
+                          </div>
+                        )}
+                        {data.score >= 6 && data.score < 8 && (
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
+                            Solid foundation. A few targeted tweaks could push you into strong match territory.
+                          </p>
+                        )}
+                        {data.score >= 8 && (
+                          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
+                            You&apos;re a strong candidate for this role.
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ flexShrink: 0, marginLeft: 24 }}>
+                        <BigScoreGauge score={data.score} />
+                      </div>
                     </div>
-                    <div style={{ padding: "0 16px" }}>
-                      <Row label="Job Title" left={data.jobTitle} right={data.resumeTitle} status="neutral" />
-                      <Row label="Experience" left={data.yoeRequired} right={data.yoeCandidate} status={data.yoeMatch ? "ok" : "warn"} />
+
+                    {/* Comparison table */}
+                    <div
+                      style={{
+                        background: "#FFFFFF",
+                        borderRadius: 10,
+                        border: "1px solid rgba(0,0,0,0.08)",
+                        marginBottom: 8,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {/* Column headers */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "136px 30px 1fr 1fr",
+                          gap: 12,
+                          padding: "10px 16px",
+                          background: "rgba(0,0,0,0.02)",
+                          borderBottom: "1px solid rgba(0,0,0,0.06)",
+                        }}
+                      >
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px" }}>
+                          Overview
+                        </span>
+                        <span />
+                        <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px" }}>
+                          Job Requires
+                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px" }}>
+                            Your Resume
+                          </span>
+                          {primaryResume && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontFamily: "var(--font-dm-sans), system-ui",
+                                color: "#1A3A2F",
+                                fontWeight: 500,
+                                background: "rgba(26,58,47,0.07)",
+                                padding: "1px 6px",
+                                borderRadius: 4,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: 120,
+                              }}
+                              title={primaryResume.name}
+                            >
+                              {primaryResume.name.replace(/\.[^.]+$/, "").replace(/-/g, " ").slice(0, 18)}…
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Rows — no outer padding; each Row owns its own padding */}
+                      <Row
+                        label="Job Title"
+                        left={data.jobTitle}
+                        right={data.resumeTitle}
+                        status={jobTitleMatch ? "ok" : "fail"}
+                      />
+                      <Row
+                        label="Experience"
+                        left={data.yoeRequired}
+                        right={data.yoeCandidate}
+                        status={data.yoeMatch ? "ok" : "warn"}
+                      />
                       <Row
                         label="Industry Experience"
                         left={
                           <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                             {data.industries.slice(0, 4).map((ind) => (
-                              <span key={ind} style={{ padding: "2px 7px", background: "rgba(0,0,0,0.05)", borderRadius: 4, fontSize: 11 }}>{ind}</span>
+                              <span
+                                key={ind}
+                                style={{
+                                  padding: "2px 7px",
+                                  background: "rgba(0,0,0,0.05)",
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                  fontFamily: "var(--font-dm-sans), system-ui",
+                                }}
+                              >
+                                {ind}
+                              </span>
                             ))}
                           </span>
                         }
                         right={data.industryMatch ? "Relevant experience" : "Limited overlap"}
                         status={data.industryMatch ? "ok" : "warn"}
                       />
+
+                      {/* Keywords row — in the table */}
+                      <Row
+                        label={`Job Keywords (${matchedKwCount}/${totalKwCount})`}
+                        left={
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingTop: 2 }}>
+                            {data.keywords.map((kw) => (
+                              <span
+                                key={kw.text}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 3,
+                                  padding: "3px 8px",
+                                  borderRadius: 12,
+                                  fontFamily: "var(--font-dm-sans), system-ui",
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  background: kw.matched ? "rgba(74,139,106,0.1)" : "rgba(196,87,74,0.07)",
+                                  color: kw.matched ? "#1C3A2F" : "#7A2A20",
+                                  border: `1px solid ${kw.matched ? "rgba(74,139,106,0.2)" : "rgba(196,87,74,0.15)"}`,
+                                }}
+                              >
+                                <span style={{ fontSize: 10, fontWeight: 700 }}>{kw.matched ? "✓" : "✗"}</span>
+                                {kw.text}
+                              </span>
+                            ))}
+                            {customKeywords.map((kw) => (
+                              <span
+                                key={`custom-${kw}`}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 3,
+                                  padding: "3px 6px 3px 8px",
+                                  borderRadius: 12,
+                                  fontFamily: "var(--font-dm-sans), system-ui",
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  background: "rgba(196,87,74,0.07)",
+                                  color: "#7A2A20",
+                                  border: "1px dashed rgba(196,87,74,0.3)",
+                                }}
+                              >
+                                <span style={{ fontSize: 10 }}>+</span>
+                                {kw}
+                                <button
+                                  type="button"
+                                  onClick={() => setCustomKeywords((prev) => prev.filter((k) => k !== kw))}
+                                  style={{ background: "none", border: "none", padding: "0 1px", cursor: "pointer", color: "#C4574A", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center" }}
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                            <input
+                              ref={kwInputRef}
+                              value={newKw}
+                              onChange={(e) => setNewKw(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  const val = newKw.trim().replace(/,$/, "");
+                                  if (val && !data.keywords.some((k) => k.text.toLowerCase() === val.toLowerCase()) && !customKeywords.includes(val)) {
+                                    setCustomKeywords((prev) => [...prev, val]);
+                                  }
+                                  setNewKw("");
+                                }
+                                if (e.key === "Escape") setNewKw("");
+                              }}
+                              placeholder="+ Add"
+                              style={{
+                                fontSize: 12,
+                                fontFamily: "var(--font-dm-sans), system-ui",
+                                color: "#52493F",
+                                background: "transparent",
+                                border: "1px dashed rgba(0,0,0,0.2)",
+                                borderRadius: 12,
+                                padding: "3px 10px",
+                                outline: "none",
+                                width: newKw ? `${Math.max(80, newKw.length * 8 + 20)}px` : 64,
+                                transition: "width 0.15s ease, border-color 0.15s ease",
+                                cursor: "text",
+                              }}
+                              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(74,139,106,0.5)"; }}
+                              onBlur={(e) => {
+                                e.currentTarget.style.borderColor = "rgba(0,0,0,0.2)";
+                                const val = newKw.trim();
+                                if (val && !data.keywords.some((k) => k.text.toLowerCase() === val.toLowerCase()) && !customKeywords.includes(val)) {
+                                  setCustomKeywords((prev) => [...prev, val]);
+                                }
+                                setNewKw("");
+                              }}
+                            />
+                          </div>
+                        }
+                        right={
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              fontSize: 13,
+                              color: kwStatus === "ok" ? "#3D7A5B" : kwStatus === "warn" ? "#B88A30" : "#B84040",
+                            }}
+                          >
+                            {matchedKwCount}/{totalKwCount} matched
+                          </span>
+                        }
+                        status={kwStatus}
+                      />
+
                       <Row
                         label="Summary"
                         left={<span style={{ color: "#52493F", fontStyle: "italic" }}>{data.summaryNote}</span>}
                         right=""
-                        status={data.score >= 7 ? "ok" : "warn"}
+                        status={summaryStatus}
                       />
                     </div>
-                  </div>
-
-                  {/* Keywords */}
-                  <div
-                    style={{
-                      background: "#FFFFFF",
-                      borderRadius: 10,
-                      border: "1px solid rgba(0,0,0,0.07)",
-                      padding: "16px",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px" }}>
-                        Job Keywords
-                      </p>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890" }}>
-                        {data.keywords.filter((k) => k.matched).length}/{data.keywords.length + customKeywords.length} matched
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {data.keywords.map((kw) => (
-                        <span
-                          key={kw.text}
-                          style={{
-                            padding: "5px 10px",
-                            borderRadius: 20,
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            background: kw.matched ? "rgba(74,139,106,0.08)" : "rgba(196,87,74,0.06)",
-                            color: kw.matched ? "#1C3A2F" : "#7A2A20",
-                            border: `1px solid ${kw.matched ? "rgba(74,139,106,0.18)" : "rgba(196,87,74,0.14)"}`,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 5,
-                          }}
-                        >
-                          <span style={{ fontSize: 10 }}>{kw.matched ? "✓" : "!"}</span>
-                          {kw.text}
-                        </span>
-                      ))}
-                      {customKeywords.map((kw) => (
-                        <span
-                          key={`custom-${kw}`}
-                          style={{
-                            padding: "5px 7px 5px 10px",
-                            borderRadius: 20,
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            background: "rgba(196,87,74,0.06)",
-                            color: "#7A2A20",
-                            border: "1px dashed rgba(196,87,74,0.3)",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 5,
-                          }}
-                        >
-                          <span style={{ fontSize: 10 }}>+</span>
-                          {kw}
-                          <button
-                            type="button"
-                            onClick={() => setCustomKeywords((prev) => prev.filter((k) => k !== kw))}
-                            style={{ background: "none", border: "none", padding: "0 1px", cursor: "pointer", color: "#C4574A", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center" }}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                      <div style={{ display: "flex", alignItems: "center" }}>
-                        <input
-                          ref={kwInputRef}
-                          value={newKw}
-                          onChange={(e) => setNewKw(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === ",") {
-                              e.preventDefault();
-                              const val = newKw.trim().replace(/,$/, "");
-                              if (val && !data.keywords.some((k) => k.text.toLowerCase() === val.toLowerCase()) && !customKeywords.includes(val)) {
-                                setCustomKeywords((prev) => [...prev, val]);
-                              }
-                              setNewKw("");
-                            }
-                            if (e.key === "Escape") setNewKw("");
-                          }}
-                          placeholder="+ Add keyword"
-                          style={{
-                            fontSize: 12,
-                            fontFamily: "var(--font-dm-sans), system-ui",
-                            color: "#52493F",
-                            background: "transparent",
-                            border: "1px dashed rgba(0,0,0,0.18)",
-                            borderRadius: 20,
-                            padding: "5px 12px",
-                            outline: "none",
-                            width: newKw ? `${Math.max(100, newKw.length * 8 + 24)}px` : 110,
-                            transition: "width 0.15s ease, border-color 0.15s ease",
-                            cursor: "text",
-                          }}
-                          onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(74,139,106,0.5)"; }}
-                          onBlur={(e) => {
-                            e.currentTarget.style.borderColor = "rgba(0,0,0,0.18)";
-                            const val = newKw.trim();
-                            if (val && !data.keywords.some((k) => k.text.toLowerCase() === val.toLowerCase()) && !customKeywords.includes(val)) {
-                              setCustomKeywords((prev) => [...prev, val]);
-                            }
-                            setNewKw("");
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
+                  </>
+                );
+              })()}
             </>
           )}
 
