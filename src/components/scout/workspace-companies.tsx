@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { CompanyLogo } from "@/components/scout/company-logo";
 
 interface CachedJob {
   title: string;
@@ -52,15 +53,8 @@ interface TrackedCompany {
 
 type Field = keyof Omit<TrackedCompany, "id" | "createdAt" | "jobsCache" | "lastJobsFetchedAt">;
 
-function getInitials(name: string): string {
-  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-}
-
-function getColor(name: string): string {
-  const colors = ["#6366f1","#8b5cf6","#ec4899","#f97316","#10b981","#0ea5e9","#f43f5e","#84cc16"];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
+function enrichmentWebsite(company: TrackedCompany): string | null {
+  return (company.enrichmentCache as EnrichmentCache | null)?.websiteUrl ?? null;
 }
 
 function timeAgo(iso: string): string {
@@ -230,12 +224,15 @@ function CompanySuggestInput({
                 e.preventDefault();
                 choose(item);
               }}
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f3f4f6", background: picked?.catalogSlug === item.catalogSlug ? "#f0f7f4" : "#fff", cursor: "pointer", fontFamily: "var(--font-ui)" }}
+              style={{ display: "flex", width: "100%", alignItems: "center", gap: 10, textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f3f4f6", background: picked?.catalogSlug === item.catalogSlug ? "#f0f7f4" : "#fff", cursor: "pointer", fontFamily: "var(--font-ui)" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "#faf8f5"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = picked?.catalogSlug === item.catalogSlug ? "#f0f7f4" : "#fff"; }}
             >
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{item.name}</div>
-              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{formatSuggestionMeta(item)}</div>
+              <CompanyLogo name={item.name} website={item.website} careersUrl={item.careersUrl} size={24} borderRadius={6} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{item.name}</div>
+                <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{formatSuggestionMeta(item)}</div>
+              </div>
             </button>
           ))}
         </div>
@@ -421,8 +418,6 @@ function CompanyDrawer({
   const [scanError, setScanError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
-  const color = getColor(company.name);
-  const initials = getInitials(company.name);
   const cache = company.jobsCache as JobsCache | null;
   const jobs = cache?.jobs ?? [];
   const intel = company.enrichmentCache as EnrichmentCache | null;
@@ -471,7 +466,14 @@ function CompanyDrawer({
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ebe4", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{initials}</div>
+              <CompanyLogo
+                name={company.name}
+                website={company.website}
+                careersUrl={company.careersUrl}
+                enrichmentWebsiteUrl={enrichmentWebsite(company)}
+                size={40}
+                borderRadius={10}
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <InlineInput value={company.name} placeholder="Company name" onBlur={(v) => v.trim() && onPatch(company.id, "name", v)} bold />
                 <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
@@ -886,8 +888,6 @@ export function WorkspaceCompanies() {
               {(() => {
                 const sorted = sortCompanies(companies);
                 return sorted.map((c, i) => {
-                const color = getColor(c.name);
-                const initials = getInitials(c.name);
                 const isLast = i === sorted.length - 1;
                 const rowTd: React.CSSProperties = { ...tdStyle, borderBottom: isLast ? "none" : tdStyle.borderBottom };
                 const scanning = pendingScanIds.includes(c.id);
@@ -900,7 +900,14 @@ export function WorkspaceCompanies() {
                   >
                     <td style={rowTd}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{initials}</div>
+                        <CompanyLogo
+                          name={c.name}
+                          website={c.website}
+                          careersUrl={c.careersUrl}
+                          enrichmentWebsiteUrl={enrichmentWebsite(c)}
+                          size={32}
+                          borderRadius={7}
+                        />
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{c.name}</div>
                           {subtitle && (

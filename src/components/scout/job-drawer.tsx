@@ -13,6 +13,7 @@ import {
   type KanbanStage,
 } from "./workspace-data";
 import { ResumeEditor } from "./resume-editor";
+import { CompanyLogo } from "./company-logo";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { CreditsStatusBar } from "./credits-display";
@@ -43,16 +44,6 @@ const cardBg = "#FFFFFF";
 const pageBg = "#F4F6F5";
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 const AI_SIDEBAR_WIDTH = 340;
-
-function extractCardDomain(website: string | null): string | null {
-  if (!website) return null;
-  try {
-    const u = new URL(website.startsWith("http") ? website : `https://${website}`);
-    return u.hostname.replace(/^www\./, "");
-  } catch {
-    return null;
-  }
-}
 
 function guessCompanyWebsite(jobUrl: string | null): string | null {
   if (!jobUrl) return null;
@@ -242,29 +233,6 @@ function CompanyTrackPanel({
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-function CompanyLogo({ name, website, size = 48 }: { name: string; website: string | null; size?: number }) {
-  const [err, setErr] = useState(false);
-  const domain = extractCardDomain(website);
-  const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-  const palette = ["#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#10b981", "#0ea5e9", "#f43f5e", "#84cc16"];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const bg = palette[Math.abs(hash) % palette.length];
-  const br = 10;
-  if (domain && !err) {
-    return (
-      <div style={{ width: size, height: size, borderRadius: br, background: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden", border }}>
-        <img src={`https://logo.clearbit.com/${domain}`} alt={name} width={size - 12} height={size - 12} style={{ objectFit: "contain" }} onError={() => setErr(true)} />
-      </div>
-    );
-  }
-  return (
-    <div style={{ width: size, height: size, borderRadius: br, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontFamily: sans, fontSize: size <= 36 ? 12 : 14, fontWeight: 700, color: "#FFF" }}>{initials}</span>
     </div>
   );
 }
