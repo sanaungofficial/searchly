@@ -1,19 +1,38 @@
 import { useSubscription } from "@/hooks/useSubscription";
 import { isCreditsExhausted, isCreditsLow, type CreditBalance } from "@/lib/credits";
 
+/** Paid Pro subscribers — hide credit UI. Free + admin always see balances. */
+export function shouldShowCredits(sub: {
+  loading: boolean;
+  credits: CreditBalance | null;
+  isPro: boolean;
+  isAdmin: boolean;
+}): boolean {
+  if (sub.loading || !sub.credits) return false;
+  if (sub.isAdmin) return true;
+  return !sub.isPro;
+}
+
+/** Unlimited AI — no 402, no upgrade CTAs. Admin and paid Pro. */
+export function hasUnlimitedAi(sub: { isPro: boolean; isAdmin: boolean }): boolean {
+  return sub.isPro || sub.isAdmin;
+}
+
 export function useCredits() {
   const sub = useSubscription();
   const credits = sub.credits;
-  const proUser = sub.isPro || sub.isAdmin;
-  const showCredits = !sub.loading && !proUser && credits !== null;
+  const showCredits = shouldShowCredits(sub);
+  const unlimitedAi = hasUnlimitedAi(sub);
 
   return {
     ...sub,
     credits,
-    proUser,
     showCredits,
-    exhausted: credits ? isCreditsExhausted(credits) : false,
-    low: credits ? isCreditsLow(credits) : false,
+    unlimitedAi,
+    /** @deprecated use unlimitedAi */
+    proUser: unlimitedAi,
+    exhausted: credits && !unlimitedAi ? isCreditsExhausted(credits) : false,
+    low: credits && !unlimitedAi ? isCreditsLow(credits) : false,
   };
 }
 

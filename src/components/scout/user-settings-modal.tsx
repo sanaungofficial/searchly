@@ -524,8 +524,8 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   </div>
                 </div>
 
-                {/* AI credits — free users only */}
-                {!isPro && !isAdmin && credits && (
+                {/* AI credits — free users + admins (visibility) */}
+                {credits && (!isPro || isAdmin) && (
                   <div
                     style={{
                       padding: "14px 16px",
@@ -538,7 +538,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       <p style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
                         AI credits this month
                       </p>
-                      <span style={{ fontSize: 14, color: credits.remaining <= 0 ? "#C4574A" : "#8A7F72" }}>
+                      <span style={{ fontSize: 14, color: credits.remaining <= 0 && !isAdmin ? "#C4574A" : "#8A7F72" }}>
                         {credits.remaining} left · {credits.used}/{credits.limit} used
                       </span>
                     </div>
@@ -547,23 +547,28 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         style={{
                           height: "100%",
                           width: `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
-                          background: credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#4A8B6A",
+                          background: credits.remaining <= 0 && !isAdmin ? "#C4574A" : credits.remaining <= 3 && !isAdmin ? "#C4A86A" : "#4A8B6A",
                           borderRadius: 4,
                           transition: "width 0.3s ease",
                         }}
                       />
                     </div>
-                    {credits.remaining <= 0 && (
+                    {isAdmin && (
+                      <p style={{ fontSize: 13, color: "#6B4A8A", margin: "8px 0 0", lineHeight: 1.5 }}>
+                        Admin account — unlimited AI. Balance shown for reference (free plan is {credits.limit}/month).
+                      </p>
+                    )}
+                    {!isAdmin && credits.remaining <= 0 && (
                       <p style={{ fontSize: 14, color: "#C4574A", margin: "8px 0 0" }}>
                         Out of credits — upgrade for unlimited AI.
                       </p>
                     )}
-                    {credits.remaining > 0 && credits.remaining <= 3 && (
+                    {!isAdmin && credits.remaining > 0 && credits.remaining <= 3 && (
                       <p style={{ fontSize: 14, color: "#7A6020", margin: "8px 0 0", lineHeight: 1.5 }}>
                         Running low — {credits.remaining} credit{credits.remaining !== 1 ? "s" : ""} left. Each AI action uses 1 credit.
                       </p>
                     )}
-                    {credits.remaining > 3 && (
+                    {!isAdmin && credits.remaining > 3 && (
                       <p style={{ fontSize: 13, color: "#8A7F72", margin: "8px 0 0", lineHeight: 1.5 }}>
                         1 credit per match, tailor, cover letter, or Scout message. Resets monthly.
                       </p>

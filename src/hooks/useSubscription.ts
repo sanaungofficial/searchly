@@ -5,6 +5,7 @@ import { CREDITS_CHANGED_EVENT } from "@/lib/credits";
 interface SubscriptionState {
   isPro: boolean;
   isAdmin: boolean;
+  paidPro: boolean;
   status: string | null;
   currentPeriodEnd: string | null;
   credits: CreditBalance | null;
@@ -21,6 +22,7 @@ export function useSubscription(): SubscriptionState & {
   const [state, setState] = useState<SubscriptionState>({
     isPro: false,
     isAdmin: false,
+    paidPro: false,
     status: null,
     currentPeriodEnd: null,
     credits: null,
@@ -36,6 +38,7 @@ export function useSubscription(): SubscriptionState & {
       setState({
         isPro: data.isPro ?? false,
         isAdmin: data.isAdmin ?? false,
+        paidPro: data.paidPro ?? false,
         status: data.status ?? null,
         currentPeriodEnd: data.currentPeriodEnd ?? null,
         credits: data.credits ?? null,

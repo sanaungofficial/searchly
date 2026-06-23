@@ -31,12 +31,14 @@ export async function GET() {
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const adminUser = dbUser.role === "ADMIN";
-  const proUser = adminUser || isPro(dbUser.subscription);
-  const credits = proUser ? null : await getUsage(dbUser.id);
+  const paidPro = isPro(dbUser.subscription);
+  const proUser = adminUser || paidPro;
+  const credits = await getUsage(dbUser.id);
 
   return NextResponse.json({
     isPro: proUser,
     isAdmin: adminUser,
+    paidPro,
     status: adminUser ? "admin" : (dbUser.subscription?.status ?? null),
     currentPeriodEnd: dbUser.subscription?.stripeCurrentPeriodEnd ?? null,
     credits,
