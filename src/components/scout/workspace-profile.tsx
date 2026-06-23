@@ -2004,15 +2004,8 @@ export function WorkspaceProfile() {
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#F7F5F2", animation: "fadeIn 0.3s ease both" }}>
       <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, WebkitOverflowScrolling: "touch" }}>
         <div style={contentShell}>
-        {/* Header + readback side-by-side on desktop */}
-        <div style={{
-          display: isMobile ? "block" : "grid",
-          gridTemplateColumns: showReadbackHero && !isMobile ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
-          gap: isMobile ? 0 : 24,
-          alignItems: "start",
-          marginBottom: isMobile ? 20 : 24,
-        }}>
-        <div>
+        {/* Header: title → readback → completeness */}
+        <div style={{ marginBottom: isMobile ? 20 : 24 }}>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "var(--scout-muted)", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8, lineHeight: 1.4 }}>
             {loading ? "Loading…" : profile ? (profile.name || profile.email || "Your profile") : "Your profile"}
             {!isMobile && profile?.headline ? ` · ${profile.headline}` : ""}
@@ -2022,9 +2015,12 @@ export function WorkspaceProfile() {
               {profile.headline}
             </p>
           )}
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: isMobile ? 26 : 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px", lineHeight: 1.2 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: isMobile ? 26 : 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px", lineHeight: 1.2, marginBottom: showReadbackHero ? 16 : 0 }}>
             Your profile, through Kimchi&apos;s eyes.
           </h1>
+          {showReadbackHero && (
+            <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} />
+          )}
           {profile && (() => {
             const pct = profileCompleteness(profile);
             const missing: { label: string; points: number; action: () => void }[] = [];
@@ -2040,7 +2036,7 @@ export function WorkspaceProfile() {
             if (!(profile.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: () => setPage("preferences") });
 
             return (
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: showReadbackHero ? 16 : 14 }}>
                 <button
                   onClick={() => missing.length > 0 && setShowChecklist(s => !s)}
                   style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
@@ -2082,10 +2078,6 @@ export function WorkspaceProfile() {
               </div>
             );
           })()}
-        </div>
-        {showReadbackHero && (
-          <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} embedded={!isMobile} />
-        )}
         </div>
 
         {/* Resume upload nudge */}
