@@ -1,10 +1,12 @@
 import { saveJob } from "../lib/api";
-import { checkAuth, logout, openLoginTab } from "../lib/auth";
+import { broadcastAuthState, checkAuth, logout, openLoginTab } from "../lib/auth";
 import type {
   BackgroundMessage,
   ParsedJob,
   SaveJobResult,
 } from "../lib/types";
+
+let loginTabId: number | null = null;
 
 async function parseViaInjection(tabId: number): Promise<ParsedJob | null> {
   try {
@@ -29,6 +31,8 @@ async function parseViaInjection(tabId: number): Promise<ParsedJob | null> {
       target: { tabId },
       files: ["content.js"],
     });
+
+    await new Promise((r) => setTimeout(r, 300));
 
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
@@ -63,10 +67,27 @@ async function saveFromTab(tabId: number): Promise<SaveJobResult> {
   return saveJob(parsed);
 }
 
+async function refreshAndBroadcastAuth(force = true): Promise<void> {
+  const auth = await checkAuth(force);
+  await broadcastAuthState(auth);
+}
+
 chrome.cookies.onChanged.addListener((change) => {
   const domain = change.cookie.domain.replace(/^\./, "");
   if (domain === "app.kimchi.so" || domain.endsWith("vercel.app")) {
-    void checkAuth(true);
+    void refreshAndBroadcastAuth(true);
+  }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tabId !== loginTabId || changeInfo.status !== "complete") return;
+  const url = tab.url ?? "";
+  if (
+    /\/(dashboard|opportunities|profile|onboarding)(\/|$|\?)/.test(url) ||
+    url.includes("/auth/callback")
+  ) {
+    loginTabId = null;
+    void refreshAndBroadcastAuth(true);
   }
 });
 
@@ -79,12 +100,13 @@ chrome.runtime.onMessage.addListener((message: BackgroundMessage, _sender, sendR
         return;
       }
       case "OPEN_LOGIN": {
-        await openLoginTab();
+        loginTabId = (await openLoginTab()) ?? null;
         sendResponse({ ok: true });
         return;
       }
       case "LOGOUT": {
         await logout();
+        await refreshAndBroadcastAuth(true);
         sendResponse({ ok: true });
         return;
       }

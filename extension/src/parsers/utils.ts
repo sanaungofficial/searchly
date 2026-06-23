@@ -14,21 +14,42 @@ export function canonicalUrl(): string {
   return window.location.href.split("#")[0];
 }
 
+/** LinkedIn search-results URLs → stable /jobs/view/{id}/ permalink. */
+export function normalizeLinkedInJobUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (!/linkedin\.com/i.test(parsed.hostname)) return url;
+
+    const viewMatch = parsed.pathname.match(/\/jobs\/view\/(\d+)/i);
+    if (viewMatch) return `https://www.linkedin.com/jobs/view/${viewMatch[1]}/`;
+
+    const jobId = parsed.searchParams.get("currentJobId");
+    if (jobId && /^\d+$/.test(jobId)) {
+      return `https://www.linkedin.com/jobs/view/${jobId}/`;
+    }
+  } catch {
+    // ignore malformed URLs
+  }
+  return url.split("#")[0];
+}
+
 export function parseTitleHeuristic(raw: string): { role: string; company: string } {
   const title = raw.trim();
   if (!title) return { role: "Unknown Role", company: "Unknown Company" };
 
-  const atMatch = title.match(/^(.+?)\s+at\s+(.+?)(?:\s*[|\-–—]|$)/i);
+  const linkedInSuffix = title.replace(/\s*[|\-–—]\s*LinkedIn\s*$/i, "").trim();
+
+  const atMatch = linkedInSuffix.match(/^(.+?)\s+at\s+(.+?)$/i);
   if (atMatch) {
     return { role: atMatch[1].trim(), company: atMatch[2].trim() };
   }
 
-  const pipeParts = title.split(/\s*[|\-–—]\s*/);
+  const pipeParts = linkedInSuffix.split(/\s*[|\-–—]\s*/);
   if (pipeParts.length >= 2) {
     return { role: pipeParts[0].trim(), company: pipeParts[1].trim() };
   }
 
-  return { role: title, company: "Unknown Company" };
+  return { role: linkedInSuffix, company: "Unknown Company" };
 }
 
 const APPLIED_URL_RE =
@@ -41,7 +62,7 @@ export function detectStage(url: string, isApplicationPage = false): JobStage {
   return "SAVED";
 }
 
-export function companyFromUrl(hostname: string, segmentIndex: number): string {
+export function companyFromUrl(_hostname: string, segmentIndex: number): string {
   const parts = window.location.pathname.split("/").filter(Boolean);
   const slug = parts[segmentIndex];
   if (!slug) return "Unknown Company";
@@ -54,6 +75,7 @@ export function readJsonLdJobPosting(): {
   title?: string;
   company?: string;
   url?: string;
+  description?: string;
 } | null {
   const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
   for (const script of scripts) {
@@ -74,6 +96,7 @@ function findJobPosting(data: unknown): {
   title?: string;
   company?: string;
   url?: string;
+  description?: string;
 } | null {
   if (!data || typeof data !== "object") return null;
 
@@ -100,6 +123,7 @@ function findJobPosting(data: unknown): {
             ? obj.hiringOrganization
             : undefined,
       url: typeof obj.url === "string" ? obj.url : undefined,
+      description: typeof obj.description === "string" ? obj.description : undefined,
     };
   }
 
@@ -120,11 +144,15 @@ export function readOpenGraph(): { title?: string; company?: string } {
   };
 }
 
-export function buildNotes(parser: ParserId): string {
+export function buildNotes(
+  parser: ParserId,
+  extra?: Record<string, unknown>
+): string {
   return JSON.stringify({
     source: "extension",
     parser,
     capturedAt: new Date().toISOString(),
+    ...extra,
   });
 }
 
@@ -138,4 +166,13 @@ export function firstNonEmpty(...values: Array<string | undefined | null>): stri
 
 export function logParse(parser: ParserId, result: unknown): void {
   console.info("[Kimchi]", { parser, result, url: window.location.href });
+}
+
+export function queryAllText(selectors: string[], root: ParentNode = document): string {
+  for (const selector of selectors) {
+    const el = root.querySelector(selector);
+    const value = text(el);
+    if (value) return value;
+  }
+  return "";
 }

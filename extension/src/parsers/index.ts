@@ -123,43 +123,6 @@ export function parseAshby(): ParsedJob | null {
   return result;
 }
 
-export function parseLinkedInJobs(): ParsedJob | null {
-  const url = canonicalUrl();
-  if (!/linkedin\.com/i.test(window.location.hostname) || !/\/jobs\//i.test(url)) {
-    return null;
-  }
-
-  const role = firstNonEmpty(
-    text(document.querySelector(".job-details-jobs-unified-top-card__job-title")),
-    text(document.querySelector(".jobs-unified-top-card__job-title")),
-    text(document.querySelector("h1.t-24")),
-    text(document.querySelector("h1"))
-  );
-
-  const company = firstNonEmpty(
-    text(document.querySelector(".job-details-jobs-unified-top-card__company-name a")),
-    text(document.querySelector(".jobs-unified-top-card__company-name a")),
-    text(document.querySelector(".job-details-jobs-unified-top-card__company-name")),
-    "Unknown Company"
-  );
-
-  const jsonLd = readJsonLdJobPosting();
-  const og = readOpenGraph();
-  const titleFallback = parseTitleHeuristic(document.title);
-
-  const result: ParsedJob = {
-    company: firstNonEmpty(company, jsonLd?.company, og.company, titleFallback.company),
-    role: firstNonEmpty(role, jsonLd?.title, og.title, titleFallback.role),
-    url,
-    stage: detectStage(url),
-    parser: "linkedin-jobs",
-    notes: buildNotes("linkedin-jobs"),
-  };
-
-  logParse("linkedin-jobs", result);
-  return result;
-}
-
 export function parseGeneric(): ParsedJob {
   const url = canonicalUrl();
   const jsonLd = readJsonLdJobPosting();

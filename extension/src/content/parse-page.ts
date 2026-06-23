@@ -3,9 +3,14 @@ import {
   parseGeneric,
   parseGreenhouse,
   parseLever,
-  parseLinkedInJobs,
 } from "../parsers/index";
+import { parseLinkedInJobs } from "../parsers/linkedin-jobs";
 import type { ParsedJob } from "../lib/types";
+
+function isUsableJob(result: ParsedJob | null): result is ParsedJob {
+  if (!result?.company || !result?.role) return false;
+  return !(result.company === "Unknown Company" && result.role === "Unknown Role");
+}
 
 /** Run all parsers in priority order; generic is always the fallback. */
 export function parseCurrentPage(): ParsedJob {
@@ -18,7 +23,7 @@ export function parseCurrentPage(): ParsedJob {
 
   for (const parser of parsers) {
     const result = parser();
-    if (result?.company && result?.role) return result;
+    if (isUsableJob(result)) return result;
   }
 
   return parseGeneric();
