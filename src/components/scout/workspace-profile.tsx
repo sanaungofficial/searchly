@@ -1942,8 +1942,8 @@ export function WorkspaceProfile() {
                 <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
               </div>
             </div>
-            {/* Right column — career preferences, sticky */}
-            <div style={{ flex: 1, minWidth: 260, maxWidth: 340, position: "sticky", top: 0 }}>
+            {/* Right column — career preferences */}
+            <div style={{ flex: 1, minWidth: 260, maxWidth: 340 }}>
               <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
             </div>
           </div>

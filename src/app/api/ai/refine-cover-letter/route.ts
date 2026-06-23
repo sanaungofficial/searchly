@@ -1,6 +1,4 @@
 import { createClient } from "@/utils/supabase/server";
-import { prisma } from "@/lib/prisma";
-import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -19,52 +17,43 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-
-  const resumeText = dbUser?.profile?.resumeText;
-  if (!resumeText) {
-    return NextResponse.json({ error: "No resume found" }, { status: 404 });
-  }
-
   const body = await req.json();
-  const { jobTitle, company, description } = body as {
+  const { currentLetter, prompt, jobTitle, company, description } = body as {
+    currentLetter: string;
+    prompt: string;
     jobTitle?: string;
     company?: string;
     description?: string;
   };
 
-  if (!description) {
-    return NextResponse.json({ error: "No job description provided" }, { status: 400 });
+  if (!currentLetter || !prompt) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const candidateName = dbUser?.name || "the candidate";
+  const systemPrompt = `You are an expert cover letter editor. You will be given a cover letter and a specific instruction to improve it. Rewrite the cover letter according to the instruction. Return only the updated cover letter text — no explanation, no preamble, no markdown. Keep the same general structure and length unless the instruction says otherwise. The letter should start with the salutation (e.g. "Dear Hiring Manager,").`;
 
-  const template = await getPrompt("COVER_LETTER_FULL");
-  const prompt = interpolate(template, {
-    jobTitle: jobTitle || "Unknown",
-    company: company || "Unknown",
-    description: description.slice(0, 3000),
-    resumeSlice: resumeText.slice(0, 3000),
-    candidateName,
-  });
+  const userMessage = [
+    `Job: ${jobTitle || "Unknown"} at ${company || "Unknown"}`,
+    description ? `Job description excerpt:\n${description.slice(0, 1500)}` : "",
+    "",
+    "Current cover letter:",
+    currentLetter,
+    "",
+    `Instruction: ${prompt}`,
+  ].filter(Boolean).join("\n");
 
   const anthropicStream = getAnthropic().messages.stream({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 800,
-    messages: [{ role: "user", content: prompt }],
+    max_tokens: 900,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userMessage }],
   });
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
       for await (const chunk of anthropicStream) {
-        if (
-          chunk.type === "content_block_delta" &&
-          chunk.delta.type === "text_delta"
-        ) {
+        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
           controller.enqueue(encoder.encode(chunk.delta.text));
         }
       }
