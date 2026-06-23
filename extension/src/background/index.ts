@@ -9,15 +9,20 @@ import type {
 let loginTabId: number | null = null;
 
 async function parseViaInjection(tabId: number): Promise<ParsedJob | null> {
-  try {
+  const runParse = async () => {
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: () => {
-        const win = window as unknown as { __kimchiParsePage?: () => unknown };
-        return win.__kimchiParsePage?.() ?? null;
+      func: async () => {
+        const win = window as unknown as { __kimchiParsePage?: () => Promise<unknown> };
+        return (await win.__kimchiParsePage?.()) ?? null;
       },
     });
-    if (result) return result as ParsedJob;
+    return (result as ParsedJob | null) ?? null;
+  };
+
+  try {
+    const result = await runParse();
+    if (result) return result;
   } catch {
     // content script not present yet
   }
@@ -32,16 +37,8 @@ async function parseViaInjection(tabId: number): Promise<ParsedJob | null> {
       files: ["content.js"],
     });
 
-    await new Promise((r) => setTimeout(r, 300));
-
-    const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const win = window as unknown as { __kimchiParsePage?: () => unknown };
-        return win.__kimchiParsePage?.() ?? null;
-      },
-    });
-    return (result as ParsedJob | null) ?? null;
+    await new Promise((r) => setTimeout(r, 1200));
+    return await runParse();
   } catch (err) {
     console.error("[Kimchi] parseViaInjection failed", err);
     return null;

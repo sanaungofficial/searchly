@@ -4,7 +4,7 @@ import {
   parseGreenhouse,
   parseLever,
 } from "../parsers/index";
-import { parseLinkedInJobs } from "../parsers/linkedin-jobs";
+import { parseLinkedInJobs, prepareLinkedInPage } from "../parsers/linkedin-jobs";
 import type { ParsedJob } from "../lib/types";
 
 function isUsableJob(result: ParsedJob | null): result is ParsedJob {
@@ -12,8 +12,7 @@ function isUsableJob(result: ParsedJob | null): result is ParsedJob {
   return !(result.company === "Unknown Company" && result.role === "Unknown Role");
 }
 
-/** Run all parsers in priority order; generic is always the fallback. */
-export function parseCurrentPage(): ParsedJob {
+function runParsers(): ParsedJob {
   const parsers = [
     parseGreenhouse,
     parseLever,
@@ -27,4 +26,17 @@ export function parseCurrentPage(): ParsedJob {
   }
 
   return parseGeneric();
+}
+
+/** Run all parsers in priority order; generic is always the fallback. */
+export function parseCurrentPage(): ParsedJob {
+  return runParsers();
+}
+
+/** Async parse — expands LinkedIn "Show more" and waits for lazy-loaded description. */
+export async function parseCurrentPageAsync(): Promise<ParsedJob> {
+  if (/linkedin\.com/i.test(window.location.hostname)) {
+    await prepareLinkedInPage();
+  }
+  return runParsers();
 }

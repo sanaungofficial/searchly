@@ -1,6 +1,14 @@
-import { parseCurrentPage } from "./parse-page";
+import { parseCurrentPageAsync } from "./parse-page";
+import {
+  isLinkedInJobPage,
+  mountLinkedInWidget,
+  observeLinkedInNavigation,
+  removeLinkedInWidget,
+  setWidgetState,
+  updateLinkedInWidgetPreview,
+} from "./linkedin-widget";
 import { ensureFloatingButton, setButtonState, showToast } from "./ui";
-import type { BackgroundMessage, SaveJobResult } from "../lib/types";
+import type { SaveJobResult } from "../lib/types";
 
 const ATS_HOST_RE =
   /(?:boards|job-boards)\.greenhouse\.io|jobs\.lever\.co|jobs\.ashbyhq\.com|linkedin\.com/i;
@@ -10,8 +18,12 @@ function isKnownAtsPage(): boolean {
 }
 
 async function saveCurrentPage(): Promise<SaveJobResult> {
-  const parsed = parseCurrentPage();
+  const parsed = await parseCurrentPageAsync();
   console.info("[Kimchi] parsed job", parsed);
+
+  if (isLinkedInJobPage()) {
+    updateLinkedInWidgetPreview(parsed);
+  }
 
   const response = await chrome.runtime.sendMessage({
     type: "SAVE_PARSED_JOB",
@@ -22,26 +34,52 @@ async function saveCurrentPage(): Promise<SaveJobResult> {
 }
 
 async function handleSaveClick(): Promise<void> {
-  setButtonState("loading");
+  const widget = document.getElementById("kimchi-linkedin-widget");
+  if (isLinkedInJobPage() && widget) {
+    setWidgetState(widget, "loading");
+  } else {
+    setButtonState("loading");
+  }
+
   try {
     const result = await saveCurrentPage();
     if (result.ok) {
-      setButtonState("success");
-      showToast(`Saved ${result.jobId ? "to Kimchi" : ""}`, "success");
-      window.setTimeout(() => setButtonState("idle"), 2500);
+      if (isLinkedInJobPage() && widget) {
+        setWidgetState(widget, "success", "Saved to your Kimchi pipeline.");
+      } else {
+        setButtonState("success");
+        showToast("Saved to Kimchi", "success");
+        window.setTimeout(() => setButtonState("idle"), 2500);
+      }
     } else {
-      setButtonState("error");
-      showToast(result.error ?? "Could not save job", "error");
+      if (isLinkedInJobPage() && widget) {
+        setWidgetState(widget, "error", result.error ?? "Could not save job");
+      } else {
+        setButtonState("error");
+        showToast(result.error ?? "Could not save job", "error");
+      }
     }
   } catch (err) {
-    setButtonState("error");
-    showToast(err instanceof Error ? err.message : "Save failed", "error");
+    const message = err instanceof Error ? err.message : "Save failed";
+    if (isLinkedInJobPage() && widget) {
+      setWidgetState(widget, "error", message);
+    } else {
+      setButtonState("error");
+      showToast(message, "error");
+    }
   }
+}
+
+async function refreshLinkedInWidget(): Promise<void> {
+  if (!isLinkedInJobPage()) return;
+  removeLinkedInWidget();
+  const parsed = await parseCurrentPageAsync();
+  await mountLinkedInWidget(parsed, handleSaveClick);
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "PARSE_PAGE") {
-    sendResponse(parseCurrentPage());
+    parseCurrentPageAsync().then(sendResponse);
     return true;
   }
 
@@ -53,12 +91,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
-if (isKnownAtsPage()) {
+if (isLinkedInJobPage()) {
+  void refreshLinkedInWidget();
+  observeLinkedInNavigation(() => {
+    void refreshLinkedInWidget();
+  });
+} else if (isKnownAtsPage()) {
   ensureFloatingButton(() => {
     void handleSaveClick();
   });
 }
 
-// Expose for popup-driven generic saves via executeScript
-(window as unknown as { __kimchiParsePage?: () => ReturnType<typeof parseCurrentPage> }).__kimchiParsePage =
-  parseCurrentPage;
+(window as unknown as { __kimchiParsePage?: () => ReturnType<typeof parseCurrentPageAsync> }).__kimchiParsePage =
+  parseCurrentPageAsync;
