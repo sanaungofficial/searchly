@@ -146,6 +146,11 @@ interface CompanySuggestion {
   source: "catalog" | "intel";
 }
 
+function formatSuggestionMeta(item: CompanySuggestion): string {
+  if (item.type) return item.type;
+  return "Dream company";
+}
+
 function CompanySuggestInput({
   value,
   onChange,
@@ -159,12 +164,14 @@ function CompanySuggestInput({
 }) {
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<CompanySuggestion[]>([]);
+  const [picked, setPicked] = useState<CompanySuggestion | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!value.trim()) {
       setSuggestions([]);
       setOpen(false);
+      setPicked(null);
       return;
     }
     const timer = setTimeout(async () => {
@@ -173,12 +180,13 @@ function CompanySuggestInput({
         if (res.ok) {
           const data: CompanySuggestion[] = await res.json();
           setSuggestions(data);
-          setOpen(data.length > 0);
+          const keepClosed = picked && picked.name.toLowerCase() === value.trim().toLowerCase();
+          setOpen(!keepClosed && data.length > 0);
         }
       } catch { /* ignore */ }
     }, 200);
     return () => clearTimeout(timer);
-  }, [value]);
+  }, [value, picked]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -188,16 +196,28 @@ function CompanySuggestInput({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  function choose(item: CompanySuggestion) {
+    setPicked(item);
+    onChange(item.name);
+    onSelect(item);
+    setOpen(false);
+  }
+
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
       <input
         autoFocus
         value={value}
         disabled={disabled}
-        onChange={(e) => { onChange(e.target.value); onSelect(null); setOpen(true); }}
-        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          onSelect(null);
+          setPicked(null);
+          setOpen(true);
+        }}
+        onFocus={() => !picked && suggestions.length > 0 && setOpen(true)}
         placeholder="Start typing — e.g. Oracle, Comcast, Stripe"
-        style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }}
+        style={{ width: "100%", border: picked ? "1px solid #1a3a2f" : "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }}
         required
       />
       {open && suggestions.length > 0 && (
@@ -206,15 +226,16 @@ function CompanySuggestInput({
             <button
               key={`${item.catalogSlug}-${item.id ?? "catalog"}`}
               type="button"
-              onClick={() => { onChange(item.name); onSelect(item); setOpen(false); }}
-              style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f3f4f6", background: "#fff", cursor: "pointer", fontFamily: "var(--font-ui)" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                choose(item);
+              }}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f3f4f6", background: picked?.catalogSlug === item.catalogSlug ? "#f0f7f4" : "#fff", cursor: "pointer", fontFamily: "var(--font-ui)" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "#faf8f5"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = picked?.catalogSlug === item.catalogSlug ? "#f0f7f4" : "#fff"; }}
             >
               <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{item.name}</div>
-              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>
-                {[item.type, item.careersUrl ? "Careers URL included" : null].filter(Boolean).join(" · ") || "Dream company"}
-              </div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{formatSuggestionMeta(item)}</div>
             </button>
           ))}
         </div>
@@ -777,9 +798,9 @@ export function WorkspaceCompanies() {
             <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 14, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-ui)" }}>{saving ? "Adding…" : "Add"}</button>
           </div>
           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 10, lineHeight: 1.45 }}>
-            {selectedSuggestion?.careersUrl
-              ? "Careers URL will be prefilled from our catalog — you can scan open roles right away."
-              : "Pick a suggestion for prefilled careers links, or type a custom company name."}
+            {selectedSuggestion
+              ? `${selectedSuggestion.name} selected — press Add to track${selectedSuggestion.careersUrl ? " and scan open roles" : ""}.`
+              : "Pick from the list or type any company name, then press Add."}
           </div>
           {addError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginTop: 8 }}>{addError}</div>}
         </form>

@@ -42,6 +42,8 @@ interface NavItem {
   Icon: (p: { className?: string }) => React.ReactElement;
 }
 
+const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
+
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
