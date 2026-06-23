@@ -250,6 +250,9 @@ export function ResumeMatchDrawer({
   const [newKw, setNewKw] = useState("");
   const [mounted, setMounted] = useState(false);
   const [resumeAssets, setResumeAssets] = useState<ResumeAsset[]>([]);
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set(["summary", "skills", "work_experience"]));
+  const [workEditMode, setWorkEditMode] = useState<"quick" | "full">("quick");
+  const [selectedMissingKw, setSelectedMissingKw] = useState<string[]>([]);
   const kwInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
@@ -302,11 +305,12 @@ export function ResumeMatchDrawer({
 
   function handleAlign() {
     setStep(2);
+  }
+
+  function handleGenerate() {
+    setStep(3);
     setAligning(true);
-    setTimeout(() => {
-      setStep(3);
-      setAligning(false);
-    }, 1800);
+    setTimeout(() => setAligning(false), 2000);
   }
 
   // Derive job title match if AI didn't return it explicitly
