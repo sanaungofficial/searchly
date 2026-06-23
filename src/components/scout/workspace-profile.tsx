@@ -611,7 +611,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
     skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase());
 
   return (
-    <div style={{ maxWidth: isMobile ? "100%" : 560, paddingBottom: 40 }}>
+    <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
         Add up to 3 roles you&apos;re targeting. Expand any card to see your fit score, what skills you already have, what you&apos;re missing, and your next steps.
       </p>
@@ -861,7 +861,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
   const removeCustomItem = (id: string) => saveCustomItems(customItems.filter((i) => i.id !== id));
 
   return (
-    <div style={{ maxWidth: isMobile ? "100%" : 620, paddingBottom: 40 }}>
+    <div style={{ width: "100%", paddingBottom: 40 }}>
 
       {/* Section A — From your target roles */}
       {skillGoals.length > 0 && (
@@ -1469,11 +1469,11 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
 
 // ─── AI Readback Card ─────────────────────────────────────────────────────────
 
-function ReadbackCard({ data, loading, onRefresh }: { data: ReadbackData | null; loading: boolean; onRefresh: () => void }) {
+function ReadbackCard({ data, loading, onRefresh, embedded }: { data: ReadbackData | null; loading: boolean; onRefresh: () => void; embedded?: boolean }) {
   const isMobile = useIsMobile();
   if (!loading && !data) return null;
   return (
-    <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: isMobile ? 16 : 28 }}>
+    <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: embedded ? 0 : (isMobile ? 16 : 28), height: embedded && !isMobile ? "100%" : undefined }}>
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 10, gap: isMobile ? 10 : 0 }}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Kimchi&apos;s read on you
@@ -1985,14 +1985,34 @@ export function WorkspaceProfile() {
     { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
   ];
 
-  const scrollPad = isMobile ? "56px 16px 40px 56px" : "20px 32px 0";
+  const scrollPad = isMobile ? "56px 16px 40px 56px" : "20px 32px 48px";
   const sectionCardPad = isMobile ? "18px 16px" : "24px 28px";
+  const contentShell: React.CSSProperties = {
+    width: "100%",
+    maxWidth: isMobile ? undefined : 1120,
+    margin: "0 auto",
+  };
+  const showReadbackHero = !!(readback || readbackLoading);
+  const sectionCardStyle: React.CSSProperties = {
+    background: "#FFFFFF",
+    borderRadius: 12,
+    padding: sectionCardPad,
+    border: "1px solid rgba(0,0,0,0.07)",
+  };
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#F7F5F2", animation: "fadeIn 0.3s ease both" }}>
       <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, WebkitOverflowScrolling: "touch" }}>
-        {/* Header */}
-        <div style={{ marginBottom: isMobile ? 20 : 24 }}>
+        <div style={contentShell}>
+        {/* Header + readback side-by-side on desktop */}
+        <div style={{
+          display: isMobile ? "block" : "grid",
+          gridTemplateColumns: showReadbackHero && !isMobile ? "minmax(0, 1fr) minmax(0, 1fr)" : "1fr",
+          gap: isMobile ? 0 : 24,
+          alignItems: "start",
+          marginBottom: isMobile ? 20 : 24,
+        }}>
+        <div>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "var(--scout-muted)", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8, lineHeight: 1.4 }}>
             {loading ? "Loading…" : profile ? (profile.name || profile.email || "Your profile") : "Your profile"}
             {!isMobile && profile?.headline ? ` · ${profile.headline}` : ""}
@@ -2025,7 +2045,7 @@ export function WorkspaceProfile() {
                   onClick={() => missing.length > 0 && setShowChecklist(s => !s)}
                   style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5, maxWidth: isMobile ? "100%" : 280 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
                     <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>
                       Profile completeness
                       {missing.length > 0 && <span style={{ marginLeft: 6, color: "#C0B8B0" }}>· {missing.length} missing</span>}
@@ -2034,13 +2054,13 @@ export function WorkspaceProfile() {
                       {pct}%{missing.length > 0 ? (showChecklist ? " ▲" : " ▼") : " ✓"}
                     </span>
                   </div>
-                  <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: isMobile ? "100%" : 280 }}>
+                  <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2 }}>
                     <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#4A8B6A" : "#C4A86A", borderRadius: 2, transition: "width 0.4s ease" }} />
                   </div>
                 </button>
 
                 {showChecklist && missing.length > 0 && (
-                  <div style={{ marginTop: 8, maxWidth: isMobile ? "100%" : 280, border: "1px solid #E8D5A3", borderRadius: 8, background: "#FFFDF9", overflow: "hidden" }}>
+                  <div style={{ marginTop: 8, border: "1px solid #E8D5A3", borderRadius: 8, background: "#FFFDF9", overflow: "hidden" }}>
                     {missing.map((item, i) => (
                       <button
                         key={item.label}
@@ -2063,17 +2083,14 @@ export function WorkspaceProfile() {
             );
           })()}
         </div>
-
-        {/* AI Readback hero — shown above tabs when resume is present */}
-        {(readback || readbackLoading) && (
-          <div style={{ maxWidth: isMobile ? "100%" : 640, marginBottom: 16 }}>
-            <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} />
-          </div>
+        {showReadbackHero && (
+          <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} embedded={!isMobile} />
         )}
+        </div>
 
         {/* Resume upload nudge */}
         {readbackNudge && (
-          <div style={{ maxWidth: isMobile ? "100%" : 640, marginBottom: 12, padding: "12px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ marginBottom: 12, padding: "12px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12 }}>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A7A4A", margin: 0, lineHeight: 1.5 }}>
               ✓ Resume uploaded — Kimchi extracted your experience, education, and skills. Review them in the About tab.
             </p>
@@ -2082,7 +2099,7 @@ export function WorkspaceProfile() {
         )}
 
         {/* Main tab bar */}
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto", marginBottom: page === "about" ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto", marginBottom: page === "about" && isMobile ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           {PAGE_TABS.map(({ id, label }) => (
             <button
               key={id}
@@ -2094,8 +2111,8 @@ export function WorkspaceProfile() {
           ))}
         </div>
 
-        {/* Sub-tabs — only when About is active */}
-        {page === "about" && (
+        {/* Sub-tabs — mobile About only; desktop uses side nav */}
+        {page === "about" && isMobile && (
           <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: "1px solid rgba(0,0,0,0.05)", overflowX: "auto", background: "#EDE8DF", paddingLeft: 8, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
             {ABOUT_SECTIONS.map((s) => (
               <button
@@ -2129,21 +2146,63 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "about" && profile && (
-          <div style={{ maxWidth: isMobile ? "100%" : 640, paddingBottom: 40 }}>
-            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}>
+          <div style={{ display: isMobile ? "block" : "flex", gap: 24, alignItems: "flex-start", paddingBottom: 40 }}>
+            {!isMobile && (
+              <nav style={{
+                width: 196,
+                flexShrink: 0,
+                position: "sticky",
+                top: 16,
+                alignSelf: "flex-start",
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                padding: "4px 0",
+              }}>
+                {ABOUT_SECTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => goToSection(s)}
+                    style={{
+                      padding: "10px 14px",
+                      minHeight: 44,
+                      border: "none",
+                      borderRadius: 8,
+                      background: activeSection === s ? "#FFFFFF" : "transparent",
+                      color: activeSection === s ? "#1C3A2F" : "var(--scout-muted)",
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 13,
+                      fontWeight: activeSection === s ? 600 : 400,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      boxShadow: activeSection === s ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+                      borderLeft: activeSection === s ? "3px solid #1C3A2F" : "3px solid transparent",
+                    }}
+                  >
+                    {ABOUT_LABEL[s]}
+                  </button>
+                ))}
+              </nav>
+            )}
+            <div style={{
+              flex: 1,
+              minWidth: 0,
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: 12,
+            }}>
+            <div ref={(el) => { sectionRefs.current.personal = el; }} style={sectionCardStyle}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
-              ref={(el) => { sectionRefs.current.education = el; }}>
+            <div style={sectionCardStyle} ref={(el) => { sectionRefs.current.education = el; }}>
               <EducationTab entries={education} onSave={handleEducationSave} />
             </div>
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
-              ref={(el) => { sectionRefs.current.experience = el; }}>
+            <div style={{ ...sectionCardStyle, gridColumn: isMobile ? undefined : "1 / -1" }} ref={(el) => { sectionRefs.current.experience = el; }}>
               <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
             </div>
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
-              ref={(el) => { sectionRefs.current.skills = el; }}>
+            <div style={{ ...sectionCardStyle, gridColumn: isMobile ? undefined : "1 / -1" }} ref={(el) => { sectionRefs.current.skills = el; }}>
               <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
+            </div>
             </div>
           </div>
         )}
@@ -2152,7 +2211,7 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "preferences" && profile && (
-          <div style={{ maxWidth: isMobile ? "100%" : 480, paddingBottom: 40, paddingTop: 8 }}>
+          <div style={{ paddingBottom: 40, paddingTop: 8 }}>
             <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
           </div>
         )}
@@ -2174,6 +2233,7 @@ export function WorkspaceProfile() {
             <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
           </>
         )}
+        </div>
       </div>
     </div>
   );
