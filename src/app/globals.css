@@ -142,6 +142,11 @@
     background: #F7F5F2;
     font-family: var(--font-ui);
   }
+  /* Kimchi workspace: Tailwind text-xs (12px) → 13px minimum in product UI */
+  .text-xs {
+    font-size: 13px;
+    line-height: 1.4;
+  }
   input::placeholder {
     color: rgba(74, 69, 64, 0.45);
     font-weight: 400;

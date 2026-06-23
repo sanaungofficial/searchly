@@ -14,7 +14,7 @@ import {
 import { ResumeEditor } from "./resume-editor";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
-import { fontSans, fontDisplay, fontMono } from "@/lib/typography";
+import { fontSans, fontDisplay, fontMono, color, type as T, drawerType as DT } from "@/lib/typography";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -208,7 +208,7 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
         </div>
         <div>
           <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 700, color: fitColor, letterSpacing: "0.4px", margin: 0 }}>{label}</p>
-          <p style={{ fontFamily: sans, fontSize: 12, color: "#8A8278", margin: "3px 0 0" }}>vs. your profile</p>
+          <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", margin: "3px 0 0" }}>vs. your profile</p>
         </div>
       </div>
       <MatchBar label="Experience Level" pct={exp} />
@@ -559,7 +559,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
 
                   {/* Pipeline controls — compact */}
                   <div style={{ background: cardBg, border, borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
-                    <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Move to</p>
+                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Move to</p>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
                       {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
                         <button
@@ -581,7 +581,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                         </button>
                       ))}
                     </div>
-                    <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>Next action</p>
+                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>Next action</p>
                     <div style={{ display: "flex", gap: 10 }}>
                       <input
                         value={nextStepValue}
