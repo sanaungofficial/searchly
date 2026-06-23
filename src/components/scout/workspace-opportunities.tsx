@@ -921,11 +921,10 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
 
   function patchDescription(value: string) {
     if (!dbId) return;
-    const updatedMeta = { ...(meta ?? {}), description: value || null };
     fetch(`/api/jobs/${dbId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: JSON.stringify(updatedMeta) }),
+      body: JSON.stringify({ description: value || null }),
     });
   }
 
@@ -1688,3 +1687,4 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
     </>
   );
 }
+
