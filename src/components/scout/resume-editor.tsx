@@ -44,6 +44,39 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [fitOpen, setFitOpen] = useState(false);
   const [fitCopied, setFitCopied] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
+  const [rightTab, setRightTab] = useState<"editor" | "style">("editor");
+  const [template, setTemplate] = useState<"standard" | "compact" | "centered">("standard");
+  const [accentColor, setAccentColor] = useState("#1A1A1A");
+  const [resumeFont, setResumeFont] = useState<"sans" | "serif" | "mono">("sans");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const ACCENT_COLORS = [
+    { value: "#1A1A1A", label: "Charcoal" },
+    { value: "#1C3A2F", label: "Forest" },
+    { value: "#2C5F8A", label: "Navy" },
+    { value: "#7B2D40", label: "Burgundy" },
+    { value: "#4A3728", label: "Espresso" },
+  ];
+
+  const fontFamily = resumeFont === "serif" ? "Georgia, serif" : resumeFont === "mono" ? "monospace" : "var(--font-dm-sans), system-ui, sans-serif";
+
+  function handleDragStart(id: string) { setDragId(id); }
+  function handleDragOver(e: React.DragEvent, id: string) { e.preventDefault(); setDragOverId(id); }
+  function handleDrop(targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return; }
+    const from = sections.findIndex((s) => s.id === dragId);
+    const to = sections.findIndex((s) => s.id === targetId);
+    if (from === -1 || to === -1) { setDragId(null); setDragOverId(null); return; }
+    const updated = [...sections];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
+    setSections(updated);
+    save(updated);
+    setDragId(null);
+    setDragOverId(null);
+  }
+  function handleDragEnd() { setDragId(null); setDragOverId(null); }
 
   useEffect(() => {
     if (open && jobId) {
