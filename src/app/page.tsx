@@ -19,7 +19,7 @@ export default function Home() {
     }
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      router.replace(user ? "/opportunities" : "/login");
+      router.replace(user ? "/dashboard" : "/login");
     });
   }, [router]);
 
