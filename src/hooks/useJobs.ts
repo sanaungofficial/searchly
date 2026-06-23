@@ -33,6 +33,7 @@ interface DbJob {
   notes: string | null;
   userNotes: string | null;
   companyLinkedinUrl: string | null;
+  fitAnalysis: string | null;
   createdAt: string;
 }
 
@@ -55,13 +56,20 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
   if (job.notes) {
     try { _meta = JSON.parse(job.notes) as JobMeta; } catch { /* ignore */ }
   }
+  let fit = 0;
+  if (job.fitAnalysis) {
+    try {
+      const fa = JSON.parse(job.fitAnalysis) as { score?: number };
+      if (fa.score) fit = Math.min(100, Math.round(fa.score * 10));
+    } catch { /* ignore */ }
+  }
   return {
     id: index,
     company: job.company,
     initials: job.company.slice(0, 2).toUpperCase(),
     role: job.role,
     stage: DB_TO_KANBAN[job.stage] ?? "saved",
-    fit: 0,
+    fit,
     jobRef: null,
     days: Math.floor((Date.now() - new Date(job.createdAt).getTime()) / 86400000),
     _dbId: job.id,
@@ -98,6 +106,31 @@ export function useJobs(fallback: KanbanCard[]) {
     if (!res.ok) return;
     const job: DbJob = await res.json();
     setCards((prev) => [dbJobToKanban(job, prev.length), ...prev]);
+
+    // Auto-run match score in background if we have a description
+    const description = meta?.description;
+    if (description && job.id) {
+      fetch("/api/ai/job-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobTitle: role, company, description }),
+      })
+        .then((r) => r.json())
+        .then((matchData: { score?: number }) => {
+          if (!matchData.score) return;
+          const fit = Math.min(100, Math.round(matchData.score * 10));
+          fetch(`/api/jobs/${job.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: matchData.score }) }),
+          });
+          setCards((prev) => prev.map((c) => {
+            const card = c as KanbanCard & { _dbId?: string };
+            return card._dbId === job.id ? { ...c, fit } : c;
+          }));
+        })
+        .catch(() => {}); // best-effort, silently ignore
+    }
   }, []);
 
   const updateStage = useCallback(async (cardId: number, stage: KanbanStage) => {

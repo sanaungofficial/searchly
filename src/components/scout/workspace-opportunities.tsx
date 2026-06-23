@@ -1014,10 +1014,11 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
 
   function patchDescription(value: string) {
     if (!dbId) return;
+    const updatedMeta = { ...(meta ?? {}), description: value || null };
     fetch(`/api/jobs/${dbId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: value || null }),
+      body: JSON.stringify({ notes: JSON.stringify(updatedMeta) }),
     });
   }
 
@@ -1146,7 +1147,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
             const location = job?.location || meta?.location;
             const salary = job?.salary || meta?.salary;
             const jobType = meta?.jobType;
-            const expLevel = meta?.experienceLevel;
+            const expLevel = meta?.seniority || meta?.experienceLevel;
             const details = [
               location ? { icon: "📍", text: location } : null,
               salary ? { icon: "💰", text: salary } : null,
