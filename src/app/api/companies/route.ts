@@ -103,6 +103,39 @@ export async function POST(request: Request) {
     return NextResponse.json(mergeTrackedWithIntel(company, company.companyIntel), { status: 201 });
   } catch (err) {
     console.error("[companies POST]", err);
-    return NextResponse.json({ error: "Couldn't add company." }, { status: 500 });
+    if (!name?.trim()) {
+      return NextResponse.json({ error: "Couldn't add company." }, { status: 500 });
+    }
+    try {
+      const trimmed = name.trim();
+      const existing = await prisma.trackedCompany.findFirst({
+        where: {
+          userId: dbUser.id,
+          name: { equals: trimmed, mode: "insensitive" },
+        },
+      });
+      if (existing) {
+        return NextResponse.json({ error: "Already on your watchlist." }, { status: 409 });
+      }
+      const company = await prisma.trackedCompany.create({
+        data: {
+          userId: dbUser.id,
+          name: trimmed,
+          website: website ?? null,
+          careersUrl: careersUrl ?? null,
+          notes: notes ?? null,
+          type: type ?? null,
+          hqLocation: hqLocation ?? null,
+          priority: priority ?? null,
+          cultureMission: cultureMission ?? null,
+          candidateEdge: candidateEdge ?? null,
+          targetRoles: targetRoles ?? null,
+        },
+      });
+      return NextResponse.json(company, { status: 201 });
+    } catch (fallbackErr) {
+      console.error("[companies POST fallback]", fallbackErr);
+      return NextResponse.json({ error: "Couldn't add company." }, { status: 500 });
+    }
   }
 }

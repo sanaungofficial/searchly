@@ -92,12 +92,18 @@ function CompanyTrackPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/companies");
+      const res = await fetch("/api/companies", { signal: AbortSignal.timeout(15000) });
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError("Couldn't load your tracked companies.");
+        const msg = (data as { error?: string } | null)?.error ?? "Couldn't load your tracked companies.";
+        setError(msg);
         return;
       }
-      const list = (await res.json()) as TrackedCompanySummary[];
+      if (!Array.isArray(data)) {
+        setError("Unexpected response from server.");
+        return;
+      }
+      const list = data as TrackedCompanySummary[];
       const match = list.find((c) => normalizeCompanyName(c.name) === normalizeCompanyName(companyName));
       setTracked(match ?? null);
     } catch {
@@ -127,7 +133,12 @@ function CompanyTrackPanel({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError((data as { error?: string }).error ?? "Couldn't track company.");
+        const msg = (data as { error?: string }).error ?? "Couldn't track company.";
+        if (res.status === 409) {
+          await loadTracked();
+          return;
+        }
+        setError(msg);
         return;
       }
       const created = (await res.json()) as TrackedCompanySummary;
@@ -188,24 +199,46 @@ function CompanyTrackPanel({
           {error && (
             <p style={{ fontFamily: sans, fontSize: 13, color: "#B45309", margin: "0 0 10px" }}>{error}</p>
           )}
-          <button
-            type="button"
-            onClick={handleTrack}
-            disabled={saving}
-            style={{
-              padding: "10px 18px",
-              background: saving ? "rgba(26,58,47,0.35)" : mintBtn,
-              color: "#FFF",
-              border: "none",
-              borderRadius: 10,
-              fontFamily: sans,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: saving ? "default" : "pointer",
-            }}
-          >
-            {saving ? "Adding…" : "Track company"}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={handleTrack}
+              disabled={saving}
+              style={{
+                padding: "10px 18px",
+                background: saving ? "rgba(26,58,47,0.35)" : mintBtn,
+                color: "#FFF",
+                border: "none",
+                borderRadius: 10,
+                fontFamily: sans,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: saving ? "default" : "pointer",
+              }}
+            >
+              {saving ? "Adding…" : "Track company"}
+            </button>
+            {error && (
+              <button
+                type="button"
+                onClick={() => loadTracked()}
+                disabled={loading}
+                style={{
+                  padding: "10px 18px",
+                  background: "#FFF",
+                  color: "#1A3A2F",
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  borderRadius: 10,
+                  fontFamily: sans,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: loading ? "default" : "pointer",
+                }}
+              >
+                Retry
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>
