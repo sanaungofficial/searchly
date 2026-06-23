@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect } from "react";
 import {
   X,
   Pencil,
@@ -23,7 +23,7 @@ import {
   type ParsedCertificationEntry,
   emptyParsedResumeData,
   resumeCompleteness,
-  hasParsedResumeSections,
+  hasResumeBodyContent,
 } from "@/lib/resume-parse";
 
 type SectionKey = "header" | "summary" | "skills" | "experience" | "education" | "certifications";
@@ -143,6 +143,13 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(true);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  useLayoutEffect(() => {
+    if (open) setVisible(true);
+    else setVisible(false);
+  }, [open]);
 
   const completeness = resumeCompleteness(parsedData);
 
@@ -164,6 +171,7 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
   const loadAsset = useCallback(async (id: string) => {
     setLoading(true);
     setEditingSection(null);
+    setParseError(null);
     try {
       const res = await fetch(`/api/assets/${id}`);
       if (!res.ok) return;
@@ -175,13 +183,16 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
       if (!pd.name && data.profileName) pd = { ...pd, name: data.profileName };
       if (!pd.email && data.profileEmail) pd = { ...pd, email: data.profileEmail };
 
-      if (!hasParsedResumeSections(pd)) {
+      let parseErr: string | null = null;
+      if (!hasResumeBodyContent(pd)) {
         setReparsing(true);
         try {
           const reparseRes = await fetch(`/api/assets/${id}/reparse`, { method: "POST" });
-          if (reparseRes.ok) {
-            const reparseData = await reparseRes.json();
-            if (reparseData.parsedData) pd = reparseData.parsedData;
+          const reparseData = await reparseRes.json();
+          if (reparseRes.ok && reparseData.parsedData) {
+            pd = reparseData.parsedData;
+          } else if (!reparseRes.ok) {
+            parseErr = reparseData.error || "Could not parse resume structure";
           }
         } finally {
           setReparsing(false);
@@ -189,6 +200,9 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
       }
 
       setParsedData(pd);
+      if (!hasResumeBodyContent(pd)) {
+        setParseError(parseErr || "Resume sections are empty. Edit manually or re-upload to parse on production.");
+      }
       loadAnalysis(id);
     } finally {
       setLoading(false);
@@ -453,31 +467,37 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: isMobile ? 0 : 24,
         fontFamily: "var(--font-ui), sans-serif",
       }}
     >
       <div
         className="resume-print-backdrop"
         onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.35)",
+          opacity: visible ? 1 : 0,
+          transition: "opacity 0.25s ease",
+        }}
       />
       <div
         className="resume-print-target"
         style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: isMobile ? "100%" : 1200,
-          height: isMobile ? "100%" : "90vh",
+          position: "absolute",
+          top: isMobile ? 0 : 8,
+          right: isMobile ? 0 : 8,
+          bottom: isMobile ? 0 : 8,
+          left: isMobile ? 0 : undefined,
+          width: isMobile ? "100vw" : "min(90vw, calc(100vw - 16px))",
           background: "#F7F5F2",
           borderRadius: isMobile ? 0 : 14,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          boxShadow: isMobile ? "none" : "0 20px 60px rgba(0,0,0,0.25)",
+          boxShadow: isMobile ? "none" : "0 12px 48px rgba(0,0,0,0.18)",
+          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
+          transition: "transform 0.25s ease",
         }}
       >
         {/* Top bar */}
@@ -535,7 +555,37 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
         </div>
 
         {/* Body */}
-        <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
+        <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: isMobile ? "column" : "row", position: "relative" }}>
+          {parseError && !loading && !reparsing && (
+            <div
+              className="resume-print-hide"
+              style={{
+                position: "absolute",
+                top: 56,
+                left: isMobile ? 12 : 280,
+                right: isMobile ? 12 : 40,
+                zIndex: 2,
+                background: "#FFF8F0",
+                border: "1px solid #E8D5A3",
+                borderRadius: 8,
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "#52493F",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <span>{parseError}</span>
+              <button
+                onClick={() => assetId && loadAsset(assetId)}
+                style={{ ...btnGhost, fontSize: 13, flexShrink: 0 }}
+              >
+                <RefreshCw size={12} /> Retry
+              </button>
+            </div>
+          )}
           {sidebar}
 
           {/* Resume document */}
@@ -817,7 +867,7 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
                 )}
 
                 {/* Empty sections — quick add */}
-                {!hasParsedResumeSections(data) && editingSection === null && (
+                {!hasResumeBodyContent(data) && editingSection === null && (
                   <div style={{ textAlign: "center", padding: "20px 0", color: "#6B6258" }}>
                     <p style={{ fontSize: 14, margin: "0 0 12px" }}>No structured content yet.</p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>

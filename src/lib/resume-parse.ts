@@ -276,6 +276,19 @@ export function hasParsedResumeSections(data: ParsedResumeData | null | undefine
   );
 }
 
+/** True when experience, education, skills, or summary exist — not just contact/header. */
+export function hasResumeBodyContent(data: ParsedResumeData | null | undefined): boolean {
+  if (!data) return false;
+  return (
+    !!data.summary?.trim() ||
+    data.workExperience.length > 0 ||
+    data.education.length > 0 ||
+    data.skills.length > 0 ||
+    data.skillGroups.some((g) => g.skills.length > 0) ||
+    data.certifications.length > 0
+  );
+}
+
 export function resumeCompleteness(data: ParsedResumeData): { pct: number; missing: string[] } {
   const checks: { label: string; ok: boolean }[] = [
     { label: "Name", ok: !!data.name?.trim() },

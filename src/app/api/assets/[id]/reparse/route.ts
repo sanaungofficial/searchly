@@ -3,7 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt } from "@/lib/prompts";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
-import { PARSE_MODEL, parseResumeText } from "@/lib/resume-extract";
+import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
+import {
+  fetchResumeBytes,
+  isPdfBuffer,
+  PARSE_MODEL,
+  parseResumePdf,
+  parseResumeText,
+} from "@/lib/resume-extract";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
@@ -27,16 +34,31 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const asset = await prisma.userAsset.findFirst({ where: { id, userId: dbUser.id, type: "RESUME" } });
+  const asset = await hydrateResumeAsset(id, dbUser.id);
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!asset.resumeText) return NextResponse.json({ error: "No resume text to parse" }, { status: 404 });
 
   const structuredPrompt = await getPrompt("RESUME_PARSE");
-  const { parsed, tokensIn, tokensOut } = await parseResumeText(
-    getAnthropic(),
-    asset.resumeText,
-    structuredPrompt,
-  );
+  let resumeText = asset.resumeText?.trim() || "";
+  let parsed = null;
+  let tokensIn = 0;
+  let tokensOut = 0;
+
+  if (resumeText) {
+    ({ parsed, tokensIn, tokensOut } = await parseResumeText(getAnthropic(), resumeText, structuredPrompt));
+  } else if (asset.url) {
+    const bytes = await fetchResumeBytes(asset.url);
+    if (bytes && isPdfBuffer(bytes)) {
+      const result = await parseResumePdf(getAnthropic(), bytes.toString("base64"), structuredPrompt);
+      resumeText = result.text;
+      parsed = result.parsed;
+      tokensIn = result.tokensIn;
+      tokensOut = result.tokensOut;
+    }
+  }
+
+  if (!resumeText && !parsed) {
+    return NextResponse.json({ error: "No resume text or PDF to parse" }, { status: 404 });
+  }
 
   logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
 
@@ -46,7 +68,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   const updated = await prisma.userAsset.update({
     where: { id },
-    data: { parsedData: parsed },
+    data: {
+      parsedData: parsed,
+      ...(resumeText ? { resumeText } : {}),
+    },
   });
 
   if (updated.isPrimary) {

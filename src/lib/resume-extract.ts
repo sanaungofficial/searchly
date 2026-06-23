@@ -7,6 +7,16 @@ import {
 
 export const PARSE_MODEL = "claude-haiku-4-5-20251001";
 
+export async function fetchResumeBytes(url: string): Promise<Buffer | null> {
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 export async function parseResumeText(
   anthropic: Anthropic,
   rawText: string,
@@ -77,4 +87,8 @@ export async function parseResumePdf(
   } catch {
     return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
   }
+}
+
+export function isPdfBuffer(bytes: Buffer): boolean {
+  return bytes.length >= 4 && bytes.subarray(0, 4).toString() === "%PDF";
 }
