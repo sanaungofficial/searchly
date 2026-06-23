@@ -93,6 +93,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Resume",
     variables: [],
   },
+  COMPANY_JOBS_SCAN: {
+    label: "Company Careers Scan",
+    description: "Extracts open job listings from a careers page HTML snapshot. Shared across all users tracking the same company.",
+    category: "Companies",
+    variables: ["careersUrl", "pageText"],
+  },
 };
 
 /* ── Default prompt content ── */
@@ -419,6 +425,21 @@ Rules:
 - Include all jobs and education entries
 - Extract every skill mentioned
 - Return ONLY the JSON object, nothing else`,
+  COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
+
+Page URL: {{careersUrl}}
+Page text (truncated):
+{{pageText}}
+
+Extract all visible job listings. For each job return:
+- title: job title (string)
+- location: city/state or "Remote" (string, null if not shown)
+- department: team or department (string, null if not shown)
+- url: direct link to the job posting (string, null if not extractable)
+
+Return ONLY a JSON object: { "jobs": [...], "scanned_url": "{{careersUrl}}" }
+If no jobs are found, return { "jobs": [], "scanned_url": "{{careersUrl}}" }
+Do not include any explanation outside the JSON.`,
 };
 
 /* ── Runtime interpolation ── */
