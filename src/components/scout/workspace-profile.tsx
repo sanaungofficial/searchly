@@ -903,36 +903,44 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px" }}>Recommended paths</p>
         </div>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 16 }}>
-          Curated by Kimchi based on what hiring managers look for. Partner certifications will be added here as we grow.
+          Curated by Kimchi based on what hiring managers look for. Courses that match your skill gaps are pinned to the top.
         </p>
-        {UPSKILL_CATEGORIES.map((cat) => (
+        {UPSKILL_CATEGORIES.map((cat) => {
+          const gapSkills = new Set(skillGoals.map((g) => g.skill.toLowerCase()));
+          const sorted = [...cat.items].sort((a, b) => {
+            const aMatch = a.closesGap && gapSkills.has(a.closesGap.toLowerCase()) ? 1 : 0;
+            const bMatch = b.closesGap && gapSkills.has(b.closesGap.toLowerCase()) ? 1 : 0;
+            return bMatch - aMatch;
+          });
+          return (
           <div key={cat.title} style={{ marginBottom: 20 }}>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{cat.title}</p>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 10 }}>{cat.subtitle}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {cat.items.map((item) => {
+              {sorted.map((item) => {
                 const prog = progress[item.id] || "none";
                 const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
                 const statusColor = prog === "completed" ? "#4A8B6A" : prog === "inprogress" ? "#C4A86A" : "#A09890";
-                const relevantRole = targetRoles.find((r) =>
-                  item.closesGap && r.toLowerCase().includes(item.closesGap.split(" ")[0].toLowerCase())
-                );
+                const isGapMatch = item.closesGap ? gapSkills.has(item.closesGap.toLowerCase()) : false;
                 return (
-                  <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: isGapMatch ? "1px solid rgba(74,139,106,0.35)" : "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12, boxShadow: isGapMatch ? "0 0 0 3px rgba(74,139,106,0.06)" : "none" }}>
                     <div style={{ width: 32, height: 32, borderRadius: 7, background: item.platformColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
                         <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", textDecoration: "none" }}
                           onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
                           onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
                           {item.name}
                         </a>
                         {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
-                        {relevantRole && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 500 }}>for {relevantRole}</span>}
+                        {isGapMatch && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.12)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 600 }}>closes your gap</span>}
                       </div>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>
+                        {item.platform} &middot; {item.duration} &middot; {item.credential}
+                        {item.closesGap && <span style={{ color: "#A09890" }}> &middot; <span style={{ fontStyle: "italic" }}>{item.closesGap}</span></span>}
+                      </p>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
                     </div>
                     <button onClick={() => setProgress({ ...progress, [item.id]: prog === "none" ? "inprogress" : prog === "inprogress" ? "completed" : "inprogress" })}
@@ -944,7 +952,8 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Section C — My Learning */}
