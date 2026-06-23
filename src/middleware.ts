@@ -48,6 +48,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/passcode") ||
     pathname.startsWith("/api/")
   ) {
     return supabaseResponse;
