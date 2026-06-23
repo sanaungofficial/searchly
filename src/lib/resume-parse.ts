@@ -54,6 +54,8 @@ export interface ParsedResumeData {
   skillGroups: ParsedSkillGroup[];
   certifications: ParsedCertificationEntry[];
   sectionOrder?: ResumeSectionId[];
+  /** Hirebase `/v2/resumes/embed` artifact — use with `/v2/jobs/vsearch` search_type resume. */
+  hirebaseArtifactId?: string | null;
 }
 
 function asStringOrNull(value: unknown): string | null {
@@ -263,6 +265,7 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
     skillGroups,
     certifications,
     sectionOrder,
+    hirebaseArtifactId: asStringOrNull(obj.hirebaseArtifactId ?? obj.hirebase_artifact_id),
   };
 
   const hasContent =

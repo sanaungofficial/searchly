@@ -38,6 +38,7 @@ Keep environments and branches separated so work does not collide or break produ
 | `NEXT_PUBLIC_SHOW_BETA` | `true` | `false` |
 | `NEXT_PUBLIC_VERCEL_ENV` | `preview` | `production` |
 | `ANTHROPIC_API_KEY` | usually unset | set |
+| `HIREBASE_API_KEY` | set on preview for resume parse (`POST /v2/resumes/embed`) | set for resume parse |
 | `NEXT_PUBLIC_APP_URL` | dev URL | `https://app.kimchi.so` |
 
 ### Passcode (production only)

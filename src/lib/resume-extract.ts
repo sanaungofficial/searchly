@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { isHirebaseResumeConfigured, parseResumeWithHirebase } from "@/lib/hirebase-resume";
 import {
   fallbackParseResumeFromText,
   normalizeParsedResumeData,
@@ -7,6 +8,18 @@ import {
 } from "@/lib/resume-parse";
 
 export const PARSE_MODEL = "claude-haiku-4-5-20251001";
+
+export type ResumeParseProvider = "hirebase" | "claude" | "heuristic";
+
+export type ResumeFileParseResult = {
+  text: string;
+  parsed: ParsedResumeData | null;
+  tokensIn: number;
+  tokensOut: number;
+  usedFallback: boolean;
+  provider: ResumeParseProvider;
+  hirebaseArtifactId?: string | null;
+};
 
 export async function fetchResumeBytes(url: string): Promise<Buffer | null> {
   try {
@@ -144,10 +157,38 @@ export async function parseResumeFile(
   bytes: Buffer,
   ext: string,
   structuredPrompt: string,
-): Promise<{ text: string; parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number; usedFallback: boolean }> {
+  filename?: string,
+): Promise<ResumeFileParseResult> {
   const rawText = await extractRawResumeText(bytes, ext);
+
+  if (isHirebaseResumeConfigured()) {
+    try {
+      const hirebase = await parseResumeWithHirebase({ bytes, ext, filename });
+      if (hirebase?.parsed) {
+        return {
+          text: hirebase.resumeText || rawText,
+          parsed: hirebase.parsed,
+          tokensIn: 0,
+          tokensOut: 0,
+          usedFallback: false,
+          provider: "hirebase",
+          hirebaseArtifactId: hirebase.artifactId,
+        };
+      }
+    } catch (err) {
+      console.error("[resume-parse] Hirebase embed failed:", err);
+    }
+  }
+
   if (!rawText) {
-    return { text: "", parsed: null, tokensIn: 0, tokensOut: 0, usedFallback: false };
+    return {
+      text: "",
+      parsed: null,
+      tokensIn: 0,
+      tokensOut: 0,
+      usedFallback: false,
+      provider: "heuristic",
+    };
   }
 
   if (!anthropic) {
@@ -157,6 +198,7 @@ export async function parseResumeFile(
       tokensIn: 0,
       tokensOut: 0,
       usedFallback: true,
+      provider: "heuristic",
     };
   }
 
@@ -171,6 +213,7 @@ export async function parseResumeFile(
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
       usedFallback: !result.parsed,
+      provider: result.parsed ? "claude" : "heuristic",
     };
   }
 
@@ -181,6 +224,7 @@ export async function parseResumeFile(
     tokensIn,
     tokensOut,
     usedFallback: !parsed,
+    provider: parsed ? "claude" : "heuristic",
   };
 }
 
@@ -188,12 +232,18 @@ export async function parseResumeFromText(
   anthropic: Anthropic | null,
   rawText: string,
   structuredPrompt: string,
-): Promise<{ parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number; usedFallback: boolean }> {
+): Promise<{ parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number; usedFallback: boolean; provider: ResumeParseProvider }> {
   const text = rawText.trim();
-  if (!text) return { parsed: null, tokensIn: 0, tokensOut: 0, usedFallback: false };
+  if (!text) return { parsed: null, tokensIn: 0, tokensOut: 0, usedFallback: false, provider: "heuristic" };
 
   if (!anthropic) {
-    return { parsed: fallbackParseResumeFromText(text), tokensIn: 0, tokensOut: 0, usedFallback: true };
+    return {
+      parsed: fallbackParseResumeFromText(text),
+      tokensIn: 0,
+      tokensOut: 0,
+      usedFallback: true,
+      provider: "heuristic",
+    };
   }
 
   const { parsed, tokensIn, tokensOut } = await parseResumeText(anthropic, text, structuredPrompt);
@@ -202,5 +252,6 @@ export async function parseResumeFromText(
     tokensIn,
     tokensOut,
     usedFallback: !parsed,
+    provider: parsed ? "claude" : "heuristic",
   };
 }

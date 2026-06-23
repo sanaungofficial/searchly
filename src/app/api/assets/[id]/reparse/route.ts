@@ -57,20 +57,23 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   let tokensIn = 0;
   let tokensOut = 0;
   let usedFallback = false;
+  let provider: "hirebase" | "claude" | "heuristic" = "heuristic";
 
   if (bytes) {
-    const result = await parseResumeFile(anthropic, bytes, ext, structuredPrompt);
+    const result = await parseResumeFile(anthropic, bytes, ext, structuredPrompt, asset.name);
     resumeText = result.text || resumeText;
     parsed = result.parsed;
     tokensIn = result.tokensIn;
     tokensOut = result.tokensOut;
     usedFallback = result.usedFallback;
+    provider = result.provider;
   } else {
     const result = await parseResumeFromText(anthropic, resumeText, structuredPrompt);
     parsed = result.parsed;
     tokensIn = result.tokensIn;
     tokensOut = result.tokensOut;
     usedFallback = result.usedFallback;
+    provider = result.provider;
   }
 
   if (!parsed) {
@@ -96,5 +99,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({
     parsedData: normalizeParsedResumeData(updated.parsedData),
     _fallback: usedFallback,
+    _provider: provider,
   });
 }
