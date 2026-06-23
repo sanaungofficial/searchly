@@ -46,7 +46,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const message = await getAnthropic().messages.create({
     model: ANALYSIS_MODEL,
-    max_tokens: 1200,
+    max_tokens: 2200,
     messages: [{ role: "user", content: prompt }],
   });
 

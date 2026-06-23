@@ -445,17 +445,41 @@ Rules:
 
 {
   "score": 0-100 integer,
-  "headline": "one-line overall assessment",
+  "headline": "2-3 sentence overall assessment of the resume",
   "strengths": ["strength 1", "strength 2"],
   "improvements": [
     { "priority": "Urgent", "title": "short issue title", "detail": "actionable fix" },
     { "priority": "Critical", "title": "short issue title", "detail": "actionable fix" },
     { "priority": "Optional", "title": "short issue title", "detail": "actionable fix" }
+  ],
+  "highlights": [
+    {
+      "category": "Relevance",
+      "items": [
+        {
+          "severity": "Minor",
+          "title": "Summary Needs Improvement",
+          "issueCount": 1,
+          "summary": "what is wrong in one sentence",
+          "whyItMatters": "why recruiters care about this"
+        }
+      ]
+    },
+    {
+      "category": "Impact & Achievements",
+      "items": []
+    },
+    {
+      "category": "Brevity & Effectiveness",
+      "items": []
+    }
   ]
 }
 
 Use priority values exactly: Urgent, Critical, or Optional.
-Include 3-6 improvements ordered by severity.
+Use severity values exactly: Minor, Urgent, Critical, or Optional.
+Include 3 categories in highlights. Put at least 1 item in each category that has issues.
+Include 8-15 total improvement items across improvements and highlights.
 
 Resume:
 {{resumeSlice}}

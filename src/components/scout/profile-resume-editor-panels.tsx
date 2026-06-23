@@ -163,6 +163,7 @@ export function ReportPanel({
   loading,
   error,
   onRefresh,
+  onViewFullReport,
 }: {
   completenessPct: number;
   missing: string[];
@@ -173,6 +174,7 @@ export function ReportPanel({
   loading: boolean;
   error?: string;
   onRefresh: () => void;
+  onViewFullReport: () => void;
 }) {
   const scoreColor = (score ?? completenessPct) >= 70 ? JR.green : (score ?? completenessPct) >= 40 ? JR.critical : JR.urgent;
 
@@ -259,6 +261,26 @@ export function ReportPanel({
           );
         })
       )}
+
+      <button
+        type="button"
+        onClick={onViewFullReport}
+        disabled={loading}
+        style={{
+          width: "100%",
+          marginTop: 8,
+          padding: "10px 14px",
+          background: JR.panel,
+          color: JR.greenDark,
+          border: `1px solid ${JR.green}`,
+          borderRadius: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: loading ? "wait" : "pointer",
+        }}
+      >
+        View Full Report
+      </button>
 
       <button
         type="button"
