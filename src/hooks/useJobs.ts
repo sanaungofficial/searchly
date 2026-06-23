@@ -42,6 +42,7 @@ export interface JobMeta {
   jobType?: string | null;
   remote?: boolean | null;
   seniority?: string | null;
+  experienceLevel?: string | null;
   description?: string | null;
   requirements?: string[];
   tags?: string[];

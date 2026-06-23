@@ -1049,16 +1049,19 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
       >
         {/* Header */}
         <div style={{ padding: "20px 24px 18px", borderBottom: "1px solid rgba(0,0,0,0.07)", background: "#FFFFFF" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <CompanyLogoCard name={card.company} website={cardUrl} size={36} />
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <p
                   style={{
                     fontFamily: "var(--font-dm-sans), system-ui",
                     fontSize: 14,
                     fontWeight: 600,
                     color: "#1A1A1A",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {card.role}
@@ -1079,25 +1082,97 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
                   >
                     {card.company}
                   </a>
-                  {(job?.location || meta?.location) ? ` · ${job?.location || meta?.location}` : ""}
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 18,
-                color: "#A09890",
-                padding: 0,
-                lineHeight: 1,
-              }}
-            >
-              ×
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 8 }}>
+              {/* Match score badge */}
+              {card.fit > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                  <div style={{
+                    position: "relative", width: 46, height: 46,
+                  }}>
+                    <svg width="46" height="46" viewBox="0 0 46 46" style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx="23" cy="23" r="19" stroke="rgba(0,0,0,0.08)" strokeWidth="4" fill="none" />
+                      <circle cx="23" cy="23" r="19" stroke={fitColor} strokeWidth="4" fill="none" strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 19 * card.fit / 100} ${2 * Math.PI * 19}`} />
+                    </svg>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 11, fontWeight: 700, color: fitColor }}>{card.fit}%</span>
+                    </div>
+                  </div>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 8, fontWeight: 600, color: fitColor, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {card.fit >= 85 ? "Strong" : card.fit >= 70 ? "Good" : "Fair"}
+                  </span>
+                </div>
+              ) : dbId ? (
+                <button
+                  onClick={() => setMatchDrawerOpen(true)}
+                  style={{
+                    padding: "5px 10px",
+                    background: "rgba(74,139,106,0.08)",
+                    border: "1px solid rgba(74,139,106,0.25)",
+                    borderRadius: 6,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: "#4A8B6A",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ✦ Match
+                </button>
+              ) : null}
+              <button
+                onClick={onClose}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  color: "#A09890",
+                  padding: 0,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
           </div>
+
+          {/* Structured job details row */}
+          {(() => {
+            const location = job?.location || meta?.location;
+            const salary = job?.salary || meta?.salary;
+            const jobType = meta?.jobType;
+            const expLevel = meta?.experienceLevel;
+            const details = [
+              location ? { icon: "📍", text: location } : null,
+              salary ? { icon: "💰", text: salary } : null,
+              jobType ? { icon: "🕐", text: jobType } : null,
+              expLevel ? { icon: "⭐", text: expLevel } : null,
+            ].filter(Boolean) as { icon: string; text: string }[];
+            return details.length > 0 ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {details.map((d, i) => (
+                  <span key={i} style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "3px 8px",
+                    background: "rgba(0,0,0,0.04)",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    borderRadius: 100,
+                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontSize: 10,
+                    color: "#52493F",
+                  }}>
+                    <span style={{ fontSize: 9 }}>{d.icon}</span> {d.text}
+                  </span>
+                ))}
+              </div>
+            ) : null;
+          })()}
+
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span
               style={{
@@ -1112,11 +1187,6 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
             >
               {STAGE_LABELS[card.stage]}
             </span>
-            {(job?.salary || meta?.salary) && (
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
-                · {job?.salary || meta?.salary}
-              </span>
-            )}
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
               <input
                 value={urlValue}
@@ -1695,18 +1765,32 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
                   }}
                 />
               </div>
-              {/* Key requirements (from scraped meta) */}
+              {/* Key requirements / skills (from scraped meta) */}
               {meta?.requirements && meta.requirements.length > 0 && (
                 <div style={{ marginBottom: 18 }}>
                   <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
-                    Key requirements
+                    Skills & requirements
                   </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {meta.requirements.map((r, i) => (
-                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "#FFFFFF", borderRadius: 5 }}>
-                        <span style={{ color: "#4A8B6A", fontSize: 11, flexShrink: 0, marginTop: 1 }}>✓</span>
-                        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
-                      </div>
+                      <span
+                        key={i}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "4px 10px",
+                          background: "rgba(74,139,106,0.08)",
+                          border: "1px solid rgba(74,139,106,0.2)",
+                          borderRadius: 100,
+                          fontFamily: "var(--font-dm-sans), system-ui",
+                          fontSize: 11,
+                          fontWeight: 500,
+                          color: "#2A4A3A",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {r}
+                      </span>
                     ))}
                   </div>
                 </div>
