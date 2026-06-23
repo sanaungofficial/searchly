@@ -33,3 +33,12 @@ export function isCreditsLow(balance: CreditBalance): boolean {
 export function isCreditsExhausted(balance: CreditBalance): boolean {
   return balance.remaining <= 0;
 }
+
+export const CREDITS_CHANGED_EVENT = "kimchi:credits-changed";
+
+/** Call after any AI action completes (success or 402) so meters stay in sync. */
+export function notifyCreditsChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CREDITS_CHANGED_EVENT));
+  }
+}

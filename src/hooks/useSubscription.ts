@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CreditBalance } from "@/lib/credits";
+import { CREDITS_CHANGED_EVENT } from "@/lib/credits";
 
 interface SubscriptionState {
   isPro: boolean;
@@ -48,6 +49,14 @@ export function useSubscription(): SubscriptionState & {
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const onCreditsChanged = () => {
+      refresh();
+    };
+    window.addEventListener(CREDITS_CHANGED_EVENT, onCreditsChanged);
+    return () => window.removeEventListener(CREDITS_CHANGED_EVENT, onCreditsChanged);
   }, [refresh]);
 
   async function startCheckout() {

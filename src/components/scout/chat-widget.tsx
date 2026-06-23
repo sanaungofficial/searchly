@@ -8,6 +8,8 @@ import { STAGE_LABELS, type KanbanCard } from "./workspace-data";
 import type { DrawerTool } from "./workspace-opportunities";
 import { fontSans } from "@/lib/typography";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
+import { CreditCostBadge, CreditsInlineHint, CreditsStatusBar } from "@/components/scout/credits-display";
+import { notifyCreditsChanged } from "@/lib/credits";
 
 const sans = fontSans;
 
@@ -188,6 +190,7 @@ export function ChatWidget() {
 
       if (!res.ok) {
         if (res.status === 402) {
+          notifyCreditsChanged();
           setShowUpgrade(true);
           setMessages((prev) => prev.slice(0, -1));
           return;
@@ -218,6 +221,7 @@ export function ChatWidget() {
           return copy;
         });
       }
+      notifyCreditsChanged();
     } catch {
       setMessages((prev) => {
         const copy = [...prev];
@@ -312,6 +316,7 @@ export function ChatWidget() {
                 <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#E8D5A3" }}>
                   {chatView === "chat" ? "Scout" : "AI Tools"}
                 </span>
+                {chatView === "chat" && <CreditCostBadge />}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {chatView === "chat" && (
@@ -467,7 +472,9 @@ export function ChatWidget() {
                       Open a job to chat about fit.
                     </p>
                   ) : (
-                    <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                    <>
+                      <CreditsInlineHint />
+                      <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                       <textarea
                         ref={inputRef}
                         value={input}
@@ -512,11 +519,13 @@ export function ChatWidget() {
                         ↑
                       </button>
                     </div>
+                    </>
                   )}
                 </div>
               </>
             ) : (
               <div style={{ padding: "14px 16px 16px", overflowY: "auto" }}>
+                <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
                 <p
                   style={{
                     fontFamily: sans,
