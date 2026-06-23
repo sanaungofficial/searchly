@@ -12,7 +12,7 @@ import {
   BellIcon,
   ArrowLeftIcon,
 } from "./workspace-icons";
-import { NOTIFICATIONS } from "./workspace-data";
+import { NOTIFICATIONS, LIVE_SESSIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 
@@ -91,7 +91,7 @@ export function WorkspaceSidebar({
 
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const hasLiveNow = true;
+  const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
 
   // On mobile: collapsed = hidden (off-screen). On desktop: collapsed = icon rail.
   const isVisible = isMobile ? !collapsed : true;
@@ -502,7 +502,11 @@ export function WorkspaceSidebar({
                 {notifUnreadCount > 0 && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>{notifUnreadCount} unread</span>}
               </div>
               <div style={{ maxHeight: 360, overflowY: "auto" }}>
-                {NOTIFICATIONS.map((n) => {
+                {NOTIFICATIONS.length === 0 ? (
+                  <div style={{ padding: "36px 18px", textAlign: "center" }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890", lineHeight: 1.5 }}>You&apos;re all caught up</p>
+                  </div>
+                ) : NOTIFICATIONS.map((n) => {
                   const dotColor = n.type === "role" ? "#4A8B6A" : n.type === "deadline" ? "#C4574A" : "#C4A86A";
                   return (
                     <button
