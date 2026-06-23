@@ -31,6 +31,18 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Passcode gate — production only (VERCEL_ENV=production). Dev/preview bypass.
+  if (process.env.VERCEL_ENV === "production") {
+    if (!pathname.startsWith("/passcode") && !pathname.startsWith("/api/")) {
+      const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
+      if (!passcodeValid) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/passcode";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   // Allow public routes through always
   if (
     pathname === "/" ||
