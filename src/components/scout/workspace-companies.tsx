@@ -136,6 +136,93 @@ function ScanHint({ company }: { company: TrackedCompany }) {
   );
 }
 
+interface CompanySuggestion {
+  id: string | null;
+  catalogSlug: string;
+  name: string;
+  website: string | null;
+  careersUrl: string | null;
+  type: string | null;
+  source: "catalog" | "intel";
+}
+
+function CompanySuggestInput({
+  value,
+  onChange,
+  onSelect,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSelect: (item: CompanySuggestion | null) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<CompanySuggestion[]>([]);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!value.trim()) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/companies/suggest?q=${encodeURIComponent(value.trim())}`);
+        if (res.ok) {
+          const data: CompanySuggestion[] = await res.json();
+          setSuggestions(data);
+          setOpen(data.length > 0);
+        }
+      } catch { /* ignore */ }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <input
+        autoFocus
+        value={value}
+        disabled={disabled}
+        onChange={(e) => { onChange(e.target.value); onSelect(null); setOpen(true); }}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        placeholder="Start typing — e.g. Oracle, Comcast, Stripe"
+        style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }}
+        required
+      />
+      {open && suggestions.length > 0 && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50, maxHeight: 280, overflowY: "auto" }}>
+          {suggestions.map((item) => (
+            <button
+              key={`${item.catalogSlug}-${item.id ?? "catalog"}`}
+              type="button"
+              onClick={() => { onChange(item.name); onSelect(item); setOpen(false); }}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f3f4f6", background: "#fff", cursor: "pointer", fontFamily: "var(--font-ui)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#faf8f5"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{item.name}</div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>
+                {[item.type, item.careersUrl ? "Careers URL included" : null].filter(Boolean).join(" · ") || "Dream company"}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const editableWrapStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: "4px 6px",
@@ -541,6 +628,7 @@ export function WorkspaceCompanies() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
+  const [selectedSuggestion, setSelectedSuggestion] = useState<CompanySuggestion | null>(null);
   const [saving, setSaving] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -579,15 +667,30 @@ export function WorkspaceCompanies() {
     e.preventDefault(); if (!newName.trim()) return;
     setSaving(true); setAddError(null);
     try {
-      const res = await fetch("/api/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName.trim() }) });
+      const res = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: selectedSuggestion?.name ?? newName.trim(),
+          catalogSlug: selectedSuggestion?.catalogSlug,
+          companyIntelId: selectedSuggestion?.id ?? undefined,
+          website: selectedSuggestion?.website ?? undefined,
+          careersUrl: selectedSuggestion?.careersUrl ?? undefined,
+        }),
+      });
       if (res.ok) {
         const created = await res.json();
         setCompanies((prev) => [created, ...prev]);
         setNewName("");
+        setSelectedSuggestion(null);
         setShowAdd(false);
       } else {
         const data = await res.json().catch(() => ({}));
-        setAddError(data.error ?? "Couldn't add company. Try again.");
+        if (res.status === 409) {
+          setAddError("Already on your watchlist.");
+        } else {
+          setAddError(data.error ?? "Couldn't add company. Try again.");
+        }
       }
     } catch {
       setAddError("Network error — company not added.");
@@ -650,7 +753,7 @@ export function WorkspaceCompanies() {
           <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Tracked Companies</div>
           <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 14, marginTop: 2 }}>{companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist</div>
         </div>
-        <button onClick={() => setShowAdd((s) => !s)} style={{ background: showAdd ? "#f3f4f6" : "#1a1a1a", color: showAdd ? "#1a1a1a" : "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "var(--font-ui)" }}>
+        <button onClick={() => { setShowAdd((s) => !s); setAddError(null); setSelectedSuggestion(null); if (showAdd) setNewName(""); }} style={{ background: showAdd ? "#f3f4f6" : "#1a1a1a", color: showAdd ? "#1a1a1a" : "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "var(--font-ui)" }}>
           {showAdd ? "Cancel" : "+ Track company"}
         </button>
       </div>
@@ -664,12 +767,19 @@ export function WorkspaceCompanies() {
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#555", display: "block", marginBottom: 5 }}>Company name *</label>
-              <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Comcast, Aramark, Deloitte" style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }} required />
+              <CompanySuggestInput
+                value={newName}
+                onChange={setNewName}
+                onSelect={setSelectedSuggestion}
+                disabled={saving}
+              />
             </div>
             <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 14, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-ui)" }}>{saving ? "Adding…" : "Add"}</button>
           </div>
           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 10, lineHeight: 1.45 }}>
-            After adding, paste the careers URL in the table — direct ATS links scan best.
+            {selectedSuggestion?.careersUrl
+              ? "Careers URL will be prefilled from our catalog — you can scan open roles right away."
+              : "Pick a suggestion for prefilled careers links, or type a custom company name."}
           </div>
           {addError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginTop: 8 }}>{addError}</div>}
         </form>
