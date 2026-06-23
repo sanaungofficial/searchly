@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface MatchData {
   score: number;
@@ -90,6 +90,9 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [manualDesc, setManualDesc] = useState("");
+  const [customKeywords, setCustomKeywords] = useState<string[]>([]);
+  const [newKw, setNewKw] = useState("");
+  const kwInputRef = useRef<HTMLInputElement>(null);
 
   function generate(overrideDesc?: string) {
     setLoading(true);
@@ -311,7 +314,7 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
                     Keywords
                   </p>
                   <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
-                    {data.keywords.filter((k) => k.matched).length}/{data.keywords.length} matched
+                    {data.keywords.filter((k) => k.matched).length}/{data.keywords.length + customKeywords.length} matched
                   </p>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -336,6 +339,85 @@ export function ResumeMatchDrawer({ jobTitle, company, description, onClose, onT
                       {kw.text}
                     </span>
                   ))}
+                  {customKeywords.map((kw) => (
+                    <span
+                      key={`custom-${kw}`}
+                      style={{
+                        padding: "4px 6px 4px 9px",
+                        borderRadius: 20,
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 11,
+                        fontWeight: 500,
+                        background: "rgba(196,87,74,0.07)",
+                        color: "#7A2A20",
+                        border: "1px dashed rgba(196,87,74,0.3)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <span style={{ fontSize: 10 }}>+</span>
+                      {kw}
+                      <button
+                        onClick={() => setCustomKeywords((prev) => prev.filter((k) => k !== kw))}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: "0 1px",
+                          cursor: "pointer",
+                          color: "#C4574A",
+                          fontSize: 13,
+                          lineHeight: 1,
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {/* Add keyword input */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                    <input
+                      ref={kwInputRef}
+                      value={newKw}
+                      onChange={(e) => setNewKw(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === ",") {
+                          e.preventDefault();
+                          const val = newKw.trim().replace(/,$/, "");
+                          if (val && !data.keywords.some((k) => k.text.toLowerCase() === val.toLowerCase()) && !customKeywords.includes(val)) {
+                            setCustomKeywords((prev) => [...prev, val]);
+                          }
+                          setNewKw("");
+                        }
+                        if (e.key === "Escape") setNewKw("");
+                      }}
+                      placeholder="+ Add keyword"
+                      style={{
+                        fontSize: 11,
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        color: "#52493F",
+                        background: "transparent",
+                        border: "1px dashed rgba(0,0,0,0.18)",
+                        borderRadius: 20,
+                        padding: "4px 10px",
+                        outline: "none",
+                        width: newKw ? `${Math.max(90, newKw.length * 8 + 24)}px` : 100,
+                        transition: "width 0.15s ease, border-color 0.15s ease",
+                        cursor: "text",
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(74,139,106,0.5)"; }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(0,0,0,0.18)";
+                        const val = newKw.trim();
+                        if (val && !data.keywords.some((k) => k.text.toLowerCase() === val.toLowerCase()) && !customKeywords.includes(val)) {
+                          setCustomKeywords((prev) => [...prev, val]);
+                        }
+                        setNewKw("");
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </>
