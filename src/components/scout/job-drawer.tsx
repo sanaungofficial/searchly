@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
   JOBS,
@@ -269,7 +269,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
   const [visible, setVisible] = useState(false);
-  useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
+  useLayoutEffect(() => { setVisible(true); }, []);
 
   const extCard = card as KanbanCard & { _dbId?: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string };
   const [urlValue, setUrlValue] = useState(extCard._url ?? "");
