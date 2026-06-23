@@ -1048,348 +1048,168 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
 
 // ─── Tab: Resume Assets ───────────────────────────────────────────────────────
 
-interface ResumeRow {
+type AssetType = "RESUME" | "COVER_LETTER" | "JOB_SEARCH_STRATEGY" | "OTHER";
+interface UserAsset {
   id: string;
+  type: AssetType;
   name: string;
   url: string;
   isPrimary: boolean;
-  analysisComplete: boolean;
-  updatedAt: string;
   createdAt: string;
-  targetJobTitle?: string;
+  updatedAt: string;
 }
 
-function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
+const ASSET_TYPE_META: Record<AssetType, { label: string; description: string; icon: string; accept: string }> = {
+  RESUME:               { label: "Resume",               description: "Your master resume — we'll parse it to fill your profile", icon: "📄", accept: ".pdf,.doc,.docx" },
+  COVER_LETTER:         { label: "Cover Letter",         description: "A cover letter template or specific application letter",   icon: "✉️", accept: ".pdf,.doc,.docx,.txt" },
+  JOB_SEARCH_STRATEGY:  { label: "Job Search Strategy",  description: "Your target company list, search plan, or research doc",  icon: "🎯", accept: ".pdf,.doc,.docx,.txt" },
+  OTHER:                { label: "Other Document",        description: "Any other career-related file you want to keep handy",    icon: "📎", accept: ".pdf,.doc,.docx,.txt" },
+};
+
+const TYPE_BADGE_STYLE: Record<AssetType, { bg: string; border: string; color: string }> = {
+  RESUME:              { bg: "#FFF8E8", border: "#E8D5A3", color: "#A08030" },
+  COVER_LETTER:        { bg: "#EEF4FF", border: "#C0D0FF", color: "#3050A0" },
+  JOB_SEARCH_STRATEGY: { bg: "#F0FFF8", border: "#A8DFC0", color: "#1A7A4A" },
+  OTHER:               { bg: "#F5F5F5", border: "#D0D0D0", color: "#505050" },
+};
+
+function UploadAssetModal({ onClose, onSelectType, inputRef, uploading }: {
   onClose: () => void;
-  onUpload: () => void;
-  uploading: boolean;
+  onSelectType: (type: AssetType) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  uploading: boolean;
 }) {
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 1000,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "#FFFFFF", borderRadius: 16, padding: "48px 40px 40px",
-          width: 540, maxWidth: "90vw", position: "relative",
-          display: "flex", flexDirection: "column", alignItems: "center",
-          boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
-        }}
-      >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute", top: 14, right: 14,
-            width: 32, height: 32, borderRadius: "50%",
-            background: "#1A1A1A", border: "none", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#FFFFFF", fontSize: 16, fontWeight: 700,
-          }}
-        >
-          ✕
-        </button>
-
-        {/* Title */}
-        <h2 style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
-          fontSize: 22, fontWeight: 700, color: "#1A1A1A",
-          margin: "0 0 32px", textAlign: "center",
-        }}>
-          Upload Resume to Get Started
-        </h2>
-
-        {/* Drop zone */}
-        <div
-          onClick={() => inputRef.current?.click()}
-          style={{
-            width: 140, height: 140, display: "flex",
-            alignItems: "center", justifyContent: "center",
-            cursor: "pointer", marginBottom: 32,
-          }}
-        >
-          <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="20" y="10" width="65" height="82" rx="6" fill="#F5F5F5" stroke="#D0D0D0" strokeWidth="2"/>
-            <rect x="28" y="24" width="42" height="4" rx="2" fill="#D0D0D0"/>
-            <rect x="28" y="34" width="36" height="4" rx="2" fill="#D0D0D0"/>
-            <rect x="28" y="44" width="40" height="4" rx="2" fill="#D0D0D0"/>
-            <rect x="28" y="54" width="32" height="4" rx="2" fill="#D0D0D0"/>
-            <circle cx="85" cy="85" r="20" fill="#1A1A1A"/>
-            <path d="M85 77v16M77 85l8-8 8 8" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#FFFFFF", borderRadius: 16, padding: "40px 36px 36px", width: 520, maxWidth: "90vw", position: "relative", boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 32, height: 32, borderRadius: "50%", background: "#1A1A1A", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 16, fontWeight: 700 }}>✕</button>
+        <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 20, fontWeight: 700, color: "#1A1A1A", margin: "0 0 8px" }}>Upload a Document</h2>
+        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258", margin: "0 0 28px" }}>Choose the type of document you want to upload.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {(Object.keys(ASSET_TYPE_META) as AssetType[]).map((type) => {
+            const meta = ASSET_TYPE_META[type];
+            return (
+              <button
+                key={type}
+                disabled={uploading}
+                onClick={() => {
+                  if (inputRef.current) {
+                    inputRef.current.accept = ASSET_TYPE_META[type].accept;
+                    inputRef.current.dataset.assetType = type;
+                  }
+                  onSelectType(type);
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "#FAFAF8", border: "1px solid #E5DDD0", borderRadius: 10, cursor: uploading ? "not-allowed" : "pointer", textAlign: "left", opacity: uploading ? 0.6 : 1 }}
+                onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.background = "#F5F0E8"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "#FAFAF8"; }}
+              >
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{meta.icon}</span>
+                <div>
+                  <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{meta.label}</div>
+                  <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258", marginTop: 2 }}>{meta.description}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-
-        {/* Note */}
-        <p style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
-          fontSize: 13, color: "#A09890", textAlign: "center",
-          margin: "0 0 24px",
-        }}>
-          Files should be in PDF or Word format and must not exceed 10MB in size.
-        </p>
-
-        {/* Upload button */}
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          style={{
-            width: "100%", padding: "14px 0",
-            background: "#1A1A1A", color: "#FFFFFF",
-            border: "none", borderRadius: 8,
-            fontSize: 15, fontWeight: 600,
-            cursor: uploading ? "not-allowed" : "pointer",
-            opacity: uploading ? 0.6 : 1,
-            fontFamily: "var(--font-dm-sans), system-ui",
-          }}
-        >
-          {uploading ? "Uploading…" : "Upload"}
-        </button>
       </div>
     </div>
   );
 }
 
-function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, suggestionsLoading }: {
-  resumeUrl: string | null;
-  uploading: boolean;
-  onUpload: (file: File) => void;
+function AssetsTab({ assets, resumeUploading, assetUploading, onResumeUpload, onAssetUpload, onDelete, inputRef, suggestions, suggestionsLoading }: {
+  assets: UserAsset[];
+  resumeUploading: boolean;
+  assetUploading: boolean;
+  onResumeUpload: (file: File) => void;
+  onAssetUpload: (file: File, type: Exclude<AssetType, "RESUME">) => void;
+  onDelete: (id: string) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   suggestions: AISuggestion[];
   suggestionsLoading: boolean;
 }) {
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const MAX_SLOTS = 5;
+  const [showModal, setShowModal] = useState(false);
+  const uploading = resumeUploading || assetUploading;
 
-  const resumes: ResumeRow[] = resumeUrl
-    ? [
-        {
-          id: "primary",
-          name: extractResumeName(resumeUrl),
-          url: resumeUrl,
-          isPrimary: true,
-          analysisComplete: true,
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        },
-      ]
-    : [];
-
-  function extractResumeName(url: string) {
-    try {
-      const decoded = decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "");
-      // strip the timestamp prefix e.g. "resume-1234567890.pdf" → just show the original feel
-      return decoded.replace(/^resume-\d+\./, "resume.") || "Resume";
-    } catch {
-      return "Resume";
-    }
-  }
+  const handleFileChosen = (file: File) => {
+    const type = (inputRef.current?.dataset.assetType ?? "RESUME") as AssetType;
+    if (type === "RESUME") onResumeUpload(file);
+    else onAssetUpload(file, type as Exclude<AssetType, "RESUME">);
+  };
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>RESUME</h2>
+          <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>DOCUMENTS</h2>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258", marginTop: 6 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#4A8B6A", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>
-              </span>
-              You have {resumes.length} resume{resumes.length !== 1 ? "s" : ""} saved out of {MAX_SLOTS} available slots.
-            </span>
+            {assets.length} document{assets.length !== 1 ? "s" : ""} saved — resumes, cover letters, and more.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button
-            style={{
-              padding: "8px 16px",
-              background: "#F0FFF8",
-              color: "#1A7A4A",
-              border: "1px solid #A8DFC0",
-              borderRadius: 6,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            ⚡ Upgrade to Turbo: Get Hired Faster ›
-          </button>
-          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { onUpload(f); setShowUploadModal(false); } }} />
-          <button
-            onClick={() => setShowUploadModal(true)}
-            disabled={uploading}
-            style={{
-              padding: "8px 16px",
-              background: "#FFFFFF",
-              color: "#1A1A1A",
-              border: "1px solid #D8D0C5",
-              borderRadius: 6,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: uploading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              opacity: uploading ? 0.6 : 1,
-            }}
-          >
-            {uploading ? "Uploading…" : "+ Add Resume"}
+          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { handleFileChosen(f); setShowModal(false); e.target.value = ""; } }} />
+          <button onClick={() => setShowModal(true)} disabled={uploading} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#1A1A1A", border: "1px solid #D8D0C5", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: uploading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 5, opacity: uploading ? 0.6 : 1 }}>
+            {uploading ? "Uploading…" : "+ Add Document"}
           </button>
         </div>
       </div>
 
-      {/* Table */}
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "visible", position: "relative" }}>
-        {/* Table header */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
-          padding: "10px 20px",
-          borderBottom: "1px solid #E5DDD0",
-          background: "#FAFAF8",
-          borderTopLeftRadius: 10,
-          borderTopRightRadius: 10,
-        }}>
-          {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 40px", padding: "10px 20px", borderBottom: "1px solid #E5DDD0", background: "#FAFAF8", borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
+          {["Document", "Type", "Uploaded", ""].map((col) => (
             <span key={col} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#A09890" }}>{col}</span>
           ))}
         </div>
 
-        {/* Rows */}
-        {resumes.length === 0 ? (
+        {assets.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              disabled={uploading}
-              style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-            >
-              + Add Resume
-            </button>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No documents yet. Upload your resume to get started.</p>
+            <button onClick={() => setShowModal(true)} disabled={uploading} style={{ marginTop: 12, padding: "10px 20px", background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>+ Add Document</button>
           </div>
         ) : (
-          resumes.map((r) => (
-            <div
-              key={r.id}
-              onClick={() => window.open(r.url, "_blank")}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
-                padding: "14px 20px",
-                alignItems: "center",
-                borderBottom: "1px solid #F5F3EF",
-                position: "relative",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#FAFAF8")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              {/* Name + badges */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 6, background: "#1C3A2F",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <span style={{ color: "#E8D5A3", fontSize: 14, fontWeight: 700 }}>
-                    {r.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
-                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                    {r.isPrimary && (
-                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
-                        ★ PRIMARY
-                      </span>
-                    )}
-                    {r.analysisComplete && (
-                      <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 12, fontWeight: 500, color: "#1A7A4A" }}>
-                        Analysis Complete
-                      </span>
-                    )}
+          assets.map((a) => {
+            const typeMeta = ASSET_TYPE_META[a.type];
+            const badgeStyle = TYPE_BADGE_STYLE[a.type];
+            return (
+              <div key={a.id} onClick={() => window.open(a.url, "_blank")} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 40px", padding: "14px 20px", alignItems: "center", borderBottom: "1px solid #F5F3EF", position: "relative", cursor: "pointer" }} onMouseEnter={(e) => (e.currentTarget.style.background = "#FAFAF8")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1C3A2F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontSize: 16 }}>{typeMeta.icon}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{a.name}</span>
+                    {a.isPrimary && <div style={{ marginTop: 4 }}><span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#A08030" }}>★ PRIMARY</span></div>}
                   </div>
                 </div>
+                <span style={{ padding: "3px 10px", background: badgeStyle.bg, border: `1px solid ${badgeStyle.border}`, borderRadius: 100, fontSize: 12, fontWeight: 500, color: badgeStyle.color, display: "inline-block", width: "fit-content" }}>{typeMeta.label}</span>
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258" }}>{timeAgo(a.createdAt)}</span>
+                <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => onDelete(a.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#C05050", padding: "4px 6px", borderRadius: 4 }} title="Delete">✕</button>
+                </div>
               </div>
-
-              {/* Target job title */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>
-                {r.targetJobTitle ?? "—"}
-              </span>
-
-              {/* Last modified */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258" }}>
-                {timeAgo(r.updatedAt)}
-              </span>
-
-              {/* Created */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258" }}>
-                {timeAgo(r.createdAt)}
-              </span>
-
-              {/* Options menu */}
-              <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
-                >
-                  ···
-                </button>
-                {menuOpen === r.id && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: 0,
-                      top: "calc(100% + 4px)",
-                      background: "#FFFFFF",
-                      border: "1px solid #E5DDD0",
-                      borderRadius: 7,
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                      minWidth: 160,
-                      zIndex: 100,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {[
-                      { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
-                      { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
-                      { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        onClick={item.action}
-                        style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 14, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {showUploadModal && (
-        <UploadResumeModal
-          onClose={() => setShowUploadModal(false)}
-          onUpload={() => inputRef.current?.click()}
-          uploading={uploading}
+      {assets.some((a) => a.type === "RESUME") && !suggestionsLoading && suggestions.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <h3 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 700, color: "#1A1A1A", marginBottom: 12 }}>Profile suggestions</h3>
+          {suggestions.slice(0, 3).map((s, i) => (
+            <div key={i} style={{ padding: "12px 16px", background: "#FAFAF8", border: "1px solid #E5DDD0", borderRadius: 8, marginBottom: 8 }}>
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{s.title}</span>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258", margin: "4px 0 0" }}>{s.detail}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <UploadAssetModal
+          onClose={() => setShowModal(false)}
+          onSelectType={(type) => { if (inputRef.current) { inputRef.current.accept = ASSET_TYPE_META[type].accept; inputRef.current.dataset.assetType = type; } inputRef.current?.click(); }}
           inputRef={inputRef}
+          uploading={uploading}
         />
       )}
     </div>
@@ -1694,6 +1514,8 @@ export function WorkspaceProfile() {
   const [customLearningItems, setCustomLearningItems] = useState<CustomLearningItem[]>([]);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [assetUploading, setAssetUploading] = useState(false);
+  const [assets, setAssets] = useState<UserAsset[]>([]);
   const [readback, setReadback] = useState<ReadbackData | null>(null);
   const [readbackLoading, setReadbackLoading] = useState(false);
   const [profileSuggestions, setProfileSuggestions] = useState<AISuggestion[]>([]);
@@ -1760,6 +1582,17 @@ export function WorkspaceProfile() {
     await patchProfile({ ...rest, parsedData: newParsedData });
     setProfile((p) => p ? { ...p, ...rest, parsedData: newParsedData } : p);
   };
+
+  const refreshAssets = () => {
+    fetch("/api/assets")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setAssets(data); })
+      .catch(() => {});
+  };
+  useEffect(() => {
+    if (page === "assets") refreshAssets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const handleEducationSave = async (entries: EducationEntry[]) => {
     if (!profile) return;
@@ -1830,9 +1663,30 @@ export function WorkspaceProfile() {
         const profileData = await profileRes.json();
         if (!profileData.error) setProfile(profileData);
         else setProfile((p) => p ? { ...p, resumeUrl: data.url } : p);
+        refreshAssets();
       }
     } catch { /* silent */ }
     finally { setResumeUploading(false); }
+  };
+
+  const handleAssetUpload = async (file: File, type: Exclude<AssetType, "RESUME">) => {
+    setAssetUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    form.append("type", type);
+    try {
+      const res = await fetch("/api/assets/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (data.asset) refreshAssets();
+    } catch { /* silent */ }
+    finally { setAssetUploading(false); }
+  };
+
+  const handleAssetDelete = async (id: string) => {
+    setAssets((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await fetch(`/api/assets?id=${id}`, { method: "DELETE" });
+    } catch { /* silent */ }
   };
 
   const goToSection = (section: AboutSection) => {
@@ -1972,7 +1826,17 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "assets" && profile && (
-          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
+          <AssetsTab
+            assets={assets}
+            resumeUploading={resumeUploading}
+            assetUploading={assetUploading}
+            onResumeUpload={handleResumeUpload}
+            onAssetUpload={handleAssetUpload}
+            onDelete={handleAssetDelete}
+            inputRef={resumeInputRef}
+            suggestions={profileSuggestions}
+            suggestionsLoading={suggestionsLoading}
+          />
         )}
       </div>
     </div>
