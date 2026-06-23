@@ -155,6 +155,20 @@ export async function POST(request: Request) {
         parsedData: parsedData ?? undefined,
       },
     });
+
+    await prisma.userAsset.updateMany({
+      where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
+      data: { isPrimary: false },
+    });
+    await prisma.userAsset.create({
+      data: {
+        userId: dbUser.id,
+        type: "RESUME",
+        name: file.name.replace(/\.[^/.]+$/, "") || "Resume",
+        url: publicUrl,
+        isPrimary: true,
+      },
+    });
   }
 
   return NextResponse.json({ url: publicUrl, parsed: !!parsedData });
