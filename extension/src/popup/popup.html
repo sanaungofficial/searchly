@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kimchi</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="logo">Kimchi</div>
+      <div class="subtitle">Save jobs to your pipeline</div>
+    </header>
+
+    <section id="auth-section" class="card">
+      <div id="auth-status" class="auth-status">Checking session…</div>
+      <button id="login-btn" class="btn btn-primary" hidden>Sign in to Kimchi</button>
+      <button id="logout-btn" class="btn btn-ghost" hidden>Sign out</button>
+    </section>
+
+    <section class="card">
+      <label class="label" for="env-select">Kimchi environment</label>
+      <select id="env-select" class="select">
+        <option value="dev">Dev staging</option>
+        <option value="prod">Production</option>
+      </select>
+    </section>
+
+    <section class="card">
+      <button id="save-btn" class="btn btn-primary" disabled>Save current page</button>
+      <p id="save-hint" class="hint">Open a job listing, then save it here or use the floating button on supported ATS pages.</p>
+      <p id="save-result" class="result" hidden></p>
+    </section>
+
+    <footer class="footer">
+      <a id="pipeline-link" href="#" target="_blank" rel="noreferrer">Open pipeline</a>
+    </footer>
+
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>
