@@ -53,6 +53,7 @@ export function WorkspaceOpportunities() {
   useEffect(() => {
     const openAdd = searchParams.get("addJob") === "1";
     const jobId = searchParams.get("job");
+    const tool = searchParams.get("tool");
 
     if (openAdd) {
       setShowAddPanel(true);
@@ -65,13 +66,18 @@ export function WorkspaceOpportunities() {
       });
       if (card) {
         setDrawerCardId(card.id);
+        if (tool === "resume" || tool === "cover" || tool === "fit") {
+          setDrawerTool(tool);
+        }
+        router.replace("/opportunities/pipeline");
+        return;
       }
     }
 
-    if (openAdd || jobId) {
+    if (openAdd && !jobId) {
       router.replace("/opportunities/pipeline");
     }
-  }, [searchParams, kanbanCards, router, setDrawerCardId]);
+  }, [searchParams, kanbanCards, router, setDrawerCardId, setDrawerTool]);
 
   // CSV upload state
   const [showCsvPanel, setShowCsvPanel] = useState(false);
@@ -386,7 +392,7 @@ function StatusDropdown({
           background: `${stageColor}18`,
           border: `1px solid ${stageColor}40`,
           borderRadius: 5,
-          fontFamily: "var(--font-source-sans), system-ui",
+          fontFamily: "var(--font-ui)",
           fontSize: isSmall ? 10 : 11,
           fontWeight: 500,
           color: stageColor,
@@ -475,13 +481,13 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
           Upload CSV — bulk add jobs
         </p>
         {!loading && (
           <button
             onClick={onClose}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#A09890", padding: 0, lineHeight: 1 }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--scout-muted)", padding: 0, lineHeight: 1 }}
           >
             ×
           </button>
@@ -515,7 +521,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
                 color: "#E8D5A3",
                 border: "none",
                 borderRadius: 5,
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -605,7 +611,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             border: "1px solid rgba(26,58,47,0.2)",
             borderRadius: 6,
             background: "#FFFFFF",
-            fontFamily: "var(--font-source-sans), system-ui",
+            fontFamily: "var(--font-ui)",
             fontSize: 12,
             color: "#1A1A1A",
             minWidth: 0,
@@ -619,7 +625,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             color: "#E8D5A3",
             border: "none",
             borderRadius: 6,
-            fontFamily: "var(--font-source-sans), system-ui",
+            fontFamily: "var(--font-ui)",
             fontSize: 12,
             cursor: "pointer",
             flexShrink: 0,
@@ -632,9 +638,9 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
           style={{
             padding: "9px 12px",
             background: "transparent",
-            color: "#A09890",
+            color: "var(--scout-muted)",
             border: "none",
-            fontFamily: "var(--font-source-sans), system-ui",
+            fontFamily: "var(--font-ui)",
             fontSize: 12,
             cursor: "pointer",
             flexShrink: 0,
@@ -651,7 +657,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
       )}
       {error && !loading && (
         <div style={{ padding: "8px 12px", background: "rgba(196,87,74,0.06)", borderRadius: 6, border: "1px solid rgba(196,87,74,0.15)", maxWidth: 560 }}>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#C4574A" }}>{error}</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#C4574A" }}>{error}</p>
         </div>
       )}
       {analysis && !loading && (
@@ -703,7 +709,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               color: "#E8D5A3",
               border: "none",
               borderRadius: 5,
-              fontFamily: "var(--font-source-sans), system-ui",
+              fontFamily: "var(--font-ui)",
               fontSize: 12,
               fontWeight: 600,
               cursor: "pointer",
@@ -746,7 +752,7 @@ function CompanyLogoCard({ name, website, size = 38 }: { name: string; website: 
   }
   return (
     <div style={{ width: size, height: size, borderRadius: br, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: size <= 30 ? 9 : 11, fontWeight: 600, color: "#FFFFFF" }}>{initials}</span>
+      <span style={{ fontFamily: "var(--font-ui)", fontSize: size <= 30 ? 9 : 11, fontWeight: 600, color: "#FFFFFF" }}>{initials}</span>
     </div>
   );
 }
@@ -831,9 +837,9 @@ function PipelineTab({
               style={{
                 padding: "5px 10px",
                 background: viewMode === mode ? "#1A3A2F" : "transparent",
-                color: viewMode === mode ? "#E8D5A3" : "#A09890",
+                color: viewMode === mode ? "#E8D5A3" : "var(--scout-muted)",
                 border: "none",
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 13,
                 cursor: "pointer",
                 lineHeight: 1,

@@ -21,7 +21,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </head>
-        <body style="margin:0;padding:0;background:#F2EDE3;font-family:'DM Sans',system-ui,sans-serif;">
+        <body style="margin:0;padding:0;background:#F2EDE3;font-family:'Source Sans 3',system-ui,sans-serif;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#F2EDE3;padding:48px 0;">
             <tr>
               <td align="center">
@@ -59,7 +59,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
                   <!-- Footer -->
                   <tr>
                     <td style="padding:24px 40px;border-top:1px solid #E5DDD0;">
-                      <p style="margin:0;font-size:12px;color:#A09890;line-height:1.6;">
+                      <p style="margin:0;font-size:12px;color:#6B6258;line-height:1.6;">
                         You're receiving this because you signed up for Kimchi. Questions? Reply to this email.
                       </p>
                     </td>

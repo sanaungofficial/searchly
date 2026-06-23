@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useEffect, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
@@ -14,7 +14,7 @@ import {
 import { ResumeEditor } from "./resume-editor";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
-import { fontSans, fontDisplay, fontMono } from "@/lib/typography";
+import { fontSans, fontDisplay, fontMono, color, type as T, drawerType as DT } from "@/lib/typography";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -170,7 +170,7 @@ function daysLabel(days: number): string {
 }
 
 function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => void }) {
-  const fitColor = fit >= 85 ? mint : fit >= 70 ? "#C4A86A" : "#A09890";
+  const fitColor = fit >= 85 ? mint : fit >= 70 ? "#C4A86A" : "var(--scout-muted)";
   const label = fit >= 85 ? "STRONG MATCH" : fit >= 70 ? "GOOD MATCH" : "FAIR MATCH";
   const exp = fit;
   const skill = Math.max(0, Math.min(100, fit - 4));
@@ -208,7 +208,7 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
         </div>
         <div>
           <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 700, color: fitColor, letterSpacing: "0.4px", margin: 0 }}>{label}</p>
-          <p style={{ fontFamily: sans, fontSize: 12, color: "#8A8278", margin: "3px 0 0" }}>vs. your profile</p>
+          <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", margin: "3px 0 0" }}>vs. your profile</p>
         </div>
       </div>
       <MatchBar label="Experience Level" pct={exp} />
@@ -242,7 +242,7 @@ function AiToolCard({
       }}
     >
       <p style={{ fontFamily: sans, fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: "0 0 6px" }}>{title}</p>
-      <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
+      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
       <button
         onClick={onClick}
         style={{
@@ -275,6 +275,11 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   useLayoutEffect(() => { setVisible(true); }, []);
+
+  useEffect(() => {
+    if (tool === "resume") setMatchDrawerOpen(true);
+    if (tool === "cover") setCoverDrawerOpen(true);
+  }, [tool]);
 
   const extCard = card as KanbanCard & { _dbId?: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string };
   const [urlValue, setUrlValue] = useState(extCard._url ?? "");
@@ -427,7 +432,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   <CompanyLogo name={card.company} website={cardUrl} size={52} />
                   <div>
                     <p style={{ fontFamily: serif, fontSize: 24, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{card.company}</p>
-                    {location && <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", margin: "6px 0 0" }}>{location}</p>}
+                    {location && <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "6px 0 0" }}>{location}</p>}
                   </div>
                 </div>
                 <a
@@ -438,7 +443,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 >
                   View on LinkedIn ↗
                 </a>
-                <p style={{ fontFamily: sans, fontSize: 15, color: "#7A7268", lineHeight: 1.65, marginTop: 16 }}>
+                <p style={{ fontFamily: sans, fontSize: 15, color: "var(--scout-muted)", lineHeight: 1.65, marginTop: 16 }}>
                   Track this company and open roles from the Companies tab in Opportunities.
                 </p>
               </div>
@@ -454,7 +459,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                     <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
                       <CompanyLogo name={card.company} website={cardUrl} size={56} />
                       <div>
-                        <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", margin: 0 }}>
+                        <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
                           <a href={companyLinkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
                             {card.company}
                           </a>
@@ -554,7 +559,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
 
                   {/* Pipeline controls — compact */}
                   <div style={{ background: cardBg, border, borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
-                    <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Move to</p>
+                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Move to</p>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
                       {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
                         <button
@@ -576,7 +581,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                         </button>
                       ))}
                     </div>
-                    <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>Next action</p>
+                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>Next action</p>
                     <div style={{ display: "flex", gap: 10 }}>
                       <input
                         value={nextStepValue}

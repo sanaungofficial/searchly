@@ -38,10 +38,10 @@ export function WorkspaceNetwork() {
       <div style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
         <p
           style={{
-            fontFamily: "var(--font-source-sans), system-ui",
+            fontFamily: "var(--font-ui)",
             fontSize: 12,
             fontWeight: 500,
-            color: "#A09890",
+            color: "var(--scout-muted)",
             letterSpacing: "1.1px",
             textTransform: "uppercase",
             marginBottom: 8,
@@ -51,7 +51,7 @@ export function WorkspaceNetwork() {
         </p>
         <h1
           style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
+            fontFamily: "var(--font-display)",
             fontSize: 32,
             fontWeight: 500,
             fontStyle: "italic",
@@ -79,7 +79,7 @@ export function WorkspaceNetwork() {
           <div>
             <p
               style={{
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 600,
                 color: "#1A1A1A",
@@ -89,9 +89,9 @@ export function WorkspaceNetwork() {
             </p>
             <p
               style={{
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 13,
-                color: "#7A7268",
+                color: "var(--scout-muted)",
                 marginTop: 2,
               }}
             >
@@ -141,7 +141,7 @@ export function WorkspaceNetwork() {
                   color: active ? "#E8D5A3" : "#52493F",
                   border: "none",
                   borderRadius: 100,
-                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 500,
                   cursor: "pointer",
@@ -156,16 +156,16 @@ export function WorkspaceNetwork() {
         {/* People grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12, paddingBottom: 40 }}>
           {filtered.map((p) => {
-            const degreeColor = p.degree === "1st" ? "#4A8B6A" : p.degree === "2nd" ? "#C4A86A" : "#A09890";
+            const degreeColor = p.degree === "1st" ? "#4A8B6A" : p.degree === "2nd" ? "#C4A86A" : "var(--scout-muted)";
             const degreeLabel = p.degree === "platform" ? "Platform" : `${p.degree} degree`;
-            const warmthDot = p.warmth === "hot" ? "#4A8B6A" : p.warmth === "warm" ? "#C4A86A" : "#A09890";
+            const warmthDot = p.warmth === "hot" ? "#4A8B6A" : p.warmth === "warm" ? "#C4A86A" : "var(--scout-muted)";
             const warmthBg =
               p.warmth === "hot"
                 ? "rgba(74,139,106,0.07)"
                 : p.warmth === "warm"
                 ? "rgba(196,168,106,0.07)"
                 : "rgba(0,0,0,0.04)";
-            const hmSuccessColor = p.hmSuccessRate >= 90 ? "#4A8B6A" : p.hmSuccessRate >= 80 ? "#C4A86A" : "#A09890";
+            const hmSuccessColor = p.hmSuccessRate >= 90 ? "#4A8B6A" : p.hmSuccessRate >= 80 ? "#C4A86A" : "var(--scout-muted)";
 
             return (
               <div
@@ -192,7 +192,7 @@ export function WorkspaceNetwork() {
                   >
                     <span
                       style={{
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontFamily: "var(--font-ui)",
                         fontSize: 13,
                         fontWeight: 600,
                         color: "#E8D5A3",
@@ -205,7 +205,7 @@ export function WorkspaceNetwork() {
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                       <p
                         style={{
-                          fontFamily: "var(--font-source-sans), system-ui",
+                          fontFamily: "var(--font-ui)",
                           fontSize: 14,
                           fontWeight: 600,
                           color: "#1A1A1A",
@@ -219,8 +219,8 @@ export function WorkspaceNetwork() {
                           background: `${degreeColor}15`,
                           color: degreeColor,
                           borderRadius: 100,
-                          fontFamily: "var(--font-source-sans), system-ui",
-                          fontSize: 11,
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 12,
                           fontWeight: 600,
                         }}
                       >
@@ -229,9 +229,9 @@ export function WorkspaceNetwork() {
                     </div>
                     <p
                       style={{
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontFamily: "var(--font-ui)",
                         fontSize: 13,
-                        color: "#7A7268",
+                        color: "var(--scout-muted)",
                       }}
                     >
                       {p.role} · {p.company}
@@ -258,8 +258,8 @@ export function WorkspaceNetwork() {
                     />
                     <span
                       style={{
-                        fontFamily: "var(--font-source-sans), system-ui",
-                        fontSize: 11,
+                        fontFamily: "var(--font-ui)",
+                        fontSize: 12,
                         color: "#52493F",
                         textTransform: "capitalize",
                       }}
@@ -271,9 +271,9 @@ export function WorkspaceNetwork() {
 
                 <p
                   style={{
-                    fontFamily: "var(--font-source-sans), system-ui",
+                    fontFamily: "var(--font-ui)",
                     fontSize: 13,
-                    fontWeight: 300,
+                    fontWeight: 400,
                     color: "#52493F",
                     lineHeight: 1.5,
                     marginBottom: 10,
@@ -302,8 +302,8 @@ export function WorkspaceNetwork() {
                     >
                       <span
                         style={{
-                          fontFamily: "var(--font-source-sans), system-ui",
-                          fontSize: 11,
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 12,
                           fontWeight: 600,
                           color: "#4A8B6A",
                           textTransform: "uppercase",
@@ -315,8 +315,8 @@ export function WorkspaceNetwork() {
                       {p.hmVerified && (
                         <span
                           style={{
-                            fontFamily: "var(--font-source-sans), system-ui",
-                            fontSize: 11,
+                            fontFamily: "var(--font-ui)",
+                            fontSize: 12,
                             color: "#4A8B6A",
                           }}
                         >
@@ -328,7 +328,7 @@ export function WorkspaceNetwork() {
                       style={{
                         display: "flex",
                         gap: 14,
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontFamily: "var(--font-ui)",
                         fontSize: 12,
                         color: "#52493F",
                       }}
@@ -336,7 +336,7 @@ export function WorkspaceNetwork() {
                       <div>
                         <p
                           style={{
-                            fontFamily: "var(--font-dm-mono), monospace",
+                            fontFamily: "var(--font-mono-ui)",
                             fontSize: 14,
                             fontWeight: 500,
                             color: "#1A3A2F",
@@ -344,12 +344,12 @@ export function WorkspaceNetwork() {
                         >
                           {p.hmOpenRoles}
                         </p>
-                        <p style={{ color: "#A09890" }}>open slots</p>
+                        <p style={{ color: "var(--scout-muted)" }}>open slots</p>
                       </div>
                       <div>
                         <p
                           style={{
-                            fontFamily: "var(--font-dm-mono), monospace",
+                            fontFamily: "var(--font-mono-ui)",
                             fontSize: 14,
                             fontWeight: 500,
                             color: "#1A3A2F",
@@ -357,12 +357,12 @@ export function WorkspaceNetwork() {
                         >
                           {p.hmFee || "—"}
                         </p>
-                        <p style={{ color: "#A09890" }}>commission</p>
+                        <p style={{ color: "var(--scout-muted)" }}>commission</p>
                       </div>
                       <div>
                         <p
                           style={{
-                            fontFamily: "var(--font-dm-mono), monospace",
+                            fontFamily: "var(--font-mono-ui)",
                             fontSize: 14,
                             fontWeight: 500,
                             color: hmSuccessColor,
@@ -370,7 +370,7 @@ export function WorkspaceNetwork() {
                         >
                           {p.hmSuccessRate}%
                         </p>
-                        <p style={{ color: "#A09890" }}>success</p>
+                        <p style={{ color: "var(--scout-muted)" }}>success</p>
                       </div>
                     </div>
                   </div>
@@ -384,7 +384,7 @@ export function WorkspaceNetwork() {
                       color: "#E8D5A3",
                       border: "none",
                       borderRadius: 5,
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: "pointer",
@@ -401,7 +401,7 @@ export function WorkspaceNetwork() {
                         color: "#FFFFFF",
                         border: "none",
                         borderRadius: 5,
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontFamily: "var(--font-ui)",
                         fontSize: 13,
                         fontWeight: 600,
                         cursor: "pointer",

@@ -1,8 +1,8 @@
 /** Kimchi typography — Source Sans 3 UI + Cormorant display */
 
-export const fontSans = "var(--font-source-sans), system-ui, sans-serif";
-export const fontDisplay = "var(--font-cormorant), Georgia, serif";
-export const fontMono = "var(--font-dm-mono), ui-monospace, monospace";
+export const fontSans = "var(--font-ui)";
+export const fontDisplay = "var(--font-display)";
+export const fontMono = "var(--font-mono-ui)";
 
 export const color = {
   ink: "#1A1A1A",
@@ -24,4 +24,18 @@ export const type = {
   caption: 13,
   label: 12,
   stat: 40,
+} as const;
+
+/** Drawers & modals — bumped one step for dense comparison UI */
+export const drawerType = {
+  hero: 26,
+  title: 16,
+  subtitle: 14,
+  body: 14,
+  caption: 13,
+  label: 12,
+  tableHeader: 13,
+  tableCell: 14,
+  chip: 13,
+  button: 15,
 } as const;

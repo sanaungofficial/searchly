@@ -28,7 +28,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div style={{ background: "#F7F5F2", minHeight: "100vh", fontFamily: "var(--font-source-sans), system-ui, sans-serif" }}>
+    <div style={{ background: "#F7F5F2", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
       {/* Nav */}
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <Link href="/" style={{ textDecoration: "none" }}>
@@ -55,7 +55,7 @@ export default function PricingPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
             <div>
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: "#1C3A2F" }}>Free</p>
-              <p style={{ margin: 0, fontSize: 13, color: "#A09890" }}>No card required</p>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--scout-muted)" }}>No card required</p>
             </div>
             <div style={{ textAlign: "right" }}>
               <span style={{ fontSize: 32, fontWeight: 600, color: "#1C3A2F" }}>$0</span>
@@ -75,7 +75,7 @@ export default function PricingPage() {
 
         {/* Pro tier */}
         <div style={{ background: "#1C3A2F", border: "1px solid #1C3A2F", borderRadius: 20, padding: "36px 36px 32px", textAlign: "left", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 16, right: 20, background: "#E8D5A3", borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#1C3A2F", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+          <div style={{ position: "absolute", top: 16, right: 20, background: "#E8D5A3", borderRadius: 20, padding: "4px 12px", fontSize: 12, fontWeight: 700, color: "#1C3A2F", letterSpacing: "0.5px", textTransform: "uppercase" }}>
             Most popular
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
@@ -118,7 +118,7 @@ export default function PricingPage() {
       </section>
 
       <footer style={{ borderTop: "1px solid #E5DDD0", padding: "24px 48px", textAlign: "center" }}>
-        <span style={{ fontSize: 13, color: "#A09890" }}>Questions? Reply to any email from us.</span>
+        <span style={{ fontSize: 13, color: "var(--scout-muted)" }}>Questions? Reply to any email from us.</span>
       </footer>
     </div>
   );

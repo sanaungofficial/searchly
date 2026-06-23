@@ -67,7 +67,7 @@ function LoginContent() {
       <div className="auth-page__logo">
         <div
           style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
+            fontFamily: "var(--font-display)",
             fontSize: 28,
             fontWeight: 500,
             color: "#1C3A2F",
@@ -88,7 +88,7 @@ function LoginContent() {
             <div style={{ fontSize: 32, marginBottom: 16 }}>✉️</div>
             <h2
               style={{
-                fontFamily: "var(--font-cormorant), Georgia, serif",
+                fontFamily: "var(--font-display)",
                 fontSize: 24,
                 fontWeight: 600,
                 color: "#1C3A2F",
@@ -105,7 +105,7 @@ function LoginContent() {
           <>
             <h2
               style={{
-                fontFamily: "var(--font-cormorant), Georgia, serif",
+                fontFamily: "var(--font-display)",
                 fontSize: 26,
                 fontWeight: 600,
                 color: "#1C3A2F",

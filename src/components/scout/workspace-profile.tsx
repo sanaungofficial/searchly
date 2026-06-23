@@ -164,7 +164,7 @@ function SectionHeader({ title, onEdit }: { title: string; onEdit?: () => void }
 function EmptyState({ message, sub }: { message: string; sub?: string }) {
   return (
     <div className="py-8 text-center">
-      <p className="text-sm text-[#A09890]">{message}</p>
+      <p className="text-sm text-[var(--scout-muted)]">{message}</p>
       {sub && <p className="text-xs text-[#C0B8B0] mt-1">{sub}</p>}
     </div>
   );
@@ -174,7 +174,7 @@ function SkillChip({ label, onRemove }: { label: string; onRemove?: () => void }
   return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#E8D5A3]/50 text-xs font-medium text-[#52493F]">
       {label}
-      {onRemove && <button onClick={onRemove} className="ml-0.5 text-[#A09890] hover:text-[#52493F]">x</button>}
+      {onRemove && <button onClick={onRemove} className="ml-0.5 text-[var(--scout-muted)] hover:text-[#52493F]">x</button>}
     </span>
   );
 }
@@ -215,7 +215,7 @@ function PersonalTab({ profile, onSave }: {
         <div className="space-y-3">
           {([["Full Name", name, setName], ["Phone", phone, setPhone], ["Location", location, setLocation], ["LinkedIn URL", linkedinUrl, setLinkedinUrl], ["Website", website, setWebsite]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
             <div key={label}>
-              <label className="block text-xs text-[#A09890] mb-1">{label}</label>
+              <label className="block text-xs text-[var(--scout-muted)] mb-1">{label}</label>
               <input value={val} onChange={(e) => setter(e.target.value)}
                 className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
             </div>
@@ -236,17 +236,17 @@ function PersonalTab({ profile, onSave }: {
             </div>
             <div>
               <p className="text-sm font-semibold text-[#1C3A2F]">{profile.name}</p>
-              {profile.headline && <p className="text-xs text-[#A09890]">{profile.headline}</p>}
+              {profile.headline && <p className="text-xs text-[var(--scout-muted)]">{profile.headline}</p>}
             </div>
           </div>
           {fields.map(({ label, value, href }) => (
             <div key={label} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3">
-              <span className="text-xs text-[#A09890] sm:w-20 shrink-0 pt-0.5">{label}</span>
+              <span className="text-xs text-[var(--scout-muted)] sm:w-20 shrink-0 pt-0.5">{label}</span>
               {href && value !== "—" ? (
                 <a href={href.startsWith("http") ? href : `https://${href}`} target="_blank" rel="noopener noreferrer"
                   className="text-sm text-[#1C3A2F] underline underline-offset-2 break-all">{value}</a>
               ) : value === "—" ? (
-                <button onClick={() => setEditing(true)} className="text-sm text-[#C0B8B0] hover:text-[#C4A86A] transition-colors" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "var(--font-source-sans), system-ui" }}>
+                <button onClick={() => setEditing(true)} className="text-sm text-[#C0B8B0] hover:text-[#C4A86A] transition-colors" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "var(--font-ui)" }}>
                   Add →
                 </button>
               ) : (
@@ -280,18 +280,18 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
         {list.map((entry) => (
           <div key={entry.id} className="rounded-xl border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
-            <div><label className="block text-xs text-[#A09890] mb-1">School</label>
+            <div><label className="block text-xs text-[var(--scout-muted)] mb-1">School</label>
               <input value={entry.school} onChange={(e) => updateEntry(entry.id, "school", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><label className="block text-xs text-[#A09890] mb-1">Degree</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Degree</label>
                 <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
-              <div><label className="block text-xs text-[#A09890] mb-1">Field</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Field</label>
                 <input value={entry.field || ""} onChange={(e) => updateEntry(entry.id, "field", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><label className="block text-xs text-[#A09890] mb-1">From (YYYY-MM)</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">From (YYYY-MM)</label>
                 <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2018-09" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
-              <div><label className="block text-xs text-[#A09890] mb-1">To</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">To</label>
                 <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="2022-05" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
           </div>
@@ -321,7 +321,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
               <div className="pb-4">
                 <p className="text-sm font-semibold text-[#1C3A2F]">{entry.school}</p>
                 <p className="text-xs text-[#52493F] mt-0.5">{entry.degree}{entry.field ? `, ${entry.field}` : ""}</p>
-                {formatDateRange(entry.from, entry.to) && <p className="text-xs text-[#A09890] mt-0.5">{formatDateRange(entry.from, entry.to)}</p>}
+                {formatDateRange(entry.from, entry.to) && <p className="text-xs text-[var(--scout-muted)] mt-0.5">{formatDateRange(entry.from, entry.to)}</p>}
               </div>
             </div>
           ))}
@@ -354,18 +354,18 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
           <div key={entry.id} className="rounded-xl border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><label className="block text-xs text-[#A09890] mb-1">Company</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Company</label>
                 <input value={entry.company} onChange={(e) => updateEntry(entry.id, "company", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
-              <div><label className="block text-xs text-[#A09890] mb-1">Title</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Title</label>
                 <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><label className="block text-xs text-[#A09890] mb-1">From (YYYY-MM)</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">From (YYYY-MM)</label>
                 <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2020-01" className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
-              <div><label className="block text-xs text-[#A09890] mb-1">To (YYYY-MM or Present)</label>
+              <div><label className="block text-xs text-[var(--scout-muted)] mb-1">To (YYYY-MM or Present)</label>
                 <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="Present" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
-            <div><label className="block text-xs text-[#A09890] mb-1">Bullet points (one per line)</label>
+            <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Bullet points (one per line)</label>
               <textarea rows={4} value={entry.bullets.join("\n")} onChange={(e) => updateBullets(entry.id, e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-none" /></div>
           </div>
         ))}
@@ -398,14 +398,14 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
                     <p className="text-xs text-[#52493F]">{entry.company}</p>
                   </div>
                   {formatDateRange(entry.from, entry.to) && (
-                    <span className="text-xs text-[#A09890] whitespace-nowrap shrink-0">{formatDateRange(entry.from, entry.to)}</span>
+                    <span className="text-xs text-[var(--scout-muted)] whitespace-nowrap shrink-0">{formatDateRange(entry.from, entry.to)}</span>
                   )}
                 </div>
                 {entry.bullets.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {entry.bullets.map((b, bi) => (
                       <li key={bi} className="text-xs text-[#52493F] flex gap-1.5">
-                        <span className="mt-1 w-1 h-1 rounded-full bg-[#A09890] shrink-0" />{b}
+                        <span className="mt-1 w-1 h-1 rounded-full bg-[var(--scout-muted)] shrink-0" />{b}
                       </li>
                     ))}
                   </ul>
@@ -468,7 +468,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
       ) : (
         skills.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-2" style={{ fontSize: 12, letterSpacing: "1px" }}>My skills</p>
+            <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide mb-2" style={{ fontSize: 14, letterSpacing: "1px" }}>My skills</p>
             <div className="flex flex-wrap gap-2">{skills.map((s) => <SkillChip key={s} label={s} />)}</div>
           </div>
         )
@@ -476,18 +476,18 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
 
       {!editing && skillGoals.length > 0 && (
         <div style={{ marginTop: skills.length > 0 ? 24 : 0 }}>
-          <p className="text-xs font-semibold text-[#A09890] uppercase tracking-wide mb-3" style={{ fontSize: 12, letterSpacing: "1px" }}>Working on</p>
+          <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide mb-3" style={{ fontSize: 14, letterSpacing: "1px" }}>Working on</p>
           <div className="space-y-2">
             {skillGoals.map((g) => (
               <div key={`${g.skill}-${g.role}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(196,168,106,0.08)", border: "1px solid rgba(196,168,106,0.25)", borderRadius: 8 }}>
                 <div>
-                  <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
-                  <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#7A6020" }}>for {g.role}</p>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020" }}>for {g.role}</p>
                 </div>
                 <button
                   onClick={() => handleGraduate(g.skill)}
                   disabled={graduating === g.skill}
-                  style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", opacity: graduating === g.skill ? 0.6 : 1 }}
+                  style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer", opacity: graduating === g.skill ? 0.6 : 1 }}
                 >
                   {graduating === g.skill ? "Saving…" : "Mark as acquired"}
                 </button>
@@ -599,7 +599,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
   );
 
   const scoreColor = (score: number) =>
-    score >= 70 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "#A09890";
+    score >= 70 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "var(--scout-muted)";
 
   const scoreLabel = (score: number) =>
     score >= 70 ? "Strong fit" : score >= 50 ? "Good foundation" : "Gap to close";
@@ -612,7 +612,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
 
   return (
     <div style={{ maxWidth: isMobile ? "100%" : 560, paddingBottom: 40 }}>
-      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
+      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
         Add up to 3 roles you&apos;re targeting. Expand any card to see your fit score, what skills you already have, what you&apos;re missing, and your next steps.
       </p>
 
@@ -630,27 +630,27 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
               <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
                 {loaded ? (
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 13, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
+                    <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
                   </div>
                 ) : (
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
                   {loaded ? (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: scoreColor(loaded.fitScore) }}>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: scoreColor(loaded.fitScore) }}>
                       {scoreLabel(loaded.fitScore)}
                       {loaded._cachedAt ? ` · ${timeAgo(loaded._cachedAt)}` : ""}
                       {roleNeedsRefresh ? " · refresh score" : ""}
                     </p>
                   ) : !hasResume ? (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890" }}>Upload a resume to see your fit score</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload a resume to see your fit score</p>
                   ) : result === "loading" ? (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890" }}>Analyzing…</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing…</p>
                   ) : result === "error" ? (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#C4A86A" }}>Analysis unavailable</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>Analysis unavailable</p>
                   ) : (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890" }}>Click to analyze fit</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Click to analyze fit</p>
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -659,7 +659,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                     style={{ background: "none", border: "none", cursor: "pointer", color: "#C0B8B0", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}
                     aria-label={`Remove ${role}`}
                   >×</button>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s", color: "#A09890" }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s", color: "var(--scout-muted)" }}>
                     <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
@@ -669,17 +669,17 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
               {isOpen && (
                 <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: "16px 16px 20px" }}>
                   {result === "loading" && (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
                   )}
                   {result === "error" && (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
                   )}
                   {!hasResume && (
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
                   )}
                   {loaded && (
                     <>
-                      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.65, marginBottom: 20 }}>{loaded.summary}</p>
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", lineHeight: 1.65, marginBottom: 20 }}>{loaded.summary}</p>
 
                       {/* Required skills — split into have / missing / working on */}
                       {loaded.requiredSkills?.length > 0 && (() => {
@@ -690,11 +690,11 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                           <div style={{ marginBottom: 20 }}>
                             {haveSkills.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you have</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you have</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {haveSkills.map((skill) => (
-                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                      <span style={{ fontSize: 12 }}>✓</span> {skill}
+                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                      <span style={{ fontSize: 14 }}>✓</span> {skill}
                                     </span>
                                   ))}
                                 </div>
@@ -702,34 +702,34 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                             )}
                             {missingSkills.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you&apos;re missing</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you&apos;re missing</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {missingSkills.map((skill) => (
-                                    <button key={skill} onClick={() => handleAddToLearning(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                    <button key={skill} onClick={() => handleAddToLearning(skill, role)} style={{ padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
                                       <span style={{ color: "#1A3A2F", fontWeight: 700, fontSize: 14, lineHeight: 1 }}>+</span> {skill}
                                     </button>
                                   ))}
                                 </div>
-                                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#B0A898", marginTop: 8, fontStyle: "italic" }}>Tap + to add any skill to your Upskilling queue.</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic" }}>Tap + to add any skill to your Upskilling queue.</p>
                               </div>
                             )}
                             {learningSkills.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>Working on</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>Working on</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {learningSkills.map((skill) => (
-                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                      <span style={{ fontSize: 12 }}>→</span> {skill}
+                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                      <span style={{ fontSize: 14 }}>→</span> {skill}
                                     </span>
                                   ))}
                                 </div>
                               </div>
                             )}
                             <div style={{ marginTop: 4, padding: "10px 14px", background: "rgba(0,0,0,0.025)", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", margin: 0, lineHeight: 1.5 }}>
+                              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", margin: 0, lineHeight: 1.5 }}>
                                 Skill insights are based on analysis of thousands of active job postings for this role type.
                               </p>
-                              <button onClick={() => handleRefresh(role)} style={{ padding: "5px 12px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
+                              <button onClick={() => handleRefresh(role)} style={{ padding: "5px 12px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
                                 ↻ Refresh
                               </button>
                             </div>
@@ -739,12 +739,12 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
 
                       {/* Next steps */}
                       <div>
-                        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {loaded.nextSteps.map((step, i) => (
                             <div key={i} style={{ display: "flex", gap: 8 }}>
-                              <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 12, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
-                              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
+                              <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
+                              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
                             </div>
                           ))}
                         </div>
@@ -764,7 +764,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
           {!showSearch ? (
             <button
               onClick={() => setShowSearch(true)}
-              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 6, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, cursor: "pointer" }}
+              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 6, fontFamily: "var(--font-ui)", fontSize: 14, cursor: "pointer" }}
             >+ Add a role</button>
           ) : (
             <div>
@@ -773,23 +773,23 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search roles…"
-                style={{ width: "100%", padding: "12px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-source-sans), system-ui", fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "12px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-ui)", fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
                   <button
                     onClick={() => addRole(searchQuery.trim())}
-                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#E8D5A3", cursor: "pointer" }}
+                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
                   >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
                 )}
                 {filteredRoles.slice(0, 20).map((r) => (
                   <button
                     key={r}
                     onClick={() => addRole(r)}
-                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1A1A1A", cursor: "pointer" }}
+                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
                   >{r}</button>
                 ))}
-                <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>Cancel</button>
               </div>
             </div>
           )}
@@ -866,7 +866,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
       {/* Section A — From your target roles */}
       {skillGoals.length > 0 && (
         <div style={{ marginBottom: 32 }}>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>From your target roles</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>From your target roles</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {skillGoals.map((g) => {
               const matchedCourse = UPSKILL_CATEGORIES.flatMap((c) => c.items).find(
@@ -876,11 +876,11 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                 <div key={`${g.skill}-${g.role}`} style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(196,168,106,0.3)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{g.skill}</p>
-                      <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{g.skill}</p>
+                      <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
                     </div>
                     {matchedCourse && (
-                      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#4A8B6A" }}>
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#4A8B6A" }}>
                         Suggested: {matchedCourse.name} on {matchedCourse.platform}
                       </p>
                     )}
@@ -888,7 +888,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                   <button
                     onClick={() => handleGraduate(g.skill)}
                     disabled={graduating === g.skill}
-                    style={{ padding: "10px 14px", minHeight: 44, width: isMobile ? "100%" : undefined, background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0, opacity: graduating === g.skill ? 0.6 : 1 }}
+                    style={{ padding: "10px 14px", minHeight: 44, width: isMobile ? "100%" : undefined, background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer", flexShrink: 0, opacity: graduating === g.skill ? 0.6 : 1 }}
                   >
                     {graduating === g.skill ? "Saving…" : "Mark as acquired"}
                   </button>
@@ -902,12 +902,12 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
       {/* Progress bar */}
       <div style={{ background: "#1A3A2F", borderRadius: 10, padding: isMobile ? "16px" : "16px 20px", marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 16 : 0 }}>
         <div>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Your learning progress</p>
-          <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 20, fontWeight: 500, color: "#E8D5A3" }}>{doneCount + customDone} of {total + customItems.length} complete</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Your learning progress</p>
+          <p style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500, color: "#E8D5A3" }}>{doneCount + customDone} of {total + customItems.length} complete</p>
         </div>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: `conic-gradient(#E8D5A3 ${((doneCount + customDone) / (total + customItems.length || 1)) * 360}deg, rgba(232,213,163,0.15) 0)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: 50, height: 50, borderRadius: "50%", background: "#1A3A2F", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 14, fontWeight: 500, color: "#E8D5A3" }}>{Math.round(((doneCount + customDone) / (total + customItems.length || 1)) * 100)}%</span>
+            <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, fontWeight: 500, color: "#E8D5A3" }}>{Math.round(((doneCount + customDone) / (total + customItems.length || 1)) * 100)}%</span>
           </div>
         </div>
       </div>
@@ -915,9 +915,9 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
       {/* Section B — Recommended paths */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px" }}>Recommended paths</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px" }}>Recommended paths</p>
         </div>
-        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 16 }}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 16 }}>
           Curated by Kimchi based on what hiring managers look for. Partner certifications will be added here as we grow.
         </p>
         {UPSKILL_CATEGORIES.map((cat) => {
@@ -929,24 +929,24 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
           });
           return (
           <div key={cat.title} style={{ marginBottom: 20 }}>
-            <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{cat.title}</p>
-            <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 10 }}>{cat.subtitle}</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 4 }}>{cat.title}</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 10 }}>{cat.subtitle}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {sorted.map((item) => {
                 const prog = progress[item.id] || "none";
                 const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
-                const statusColor = prog === "completed" ? "#4A8B6A" : prog === "inprogress" ? "#C4A86A" : "#A09890";
+                const statusColor = prog === "completed" ? "#4A8B6A" : prog === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
                 const isGapMatch = item.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ?? false;
                 return (
                   <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 7, background: item.platformColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
+                      <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-                        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
-                        {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
-                        {isGapMatch && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 500 }}>closes gap</span>}
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
+                        {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
+                        {isGapMatch && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#2D6B4A", fontWeight: 500 }}>closes gap</span>}
                       </div>
                       {item.closesGap && item.closesGap.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
@@ -963,11 +963,11 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                           })}
                         </div>
                       )}
-                      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
-                      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: statusColor }}>{statusLabel}</p>
                     </div>
                     <button onClick={() => setProgress({ ...progress, [item.id]: prog === "none" ? "inprogress" : prog === "inprogress" ? "completed" : "inprogress" })}
-                      style={{ padding: "10px 14px", minHeight: 44, width: isMobile ? "100%" : undefined, background: prog === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: prog === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
+                      style={{ padding: "10px 14px", minHeight: 44, width: isMobile ? "100%" : undefined, background: prog === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: prog === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
                       {prog === "completed" ? "Review →" : prog === "inprogress" ? "Complete →" : "Start →"}
                     </button>
                   </div>
@@ -981,9 +981,9 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
       {/* Section C — My Learning */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px" }}>My learning</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#52493F", textTransform: "uppercase", letterSpacing: "1.1px" }}>My learning</p>
           {!showAddForm && (
-            <button onClick={() => setShowAddForm(true)} style={{ padding: "5px 12px", background: "transparent", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#1A3A2F", cursor: "pointer" }}>+ Add your own</button>
+            <button onClick={() => setShowAddForm(true)} style={{ padding: "5px 12px", background: "transparent", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F", cursor: "pointer" }}>+ Add your own</button>
           )}
         </div>
 
@@ -991,63 +991,63 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
           <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "16px", border: "1px solid #E5DDD0", marginBottom: 12 }}>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 10 }}>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ display: "block", fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 4 }}>Course / Certification name *</label>
+                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Course / Certification name *</label>
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Google Project Management Certificate"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
               <div>
-                <label style={{ display: "block", fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 4 }}>Platform</label>
+                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Platform</label>
                 <input value={newPlatform} onChange={(e) => setNewPlatform(e.target.value)} placeholder="e.g. Coursera, Udemy, LinkedIn"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
               <div>
-                <label style={{ display: "block", fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 4 }}>Duration</label>
+                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Duration</label>
                 <input value={newDuration} onChange={(e) => setNewDuration(e.target.value)} placeholder="e.g. 6 weeks"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ display: "block", fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 4 }}>URL (optional)</label>
+                <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>URL (optional)</label>
                 <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://…"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={addCustomItem} disabled={!newName.trim()} style={{ padding: "7px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: newName.trim() ? "pointer" : "not-allowed", opacity: newName.trim() ? 1 : 0.5 }}>Add</button>
-              <button onClick={() => { setShowAddForm(false); setNewName(""); setNewUrl(""); setNewPlatform(""); setNewDuration(""); }} style={{ padding: "7px 14px", background: "transparent", border: "none", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890", cursor: "pointer" }}>Cancel</button>
+              <button onClick={addCustomItem} disabled={!newName.trim()} style={{ padding: "7px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: newName.trim() ? "pointer" : "not-allowed", opacity: newName.trim() ? 1 : 0.5 }}>Add</button>
+              <button onClick={() => { setShowAddForm(false); setNewName(""); setNewUrl(""); setNewPlatform(""); setNewDuration(""); }} style={{ padding: "7px 14px", background: "transparent", border: "none", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
         )}
 
         {customItems.length === 0 && !showAddForm ? (
           <div style={{ padding: "24px 0", textAlign: "center" }}>
-            <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#C0B8B0" }}>No custom items yet. Add courses, certifications, or tools you&apos;re learning on your own.</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C0B8B0" }}>No custom items yet. Add courses, certifications, or tools you&apos;re learning on your own.</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {customItems.map((item) => {
               const statusLabel = item.status === "completed" ? "Completed ✓" : item.status === "inprogress" ? "In progress" : "Not started";
-              const statusColor = item.status === "completed" ? "#4A8B6A" : item.status === "inprogress" ? "#C4A86A" : "#A09890";
+              const statusColor = item.status === "completed" ? "#4A8B6A" : item.status === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
               return (
                 <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 7, background: "#E8E2D8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#7A7268" }}>{(item.platform || item.name).charAt(0).toUpperCase()}</span>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)" }}>{(item.platform || item.name).charAt(0).toUpperCase()}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                       {item.url ? (
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", textDecoration: "none" }}>{item.name}</a>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", textDecoration: "none" }}>{item.name}</a>
                       ) : (
-                        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
                       )}
                     </div>
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 3 }}>
                       {[item.platform, item.duration].filter(Boolean).join(" · ")}
                     </p>
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: statusColor }}>{statusLabel}</p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: isMobile ? "wrap" : undefined }}>
                     <button onClick={() => updateCustomStatus(item.id)}
-                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: item.status === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: item.status === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
                       {item.status === "completed" ? "Review →" : item.status === "inprogress" ? "Complete →" : "Start →"}
                     </button>
                     <button onClick={() => removeCustomItem(item.id)} style={{ background: "none", border: "none", color: "#C0B8B0", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>×</button>
@@ -1115,7 +1115,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
 
         {/* Title */}
         <h2 style={{
-          fontFamily: "var(--font-source-sans), system-ui",
+          fontFamily: "var(--font-ui)",
           fontSize: 22, fontWeight: 700, color: "#1A1A1A",
           margin: "0 0 32px", textAlign: "center",
         }}>
@@ -1144,8 +1144,8 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
 
         {/* Note */}
         <p style={{
-          fontFamily: "var(--font-source-sans), system-ui",
-          fontSize: 13, color: "#A09890", textAlign: "center",
+          fontFamily: "var(--font-ui)",
+          fontSize: 14, color: "var(--scout-muted)", textAlign: "center",
           margin: "0 0 24px",
         }}>
           Files should be in PDF or Word format and must not exceed 10MB in size.
@@ -1162,7 +1162,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
             fontSize: 15, fontWeight: 600,
             cursor: uploading ? "not-allowed" : "pointer",
             opacity: uploading ? 0.6 : 1,
-            fontFamily: "var(--font-source-sans), system-ui",
+            fontFamily: "var(--font-ui)",
           }}
         >
           {uploading ? "Uploading…" : "Upload"}
@@ -1192,7 +1192,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
     <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
-        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#A09890", padding: "8px 10px", minHeight: 44, borderRadius: 4 }}
+        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--scout-muted)", padding: "8px 10px", minHeight: 44, borderRadius: 4 }}
         aria-label="Resume options"
       >
         ···
@@ -1238,11 +1238,11 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
       {/* Header */}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", marginBottom: 20, gap: isMobile ? 14 : 0 }}>
         <div>
-          <h2 style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>RESUME</h2>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#6B6258", marginTop: 6 }}>
+          <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>RESUME</h2>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6B6258", marginTop: 6 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#4A8B6A", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>
+                <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>✓</span>
               </span>
               You have {resumes.length} resume{resumes.length !== 1 ? "s" : ""} saved out of {MAX_SLOTS} available slots.
             </span>
@@ -1257,7 +1257,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
               color: "#1A7A4A",
               border: "1px solid #A8DFC0",
               borderRadius: 6,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 600,
               cursor: "pointer",
               display: "flex",
@@ -1279,7 +1279,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
               color: "#1A1A1A",
               border: "1px solid #D8D0C5",
               borderRadius: 6,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 600,
               cursor: uploading ? "not-allowed" : "pointer",
               display: "flex",
@@ -1300,7 +1300,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
         <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
           {resumes.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center" }}>
-              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>No resume uploaded yet.</p>
               <button
                 onClick={() => setShowUploadModal(true)}
                 disabled={uploading}
@@ -1334,25 +1334,25 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
                         {r.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
                   </button>
                   {renderResumeMenu(r)}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                   {r.isPrimary && (
-                    <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#A08030" }}>
+                    <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 14, fontWeight: 600, color: "#A08030" }}>
                       ★ PRIMARY
                     </span>
                   )}
-                  <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 12, fontWeight: 500, color: "#1A7A4A" }}>
+                  <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 14, fontWeight: 500, color: "#1A7A4A" }}>
                     Analysis Complete
                   </span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6B6258" }}>
                     Modified {timeAgo(r.updatedAt)}
                   </span>
-                  <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6B6258" }}>
                     Added {timeAgo(r.createdAt)}
                   </span>
                 </div>
@@ -1373,14 +1373,14 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
           borderTopRightRadius: 10,
         }}>
           {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
-            <span key={col} style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#A09890" }}>{col}</span>
+            <span key={col} style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "var(--scout-muted)" }}>{col}</span>
           ))}
         </div>
 
         {/* Rows */}
         {resumes.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
-            <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>No resume uploaded yet.</p>
             <button
               onClick={() => setShowUploadModal(true)}
               disabled={uploading}
@@ -1418,14 +1418,14 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{r.name}</span>
                   <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
                     {r.isPrimary && (
-                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
+                      <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 14, fontWeight: 600, color: "#A08030", display: "flex", alignItems: "center", gap: 3 }}>
                         ★ PRIMARY
                       </span>
                     )}
-                    <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 12, fontWeight: 500, color: "#1A7A4A" }}>
+                    <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 14, fontWeight: 500, color: "#1A7A4A" }}>
                       Analysis Complete
                     </span>
                   </div>
@@ -1433,17 +1433,17 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
               </div>
 
               {/* Target job title */}
-              <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#C0B8B0" }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C0B8B0" }}>
                 —
               </span>
 
               {/* Last modified */}
-              <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#6B6258" }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6B6258" }}>
                 {timeAgo(r.updatedAt)}
               </span>
 
               {/* Created */}
-              <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#6B6258" }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6B6258" }}>
                 {timeAgo(r.createdAt)}
               </span>
 
@@ -1475,37 +1475,37 @@ function ReadbackCard({ data, loading, onRefresh }: { data: ReadbackData | null;
   return (
     <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: isMobile ? 16 : 28 }}>
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 10, gap: isMobile ? 10 : 0 }}>
-        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Kimchi&apos;s read on you
         </p>
         <button
           onClick={onRefresh}
           disabled={loading}
-          style={{ display: "flex", alignItems: "center", gap: 4, padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, background: "transparent", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}
+          style={{ display: "flex", alignItems: "center", gap: 4, padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, background: "transparent", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}
         >
-          <span style={{ fontSize: 13 }}>↻</span> {loading ? "Refreshing…" : "Refresh"}
+          <span style={{ fontSize: 14 }}>↻</span> {loading ? "Refreshing…" : "Refresh"}
         </button>
       </div>
       {loading ? (
-        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890" }}>Analyzing your profile…</p>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing your profile…</p>
       ) : data ? (
         <>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
             {data.strengths.map((s) => (
-              <span key={s} style={{ padding: "4px 10px", background: "rgba(28,58,47,0.08)", borderRadius: 100, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1C3A2F" }}>{s}</span>
+              <span key={s} style={{ padding: "4px 10px", background: "rgba(28,58,47,0.08)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1C3A2F" }}>{s}</span>
             ))}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
             {data.targetRoles.map((r) => {
-              const c = r.fit === "Strong match" ? "#4A8B6A" : r.fit === "Good fit" ? "#C4A86A" : "#A09890";
+              const c = r.fit === "Strong match" ? "#4A8B6A" : r.fit === "Good fit" ? "#C4A86A" : "var(--scout-muted)";
               const bg = r.fit === "Strong match" ? "rgba(74,139,106,0.08)" : r.fit === "Good fit" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.04)";
               return (
-                <span key={r.role} style={{ padding: "4px 10px", background: bg, borderRadius: 6, fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: c }}>{r.role} · {r.fit}</span>
+                <span key={r.role} style={{ padding: "4px 10px", background: bg, borderRadius: 6, fontFamily: "var(--font-ui)", fontSize: 14, color: c }}>{r.role} · {r.fit}</span>
               );
             })}
           </div>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890", fontStyle: "italic" }}>{data.honestNote}</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", fontStyle: "italic" }}>{data.honestNote}</p>
         </>
       ) : null}
     </div>
@@ -1599,7 +1599,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
   const timelineLabel = PREF_JOB_TIMELINES.find(t => t.value === profile.jobTimeline)?.label;
   const hasAnyData = profile.employmentStatus || profile.jobTimeline || profile.currentSalary || profile.targetSalary || profile.careerMotivation || (profile.priorities || []).length > 0;
 
-  const inputStyle: React.CSSProperties = { width: "100%", padding: isMobile ? "12px 10px" : "8px 10px", fontSize: isMobile ? 16 : 13, borderRadius: 8, border: "1px solid #E5DDD0", background: "#FFFDF9", color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui", outline: "none", boxSizing: "border-box" };
+  const inputStyle: React.CSSProperties = { width: "100%", padding: isMobile ? "12px 10px" : "8px 10px", fontSize: isMobile ? 16 : 13, borderRadius: 8, border: "1px solid #E5DDD0", background: "#FFFDF9", color: "#1C3A2F", fontFamily: "var(--font-ui)", outline: "none", boxSizing: "border-box" };
 
   return (
     <div style={{ background: "#FFFFFF", borderRadius: 12, padding: isMobile ? "18px 16px" : "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
@@ -1609,11 +1609,11 @@ function CareerPreferencesPanel({ profile, onSave }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {/* Status */}
           <div>
-            <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 6 }}>Status</p>
+            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Status</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_EMPLOYMENT.map(({ value, label }) => (
                 <button key={value} onClick={() => setEmpStatus(empStatus === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: `1px solid ${empStatus === value ? "#1C3A2F" : "#E5DDD0"}`, background: empStatus === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui", cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: `1px solid ${empStatus === value ? "#1C3A2F" : "#E5DDD0"}`, background: empStatus === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)", cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -1622,11 +1622,11 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
           {/* Timeline */}
           <div>
-            <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 6 }}>Timeline</p>
+            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Timeline</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_JOB_TIMELINES.map(({ value, label }) => (
                 <button key={value} onClick={() => setTimeline(timeline === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: `1px solid ${timeline === value ? "#1C3A2F" : "#E5DDD0"}`, background: timeline === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui", cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: `1px solid ${timeline === value ? "#1C3A2F" : "#E5DDD0"}`, background: timeline === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)", cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -1637,7 +1637,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
             {([["Current salary", currentSalary, setCurrentSalary], ["Target salary", targetSalary, setTargetSalary]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
               <div key={label}>
-                <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 6 }}>{label}</p>
+                <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>{label}</p>
                 <input value={val} onChange={(e) => setter(e.target.value)} placeholder="e.g. $120K" style={inputStyle} />
               </div>
             ))}
@@ -1645,11 +1645,11 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
           {/* Motivation */}
           <div>
-            <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 6 }}>Primary motivation</p>
+            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Primary motivation</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PREF_MOTIVATIONS.map((m) => (
                 <button key={m} onClick={() => setMotivation(motivation === m ? "" : m)}
-                  style={{ padding: "5px 12px", borderRadius: 100, border: `1px solid ${motivation === m ? "#1C3A2F" : "#E5DDD0"}`, background: motivation === m ? "rgba(28,58,47,0.08)" : "#FFFDF9", fontSize: 12, color: motivation === m ? "#1C3A2F" : "#7A7268", fontFamily: "var(--font-source-sans), system-ui", cursor: "pointer" }}>
+                  style={{ padding: "5px 12px", borderRadius: 100, border: `1px solid ${motivation === m ? "#1C3A2F" : "#E5DDD0"}`, background: motivation === m ? "rgba(28,58,47,0.08)" : "#FFFDF9", fontSize: 14, color: motivation === m ? "#1C3A2F" : "var(--scout-muted)", fontFamily: "var(--font-ui)", cursor: "pointer" }}>
                   {m}
                 </button>
               ))}
@@ -1658,11 +1658,11 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
           {/* Priorities */}
           <div>
-            <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 6 }}>What matters most</p>
+            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>What matters most</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PREF_PRIORITIES.map((p) => (
                 <button key={p} onClick={() => setPriorities(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])}
-                  style={{ padding: "5px 12px", borderRadius: 100, border: `1px solid ${priorities.includes(p) ? "#1C3A2F" : "#E5DDD0"}`, background: priorities.includes(p) ? "rgba(28,58,47,0.08)" : "#FFFDF9", fontSize: 12, color: priorities.includes(p) ? "#1C3A2F" : "#7A7268", fontFamily: "var(--font-source-sans), system-ui", cursor: "pointer" }}>
+                  style={{ padding: "5px 12px", borderRadius: 100, border: `1px solid ${priorities.includes(p) ? "#1C3A2F" : "#E5DDD0"}`, background: priorities.includes(p) ? "rgba(28,58,47,0.08)" : "#FFFDF9", fontSize: 14, color: priorities.includes(p) ? "#1C3A2F" : "var(--scout-muted)", fontFamily: "var(--font-ui)", cursor: "pointer" }}>
                   {p}
                 </button>
               ))}
@@ -1671,24 +1671,24 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
           <div style={{ display: "flex", gap: 8, paddingTop: 2 }}>
             <button onClick={handleSave} disabled={saving}
-              style={{ padding: "7px 16px", fontSize: 12, fontWeight: 600, background: "#1C3A2F", color: "#F2EDE3", border: "none", borderRadius: 8, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.5 : 1, fontFamily: "var(--font-source-sans), system-ui" }}>
+              style={{ padding: "7px 16px", fontSize: 14, fontWeight: 600, background: "#1C3A2F", color: "#F2EDE3", border: "none", borderRadius: 8, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.5 : 1, fontFamily: "var(--font-ui)" }}>
               {saving ? "Saving…" : "Save"}
             </button>
             <button onClick={handleCancel}
-              style={{ padding: "7px 16px", fontSize: 12, color: "#52493F", background: "transparent", border: "none", cursor: "pointer", fontFamily: "var(--font-source-sans), system-ui" }}>
+              style={{ padding: "7px 16px", fontSize: 14, color: "#52493F", background: "transparent", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)" }}>
               Cancel
             </button>
           </div>
         </div>
       ) : !hasAnyData ? (
         <div style={{ paddingTop: 4 }}>
-          <p style={{ fontSize: 13, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 6 }}>
+          <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>
             No preferences set yet.{" "}
-            <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: "#C4A86A", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-source-sans), system-ui", padding: 0 }}>
+            <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: "#C4A86A", fontSize: 14, cursor: "pointer", fontFamily: "var(--font-ui)", padding: 0 }}>
               Add them →
             </button>
           </p>
-          <p style={{ fontSize: 12, color: "#C0B8B0", fontFamily: "var(--font-source-sans), system-ui" }}>
+          <p style={{ fontSize: 14, color: "#C0B8B0", fontFamily: "var(--font-ui)" }}>
             Kimchi uses these to filter and rank matched roles by what matters to you.
           </p>
         </div>
@@ -1696,44 +1696,44 @@ function CareerPreferencesPanel({ profile, onSave }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {profile.employmentStatus && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Status</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui" }}>{statusLabel || profile.employmentStatus}</span>
+              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Status</p>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{statusLabel || profile.employmentStatus}</span>
             </div>
           )}
           {profile.jobTimeline && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Timeline</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui" }}>{timelineLabel || profile.jobTimeline}</span>
+              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Timeline</p>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{timelineLabel || profile.jobTimeline}</span>
             </div>
           )}
           {(profile.currentSalary || profile.targetSalary) && (
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
               {profile.currentSalary && (
                 <div>
-                  <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Current</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui" }}>{profile.currentSalary}</span>
+                  <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Current</p>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.currentSalary}</span>
                 </div>
               )}
               {profile.targetSalary && (
                 <div>
-                  <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Target</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui" }}>{profile.targetSalary}</span>
+                  <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Target</p>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.targetSalary}</span>
                 </div>
               )}
             </div>
           )}
           {profile.careerMotivation && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Looking for</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui" }}>{profile.careerMotivation}</span>
+              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Looking for</p>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.careerMotivation}</span>
             </div>
           )}
           {(profile.priorities || []).length > 0 && (
             <div>
-              <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Priorities</p>
+              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Priorities</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {profile.priorities.map((p) => (
-                  <span key={p} style={{ padding: "5px 11px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 12, color: "#1C3A2F", fontFamily: "var(--font-source-sans), system-ui" }}>{p}</span>
+                  <span key={p} style={{ padding: "5px 11px", borderRadius: 8, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{p}</span>
                 ))}
               </div>
             </div>
@@ -1993,16 +1993,16 @@ export function WorkspaceProfile() {
       <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, WebkitOverflowScrolling: "touch" }}>
         {/* Header */}
         <div style={{ marginBottom: isMobile ? 20 : 24 }}>
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#A09890", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8, lineHeight: 1.4 }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "var(--scout-muted)", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8, lineHeight: 1.4 }}>
             {loading ? "Loading…" : profile ? (profile.name || profile.email || "Your profile") : "Your profile"}
             {!isMobile && profile?.headline ? ` · ${profile.headline}` : ""}
           </p>
           {isMobile && profile?.headline && (
-            <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#52493F", marginBottom: 8, lineHeight: 1.4 }}>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", marginBottom: 8, lineHeight: 1.4 }}>
               {profile.headline}
             </p>
           )}
-          <h1 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: isMobile ? 26 : 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px", lineHeight: 1.2 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: isMobile ? 26 : 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px", lineHeight: 1.2 }}>
             Your profile, through Kimchi&apos;s eyes.
           </h1>
           {profile && (() => {
@@ -2026,11 +2026,11 @@ export function WorkspaceProfile() {
                   style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5, maxWidth: isMobile ? "100%" : 280 }}>
-                    <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890" }}>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>
                       Profile completeness
                       {missing.length > 0 && <span style={{ marginLeft: 6, color: "#C0B8B0" }}>· {missing.length} missing</span>}
                     </span>
-                    <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: pct >= 80 ? "#4A8B6A" : "#C4A86A" }}>
                       {pct}%{missing.length > 0 ? (showChecklist ? " ▲" : " ▼") : " ✓"}
                     </span>
                   </div>
@@ -2049,12 +2049,12 @@ export function WorkspaceProfile() {
                           display: "flex", alignItems: "center", gap: 10, padding: isMobile ? "12px 12px" : "9px 12px", minHeight: isMobile ? 44 : undefined, width: "100%",
                           textAlign: "left", background: "none", border: "none",
                           borderBottom: i < missing.length - 1 ? "1px solid #F0EBE3" : "none",
-                          cursor: "pointer", fontFamily: "var(--font-source-sans), system-ui",
+                          cursor: "pointer", fontFamily: "var(--font-ui)",
                         }}
                       >
                         <span style={{ width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #C0B8B0", flexShrink: 0 }} />
-                        <span style={{ flex: 1, fontSize: 12, color: "#52493F" }}>{item.label}</span>
-                        <span style={{ fontSize: 11, color: "#C4A86A", flexShrink: 0 }}>+{item.points}pt{item.points !== 1 ? "s" : ""} →</span>
+                        <span style={{ flex: 1, fontSize: 14, color: "#52493F" }}>{item.label}</span>
+                        <span style={{ fontSize: 14, color: "#C4A86A", flexShrink: 0 }}>+{item.points}pt{item.points !== 1 ? "s" : ""} →</span>
                       </button>
                     ))}
                   </div>
@@ -2074,7 +2074,7 @@ export function WorkspaceProfile() {
         {/* Resume upload nudge */}
         {readbackNudge && (
           <div style={{ maxWidth: isMobile ? "100%" : 640, marginBottom: 12, padding: "12px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12 }}>
-            <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1A7A4A", margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A7A4A", margin: 0, lineHeight: 1.5 }}>
               ✓ Resume uploaded — Kimchi extracted your experience, education, and skills. Review them in the About tab.
             </p>
             <button onClick={() => setReadbackNudge(false)} style={{ background: "none", border: "none", color: "#1A7A4A", cursor: "pointer", fontSize: 16, padding: isMobile ? "8px 4px" : "0 4px", opacity: 0.6, flexShrink: 0, alignSelf: isMobile ? "flex-end" : undefined, minHeight: isMobile ? 44 : undefined }}>✕</button>
@@ -2087,7 +2087,7 @@ export function WorkspaceProfile() {
             <button
               key={id}
               onClick={() => setPage(id)}
-              style={{ padding: isMobile ? "10px 14px" : "8px 16px", minHeight: 44, border: "none", borderRadius: "6px 6px 0 0", background: page === id ? "#1A3A2F" : "transparent", color: page === id ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
+              style={{ padding: isMobile ? "10px 14px" : "8px 16px", minHeight: 44, border: "none", borderRadius: "6px 6px 0 0", background: page === id ? "#1A3A2F" : "transparent", color: page === id ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
             >
               {label}
             </button>
@@ -2101,7 +2101,7 @@ export function WorkspaceProfile() {
               <button
                 key={s}
                 onClick={() => goToSection(s)}
-                style={{ padding: isMobile ? "8px 12px" : "6px 14px", minHeight: 44, border: "none", background: activeSection === s ? "rgba(28,58,47,0.1)" : "transparent", color: activeSection === s ? "#1C3A2F" : "#7A7268", fontFamily: "var(--font-source-sans), system-ui", fontSize: isMobile ? 12 : 13, fontWeight: activeSection === s ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, borderBottom: activeSection === s ? "2px solid #1C3A2F" : "2px solid transparent", transition: "all 0.15s" }}
+                style={{ padding: isMobile ? "8px 12px" : "6px 14px", minHeight: 44, border: "none", background: activeSection === s ? "rgba(28,58,47,0.1)" : "transparent", color: activeSection === s ? "#1C3A2F" : "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: isMobile ? 12 : 13, fontWeight: activeSection === s ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, borderBottom: activeSection === s ? "2px solid #1C3A2F" : "2px solid transparent", transition: "all 0.15s" }}
               >
                 {isMobile ? ({ personal: "Personal", education: "Education", experience: "Experience", skills: "Skills" } as const)[s] : ABOUT_LABEL[s]}
               </button>
@@ -2123,10 +2123,10 @@ export function WorkspaceProfile() {
         )}
 
         {page === "about" && loading && (
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#A09890" }}>Loading…</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Loading…</p>
         )}
         {page === "about" && !loading && !profile && (
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "about" && profile && (
           <div style={{ maxWidth: isMobile ? "100%" : 640, paddingBottom: 40 }}>
@@ -2149,7 +2149,7 @@ export function WorkspaceProfile() {
         )}
 
         {page === "preferences" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "preferences" && profile && (
           <div style={{ maxWidth: isMobile ? "100%" : 480, paddingBottom: 40, paddingTop: 8 }}>
@@ -2162,12 +2162,12 @@ export function WorkspaceProfile() {
         )}
 
         {page === "assets" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "assets" && profile && (
           <>
             {resumeUploadError && (
-              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#C05050", marginBottom: 12 }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 12 }}>
                 {resumeUploadError}
               </p>
             )}
