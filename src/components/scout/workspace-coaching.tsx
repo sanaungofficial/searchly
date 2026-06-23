@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 
 type CoachingTab = "mycoach" | "coaches";
 
@@ -137,24 +138,7 @@ export function WorkspaceCoaching() {
         )}
       </div>
 
-      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
-    </div>
-  );
-}
-
-function UpgradeModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} />
-      <div style={{ position: "relative", background: "#fff", borderRadius: 14, padding: "36px 32px", maxWidth: 400, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", textAlign: "center" }}>
-        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", fontSize: 22 }}>🔒</div>
-        <p style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, fontStyle: "italic", color: "#1a1a1a", marginBottom: 10 }}>Coaching is a paid feature</p>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.65, marginBottom: 28 }}>
-          Subscribe to Kimchi to book 1:1 sessions with coaches, see their rates, and get personalized guidance on your job search.
-        </p>
-        <a href="/pricing" style={{ display: "block", padding: "12px 0", background: "#1A3A2F", color: "#E8D5A3", borderRadius: 8, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, textDecoration: "none", marginBottom: 10 }}>View plans →</a>
-        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Maybe later</button>
-      </div>
+      {showUpgrade && <GrowthUpgradeModal trigger="coaching" onClose={() => setShowUpgrade(false)} />}
     </div>
   );
 }

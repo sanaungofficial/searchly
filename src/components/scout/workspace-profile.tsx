@@ -1250,7 +1250,10 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
         </div>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
           {!isMobile && (
-          <button
+          <a
+            href="/pricing"
+            data-offer="pro"
+            data-trigger="profile_assets"
             style={{
               padding: "8px 16px",
               background: "#F0FFF8",
@@ -1263,10 +1266,11 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
               display: "flex",
               alignItems: "center",
               gap: 5,
+              textDecoration: "none",
             }}
           >
-            ⚡ Upgrade to Turbo: Get Hired Faster ›
-          </button>
+            Upgrade to Pro ›
+          </a>
           )}
           <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { onUpload(f); setShowUploadModal(false); } }} />
           <button

@@ -16,6 +16,7 @@ import {
 import { NOTIFICATIONS, LIVE_SESSIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -39,18 +40,15 @@ interface NavItem {
   label: string;
   path: string;
   Icon: (p: { className?: string }) => React.ReactElement;
-  prodOnly?: boolean;
 }
-
-const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
 
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
   { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
-  { id: "live", label: "Live", path: "/live", Icon: LiveIcon, prodOnly: true },
-  { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon, prodOnly: true },
-  { id: "network", label: "Network", path: "/network", Icon: NetworkIcon, prodOnly: true },
+  { id: "live", label: "Live", path: "/live", Icon: LiveIcon },
+  { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon },
+  { id: "network", label: "Network", path: "/network", Icon: NetworkIcon },
 ];
 
 function initials(name: string | null, email: string) {
@@ -91,6 +89,8 @@ export function WorkspaceSidebar({
   const userRole = userRoleProp ?? ctxUserRole;
 
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
+  const { isPro, isAdmin: subscriptionIsAdmin, loading: subLoading } = useSubscription();
+  const showUpgrade = !subLoading && !isPro && !isAdmin && !subscriptionIsAdmin;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
 
@@ -379,7 +379,7 @@ export function WorkspaceSidebar({
             </button>
           )}
 
-          {NAV_ITEMS.filter((item) => !(IS_PROD && item.prodOnly)).map(({ id, label, path, Icon }) => {
+          {NAV_ITEMS.map(({ id, label, path, Icon }) => {
             const active = isActive(path);
             return (
               <button
@@ -421,11 +421,13 @@ export function WorkspaceSidebar({
 
         <div style={{ flex: 1 }} />
 
-        {/* ── Upgrade CTA (hidden when rail) ── */}
-        {!isRail && (
+        {/* ── Upgrade CTA (free users only, hidden when rail) ── */}
+        {!isRail && showUpgrade && (
           <div style={{ padding: "0 14px 12px" }}>
             <a
               href="/pricing"
+              data-offer="pro"
+              data-trigger="sidebar"
               style={{ display: "block", background: "rgba(232,213,163,0.08)", border: "1px solid rgba(232,213,163,0.15)", borderRadius: 10, padding: "10px 14px", textDecoration: "none" }}
             >
               <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.3px" }}>Upgrade to Pro</p>

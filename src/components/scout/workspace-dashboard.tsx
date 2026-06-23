@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { JobMeta } from "@/hooks/useJobs";
+import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import {
   INITIAL_SIGNALS,
   type KanbanCard,
@@ -240,6 +241,19 @@ export function WorkspaceDashboard() {
   const router = useRouter();
   const isMobile = useIsMobile();
   const { kanbanCards, addJob } = useWorkspace();
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgraded") === "true") {
+      setShowWelcome(true);
+      params.delete("upgraded");
+      const next = params.toString();
+      const path = window.location.pathname + (next ? `?${next}` : "");
+      window.history.replaceState({}, "", path);
+    }
+  }, []);
 
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
@@ -965,6 +979,7 @@ export function WorkspaceDashboard() {
 
         </div>
       </div>
+      {showWelcome && <GrowthWelcomeModal onClose={() => setShowWelcome(false)} />}
     </div>
   );
 }

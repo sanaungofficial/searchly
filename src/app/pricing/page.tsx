@@ -62,7 +62,7 @@ export default function PricingPage() {
             </div>
           </div>
           <ul style={{ margin: "0 0 28px", padding: "0 0 0 18px", listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
-            {["Resume upload + AI extraction", "Scout chat (5 messages/day)", "Job pipeline tracking (up to 10 jobs)", "1 AI tool run per job"].map((f) => (
+            {["Resume upload + AI extraction", "10 AI runs per month", "Job pipeline tracking", "Scout chat"].map((f) => (
               <li key={f} style={{ fontSize: 14, color: "#52493F", display: "flex", gap: 10, alignItems: "flex-start", paddingLeft: 0 }}>
                 <span style={{ color: "#4A8B6A", fontWeight: 700, flexShrink: 0 }}>✓</span> {f}
               </li>

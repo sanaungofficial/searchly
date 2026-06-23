@@ -1,0 +1,271 @@
+"use client";
+
+import { useSubscription } from "@/hooks/useSubscription";
+
+export type GrowthUpgradeTrigger = "limit_hit" | "low_match" | "usage_warning" | "coaching";
+
+const COPY: Record<
+  GrowthUpgradeTrigger,
+  { title: string; body: string; primary: string; secondary?: string }
+> = {
+  limit_hit: {
+    title: "You've used your free AI runs this month",
+    body: "Pro unlocks unlimited fit analysis, cover letters, and resume tailoring — so every application gets the full treatment.",
+    primary: "Upgrade to Pro — $29/mo",
+  },
+  low_match: {
+    title: "This match needs more than tweaks",
+    body: "Scores under 6.0 often get filtered before a human reads them. Pro helps you tailor fast — or talk to a coach who can reposition your story.",
+    primary: "Upgrade to Pro",
+    secondary: "Find a coach",
+  },
+  usage_warning: {
+    title: "Running low on AI runs",
+    body: "You have a few free AI requests left this month. Upgrade now so you don't hit a wall mid-application.",
+    primary: "Upgrade to Pro",
+  },
+  coaching: {
+    title: "Coaching is a Pro feature",
+    body: "Subscribe to book 1:1 sessions, see coach rates, and get personalized guidance on your search.",
+    primary: "View plans",
+  },
+};
+
+type Props = {
+  trigger: GrowthUpgradeTrigger;
+  onClose: () => void;
+  /** When set, secondary CTA navigates here (e.g. /coaching). */
+  secondaryHref?: string;
+};
+
+export function GrowthUpgradeModal({ trigger, onClose, secondaryHref }: Props) {
+  const { startCheckout, loading } = useSubscription();
+  const copy = COPY[trigger];
+
+  const handlePrimary = async () => {
+    if (trigger === "coaching") {
+      window.location.href = "/pricing";
+      return;
+    }
+    await startCheckout();
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 70,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        onClick={onClose}
+        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }}
+      />
+      <div
+        role="dialog"
+        aria-labelledby="growth-upgrade-title"
+        style={{
+          position: "relative",
+          background: "#fff",
+          borderRadius: 14,
+          padding: "36px 32px",
+          maxWidth: 420,
+          width: "100%",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+        }}
+      >
+        <p
+          id="growth-upgrade-title"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 22,
+            fontWeight: 600,
+            fontStyle: "italic",
+            color: "#1a1a1a",
+            marginBottom: 10,
+            lineHeight: 1.3,
+          }}
+        >
+          {copy.title}
+        </p>
+        <p
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 14,
+            color: "var(--scout-muted)",
+            lineHeight: 1.65,
+            marginBottom: 28,
+          }}
+        >
+          {copy.body}
+        </p>
+        <button
+          onClick={handlePrimary}
+          disabled={loading}
+          data-offer="pro"
+          data-trigger={trigger}
+          style={{
+            display: "block",
+            width: "100%",
+            padding: "12px 0",
+            background: "#1A3A2F",
+            color: "#E8D5A3",
+            borderRadius: 8,
+            fontFamily: "var(--font-ui)",
+            fontSize: 14,
+            fontWeight: 600,
+            border: "none",
+            cursor: loading ? "default" : "pointer",
+            opacity: loading ? 0.7 : 1,
+            marginBottom: copy.secondary ? 10 : 0,
+          }}
+        >
+          {loading ? "Redirecting…" : copy.primary}
+        </button>
+        {copy.secondary && secondaryHref && (
+          <a
+            href={secondaryHref}
+            data-offer="coaching"
+            data-trigger={trigger}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "12px 0",
+              background: "#F7F5F2",
+              color: "#1A3A2F",
+              borderRadius: 8,
+              fontFamily: "var(--font-ui)",
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+              textAlign: "center",
+              border: "1px solid rgba(26,58,47,0.15)",
+              marginBottom: 10,
+            }}
+          >
+            {copy.secondary}
+          </a>
+        )}
+        <button
+          onClick={onClose}
+          style={{
+            display: "block",
+            width: "100%",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "var(--font-ui)",
+            fontSize: 14,
+            color: "var(--scout-muted)",
+            marginTop: copy.secondary ? 0 : 10,
+          }}
+        >
+          Maybe later
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Inline banner for low resume-match scores — not a blocking modal. */
+export function GrowthMatchOffer({
+  onUpgrade,
+  isPro,
+}: {
+  onUpgrade: () => void;
+  isPro: boolean;
+}) {
+  if (isPro) {
+    return (
+      <div
+        style={{
+          marginTop: 14,
+          padding: "14px 16px",
+          background: "rgba(26,58,47,0.04)",
+          borderRadius: 8,
+          border: "1px solid rgba(26,58,47,0.12)",
+        }}
+      >
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", margin: "0 0 10px", lineHeight: 1.55 }}>
+          Want a second opinion on positioning? A coach can help you reframe this role.
+        </p>
+        <a
+          href="/coaching"
+          data-offer="coaching"
+          data-trigger="low_match"
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#1A3A2F",
+            textDecoration: "none",
+          }}
+        >
+          Find a coach →
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        padding: "14px 16px",
+        background: "rgba(196,87,74,0.06)",
+        borderRadius: 8,
+        border: "1px solid rgba(196,87,74,0.15)",
+      }}
+    >
+      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", margin: "0 0 12px", lineHeight: 1.55 }}>
+        Pro tailors your resume for this role without counting against your limit. Or talk to someone who&apos;s placed candidates like you.
+      </p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={onUpgrade}
+          data-offer="pro"
+          data-trigger="low_match"
+          style={{
+            padding: "8px 16px",
+            background: "#1A3A2F",
+            color: "#E8D5A3",
+            border: "none",
+            borderRadius: 6,
+            fontFamily: "var(--font-ui)",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Upgrade to Pro
+        </button>
+        <a
+          href="/coaching"
+          data-offer="coaching"
+          data-trigger="low_match"
+          style={{
+            padding: "8px 16px",
+            background: "transparent",
+            color: "#1A3A2F",
+            border: "1px solid rgba(26,58,47,0.2)",
+            borderRadius: 6,
+            fontFamily: "var(--font-ui)",
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          Find a coach
+        </a>
+      </div>
+    </div>
+  );
+}

@@ -1,5 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
@@ -15,16 +14,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getAuthedUserForAi();
+  if ("error" in auth) return auth.error;
+  const { dbUser } = auth;
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
+  const quotaError = await requireAiQuota(dbUser);
+  if (quotaError) return quotaError;
 
-  const resumeText = dbUser?.profile?.resumeText;
+  const resumeText = dbUser.profile?.resumeText;
   if (!resumeText) {
     return NextResponse.json({ error: "No resume found" }, { status: 404 });
   }

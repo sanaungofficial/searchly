@@ -1,5 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
@@ -15,9 +14,23 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "AI not configured" }), { status: 503 });
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  const auth = await getAuthedUserForAi();
+  if ("error" in auth) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: auth.error.status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { dbUser } = auth;
+
+  const quotaError = await requireAiQuota(dbUser);
+  if (quotaError) {
+    const body = await quotaError.json();
+    return new Response(JSON.stringify(body), {
+      status: 402,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   const body = await request.json();
   const { messages, pipeline, focusedJob } = body as {
@@ -26,11 +39,7 @@ export async function POST(request: Request) {
     focusedJob?: { company: string; role: string } | null;
   };
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  const resumeText = dbUser?.profile?.resumeText || "";
+  const resumeText = dbUser.profile?.resumeText || "";
 
   const pipelineContext = pipeline?.length
     ? `\nUser's current job pipeline:\n${pipeline.map((j) => `- ${j.role} at ${j.company} (${j.stage})`).join("\n")}`
