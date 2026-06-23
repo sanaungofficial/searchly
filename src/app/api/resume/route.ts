@@ -3,48 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt } from "@/lib/prompts";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
-import {
-  shouldReplaceNameWithResumeName,
-  type ParsedResumeData,
-} from "@/lib/resume-parse";
-import { PARSE_MODEL, parseResumePdf, parseResumeText } from "@/lib/resume-extract";
+import { shouldReplaceNameWithResumeName } from "@/lib/resume-parse";
+import { PARSE_MODEL, parseResumeFile } from "@/lib/resume-extract";
 import Anthropic from "@anthropic-ai/sdk";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
   if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   return _anthropic;
-}
-
-async function extractResume(file: File, structuredPrompt: string): Promise<{ text: string; parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number }> {
-  const bytes = await file.arrayBuffer();
-  const ext = file.name.split(".").pop()?.toLowerCase();
-
-  if (ext === "pdf") {
-    const base64 = Buffer.from(bytes).toString("base64");
-    return parseResumePdf(getAnthropic(), base64, structuredPrompt);
-  }
-
-  if (ext === "docx") {
-    try {
-      const mammoth = await import("mammoth");
-      const { value: rawText } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
-      if (!rawText.trim()) return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
-      const { parsed, tokensIn, tokensOut } = await parseResumeText(getAnthropic(), rawText, structuredPrompt);
-      return { text: rawText, parsed, tokensIn, tokensOut };
-    } catch {
-      return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
-    }
-  }
-
-  if (ext === "txt") {
-    const rawText = Buffer.from(bytes).toString("utf-8");
-    const { parsed, tokensIn, tokensOut } = await parseResumeText(getAnthropic(), rawText, structuredPrompt);
-    return { text: rawText, parsed, tokensIn, tokensOut };
-  }
-
-  return { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
 }
 
 export async function POST(request: Request) {
@@ -57,7 +25,11 @@ export async function POST(request: Request) {
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-  const ext = file.name.split(".").pop();
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (!["pdf", "docx", "txt"].includes(ext)) {
+    return NextResponse.json({ error: "Upload a PDF, DOCX, or TXT resume" }, { status: 400 });
+  }
+
   const path = `${user.id}/resume-${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
@@ -75,12 +47,20 @@ export async function POST(request: Request) {
   }
 
   const publicUrl = signedData.signedUrl;
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
+  const structuredPrompt = anthropic ? await getPrompt("RESUME_PARSE") : "";
 
-  const structuredPrompt = process.env.ANTHROPIC_API_KEY ? await getPrompt("RESUME_PARSE") : "";
+  const { text: resumeText, parsed: parsedRaw, tokensIn, tokensOut, usedFallback } = await parseResumeFile(
+    anthropic,
+    bytes,
+    ext,
+    structuredPrompt,
+  );
 
-  const { text: resumeText, parsed: parsedRaw, tokensIn: rTokIn, tokensOut: rTokOut } = process.env.ANTHROPIC_API_KEY
-    ? await extractResume(file, structuredPrompt)
-    : { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
+  if (!resumeText) {
+    return NextResponse.json({ error: "Could not read text from this file. Try PDF, DOCX, or TXT." }, { status: 422 });
+  }
 
   const name =
     user.user_metadata?.full_name ??
@@ -93,7 +73,9 @@ export async function POST(request: Request) {
     create: { email: user.email!, name },
   });
 
-  if (resumeText) logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, rTokIn, rTokOut);
+  if (tokensIn > 0) {
+    logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
+  }
 
   const parsedData = parsedRaw;
 
@@ -120,8 +102,8 @@ export async function POST(request: Request) {
       name: file.name.replace(/\.[^/.]+$/, "") || "Resume",
       url: publicUrl,
       isPrimary: true,
-      resumeText: resumeText || null,
-      parsedData: parsedData ?? undefined,
+      resumeText,
+      parsedData: (parsedData ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
     },
   });
 
@@ -132,5 +114,6 @@ export async function POST(request: Request) {
     parsed: !!parsedData,
     parsedData,
     asset,
+    _fallback: usedFallback,
   });
 }
