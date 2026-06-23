@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useSubscription } from "@/hooks/useSubscription";
+import { CREDIT_ACTIONS, FREE_MONTHLY_CREDITS } from "@/lib/credits";
 
 export default function PricingPage() {
   const [loading, setLoading] = useState(false);
@@ -122,12 +123,20 @@ export default function PricingPage() {
               </div>
             </div>
             <ul style={{ margin: "0 0 28px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-              {["Resume upload + AI extraction", "10 AI runs per month", "Job pipeline tracking", "Scout chat"].map((f) => (
+              {[
+                "Resume upload + AI extraction",
+                `${FREE_MONTHLY_CREDITS} AI credits per month`,
+                "Job pipeline tracking",
+                "Scout chat",
+              ].map((f) => (
                 <li key={f} style={{ fontSize: 14, color: "#52493F", display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <span style={{ color: "#4A8B6A", fontWeight: 700, flexShrink: 0 }}>✓</span> {f}
                 </li>
               ))}
             </ul>
+            <p style={{ margin: "0 0 20px", fontSize: 12, color: "var(--scout-muted)", lineHeight: 1.55 }}>
+              1 credit per AI action — {CREDIT_ACTIONS.slice(0, 3).join(", ").toLowerCase()}, and more.
+            </p>
             {isLoggedIn && !proUser ? (
               <div
                 style={{
@@ -199,9 +208,9 @@ export default function PricingPage() {
             <ul style={{ margin: "0 0 28px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
               {[
                 "Everything in Free",
+                "Unlimited AI credits",
                 "Unlimited Scout chat",
                 "Unlimited job tracking",
-                "Unlimited AI tool runs",
                 "Resume bullet tailoring per job",
                 "Cover letter generation",
                 "Fit analysis with gap report",

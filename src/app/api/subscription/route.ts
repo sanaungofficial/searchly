@@ -3,7 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
-import { getUsage, FREE_AI_LIMIT } from "@/lib/usage";
+import { getUsage } from "@/lib/usage";
+import { FREE_MONTHLY_CREDITS } from "@/lib/credits";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -31,16 +32,19 @@ export async function GET() {
 
   const adminUser = dbUser.role === "ADMIN";
   const proUser = adminUser || isPro(dbUser.subscription);
-  const usage = proUser ? { used: 0, limit: Infinity } : await getUsage(dbUser.id);
+  const credits = proUser ? null : await getUsage(dbUser.id);
 
   return NextResponse.json({
     isPro: proUser,
     isAdmin: adminUser,
     status: adminUser ? "admin" : (dbUser.subscription?.status ?? null),
     currentPeriodEnd: dbUser.subscription?.stripeCurrentPeriodEnd ?? null,
-    usage: {
-      used: usage.used,
-      limit: proUser ? null : FREE_AI_LIMIT,
-    },
+    credits,
+    /** @deprecated use credits */
+    usage: credits
+      ? { used: credits.used, limit: credits.limit }
+      : proUser
+        ? { used: 0, limit: null }
+        : { used: 0, limit: FREE_MONTHLY_CREDITS },
   });
 }

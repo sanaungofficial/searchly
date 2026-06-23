@@ -1,7 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
-import { checkAndIncrementUsage } from "@/lib/usage";
+import { consumeCredit } from "@/lib/usage";
+import { CREDITS_EXHAUSTED_ERROR } from "@/lib/credits";
 import { logAiUsage } from "@/lib/ai-cost";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
@@ -38,13 +39,16 @@ export async function GET(request: Request) {
     }
   }
 
-  const { allowed, used, limit } = await checkAndIncrementUsage(
+  const { allowed, used, limit, remaining } = await consumeCredit(
     dbUser?.id ?? user.id,
     isPro(dbUser?.subscription ?? null) || dbUser?.role === "ADMIN",
   );
 
   if (!allowed) {
-    return NextResponse.json({ error: "Monthly AI limit reached", used, limit }, { status: 402 });
+    return NextResponse.json(
+      { error: CREDITS_EXHAUSTED_ERROR, code: "CREDITS_EXHAUSTED", used, limit, remaining },
+      { status: 402 },
+    );
   }
 
   const resumeText = dbUser?.profile?.resumeText;

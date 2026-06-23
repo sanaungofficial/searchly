@@ -2,7 +2,8 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { isPro } from "@/lib/stripe";
-import { checkAndIncrementUsage } from "@/lib/usage";
+import { consumeCredit } from "@/lib/usage";
+import { CREDITS_EXHAUSTED_ERROR } from "@/lib/credits";
 
 export async function getAuthedUserForAi() {
   const supabase = await createClient();
@@ -31,28 +32,35 @@ export function isProOrAdmin(dbUser: {
   return isPro(dbUser.subscription) || dbUser.role === "ADMIN";
 }
 
-/** Returns a 402 response if the free monthly AI quota is exhausted. */
+function creditsErrorBody(used: number, limit: number, remaining: number) {
+  return {
+    error: CREDITS_EXHAUSTED_ERROR,
+    code: "CREDITS_EXHAUSTED",
+    used,
+    limit,
+    remaining,
+  };
+}
+
+/** Returns a 402 response if the free monthly credit balance is exhausted. */
 export async function requireAiQuota(dbUser: {
   id: string;
   role: string;
   subscription: { status: string } | null;
 }): Promise<NextResponse | null> {
-  const { allowed, used, limit } = await checkAndIncrementUsage(
+  const { allowed, used, limit, remaining } = await consumeCredit(
     dbUser.id,
     isProOrAdmin(dbUser),
   );
   if (!allowed) {
-    return NextResponse.json(
-      { error: "Monthly AI limit reached", used, limit },
-      { status: 402 },
-    );
+    return NextResponse.json(creditsErrorBody(used, limit, remaining), { status: 402 });
   }
   return null;
 }
 
-export function aiLimitJsonResponse(used: number, limit: number): Response {
-  return new Response(
-    JSON.stringify({ error: "Monthly AI limit reached", used, limit }),
-    { status: 402, headers: { "Content-Type": "application/json" } },
-  );
+export function aiLimitJsonResponse(used: number, limit: number, remaining = 0): Response {
+  return new Response(JSON.stringify(creditsErrorBody(used, limit, remaining)), {
+    status: 402,
+    headers: { "Content-Type": "application/json" },
+  });
 }
