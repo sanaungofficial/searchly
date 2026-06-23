@@ -27,6 +27,8 @@ export async function GET() {
           name: "Resume",
           url: profile.resumeUrl,
           isPrimary: true,
+          resumeText: profile.resumeText,
+          parsedData: profile.parsedData ?? undefined,
         },
       });
       return NextResponse.json([created, ...assets]);

@@ -107,6 +107,11 @@ model UserAsset {
   url       String
   isPrimary Boolean   @default(false)
 
+  resumeText         String?
+  parsedData         Json?
+  analysisData       Json?
+  analysisUpdatedAt  DateTime?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

@@ -16,6 +16,7 @@ interface AISuggestion {
   impact: string;
 }
 import { SparkleIcon } from "./workspace-icons";
+import { ProfileResumeEditor } from "./profile-resume-editor";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1198,11 +1199,12 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   );
 }
 
-function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestions, suggestionsLoading }: {
+function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading }: {
   assets: UserAssetRow[];
   uploading: boolean;
   onUpload: (file: File) => void;
   onDelete: (id: string) => void;
+  onOpenResume: (id: string) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   suggestions: AISuggestion[];
   suggestionsLoading: boolean;
@@ -1239,7 +1241,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
           }}
         >
           {[
-            { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+            { label: "View resume", action: () => { onOpenResume(r.id); setMenuOpen(null); } },
             { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
             { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
             { label: "Delete", action: () => { onDelete(r.id); setMenuOpen(null); } },
@@ -1352,7 +1354,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
                   <button
                     type="button"
-                    onClick={() => window.open(r.url, "_blank")}
+                    onClick={() => onOpenResume(r.id)}
                     style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", flex: 1, minWidth: 0 }}
                   >
                     <div style={{
@@ -1423,7 +1425,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
           resumes.map((r) => (
             <div
               key={r.id}
-              onClick={() => window.open(r.url, "_blank")}
+              onClick={() => onOpenResume(r.id)}
               style={{
                 display: "grid",
                 gridTemplateColumns: "2fr 1.2fr 1fr 1fr 40px",
@@ -1817,6 +1819,7 @@ export function WorkspaceProfile() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [readbackNudge, setReadbackNudge] = useState(false);
+  const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
   const reparseAttempted = useRef(false);
@@ -1980,6 +1983,7 @@ export function WorkspaceProfile() {
         if (!profileData.error) setProfile(profileData);
         else setProfile((p) => p ? { ...p, resumeUrl: data.url } : p);
         refreshAssets();
+        if (data.asset?.id) setEditorAssetId(data.asset.id);
         setReadbackNudge(true);
         setTimeout(() => setReadbackNudge(false), 8000);
       }
@@ -2270,11 +2274,23 @@ export function WorkspaceProfile() {
                 {resumeUploadError}
               </p>
             )}
-            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
+            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={setEditorAssetId} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
           </>
         )}
         </div>
       </div>
+      <ProfileResumeEditor
+        open={!!editorAssetId}
+        assetId={editorAssetId}
+        onClose={() => setEditorAssetId(null)}
+        onUpdated={() => {
+          refreshAssets();
+          fetch("/api/profile")
+            .then((r) => r.json())
+            .then((data) => { if (!data.error) setProfile(data); })
+            .catch(() => {});
+        }}
+      />
     </div>
   );
 }
