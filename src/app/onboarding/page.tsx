@@ -6,11 +6,13 @@ import { createClient } from "@/utils/supabase/client";
 import {
   ScoutHeader,
   ScreenWelcome,
+  ScreenReadBack,
   ScreenTargetRoles,
   ScreenAboutYou,
   DemoNextButton,
   ROLE_BUCKETS,
   type Screen,
+  type ReadBackData,
 } from "@/components/scout/screens";
 
 export default function OnboardingPage() {
@@ -112,6 +114,14 @@ export default function OnboardingPage() {
     });
   }, []);
 
+  const onReadBackConfirm = useCallback((_data: ReadBackData | null) => {
+    goTo(2);
+  }, [goTo]);
+
+  const onReadBackRefine = useCallback(() => {
+    goTo(0);
+  }, [goTo]);
+
   const onRolesContinue = useCallback(() => {
     if (selectedTitles.length) {
       fetch("/api/profile", {
@@ -120,7 +130,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({ targetRoles: selectedTitles }),
       }).catch(() => {});
     }
-    goTo(2);
+    goTo(3);
   }, [selectedTitles, goTo]);
 
   const onTogglePriority = useCallback((p: string) => {
@@ -149,6 +159,8 @@ export default function OnboardingPage() {
       window.setTimeout(() => setResumeUploaded(true), 1300);
     } else if (screen === 1) {
       goTo(2);
+    } else if (screen === 2) {
+      goTo(3);
     }
   };
 
@@ -194,6 +206,12 @@ export default function OnboardingPage() {
             />
           )}
           {screen === 1 && (
+            <ScreenReadBack
+              onConfirm={onReadBackConfirm}
+              onRefine={onReadBackRefine}
+            />
+          )}
+          {screen === 2 && (
             <ScreenTargetRoles
               selectedBuckets={selectedBuckets}
               selectedTitles={selectedTitles}
@@ -202,7 +220,7 @@ export default function OnboardingPage() {
               onContinue={onRolesContinue}
             />
           )}
-          {screen === 2 && (
+          {screen === 3 && (
             <ScreenAboutYou
               careerMotivation={careerMotivation}
               jobTimeline={jobTimeline}
