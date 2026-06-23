@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
+import type { JobMeta } from "@/lib/job-meta";
+
+export type { JobMeta };
 
 // Map DB stage enum → KanbanStage
 const DB_TO_KANBAN: Record<string, KanbanStage> = {
@@ -35,20 +38,6 @@ interface DbJob {
   companyLinkedinUrl: string | null;
   fitAnalysis: string | null;
   createdAt: string;
-}
-
-export interface JobMeta {
-  location?: string | null;
-  salary?: string | null;
-  jobType?: string | null;
-  remote?: boolean | null;
-  seniority?: string | null;
-  experienceLevel?: string | null;
-  description?: string | null;
-  requirements?: string[];
-  tags?: string[];
-  nextStep?: string | null;
-  nextStepDue?: string | null;
 }
 
 function dbJobToKanban(job: DbJob, index: number): KanbanCard {

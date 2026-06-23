@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
+import { PARSE_JOB_JSON_SHAPE, parsedJobToMeta } from "@/lib/job-meta";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -117,30 +118,44 @@ Page URL: ${url}
 Content:
 ${pageText.slice(0, 15000)}
 
-Return this exact JSON shape (all fields required, use null if not found):
-{
-  "company": "company name",
-  "role": "job title",
-  "location": "city, state or Remote or null",
-  "salary": "e.g. $130K-$150K/yr or null",
-  "jobType": "Full-time or Part-time or Contract or null",
-  "remote": true or false or null,
-  "seniority": "Senior or Mid or Entry or Director or VP or null",
-  "description": "complete job description as plain text — include all overview paragraphs, responsibilities, requirements, and qualifications. Do NOT summarize. Minimum 200 words if available.",
-  "requirements": ["key skill or requirement 1", "key skill or requirement 2"],
-  "tags": ["department or industry tag"]
-}`;
+Return this exact JSON shape (all fields required, use null or [] if not found):
+${PARSE_JOB_JSON_SHAPE}`;
 
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
+    max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
 
   const text = message.content[0].type === "text" ? message.content[0].text : "";
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON in AI response");
-  return JSON.parse(jsonMatch[0]);
+  return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+}
+
+function buildParseResponse(
+  structured: Record<string, unknown>,
+  hints?: {
+    company?: string;
+    role?: string;
+    location?: string | null;
+    jobType?: string | null;
+    remote?: boolean | null;
+    description?: string | null;
+    tags?: string[];
+  }
+) {
+  const meta = parsedJobToMeta(structured);
+  return {
+    company: hints?.company ?? (typeof structured.company === "string" ? structured.company : null),
+    role: hints?.role ?? (typeof structured.role === "string" ? structured.role : null),
+    ...meta,
+    location: hints?.location ?? meta.location ?? null,
+    jobType: hints?.jobType ?? meta.jobType ?? null,
+    remote: hints?.remote ?? meta.remote ?? null,
+    description: hints?.description ?? meta.description ?? null,
+    tags: hints?.tags ?? meta.tags ?? [],
+  };
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -171,19 +186,33 @@ export async function POST(request: Request) {
         .split(/[-_]/)
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
-      return NextResponse.json({
-        company: companyName,
-        role: gh.title,
-        location: location ?? null,
-        salary: null,
-        jobType: null,
-        remote: location ? location.toLowerCase().includes("remote") : null,
-        seniority: null,
-        description: descText,
-        requirements: [],
-        tags: dept ? [dept] : [],
-        _source: "greenhouse",
-      });
+      try {
+        const structured = await aiParseJobContent(descText, url, anthropic);
+        if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", "claude-haiku-4-5-20251001", 0, 0);
+        return NextResponse.json({
+          ...buildParseResponse(structured, {
+            company: companyName,
+            role: gh.title,
+            location: location ?? null,
+            remote: location ? location.toLowerCase().includes("remote") : null,
+            description: descText,
+            tags: dept ? [dept] : [],
+          }),
+          _source: "greenhouse",
+        });
+      } catch {
+        return NextResponse.json({
+          ...buildParseResponse({ description: descText, tags: dept ? [dept] : [] }, {
+            company: companyName,
+            role: gh.title,
+            location: location ?? null,
+            remote: location ? location.toLowerCase().includes("remote") : null,
+            description: descText,
+            tags: dept ? [dept] : [],
+          }),
+          _source: "greenhouse",
+        });
+      }
     } catch (err) {
       console.error("Greenhouse API failed, falling back:", err);
     }
@@ -200,19 +229,35 @@ export async function POST(request: Request) {
         .split(/[-_]/)
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
-      return NextResponse.json({
-        company: companyName,
-        role: lv.text,
-        location: lv.categories?.location ?? null,
-        salary: null,
-        jobType: lv.categories?.commitment ?? null,
-        remote: lv.categories?.location ? lv.categories.location.toLowerCase().includes("remote") : null,
-        seniority: null,
-        description: descText,
-        requirements: [],
-        tags: lv.categories?.department ? [lv.categories.department] : [],
-        _source: "lever",
-      });
+      try {
+        const structured = await aiParseJobContent(descText, url, anthropic);
+        if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", "claude-haiku-4-5-20251001", 0, 0);
+        return NextResponse.json({
+          ...buildParseResponse(structured, {
+            company: companyName,
+            role: lv.text,
+            location: lv.categories?.location ?? null,
+            jobType: lv.categories?.commitment ?? null,
+            remote: lv.categories?.location ? lv.categories.location.toLowerCase().includes("remote") : null,
+            description: descText,
+            tags: lv.categories?.department ? [lv.categories.department] : [],
+          }),
+          _source: "lever",
+        });
+      } catch {
+        return NextResponse.json({
+          ...buildParseResponse({ description: descText, tags: lv.categories?.department ? [lv.categories.department] : [] }, {
+            company: companyName,
+            role: lv.text,
+            location: lv.categories?.location ?? null,
+            jobType: lv.categories?.commitment ?? null,
+            remote: lv.categories?.location ? lv.categories.location.toLowerCase().includes("remote") : null,
+            description: descText,
+            tags: lv.categories?.department ? [lv.categories.department] : [],
+          }),
+          _source: "lever",
+        });
+      }
     } catch (err) {
       console.error("Lever API failed, falling back:", err);
     }
@@ -273,7 +318,7 @@ export async function POST(request: Request) {
       // token logging is approximate since we refactored to a helper
       logAiUsage(dbUser.id, "JOB_PARSE", "claude-haiku-4-5-20251001", 0, 0);
     }
-    return NextResponse.json({ ...parsed, _source: scrapeSource });
+    return NextResponse.json({ ...buildParseResponse(parsed), _source: scrapeSource });
   } catch {
     return NextResponse.json(
       { error: "Could not extract job details. Try pasting the description instead." },
