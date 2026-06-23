@@ -48,7 +48,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         collapsed={collapsed}
         onToggle={() => setCollapsed((p) => !p)}
       />
-      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+      <div style={{ flex: 1, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
         {/* Mobile hamburger — only shows when sidebar is collapsed on mobile */}
         {isMobile && collapsed && (
           <button
