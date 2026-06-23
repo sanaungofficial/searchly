@@ -14,6 +14,7 @@ import {
   ROLE_BUCKETS,
   type Screen,
   type ReadBackData,
+  type TransitionJobAnalysis,
 } from "@/components/scout/screens";
 
 function saveLinkedIn(url: string) {
@@ -76,6 +77,10 @@ export default function OnboardingPage() {
   const [priorities, setPriorities] = useState<string[]>([]);
   const [attribution, setAttribution] = useState("");
   const [resumeError, setResumeError] = useState(false);
+  const [jobUrl, setJobUrl] = useState("");
+  const [jobLoading, setJobLoading] = useState(false);
+  const [jobError, setJobError] = useState<string | null>(null);
+  const [jobAnalysis, setJobAnalysis] = useState<TransitionJobAnalysis | null>(null);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
@@ -190,8 +195,86 @@ export default function OnboardingPage() {
     goTo(4);
   }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, goTo]);
 
-  const onEnterWorkspace = useCallback(() => {
-    router.push("/opportunities?addJob=1");
+  const analyzeFirstJob = useCallback(async () => {
+    const url = jobUrl.trim();
+    if (!url) return;
+    setJobLoading(true);
+    setJobError(null);
+    setJobAnalysis(null);
+    try {
+      const res = await fetch("/api/ai/parse-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setJobError(data.error ?? "Could not read that URL. Try another listing link.");
+      } else {
+        setJobAnalysis(data);
+      }
+    } catch {
+      setJobError("Network error — please try again.");
+    } finally {
+      setJobLoading(false);
+    }
+  }, [jobUrl]);
+
+  const addFirstJob = useCallback(async () => {
+    if (!jobAnalysis) return;
+    const url = jobUrl.trim();
+    const company = jobAnalysis.company ?? "Unknown Company";
+    const role = jobAnalysis.role ?? "Unknown Role";
+    const notes = JSON.stringify({
+      location: jobAnalysis.location,
+      salary: jobAnalysis.salary,
+      description: jobAnalysis.description,
+      requirements: jobAnalysis.requirements,
+    });
+    setJobLoading(true);
+    setJobError(null);
+    try {
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company, role, url, notes }),
+      });
+      const job = await res.json();
+      if (!res.ok) {
+        setJobError(job.error ?? "Could not save this job.");
+        return;
+      }
+      if (jobAnalysis.description && job.id) {
+        fetch("/api/ai/job-match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobTitle: role,
+            company,
+            description: jobAnalysis.description,
+          }),
+        })
+          .then((r) => r.json())
+          .then((matchData: { score?: number }) => {
+            if (!matchData.score || !job.id) return;
+            fetch(`/api/jobs/${job.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: matchData.score }) }),
+            }).catch(() => {});
+          })
+          .catch(() => {});
+      }
+      router.push(`/opportunities/pipeline?job=${job.id}`);
+    } catch {
+      setJobError("Network error — please try again.");
+    } finally {
+      setJobLoading(false);
+    }
+  }, [jobAnalysis, jobUrl, router]);
+
+  const skipToWorkspace = useCallback(() => {
+    router.push("/opportunities/pipeline");
   }, [router]);
 
   const onReviewProfile = useCallback(() => {
@@ -290,8 +373,19 @@ export default function OnboardingPage() {
           {screen === 4 && (
             <ScreenTransition
               targetRoles={selectedTitles}
-              onEnterWorkspace={onEnterWorkspace}
+              jobUrl={jobUrl}
+              onJobUrlChange={(v) => {
+                setJobUrl(v);
+                if (jobAnalysis) setJobAnalysis(null);
+                if (jobError) setJobError(null);
+              }}
+              onAnalyze={analyzeFirstJob}
+              onAddJob={addFirstJob}
+              onSkip={skipToWorkspace}
               onReviewProfile={onReviewProfile}
+              loading={jobLoading}
+              error={jobError}
+              analysis={jobAnalysis}
             />
           )}
         </div>

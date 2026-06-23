@@ -50,11 +50,27 @@ export function WorkspaceOpportunities() {
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (searchParams.get("addJob") === "1") {
+    const openAdd = searchParams.get("addJob") === "1";
+    const jobId = searchParams.get("job");
+
+    if (openAdd) {
       setShowAddPanel(true);
+    }
+
+    if (jobId) {
+      const card = kanbanCards.find((c) => {
+        const ext = c as KanbanCard & { _dbId?: string };
+        return ext._dbId === jobId;
+      });
+      if (card) {
+        setDrawerCardId(card.id);
+      }
+    }
+
+    if (openAdd || jobId) {
       router.replace("/opportunities/pipeline");
     }
-  }, [searchParams, router]);
+  }, [searchParams, kanbanCards, router, setDrawerCardId]);
 
   // CSV upload state
   const [showCsvPanel, setShowCsvPanel] = useState(false);
