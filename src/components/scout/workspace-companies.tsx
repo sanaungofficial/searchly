@@ -1,7 +1,5 @@
 "use client";
 
-import { color } from "@/lib/typography";
-
 import { useState, useEffect, useCallback, useRef } from "react";
 
 interface CachedJob {
@@ -75,11 +73,66 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-function isJobMatch(jobTitle: string, userTargetRoles: string[]): boolean {
-  if (!userTargetRoles.length) return false;
+function parseRolesText(text: string | null | undefined): string[] {
+  if (!text?.trim()) return [];
+  return text.split(/[,;\n]+/).map((r) => r.trim()).filter(Boolean);
+}
+
+function buildMatchRoles(profileRoles: string[], companyTargetRoles: string | null): string[] {
+  const seen = new Set<string>();
+  return [...profileRoles, ...parseRolesText(companyTargetRoles)].filter((role) => {
+    const key = role.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function isJobMatch(jobTitle: string, matchRoles: string[]): boolean {
+  if (!matchRoles.length) return false;
   const title = jobTitle.toLowerCase();
-  return userTargetRoles.some((role) =>
+  return matchRoles.some((role) =>
     role.toLowerCase().split(/\s+/).filter((w) => w.length > 3).some((w) => title.includes(w))
+  );
+}
+
+function hasScanSource(company: TrackedCompany): boolean {
+  return !!(company.careersUrl?.trim() || company.website?.trim());
+}
+
+function humanizeApiError(message: string | undefined, status: number): string {
+  if (status === 503 || message === "AI not configured") {
+    return "AI scanning isn't available on staging — try on app.kimchi.so.";
+  }
+  if (message?.includes("Careers URL or website")) {
+    return "Add a careers URL (or website) before scanning.";
+  }
+  if (message?.includes("JavaScript or login")) {
+    return "This careers page needs a browser — try the direct ATS link (e.g. boards.greenhouse.io/company).";
+  }
+  if (message?.includes("block bots") || message?.includes("Could not fetch")) {
+    return "Couldn't reach the careers page — paste the direct jobs listing URL.";
+  }
+  return message ?? "Something went wrong. Try again.";
+}
+
+function ErrorBanner({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
+  return (
+    <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#991b1b", lineHeight: 1.45 }}>{message}</div>
+      {onDismiss && (
+        <button type="button" onClick={onDismiss} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#991b1b", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+      )}
+    </div>
+  );
+}
+
+function ScanHint({ company }: { company: TrackedCompany }) {
+  if (hasScanSource(company)) return null;
+  return (
+    <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af", marginTop: 4, lineHeight: 1.4 }}>
+      Add a careers URL to scan open roles.
+    </div>
   );
 }
 
@@ -153,14 +206,19 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
   const cache = company.jobsCache as JobsCache | null;
   const jobCount = cache?.jobs?.length ?? 0;
   const hasJobs = jobCount > 0;
+  const canScan = hasScanSource(company);
 
   async function handleRefresh() {
+    if (!canScan) {
+      setError("Add a careers URL (or website) before scanning.");
+      return;
+    }
     setLoading(true); setError(null);
     try {
       const res = await fetch(`/api/companies/${company.id}/refresh`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Scan failed."); } else { onRefreshed(data); }
-    } catch { setError("Network error."); } finally { setLoading(false); }
+      if (!res.ok) { setError(humanizeApiError(data.error, res.status)); } else { onRefreshed(data); }
+    } catch { setError("Network error — couldn't scan careers page."); } finally { setLoading(false); }
   }
 
   return (
@@ -171,10 +229,11 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
             {jobCount} {jobCount === 1 ? "role" : "roles"}
           </span>
         )}
-        <button onClick={handleRefresh} disabled={loading} title="Scan careers page for open roles" style={{ background: loading ? "#f3f4f6" : "transparent", color: loading ? "#9ca3af" : "#6b7280", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 8px", fontSize: 14, cursor: loading ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "var(--font-ui)" }}>
+        <button onClick={handleRefresh} disabled={loading || !canScan} title={canScan ? "Scan careers page for open roles" : "Add a careers URL first"} style={{ background: loading || !canScan ? "#f3f4f6" : "transparent", color: loading || !canScan ? "#9ca3af" : "#6b7280", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 8px", fontSize: 14, cursor: loading || !canScan ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "var(--font-ui)" }}>
           {loading ? "Scanning…" : hasJobs ? "↻ Refresh" : "Scan jobs"}
         </button>
       </div>
+      <ScanHint company={company} />
       {company.lastJobsFetchedAt && <div style={{ fontSize: 14, color: "#9ca3af", marginTop: 3, fontFamily: "var(--font-ui)" }}>{timeAgo(company.lastJobsFetchedAt)}</div>}
       {error && <div style={{ fontSize: 14, color: "#dc2626", marginTop: 4, lineHeight: 1.4, fontFamily: "var(--font-ui)" }}>{error}</div>}
     </div>
@@ -225,30 +284,36 @@ function CompanyDrawer({
   const cache = company.jobsCache as JobsCache | null;
   const jobs = cache?.jobs ?? [];
   const intel = company.enrichmentCache as EnrichmentCache | null;
+  const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
+  const canScan = hasScanSource(company);
 
   async function handleEnrich() {
     setEnriching(true); setEnrichError(null);
     try {
       const res = await fetch(`/api/companies/${company.id}/enrich`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) { setEnrichError(data.error ?? "Enrichment failed."); } else { onRefreshed(data); }
-    } catch { setEnrichError("Network error."); } finally { setEnriching(false); }
+      if (!res.ok) { setEnrichError(humanizeApiError(data.error, res.status)); } else { onRefreshed(data); }
+    } catch { setEnrichError("Network error — couldn't enrich company."); } finally { setEnriching(false); }
   }
 
   // Sort: matched jobs first
   const sorted = [...jobs].sort((a, b) => {
-    const aMatch = isJobMatch(a.title, userTargetRoles) ? 0 : 1;
-    const bMatch = isJobMatch(b.title, userTargetRoles) ? 0 : 1;
+    const aMatch = isJobMatch(a.title, matchRoles) ? 0 : 1;
+    const bMatch = isJobMatch(b.title, matchRoles) ? 0 : 1;
     return aMatch - bMatch;
   });
 
   async function handleScan() {
+    if (!canScan) {
+      setScanError("Add a careers URL (or website) in Details below before scanning.");
+      return;
+    }
     setScanning(true); setScanError(null);
     try {
       const res = await fetch(`/api/companies/${company.id}/refresh`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) { setScanError(data.error ?? "Scan failed."); } else { onRefreshed(data); }
-    } catch { setScanError("Network error."); } finally { setScanning(false); }
+      if (!res.ok) { setScanError(humanizeApiError(data.error, res.status)); } else { onRefreshed(data); }
+    } catch { setScanError("Network error — couldn't scan careers page."); } finally { setScanning(false); }
   }
 
   // Close on Escape
@@ -369,8 +434,13 @@ function CompanyDrawer({
 
           {/* Open Roles */}
           <DrawerSection title="Open Roles">
+            {!canScan && (
+              <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
+                Paste the direct careers or jobs listing URL in Details below. Homepage links often fail — ATS pages (Greenhouse, Lever, Workday) work best.
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <button onClick={handleScan} disabled={scanning} style={{ background: scanning ? "#f3f4f6" : "#1a1a1a", color: scanning ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 14, cursor: scanning ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)", fontWeight: 500 }}>
+              <button onClick={handleScan} disabled={scanning || !canScan} style={{ background: scanning || !canScan ? "#f3f4f6" : "#1a1a1a", color: scanning || !canScan ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 14, cursor: scanning || !canScan ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)", fontWeight: 500 }}>
                 {scanning ? "Scanning…" : jobs.length > 0 ? "↻ Re-scan" : "Scan for roles"}
               </button>
               {company.lastJobsFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Last scanned {timeAgo(company.lastJobsFetchedAt)}</span>}
@@ -378,13 +448,15 @@ function CompanyDrawer({
             {scanError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginBottom: 8, lineHeight: 1.4 }}>{scanError}</div>}
 
             {jobs.length === 0 && !scanning ? (
-              <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", padding: "16px 0" }}>
-                No roles cached yet. Add a careers URL and click &ldquo;Scan for roles&rdquo;.
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", padding: "16px 0", lineHeight: 1.5 }}>
+                {canScan
+                  ? "No roles cached yet. Click \"Scan for roles\" to pull listings from the careers page."
+                  : "Add a careers URL above, then scan to see open roles here."}
               </div>
             ) : (
               <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden" }}>
                 {sorted.map((job, i) => {
-                  const match = isJobMatch(job.title, userTargetRoles);
+                  const match = isJobMatch(job.title, matchRoles);
                   return (
                     <div key={i} style={{ padding: "10px 14px", borderBottom: i < sorted.length - 1 ? "1px solid #f0ebe4" : "none", display: "flex", alignItems: "flex-start", gap: 10, background: match ? "#f9fffe" : "#fff" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -407,9 +479,12 @@ function CompanyDrawer({
                 })}
               </div>
             )}
-            {jobs.length > 0 && userTargetRoles.length > 0 && (
-              <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 8 }}>
-                Matching against: {userTargetRoles.slice(0, 3).join(", ")}{userTargetRoles.length > 3 ? ` +${userTargetRoles.length - 3} more` : ""}
+            {jobs.length > 0 && matchRoles.length > 0 && (
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 8, lineHeight: 1.45 }}>
+                Matching against: {matchRoles.slice(0, 4).join(", ")}{matchRoles.length > 4 ? ` +${matchRoles.length - 4} more` : ""}
+                {parseRolesText(company.targetRoles).length > 0 && userTargetRoles.length > 0 && (
+                  <span> (profile roles + roles at this company)</span>
+                )}
               </div>
             )}
           </DrawerSection>
@@ -463,14 +538,33 @@ function CompanyDrawer({
 export function WorkspaceCompanies() {
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [userTargetRoles, setUserTargetRoles] = useState<string[]>([]);
 
   const load = useCallback(async () => {
-    try { const res = await fetch("/api/companies"); if (res.ok) setCompanies(await res.json()); } catch { /* ignore */ } finally { setLoading(false); }
+    setLoadError(null);
+    try {
+      const res = await fetch("/api/companies");
+      if (res.ok) {
+        setCompanies(await res.json());
+      } else if (res.status === 401) {
+        setLoadError("Sign in to view your dream companies watchlist.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setLoadError(data.error ?? "Couldn't load companies. Refresh to try again.");
+      }
+    } catch {
+      setLoadError("Network error — couldn't load companies.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -482,21 +576,62 @@ export function WorkspaceCompanies() {
   }, []);
 
   async function handleAdd(e: React.FormEvent) {
-    e.preventDefault(); if (!newName.trim()) return; setSaving(true);
+    e.preventDefault(); if (!newName.trim()) return;
+    setSaving(true); setAddError(null);
     try {
       const res = await fetch("/api/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newName.trim() }) });
-      if (res.ok) { const created = await res.json(); setCompanies((prev) => [created, ...prev]); setNewName(""); setShowAdd(false); }
-    } catch { /* ignore */ } finally { setSaving(false); }
+      if (res.ok) {
+        const created = await res.json();
+        setCompanies((prev) => [created, ...prev]);
+        setNewName("");
+        setShowAdd(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAddError(data.error ?? "Couldn't add company. Try again.");
+      }
+    } catch {
+      setAddError("Network error — company not added.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function patchField(id: string, field: Field, value: string) {
     const trimmed = value.trim();
+    const existing = companies.find((c) => c.id === id);
+    if (!existing) return;
+    const previousValue = existing[field];
+
     setCompanies((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: trimmed || null } : c)));
-    await fetch(`/api/companies/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: trimmed || null }) });
+    setSaveError(null);
+
+    try {
+      const res = await fetch(`/api/companies/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: trimmed || null }) });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setCompanies((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: previousValue } : c)));
+        setSaveError(data.error ?? "Couldn't save — changes reverted.");
+      }
+    } catch {
+      setCompanies((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: previousValue } : c)));
+      setSaveError("Network error — changes not saved.");
+    }
   }
 
   async function handleRemove(id: string) {
-    try { await fetch(`/api/companies/${id}`, { method: "DELETE" }); setCompanies((prev) => prev.filter((c) => c.id !== id)); } catch { /* ignore */ }
+    setRemoveError(null);
+    try {
+      const res = await fetch(`/api/companies/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setCompanies((prev) => prev.filter((c) => c.id !== id));
+        if (selectedId === id) setSelectedId(null);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setRemoveError(data.error ?? "Couldn't remove company.");
+      }
+    } catch {
+      setRemoveError("Network error — company may still be on your watchlist.");
+    }
   }
 
   function handleRefreshed(updated: TrackedCompany) {
@@ -520,23 +655,38 @@ export function WorkspaceCompanies() {
         </button>
       </div>
 
+      {loadError && <ErrorBanner message={loadError} onDismiss={() => setLoadError(null)} />}
+      {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
+      {removeError && <ErrorBanner message={removeError} onDismiss={() => setRemoveError(null)} />}
+
       {showAdd && (
-        <form onSubmit={handleAdd} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#555", display: "block", marginBottom: 5 }}>Company name *</label>
-            <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Comcast, Aramark, Deloitte" style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }} required />
+        <form onSubmit={handleAdd} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", marginBottom: 20 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#555", display: "block", marginBottom: 5 }}>Company name *</label>
+              <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Comcast, Aramark, Deloitte" style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }} required />
+            </div>
+            <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 14, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-ui)" }}>{saving ? "Adding…" : "Add"}</button>
           </div>
-          <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 14, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-ui)" }}>{saving ? "Adding…" : "Add"}</button>
+          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 10, lineHeight: 1.45 }}>
+            After adding, paste the careers URL in the table — direct ATS links scan best.
+          </div>
+          {addError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginTop: 8 }}>{addError}</div>}
         </form>
       )}
 
       {loading ? (
         <div style={{ color: "var(--scout-muted)", fontSize: 14, padding: "48px 0", textAlign: "center", fontFamily: "var(--font-ui)" }}>Loading…</div>
+      ) : loadError && companies.length === 0 ? (
+        <div style={{ background: "#fff", border: "1.5px dashed #d1d5db", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
+          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 14 }}>Couldn&apos;t load your watchlist.</div>
+          <button type="button" onClick={() => { setLoading(true); load(); }} style={{ marginTop: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1a1a1a", background: "#f3f4f6", border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }}>Retry</button>
+        </div>
       ) : companies.length === 0 ? (
         <div style={{ background: "#fff", border: "1.5px dashed #d1d5db", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🏢</div>
-          <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 6 }}>No companies tracked yet</div>
-          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 14 }}>Add companies you want to monitor for open roles and signals.</div>
+          <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 6 }}>No dream companies yet</div>
+          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 14, lineHeight: 1.5 }}>Track employers you&apos;re watching — add a careers URL to scan open roles without checking every page manually.</div>
         </div>
       ) : (
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e8e3dd" }}>
@@ -561,7 +711,8 @@ export function WorkspaceCompanies() {
                 const isLast = i === companies.length - 1;
                 const rowTd: React.CSSProperties = { ...tdStyle, borderBottom: isLast ? "none" : tdStyle.borderBottom };
                 const jobCount = (c.jobsCache as JobsCache | null)?.jobs?.length ?? 0;
-                const matchCount = (c.jobsCache as JobsCache | null)?.jobs?.filter((j) => isJobMatch(j.title, userTargetRoles)).length ?? 0;
+                const matchRoles = buildMatchRoles(userTargetRoles, c.targetRoles);
+                const matchCount = (c.jobsCache as JobsCache | null)?.jobs?.filter((j) => isJobMatch(j.title, matchRoles)).length ?? 0;
                 return (
                   <tr key={c.id} style={{ background: selectedId === c.id ? "#faf8f5" : "#fff" }}>
                     <td style={rowTd}>
@@ -571,7 +722,7 @@ export function WorkspaceCompanies() {
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <InlineInput value={c.name} placeholder="Company name" onBlur={(v) => v.trim() && patchField(c.id, "name", v)} bold />
                           <InlineInput value={c.website ?? ""} placeholder="Website" onBlur={(v) => patchField(c.id, "website", v)} mono />
-                          <InlineInput value={c.careersUrl ?? ""} placeholder="Careers URL" onBlur={(v) => patchField(c.id, "careersUrl", v)} mono />
+                          <InlineInput value={c.careersUrl ?? ""} placeholder="Careers URL (direct ATS link)" onBlur={(v) => patchField(c.id, "careersUrl", v)} mono />
                         </div>
                       </div>
                     </td>
@@ -586,7 +737,7 @@ export function WorkspaceCompanies() {
                         <JobsCell company={c} onRefreshed={handleRefreshed} />
                         {jobCount > 0 && matchCount > 0 && (
                           <button onClick={() => setSelectedId(c.id)} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#16a34a", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", textDecoration: "underline" }}>
-                            {matchCount} match{matchCount !== 1 ? "es" : ""} for your roles
+                            {matchCount} matching role{matchCount !== 1 ? "s" : ""}
                           </button>
                         )}
                       </div>
