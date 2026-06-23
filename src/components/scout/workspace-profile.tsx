@@ -193,6 +193,20 @@ function PersonalTab({ profile, onSave }: {
   const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl || "");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setName(profile.name);
+    setPhone(profile.parsedData?.phone || "");
+    setLocation(profile.parsedData?.location || "");
+    setWebsite(profile.parsedData?.website || "");
+    setLinkedinUrl(profile.linkedinUrl || "");
+  }, [
+    profile.name,
+    profile.linkedinUrl,
+    profile.parsedData?.phone,
+    profile.parsedData?.location,
+    profile.parsedData?.website,
+  ]);
+
   const handleSave = async () => {
     setSaving(true);
     await onSave({ name, linkedinUrl: linkedinUrl || null, parsedData: { phone: phone || null, location: location || null, website: website || null } as Partial<ParsedData> });
@@ -267,6 +281,10 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
   const [list, setList] = useState<EducationEntry[]>(entries);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!editing) setList(entries);
+  }, [entries, editing]);
+
   const addEntry = () => setList((p) => [...p, { id: `edu_${Date.now()}`, school: "", degree: "", field: "", from: "", to: "" }]);
   const removeEntry = (id: string) => setList((p) => p.filter((e) => e.id !== id));
   const updateEntry = (id: string, key: keyof EducationEntry, value: string) =>
@@ -337,6 +355,10 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
   const [editing, setEditing] = useState(false);
   const [list, setList] = useState<WorkEntry[]>(entries);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setList(entries);
+  }, [entries, editing]);
 
   const addEntry = () => setList((p) => [...p, { id: `exp_${Date.now()}`, company: "", title: "", description: "", from: "", to: "", bullets: [] }]);
   const removeEntry = (id: string) => setList((p) => p.filter((e) => e.id !== id));
@@ -432,6 +454,10 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [graduating, setGraduating] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editing) setList(skills);
+  }, [skills, editing]);
 
   const addSkill = () => { const v = input.trim(); if (v && !list.includes(v)) setList((p) => [...p, v]); setInput(""); };
   const handleSave = async () => { setSaving(true); await onSave(list); setSaving(false); setEditing(false); };
@@ -1793,6 +1819,7 @@ export function WorkspaceProfile() {
   const [readbackNudge, setReadbackNudge] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
+  const reparseAttempted = useRef(false);
 
   // Load skill goals from localStorage on mount
   useEffect(() => {
@@ -1814,6 +1841,23 @@ export function WorkspaceProfile() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!profile?.resumeUrl || reparseAttempted.current) return;
+    const hasStructure =
+      (profile.parsedData?.education?.length ?? 0) > 0 ||
+      (profile.parsedData?.workExperience?.length ?? 0) > 0;
+    if (hasStructure) return;
+    reparseAttempted.current = true;
+    fetch("/api/resume/reparse", { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.parsedData) {
+          setProfile((p) => (p ? { ...p, parsedData: data.parsedData, name: data.name || p.name } : p));
+        }
+      })
+      .catch(() => {});
+  }, [profile?.resumeUrl, profile?.parsedData]);
 
   useEffect(() => {
     if (!profile?.resumeUrl) return;

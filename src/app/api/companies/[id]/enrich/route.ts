@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { mergeTrackedWithIntel, syncTrackedFromIntel } from "@/lib/company-intel";
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
@@ -28,10 +29,15 @@ export async function POST(
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const company = await prisma.trackedCompany.findFirst({ where: { id, userId: dbUser.id } });
+  const company = await prisma.trackedCompany.findFirst({
+    where: { id, userId: dbUser.id },
+    include: { companyIntel: true },
+  });
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const prompt = `You are a business intelligence tool. Provide factual information about the company "${company.name}".
+  const displayName = company.companyIntel?.name ?? company.name;
+
+  const prompt = `You are a business intelligence tool. Provide factual information about the company "${displayName}".
 
 Return ONLY a valid JSON object with this exact structure (use null for unknown fields):
 {
@@ -76,12 +82,20 @@ Rules:
     return NextResponse.json({ error: "Could not parse company data." }, { status: 422 });
   }
 
+  const now = new Date();
+
+  if (company.companyIntelId && company.companyIntel) {
+    const intel = await prisma.companyIntel.update({
+      where: { id: company.companyIntelId },
+      data: { enrichmentCache: parsed, enrichmentFetchedAt: now },
+    });
+    const synced = await syncTrackedFromIntel(id, intel);
+    return NextResponse.json(mergeTrackedWithIntel(synced, intel));
+  }
+
   const updated = await prisma.trackedCompany.update({
     where: { id },
-    data: {
-      enrichmentCache: parsed,
-      enrichmentFetchedAt: new Date(),
-    },
+    data: { enrichmentCache: parsed, enrichmentFetchedAt: now },
   });
 
   return NextResponse.json(updated);
