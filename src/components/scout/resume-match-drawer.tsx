@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface MatchData {
   score: number;
@@ -212,7 +213,10 @@ export function ResumeMatchDrawer({
   const [manualDesc, setManualDesc] = useState("");
   const [customKeywords, setCustomKeywords] = useState<string[]>([]);
   const [newKw, setNewKw] = useState("");
+  const [mounted, setMounted] = useState(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   function generate(overrideDesc?: string) {
     setLoading(true);
@@ -266,7 +270,9 @@ export function ResumeMatchDrawer({
       ? "#C4A86A"
       : "#C4574A";
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
@@ -765,6 +771,7 @@ export function ResumeMatchDrawer({
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body
   );
 }
