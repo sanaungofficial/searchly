@@ -54,6 +54,14 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
+function isJobMatch(jobTitle: string, userTargetRoles: string[]): boolean {
+  if (!userTargetRoles.length) return false;
+  const title = jobTitle.toLowerCase();
+  return userTargetRoles.some((role) =>
+    role.toLowerCase().split(/\s+/).filter((w) => w.length > 3).some((w) => title.includes(w))
+  );
+}
+
 const editableWrapStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: "4px 6px",
@@ -116,7 +124,6 @@ function PriorityBadge({ value, onChange }: { value: string; onChange: (v: strin
 function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefreshed: (updated: TrackedCompany) => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
   const cache = company.jobsCache as JobsCache | null;
   const jobCount = cache?.jobs?.length ?? 0;
   const hasJobs = jobCount > 0;
@@ -126,7 +133,7 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
     try {
       const res = await fetch(`/api/companies/${company.id}/refresh`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Scan failed."); } else { onRefreshed(data); setExpanded(true); }
+      if (!res.ok) { setError(data.error ?? "Scan failed."); } else { onRefreshed(data); }
     } catch { setError("Network error."); } finally { setLoading(false); }
   }
 
@@ -134,9 +141,9 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
     <div style={{ minWidth: 160 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
         {hasJobs && (
-          <button onClick={() => setExpanded((e) => !e)} style={{ background: "#f0fdf4", color: "#16a34a", border: "none", borderRadius: 5, padding: "3px 8px", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+          <span style={{ background: "#f0fdf4", color: "#16a34a", borderRadius: 5, padding: "3px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
             {jobCount} {jobCount === 1 ? "role" : "roles"}
-          </button>
+          </span>
         )}
         <button onClick={handleRefresh} disabled={loading} title="Scan careers page for open roles" style={{ background: loading ? "#f3f4f6" : "transparent", color: loading ? "#9ca3af" : "#6b7280", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 8px", fontSize: 11, cursor: loading ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "var(--font-dm-sans), system-ui" }}>
           {loading ? "Scanning…" : hasJobs ? "↻ Refresh" : "Scan jobs"}
@@ -144,23 +151,197 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
       </div>
       {company.lastJobsFetchedAt && <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3, fontFamily: "var(--font-dm-sans), system-ui" }}>{timeAgo(company.lastJobsFetchedAt)}</div>}
       {error && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4, lineHeight: 1.4, fontFamily: "var(--font-dm-sans), system-ui" }}>{error}</div>}
-      {expanded && hasJobs && cache && (
-        <div style={{ marginTop: 8, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 7, overflow: "hidden", maxHeight: 220, overflowY: "auto" }}>
-          {cache.jobs.map((job, i) => (
-            <div key={i} style={{ padding: "7px 10px", borderBottom: i < cache.jobs.length - 1 ? "1px solid #f3f4f6" : "none", display: "flex", flexDirection: "column", gap: 1 }}>
-              {job.url ? (
-                <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#1a1a1a", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
-              ) : (
-                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#1a1a1a" }}>{job.title}</span>
-              )}
-              {(job.location || job.department) && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#6b7280" }}>{[job.department, job.location].filter(Boolean).join(" · ")}</span>}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
+
+// ── Company Detail Drawer ────────────────────────────────────────────────────
+
+function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function DrawerField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 500, color: "#A09890", marginBottom: 3 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function CompanyDrawer({
+  company,
+  userTargetRoles,
+  onClose,
+  onPatch,
+  onRefreshed,
+  onRemove,
+}: {
+  company: TrackedCompany;
+  userTargetRoles: string[];
+  onClose: () => void;
+  onPatch: (id: string, field: Field, value: string) => void;
+  onRefreshed: (updated: TrackedCompany) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const color = getColor(company.name);
+  const initials = getInitials(company.name);
+  const cache = company.jobsCache as JobsCache | null;
+  const jobs = cache?.jobs ?? [];
+
+  // Sort: matched jobs first
+  const sorted = [...jobs].sort((a, b) => {
+    const aMatch = isJobMatch(a.title, userTargetRoles) ? 0 : 1;
+    const bMatch = isJobMatch(b.title, userTargetRoles) ? 0 : 1;
+    return aMatch - bMatch;
+  });
+
+  async function handleScan() {
+    setScanning(true); setScanError(null);
+    try {
+      const res = await fetch(`/api/companies/${company.id}/refresh`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setScanError(data.error ?? "Scan failed."); } else { onRefreshed(data); }
+    } catch { setScanError("Network error."); } finally { setScanning(false); }
+  }
+
+  // Close on Escape
+  useEffect(() => {
+    function handler(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200, backdropFilter: "blur(1px)" }} />
+
+      {/* Drawer */}
+      <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 480, background: "#fff", zIndex: 201, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+        {/* Header */}
+        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ebe4", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <InlineInput value={company.name} placeholder="Company name" onBlur={(v) => v.trim() && onPatch(company.id, "name", v)} bold />
+                <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+                  {company.website && <a href={company.website.startsWith("http") ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 11, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Website</a>}
+                  {company.careersUrl && <a href={company.careersUrl.startsWith("http") ? company.careersUrl : `https://${company.careersUrl}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 11, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Careers</a>}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
+              <PriorityBadge value={company.priority ?? ""} onChange={(v) => onPatch(company.id, "priority", v)} />
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "2px 6px", borderRadius: 5, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#333")} onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}>×</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto" }}>
+
+          {/* Open Roles */}
+          <DrawerSection title="Open Roles">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <button onClick={handleScan} disabled={scanning} style={{ background: scanning ? "#f3f4f6" : "#1a1a1a", color: scanning ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: scanning ? "not-allowed" : "pointer", fontFamily: "var(--font-dm-sans), system-ui", fontWeight: 500 }}>
+                {scanning ? "Scanning…" : jobs.length > 0 ? "↻ Re-scan" : "Scan for roles"}
+              </button>
+              {company.lastJobsFetchedAt && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890" }}>Last scanned {timeAgo(company.lastJobsFetchedAt)}</span>}
+            </div>
+            {scanError && <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#dc2626", marginBottom: 8, lineHeight: 1.4 }}>{scanError}</div>}
+
+            {jobs.length === 0 && !scanning ? (
+              <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890", padding: "16px 0" }}>
+                No roles cached yet. Add a careers URL and click &ldquo;Scan for roles&rdquo;.
+              </div>
+            ) : (
+              <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden" }}>
+                {sorted.map((job, i) => {
+                  const match = isJobMatch(job.title, userTargetRoles);
+                  return (
+                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < sorted.length - 1 ? "1px solid #f0ebe4" : "none", display: "flex", alignItems: "flex-start", gap: 10, background: match ? "#f9fffe" : "#fff" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {job.url ? (
+                          <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", display: "block" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
+                        ) : (
+                          <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, color: "#1a1a1a" }}>{job.title}</span>
+                        )}
+                        {(job.department || job.location) && (
+                          <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                            {[job.department, job.location].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
+                      </div>
+                      {match && (
+                        <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, marginTop: 2, fontFamily: "var(--font-dm-sans), system-ui", letterSpacing: "0.03em" }}>Match</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {jobs.length > 0 && userTargetRoles.length > 0 && (
+              <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#A09890", marginTop: 8 }}>
+                Matching against: {userTargetRoles.slice(0, 3).join(", ")}{userTargetRoles.length > 3 ? ` +${userTargetRoles.length - 3} more` : ""}
+              </div>
+            )}
+          </DrawerSection>
+
+          {/* Notes */}
+          <DrawerSection title="Notes">
+            <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 12px" }}>
+              <AutoTextarea value={company.notes ?? ""} placeholder="Add notes about this company, contacts, conversations…" onBlur={(v) => onPatch(company.id, "notes", v)} />
+            </div>
+          </DrawerSection>
+
+          {/* Details */}
+          <DrawerSection title="Details">
+            <DrawerField label="Type / Industry">
+              <InlineInput value={company.type ?? ""} placeholder="e.g. Media / Technology" onBlur={(v) => onPatch(company.id, "type", v)} />
+            </DrawerField>
+            <DrawerField label="HQ / Location">
+              <InlineInput value={company.hqLocation ?? ""} placeholder="e.g. Philadelphia, PA" onBlur={(v) => onPatch(company.id, "hqLocation", v)} />
+            </DrawerField>
+            <DrawerField label="Website">
+              <InlineInput value={company.website ?? ""} placeholder="https://example.com" onBlur={(v) => onPatch(company.id, "website", v)} mono />
+            </DrawerField>
+            <DrawerField label="Careers URL">
+              <InlineInput value={company.careersUrl ?? ""} placeholder="https://example.com/careers" onBlur={(v) => onPatch(company.id, "careersUrl", v)} mono />
+            </DrawerField>
+            <DrawerField label="Culture & Mission">
+              <AutoTextarea value={company.cultureMission ?? ""} placeholder="What's their culture, values, or mission?" onBlur={(v) => onPatch(company.id, "cultureMission", v)} />
+            </DrawerField>
+            <DrawerField label="Your Edge">
+              <AutoTextarea value={company.candidateEdge ?? ""} placeholder="Why are you a strong fit here?" onBlur={(v) => onPatch(company.id, "candidateEdge", v)} />
+            </DrawerField>
+            <DrawerField label="Target Roles at This Company">
+              <AutoTextarea value={company.targetRoles ?? ""} placeholder="e.g. Director of Strategy, VP Operations…" onBlur={(v) => onPatch(company.id, "targetRoles", v)} />
+            </DrawerField>
+          </DrawerSection>
+
+          {/* Danger zone */}
+          <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 16 }}>
+            <button onClick={() => { onRemove(company.id); onClose(); }} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onMouseEnter={(e) => { (e.currentTarget.style.background = "#fef2f2"); }} onMouseLeave={(e) => { (e.currentTarget.style.background = "none"); }}>
+              Remove company
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────────────
 
 export function WorkspaceCompanies() {
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
@@ -168,11 +349,20 @@ export function WorkspaceCompanies() {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [userTargetRoles, setUserTargetRoles] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     try { const res = await fetch("/api/companies"); if (res.ok) setCompanies(await res.json()); } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
+
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    fetch("/api/profile").then((r) => r.json()).then((d) => {
+      if (Array.isArray(d.targetRoles)) setUserTargetRoles(d.targetRoles);
+    }).catch(() => {});
+  }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault(); if (!newName.trim()) return; setSaving(true);
@@ -192,7 +382,11 @@ export function WorkspaceCompanies() {
     try { await fetch(`/api/companies/${id}`, { method: "DELETE" }); setCompanies((prev) => prev.filter((c) => c.id !== id)); } catch { /* ignore */ }
   }
 
-  function handleRefreshed(updated: TrackedCompany) { setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c))); }
+  function handleRefreshed(updated: TrackedCompany) {
+    setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  }
+
+  const selectedCompany = companies.find((c) => c.id === selectedId) ?? null;
 
   const thStyle: React.CSSProperties = { fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", padding: "10px 14px", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #e8e3dd", background: "#faf8f5" };
   const tdStyle: React.CSSProperties = { padding: "12px 14px", verticalAlign: "top", borderBottom: "1px solid #f0ebe4" };
@@ -249,11 +443,14 @@ export function WorkspaceCompanies() {
                 const initials = getInitials(c.name);
                 const isLast = i === companies.length - 1;
                 const rowTd: React.CSSProperties = { ...tdStyle, borderBottom: isLast ? "none" : tdStyle.borderBottom };
+                const jobCount = (c.jobsCache as JobsCache | null)?.jobs?.length ?? 0;
+                const matchCount = (c.jobsCache as JobsCache | null)?.jobs?.filter((j) => isJobMatch(j.title, userTargetRoles)).length ?? 0;
                 return (
-                  <tr key={c.id} style={{ background: "#fff" }}>
+                  <tr key={c.id} style={{ background: selectedId === c.id ? "#faf8f5" : "#fff" }}>
                     <td style={rowTd}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11, flexShrink: 0, marginTop: 2 }}>{initials}</div>
+                        {/* Avatar — click to open drawer */}
+                        <button onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} title="View company details" style={{ width: 30, height: 30, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11, flexShrink: 0, marginTop: 2, border: selectedId === c.id ? "2px solid #1a1a1a" : "2px solid transparent", cursor: "pointer", padding: 0 }}>{initials}</button>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <InlineInput value={c.name} placeholder="Company name" onBlur={(v) => v.trim() && patchField(c.id, "name", v)} bold />
                           <InlineInput value={c.website ?? ""} placeholder="Website" onBlur={(v) => patchField(c.id, "website", v)} mono />
@@ -267,7 +464,16 @@ export function WorkspaceCompanies() {
                     <td style={rowTd}><AutoTextarea value={c.cultureMission ?? ""} placeholder="Describe culture and mission…" onBlur={(v) => patchField(c.id, "cultureMission", v)} /></td>
                     <td style={rowTd}><AutoTextarea value={c.candidateEdge ?? ""} placeholder="Why you're a strong fit…" onBlur={(v) => patchField(c.id, "candidateEdge", v)} /></td>
                     <td style={rowTd}><AutoTextarea value={c.targetRoles ?? ""} placeholder="e.g. Director Business Operations…" onBlur={(v) => patchField(c.id, "targetRoles", v)} /></td>
-                    <td style={rowTd}><JobsCell company={c} onRefreshed={handleRefreshed} /></td>
+                    <td style={rowTd}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <JobsCell company={c} onRefreshed={handleRefreshed} />
+                        {jobCount > 0 && matchCount > 0 && (
+                          <button onClick={() => setSelectedId(c.id)} style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#16a34a", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", textDecoration: "underline" }}>
+                            {matchCount} match{matchCount !== 1 ? "es" : ""} for your roles
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td style={{ ...rowTd, textAlign: "center" }}>
                       <button onClick={() => handleRemove(c.id)} title="Remove company" style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 5, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>×</button>
                     </td>
@@ -277,6 +483,18 @@ export function WorkspaceCompanies() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Company detail drawer */}
+      {selectedCompany && (
+        <CompanyDrawer
+          company={selectedCompany}
+          userTargetRoles={userTargetRoles}
+          onClose={() => setSelectedId(null)}
+          onPatch={patchField}
+          onRefreshed={handleRefreshed}
+          onRemove={handleRemove}
+        />
       )}
     </div>
   );
