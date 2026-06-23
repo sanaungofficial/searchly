@@ -174,7 +174,12 @@ export default function OnboardingPage() {
   };
 
   if (!authChecked) {
-    return <div style={{ height: "100vh", background: "#F7F5F2" }} />;
+    return (
+      <div className="onboarding-loading" role="status" aria-live="polite">
+        <div className="onboarding-loading__spinner" aria-hidden="true" />
+        <span>Loading…</span>
+      </div>
+    );
   }
 
   return (
@@ -186,17 +191,9 @@ export default function OnboardingPage() {
         style={{ display: "none" }}
         onChange={onFileChange}
       />
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: "0 40px 100px",
-        }}
-      >
+      <div className="onboarding-shell">
         <ScoutHeader screen={screen} onScoutClick={() => router.push("/opportunities")} />
-        <div style={{ width: "100%", maxWidth: 620, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: 40, paddingBottom: 60 }}>
+        <div className="onboarding-content">
           {screen === 0 && (
             <ScreenWelcome
               resumeFilename={resumeFilename}
