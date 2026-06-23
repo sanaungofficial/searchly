@@ -309,11 +309,6 @@ export function ResumeMatchDrawer({
     }, 1800);
   }
 
-  function handleOpenEditor() {
-    handleClose();
-    setTimeout(onTailorResume, 280);
-  }
-
   // Derive job title match if AI didn't return it explicitly
   function deriveJobTitleMatch(d: MatchData): boolean {
     if (d.jobTitleMatch !== undefined) return d.jobTitleMatch;
@@ -781,90 +776,279 @@ export function ResumeMatchDrawer({
           )}
 
           {/* ── STEP 2 ── */}
-          {step === 2 && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 24, paddingTop: 60 }}>
-              <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: "50%",
-                  border: "3px solid rgba(26,58,47,0.12)",
-                  borderTopColor: "#1A3A2F",
-                  animation: "spin 0.8s linear infinite",
-                }}
-              />
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-              <div style={{ textAlign: "center" }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 600, color: "#1A1A1A", marginBottom: 8 }}>
-                  Aligning Your Resume
-                </p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>
-                  Tailoring your resume to match this role&apos;s requirements…
-                </p>
+          {step === 2 && data && (() => {
+            const unmatchedKw = data.keywords.filter((k) => !k.matched);
+            const allSelected = unmatchedKw.length > 0 && unmatchedKw.every((k) => selectedMissingKw.includes(k.text));
+
+            function toggleSection(key: string) {
+              setSelectedSections((prev) => {
+                const next = new Set(prev);
+                next.has(key) ? next.delete(key) : next.add(key);
+                return next;
+              });
+            }
+
+            function toggleKw(text: string) {
+              setSelectedMissingKw((prev) =>
+                prev.includes(text) ? prev.filter((k) => k !== text) : [...prev, text]
+              );
+            }
+
+            const SectionRow = ({ id, label }: { id: string; label: string }) => {
+              const checked = selectedSections.has(id);
+              return (
+                <div
+                  onClick={() => toggleSection(id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "13px 14px",
+                    borderRadius: 8,
+                    border: `1px solid ${checked ? "rgba(26,58,47,0.22)" : "rgba(0,0,0,0.08)"}`,
+                    background: checked ? "rgba(26,58,47,0.04)" : "#FAFAF9",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    userSelect: "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 4,
+                      border: `2px solid ${checked ? "#1A3A2F" : "rgba(0,0,0,0.2)"}`,
+                      background: checked ? "#1A3A2F" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {checked && <span style={{ color: "#E8D5A3", fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                  </div>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 500, color: "#1A1A1A" }}>
+                    {label}
+                  </span>
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ display: "flex", gap: 28 }}>
+                {/* Left: Section selector */}
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#A09890", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                    1. Choose sections to enhance
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <SectionRow id="summary" label="Summary" />
+                    <SectionRow id="skills" label="Skills" />
+                    <SectionRow id="work_experience" label="Work Experience" />
+                    {selectedSections.has("work_experience") && (
+                      <div style={{ marginLeft: 30, display: "flex", flexDirection: "column", gap: 6, paddingTop: 2 }}>
+                        {(["quick", "full"] as const).map((mode) => (
+                          <div
+                            key={mode}
+                            onClick={() => setWorkEditMode(mode)}
+                            style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "3px 0", userSelect: "none" }}
+                          >
+                            <div
+                              style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: "50%",
+                                border: `2px solid ${workEditMode === mode ? "#1A3A2F" : "rgba(0,0,0,0.2)"}`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                transition: "border-color 0.15s ease",
+                              }}
+                            >
+                              {workEditMode === mode && (
+                                <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F" }} />
+                              )}
+                            </div>
+                            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F" }}>
+                              {mode === "quick" ? "Quick Edit (First 2 key experiences)" : "Full Edit (All experiences)"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Missing keywords */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                      2. Add missing keywords ({selectedMissingKw.length}/{unmatchedKw.length})
+                    </p>
+                    {unmatchedKw.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => allSelected ? setSelectedMissingKw([]) : setSelectedMissingKw(unmatchedKw.map((k) => k.text))}
+                        style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#1A3A2F", fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2 }}
+                      >
+                        {allSelected ? "Deselect all" : "Select all"}
+                      </button>
+                    )}
+                  </div>
+                  {unmatchedKw.length === 0 ? (
+                    <div style={{ padding: "20px 16px", background: "rgba(74,139,106,0.06)", borderRadius: 8, border: "1px solid rgba(74,139,106,0.15)", textAlign: "center" }}>
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#3D7A5B", fontWeight: 500 }}>
+                        ✓ Your resume already matches all detected keywords
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {unmatchedKw.map((kw) => {
+                        const active = selectedMissingKw.includes(kw.text);
+                        return (
+                          <button
+                            key={kw.text}
+                            type="button"
+                            onClick={() => toggleKw(kw.text)}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "6px 12px",
+                              borderRadius: 20,
+                              fontFamily: "var(--font-dm-sans), system-ui",
+                              fontSize: 13,
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                              border: `1px solid ${active ? "rgba(26,58,47,0.3)" : "rgba(0,0,0,0.1)"}`,
+                              background: active ? "rgba(26,58,47,0.08)" : "#FAFAF9",
+                              color: active ? "#1A3A2F" : "#52493F",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: 3,
+                                border: `1.5px solid ${active ? "#1A3A2F" : "rgba(0,0,0,0.2)"}`,
+                                background: active ? "#1A3A2F" : "transparent",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                transition: "all 0.15s ease",
+                              }}
+                            >
+                              {active && <span style={{ color: "#E8D5A3", fontSize: 8, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                            </div>
+                            {kw.text}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── STEP 3 ── */}
           {step === 3 && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20, paddingTop: 60 }}>
-              <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: "50%",
-                  background: "rgba(74,139,106,0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 28,
-                  color: "#4A8B6A",
-                }}
-              >
-                ✓
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 18, fontWeight: 700, color: "#1A1A1A", marginBottom: 8 }}>
-                  Your Resume is Ready
-                </p>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.6 }}>
-                  We&apos;ve tailored your resume for <strong>{jobTitle}</strong> at <strong>{company}</strong>.
-                  <br />Open the editor to review, edit, and download.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleOpenEditor}
-                style={{
-                  marginTop: 8,
-                  padding: "14px 32px",
-                  background: "#1A3A2F",
-                  color: "#E8D5A3",
-                  border: "none",
-                  borderRadius: 10,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  letterSpacing: "0.2px",
-                }}
-              >
-                Review Your New Resume →
-              </button>
+              {aligning ? (
+                <>
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: "50%",
+                      border: "3px solid rgba(26,58,47,0.12)",
+                      borderTopColor: "#1A3A2F",
+                      animation: "spin 0.8s linear infinite",
+                    }}
+                  />
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 600, color: "#1A1A1A" }}>
+                    Tailoring your resume…
+                  </p>
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#A09890" }}>
+                    Weaving in your selected keywords and enhancing each section
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: "50%",
+                      background: "rgba(74,139,106,0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 28,
+                      color: "#4A8B6A",
+                    }}
+                  >
+                    ✓
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 18, fontWeight: 700, color: "#1A1A1A", marginBottom: 8 }}>
+                      Your Resume is Ready
+                    </p>
+                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.6 }}>
+                      Tailored for <strong>{jobTitle}</strong> at <strong>{company}</strong>.
+                      <br />Download below or go back to make changes.
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      style={{
+                        padding: "12px 24px",
+                        background: "transparent",
+                        color: "#52493F",
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        borderRadius: 10,
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      style={{
+                        padding: "12px 28px",
+                        background: "#1A3A2F",
+                        color: "#E8D5A3",
+                        border: "none",
+                        borderRadius: 10,
+                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        letterSpacing: "0.2px",
+                      }}
+                    >
+                      Download Resume
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
-        {/* Footer CTA — only on step 1 when data is loaded */}
+        {/* Footer CTA */}
         {step === 1 && data && (
-          <div
-            style={{
-              padding: "16px 32px",
-              borderTop: "1px solid rgba(0,0,0,0.07)",
-              flexShrink: 0,
-              background: "#FFFFFF",
-            }}
-          >
+          <div style={{ padding: "16px 32px", borderTop: "1px solid rgba(0,0,0,0.07)", flexShrink: 0, background: "#FFFFFF" }}>
             <button
               type="button"
               onClick={handleAlign}
@@ -883,6 +1067,48 @@ export function ResumeMatchDrawer({
               }}
             >
               Align My Resume for This Role →
+            </button>
+          </div>
+        )}
+        {step === 2 && (
+          <div style={{ padding: "16px 32px", borderTop: "1px solid rgba(0,0,0,0.07)", flexShrink: 0, background: "#FFFFFF", display: "flex", gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              style={{
+                padding: "14px 20px",
+                background: "transparent",
+                color: "#52493F",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: 10,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              ← Back
+            </button>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={selectedSections.size === 0}
+              style={{
+                flex: 1,
+                padding: "14px",
+                background: selectedSections.size > 0 ? "#1A3A2F" : "rgba(0,0,0,0.05)",
+                color: selectedSections.size > 0 ? "#E8D5A3" : "#A09890",
+                border: "none",
+                borderRadius: 10,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: selectedSections.size > 0 ? "pointer" : "not-allowed",
+                letterSpacing: "0.3px",
+              }}
+            >
+              Generate My Tailored Resume →
             </button>
           </div>
         )}
