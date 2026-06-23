@@ -33,7 +33,7 @@ export async function GET() {
   const adminUser = dbUser.role === "ADMIN";
   const paidPro = isPro(dbUser.subscription);
   const proUser = adminUser || paidPro;
-  const credits = await getUsage(dbUser.id);
+  const credits = await getUsage(dbUser.id, { unlimited: adminUser });
 
   return NextResponse.json({
     isPro: proUser,

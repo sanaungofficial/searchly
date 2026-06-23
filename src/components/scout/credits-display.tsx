@@ -7,7 +7,12 @@ import {
   isCreditsLow,
   type CreditBalance,
 } from "@/lib/credits";
-import { creditsSummary, creditsReferenceLabel, useCredits } from "@/hooks/useCredits";
+import {
+  creditsSummary,
+  creditsUsageCount,
+  creditsUsageSubtitle,
+  useCredits,
+} from "@/hooks/useCredits";
 
 type Props = {
   credits: CreditBalance;
@@ -24,7 +29,7 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
   if (compact) {
     return (
       <span
-        title={unlimitedAi ? "Unlimited AI — admin account" : `${credits.remaining} of ${credits.limit} AI credits left this month`}
+        title={unlimitedAi ? `${credits.used} used this month · unlimited` : `${credits.remaining} of ${credits.limit} AI credits left this month`}
         style={{
           fontFamily: "var(--font-ui)",
           fontSize: 11,
@@ -32,7 +37,7 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
           color: exhausted ? "#C4574A" : "rgba(232,213,163,0.65)",
         }}
       >
-        {unlimitedAi ? "∞" : credits.remaining}
+        {unlimitedAi ? credits.used : credits.remaining}
       </span>
     );
   }
@@ -44,18 +49,16 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
           {unlimitedAi ? "Unlimited AI" : exhausted ? "No credits left" : `${credits.remaining} credit${credits.remaining === 1 ? "" : "s"} left`}
         </p>
         <span style={{ fontSize: 11, color: "rgba(232,213,163,0.35)" }}>
-          {unlimitedAi ? "Admin" : `${credits.used}/${credits.limit} used`}
+          {unlimitedAi ? creditsUsageCount(credits, true) : `${credits.used}/${credits.limit} used`}
         </span>
       </div>
-      <div style={{ height: 4, background: "rgba(232,213,163,0.12)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
-        <div style={{ height: "100%", width: unlimitedAi ? "100%" : `${100 - pct}%`, background: unlimitedAi ? "#4A8B6A" : barColor, borderRadius: 4, transition: "width 0.3s ease" }} />
-      </div>
+      {!unlimitedAi && (
+        <div style={{ height: 4, background: "rgba(232,213,163,0.12)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+          <div style={{ height: "100%", width: `${100 - pct}%`, background: barColor, borderRadius: 4, transition: "width 0.3s ease" }} />
+        </div>
+      )}
       <p style={{ margin: 0, fontSize: 11, color: "rgba(232,213,163,0.35)", lineHeight: 1.45 }}>
-        {unlimitedAi
-          ? `${creditsReferenceLabel(credits)} — not your limit`
-          : exhausted
-            ? "Resets monthly · Pro is unlimited"
-            : "1 credit per AI action · Resets monthly"}
+        {creditsUsageSubtitle(credits, unlimitedAi)}
       </p>
     </div>
   );
@@ -128,12 +131,12 @@ export function CreditsSidebarBlock({
 
 /** Compact pill — e.g. chat header, tool cards */
 export function CreditCostBadge({ cost = 1 }: { cost?: number }) {
-  const { showCredits, credits, exhausted, unlimitedAi, isAdmin } = useCredits();
+  const { showCredits, credits, exhausted, unlimitedAi } = useCredits();
   if (!showCredits || !credits) return null;
 
   return (
     <span
-      title={unlimitedAi ? (isAdmin ? "Admin · unlimited AI" : "Pro · unlimited AI") : creditsSummary(credits)}
+      title={unlimitedAi ? `${credits.used} used this month · unlimited` : creditsSummary(credits)}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -149,7 +152,7 @@ export function CreditCostBadge({ cost = 1 }: { cost?: number }) {
       }}
     >
       {unlimitedAi
-        ? (isAdmin ? "Unlimited · Admin" : "Unlimited · Pro")
+        ? creditsUsageCount(credits, true)
         : `${cost} credit${cost !== 1 ? "s" : ""} · ${credits.remaining} left`}
     </span>
   );
@@ -163,7 +166,7 @@ type StatusBarProps = {
 
 /** Inline banner for drawers, chat, job tools — reads live balance from subscription. */
 export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProps) {
-  const { showCredits, credits, exhausted, low, unlimitedAi, isAdmin, startCheckout } = useCredits();
+  const { showCredits, credits, exhausted, low, unlimitedAi, startCheckout } = useCredits();
   if (!showCredits || !credits) return null;
 
   const isDark = variant === "dark";
@@ -195,20 +198,22 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
           <p style={{ margin: "0 0 6px", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: showExhausted ? "#C4574A" : accent }}>
             {unlimitedAi ? creditsSummary(credits, true) : showExhausted ? "Out of credits" : creditsSummary(credits)}
           </p>
-          <div style={{ height: 4, background: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.06)", borderRadius: 4, overflow: "hidden" }}>
-            <div
-              style={{
-                height: "100%",
-                width: unlimitedAi ? "100%" : `${100 - Math.min(100, pct)}%`,
-                background: showExhausted ? "#C4574A" : showLow ? "#C4A86A" : "#4A8B6A",
-                borderRadius: 4,
-                transition: "width 0.3s ease",
-              }}
-            />
-          </div>
-          <p style={{ margin: "6px 0 0", fontFamily: "var(--font-ui)", fontSize: 11, color: isDark ? "rgba(232,213,163,0.5)" : "var(--scout-muted)", lineHeight: 1.45 }}>
+          {!unlimitedAi && (
+            <div style={{ height: 4, background: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.06)", borderRadius: 4, overflow: "hidden" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: `${100 - Math.min(100, pct)}%`,
+                  background: showExhausted ? "#C4574A" : showLow ? "#C4A86A" : "#4A8B6A",
+                  borderRadius: 4,
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+          )}
+          <p style={{ margin: unlimitedAi ? "0" : "6px 0 0", fontFamily: "var(--font-ui)", fontSize: 11, color: isDark ? "rgba(232,213,163,0.5)" : "var(--scout-muted)", lineHeight: 1.45 }}>
             {unlimitedAi
-              ? `${creditsReferenceLabel(credits)} — ${isAdmin ? "admin" : "pro"}, not limited`
+              ? creditsUsageCount(credits, true) + " · " + creditsUsageSubtitle(credits, true)
               : showExhausted
                 ? "Upgrade for unlimited AI, or wait until next month."
                 : `${credits.used} of ${credits.limit} used · 1 credit per AI action`}
@@ -260,7 +265,7 @@ export function CreditsInlineHint() {
       }}
     >
       {unlimitedAi
-        ? "Unlimited AI · admin account (free plan is 15/mo for reference)"
+        ? `${creditsUsageCount(credits, true)} · resets monthly`
         : exhausted
           ? "No credits left this month — upgrade for unlimited AI"
           : `${credits.remaining} of ${credits.limit} credits left · 1 per AI action`}
