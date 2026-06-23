@@ -28,6 +28,7 @@ model User {
   coachProfile     CoachProfile?
   aiUsageLogs      AiUsageLog[]
   monthlyUsage     MonthlyUsage[]
+  assets           UserAsset[]
 }
 
 enum UserRole {
@@ -89,6 +90,29 @@ model Profile {
   updatedAt   DateTime @updatedAt
 }
 
+enum AssetType {
+  RESUME
+  COVER_LETTER
+  JOB_SEARCH_STRATEGY
+  OTHER
+}
+
+model UserAsset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      AssetType
+  name      String
+  url       String
+  isPrimary Boolean   @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
 model Job {
   id      String   @id @default(cuid())
   userId  String
@@ -99,6 +123,17 @@ model Job {
   role         String
   stage        JobStage @default(SAVED)
   notes        String?
+
+  // Parsed from job posting
+  location     String?
+  salary       String?
+  description  String?
+  requirements String[]
+
+  // AI match analysis (persisted)
+  fitScore     Float?
+  matchData    Json?
+  tags         String[]
 
   userNotes          String?
   companyLinkedinUrl String?
@@ -255,4 +290,14 @@ model PromptConfig {
   defaultContent String
   updatedAt      DateTime @updatedAt
   updatedBy      String?
+}
+
+model MarketSignals {
+  id          String   @id @default(cuid())
+  data        Json
+  generatedAt DateTime @default(now())
+  generatedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

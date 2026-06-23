@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
@@ -9,7 +10,7 @@ import {
   type SignalItem,
   type SignalsData,
 } from "./workspace-data";
-import { PlusIcon, RefreshIcon } from "./workspace-icons";
+import { PlusIcon } from "./workspace-icons";
 
 // Shared label style matching admin dashboard: font-mono, xs, uppercase, stone-400
 const SECTION_LABEL: React.CSSProperties = {
@@ -43,7 +44,8 @@ const STAT_LABEL: React.CSSProperties = {
 };
 
 export function WorkspaceDashboard() {
-  const { kanbanCards, addJob, user } = useWorkspace();
+  const router = useRouter();
+  const { kanbanCards, addJob, setDrawerCardId, user } = useWorkspace();
 
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
@@ -58,8 +60,9 @@ export function WorkspaceDashboard() {
   }>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
-  const [signalsData, setSignalsData] = useState<SignalsData | null>(INITIAL_SIGNALS);
-  const [signalsLoading, setSignalsLoading] = useState(false);
+  const [signalsData, setSignalsData] = useState<SignalsData | null>(null);
+  const [signalsLoading, setSignalsLoading] = useState(true);
+  const [signalsUpdatedAt, setSignalsUpdatedAt] = useState<string | null>(null);
 
   const pipeline = {
     saved: kanbanCards.filter((c) => c.stage === "saved").length,
@@ -102,6 +105,17 @@ export function WorkspaceDashboard() {
   const recentActivity = kanbanCards
     .filter((c) => c.days <= 7 && c.stage !== "closed")
     .sort((a, b) => a.days - b.days);
+
+  useEffect(() => {
+    fetch("/api/signals")
+      .then((r) => r.json())
+      .then((json) => {
+        setSignalsData((json.data as SignalsData) ?? INITIAL_SIGNALS);
+        setSignalsUpdatedAt(json.generatedAt ?? null);
+      })
+      .catch(() => setSignalsData(INITIAL_SIGNALS))
+      .finally(() => setSignalsLoading(false));
+  }, []);
 
   const funnelStages: { key: keyof typeof pipeline; label: string }[] = [
     { key: "saved", label: "Saved" },
@@ -160,15 +174,6 @@ export function WorkspaceDashboard() {
   const dismissJobAnalysis = () => {
     setJobAnalysis(null);
     setAddJobError(null);
-  };
-
-  const refreshSignals = () => {
-    setSignalsLoading(true);
-    setSignalsData(null);
-    window.setTimeout(() => {
-      setSignalsData(INITIAL_SIGNALS);
-      setSignalsLoading(false);
-    }, 1500);
   };
 
   return (
@@ -447,11 +452,22 @@ export function WorkspaceDashboard() {
                     return (
                       <div
                         key={stage.key}
+                        onClick={() => router.push(`/opportunities/pipeline?stage=${stage.key}`)}
                         style={{
                           background: "#FFFFFF",
                           borderRadius: 12,
                           border: "1px solid #e7e5e4",
                           padding: "20px 24px",
+                          cursor: "pointer",
+                          transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(26,58,47,0.12)";
+                          (e.currentTarget as HTMLDivElement).style.borderColor = "#a8b5a0";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                          (e.currentTarget as HTMLDivElement).style.borderColor = "#e7e5e4";
                         }}
                       >
                         <p style={STAT_LABEL}>{stage.label}</p>
@@ -475,11 +491,28 @@ export function WorkspaceDashboard() {
                         const stageLabel = card.stage === "saved" ? "Saved" : card.stage === "applied" ? "Applied" : card.stage === "interview" ? "Interviewing" : card.stage === "offer" ? "Offer" : card.stage;
                         const stageColor = card.stage === "offer" ? "#1A3A2F" : card.stage === "interview" ? "#2D6B4A" : card.stage === "applied" ? "#5A8A6E" : "#8B9E8B";
                         return (
-                          <div key={card.id} style={{
-                            display: "flex", alignItems: "center", gap: 10,
-                            padding: "14px 18px", background: "#FFFFFF",
-                            borderRadius: 10, border: "1px solid #d6d3d1",
-                          }}>
+                          <div
+                            key={card.id}
+                            onClick={() => {
+                              setDrawerCardId(card.id);
+                              router.push("/opportunities/pipeline");
+                            }}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 10,
+                              padding: "14px 18px", background: "#FFFFFF",
+                              borderRadius: 10, border: "1px solid #d6d3d1",
+                              cursor: "pointer",
+                              transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 8px rgba(26,58,47,0.10)";
+                              (e.currentTarget as HTMLDivElement).style.borderColor = "#a8b5a0";
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                              (e.currentTarget as HTMLDivElement).style.borderColor = "#d6d3d1";
+                            }}
+                          >
                             <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: stageColor }} />
                             <span style={{
                               fontFamily: "var(--font-dm-sans), system-ui",
@@ -525,16 +558,14 @@ export function WorkspaceDashboard() {
           <div style={{ marginBottom: 28 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <p style={SECTION_LABEL}>Kimchi signals · updated weekly</p>
-              <button
-                onClick={refreshSignals}
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A3A2F",
-                  padding: 0, display: "flex", alignItems: "center", gap: 4,
-                }}
-              >
-                <RefreshIcon /> Refresh →
-              </button>
+              {signalsUpdatedAt && (
+                <span style={{
+                  fontFamily: "ui-monospace, 'Courier New', monospace",
+                  fontSize: 11, color: "#a8a29e",
+                }}>
+                  Updated {new Date(signalsUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+              )}
             </div>
 
             {signalsLoading && (

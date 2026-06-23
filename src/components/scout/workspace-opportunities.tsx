@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
@@ -28,6 +28,7 @@ export function WorkspaceOpportunities() {
   const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const activeSubtab: OppTab = pathname === "/opportunities/companies" ? "companies" : "pipeline";
   const setSubtab = (t: OppTab) => { router.push(`/opportunities/${t}`); };
   const tab = activeSubtab;
@@ -53,8 +54,21 @@ export function WorkspaceOpportunities() {
   const [csvProgress, setCsvProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  // Pipeline flat-list filter
-  const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>("all");
+  // Pipeline flat-list filter — initialized from ?stage= query param if present
+  const stageParam = searchParams.get("stage") as KanbanStage | null;
+  const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>(
+    stageParam && ["saved", "applied", "interview", "offer", "closed"].includes(stageParam)
+      ? stageParam
+      : "all"
+  );
+
+  // Sync filter when stage param changes (e.g. back-nav)
+  useEffect(() => {
+    const s = searchParams.get("stage") as KanbanStage | null;
+    if (s && ["saved", "applied", "interview", "offer", "closed"].includes(s)) {
+      setPipelineFilter(s);
+    }
+  }, [searchParams]);
 
   // Resume editor (opened from drawer)
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
@@ -881,6 +895,7 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
+  const initialMatchData = (card as KanbanCard & { _matchData?: unknown })._matchData ?? null;
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
@@ -1653,6 +1668,8 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
           jobTitle={card.role}
           company={card.company}
           description={meta?.description ?? ""}
+          jobId={dbId ?? undefined}
+          initialMatchData={initialMatchData as Parameters<typeof ResumeMatchDrawer>[0]["initialMatchData"]}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             if (dbId) setResumeEditorOpen(true);
