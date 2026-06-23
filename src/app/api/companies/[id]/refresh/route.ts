@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { getEffectiveCareersUrl, mergeTrackedWithIntel, syncTrackedFromIntel } from "@/lib/company-intel";
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
@@ -28,10 +29,13 @@ export async function POST(
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const company = await prisma.trackedCompany.findFirst({ where: { id, userId: dbUser.id } });
+  const company = await prisma.trackedCompany.findFirst({
+    where: { id, userId: dbUser.id },
+    include: { companyIntel: true },
+  });
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const careersUrl = company.careersUrl || (company.website ? company.website.replace(/\/$/, "") + "/careers" : null);
+  const careersUrl = getEffectiveCareersUrl(company, company.companyIntel);
   if (!careersUrl) {
     return NextResponse.json({ error: "Add a Careers URL or website to scan for jobs." }, { status: 422 });
   }
@@ -114,11 +118,26 @@ Do not include any explanation outside the JSON.`;
     return NextResponse.json({ error: "Could not parse jobs from the page. Try a more direct careers URL." }, { status: 422 });
   }
 
+  const now = new Date();
+
+  if (company.companyIntelId && company.companyIntel) {
+    const intel = await prisma.companyIntel.update({
+      where: { id: company.companyIntelId },
+      data: {
+        jobsCache: parsed,
+        lastJobsFetchedAt: now,
+        careersUrl: company.companyIntel.careersUrl ?? careersUrl,
+      },
+    });
+    const synced = await syncTrackedFromIntel(id, intel);
+    return NextResponse.json(mergeTrackedWithIntel(synced, intel));
+  }
+
   const updated = await prisma.trackedCompany.update({
     where: { id },
     data: {
       jobsCache: parsed,
-      lastJobsFetchedAt: new Date(),
+      lastJobsFetchedAt: now,
       ...(company.careersUrl === null && { careersUrl }),
     },
   });
