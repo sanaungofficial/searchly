@@ -18,6 +18,7 @@ import { UserSettingsModal } from "./user-settings-modal";
 import { GrowthDiscoveryModal } from "./growth-discovery-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useCredits } from "@/hooks/useCredits";
 import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
 
 interface SidebarProps {
@@ -93,8 +94,9 @@ export function WorkspaceSidebar({
   const userRole = userRoleProp ?? ctxUserRole;
 
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
-  const { isPro, isAdmin: subscriptionIsAdmin, loading: subLoading, credits, startCheckout } = useSubscription();
-  const showUpgrade = !subLoading && !isPro && !isAdmin && !subscriptionIsAdmin;
+  const { loading: subLoading, startCheckout } = useSubscription();
+  const { credits, showCredits, unlimitedAi } = useCredits();
+  const showUpgrade = !subLoading && !unlimitedAi;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
@@ -426,13 +428,13 @@ export function WorkspaceSidebar({
 
         <div style={{ flex: 1 }} />
 
-        {/* ── Credits + upgrade (free users) ── */}
-        {showUpgrade && credits && !isRail && (
-          <CreditsSidebarBlock credits={credits} onUpgrade={() => startCheckout()} />
+        {/* ── Credits (+ upgrade for free users) ── */}
+        {showCredits && credits && !isRail && (
+          <CreditsSidebarBlock credits={credits} unlimitedAi={unlimitedAi} onUpgrade={() => startCheckout()} />
         )}
-        {showUpgrade && credits && isRail && (
-          <div style={{ padding: "0 0 8px", textAlign: "center" }} title={`${credits.remaining} credits left`}>
-            <CreditsMeter credits={credits} compact />
+        {showCredits && credits && isRail && (
+          <div style={{ padding: "0 0 8px", textAlign: "center" }} title={`${credits.remaining} credits left${unlimitedAi ? " · admin unlimited" : ""}`}>
+            <CreditsMeter credits={credits} compact unlimitedAi={unlimitedAi} />
           </div>
         )}
 
