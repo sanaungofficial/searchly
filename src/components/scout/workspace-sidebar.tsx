@@ -18,6 +18,9 @@ import { useWorkspace } from "@/contexts/workspace-context";
 
 interface SidebarProps {
   isMobile?: boolean;
+  collapsed?: boolean;
+  onToggle?: () => void;
+  // legacy props kept for compatibility
   isOpen?: boolean;
   onClose?: () => void;
   user?: {
@@ -35,7 +38,7 @@ interface NavItem {
   label: string;
   path: string;
   Icon: (p: { className?: string }) => React.ReactElement;
-  prodOnly?: boolean; // hide on production when true
+  prodOnly?: boolean;
 }
 
 const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
@@ -61,8 +64,8 @@ function initials(name: string | null, email: string) {
 
 export function WorkspaceSidebar({
   isMobile = false,
-  isOpen,
-  onClose,
+  collapsed = false,
+  onToggle,
   user: userProp,
   isAdmin: isAdminProp,
   userRole: userRoleProp,
@@ -90,11 +93,14 @@ export function WorkspaceSidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const hasLiveNow = true;
 
-  const sidebarVisible = isMobile ? (isOpen ?? false) : true;
+  // On mobile: collapsed = hidden (off-screen). On desktop: collapsed = icon rail.
+  const isVisible = isMobile ? !collapsed : true;
+  const isRail = !isMobile && collapsed;
+  const sidebarWidth = isRail ? 60 : 252;
 
   const navigate = (path: string) => {
     router.push(path);
-    if (isMobile && onClose) onClose();
+    if (isMobile && onToggle) onToggle(); // close on mobile nav
   };
 
   const isActive = (path: string) => {
@@ -113,11 +119,24 @@ export function WorkspaceSidebar({
     setNotifOpen(false);
   };
 
+  // Chevron icons for the toggle button
+  const ChevronLeft = () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  const ChevronRight = () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M5 2L10 7L5 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
   return (
     <>
-      {isMobile && sidebarVisible && (
+      {/* Mobile overlay backdrop */}
+      {isMobile && isVisible && (
         <div
-          onClick={onClose}
+          onClick={onToggle}
           style={{
             position: "fixed",
             inset: 0,
@@ -129,30 +148,32 @@ export function WorkspaceSidebar({
 
       <div
         style={{
-          width: 252,
+          width: sidebarWidth,
           background: "#1A3A2F",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
           borderRight: "1px solid rgba(232,213,163,0.08)",
           height: "100vh",
+          transition: "width 0.22s ease, transform 0.22s ease",
+          overflow: "hidden",
           ...(isMobile
             ? {
                 position: "fixed",
                 top: 0,
                 left: 0,
                 zIndex: 1000,
-                transform: sidebarVisible ? "translateX(0)" : "translateX(-100%)",
-                transition: "transform 0.25s ease",
+                width: 252,
+                transform: isVisible ? "translateX(0)" : "translateX(-100%)",
               }
             : {
                 position: "relative",
               }),
         }}
       >
-        {/* Brand */}
-        <div style={{ padding: "26px 22px 20px" }}>
-          {!IS_PROD && (
+        {/* ── Header ── */}
+        <div style={{ padding: isRail ? "20px 0 16px" : "26px 22px 20px" }}>
+          {!IS_PROD && !isRail && (
             <button
               onClick={() => router.push("/onboarding")}
               style={{
@@ -174,35 +195,48 @@ export function WorkspaceSidebar({
               <ArrowLeftIcon /> Preview onboarding
             </button>
           )}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div
+
+          {isRail ? (
+            /* Rail header: just the toggle button centered */
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <button
+                onClick={onToggle}
+                title="Expand sidebar"
                 style={{
-                  fontFamily: "var(--font-cormorant), Georgia, serif",
-                  fontSize: 22,
-                  fontWeight: 500,
-                  color: "#E8D5A3",
+                  cursor: "pointer",
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: "rgba(232,213,163,0.1)",
+                  border: "none",
+                  color: "rgba(232,213,163,0.7)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "background 0.15s",
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.18)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
               >
-                Kimchi
-              </div>
-              <div
-                style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  color: "rgba(232,213,163,0.32)",
-                  letterSpacing: "1.1px",
-                  textTransform: "uppercase",
-                  marginTop: 3,
-                }}
-              >
-                by Second Ladder
-              </div>
+                <ChevronRight />
+              </button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-              {isMobile && (
+          ) : (
+            /* Full header: brand + actions */
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 22, fontWeight: 500, color: "#E8D5A3" }}>
+                  Kimchi
+                </div>
+                <div style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "rgba(232,213,163,0.32)", letterSpacing: "1.1px", textTransform: "uppercase", marginTop: 3 }}>
+                  by Second Ladder
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                {/* Collapse toggle */}
                 <button
-                  onClick={onClose}
+                  onClick={onToggle}
+                  title={isMobile ? "Close menu" : "Collapse sidebar"}
                   style={{
                     cursor: "pointer",
                     padding: 6,
@@ -215,68 +249,65 @@ export function WorkspaceSidebar({
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                  aria-label="Close menu"
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
+                  {isMobile ? (
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <ChevronLeft />
+                  )}
                 </button>
-              )}
-              <button
-                onClick={onToggleNotif}
-                style={{
-                  position: "relative",
-                  cursor: "pointer",
-                  padding: 6,
-                  borderRadius: 6,
-                  background: "none",
-                  border: "none",
-                  color: "rgba(232,213,163,0.65)",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-              >
-                <BellIcon />
-                {notifUnreadCount > 0 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 3,
-                      right: 3,
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: "#C4574A",
-                      border: "1.5px solid #1A3A2F",
-                    }}
-                  />
-                )}
-              </button>
+                {/* Bell */}
+                <button
+                  onClick={onToggleNotif}
+                  style={{
+                    position: "relative",
+                    cursor: "pointer",
+                    padding: 6,
+                    borderRadius: 6,
+                    background: "none",
+                    border: "none",
+                    color: "rgba(232,213,163,0.65)",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                >
+                  <BellIcon />
+                  {notifUnreadCount > 0 && (
+                    <div style={{ position: "absolute", top: 3, right: 3, width: 8, height: 8, borderRadius: "50%", background: "#C4574A", border: "1.5px solid #1A3A2F" }} />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Nav items */}
-        <div style={{ padding: "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* ── Nav items ── */}
+        <div style={{ padding: isRail ? "0 8px" : "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
           {isAdmin && (
             <button
               onClick={() => navigate("/admin")}
+              title={isRail ? "Admin" : undefined}
               style={{
-                padding: "10px 14px",
+                padding: isRail ? "10px 0" : "10px 14px",
                 borderRadius: 7,
                 cursor: "pointer",
                 background: pathname === "/admin" ? "rgba(232,213,163,0.12)" : "transparent",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: isRail ? "center" : "flex-start",
                 gap: 11,
                 border: "none",
                 transition: "background 0.15s",
                 textAlign: "left",
+                width: "100%",
               }}
+              onMouseEnter={(e) => { if (pathname !== "/admin") e.currentTarget.style.background = "rgba(232,213,163,0.06)"; }}
+              onMouseLeave={(e) => { if (pathname !== "/admin") e.currentTarget.style.background = "transparent"; }}
             >
-              <svg
-                width="15" height="15" viewBox="0 0 24 24" fill="none"
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                 stroke={pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
               >
@@ -285,35 +316,36 @@ export function WorkspaceSidebar({
                 <rect x="3" y="14" width="7" height="7" rx="1" />
                 <rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
-              <span style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 15,
-                fontWeight: 400,
-                color: pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
-              }}>
-                Admin
-              </span>
+              {!isRail && (
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 400, color: pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
+                  Admin
+                </span>
+              )}
             </button>
           )}
 
           {isStaff && !IS_PROD && (
             <button
               onClick={() => navigate("/clients")}
+              title={isRail ? "Clients" : undefined}
               style={{
-                padding: "10px 14px",
+                padding: isRail ? "10px 0" : "10px 14px",
                 borderRadius: 7,
                 cursor: "pointer",
                 background: pathname === "/clients" ? "rgba(232,213,163,0.12)" : "transparent",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: isRail ? "center" : "flex-start",
                 gap: 11,
                 border: "none",
                 transition: "background 0.15s",
                 textAlign: "left",
+                width: "100%",
               }}
+              onMouseEnter={(e) => { if (pathname !== "/clients") e.currentTarget.style.background = "rgba(232,213,163,0.06)"; }}
+              onMouseLeave={(e) => { if (pathname !== "/clients") e.currentTarget.style.background = "transparent"; }}
             >
-              <svg
-                width="15" height="15" viewBox="0 0 24 24" fill="none"
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                 stroke={pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
               >
@@ -322,60 +354,49 @@ export function WorkspaceSidebar({
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
-              <span style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 15,
-                fontWeight: 400,
-                color: pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.48)",
-              }}>
-                Clients
-              </span>
+              {!isRail && (
+                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 400, color: pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
+                  Clients
+                </span>
+              )}
             </button>
           )}
 
-          {NAV_ITEMS.filter(item => !(IS_PROD && item.prodOnly)).map(({ id, label, path, Icon }) => {
+          {NAV_ITEMS.filter((item) => !(IS_PROD && item.prodOnly)).map(({ id, label, path, Icon }) => {
             const active = isActive(path);
-            const bg = active ? "rgba(232,213,163,0.12)" : "transparent";
-            const color = active ? "#E8D5A3" : "rgba(232,213,163,0.48)";
-            const iconColor = active ? "#E8D5A3" : "rgba(232,213,163,0.38)";
             return (
               <button
                 key={id}
                 onClick={() => navigate(path)}
+                title={isRail ? label : undefined}
                 style={{
-                  padding: "10px 14px",
+                  padding: isRail ? "10px 0" : "10px 14px",
                   borderRadius: 7,
                   cursor: "pointer",
-                  background: bg,
+                  background: active ? "rgba(232,213,163,0.12)" : "transparent",
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: isRail ? "center" : "flex-start",
                   gap: 11,
                   border: "none",
                   transition: "background 0.15s",
                   textAlign: "left",
+                  width: "100%",
                 }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "rgba(232,213,163,0.06)"; }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
               >
-                <span style={{ position: "relative", display: "inline-flex", color: iconColor }}>
+                <span style={{ position: "relative", display: "inline-flex", color: active ? "#E8D5A3" : "rgba(232,213,163,0.38)", flexShrink: 0 }}>
                   <Icon />
                   {id === "live" && hasLiveNow && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: -2,
-                        right: -2,
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: "#C4574A",
-                        border: "1.5px solid #1A3A2F",
-                        animation: "pulse 1.5s ease infinite",
-                      }}
-                    />
+                    <span style={{ position: "absolute", top: -2, right: -2, width: 6, height: 6, borderRadius: "50%", background: "#C4574A", border: "1.5px solid #1A3A2F", animation: "pulse 1.5s ease infinite" }} />
                   )}
                 </span>
-                <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 400, color }}>
-                  {label}
-                </span>
+                {!isRail && (
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 15, fontWeight: 400, color: active ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
+                    {label}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -383,32 +404,29 @@ export function WorkspaceSidebar({
 
         <div style={{ flex: 1 }} />
 
-        {/* Upgrade CTA */}
-        <div style={{ padding: "0 14px 12px" }}>
-          <a
-            href="/pricing"
-            style={{
-              display: "block",
-              background: "rgba(232,213,163,0.08)",
-              border: "1px solid rgba(232,213,163,0.15)",
-              borderRadius: 10,
-              padding: "10px 14px",
-              textDecoration: "none",
-            }}
-          >
-            <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.3px" }}>Upgrade to Pro</p>
-            <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.4)", lineHeight: 1.5 }}>Unlimited AI tools &amp; chat</p>
-          </a>
-        </div>
+        {/* ── Upgrade CTA (hidden when rail) ── */}
+        {!isRail && (
+          <div style={{ padding: "0 14px 12px" }}>
+            <a
+              href="/pricing"
+              style={{ display: "block", background: "rgba(232,213,163,0.08)", border: "1px solid rgba(232,213,163,0.15)", borderRadius: 10, padding: "10px 14px", textDecoration: "none" }}
+            >
+              <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.3px" }}>Upgrade to Pro</p>
+              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.4)", lineHeight: 1.5 }}>Unlimited AI tools &amp; chat</p>
+            </a>
+          </div>
+        )}
 
-        {/* User badge */}
+        {/* ── User badge ── */}
         <button
           onClick={() => setSettingsOpen(true)}
+          title={isRail ? (user?.name ?? user?.email ?? "Account") : undefined}
           style={{
-            padding: "14px 18px 20px",
+            padding: isRail ? "12px 0 18px" : "14px 18px 20px",
             borderTop: "1px solid rgba(232,213,163,0.08)",
             display: "flex",
             alignItems: "center",
+            justifyContent: isRail ? "center" : "flex-start",
             gap: 10,
             background: "none",
             border: "none",
@@ -419,46 +437,35 @@ export function WorkspaceSidebar({
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.05)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-          title="Account settings"
+          aria-label="Account settings"
         >
           {user?.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt={user.name ?? ""}
-              style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-            />
+            <img src={user.avatarUrl} alt={user.name ?? ""} style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           ) : (
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                background: "rgba(232,213,163,0.12)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(232,213,163,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "rgba(232,213,163,0.8)" }}>
                 {user ? initials(user.name, user.email) : "?"}
               </span>
             </div>
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: "rgba(232,213,163,0.65)", marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {user?.name ?? user?.email?.split("@")[0] ?? "Account"}
-            </p>
-            {user?.headline && (
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "rgba(232,213,163,0.28)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {user.headline}
-              </p>
-            )}
-          </div>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(232,213,163,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
+          {!isRail && (
+            <>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 400, color: "rgba(232,213,163,0.65)", marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {user?.name ?? user?.email?.split("@")[0] ?? "Account"}
+                </p>
+                {user?.headline && (
+                  <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 300, color: "rgba(232,213,163,0.28)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {user.headline}
+                  </p>
+                )}
+              </div>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(232,213,163,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </>
+          )}
         </button>
 
         {settingsOpen && user && (
@@ -470,30 +477,13 @@ export function WorkspaceSidebar({
           />
         )}
 
-        {notifOpen && (
+        {notifOpen && !isRail && (
           <>
             <div onClick={onToggleNotif} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-            <div
-              style={{
-                position: "absolute",
-                top: 76,
-                right: 18,
-                width: 320,
-                background: "#FFFFFF",
-                borderRadius: 10,
-                boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-                zIndex: 50,
-                overflow: "hidden",
-                animation: "fadeIn 0.2s ease both",
-              }}
-            >
+            <div style={{ position: "absolute", top: 76, right: 18, width: 320, background: "#FFFFFF", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)", zIndex: 50, overflow: "hidden", animation: "fadeIn 0.2s ease both" }}>
               <div style={{ padding: "14px 18px", borderBottom: "1px solid #EEE9E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>Notifications</p>
-                {notifUnreadCount > 0 && (
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
-                    {notifUnreadCount} unread
-                  </span>
-                )}
+                {notifUnreadCount > 0 && <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>{notifUnreadCount} unread</span>}
               </div>
               <div style={{ maxHeight: 360, overflowY: "auto" }}>
                 {NOTIFICATIONS.map((n) => {
@@ -501,18 +491,8 @@ export function WorkspaceSidebar({
                   return (
                     <button
                       key={n.id}
-                      onClick={() => { onNavigateNotif(n.section); }}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        padding: "12px 18px",
-                        background: n.unread ? "rgba(26,58,47,0.03)" : "transparent",
-                        border: "none",
-                        borderBottom: "1px solid #F5F2EC",
-                        cursor: "pointer",
-                        display: "flex",
-                        gap: 10,
-                      }}
+                      onClick={() => onNavigateNotif(n.section)}
+                      style={{ width: "100%", textAlign: "left", padding: "12px 18px", background: n.unread ? "rgba(26,58,47,0.03)" : "transparent", border: "none", borderBottom: "1px solid #F5F2EC", cursor: "pointer", display: "flex", gap: 10 }}
                     >
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, marginTop: 6, flexShrink: 0, opacity: n.unread ? 1 : 0.3 }} />
                       <div style={{ flex: 1 }}>
