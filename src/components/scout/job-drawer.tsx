@@ -1,9 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useEffect, useState, useCallback } from "react";
+import { useLayoutEffect, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
-import type { JobMeta } from "@/hooks/useJobs";
+import type { JobMeta } from "@/lib/job-meta";
 import {
   JOBS,
   KANBAN_STAGES,
@@ -31,7 +31,7 @@ interface JobDrawerProps {
   onToolChange?: (t: DrawerTool) => void;
 }
 
-type DrawerTab = "overview" | "company";
+type ScrollSection = "overview" | "company";
 
 const sans = fontSans;
 const serif = fontDisplay;
@@ -275,6 +275,32 @@ function IconDollar() {
     </svg>
   );
 }
+function IconGift() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <rect x="3" y="8" width="18" height="13" rx="1" />
+      <path d="M12 8v13M3 12h18" />
+      <path d="M12 8c-2 0-3-1.5-3-3.5S10 2 12 2s3 1.5 3 3.5S14 8 12 8z" />
+    </svg>
+  );
+}
+function IconTarget() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+function IconBuilding() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M9 7h1M9 11h1M9 15h1M14 7h1M14 11h1M14 15h1" />
+    </svg>
+  );
+}
 
 function MetaRow({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
@@ -323,6 +349,52 @@ function summaryParagraph(text: string | null | undefined): string {
   const first = text.split(/\n\n+/)[0]?.trim() ?? text.trim();
   if (first.length <= 420) return first;
   return first.slice(0, 420).trim() + "…";
+}
+
+function resolveJobFields(meta: JobMeta | null) {
+  const responsibilities = meta?.responsibilities?.length
+    ? meta.responsibilities
+    : parseBullets(meta?.description ?? null);
+  const skills = meta?.skills?.length ? meta.skills : (meta?.requirements ?? []);
+  const requiredQualifications = meta?.requiredQualifications?.length
+    ? meta.requiredQualifications
+    : skills.length === 0 ? (meta?.requirements ?? []) : [];
+  const preferredQualifications = meta?.preferredQualifications ?? [];
+  const jobSummary = meta?.jobSummary ?? summaryParagraph(meta?.description ?? null);
+  const companySummary = meta?.companySummary ?? "";
+  const benefits = meta?.benefits ?? [];
+  const tags = meta?.tags ?? [];
+  const hasStructuredSections = !!(
+    meta?.jobSummary ||
+    meta?.companySummary ||
+    (meta?.responsibilities && meta.responsibilities.length > 0) ||
+    (meta?.skills && meta.skills.length > 0) ||
+    (meta?.requiredQualifications && meta.requiredQualifications.length > 0) ||
+    (meta?.preferredQualifications && meta.preferredQualifications.length > 0) ||
+    (meta?.benefits && meta.benefits.length > 0)
+  );
+  return {
+    responsibilities,
+    skills,
+    requiredQualifications,
+    preferredQualifications,
+    jobSummary,
+    companySummary,
+    benefits,
+    tags,
+    hasStructuredSections,
+  };
+}
+
+function BulletList({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7 }}>
+      {items.map((b, i) => (
+        <li key={i} style={{ marginBottom: 8 }}>{b}</li>
+      ))}
+    </ul>
+  );
 }
 
 function daysLabel(days: number): string {
@@ -440,7 +512,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
-  const [drawerTab, setDrawerTab] = useState<DrawerTab>("overview");
+  const [activeSection, setActiveSection] = useState<ScrollSection>("overview");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const companySectionRef = useRef<HTMLDivElement>(null);
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
@@ -451,6 +525,50 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
     if (tool === "resume") setMatchDrawerOpen(true);
     if (tool === "cover") setCoverDrawerOpen(true);
   }, [tool]);
+
+  const scrollToSection = useCallback((section: ScrollSection) => {
+    setActiveSection(section);
+    const container = scrollRef.current;
+    if (!container) return;
+    if (section === "overview") {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (companySectionRef.current) {
+      const top = companySectionRef.current.offsetTop - 16;
+      container.scrollTo({ top, behavior: "smooth" });
+    }
+  }, []);
+
+  useEffect(() => {
+    setActiveSection("overview");
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [card.id]);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    const companyEl = companySectionRef.current;
+    if (!container || !companyEl) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setActiveSection("company");
+        }
+      },
+      { root: container, threshold: 0.25, rootMargin: "-20% 0px -55% 0px" },
+    );
+
+    observer.observe(companyEl);
+
+    const onScroll = () => {
+      if (container.scrollTop < 80) setActiveSection("overview");
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      container.removeEventListener("scroll", onScroll);
+    };
+  }, [card.id]);
 
   const extCard = card as KanbanCard & { _dbId?: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string };
   const [urlValue, setUrlValue] = useState(extCard._url ?? "");
@@ -493,17 +611,23 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
   }
 
   const job = card.jobRef !== null ? JOBS[card.jobRef] : null;
-  const setTool = (t: DrawerTool) => onToolChange?.(t);
 
   const location = job?.location || meta?.location;
   const salary = job?.salary || meta?.salary;
   const jobType = meta?.jobType;
   const expLevel = meta?.seniority || meta?.experienceLevel;
   const remoteLabel = meta?.remote === true ? "Remote" : meta?.remote === false ? "On-site" : null;
-  const summary = summaryParagraph(meta?.description ?? null);
-  const bullets = parseBullets(meta?.description ?? null);
-  const tags = meta?.tags ?? [];
-  const requirements = meta?.requirements ?? [];
+  const {
+    responsibilities,
+    skills,
+    requiredQualifications,
+    preferredQualifications,
+    jobSummary,
+    companySummary,
+    benefits,
+    tags,
+    hasStructuredSections,
+  } = resolveJobFields(meta);
 
   return (
     <>
@@ -527,7 +651,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
           flexDirection: "column",
         }}
       >
-        {/* Top bar — tabs + actions (JobRight-style) */}
+        {/* Top bar — scroll anchors + actions */}
         <div style={{ padding: "14px 28px", background: cardBg, borderBottom: border, display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
           <button
             onClick={onClose}
@@ -537,12 +661,13 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
             ×
           </button>
           <div style={{ display: "flex", gap: 24 }}>
-            {(["overview", "company"] as DrawerTab[]).map((t) => {
-              const active = drawerTab === t;
+            {(["overview", "company"] as ScrollSection[]).map((t) => {
+              const active = activeSection === t;
               return (
                 <button
                   key={t}
-                  onClick={() => setDrawerTab(t)}
+                  type="button"
+                  onClick={() => scrollToSection(t)}
                   style={{
                     background: "none",
                     border: "none",
@@ -595,309 +720,330 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
           </div>
         </div>
 
-        {drawerTab === "company" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
-              <SectionTitle>Company</SectionTitle>
-              <div style={{ background: cardBg, border, borderRadius: 12, padding: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                  <CompanyLogo name={card.company} website={cardUrl} size={52} />
-                  <div>
-                    <p style={{ fontFamily: serif, fontSize: 24, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{card.company}</p>
-                    {location && <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "6px 0 0" }}>{location}</p>}
+        <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+          <div ref={scrollRef} style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
+            {/* Hero — title + match score */}
+            <div style={{ padding: "28px 32px 24px", background: cardBg, borderBottom: border }}>
+              <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
+                    <CompanyLogo name={card.company} website={cardUrl} size={56} />
+                    <div>
+                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
+                        <a href={companyLinkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
+                          {card.company}
+                        </a>
+                        {" · "}{daysLabel(card.days)}
+                      </p>
+                    </div>
+                  </div>
+                  <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 700, color: "#1A1A1A", margin: "0 0 16px", lineHeight: 1.2 }}>
+                    {card.role}
+                  </h2>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 24px" }}>
+                    {location && <MetaRow icon={<IconPin />} label={location} />}
+                    {remoteLabel && <MetaRow icon={<IconHome />} label={remoteLabel} />}
+                    {salary && <MetaRow icon={<IconDollar />} label={salary} />}
+                    {jobType && <MetaRow icon={<IconClock />} label={jobType} />}
+                    {expLevel && <MetaRow icon={<IconBriefcase />} label={expLevel} />}
                   </div>
                 </div>
-                <a
-                  href={companyLinkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontFamily: sans, fontSize: 14, color: mint, fontWeight: 600 }}
-                >
-                  View on LinkedIn ↗
-                </a>
-                <CompanyTrackPanel
-                  companyName={card.company}
-                  jobUrl={urlValue || cardUrl}
-                  hqLocation={location ?? null}
-                />
+                <MatchScoreCard fit={card.fit} onRunMatch={dbId ? () => setMatchDrawerOpen(true) : undefined} />
               </div>
             </div>
-        ) : (
-          /* Overview — left: job posting · right: pipeline, notes, AI */
-          <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
-            <div style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
-              {/* Hero — title + match score */}
-              <div style={{ padding: "28px 32px 24px", background: cardBg, borderBottom: border }}>
-                <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
-                      <CompanyLogo name={card.company} website={cardUrl} size={56} />
-                      <div>
-                        <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
-                          <a href={companyLinkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
-                            {card.company}
-                          </a>
-                          {" · "}{daysLabel(card.days)}
-                        </p>
-                      </div>
-                    </div>
-                    <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 700, color: "#1A1A1A", margin: "0 0 16px", lineHeight: 1.2 }}>
-                      {card.role}
-                    </h2>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 24px" }}>
-                      {location && <MetaRow icon={<IconPin />} label={location} />}
-                      {remoteLabel && <MetaRow icon={<IconHome />} label={remoteLabel} />}
-                      {jobType && <MetaRow icon={<IconClock />} label={jobType} />}
-                      {expLevel && <MetaRow icon={<IconBriefcase />} label={expLevel} />}
-                      {salary && <MetaRow icon={<IconDollar />} label={salary} />}
-                    </div>
-                  </div>
-                  <MatchScoreCard fit={card.fit} onRunMatch={dbId ? () => setMatchDrawerOpen(true) : undefined} />
-                </div>
-              </div>
 
-              {/* Main job content — posting only */}
-              <div style={{ padding: "28px 32px 36px" }}>
-                  {summary && (
-                    <div style={{ marginBottom: 22 }}>
-                      <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{summary}</p>
-                      {tags.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-                          {tags.map((t, i) => (
-                            <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 100, fontFamily: sans, fontSize: 13, fontWeight: 500, color: "#2A4A3A" }}>
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {bullets.length > 0 && (
-                    <div style={{ marginBottom: 22 }}>
-                      <SectionTitle icon={<IconBriefcase />}>Responsibilities</SectionTitle>
-                      <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7 }}>
-                        {bullets.map((b, i) => (
-                          <li key={i} style={{ marginBottom: 8 }}>{b}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {requirements.length > 0 && (
-                    <div style={{ marginBottom: 22 }}>
-                      <SectionTitle icon={<span style={{ fontSize: 16 }}>◎</span>}>Qualification</SectionTitle>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {requirements.map((r, i) => (
-                          <span
-                            key={i}
-                            style={{
-                              padding: "6px 13px",
-                              background: card.fit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
-                              border: card.fit >= 70 ? `1px solid rgba(74,139,106,0.25)` : border,
-                              borderRadius: 100,
-                              fontFamily: sans,
-                              fontSize: 13,
-                              fontWeight: 500,
-                              color: card.fit >= 70 ? "#2A4A3A" : "#5C534A",
-                            }}
-                          >
-                            {card.fit >= 70 ? "✓ " : ""}{r}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mock job tool views */}
-                  {tool !== null && !job && (
-                    <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, marginBottom: 14 }}>
-                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                        {tool === "resume" ? "Resume tailoring" : tool === "cover" ? "Cover letter" : "Fit analysis"} — coming soon
-                      </p>
-                      <p style={{ fontFamily: sans, fontSize: 14, color: "#52493F", lineHeight: 1.6, margin: 0 }}>
-                        AI tools for manually added jobs are rolling out shortly.
-                      </p>
-                    </div>
-                  )}
-
-                  {tool === "cover" && job && (
-                    <div style={{ marginBottom: 18 }}>
-                      <SectionTitle>Cover letter</SectionTitle>
-                      <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, borderLeft: `3px solid ${mint}` }}>
-                        <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.75, whiteSpace: "pre-wrap", margin: 0 }}>{job.coverLetter}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {tool === "fit" && job && (
-                    <div style={{ marginBottom: 18 }}>
-                      <SectionTitle>Fit analysis</SectionTitle>
-                      <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 12 }}>{job.fitSummary}</p>
-                      {job.fitWorks.map((w, i) => (
-                        <div key={i} style={{ padding: "10px 12px", background: mintLight, borderRadius: 8, marginBottom: 8, fontSize: 14 }}>✓ {w}</div>
+            {/* Main job content — single scrollable column */}
+            <div style={{ padding: "28px 32px 36px" }}>
+              {jobSummary && (
+                <div style={{ marginBottom: 22 }}>
+                  <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{jobSummary}</p>
+                  {tags.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                      {tags.map((t, i) => (
+                        <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 100, fontFamily: sans, fontSize: 13, fontWeight: 500, color: "#2A4A3A" }}>
+                          {t}
+                        </span>
                       ))}
                     </div>
                   )}
-
-                  {tool === null && job ? (
-                    <div>
-                      <SectionTitle>Kimchi&apos;s fit summary</SectionTitle>
-                      <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 16 }}>{job.fitSummary}</p>
-                    </div>
-                  ) : tool === null ? (
-                    <div style={{ marginBottom: 18 }}>
-                      <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
-                      <textarea
-                        value={descValue}
-                        onChange={(e) => setDescValue(e.target.value)}
-                        onBlur={() => patchDescription(descValue)}
-                        placeholder="Paste or type the job description here. AI will fill this in automatically when you add via URL."
-                        rows={descValue ? Math.min(12, Math.max(6, descValue.split("\n").length + 2)) : 6}
-                        style={{
-                          width: "100%",
-                          fontFamily: sans,
-                          fontSize: 15,
-                          color: "#1A1A1A",
-                          background: cardBg,
-                          border,
-                          borderRadius: 12,
-                          padding: "16px 18px",
-                          resize: "vertical",
-                          outline: "none",
-                          lineHeight: 1.7,
-                          boxSizing: "border-box",
-                        }}
-                      />
-                    </div>
-                  ) : null}
-
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: border }}>
-                    <input
-                      value={urlValue}
-                      onChange={(e) => setUrlValue(e.target.value)}
-                      onBlur={() => patchField({ url: urlValue || null })}
-                      placeholder="Job URL…"
-                      style={{ width: "100%", fontSize: 13, fontFamily: sans, color: "#8A8278", background: "transparent", border: "none", borderBottom: "1px solid rgba(0,0,0,0.1)", outline: "none", padding: "4px 0" }}
-                    />
-                  </div>
                 </div>
-              </div>
+              )}
 
-            {/* Right — pipeline, notes, AI tools */}
-            <div
-              style={{
-                width: AI_SIDEBAR_WIDTH,
-                flexShrink: 0,
-                padding: "24px 20px 32px",
-                borderLeft: border,
-                background: cardBg,
-                overflowY: "auto",
-                overflowX: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                gap: 24,
-              }}
-            >
-              {/* Pipeline */}
-              <div>
-                <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
-                  Pipeline
-                </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-                  <span style={{
-                    padding: "5px 12px",
-                    borderRadius: 100,
-                    background: `${STAGE_COLORS[card.stage]}18`,
-                    color: STAGE_COLORS[card.stage],
-                    fontFamily: sans,
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}>
-                    {STAGE_LABELS[card.stage]}
-                  </span>
-                  {dbId && (
-                    <button
-                      type="button"
-                      onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#C4574A", fontFamily: sans, padding: 0 }}
-                    >
-                      Remove job
-                    </button>
+              {responsibilities.length > 0 && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconBriefcase />}>Responsibilities</SectionTitle>
+                  <BulletList items={responsibilities} />
+                </div>
+              )}
+
+              {(skills.length > 0 || requiredQualifications.length > 0 || preferredQualifications.length > 0) && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconTarget />}>Qualification</SectionTitle>
+                  {skills.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: requiredQualifications.length > 0 || preferredQualifications.length > 0 ? 16 : 0 }}>
+                      {skills.map((s, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            padding: "6px 13px",
+                            background: card.fit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
+                            border: card.fit >= 70 ? "1px solid rgba(74,139,106,0.25)" : border,
+                            borderRadius: 100,
+                            fontFamily: sans,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: card.fit >= 70 ? "#2A4A3A" : "#5C534A",
+                          }}
+                        >
+                          {card.fit >= 70 ? "👍 " : ""}{s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {requiredQualifications.length > 0 && (
+                    <div style={{ marginBottom: preferredQualifications.length > 0 ? 14 : 0 }}>
+                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#5C534A", margin: "0 0 8px" }}>Required</p>
+                      <BulletList items={requiredQualifications} />
+                    </div>
+                  )}
+                  {preferredQualifications.length > 0 && (
+                    <div>
+                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#5C534A", margin: "0 0 8px" }}>Preferred</p>
+                      <BulletList items={preferredQualifications} />
+                    </div>
                   )}
                 </div>
-                <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Move to</p>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-                  {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => moveCard(card.id, s)}
-                      style={{
-                        padding: "6px 10px",
-                        background: pageBg,
-                        border,
-                        borderRadius: 7,
-                        fontFamily: sans,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: "#1A1A1A",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {STAGE_LABELS[s]}
-                    </button>
+              )}
+
+              {benefits.length > 0 && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconGift />}>Benefits</SectionTitle>
+                  <BulletList items={benefits} />
+                </div>
+              )}
+
+              {tool !== null && !job && (
+                <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, marginBottom: 14 }}>
+                  <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                    {tool === "resume" ? "Resume tailoring" : tool === "cover" ? "Cover letter" : "Fit analysis"} — coming soon
+                  </p>
+                  <p style={{ fontFamily: sans, fontSize: 14, color: "#52493F", lineHeight: 1.6, margin: 0 }}>
+                    AI tools for manually added jobs are rolling out shortly.
+                  </p>
+                </div>
+              )}
+
+              {tool === "cover" && job && (
+                <div style={{ marginBottom: 18 }}>
+                  <SectionTitle>Cover letter</SectionTitle>
+                  <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, borderLeft: `3px solid ${mint}` }}>
+                    <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.75, whiteSpace: "pre-wrap", margin: 0 }}>{job.coverLetter}</p>
+                  </div>
+                </div>
+              )}
+
+              {tool === "fit" && job && (
+                <div style={{ marginBottom: 18 }}>
+                  <SectionTitle>Fit analysis</SectionTitle>
+                  <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 12 }}>{job.fitSummary}</p>
+                  {job.fitWorks.map((w, i) => (
+                    <div key={i} style={{ padding: "10px 12px", background: mintLight, borderRadius: 8, marginBottom: 8, fontSize: 14 }}>✓ {w}</div>
                   ))}
                 </div>
-                <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Next action</p>
-                <input
-                  value={nextStepValue}
-                  onChange={(e) => setNextStepValue(e.target.value)}
-                  onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                  placeholder="e.g. Follow up with recruiter…"
-                  style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, marginBottom: 8, boxSizing: "border-box" }}
-                />
-                <input
-                  type="date"
-                  value={nextStepDueValue}
-                  onChange={(e) => setNextStepDueValue(e.target.value)}
-                  onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                  style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, boxSizing: "border-box" }}
-                />
+              )}
+
+              {tool === null && job ? (
+                <div style={{ marginBottom: 18 }}>
+                  <SectionTitle>Kimchi&apos;s fit summary</SectionTitle>
+                  <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 16 }}>{job.fitSummary}</p>
+                </div>
+              ) : tool === null && !hasStructuredSections ? (
+                <div style={{ marginBottom: 18 }}>
+                  <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
+                  <textarea
+                    value={descValue}
+                    onChange={(e) => setDescValue(e.target.value)}
+                    onBlur={() => patchDescription(descValue)}
+                    placeholder="Paste or type the job description here. AI will fill this in automatically when you add via URL."
+                    rows={descValue ? Math.min(12, Math.max(6, descValue.split("\n").length + 2)) : 6}
+                    style={{
+                      width: "100%",
+                      fontFamily: sans,
+                      fontSize: 15,
+                      color: "#1A1A1A",
+                      background: cardBg,
+                      border,
+                      borderRadius: 12,
+                      padding: "16px 18px",
+                      resize: "vertical",
+                      outline: "none",
+                      lineHeight: 1.7,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              <div
+                ref={companySectionRef}
+                id="job-drawer-company"
+                style={{ marginTop: 28, paddingTop: 24, borderTop: border }}
+              >
+                <SectionTitle icon={<IconBuilding />}>Company</SectionTitle>
+                <div style={{ background: cardBg, border, borderRadius: 12, padding: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <CompanyLogo name={card.company} website={cardUrl} size={52} />
+                    <div>
+                      <p style={{ fontFamily: serif, fontSize: 24, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{card.company}</p>
+                      {location && <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "6px 0 0" }}>{location}</p>}
+                    </div>
+                  </div>
+                  {companySummary && (
+                    <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: "0 0 16px" }}>{companySummary}</p>
+                  )}
+                  <a
+                    href={companyLinkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontFamily: sans, fontSize: 14, color: mint, fontWeight: 600 }}
+                  >
+                    View on LinkedIn ↗
+                  </a>
+                  <CompanyTrackPanel
+                    companyName={card.company}
+                    jobUrl={urlValue || cardUrl}
+                    hqLocation={location ?? null}
+                  />
+                </div>
               </div>
 
-              {/* Notes */}
-              <div>
-                <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
-                  Notes
-                </p>
-                <textarea
-                  value={notesValue}
-                  onChange={(e) => setNotesValue(e.target.value)}
-                  onBlur={() => patchField({ userNotes: notesValue || null })}
-                  placeholder="Recruiter contacts, impressions…"
-                  rows={5}
-                  style={{
-                    width: "100%",
-                    fontFamily: sans,
-                    fontSize: 13,
-                    background: pageBg,
-                    border,
-                    borderRadius: 10,
-                    padding: "12px 14px",
-                    resize: "vertical",
-                    outline: "none",
-                    lineHeight: 1.55,
-                    boxSizing: "border-box",
-                    minHeight: 100,
-                  }}
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: border }}>
+                <input
+                  value={urlValue}
+                  onChange={(e) => setUrlValue(e.target.value)}
+                  onBlur={() => patchField({ url: urlValue || null })}
+                  placeholder="Job URL…"
+                  style={{ width: "100%", fontSize: 13, fontFamily: sans, color: "#8A8278", background: "transparent", border: "none", borderBottom: "1px solid rgba(0,0,0,0.1)", outline: "none", padding: "4px 0" }}
                 />
               </div>
+            </div>
+          </div>
 
-              {/* AI tools */}
-              <div>
-                <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.3 }}>
-                  Boost your interview chances
-                </p>
+          {/* Right — pipeline, notes, AI tools */}
+          <div
+            style={{
+              width: AI_SIDEBAR_WIDTH,
+              flexShrink: 0,
+              padding: "24px 20px 32px",
+              borderLeft: border,
+              background: cardBg,
+              overflowY: "auto",
+              overflowX: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              gap: 24,
+            }}
+          >
+            {/* Pipeline */}
+            <div>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
+                Pipeline
+              </p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                <span style={{
+                  padding: "5px 12px",
+                  borderRadius: 100,
+                  background: `${STAGE_COLORS[card.stage]}18`,
+                  color: STAGE_COLORS[card.stage],
+                  fontFamily: sans,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}>
+                  {STAGE_LABELS[card.stage]}
+                </span>
+                {dbId && (
+                  <button
+                    type="button"
+                    onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#C4574A", fontFamily: sans, padding: 0 }}
+                  >
+                    Remove job
+                  </button>
+                )}
+              </div>
+              <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Move to</p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => moveCard(card.id, s)}
+                    style={{
+                      padding: "6px 10px",
+                      background: pageBg,
+                      border,
+                      borderRadius: 7,
+                      fontFamily: sans,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: "#1A1A1A",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {STAGE_LABELS[s]}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.6px", margin: "0 0 8px" }}>Next action</p>
+              <input
+                value={nextStepValue}
+                onChange={(e) => setNextStepValue(e.target.value)}
+                onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+                placeholder="e.g. Follow up with recruiter…"
+                style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, marginBottom: 8, boxSizing: "border-box" }}
+              />
+              <input
+                type="date"
+                value={nextStepDueValue}
+                onChange={(e) => setNextStepDueValue(e.target.value)}
+                onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
+                style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
+                Notes
+              </p>
+              <textarea
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
+                onBlur={() => patchField({ userNotes: notesValue || null })}
+                placeholder="Recruiter contacts, impressions…"
+                rows={5}
+                style={{
+                  width: "100%",
+                  fontFamily: sans,
+                  fontSize: 13,
+                  background: pageBg,
+                  border,
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  resize: "vertical",
+                  outline: "none",
+                  lineHeight: 1.55,
+                  boxSizing: "border-box",
+                  minHeight: 100,
+                }}
+              />
+            </div>
+
+            {/* AI tools */}
+            <div>
+              <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.3 }}>
+                Boost your interview chances
+              </p>
               <CreditsStatusBar />
               <AiToolCard
                 highlighted
@@ -921,10 +1067,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 buttonLabel="Analyze fit"
                 onClick={() => openFitChat(card.id)}
               />
-              </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {dbId && (

@@ -3,7 +3,8 @@
 import { useRef, useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
-import type { JobMeta } from "@/hooks/useJobs";
+import type { JobMeta } from "@/lib/job-meta";
+import { parsedJobToMeta } from "@/lib/job-meta";
 import {
   KANBAN_STAGES,
   STAGE_LABELS,
@@ -37,18 +38,7 @@ export function WorkspaceOpportunities() {
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
   const [addJobLoading, setAddJobLoading] = useState(false);
-  const [jobAnalysis, setJobAnalysis] = useState<null | {
-    company: string | null;
-    role: string | null;
-    location: string | null;
-    salary: string | null;
-    jobType: string | null;
-    remote: boolean | null;
-    seniority: string | null;
-    description: string | null;
-    requirements: string[];
-    tags: string[];
-  }>(null);
+  const [jobAnalysis, setJobAnalysis] = useState<Record<string, unknown> | null>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -150,18 +140,9 @@ export function WorkspaceOpportunities() {
 
   const addToKanban = async () => {
     if (!jobAnalysis) return;
-    const company = jobAnalysis.company ?? "Unknown Company";
-    const role = jobAnalysis.role ?? "Unknown Role";
-    const meta: JobMeta = {
-      location: jobAnalysis.location,
-      salary: jobAnalysis.salary,
-      jobType: jobAnalysis.jobType,
-      remote: jobAnalysis.remote,
-      seniority: jobAnalysis.seniority,
-      description: jobAnalysis.description,
-      requirements: jobAnalysis.requirements,
-      tags: jobAnalysis.tags,
-    };
+    const company = (jobAnalysis.company as string | null) ?? "Unknown Company";
+    const role = (jobAnalysis.role as string | null) ?? "Unknown Role";
+    const meta: JobMeta = parsedJobToMeta(jobAnalysis);
     await addJob(company, role, addJobUrl.trim() || undefined, meta);
     setShowAddPanel(false);
     setJobAnalysis(null);
@@ -576,14 +557,7 @@ interface MyJobsUrlPastePanelProps {
   setUrl: (s: string) => void;
   onSubmit: () => void;
   loading: boolean;
-  analysis: {
-    company: string | null;
-    role: string | null;
-    location: string | null;
-    salary: string | null;
-    description: string | null;
-    requirements: string[];
-  } | null;
+  analysis: Record<string, unknown> | null;
   error?: string | null;
   onAddToKanban: () => void;
   onDismiss: () => void;
@@ -675,8 +649,8 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>{analysis.company ?? "Unknown company"}</p>
-                {analysis.role && (
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>{(analysis.company as string) ?? "Unknown company"}</p>
+                {typeof analysis.role === "string" && analysis.role && (
                   <>
                     <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>·</span>
                     <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone }}>{analysis.role}</p>
@@ -684,12 +658,12 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
                 )}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {analysis.location && (
+                {typeof analysis.location === "string" && analysis.location && (
                   <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                     📍 {analysis.location}
                   </span>
                 )}
-                {analysis.salary && (
+                {typeof analysis.salary === "string" && analysis.salary && (
                   <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
                     {analysis.salary}
                   </span>
@@ -697,9 +671,9 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               </div>
             </div>
           </div>
-          {analysis.description && (
+          {((typeof analysis.jobSummary === "string" && analysis.jobSummary) || (typeof analysis.description === "string" && analysis.description)) && (
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 400, color: color.ink, lineHeight: 1.6, marginBottom: 10, textWrap: "pretty" }}>
-              {analysis.description}
+              {(typeof analysis.jobSummary === "string" ? analysis.jobSummary : null) ?? (analysis.description as string)}
             </p>
           )}
           <button
