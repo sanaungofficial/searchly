@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
   JOBS,
@@ -263,6 +264,7 @@ function AiToolCard({
 }
 
 export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, tool = null, onToolChange }: JobDrawerProps) {
+  const { openFitChat } = useWorkspace();
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
@@ -724,7 +726,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 title="Analyze how well you fit"
                 subtitle="Understand your strengths and gaps for this role."
                 buttonLabel="Analyze fit"
-                onClick={() => setTool(tool === "fit" ? null : "fit")}
+                onClick={() => openFitChat(card.id)}
               />
             </div>
           </div>
