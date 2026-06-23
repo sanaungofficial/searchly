@@ -1847,7 +1847,7 @@ export function WorkspaceProfile() {
   ];
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F7F5F2", animation: "fadeIn 0.3s ease both" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#F7F5F2", animation: "fadeIn 0.3s ease both" }}>
       <div ref={scrollRef} style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>

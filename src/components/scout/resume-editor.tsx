@@ -248,15 +248,41 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
   return (
     <div
-      className="resume-print-target"
+      className="resume-print-outer"
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        className="resume-print-backdrop"
+        onClick={() => onOpenChange(false)}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.45)",
+        }}
+      />
+    <div
+      className="resume-print-target"
+      style={{
+        position: "relative",
+        width: "100%",
+        maxWidth: 1200,
+        height: "90vh",
         background: "#F7F5F2",
+        borderRadius: 14,
         display: "flex",
         flexDirection: "column",
-        fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
+        overflow: "hidden",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
       }}
     >
       {/* Header bar */}
