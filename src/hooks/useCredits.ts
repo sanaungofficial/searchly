@@ -1,5 +1,10 @@
 import { useSubscription } from "@/hooks/useSubscription";
-import { isCreditsExhausted, isCreditsLow, type CreditBalance } from "@/lib/credits";
+import {
+  isCreditsExhausted,
+  isCreditsLow,
+  isUnlimitedBalance,
+  type CreditBalance,
+} from "@/lib/credits";
 
 /** Paid Pro subscribers — hide credit UI. Free + admin always see balances. */
 export function shouldShowCredits(sub: {
@@ -36,12 +41,23 @@ export function useCredits() {
   };
 }
 
+function isUnlimitedCredits(credits: CreditBalance, unlimitedAi = false): boolean {
+  return unlimitedAi || isUnlimitedBalance(credits);
+}
+
 export function creditsSummary(credits: CreditBalance, unlimitedAi = false): string {
-  if (unlimitedAi) return "Unlimited AI";
+  if (isUnlimitedCredits(credits, unlimitedAi)) return "Unlimited AI";
   if (credits.remaining <= 0) return "No credits left this month";
   return `${credits.remaining} credit${credits.remaining === 1 ? "" : "s"} left`;
 }
 
-export function creditsReferenceLabel(credits: CreditBalance): string {
-  return `Free plan is ${credits.limit}/mo · tracker shows ${credits.used} used`;
+export function creditsUsageCount(credits: CreditBalance, unlimitedAi = false): string {
+  if (isUnlimitedCredits(credits, unlimitedAi)) {
+    return `${credits.used} / unlimited`;
+  }
+  return `${credits.used}/${credits.limit} used`;
+}
+
+export function creditsUsageSubtitle(_credits: CreditBalance, _unlimitedAi = false): string {
+  return "1 credit per AI action · Resets monthly";
 }
