@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { hasParsedResumeSections } from "@/lib/resume-parse";
 import {
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
@@ -193,6 +194,20 @@ function PersonalTab({ profile, onSave }: {
   const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl || "");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setName(profile.name);
+    setPhone(profile.parsedData?.phone || "");
+    setLocation(profile.parsedData?.location || "");
+    setWebsite(profile.parsedData?.website || "");
+    setLinkedinUrl(profile.linkedinUrl || "");
+  }, [
+    profile.name,
+    profile.linkedinUrl,
+    profile.parsedData?.phone,
+    profile.parsedData?.location,
+    profile.parsedData?.website,
+  ]);
+
   const handleSave = async () => {
     setSaving(true);
     await onSave({ name, linkedinUrl: linkedinUrl || null, parsedData: { phone: phone || null, location: location || null, website: website || null } as Partial<ParsedData> });
@@ -267,6 +282,10 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
   const [list, setList] = useState<EducationEntry[]>(entries);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!editing) setList(entries);
+  }, [entries, editing]);
+
   const addEntry = () => setList((p) => [...p, { id: `edu_${Date.now()}`, school: "", degree: "", field: "", from: "", to: "" }]);
   const removeEntry = (id: string) => setList((p) => p.filter((e) => e.id !== id));
   const updateEntry = (id: string, key: keyof EducationEntry, value: string) =>
@@ -337,6 +356,10 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
   const [editing, setEditing] = useState(false);
   const [list, setList] = useState<WorkEntry[]>(entries);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setList(entries);
+  }, [entries, editing]);
 
   const addEntry = () => setList((p) => [...p, { id: `exp_${Date.now()}`, company: "", title: "", description: "", from: "", to: "", bullets: [] }]);
   const removeEntry = (id: string) => setList((p) => p.filter((e) => e.id !== id));
@@ -432,6 +455,10 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [graduating, setGraduating] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editing) setList(skills);
+  }, [skills, editing]);
 
   const addSkill = () => { const v = input.trim(); if (v && !list.includes(v)) setList((p) => [...p, v]); setInput(""); };
   const handleSave = async () => { setSaving(true); await onSave(list); setSaving(false); setEditing(false); };
@@ -1759,6 +1786,7 @@ export function WorkspaceProfile() {
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const page: PageTab =
     pathname === "/profile/dream-role" ? "dreamrole" :
     pathname === "/profile/learning-path" ? "learning" :
@@ -1810,6 +1838,18 @@ export function WorkspaceProfile() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("from") !== "onboarding" || !profile?.resumeUrl) return;
+    setReadbackNudge(true);
+    router.replace(pathname);
+  }, [searchParams, profile?.resumeUrl, router, pathname]);
+
+  useEffect(() => {
+    if (!profile?.resumeUrl) return;
+    refreshAssets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.resumeUrl]);
 
   useEffect(() => {
     if (!profile?.resumeUrl) return;
@@ -1929,8 +1969,26 @@ export function WorkspaceProfile() {
       if (data.url) {
         const profileRes = await fetch("/api/profile");
         const profileData = await profileRes.json();
-        if (!profileData.error) setProfile(profileData);
-        else setProfile((p) => p ? { ...p, resumeUrl: data.url } : p);
+        if (!profileData.error) {
+          setProfile(profileData);
+        } else {
+          setProfile((p) =>
+            p
+              ? {
+                  ...p,
+                  resumeUrl: data.url,
+                  parsedData: data.parsedData ?? p.parsedData,
+                  name: data.parsedData?.name || p.name,
+                }
+              : p,
+          );
+        }
+        if (data.asset) {
+          setAssets((prev) => {
+            const withoutDup = prev.filter((a) => a.id !== data.asset.id);
+            return [data.asset, ...withoutDup];
+          });
+        }
         refreshAssets();
         setReadbackNudge(true);
         setTimeout(() => setReadbackNudge(false), 8000);
@@ -1976,6 +2034,12 @@ export function WorkspaceProfile() {
   const education = pd?.education || [];
   const workExperience = pd?.workExperience || [];
   const skills = pd?.skills || [];
+  const parsedSectionsReady = hasParsedResumeSections(pd);
+  const resumeNudgeMessage = parsedSectionsReady
+    ? "✓ Resume uploaded — Kimchi extracted your experience, education, and skills. Review them in the About tab."
+    : profile?.resumeUrl
+      ? "✓ Resume saved — your file is in Assets. About sections auto-fill after AI parsing on production (app.kimchi.so), or add details manually."
+      : "";
 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
@@ -2072,10 +2136,10 @@ export function WorkspaceProfile() {
         )}
 
         {/* Resume upload nudge */}
-        {readbackNudge && (
+        {readbackNudge && resumeNudgeMessage && (
           <div style={{ maxWidth: isMobile ? "100%" : 640, marginBottom: 12, padding: "12px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12 }}>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A7A4A", margin: 0, lineHeight: 1.5 }}>
-              ✓ Resume uploaded — Kimchi extracted your experience, education, and skills. Review them in the About tab.
+              {resumeNudgeMessage}
             </p>
             <button onClick={() => setReadbackNudge(false)} style={{ background: "none", border: "none", color: "#1A7A4A", cursor: "pointer", fontSize: 16, padding: isMobile ? "8px 4px" : "0 4px", opacity: 0.6, flexShrink: 0, alignSelf: isMobile ? "flex-end" : undefined, minHeight: isMobile ? 44 : undefined }}>✕</button>
           </div>
@@ -2130,6 +2194,13 @@ export function WorkspaceProfile() {
         )}
         {page === "about" && profile && (
           <div style={{ maxWidth: isMobile ? "100%" : 640, paddingBottom: 40 }}>
+            {profile.resumeUrl && !parsedSectionsReady && (
+              <div style={{ marginBottom: 12, padding: "12px 14px", background: "#FFFDF9", border: "1px solid #E8D5A3", borderRadius: 8 }}>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", margin: 0, lineHeight: 1.5 }}>
+                  Your resume is linked in Assets. Parsed details appear here after AI processing on production, or you can fill in each section below.
+                </p>
+              </div>
+            )}
             <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>

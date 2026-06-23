@@ -2,6 +2,12 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt } from "@/lib/prompts";
+import {
+  normalizeParsedResumeData,
+  parseJsonFromModel,
+  shouldReplaceNameWithResumeName,
+  type ParsedResumeData,
+} from "@/lib/resume-parse";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -41,9 +47,9 @@ async function extractFromPdf(base64: string, structuredPrompt: string): Promise
     ]);
 
     const text = textMsg.content[0]?.type === "text" ? textMsg.content[0].text : "";
-    let parsed: object | null = null;
+    let parsed: ParsedResumeData | null = null;
     if (structuredMsg.content[0]?.type === "text") {
-      try { parsed = JSON.parse(structuredMsg.content[0].text); } catch { parsed = null; }
+      parsed = normalizeParsedResumeData(parseJsonFromModel(structuredMsg.content[0].text));
     }
     const tokensIn = textMsg.usage.input_tokens + structuredMsg.usage.input_tokens;
     const tokensOut = textMsg.usage.output_tokens + structuredMsg.usage.output_tokens;
@@ -60,9 +66,9 @@ async function extractFromText(rawText: string, structuredPrompt: string): Promi
       max_tokens: 4096,
       messages: [{ role: "user", content: `${structuredPrompt}\n\nResume text:\n${rawText.slice(0, 8000)}` }],
     });
-    let parsed: object | null = null;
+    let parsed: ParsedResumeData | null = null;
     if (msg.content[0]?.type === "text") {
-      try { parsed = JSON.parse(msg.content[0].text); } catch { parsed = null; }
+      parsed = normalizeParsedResumeData(parseJsonFromModel(msg.content[0].text));
     }
     return { text: rawText, parsed, tokensIn: msg.usage.input_tokens, tokensOut: msg.usage.output_tokens };
   } catch {
@@ -70,7 +76,7 @@ async function extractFromText(rawText: string, structuredPrompt: string): Promi
   }
 }
 
-async function extractResume(file: File, structuredPrompt: string): Promise<{ text: string; parsed: object | null; tokensIn: number; tokensOut: number }> {
+async function extractResume(file: File, structuredPrompt: string): Promise<{ text: string; parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number }> {
   const bytes = await file.arrayBuffer();
   const ext = file.name.split(".").pop()?.toLowerCase();
 
@@ -146,8 +152,14 @@ export async function POST(request: Request) {
 
   if (resumeText) logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, rTokIn, rTokOut);
 
-  const extractedName = (parsedData as Record<string, unknown> | null)?.name as string | undefined;
-  if (extractedName && !dbUser.name) {
+  const extractedName = parsedData?.name;
+  const metadataName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    (user.user_metadata?.name as string | undefined);
+  if (
+    extractedName &&
+    shouldReplaceNameWithResumeName(dbUser.name, user.email!, metadataName)
+  ) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
   }
 
@@ -183,5 +195,10 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ url: publicUrl, parsed: !!parsedData, asset });
+  return NextResponse.json({
+    url: publicUrl,
+    parsed: !!parsedData,
+    parsedData,
+    asset,
+  });
 }
