@@ -116,9 +116,9 @@ const ROLES: UserRole[] = ["USER", "COACH", "RECRUITER", "ADMIN"];
 function StatCard({ label, value, sub, accent }: { label: string; value: number | string; sub?: string; accent?: string }) {
   return (
     <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px" }}>
-      <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
+      <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
       <p style={{ fontSize: 26, fontWeight: 600, color: accent ?? "#1a1a1a", fontFamily: "var(--font-playfair)", lineHeight: 1 }}>{value}</p>
-      {sub && <p style={{ fontSize: 12, color: "#a09890", marginTop: 4 }}>{sub}</p>}
+      {sub && <p style={{ fontSize: 12, color: "var(--scout-muted)", marginTop: 4 }}>{sub}</p>}
     </div>
   );
 }
@@ -126,7 +126,7 @@ function StatCard({ label, value, sub, accent }: { label: string; value: number 
 function SectionLabel({ children, action }: { children: string; action?: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, marginTop: 28 }}>
-      <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", margin: 0 }}>{children}</p>
+      <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", margin: 0 }}>{children}</p>
       {action}
     </div>
   );
@@ -178,23 +178,23 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ece6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontFamily: "var(--font-playfair)", fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>User Detail</p>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onEdit} style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Edit</button>
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 20, lineHeight: 1 }}>×</button>
+            <button onClick={onEdit} style={{ fontSize: 13, padding: "4px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-ui)" }}>Edit</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 20, lineHeight: 1 }}>×</button>
           </div>
         </div>
 
         {loading ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ color: "#a09890", fontSize: 14 }}>Loading…</p>
+            <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Loading…</p>
           </div>
         ) : !detail ? (
-          <div style={{ padding: 24 }}><p style={{ color: "#a09890", fontSize: 14 }}>Failed to load.</p></div>
+          <div style={{ padding: 24 }}><p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Failed to load.</p></div>
         ) : (
           <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Identity */}
             <div>
               <p style={{ fontSize: 16, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{detail.name ?? "—"}</p>
-              <p style={{ fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{detail.email}</p>
+              <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{detail.email}</p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <RoleBadge role={detail.role} />
                 {detail.subscription && (
@@ -214,7 +214,7 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
                 { label: "Tailored Resumes", value: detail.tailoredResumes.length },
               ].map(({ label, value }) => (
                 <div key={label} style={{ background: "#faf8f5", borderRadius: 8, padding: "10px 12px" }}>
-                  <p style={{ fontSize: 11, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>{label}</p>
+                  <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>{label}</p>
                   <p style={{ fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>{value}</p>
                 </div>
               ))}
@@ -223,15 +223,15 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
             {/* Profile */}
             {detail.profile && (
               <div>
-                <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 8 }}>Profile</p>
+                <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 8 }}>Profile</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {detail.profile.headline && <p style={{ fontSize: 13, color: "#3d3530" }}>{detail.profile.headline}</p>}
-                  {detail.profile.linkedinUrl && <p style={{ fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>LinkedIn ✓</p>}
+                  {detail.profile.linkedinUrl && <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>LinkedIn ✓</p>}
                   {detail.profile.targetRoles?.length > 0 && (
-                    <p style={{ fontSize: 13, color: "#a09890" }}>Targeting: {detail.profile.targetRoles.join(", ")}</p>
+                    <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Targeting: {detail.profile.targetRoles.join(", ")}</p>
                   )}
                   {detail.profile.targetSalary && (
-                    <p style={{ fontSize: 13, color: "#a09890" }}>Target salary: ${detail.profile.targetSalary.toLocaleString()}</p>
+                    <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Target salary: ${detail.profile.targetSalary.toLocaleString()}</p>
                   )}
                 </div>
               </div>
@@ -240,7 +240,7 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
             {/* Jobs by stage */}
             {detail.jobs.length > 0 && (
               <div>
-                <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 8 }}>Pipeline ({detail.jobs.length} jobs)</p>
+                <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 8 }}>Pipeline ({detail.jobs.length} jobs)</p>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                   {Object.entries(stageCounts).map(([stage, count]) => (
                     <span key={stage} style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, background: "#f0ece6", color: "#3d3530" }}>
@@ -253,17 +253,17 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
                     <div key={j.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #faf8f5" }}>
                       <div>
                         <span style={{ fontSize: 13, fontWeight: 500, color: "#1a1a1a" }}>{j.role}</span>
-                        <span style={{ fontSize: 13, color: "#a09890" }}> · {j.company}</span>
+                        <span style={{ fontSize: 13, color: "var(--scout-muted)" }}> · {j.company}</span>
                       </div>
                       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        {j.coverLetter && <span style={{ fontSize: 11, color: "#2d7a50", fontFamily: "var(--font-dm-mono)" }}>CL</span>}
-                        {j.fitAnalysis && <span style={{ fontSize: 11, color: "#2563eb", fontFamily: "var(--font-dm-mono)" }}>FIT</span>}
-                        <span style={{ fontSize: 12, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{STAGE_LABELS[j.stage] ?? j.stage}</span>
+                        {j.coverLetter && <span style={{ fontSize: 12, color: "#2d7a50", fontFamily: "var(--font-dm-mono)" }}>CL</span>}
+                        {j.fitAnalysis && <span style={{ fontSize: 12, color: "#2563eb", fontFamily: "var(--font-dm-mono)" }}>FIT</span>}
+                        <span style={{ fontSize: 12, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{STAGE_LABELS[j.stage] ?? j.stage}</span>
                       </div>
                     </div>
                   ))}
                   {detail.jobs.length > 8 && (
-                    <p style={{ fontSize: 13, color: "#a09890", marginTop: 4 }}>+{detail.jobs.length - 8} more jobs</p>
+                    <p style={{ fontSize: 13, color: "var(--scout-muted)", marginTop: 4 }}>+{detail.jobs.length - 8} more jobs</p>
                   )}
                 </div>
               </div>
@@ -272,14 +272,14 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
             {/* AI usage */}
             {detail.aiSummary.totalCalls > 0 ? (
               <div>
-                <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 8 }}>AI Usage</p>
+                <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 8 }}>AI Usage</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
                   <div style={{ background: "#faf8f5", borderRadius: 8, padding: "10px 12px" }}>
-                    <p style={{ fontSize: 11, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>Total Calls</p>
+                    <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>Total Calls</p>
                     <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{detail.aiSummary.totalCalls}</p>
                   </div>
                   <div style={{ background: "#faf8f5", borderRadius: 8, padding: "10px 12px" }}>
-                    <p style={{ fontSize: 11, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>AI Cost</p>
+                    <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>AI Cost</p>
                     <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{fmt$(detail.aiSummary.totalCostUsd)}</p>
                   </div>
                 </div>
@@ -287,15 +287,15 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
                   {detail.aiSummary.byFeature.map((f) => (
                     <div key={f.feature} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
                       <span style={{ color: "#3d3530" }}>{FEATURE_LABELS[f.feature] ?? f.feature}</span>
-                      <span style={{ color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{f.calls}x · {fmt$(f.costUsd)}</span>
+                      <span style={{ color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{f.calls}x · {fmt$(f.costUsd)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
               <div>
-                <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 4 }}>AI Usage</p>
-                <p style={{ fontSize: 13, color: "#a09890" }}>No AI calls yet</p>
+                <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 4 }}>AI Usage</p>
+                <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>No AI calls yet</p>
               </div>
             )}
           </div>
@@ -327,7 +327,7 @@ function EditPanel({ user, onClose, onSaved }: { user: AdminUser; onClose: () =>
 
   const inputStyle: React.CSSProperties = {
     width: "100%", fontSize: 14, background: "#faf8f5", border: "1px solid #e8e2da",
-    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-source-sans)",
+    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-ui)",
     color: "#1a1a1a", boxSizing: "border-box",
   };
 
@@ -337,26 +337,26 @@ function EditPanel({ user, onClose, onSaved }: { user: AdminUser; onClose: () =>
       <div style={{ position: "relative", width: 340, height: "100%", background: "#fff", boxShadow: "-4px 0 24px rgba(0,0,0,0.08)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontFamily: "var(--font-playfair)", fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Edit User</p>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 20, lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
         <div>
-          <p style={{ fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 4 }}>Email</p>
+          <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 4 }}>Email</p>
           <p style={{ fontSize: 14, color: "#3d3530", fontFamily: "var(--font-dm-mono)" }}>{user.email}</p>
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Name</label>
+          <label style={{ display: "block", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" style={inputStyle} />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Role</label>
+          <label style={{ display: "block", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Role</label>
           <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} style={{ ...inputStyle, cursor: "pointer" }}>
             {ROLES.map((r) => <option key={r} value={r}>{r.charAt(0) + r.slice(1).toLowerCase()}</option>)}
           </select>
         </div>
         {err && <p style={{ fontSize: 13, color: "#b45309", margin: 0 }}>{err}</p>}
         <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-source-sans)" }}>{saving ? "Saving…" : "Save"}</button>
+          <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-ui)" }}>{saving ? "Saving…" : "Save"}</button>
         </div>
       </div>
     </div>
@@ -386,7 +386,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
 
   const inputStyle: React.CSSProperties = {
     width: "100%", fontSize: 14, background: "#faf8f5", border: "1px solid #e8e2da",
-    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-source-sans)", color: "#1a1a1a", boxSizing: "border-box",
+    borderRadius: 7, padding: "8px 10px", outline: "none", fontFamily: "var(--font-ui)", color: "#1a1a1a", boxSizing: "border-box",
   };
 
   return (
@@ -395,34 +395,34 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
       <div style={{ position: "relative", width: 380, background: "#fff", borderRadius: 14, boxShadow: "0 8px 40px rgba(0,0,0,0.12)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontFamily: "var(--font-playfair)", fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Invite User</p>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 20 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 20 }}>×</button>
         </div>
         {done ? (
           <div style={{ textAlign: "center", padding: "16px 0" }}>
             <p style={{ fontSize: 22, marginBottom: 8 }}>✓</p>
             <p style={{ fontSize: 14, color: "#2d7a50", fontWeight: 500 }}>Invite sent to {email}</p>
-            <button onClick={onClose} style={{ marginTop: 16, padding: "8px 20px", borderRadius: 8, border: "none", background: "#1a3a2f", color: "#fff", cursor: "pointer", fontSize: 14, fontFamily: "var(--font-source-sans)" }}>Done</button>
+            <button onClick={onClose} style={{ marginTop: 16, padding: "8px 20px", borderRadius: 8, border: "none", background: "#1a3a2f", color: "#fff", cursor: "pointer", fontSize: 14, fontFamily: "var(--font-ui)" }}>Done</button>
           </div>
         ) : (
           <>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Email *</label>
+              <label style={{ display: "block", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Email *</label>
               <input value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="user@example.com" type="email" style={inputStyle} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Name (optional)</label>
+              <label style={{ display: "block", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Name (optional)</label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" style={inputStyle} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Role</label>
+              <label style={{ display: "block", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>Role</label>
               <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} style={{ ...inputStyle, cursor: "pointer" }}>
                 {ROLES.map((r) => <option key={r} value={r}>{r.charAt(0) + r.slice(1).toLowerCase()}</option>)}
               </select>
             </div>
             {err && <p style={{ fontSize: 13, color: "#b45309", margin: 0 }}>{err}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Cancel</button>
-              <button onClick={send} disabled={sending} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: sending ? "#d4c9b8" : "#1a3a2f", cursor: sending ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-source-sans)" }}>{sending ? "Sending…" : "Send Invite"}</button>
+              <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
+              <button onClick={send} disabled={sending} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: sending ? "#d4c9b8" : "#1a3a2f", cursor: sending ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-ui)" }}>{sending ? "Sending…" : "Send Invite"}</button>
             </div>
           </>
         )}
@@ -467,12 +467,12 @@ const COACH_STATUS_STYLES: Record<CoachStatus, { color: string; background: stri
 
 const coachInputStyle: React.CSSProperties = {
   width: "100%", fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da",
-  borderRadius: 7, padding: "7px 10px", outline: "none", fontFamily: "var(--font-source-sans)",
+  borderRadius: 7, padding: "7px 10px", outline: "none", fontFamily: "var(--font-ui)",
   boxSizing: "border-box", color: "#1a1a1a",
 };
 
 const coachLabelStyle: React.CSSProperties = {
-  display: "block", fontSize: 12, color: "#a09890", textTransform: "uppercase",
+  display: "block", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase",
   letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 4,
 };
 
@@ -489,13 +489,13 @@ function CoachTagInput({ value, onChange }: { value: string[]; onChange: (v: str
         {value.map((t) => (
           <span key={t} style={{ display: "flex", alignItems: "center", gap: 3, background: "rgba(26,58,47,0.08)", borderRadius: 4, padding: "1px 7px", fontSize: 13, color: "#1a3a2f" }}>
             {t}
-            <button onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: "none", border: "none", cursor: "pointer", color: "#a09890", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+            <button onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
           </span>
         ))}
       </div>
       <div style={{ display: "flex", gap: 5 }}>
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} placeholder="Type & Enter" style={{ ...coachInputStyle, flex: 1 }} />
-        <button onClick={add} style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>+</button>
+        <button onClick={add} style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-ui)" }}>+</button>
       </div>
     </div>
   );
@@ -538,7 +538,7 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
       <div style={{ position: "relative", width: 460, height: "100%", background: "#fff", boxShadow: "-4px 0 24px rgba(0,0,0,0.08)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ece6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontFamily: "var(--font-playfair)", fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>{isNew ? "New Coach" : "Edit Coach"}</p>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#a09890" }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--scout-muted)" }}>×</button>
         </div>
         <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
           {/* Basic */}
@@ -575,7 +575,7 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
               <input type="checkbox" id="featured-chk" checked={form.featured ?? false} onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))} style={{ width: 14, height: 14, cursor: "pointer" }} />
-              <label htmlFor="featured-chk" style={{ fontSize: 13, color: "#3d3530", cursor: "pointer", fontFamily: "var(--font-source-sans)" }}>Featured (shown first)</label>
+              <label htmlFor="featured-chk" style={{ fontSize: 13, color: "#3d3530", cursor: "pointer", fontFamily: "var(--font-ui)" }}>Featured (shown first)</label>
             </div>
           </div>
 
@@ -618,13 +618,13 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
 
         <div style={{ padding: "16px 24px", borderTop: "1px solid #f0ece6", display: "flex", gap: 8 }}>
           {!isNew && (
-            <button onClick={remove} disabled={deleting} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(220,38,38,0.3)", background: "transparent", cursor: deleting ? "default" : "pointer", fontSize: 13, color: "#dc2626", fontFamily: "var(--font-source-sans)" }}>
+            <button onClick={remove} disabled={deleting} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(220,38,38,0.3)", background: "transparent", cursor: deleting ? "default" : "pointer", fontSize: 13, color: "#dc2626", fontFamily: "var(--font-ui)" }}>
               {deleting ? "Deleting…" : "Delete"}
             </button>
           )}
           <div style={{ flex: 1 }} />
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 13, color: "#fff", fontFamily: "var(--font-source-sans)", fontWeight: 600 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 13, color: "#fff", fontFamily: "var(--font-ui)", fontWeight: 600 }}>
             {saving ? "Saving…" : isNew ? "Create" : "Save"}
           </button>
         </div>
@@ -664,24 +664,24 @@ function CoachesPanel() {
   return (
     <div>
       <SectionLabel action={
-        <button onClick={() => setEditCoach("new")} style={{ fontSize: 13, fontFamily: "var(--font-source-sans)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ New Coach</button>
+        <button onClick={() => setEditCoach("new")} style={{ fontSize: 13, fontFamily: "var(--font-ui)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ New Coach</button>
       }>Coaches ({coaches.length})</SectionLabel>
 
-      {loading ? <p style={{ fontSize: 13, color: "#a09890" }}>Loading…</p> : (
+      {loading ? <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading…</p> : (
         <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           <div style={{ padding: "10px 16px", borderBottom: "1px solid #f0ece6" }}>
-            <input type="text" placeholder="Search coaches…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: "100%", fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-source-sans)", boxSizing: "border-box" }} />
+            <input type="text" placeholder="Search coaches…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: "100%", fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-ui)", boxSizing: "border-box" }} />
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #f0ece6" }}>
                 {["Coach", "Firms", "Rate", "Status", ""].map((h, i) => (
-                  <th key={i} style={{ padding: "10px 20px", textAlign: i >= 3 ? "right" : "left", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+                  <th key={i} style={{ padding: "10px 20px", textAlign: i >= 3 ? "right" : "left", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "#a09890", fontSize: 13 }}>No coaches found</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "var(--scout-muted)", fontSize: 13 }}>No coaches found</td></tr>}
               {filtered.map((c) => {
                 const ss = COACH_STATUS_STYLES[c.status];
                 return (
@@ -692,9 +692,9 @@ function CoachesPanel() {
                     <td style={{ padding: "10px 20px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontWeight: 500, color: "#1a1a1a" }}>{c.displayName}</span>
-                        {c.featured && <span style={{ fontSize: 11, background: "rgba(196,168,106,0.15)", color: "#7a6020", padding: "1px 5px", borderRadius: 3, fontFamily: "var(--font-dm-mono)" }}>featured</span>}
+                        {c.featured && <span style={{ fontSize: 12, background: "rgba(196,168,106,0.15)", color: "#7a6020", padding: "1px 5px", borderRadius: 3, fontFamily: "var(--font-dm-mono)" }}>featured</span>}
                       </div>
-                      {c.email && <div style={{ fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{c.email}</div>}
+                      {c.email && <div style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{c.email}</div>}
                     </td>
                     <td style={{ padding: "10px 20px", fontSize: 13, color: "#52493f" }}>{c.firms.slice(0, 2).join(", ") || "—"}</td>
                     <td style={{ padding: "10px 20px", fontFamily: "var(--font-dm-mono)", color: "#3d3530", fontSize: 13 }}>{c.hourlyRate ? `$${c.hourlyRate}` : "—"}</td>
@@ -702,7 +702,7 @@ function CoachesPanel() {
                       <span style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, ...ss }}>{c.status.toLowerCase()}</span>
                     </td>
                     <td style={{ padding: "10px 20px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => setEditCoach(c)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Edit</button>
+                      <button onClick={() => setEditCoach(c)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-ui)" }}>Edit</button>
                     </td>
                   </tr>
                 );
@@ -809,7 +809,7 @@ function PromptsPanel() {
 
   const categories = Array.from(new Set(prompts.map((p) => p.category)));
 
-  if (loading) return <p style={{ fontSize: 13, color: "#a09890" }}>Loading prompts…</p>;
+  if (loading) return <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading prompts…</p>;
 
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
@@ -817,10 +817,10 @@ function PromptsPanel() {
       <div style={{ width: 220, flexShrink: 0, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
         {categories.map((cat) => (
           <div key={cat}>
-            <div style={{ padding: "8px 14px", fontSize: 11, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>{cat}</div>
+            <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>{cat}</div>
             {prompts.filter((p) => p.category === cat).map((p) => (
               <button key={p.key} onClick={() => selectPrompt(p.key)}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-source-sans)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}>
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}>
                 {p.label}
               </button>
             ))}
@@ -833,12 +833,12 @@ function PromptsPanel() {
         {current ? (
           <>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontFamily: "var(--font-source-sans)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{current.label}</div>
-              <div style={{ fontSize: 13, color: "#7a7268" }}>{current.description}</div>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{current.label}</div>
+              <div style={{ fontSize: 13, color: "var(--scout-muted)" }}>{current.description}</div>
               {current.variables.length > 0 && (
                 <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {current.variables.map((v) => (
-                    <span key={v} style={{ fontSize: 11, fontFamily: "var(--font-dm-mono)", background: "#f0ece6", color: "#5a4a3a", padding: "2px 7px", borderRadius: 4 }}>{`{{${v}}}`}</span>
+                    <span key={v} style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", background: "#f0ece6", color: "#5a4a3a", padding: "2px 7px", borderRadius: 4 }}>{`{{${v}}}`}</span>
                   ))}
                 </div>
               )}
@@ -850,20 +850,20 @@ function PromptsPanel() {
             />
             <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={handleSave} disabled={saving}
-                style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-source-sans)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
+                style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Saving…" : "Save"}
               </button>
               <button onClick={handleReset} disabled={saving}
-                style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "#7a7268", fontFamily: "var(--font-source-sans)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
+                style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}>
                 Reset to default
               </button>
               {saveStatus === "saved" && <span style={{ fontSize: 13, color: "#2d7a50" }}>Saved</span>}
               {saveStatus === "error" && <span style={{ fontSize: 13, color: "#b45309" }}>Error saving</span>}
-              {current.updatedAt && <span style={{ marginLeft: "auto", fontSize: 12, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>Last saved {new Date(current.updatedAt).toLocaleDateString()}</span>}
+              {current.updatedAt && <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>Last saved {new Date(current.updatedAt).toLocaleDateString()}</span>}
             </div>
           </>
         ) : (
-          <p style={{ fontSize: 13, color: "#a09890" }}>Select a prompt to edit.</p>
+          <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Select a prompt to edit.</p>
         )}
       </div>
     </div>
@@ -878,7 +878,7 @@ function FunnelRow({ label, value, total, color = "#1a3a2f" }: { label: string; 
       <div style={{ flex: 1, background: "#f0ece6", borderRadius: 4, height: 8, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 4, transition: "width 0.4s ease" }} />
       </div>
-      <div style={{ width: 60, textAlign: "right", fontSize: 13, fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>{value} ({pct}%)</div>
+      <div style={{ width: 60, textAlign: "right", fontSize: 13, fontFamily: "var(--font-dm-mono)", color: "var(--scout-muted)" }}>{value} ({pct}%)</div>
     </div>
   );
 }
@@ -906,12 +906,12 @@ export function WorkspaceAdmin() {
 
   if (error) return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: "#a09890", fontSize: 14 }}>Failed to load admin data.</p>
+      <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Failed to load admin data.</p>
     </div>
   );
   if (!data) return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: "#a09890", fontSize: 14 }}>Loading…</p>
+      <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Loading…</p>
     </div>
   );
 
@@ -945,7 +945,7 @@ export function WorkspaceAdmin() {
           const active = adminView === id;
           return (
             <button key={id} onClick={() => setAdminView(id)}
-              style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "#7a7268", fontFamily: "var(--font-source-sans)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+              style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
               {label}
             </button>
           );
@@ -959,9 +959,9 @@ export function WorkspaceAdmin() {
       {/* Revenue */}
       <SectionLabel>Revenue</SectionLabel>
       {revenueError ? (
-        <p style={{ fontSize: 13, color: "#a09890" }}>Stripe not connected or missing key.</p>
+        <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Stripe not connected or missing key.</p>
       ) : !revenue ? (
-        <p style={{ fontSize: 13, color: "#a09890" }}>Loading revenue…</p>
+        <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading revenue…</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
           <StatCard label="MRR" value={`$${revenue.mrr.toLocaleString()}`} accent="#2d7a50" />
@@ -988,7 +988,7 @@ export function WorkspaceAdmin() {
                 <thead>
                   <tr style={{ borderBottom: "1px solid #f0ece6" }}>
                     {["Feature", "Calls", "Cost"].map((h, i) => (
-                      <th key={h} style={{ padding: "10px 20px", textAlign: i > 0 ? "right" : "left", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 20px", textAlign: i > 0 ? "right" : "left", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -996,7 +996,7 @@ export function WorkspaceAdmin() {
                   {[...revenue.ai.byFeature].sort((a, b) => b.costUsd - a.costUsd).map((f) => (
                     <tr key={f.feature} style={{ borderBottom: "1px solid #faf8f5" }}>
                       <td style={{ padding: "9px 20px", color: "#3d3530" }}>{FEATURE_LABELS[f.feature] ?? f.feature}</td>
-                      <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>{f.calls}</td>
+                      <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "var(--scout-muted)" }}>{f.calls}</td>
                       <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#3d3530" }}>{fmt$(f.costUsd)}</td>
                     </tr>
                   ))}
@@ -1057,7 +1057,7 @@ export function WorkspaceAdmin() {
           <thead>
             <tr style={{ borderBottom: "1px solid #f0ece6" }}>
               {["Stage", "Count", "% of Total"].map((h, i) => (
-                <th key={h} style={{ padding: "10px 20px", textAlign: i === 0 ? "left" : "right", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+                <th key={h} style={{ padding: "10px 20px", textAlign: i === 0 ? "left" : "right", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1069,7 +1069,7 @@ export function WorkspaceAdmin() {
                 <tr key={key} style={{ borderBottom: "1px solid #faf8f5" }}>
                   <td style={{ padding: "9px 20px", color: "#3d3530" }}>{label}</td>
                   <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#3d3530" }}>{count}</td>
-                  <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>{pct}%</td>
+                  <td style={{ padding: "9px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "var(--scout-muted)" }}>{pct}%</td>
                 </tr>
               );
             })}
@@ -1079,31 +1079,31 @@ export function WorkspaceAdmin() {
 
       {/* All Users */}
       <SectionLabel action={
-        <button onClick={() => setInviteOpen(true)} style={{ fontSize: 13, fontFamily: "var(--font-source-sans)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ Invite User</button>
+        <button onClick={() => setInviteOpen(true)} style={{ fontSize: 13, fontFamily: "var(--font-ui)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ Invite User</button>
       }>All Users</SectionLabel>
 
       <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #f0ece6" }}>
-          <input type="text" placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-source-sans)" }} />
-          <div style={{ display: "flex", gap: 4, fontSize: 12, fontFamily: "var(--font-dm-mono)", color: "#a09890" }}>
+          <input type="text" placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-ui)" }} />
+          <div style={{ display: "flex", gap: 4, fontSize: 12, fontFamily: "var(--font-dm-mono)", color: "var(--scout-muted)" }}>
             {(["date", "jobs"] as const).map((s) => (
-              <button key={s} onClick={() => setSort(s)} style={{ padding: "4px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: sort === s ? "#f0ece6" : "transparent", color: sort === s ? "#3d3530" : "#a09890" }}>{s === "date" ? "newest" : "most jobs"}</button>
+              <button key={s} onClick={() => setSort(s)} style={{ padding: "4px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: sort === s ? "#f0ece6" : "transparent", color: sort === s ? "#3d3530" : "var(--scout-muted)" }}>{s === "date" ? "newest" : "most jobs"}</button>
             ))}
           </div>
-          <span style={{ fontSize: 12, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{filtered.length} users</span>
+          <span style={{ fontSize: 12, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{filtered.length} users</span>
         </div>
 
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #f0ece6" }}>
               {["User", "Role", "Joined", "Subscription", "Jobs", ""].map((h, i) => (
-                <th key={i} style={{ padding: "10px 20px", textAlign: i >= 4 ? "right" : "left", fontSize: 12, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+                <th key={i} style={{ padding: "10px 20px", textAlign: i >= 4 ? "right" : "left", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "#a09890", fontSize: 13 }}>No users found</td></tr>
+              <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "var(--scout-muted)", fontSize: 13 }}>No users found</td></tr>
             )}
             {filtered.map((u) => {
               const statusKey = u.subscriptionStatus ?? "free";
@@ -1115,10 +1115,10 @@ export function WorkspaceAdmin() {
                 >
                   <td style={{ padding: "10px 20px" }}>
                     <div style={{ fontWeight: 500, color: "#1a1a1a" }}>{u.name ?? "—"}</div>
-                    <div style={{ fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{u.email}</div>
+                    <div style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{u.email}</div>
                   </td>
                   <td style={{ padding: "10px 20px" }}><RoleBadge role={u.role ?? "USER"} /></td>
-                  <td style={{ padding: "10px 20px", fontSize: 13, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>{formatDate(u.createdAt)}</td>
+                  <td style={{ padding: "10px 20px", fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{formatDate(u.createdAt)}</td>
                   <td style={{ padding: "10px 20px" }}>
                     <span style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, ...subStyle }}>
                       {statusKey.toLowerCase()}
@@ -1126,7 +1126,7 @@ export function WorkspaceAdmin() {
                   </td>
                   <td style={{ padding: "10px 20px", textAlign: "right", fontFamily: "var(--font-dm-mono)", color: "#3d3530" }}>{u.jobCount}</td>
                   <td style={{ padding: "10px 20px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => setEditUser(u)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-source-sans)" }}>Edit</button>
+                    <button onClick={() => setEditUser(u)} style={{ fontSize: 13, padding: "3px 10px", borderRadius: 6, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", color: "#3d3530", fontFamily: "var(--font-ui)" }}>Edit</button>
                   </td>
                 </tr>
               );

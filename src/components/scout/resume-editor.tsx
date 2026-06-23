@@ -257,7 +257,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         alignItems: "center",
         justifyContent: "center",
         padding: 24,
-        fontFamily: "var(--font-source-sans), system-ui, sans-serif",
+        fontFamily: "var(--font-ui), sans-serif",
       }}
     >
       {/* Backdrop */}
@@ -309,7 +309,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           <div>
             <span style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>View Your Tailored Resume</span>
             {updatedAt && (
-              <span style={{ fontSize: 11, color: "#A09890", marginLeft: 10 }}>Last updated {updatedAt}</span>
+              <span style={{ fontSize: 12, color: "var(--scout-muted)", marginLeft: 10 }}>Last updated {updatedAt}</span>
             )}
           </div>
         </div>
@@ -386,14 +386,14 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           <div style={{ marginBottom: 16 }}>
             {matchLoading ? (
               <div style={{ padding: "14px 16px", background: "#F5F3EF", borderRadius: 7, display: "flex", alignItems: "center", gap: 8 }}>
-                <Loader2 size={13} style={{ color: "#A09890", animation: "spin 1s linear infinite" }} />
-                <span style={{ fontSize: 11, color: "#7A6E64" }}>Analyzing keyword match…</span>
+                <Loader2 size={13} style={{ color: "var(--scout-muted)", animation: "spin 1s linear infinite" }} />
+                <span style={{ fontSize: 12, color: "#7A6E64" }}>Analyzing keyword match…</span>
               </div>
             ) : matchData ? (
               <div style={{ padding: "14px 16px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
                 {/* Score header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#52493F", textTransform: "uppercase", letterSpacing: 0.5 }}>Keyword Match</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#52493F", textTransform: "uppercase", letterSpacing: 0.5 }}>Keyword Match</span>
                   <span style={{
                     fontSize: 15,
                     fontWeight: 700,
@@ -415,13 +415,13 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 {/* Missing keywords */}
                 {matchData.missing.length > 0 && (
                   <div style={{ marginBottom: 8 }}>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
                       Missing ({matchData.missing.length})
                     </p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                       {matchData.missing.map((kw) => (
                         <span key={kw} style={{
-                          fontSize: 10,
+                          fontSize: 13,
                           padding: "2px 7px",
                           background: "#FFF0EE",
                           color: "#C0392B",
@@ -435,13 +435,13 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 {/* Matched keywords */}
                 {matchData.matched.length > 0 && (
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 5px" }}>
                       Matched ({matchData.matched.length})
                     </p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                       {matchData.matched.map((kw) => (
                         <span key={kw} style={{
-                          fontSize: 10,
+                          fontSize: 13,
                           padding: "2px 7px",
                           background: "#F0FAF4",
                           color: "#2E7D52",
@@ -453,7 +453,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                   </div>
                 )}
                 {matchData.missing.length > 0 && (
-                  <p style={{ fontSize: 10, color: "#A09890", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: "var(--scout-muted)", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
                     Tip: Regenerate to incorporate missing keywords.
                   </p>
                 )}
@@ -494,7 +494,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             {coverOpen && (
               <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
                 {coverLoading ? (
-                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>Writing your cover letter…</p>
+                  <p style={{ fontSize: 12, color: "var(--scout-muted)", margin: 0 }}>Writing your cover letter…</p>
                 ) : coverLetter ? (
                   <>
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 8 }}>
@@ -505,7 +505,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
                           borderRadius: 4,
-                          fontSize: 10,
+                          fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
                           display: "flex",
@@ -522,7 +522,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
                           borderRadius: 4,
-                          fontSize: 10,
+                          fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
                           display: "flex",
@@ -539,7 +539,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
                           borderRadius: 4,
-                          fontSize: 10,
+                          fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
                           display: "flex",
@@ -550,12 +550,12 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                         <RefreshCw size={11} /> Retry
                       </button>
                     </div>
-                    <p style={{ fontSize: 11, color: "#1A1A1A", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+                    <p style={{ fontSize: 12, color: "#1A1A1A", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
                       {coverLetter}
                     </p>
                   </>
                 ) : (
-                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>
+                  <p style={{ fontSize: 12, color: "var(--scout-muted)", margin: 0 }}>
                     Could not generate. Check that you have a resume uploaded and job notes added.
                   </p>
                 )}
@@ -596,7 +596,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             {fitOpen && (
               <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
                 {fitLoading ? (
-                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>Analyzing your fit for this role…</p>
+                  <p style={{ fontSize: 12, color: "var(--scout-muted)", margin: 0 }}>Analyzing your fit for this role…</p>
                 ) : fitAnalysis ? (
                   <>
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 8 }}>
@@ -607,7 +607,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
                           borderRadius: 4,
-                          fontSize: 10,
+                          fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
                           display: "flex",
@@ -624,7 +624,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
                           borderRadius: 4,
-                          fontSize: 10,
+                          fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
                           display: "flex",
@@ -635,12 +635,12 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                         <RefreshCw size={11} /> Retry
                       </button>
                     </div>
-                    <div style={{ fontSize: 11, color: "#1A1A1A", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                    <div style={{ fontSize: 12, color: "#1A1A1A", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
                       {fitAnalysis}
                     </div>
                   </>
                 ) : (
-                  <p style={{ fontSize: 11, color: "#A09890", margin: 0 }}>
+                  <p style={{ fontSize: 12, color: "var(--scout-muted)", margin: 0 }}>
                     Could not analyze fit. Check that you have a resume uploaded.
                   </p>
                 )}
@@ -654,7 +654,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               background: "#FFF8F0",
               border: "1px solid #F0E8D8",
               borderRadius: 7,
-              fontSize: 11,
+              fontSize: 12,
               color: "#7A6E64",
               lineHeight: 1.6,
             }}
@@ -678,13 +678,13 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         >
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, marginTop: 80 }}>
-              <Loader2 size={28} style={{ color: "#A09890", animation: "spin 1s linear infinite" }} />
+              <Loader2 size={28} style={{ color: "var(--scout-muted)", animation: "spin 1s linear infinite" }} />
               <p style={{ fontSize: 14, color: "#6B6258" }}>
                 Tailoring your resume for {jobTitle}{company ? ` at ${company}` : ""}…
               </p>
             </div>
           ) : activeSections.length === 0 ? (
-            <div style={{ textAlign: "center", marginTop: 80, color: "#A09890" }}>
+            <div style={{ textAlign: "center", marginTop: 80, color: "var(--scout-muted)" }}>
               <p style={{ fontSize: 14 }}>No resume content yet.</p>
               <p style={{ fontSize: 12, marginTop: 6 }}>Upload a resume or click Regenerate.</p>
             </div>
@@ -768,7 +768,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           }}
         >
           <div style={{ padding: "20px 20px 0", borderBottom: "1px solid #E5DDD0", paddingBottom: 16 }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "#A09890", letterSpacing: 1, textTransform: "uppercase", margin: 0 }}>Sections</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", letterSpacing: 1, textTransform: "uppercase", margin: 0 }}>Sections</p>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
@@ -795,13 +795,13 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           setEditDraft(section.content);
                         }
                       }}
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#A09890", display: "flex", alignItems: "center" }}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)", display: "flex", alignItems: "center" }}
                     >
                       <Pencil size={13} />
                     </button>
                     <button
                       onClick={() => deleteSection(section.id)}
-                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#A09890", display: "flex", alignItems: "center" }}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--scout-muted)", display: "flex", alignItems: "center" }}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -820,8 +820,8 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                         padding: "8px 10px",
                         border: "1px solid #D8D0C5",
                         borderRadius: 5,
-                        fontSize: 11,
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontSize: 12,
+                        fontFamily: "var(--font-ui)",
                         color: "#1A1A1A",
                         resize: "vertical",
                         background: "#FFFFFF",

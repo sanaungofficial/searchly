@@ -63,13 +63,13 @@ function Stepper({ step }: { step: Step }) {
                 height: 30,
                 borderRadius: "50%",
                 background: step > s.n ? "#1A3A2F" : step === s.n ? "#1A3A2F" : "rgba(0,0,0,0.07)",
-                color: step >= s.n ? "#E8D5A3" : "#A09890",
+                color: step >= s.n ? "#E8D5A3" : "var(--scout-muted)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: step > s.n ? 13 : 12,
                 fontWeight: 700,
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 flexShrink: 0,
               }}
             >
@@ -77,11 +77,11 @@ function Stepper({ step }: { step: Step }) {
             </div>
             <span
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: step === s.n ? 600 : 400,
-                color: step === s.n ? "#1A1A1A" : "#A09890",
+                color: step === s.n ? "#1A1A1A" : "var(--scout-muted)",
                 whiteSpace: "nowrap",
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 textAlign: "center",
               }}
             >
@@ -146,12 +146,12 @@ function BigScoreGauge({ score }: { score: number }) {
           />
         </svg>
         <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 32, fontWeight: 700, color, lineHeight: 1 }}>
+          <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 32, fontWeight: 700, color, lineHeight: 1 }}>
             {score.toFixed(1)}
           </span>
         </div>
       </div>
-      <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 600, color, letterSpacing: "0.5px" }}>
+      <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color, letterSpacing: "0.5px" }}>
         {label}
       </span>
     </div>
@@ -183,12 +183,12 @@ function SmallScoreGauge({ score }: { score: number }) {
             strokeDasharray={`${arcLen} ${circ - arcLen}`} strokeLinecap="round" />
         </svg>
         <div style={{ position: "absolute", bottom: 1, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>
+          <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>
             {score.toFixed(1)}
           </span>
         </div>
       </div>
-      <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 600, color }}>
+      <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color }}>
         {label}
       </span>
     </div>
@@ -211,7 +211,7 @@ function Row({
     status === "ok" ? "#3D7A5B"
     : status === "fail" ? "#B84040"
     : status === "warn" ? "#B88A30"
-    : "#A09890";
+    : "var(--scout-muted)";
   const iconBg =
     status === "ok" ? "rgba(61,122,91,0.13)"
     : status === "fail" ? "rgba(184,64,64,0.12)"
@@ -241,7 +241,7 @@ function Row({
         borderLeft: status !== "neutral" ? `3px solid ${leftBorderColor}` : "3px solid transparent",
       }}
     >
-      <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, color: "#52493F" }}>
+      <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "#52493F" }}>
         {label}
       </span>
       <div
@@ -253,8 +253,8 @@ function Row({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: "var(--font-source-sans), system-ui",
-          fontSize: 10,
+          fontFamily: "var(--font-ui)",
+          fontSize: 13,
           fontWeight: 700,
           color: iconColor,
           flexShrink: 0,
@@ -263,10 +263,10 @@ function Row({
       >
         {icon}
       </div>
-      <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#1A1A1A", lineHeight: 1.55 }}>
+      <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#1A1A1A", lineHeight: 1.55 }}>
         {left}
       </div>
-      <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
+      <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
         {right}
       </div>
     </div>
@@ -314,7 +314,7 @@ function HighlightedResume({ text, keywords }: { text: string; keywords: string[
           <div
             key={i}
             style={{
-              fontFamily: "var(--font-source-sans), system-ui",
+              fontFamily: "var(--font-ui)",
               fontSize: isSectionHeader ? 10 : 12,
               fontWeight: isSectionHeader ? 700 : 400,
               color: isSectionHeader ? "#52493F" : "#1A1A1A",
@@ -550,7 +550,7 @@ export function ResumeMatchDrawer({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 15,
                 fontWeight: 700,
                 color: "#E8D5A3",
@@ -562,7 +562,7 @@ export function ResumeMatchDrawer({
             <div>
               <p
                 style={{
-                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 14,
                   fontWeight: 600,
                   color: "#1A1A1A",
@@ -572,9 +572,9 @@ export function ResumeMatchDrawer({
               </p>
               <p
                 style={{
-                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 12,
-                  color: "#A09890",
+                  color: "var(--scout-muted)",
                 }}
               >
                 {jobTitle}
@@ -631,9 +631,9 @@ export function ResumeMatchDrawer({
                 >
                   <p
                     style={{
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 13,
-                      color: "#A09890",
+                      color: "var(--scout-muted)",
                     }}
                   >
                     Analyzing your resume against this role…
@@ -645,7 +645,7 @@ export function ResumeMatchDrawer({
                 <div style={{ paddingTop: 20 }}>
                   <p
                     style={{
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 13,
                       color: "#C4574A",
                       marginBottom:
@@ -670,7 +670,7 @@ export function ResumeMatchDrawer({
                           padding: "12px",
                           border: "1px solid rgba(0,0,0,0.12)",
                           borderRadius: 8,
-                          fontFamily: "var(--font-source-sans), system-ui",
+                          fontFamily: "var(--font-ui)",
                           fontSize: 13,
                           color: "#1A1A1A",
                           resize: "vertical",
@@ -689,10 +689,10 @@ export function ResumeMatchDrawer({
                           background: manualDesc.trim()
                             ? "#1A3A2F"
                             : "rgba(0,0,0,0.05)",
-                          color: manualDesc.trim() ? "#E8D5A3" : "#A09890",
+                          color: manualDesc.trim() ? "#E8D5A3" : "var(--scout-muted)",
                           border: "none",
                           borderRadius: 8,
-                          fontFamily: "var(--font-source-sans), system-ui",
+                          fontFamily: "var(--font-ui)",
                           fontSize: 13,
                           fontWeight: 600,
                           cursor: manualDesc.trim() ? "pointer" : "not-allowed",
@@ -742,7 +742,7 @@ export function ResumeMatchDrawer({
                         <div style={{ flex: 1 }}>
                           <p
                             style={{
-                              fontFamily: "var(--font-source-sans), system-ui",
+                              fontFamily: "var(--font-ui)",
                               fontSize: 24,
                               fontWeight: 700,
                               color: "#1A1A1A",
@@ -770,16 +770,16 @@ export function ResumeMatchDrawer({
                             >
                               <span
                                 style={{
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   color: "#C4574A",
-                                  fontFamily: "var(--font-source-sans), system-ui",
+                                  fontFamily: "var(--font-ui)",
                                 }}
                               >
                                 ⓘ
                               </span>
                               <p
                                 style={{
-                                  fontFamily: "var(--font-source-sans), system-ui",
+                                  fontFamily: "var(--font-ui)",
                                   fontSize: 12,
                                   color: "#C4574A",
                                 }}
@@ -792,7 +792,7 @@ export function ResumeMatchDrawer({
                           {data.score >= 6 && data.score < 8 && (
                             <p
                               style={{
-                                fontFamily: "var(--font-source-sans), system-ui",
+                                fontFamily: "var(--font-ui)",
                                 fontSize: 13,
                                 color: "#52493F",
                                 lineHeight: 1.55,
@@ -805,7 +805,7 @@ export function ResumeMatchDrawer({
                           {data.score >= 8 && (
                             <p
                               style={{
-                                fontFamily: "var(--font-source-sans), system-ui",
+                                fontFamily: "var(--font-ui)",
                                 fontSize: 13,
                                 color: "#52493F",
                                 lineHeight: 1.55,
@@ -842,10 +842,10 @@ export function ResumeMatchDrawer({
                         >
                           <span
                             style={{
-                              fontFamily: "var(--font-source-sans), system-ui",
-                              fontSize: 10,
+                              fontFamily: "var(--font-ui)",
+                              fontSize: 13,
                               fontWeight: 600,
-                              color: "#A09890",
+                              color: "var(--scout-muted)",
                               textTransform: "uppercase",
                               letterSpacing: "1px",
                             }}
@@ -855,10 +855,10 @@ export function ResumeMatchDrawer({
                           <span />
                           <span
                             style={{
-                              fontFamily: "var(--font-source-sans), system-ui",
-                              fontSize: 10,
+                              fontFamily: "var(--font-ui)",
+                              fontSize: 13,
                               fontWeight: 600,
-                              color: "#A09890",
+                              color: "var(--scout-muted)",
                               textTransform: "uppercase",
                               letterSpacing: "1px",
                             }}
@@ -868,10 +868,10 @@ export function ResumeMatchDrawer({
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span
                               style={{
-                                fontFamily: "var(--font-source-sans), system-ui",
-                                fontSize: 10,
+                                fontFamily: "var(--font-ui)",
+                                fontSize: 13,
                                 fontWeight: 600,
-                                color: "#A09890",
+                                color: "var(--scout-muted)",
                                 textTransform: "uppercase",
                                 letterSpacing: "1px",
                               }}
@@ -881,8 +881,8 @@ export function ResumeMatchDrawer({
                             {primaryResume && (
                               <span
                                 style={{
-                                  fontSize: 10,
-                                  fontFamily: "var(--font-source-sans), system-ui",
+                                  fontSize: 13,
+                                  fontFamily: "var(--font-ui)",
                                   color: "#1A3A2F",
                                   fontWeight: 500,
                                   background: "rgba(26,58,47,0.07)",
@@ -929,7 +929,7 @@ export function ResumeMatchDrawer({
                                     background: "rgba(0,0,0,0.05)",
                                     borderRadius: 4,
                                     fontSize: 12,
-                                    fontFamily: "var(--font-source-sans), system-ui",
+                                    fontFamily: "var(--font-ui)",
                                   }}
                                 >
                                   {ind}
@@ -957,7 +957,7 @@ export function ResumeMatchDrawer({
                                     gap: 3,
                                     padding: "3px 8px",
                                     borderRadius: 12,
-                                    fontFamily: "var(--font-source-sans), system-ui",
+                                    fontFamily: "var(--font-ui)",
                                     fontSize: 12,
                                     fontWeight: 500,
                                     background: kw.matched
@@ -967,7 +967,7 @@ export function ResumeMatchDrawer({
                                     border: `1px solid ${kw.matched ? "rgba(74,139,106,0.2)" : "rgba(196,87,74,0.15)"}`,
                                   }}
                                 >
-                                  <span style={{ fontSize: 10, fontWeight: 700 }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700 }}>
                                     {kw.matched ? "✓" : "✗"}
                                   </span>
                                   {kw.text}
@@ -982,7 +982,7 @@ export function ResumeMatchDrawer({
                                     gap: 3,
                                     padding: "3px 6px 3px 8px",
                                     borderRadius: 12,
-                                    fontFamily: "var(--font-source-sans), system-ui",
+                                    fontFamily: "var(--font-ui)",
                                     fontSize: 12,
                                     fontWeight: 500,
                                     background: "rgba(196,87,74,0.07)",
@@ -990,7 +990,7 @@ export function ResumeMatchDrawer({
                                     border: "1px dashed rgba(196,87,74,0.3)",
                                   }}
                                 >
-                                  <span style={{ fontSize: 10 }}>+</span>
+                                  <span style={{ fontSize: 13 }}>+</span>
                                   {kw}
                                   <button
                                     type="button"
@@ -1044,7 +1044,7 @@ export function ResumeMatchDrawer({
                                 placeholder="+ Add"
                                 style={{
                                   fontSize: 12,
-                                  fontFamily: "var(--font-source-sans), system-ui",
+                                  fontFamily: "var(--font-ui)",
                                   color: "#52493F",
                                   background: "transparent",
                                   border: "1px dashed rgba(0,0,0,0.2)",
@@ -1186,7 +1186,7 @@ export function ResumeMatchDrawer({
                         <span
                           style={{
                             color: "#E8D5A3",
-                            fontSize: 10,
+                            fontSize: 13,
                             fontWeight: 700,
                             lineHeight: 1,
                           }}
@@ -1197,7 +1197,7 @@ export function ResumeMatchDrawer({
                     </div>
                     <span
                       style={{
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontFamily: "var(--font-ui)",
                         fontSize: 14,
                         fontWeight: 500,
                         color: "#1A1A1A",
@@ -1215,10 +1215,10 @@ export function ResumeMatchDrawer({
                   <div style={{ flex: 1 }}>
                     <p
                       style={{
-                        fontFamily: "var(--font-source-sans), system-ui",
-                        fontSize: 11,
+                        fontFamily: "var(--font-ui)",
+                        fontSize: 12,
                         fontWeight: 700,
-                        color: "#A09890",
+                        color: "var(--scout-muted)",
                         marginBottom: 14,
                         textTransform: "uppercase",
                         letterSpacing: "0.8px",
@@ -1279,7 +1279,7 @@ export function ResumeMatchDrawer({
                               </div>
                               <span
                                 style={{
-                                  fontFamily: "var(--font-source-sans), system-ui",
+                                  fontFamily: "var(--font-ui)",
                                   fontSize: 13,
                                   color: "#52493F",
                                 }}
@@ -1307,10 +1307,10 @@ export function ResumeMatchDrawer({
                     >
                       <p
                         style={{
-                          fontFamily: "var(--font-source-sans), system-ui",
-                          fontSize: 11,
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 12,
                           fontWeight: 700,
-                          color: "#A09890",
+                          color: "var(--scout-muted)",
                           textTransform: "uppercase",
                           letterSpacing: "0.8px",
                         }}
@@ -1329,7 +1329,7 @@ export function ResumeMatchDrawer({
                                 )
                           }
                           style={{
-                            fontFamily: "var(--font-source-sans), system-ui",
+                            fontFamily: "var(--font-ui)",
                             fontSize: 12,
                             color: "#1A3A2F",
                             fontWeight: 600,
@@ -1357,7 +1357,7 @@ export function ResumeMatchDrawer({
                       >
                         <p
                           style={{
-                            fontFamily: "var(--font-source-sans), system-ui",
+                            fontFamily: "var(--font-ui)",
                             fontSize: 13,
                             color: "#3D7A5B",
                             fontWeight: 500,
@@ -1381,7 +1381,7 @@ export function ResumeMatchDrawer({
                                 gap: 6,
                                 padding: "6px 12px",
                                 borderRadius: 20,
-                                fontFamily: "var(--font-source-sans), system-ui",
+                                fontFamily: "var(--font-ui)",
                                 fontSize: 13,
                                 fontWeight: 500,
                                 cursor: "pointer",
@@ -1496,7 +1496,7 @@ export function ResumeMatchDrawer({
                     </div>
                     <p
                       style={{
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontFamily: "var(--font-ui)",
                         fontSize: 17,
                         fontWeight: 700,
                         color: "#1A1A1A",
@@ -1507,9 +1507,9 @@ export function ResumeMatchDrawer({
                     </p>
                     <p
                       style={{
-                        fontFamily: "var(--font-source-sans), system-ui",
+                        fontFamily: "var(--font-ui)",
                         fontSize: 13,
-                        color: "#A09890",
+                        color: "var(--scout-muted)",
                         lineHeight: 1.5,
                       }}
                     >
@@ -1534,7 +1534,7 @@ export function ResumeMatchDrawer({
                 >
                   <p
                     style={{
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 14,
                       color: "#C4574A",
                     }}
@@ -1549,7 +1549,7 @@ export function ResumeMatchDrawer({
                       color: "#52493F",
                       border: "1px solid rgba(0,0,0,0.12)",
                       borderRadius: 8,
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 13,
                       cursor: "pointer",
                     }}
@@ -1585,10 +1585,10 @@ export function ResumeMatchDrawer({
                     >
                       <span
                         style={{
-                          fontFamily: "var(--font-source-sans), system-ui",
-                          fontSize: 11,
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 12,
                           fontWeight: 700,
-                          color: "#A09890",
+                          color: "var(--scout-muted)",
                           textTransform: "uppercase",
                           letterSpacing: "0.8px",
                         }}
@@ -1598,8 +1598,8 @@ export function ResumeMatchDrawer({
                       {tailoredData.injectedKeywords.length > 0 && (
                         <span
                           style={{
-                            fontFamily: "var(--font-source-sans), system-ui",
-                            fontSize: 11,
+                            fontFamily: "var(--font-ui)",
+                            fontSize: 12,
                             color: "#3D7A5B",
                             background: "rgba(74,139,106,0.08)",
                             padding: "2px 8px",
@@ -1638,10 +1638,10 @@ export function ResumeMatchDrawer({
                     >
                       <p
                         style={{
-                          fontFamily: "var(--font-source-sans), system-ui",
-                          fontSize: 10,
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 13,
                           fontWeight: 700,
-                          color: "#A09890",
+                          color: "var(--scout-muted)",
                           textTransform: "uppercase",
                           letterSpacing: "0.8px",
                           marginBottom: 12,
@@ -1660,7 +1660,7 @@ export function ResumeMatchDrawer({
                         <div>
                           <p
                             style={{
-                              fontFamily: "var(--font-source-sans), system-ui",
+                              fontFamily: "var(--font-ui)",
                               fontSize: 12,
                               color: "#52493F",
                               marginBottom: 2,
@@ -1670,14 +1670,14 @@ export function ResumeMatchDrawer({
                           </p>
                           <p
                             style={{
-                              fontFamily: "var(--font-dm-mono), monospace",
+                              fontFamily: "var(--font-mono-ui)",
                               fontSize: 20,
                               fontWeight: 700,
                               color: "#1A3A2F",
                             }}
                           >
                             {data?.score?.toFixed(1) ?? "–"}{" "}
-                            <span style={{ color: "#A09890", fontWeight: 400 }}>→</span>{" "}
+                            <span style={{ color: "var(--scout-muted)", fontWeight: 400 }}>→</span>{" "}
                             {tailoredData.newScore.toFixed(1)}
                           </p>
                         </div>
@@ -1688,8 +1688,8 @@ export function ResumeMatchDrawer({
                     <div>
                       <p
                         style={{
-                          fontFamily: "var(--font-source-sans), system-ui",
-                          fontSize: 11,
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 12,
                           fontWeight: 700,
                           color: "#1A1A1A",
                           textTransform: "uppercase",
@@ -1730,7 +1730,7 @@ export function ResumeMatchDrawer({
                             </span>
                             <p
                               style={{
-                                fontFamily: "var(--font-source-sans), system-ui",
+                                fontFamily: "var(--font-ui)",
                                 fontSize: 13,
                                 color: "#1A1A1A",
                                 lineHeight: 1.5,
@@ -1748,10 +1748,10 @@ export function ResumeMatchDrawer({
                       <div>
                         <p
                           style={{
-                            fontFamily: "var(--font-source-sans), system-ui",
-                            fontSize: 11,
+                            fontFamily: "var(--font-ui)",
+                            fontSize: 12,
                             fontWeight: 700,
-                            color: "#A09890",
+                            color: "var(--scout-muted)",
                             textTransform: "uppercase",
                             letterSpacing: "0.8px",
                             marginBottom: 8,
@@ -1782,7 +1782,7 @@ export function ResumeMatchDrawer({
                             >
                               <p
                                 style={{
-                                  fontFamily: "var(--font-source-sans), system-ui",
+                                  fontFamily: "var(--font-ui)",
                                   fontSize: 13,
                                   color: "#52493F",
                                   lineHeight: 1.4,
@@ -1832,7 +1832,7 @@ export function ResumeMatchDrawer({
                 color: "#E8D5A3",
                 border: "none",
                 borderRadius: 10,
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -1864,7 +1864,7 @@ export function ResumeMatchDrawer({
                 color: "#52493F",
                 border: "1px solid rgba(0,0,0,0.1)",
                 borderRadius: 10,
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -1883,10 +1883,10 @@ export function ResumeMatchDrawer({
                 background:
                   selectedSections.size > 0 ? "#1A3A2F" : "rgba(0,0,0,0.05)",
                 color:
-                  selectedSections.size > 0 ? "#E8D5A3" : "#A09890",
+                  selectedSections.size > 0 ? "#E8D5A3" : "var(--scout-muted)",
                 border: "none",
                 borderRadius: 10,
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: selectedSections.size > 0 ? "pointer" : "not-allowed",
@@ -1918,7 +1918,7 @@ export function ResumeMatchDrawer({
                 color: "#52493F",
                 border: "1px solid rgba(0,0,0,0.1)",
                 borderRadius: 10,
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -1937,7 +1937,7 @@ export function ResumeMatchDrawer({
                 color: "#E8D5A3",
                 border: "none",
                 borderRadius: 10,
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",
