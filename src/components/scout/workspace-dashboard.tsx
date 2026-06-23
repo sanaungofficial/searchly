@@ -397,7 +397,7 @@ export function WorkspaceDashboard() {
             {firstName && (
               <p style={{
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 13,
+                fontSize: 17,
                 color: "#78716c",
                 marginBottom: 10,
               }}>

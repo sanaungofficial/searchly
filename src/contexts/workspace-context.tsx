@@ -74,12 +74,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       }
       let headline: string | null = null;
       let dbAvatarUrl: string | null = null;
+      let dbName: string | null = null;
       try {
         const res = await fetch("/api/profile");
         if (res.ok) {
           const data = await res.json();
           headline = data?.headline ?? null;
           dbAvatarUrl = data?.avatarUrl ?? null;
+          dbName = data?.name ?? null;
         }
       } catch {}
       try {
@@ -94,7 +96,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {}
       setUser({
-        name: authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? null,
+        name: dbName ?? authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? null,
         email: authUser.email!,
         // Prefer the DB value — it holds custom-uploaded avatars that survive OAuth re-logins
         avatarUrl: dbAvatarUrl ?? authUser.user_metadata?.avatar_url ?? null,
