@@ -1,21 +1,31 @@
-import { getBaseUrl, kimchiCookieUrls } from "./config";
+import { getBaseUrl } from "./config";
 import { clearAuthCache, getAuthCache, getSettings, setAuthCache } from "./storage";
 import type { AuthState, KimchiEnv } from "./types";
 
-async function buildCookieHeader(env: KimchiEnv): Promise<string> {
-  const cookies: chrome.cookies.Cookie[] = [];
-  for (const url of kimchiCookieUrls(env)) {
-    const batch = await chrome.cookies.getAll({ url });
-    cookies.push(...batch);
-  }
+async function collectKimchiCookies(env: KimchiEnv): Promise<chrome.cookies.Cookie[]> {
+  const baseUrl = getBaseUrl(env);
+  const hostname = new URL(baseUrl).hostname;
 
+  const batches = await Promise.all([
+    chrome.cookies.getAll({ url: baseUrl }),
+    chrome.cookies.getAll({ url: `${baseUrl}/` }),
+    chrome.cookies.getAll({ domain: hostname }),
+  ]);
+
+  return batches.flat();
+}
+
+async function buildCookieHeader(env: KimchiEnv): Promise<string> {
+  const cookies = await collectKimchiCookies(env);
   const seen = new Set<string>();
   const parts: string[] = [];
+
   for (const cookie of cookies) {
     if (seen.has(cookie.name)) continue;
     seen.add(cookie.name);
     parts.push(`${cookie.name}=${cookie.value}`);
   }
+
   return parts.join("; ");
 }
 
@@ -51,9 +61,18 @@ export async function checkAuth(force = false): Promise<AuthState> {
   }
 
   try {
-    const res = await fetchWithKimchiAuth(env, "/api/jobs", { method: "GET" });
+    const res = await fetchWithKimchiAuth(env, "/api/auth/extension-session", {
+      method: "GET",
+    });
+    const data = (await res.json()) as {
+      authenticated?: boolean;
+      email?: string;
+      name?: string;
+    };
+
     const state: AuthState = {
-      authenticated: res.ok,
+      authenticated: res.ok && Boolean(data.authenticated),
+      email: data.email,
       checkedAt: new Date().toISOString(),
     };
     await setAuthCache(state);

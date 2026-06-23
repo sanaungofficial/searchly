@@ -15,7 +15,9 @@ let authPollTimer: number | null = null;
 
 function renderAuth(auth: AuthState): void {
   if (auth.authenticated) {
-    authStatus.textContent = "Signed in to Kimchi";
+    authStatus.textContent = auth.email
+      ? `Signed in as ${auth.email}`
+      : "Signed in to Kimchi";
     loginBtn.hidden = true;
     logoutBtn.hidden = false;
     saveBtn.disabled = false;

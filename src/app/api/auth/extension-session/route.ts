@@ -1,7 +1,7 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import {
+  createSupabaseFromRequest,
   extensionPreflightResponse,
   withExtensionCors,
 } from "@/lib/extension-api";
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const preflight = extensionPreflightResponse(request);
   if (preflight) return preflight;
 
-  const supabase = await createClient();
+  const supabase = createSupabaseFromRequest(request);
   const {
     data: { user },
   } = await supabase.auth.getUser();

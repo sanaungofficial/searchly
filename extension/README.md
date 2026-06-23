@@ -2,6 +2,25 @@
 
 Chrome MV3 extension that saves jobs to the Kimchi pipeline from ATS pages and generic career sites.
 
+## Quick start (5 min)
+
+```bash
+cd extension
+npm install
+python3 scripts/generate-icons.py   # once (needs: pip install pillow)
+npm run build
+```
+
+1. Chrome → `chrome://extensions` → **Developer mode** → **Load unpacked** → pick `extension/dist/`
+2. Pin the Kimchi icon
+3. Open popup → confirm **Dev staging** is selected
+4. Click **Sign in to Kimchi** → log in on the dev tab (magic link or Google)
+5. Popup should show `Signed in as you@email.com`
+6. Open a Greenhouse or Lever job listing → click **Save to Kimchi**
+7. Verify at https://kimchi-git-dev-second-ladder.vercel.app/opportunities/pipeline
+
+> **Backend note:** Extension API routes must be deployed to dev before auth/save work against dev Kimchi. Merge the `feat/browser-extension` PR first.
+
 ## Build tooling choice: **Vite** (not Plasmo)
 
 | Option | Why not / why yes |

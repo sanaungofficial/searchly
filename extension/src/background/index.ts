@@ -63,6 +63,13 @@ async function saveFromTab(tabId: number): Promise<SaveJobResult> {
   return saveJob(parsed);
 }
 
+chrome.cookies.onChanged.addListener((change) => {
+  const domain = change.cookie.domain.replace(/^\./, "");
+  if (domain === "app.kimchi.so" || domain.endsWith("vercel.app")) {
+    void checkAuth(true);
+  }
+});
+
 chrome.runtime.onMessage.addListener((message: BackgroundMessage, _sender, sendResponse) => {
   void (async () => {
     switch (message.type) {

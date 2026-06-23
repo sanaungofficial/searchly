@@ -1,6 +1,24 @@
+import { createServerClient, parseCookieHeader } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
 const EXTENSION_ORIGIN_PREFIX = "chrome-extension://";
+
+/** Supabase client that reads session cookies from the incoming request (extension + fetch). */
+export function createSupabaseFromRequest(request: Request) {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return parseCookieHeader(cookieHeader);
+        },
+        setAll() {},
+      },
+    }
+  );
+}
 
 export function isExtensionOrigin(origin: string | null): boolean {
   return !!origin?.startsWith(EXTENSION_ORIGIN_PREFIX);

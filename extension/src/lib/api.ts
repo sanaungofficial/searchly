@@ -1,8 +1,16 @@
-import { fetchWithKimchiAuth } from "./auth";
+import { checkAuth, fetchWithKimchiAuth } from "./auth";
 import { getSettings } from "./storage";
 import type { ParsedJob, SaveJobResult } from "./types";
 
 export async function saveJob(parsed: ParsedJob): Promise<SaveJobResult> {
+  const auth = await checkAuth(true);
+  if (!auth.authenticated) {
+    return {
+      ok: false,
+      error: "Not signed in. Click the Kimchi icon and sign in first.",
+    };
+  }
+
   const { env } = await getSettings();
 
   try {
