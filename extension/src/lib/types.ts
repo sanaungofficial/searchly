@@ -40,6 +40,7 @@ export interface AuthState {
   authenticated: boolean;
   email?: string;
   checkedAt: string;
+  error?: string;
 }
 
 export type BackgroundMessage =

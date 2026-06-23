@@ -22,7 +22,7 @@ function renderAuth(auth: AuthState): void {
     logoutBtn.hidden = false;
     saveBtn.disabled = false;
   } else {
-    authStatus.textContent = "Not signed in";
+    authStatus.textContent = auth.error ?? "Not signed in";
     loginBtn.hidden = false;
     logoutBtn.hidden = true;
     saveBtn.disabled = true;
@@ -64,7 +64,7 @@ loginBtn.addEventListener("click", async () => {
   if (authPollTimer) window.clearInterval(authPollTimer);
   authPollTimer = window.setInterval(() => {
     void refreshAuth(true);
-  }, 1500);
+  }, 1000);
 });
 
 logoutBtn.addEventListener("click", async () => {
@@ -117,5 +117,19 @@ saveBtn.addEventListener("click", async () => {
   saveBtn.textContent = "Save current page";
 });
 
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "AUTH_STATE_CHANGED") {
+    renderAuth(message.payload as AuthState);
+    if ((message.payload as AuthState).authenticated && authPollTimer) {
+      window.clearInterval(authPollTimer);
+      authPollTimer = null;
+    }
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) void refreshAuth(true);
+});
+
 void initSettings();
-void refreshAuth();
+void refreshAuth(true);
