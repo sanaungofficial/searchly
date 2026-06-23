@@ -928,19 +928,25 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                       <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                         <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A", textDecoration: "none" }}
                           onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
                           onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>
                           {item.name}
                         </a>
                         {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
-                        {isGapMatch && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.12)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 600 }}>closes your gap</span>}
                       </div>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>
-                        {item.platform} &middot; {item.duration} &middot; {item.credential}
-                        {item.closesGap && <span style={{ color: "#A09890" }}> &middot; <span style={{ fontStyle: "italic" }}>{item.closesGap}</span></span>}
-                      </p>
+                      {item.closesGap && (
+                        <div style={{ marginBottom: 5 }}>
+                          <span className={isGapMatch
+                            ? "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#4A8B6A]/10 text-[#2D6B4A]"
+                            : "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#E8D5A3]/50 text-[#52493F]"
+                          }>
+                            {item.closesGap}{isGapMatch && " · your gap"}
+                          </span>
+                        </div>
+                      )}
+                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
                     </div>
                     <button onClick={() => setProgress({ ...progress, [item.id]: prog === "none" ? "inprogress" : prog === "inprogress" ? "completed" : "inprogress" })}
