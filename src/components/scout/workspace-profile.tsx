@@ -1061,15 +1061,14 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
 
 // ─── Tab: Resume Assets ───────────────────────────────────────────────────────
 
-interface ResumeRow {
+interface UserAssetRow {
   id: string;
+  type: "RESUME" | "COVER_LETTER" | "JOB_SEARCH_STRATEGY" | "OTHER";
   name: string;
   url: string;
   isPrimary: boolean;
-  analysisComplete: boolean;
-  updatedAt: string;
   createdAt: string;
-  targetJobTitle?: string;
+  updatedAt: string;
 }
 
 function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
@@ -1169,10 +1168,11 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   );
 }
 
-function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, suggestionsLoading }: {
-  resumeUrl: string | null;
+function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestions, suggestionsLoading }: {
+  assets: UserAssetRow[];
   uploading: boolean;
   onUpload: (file: File) => void;
+  onDelete: (id: string) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   suggestions: AISuggestion[];
   suggestionsLoading: boolean;
@@ -1181,29 +1181,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
   const [showUploadModal, setShowUploadModal] = useState(false);
   const MAX_SLOTS = 5;
 
-  const resumes: ResumeRow[] = resumeUrl
-    ? [
-        {
-          id: "primary",
-          name: extractResumeName(resumeUrl),
-          url: resumeUrl,
-          isPrimary: true,
-          analysisComplete: true,
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        },
-      ]
-    : [];
-
-  function extractResumeName(url: string) {
-    try {
-      const decoded = decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "");
-      // strip the timestamp prefix e.g. "resume-1234567890.pdf" → just show the original feel
-      return decoded.replace(/^resume-\d+\./, "resume.") || "Resume";
-    } catch {
-      return "Resume";
-    }
-  }
+  const resumes = assets.filter((a) => a.type === "RESUME");
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -1327,18 +1305,16 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
                         ★ PRIMARY
                       </span>
                     )}
-                    {r.analysisComplete && (
-                      <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 12, fontWeight: 500, color: "#1A7A4A" }}>
-                        Analysis Complete
-                      </span>
-                    )}
+                    <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 12, fontWeight: 500, color: "#1A7A4A" }}>
+                      Analysis Complete
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Target job title */}
-              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: r.targetJobTitle ? "#1A1A1A" : "#C0B8B0" }}>
-                {r.targetJobTitle ?? "—"}
+              <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C0B8B0" }}>
+                —
               </span>
 
               {/* Last modified */}
@@ -1378,6 +1354,7 @@ function AssetsTab({ resumeUrl, uploading, onUpload, inputRef, suggestions, sugg
                       { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
                       { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
                       { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+                      { label: "Delete", action: () => { onDelete(r.id); setMenuOpen(null); } },
                     ].map((item) => (
                       <button
                         key={item.label}
@@ -1718,6 +1695,8 @@ export function WorkspaceProfile() {
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
+  const [assets, setAssets] = useState<UserAssetRow[]>([]);
   const [readback, setReadback] = useState<ReadbackData | null>(null);
   const [readbackLoading, setReadbackLoading] = useState(false);
   const [profileSuggestions, setProfileSuggestions] = useState<AISuggestion[]>([]);
@@ -1784,6 +1763,18 @@ export function WorkspaceProfile() {
     await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
   };
 
+  const refreshAssets = () => {
+    fetch("/api/assets")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setAssets(data); })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (page === "assets") refreshAssets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
   const handlePersonalSave = async (patch: Omit<Partial<UserProfile>, "parsedData"> & { parsedData?: Partial<ParsedData> }) => {
     if (!profile) return;
     const { parsedData: pdPatch, ...rest } = patch;
@@ -1841,21 +1832,46 @@ export function WorkspaceProfile() {
 
   const handleResumeUpload = async (file: File) => {
     setResumeUploading(true);
+    setResumeUploadError(null);
     const form = new FormData();
     form.append("file", file);
     try {
       const res = await fetch("/api/resume", { method: "POST", body: form });
       const data = await res.json();
+      if (!res.ok) {
+        setResumeUploadError(data.error || "Upload failed. Please try again.");
+        return;
+      }
       if (data.url) {
         const profileRes = await fetch("/api/profile");
         const profileData = await profileRes.json();
         if (!profileData.error) setProfile(profileData);
         else setProfile((p) => p ? { ...p, resumeUrl: data.url } : p);
+        refreshAssets();
         setReadbackNudge(true);
         setTimeout(() => setReadbackNudge(false), 8000);
       }
-    } catch { /* silent */ }
-    finally { setResumeUploading(false); }
+    } catch {
+      setResumeUploadError("Upload failed. Please try again.");
+    } finally {
+      setResumeUploading(false);
+    }
+  };
+
+  const handleAssetDelete = async (id: string) => {
+    setAssets((prev) => prev.filter((a) => a.id !== id));
+    try {
+      const res = await fetch(`/api/assets?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        const profileRes = await fetch("/api/profile");
+        const profileData = await profileRes.json();
+        if (!profileData.error) setProfile(profileData);
+      } else {
+        refreshAssets();
+      }
+    } catch {
+      refreshAssets();
+    }
   };
 
   const goToSection = (section: AboutSection) => {
@@ -1967,7 +1983,7 @@ export function WorkspaceProfile() {
         {readbackNudge && (
           <div style={{ maxWidth: 640, marginBottom: 12, padding: "10px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A7A4A", margin: 0 }}>
-              ✓ Resume uploaded — Kimchi is generating your profile analysis above.
+              ✓ Resume uploaded — Kimchi extracted your experience, education, and skills. Review them in the About tab.
             </p>
             <button onClick={() => setReadbackNudge(false)} style={{ background: "none", border: "none", color: "#1A7A4A", cursor: "pointer", fontSize: 16, padding: "0 4px", opacity: 0.6, flexShrink: 0 }}>✕</button>
           </div>
@@ -2057,7 +2073,14 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "assets" && profile && (
-          <AssetsTab resumeUrl={profile.resumeUrl} uploading={resumeUploading} onUpload={handleResumeUpload} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
+          <>
+            {resumeUploadError && (
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C05050", marginBottom: 12 }}>
+                {resumeUploadError}
+              </p>
+            )}
+            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
+          </>
         )}
       </div>
     </div>
