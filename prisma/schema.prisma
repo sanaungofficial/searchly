@@ -189,15 +189,18 @@ model TrackedCompany {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name           String
-  website        String?
-  notes          String?
-  type           String?
-  hqLocation     String?
-  priority       String?
-  cultureMission String?
-  candidateEdge  String?
-  targetRoles    String?
+  name              String
+  website           String?
+  notes             String?
+  type              String?
+  hqLocation        String?
+  priority          String?
+  cultureMission    String?
+  candidateEdge     String?
+  targetRoles       String?
+  careersUrl        String?
+  jobsCache         Json?
+  lastJobsFetchedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
