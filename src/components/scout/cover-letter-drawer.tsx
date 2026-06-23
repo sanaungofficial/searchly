@@ -572,22 +572,76 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
               padding: "14px 22px",
               borderTop: "1px solid rgba(0,0,0,0.07)",
               flexShrink: 0,
+              display: "flex", gap: 8, position: "relative",
             }}>
+              {showDownloadMenu && (
+                <>
+                  <div onClick={() => setShowDownloadMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
+                  <div style={{
+                    position: "absolute", bottom: "calc(100% + 6px)", left: 22,
+                    background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)",
+                    borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.14)",
+                    overflow: "hidden", minWidth: 220, zIndex: 20,
+                  }}>
+                    <button
+                      onClick={handleDownloadPDF}
+                      style={{
+                        display: "block", width: "100%", textAlign: "left",
+                        padding: "12px 16px", background: "none", border: "none",
+                        fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13,
+                        color: "#1A1A1A", cursor: "pointer",
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = "#F5F3EF")}
+                      onMouseOut={(e) => (e.currentTarget.style.background = "none")}
+                    >
+                      Download by PDF
+                    </button>
+                    <div style={{ height: 1, background: "rgba(0,0,0,0.06)" }} />
+                    <button
+                      onClick={() => { setShowDownloadMenu(false); handleDownload(); }}
+                      style={{
+                        display: "block", width: "100%", textAlign: "left",
+                        padding: "12px 16px", background: "none", border: "none",
+                        fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13,
+                        color: "#1A1A1A", cursor: "pointer",
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = "#F5F3EF")}
+                      onMouseOut={(e) => (e.currentTarget.style.background = "none")}
+                    >
+                      Download by Word(.docx)
+                    </button>
+                  </div>
+                </>
+              )}
               <button
-                onClick={handleDownload}
+                onClick={() => { if (letter && !streaming && !downloading) setShowDownloadMenu((v) => !v); }}
                 disabled={!letter || streaming || downloading}
                 style={{
-                  width: "100%", padding: "12px",
-                  background: (letter && !streaming && !downloading) ? "#1C3A2F" : "rgba(0,0,0,0.06)",
-                  color: (letter && !streaming && !downloading) ? "#E8D5A3" : "#A09890",
-                  border: "none", borderRadius: 8,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 12, fontWeight: 600,
+                  flex: 1, padding: "11px 14px", background: "#FFFFFF",
+                  color: (letter && !streaming) ? "#1A1A1A" : "#A09890",
+                  border: "1px solid rgba(0,0,0,0.15)", borderRadius: 24,
+                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500,
                   cursor: (letter && !streaming && !downloading) ? "pointer" : "not-allowed",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                   transition: "all 0.15s",
                 }}
               >
-                {downloading ? "Downloading…" : "Download as Word doc →"}
+                ↓ {downloading ? "Downloading…" : "Download"}
+              </button>
+              <button
+                onClick={() => { if (!streaming) generate(); }}
+                disabled={streaming}
+                style={{
+                  flex: 1, padding: "11px 14px",
+                  background: streaming ? "rgba(0,0,0,0.06)" : "#22C55E",
+                  color: streaming ? "#A09890" : "#FFFFFF",
+                  border: "none", borderRadius: 24,
+                  fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700,
+                  cursor: streaming ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                Regenerate
               </button>
             </div>
           </div>
