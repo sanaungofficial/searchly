@@ -19,9 +19,9 @@ import {
   type TransitionJobMatch,
 } from "@/components/scout/screens";
 
-function saveLinkedIn(url: string) {
+async function saveLinkedIn(url: string) {
   if (!url.trim()) return;
-  fetch("/api/profile", {
+  await fetch("/api/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ linkedinUrl: url.trim() }),
@@ -99,9 +99,15 @@ export default function OnboardingPage() {
       formData.append("file", file);
       const res = await fetch("/api/resume", { method: "POST", body: formData });
       if (res.ok) {
+        const data = await res.json();
+        const linkedInFromResume =
+          typeof data.parsedData?.linkedinUrl === "string"
+            ? data.parsedData.linkedinUrl.trim()
+            : "";
+        if (linkedInFromResume) {
+          setLiInput(linkedInFromResume);
+        }
         setResumeUploaded(true);
-        if (liInput.trim()) saveLinkedIn(liInput);
-        goTo(1);
       } else {
         setResumeError(true);
         setResumeFilename(null);
@@ -110,7 +116,7 @@ export default function OnboardingPage() {
       setResumeError(true);
       setResumeFilename(null);
     }
-  }, [goTo, liInput]);
+  }, [liInput]);
 
   const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
@@ -130,14 +136,14 @@ export default function OnboardingPage() {
   };
   const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => setLiInput(e.target.value);
 
-  const onWelcomeContinue = useCallback(() => {
+  const onWelcomeContinue = useCallback(async () => {
     if (!resumeUploaded) return;
-    if (liInput.trim()) saveLinkedIn(liInput);
+    if (liInput.trim()) await saveLinkedIn(liInput);
     goTo(1);
   }, [liInput, resumeUploaded, goTo]);
 
-  const onLinkedInOnly = useCallback(() => {
-    saveLinkedIn(liInput);
+  const onLinkedInOnly = useCallback(async () => {
+    await saveLinkedIn(liInput);
     goTo(2);
   }, [liInput, goTo]);
 
@@ -147,7 +153,10 @@ export default function OnboardingPage() {
     else if (liInput.trim()) onLinkedInOnly();
   }, [resumeUploaded, liInput, onWelcomeContinue, onLinkedInOnly]);
 
-  const onSkipProfile = useCallback(() => goTo(2), [goTo]);
+  const onSkipProfile = useCallback(async () => {
+    if (liInput.trim()) await saveLinkedIn(liInput);
+    goTo(2);
+  }, [liInput, goTo]);
 
   const onToggleBucket = useCallback((id: string) => {
     const newBuckets = selectedBuckets.includes(id)
