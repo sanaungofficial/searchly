@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
@@ -216,15 +217,15 @@ function PersonalTab({ profile, onSave }: {
             <div key={label}>
               <label className="block text-xs text-[#A09890] mb-1">{label}</label>
               <input value={val} onChange={(e) => setter(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
+                className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
             </div>
           ))}
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving}
-              className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">
+              className="min-h-11 px-4 py-2 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => setEditing(false)} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
+            <button onClick={() => setEditing(false)} className="min-h-11 px-4 py-2 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
           </div>
         </div>
       ) : (
@@ -239,8 +240,8 @@ function PersonalTab({ profile, onSave }: {
             </div>
           </div>
           {fields.map(({ label, value, href }) => (
-            <div key={label} className="flex items-start gap-3">
-              <span className="text-xs text-[#A09890] w-20 shrink-0 pt-0.5">{label}</span>
+            <div key={label} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3">
+              <span className="text-xs text-[#A09890] sm:w-20 shrink-0 pt-0.5">{label}</span>
               {href && value !== "—" ? (
                 <a href={href.startsWith("http") ? href : `https://${href}`} target="_blank" rel="noopener noreferrer"
                   className="text-sm text-[#1C3A2F] underline underline-offset-2 break-all">{value}</a>
@@ -281,13 +282,13 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div><label className="block text-xs text-[#A09890] mb-1">School</label>
               <input value={entry.school} onChange={(e) => updateEntry(entry.id, "school", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[#A09890] mb-1">Degree</label>
-                <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[#A09890] mb-1">Field</label>
-                <input value={entry.field || ""} onChange={(e) => updateEntry(entry.id, "field", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.field || ""} onChange={(e) => updateEntry(entry.id, "field", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[#A09890] mb-1">From (YYYY-MM)</label>
                 <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2018-09" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[#A09890] mb-1">To</label>
@@ -352,15 +353,15 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
         {list.map((entry) => (
           <div key={entry.id} className="rounded-xl border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[#A09890] mb-1">Company</label>
-                <input value={entry.company} onChange={(e) => updateEntry(entry.id, "company", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.company} onChange={(e) => updateEntry(entry.id, "company", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[#A09890] mb-1">Title</label>
-                <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[#A09890] mb-1">From (YYYY-MM)</label>
-                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2020-01" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2020-01" className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[#A09890] mb-1">To (YYYY-MM or Present)</label>
                 <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="Present" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
@@ -517,6 +518,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [needsRefresh, setNeedsRefresh] = useState<Set<string>>(new Set());
+  const isMobile = useIsMobile();
 
   // Pre-populate analysis from localStorage on mount so scores show immediately
   useEffect(() => {
@@ -609,7 +611,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
     skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase());
 
   return (
-    <div style={{ maxWidth: 560, paddingBottom: 40 }}>
+    <div style={{ maxWidth: isMobile ? "100%" : 560, paddingBottom: 40 }}>
       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", marginBottom: 24, lineHeight: 1.7 }}>
         Add up to 3 roles you&apos;re targeting. Expand any card to see your fit score, what skills you already have, what you&apos;re missing, and your next steps.
       </p>
@@ -771,7 +773,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search roles…"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "12px 12px", borderRadius: 7, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
@@ -817,6 +819,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
   const [newUrl, setNewUrl] = useState("");
   const [newPlatform, setNewPlatform] = useState("");
   const [newDuration, setNewDuration] = useState("");
+  const isMobile = useIsMobile();
 
   const doneCount = Object.values(progress).filter((v) => v === "completed").length;
   const customDone = customItems.filter((i) => i.status === "completed").length;
@@ -858,7 +861,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
   const removeCustomItem = (id: string) => saveCustomItems(customItems.filter((i) => i.id !== id));
 
   return (
-    <div style={{ maxWidth: 620, paddingBottom: 40 }}>
+    <div style={{ maxWidth: isMobile ? "100%" : 620, paddingBottom: 40 }}>
 
       {/* Section A — From your target roles */}
       {skillGoals.length > 0 && (
@@ -870,7 +873,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                 (item) => item.closesGap?.some((s) => s.toLowerCase() === g.skill.toLowerCase())
               );
               return (
-                <div key={`${g.skill}-${g.role}`} style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(196,168,106,0.3)", display: "flex", alignItems: "center", gap: 12 }}>
+                <div key={`${g.skill}-${g.role}`} style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(196,168,106,0.3)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{g.skill}</p>
@@ -885,7 +888,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                   <button
                     onClick={() => handleGraduate(g.skill)}
                     disabled={graduating === g.skill}
-                    style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0, opacity: graduating === g.skill ? 0.6 : 1 }}
+                    style={{ padding: "10px 14px", minHeight: 44, width: isMobile ? "100%" : undefined, background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0, opacity: graduating === g.skill ? 0.6 : 1 }}
                   >
                     {graduating === g.skill ? "Saving…" : "Mark as acquired"}
                   </button>
@@ -897,7 +900,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
       )}
 
       {/* Progress bar */}
-      <div style={{ background: "#1A3A2F", borderRadius: 10, padding: "16px 20px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ background: "#1A3A2F", borderRadius: 10, padding: isMobile ? "16px" : "16px 20px", marginBottom: 24, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 16 : 0 }}>
         <div>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "rgba(232,213,163,0.5)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Your learning progress</p>
           <p style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 20, fontWeight: 500, color: "#E8D5A3" }}>{doneCount + customDone} of {total + customItems.length} complete</p>
@@ -935,12 +938,12 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                 const statusColor = prog === "completed" ? "#4A8B6A" : prog === "inprogress" ? "#C4A86A" : "#A09890";
                 const isGapMatch = item.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ?? false;
                 return (
-                  <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 7, background: item.platformColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
                         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{item.name}</p>
                         {item.scoutPick && <span style={{ padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
                         {isGapMatch && <span style={{ padding: "1px 7px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#2D6B4A", fontWeight: 500 }}>closes gap</span>}
@@ -964,7 +967,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                       <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
                     </div>
                     <button onClick={() => setProgress({ ...progress, [item.id]: prog === "none" ? "inprogress" : prog === "inprogress" ? "completed" : "inprogress" })}
-                      style={{ padding: "7px 14px", background: prog === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: prog === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
+                      style={{ padding: "10px 14px", minHeight: 44, width: isMobile ? "100%" : undefined, background: prog === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: prog === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", flexShrink: 0 }}>
                       {prog === "completed" ? "Review →" : prog === "inprogress" ? "Complete →" : "Start →"}
                     </button>
                   </div>
@@ -986,7 +989,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
 
         {showAddForm && (
           <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "16px", border: "1px solid #E5DDD0", marginBottom: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 10 }}>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={{ display: "block", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", marginBottom: 4 }}>Course / Certification name *</label>
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Google Project Management Certificate"
@@ -1025,7 +1028,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
               const statusLabel = item.status === "completed" ? "Completed ✓" : item.status === "inprogress" ? "In progress" : "Not started";
               const statusColor = item.status === "completed" ? "#4A8B6A" : item.status === "inprogress" ? "#C4A86A" : "#A09890";
               return (
-                <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+                <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 7, background: "#E8E2D8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 700, color: "#7A7268" }}>{(item.platform || item.name).charAt(0).toUpperCase()}</span>
                   </div>
@@ -1042,9 +1045,9 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                     </p>
                     <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: statusColor }}>{statusLabel}</p>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: isMobile ? "wrap" : undefined }}>
                     <button onClick={() => updateCustomStatus(item.id)}
-                      style={{ padding: "7px 14px", background: item.status === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: item.status === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: item.status === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
                       {item.status === "completed" ? "Review →" : item.status === "inprogress" ? "Complete →" : "Start →"}
                     </button>
                     <button onClick={() => removeCustomItem(item.id)} style={{ background: "none", border: "none", color: "#C0B8B0", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>×</button>
@@ -1077,19 +1080,20 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   uploading: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
+  const isMobile = useIsMobile();
   return (
     <div
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 1000,
+        zIndex: 1000, padding: isMobile ? 16 : 0,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#FFFFFF", borderRadius: 16, padding: "48px 40px 40px",
+          background: "#FFFFFF", borderRadius: 16, padding: isMobile ? "40px 24px 28px" : "48px 40px 40px",
           width: 540, maxWidth: "90vw", position: "relative",
           display: "flex", flexDirection: "column", alignItems: "center",
           boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
@@ -1152,7 +1156,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           style={{
-            width: "100%", padding: "14px 0",
+            width: "100%", padding: "14px 0", minHeight: 44,
             background: "#1A1A1A", color: "#FFFFFF",
             border: "none", borderRadius: 8,
             fontSize: 15, fontWeight: 600,
@@ -1177,20 +1181,66 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
   suggestions: AISuggestion[];
   suggestionsLoading: boolean;
 }) {
+  const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const MAX_SLOTS = 5;
 
   const resumes = assets.filter((a) => a.type === "RESUME");
 
+  const renderResumeMenu = (r: UserAssetRow) => (
+    <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
+        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#A09890", padding: "8px 10px", minHeight: 44, borderRadius: 4 }}
+        aria-label="Resume options"
+      >
+        ···
+      </button>
+      {menuOpen === r.id && (
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "calc(100% + 4px)",
+            background: "#FFFFFF",
+            border: "1px solid #E5DDD0",
+            borderRadius: 7,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+            minWidth: 160,
+            zIndex: 100,
+            overflow: "hidden",
+          }}
+        >
+          {[
+            { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+            { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
+            { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+            { label: "Delete", action: () => { onDelete(r.id); setMenuOpen(null); } },
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              style={{ width: "100%", padding: "12px 14px", minHeight: 44, textAlign: "left", background: "none", border: "none", fontSize: 14, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div style={{ paddingBottom: 40 }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", marginBottom: 20, gap: isMobile ? 14 : 0 }}>
         <div>
           <h2 style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0, letterSpacing: "-0.2px" }}>RESUME</h2>
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#6B6258", marginTop: 6 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#4A8B6A", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>
               </span>
@@ -1198,7 +1248,8 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
             </span>
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
+          {!isMobile && (
           <button
             style={{
               padding: "8px 16px",
@@ -1216,12 +1267,14 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
           >
             ⚡ Upgrade to Turbo: Get Hired Faster ›
           </button>
+          )}
           <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { onUpload(f); setShowUploadModal(false); } }} />
           <button
             onClick={() => setShowUploadModal(true)}
             disabled={uploading}
             style={{
-              padding: "8px 16px",
+              padding: "12px 16px",
+              minHeight: 44,
               background: "#FFFFFF",
               color: "#1A1A1A",
               border: "1px solid #D8D0C5",
@@ -1231,8 +1284,10 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
               cursor: uploading ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               gap: 5,
               opacity: uploading ? 0.6 : 1,
+              width: isMobile ? "100%" : undefined,
             }}
           >
             {uploading ? "Uploading…" : "+ Add Resume"}
@@ -1240,7 +1295,72 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
         </div>
       </div>
 
-      {/* Table */}
+      {/* Resume list */}
+      {isMobile ? (
+        <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "hidden" }}>
+          {resumes.length === 0 ? (
+            <div style={{ padding: "40px 20px", textAlign: "center" }}>
+              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>No resume uploaded yet.</p>
+              <button
+                onClick={() => setShowUploadModal(true)}
+                disabled={uploading}
+                style={{ marginTop: 12, padding: "12px 20px", minHeight: 44, background: "#1C3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                + Add Resume
+              </button>
+            </div>
+          ) : (
+            resumes.map((r, index) => (
+              <div
+                key={r.id}
+                style={{
+                  padding: "14px 16px",
+                  borderBottom: index < resumes.length - 1 ? "1px solid #F5F3EF" : "none",
+                  position: "relative",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => window.open(r.url, "_blank")}
+                    style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", flex: 1, minWidth: 0 }}
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 6, background: "#1C3A2F",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
+                    }}>
+                      <span style={{ color: "#E8D5A3", fontSize: 14, fontWeight: 700 }}>
+                        {r.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                  </button>
+                  {renderResumeMenu(r)}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                  {r.isPrimary && (
+                    <span style={{ padding: "2px 8px", background: "#FFF8E8", border: "1px solid #E8D5A3", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#A08030" }}>
+                      ★ PRIMARY
+                    </span>
+                  )}
+                  <span style={{ padding: "2px 8px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 100, fontSize: 12, fontWeight: 500, color: "#1A7A4A" }}>
+                    Analysis Complete
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                    Modified {timeAgo(r.updatedAt)}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#6B6258" }}>
+                    Added {timeAgo(r.createdAt)}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
       <div style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E5DDD0", overflow: "visible", position: "relative" }}>
         {/* Table header */}
         <div style={{
@@ -1328,51 +1448,12 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
               </span>
 
               {/* Options menu */}
-              <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#A09890", padding: "4px 6px", borderRadius: 4 }}
-                >
-                  ···
-                </button>
-                {menuOpen === r.id && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: 0,
-                      top: "calc(100% + 4px)",
-                      background: "#FFFFFF",
-                      border: "1px solid #E5DDD0",
-                      borderRadius: 7,
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                      minWidth: 160,
-                      zIndex: 100,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {[
-                      { label: "View resume", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
-                      { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
-                      { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
-                      { label: "Delete", action: () => { onDelete(r.id); setMenuOpen(null); } },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        onClick={item.action}
-                        style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 14, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {renderResumeMenu(r)}
             </div>
           ))
         )}
       </div>
+      )}
 
       {showUploadModal && (
         <UploadResumeModal
@@ -1389,17 +1470,18 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, inputRef, suggestion
 // ─── AI Readback Card ─────────────────────────────────────────────────────────
 
 function ReadbackCard({ data, loading, onRefresh }: { data: ReadbackData | null; loading: boolean; onRefresh: () => void }) {
+  const isMobile = useIsMobile();
   if (!loading && !data) return null;
   return (
-    <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: "16px 20px", marginBottom: 28 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+    <div style={{ borderRadius: 10, border: "1px solid #E5DDD0", background: "#FFFDF9", padding: isMobile ? "14px 16px" : "16px 20px", marginBottom: isMobile ? 16 : 28 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 10, gap: isMobile ? 10 : 0 }}>
         <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#C4A86A", textTransform: "uppercase" as const, letterSpacing: "1px", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
           <SparkleIcon /> Kimchi&apos;s read on you
         </p>
         <button
           onClick={onRefresh}
           disabled={loading}
-          style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", background: "transparent", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}
+          style={{ display: "flex", alignItems: "center", gap: 4, padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, background: "transparent", border: "1px solid #E5DDD0", borderRadius: 5, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.5 : 1 }}
         >
           <span style={{ fontSize: 13 }}>↻</span> {loading ? "Refreshing…" : "Refresh"}
         </button>
@@ -1470,6 +1552,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
   profile: UserProfile;
   onSave: (patch: CareerPrefPatch) => Promise<void>;
 }) {
+  const isMobile = useIsMobile();
   const [editing, setEditing] = useState(false);
   const [empStatus, setEmpStatus] = useState(profile.employmentStatus || "");
   const [timeline, setTimeline] = useState(profile.jobTimeline || "");
@@ -1516,10 +1599,10 @@ function CareerPreferencesPanel({ profile, onSave }: {
   const timelineLabel = PREF_JOB_TIMELINES.find(t => t.value === profile.jobTimeline)?.label;
   const hasAnyData = profile.employmentStatus || profile.jobTimeline || profile.currentSalary || profile.targetSalary || profile.careerMotivation || (profile.priorities || []).length > 0;
 
-  const inputStyle: React.CSSProperties = { width: "100%", padding: "8px 10px", fontSize: 13, borderRadius: 8, border: "1px solid #E5DDD0", background: "#FFFDF9", color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui", outline: "none", boxSizing: "border-box" };
+  const inputStyle: React.CSSProperties = { width: "100%", padding: isMobile ? "12px 10px" : "8px 10px", fontSize: isMobile ? 16 : 13, borderRadius: 8, border: "1px solid #E5DDD0", background: "#FFFDF9", color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui", outline: "none", boxSizing: "border-box" };
 
   return (
-    <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
+    <div style={{ background: "#FFFFFF", borderRadius: 12, padding: isMobile ? "18px 16px" : "20px 24px", border: "1px solid rgba(0,0,0,0.07)" }}>
       <SectionHeader title="Career Preferences" onEdit={() => setEditing(!editing)} />
 
       {editing ? (
@@ -1530,7 +1613,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_EMPLOYMENT.map(({ value, label }) => (
                 <button key={value} onClick={() => setEmpStatus(empStatus === value ? "" : value)}
-                  style={{ textAlign: "left", padding: "8px 12px", borderRadius: 8, border: `1px solid ${empStatus === value ? "#1C3A2F" : "#E5DDD0"}`, background: empStatus === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui", cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: `1px solid ${empStatus === value ? "#1C3A2F" : "#E5DDD0"}`, background: empStatus === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui", cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -1543,7 +1626,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_JOB_TIMELINES.map(({ value, label }) => (
                 <button key={value} onClick={() => setTimeline(timeline === value ? "" : value)}
-                  style={{ textAlign: "left", padding: "8px 12px", borderRadius: 8, border: `1px solid ${timeline === value ? "#1C3A2F" : "#E5DDD0"}`, background: timeline === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui", cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: `1px solid ${timeline === value ? "#1C3A2F" : "#E5DDD0"}`, background: timeline === value ? "rgba(28,58,47,0.06)" : "#FFFDF9", fontSize: 13, color: "#1C3A2F", fontFamily: "var(--font-dm-sans), system-ui", cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -1551,7 +1634,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
           </div>
 
           {/* Salary */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
             {([["Current salary", currentSalary, setCurrentSalary], ["Target salary", targetSalary, setTargetSalary]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
               <div key={label}>
                 <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 6 }}>{label}</p>
@@ -1624,7 +1707,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
             </div>
           )}
           {(profile.currentSalary || profile.targetSalary) && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
               {profile.currentSalary && (
                 <div>
                   <p style={{ fontSize: 11, color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Current</p>
@@ -1672,6 +1755,7 @@ const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal informat
 const SKILL_GOALS_KEY = "kimchi_skill_goals";
 
 export function WorkspaceProfile() {
+  const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
   const router = useRouter();
   const pathname = usePathname();
@@ -1895,22 +1979,30 @@ export function WorkspaceProfile() {
 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
-    { id: "dreamrole", label: "Target Roles" },
+    { id: "dreamrole", label: isMobile ? "Roles" : "Target Roles" },
     { id: "learning", label: "Upskilling" },
     { id: "assets", label: "Assets" },
-    { id: "preferences", label: "Preferences" },
+    { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
   ];
+
+  const scrollPad = isMobile ? "56px 16px 40px 56px" : "20px 32px 0";
+  const sectionCardPad = isMobile ? "18px 16px" : "24px 28px";
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#F7F5F2", animation: "fadeIn 0.3s ease both" }}>
-      <div ref={scrollRef} style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
+      <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, WebkitOverflowScrolling: "touch" }}>
         {/* Header */}
-        <div style={{ marginBottom: 24 }}>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#A09890", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8 }}>
+        <div style={{ marginBottom: isMobile ? 20 : 24 }}>
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#A09890", letterSpacing: "1.1px", textTransform: "uppercase", marginBottom: 8, lineHeight: 1.4 }}>
             {loading ? "Loading…" : profile ? (profile.name || profile.email || "Your profile") : "Your profile"}
-            {profile?.headline ? ` · ${profile.headline}` : ""}
+            {!isMobile && profile?.headline ? ` · ${profile.headline}` : ""}
           </p>
-          <h1 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px" }}>
+          {isMobile && profile?.headline && (
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#52493F", marginBottom: 8, lineHeight: 1.4 }}>
+              {profile.headline}
+            </p>
+          )}
+          <h1 style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: isMobile ? 26 : 32, fontWeight: 500, fontStyle: "italic", color: "#1A1A1A", letterSpacing: "-0.3px", lineHeight: 1.2 }}>
             Your profile, through Kimchi&apos;s eyes.
           </h1>
           {profile && (() => {
@@ -1933,7 +2025,7 @@ export function WorkspaceProfile() {
                   onClick={() => missing.length > 0 && setShowChecklist(s => !s)}
                   style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5, maxWidth: 280 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5, maxWidth: isMobile ? "100%" : 280 }}>
                     <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#A09890" }}>
                       Profile completeness
                       {missing.length > 0 && <span style={{ marginLeft: 6, color: "#C0B8B0" }}>· {missing.length} missing</span>}
@@ -1942,19 +2034,19 @@ export function WorkspaceProfile() {
                       {pct}%{missing.length > 0 ? (showChecklist ? " ▲" : " ▼") : " ✓"}
                     </span>
                   </div>
-                  <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: 280 }}>
+                  <div style={{ height: 3, background: "#E5DDD0", borderRadius: 2, maxWidth: isMobile ? "100%" : 280 }}>
                     <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#4A8B6A" : "#C4A86A", borderRadius: 2, transition: "width 0.4s ease" }} />
                   </div>
                 </button>
 
                 {showChecklist && missing.length > 0 && (
-                  <div style={{ marginTop: 8, maxWidth: 280, border: "1px solid #E8D5A3", borderRadius: 8, background: "#FFFDF9", overflow: "hidden" }}>
+                  <div style={{ marginTop: 8, maxWidth: isMobile ? "100%" : 280, border: "1px solid #E8D5A3", borderRadius: 8, background: "#FFFDF9", overflow: "hidden" }}>
                     {missing.map((item, i) => (
                       <button
                         key={item.label}
                         onClick={() => { item.action(); setShowChecklist(false); }}
                         style={{
-                          display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", width: "100%",
+                          display: "flex", alignItems: "center", gap: 10, padding: isMobile ? "12px 12px" : "9px 12px", minHeight: isMobile ? 44 : undefined, width: "100%",
                           textAlign: "left", background: "none", border: "none",
                           borderBottom: i < missing.length - 1 ? "1px solid #F0EBE3" : "none",
                           cursor: "pointer", fontFamily: "var(--font-dm-sans), system-ui",
@@ -1974,28 +2066,28 @@ export function WorkspaceProfile() {
 
         {/* AI Readback hero — shown above tabs when resume is present */}
         {(readback || readbackLoading) && (
-          <div style={{ maxWidth: 640, marginBottom: 16 }}>
+          <div style={{ maxWidth: isMobile ? "100%" : 640, marginBottom: 16 }}>
             <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} />
           </div>
         )}
 
         {/* Resume upload nudge */}
         {readbackNudge && (
-          <div style={{ maxWidth: 640, marginBottom: 12, padding: "10px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A7A4A", margin: 0 }}>
+          <div style={{ maxWidth: isMobile ? "100%" : 640, marginBottom: 12, padding: "12px 14px", background: "#F0FFF8", border: "1px solid #A8DFC0", borderRadius: 8, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12 }}>
+            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#1A7A4A", margin: 0, lineHeight: 1.5 }}>
               ✓ Resume uploaded — Kimchi extracted your experience, education, and skills. Review them in the About tab.
             </p>
-            <button onClick={() => setReadbackNudge(false)} style={{ background: "none", border: "none", color: "#1A7A4A", cursor: "pointer", fontSize: 16, padding: "0 4px", opacity: 0.6, flexShrink: 0 }}>✕</button>
+            <button onClick={() => setReadbackNudge(false)} style={{ background: "none", border: "none", color: "#1A7A4A", cursor: "pointer", fontSize: 16, padding: isMobile ? "8px 4px" : "0 4px", opacity: 0.6, flexShrink: 0, alignSelf: isMobile ? "flex-end" : undefined, minHeight: isMobile ? 44 : undefined }}>✕</button>
           </div>
         )}
 
         {/* Main tab bar */}
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto", marginBottom: page === "about" ? 0 : 24 }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid rgba(0,0,0,0.08)", overflowX: "auto", marginBottom: page === "about" ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           {PAGE_TABS.map(({ id, label }) => (
             <button
               key={id}
               onClick={() => setPage(id)}
-              style={{ padding: "8px 16px", border: "none", borderRadius: "6px 6px 0 0", background: page === id ? "#1A3A2F" : "transparent", color: page === id ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
+              style={{ padding: isMobile ? "10px 14px" : "8px 16px", minHeight: 44, border: "none", borderRadius: "6px 6px 0 0", background: page === id ? "#1A3A2F" : "transparent", color: page === id ? "#E8D5A3" : "#52493F", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}
             >
               {label}
             </button>
@@ -2004,14 +2096,14 @@ export function WorkspaceProfile() {
 
         {/* Sub-tabs — only when About is active */}
         {page === "about" && (
-          <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: "1px solid rgba(0,0,0,0.05)", overflowX: "auto", background: "#EDE8DF", paddingLeft: 8 }}>
+          <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: "1px solid rgba(0,0,0,0.05)", overflowX: "auto", background: "#EDE8DF", paddingLeft: 8, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
             {ABOUT_SECTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => goToSection(s)}
-                style={{ padding: "6px 14px", border: "none", background: activeSection === s ? "rgba(28,58,47,0.1)" : "transparent", color: activeSection === s ? "#1C3A2F" : "#7A7268", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, fontWeight: activeSection === s ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, borderBottom: activeSection === s ? "2px solid #1C3A2F" : "2px solid transparent", transition: "all 0.15s" }}
+                style={{ padding: isMobile ? "8px 12px" : "6px 14px", minHeight: 44, border: "none", background: activeSection === s ? "rgba(28,58,47,0.1)" : "transparent", color: activeSection === s ? "#1C3A2F" : "#7A7268", fontFamily: "var(--font-dm-sans), system-ui", fontSize: isMobile ? 12 : 13, fontWeight: activeSection === s ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, borderBottom: activeSection === s ? "2px solid #1C3A2F" : "2px solid transparent", transition: "all 0.15s" }}
               >
-                {ABOUT_LABEL[s]}
+                {isMobile ? ({ personal: "Personal", education: "Education", experience: "Experience", skills: "Skills" } as const)[s] : ABOUT_LABEL[s]}
               </button>
             ))}
           </div>
@@ -2037,19 +2129,19 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "about" && profile && (
-          <div style={{ maxWidth: 640, paddingBottom: 40 }}>
-            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}>
+          <div style={{ maxWidth: isMobile ? "100%" : 640, paddingBottom: 40 }}>
+            <div ref={(el) => { sectionRefs.current.personal = el; }} style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </div>
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
               ref={(el) => { sectionRefs.current.education = el; }}>
               <EducationTab entries={education} onSave={handleEducationSave} />
             </div>
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
               ref={(el) => { sectionRefs.current.experience = el; }}>
               <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
             </div>
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px 28px", border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
+            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: sectionCardPad, border: "1px solid rgba(0,0,0,0.07)", marginBottom: 12 }}
               ref={(el) => { sectionRefs.current.skills = el; }}>
               <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
             </div>
@@ -2060,7 +2152,7 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#A09890" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "preferences" && profile && (
-          <div style={{ maxWidth: 480, paddingBottom: 40, paddingTop: 8 }}>
+          <div style={{ maxWidth: isMobile ? "100%" : 480, paddingBottom: 40, paddingTop: 8 }}>
             <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
           </div>
         )}
