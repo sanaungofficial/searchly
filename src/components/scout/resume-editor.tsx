@@ -956,11 +956,20 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
       <style>{`
         @media print {
-          body > *:not(.resume-print-target) { display: none !important; }
+          body > *:not(.resume-print-outer) { display: none !important; }
+          .resume-print-outer {
+            position: static !important;
+            display: block !important;
+            padding: 0 !important;
+          }
+          .resume-print-backdrop { display: none !important; }
           .resume-print-target {
             display: flex !important;
             position: static !important;
             height: auto !important;
+            max-width: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
             background: white !important;
           }
           .resume-print-hide { display: none !important; }
@@ -972,6 +981,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+    </div>
     </div>
   );
 }
