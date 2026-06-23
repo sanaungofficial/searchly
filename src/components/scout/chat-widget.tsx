@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS, type KanbanCard } from "./workspace-data";
 import type { DrawerTool } from "./workspace-opportunities";
@@ -21,6 +22,55 @@ const FIT_SUGGESTIONS = [
 function fitWelcomeMessage(job: KanbanCard): string {
   const fitNote = job.fit > 0 ? ` Your resume match score is ${job.fit}%.` : "";
   return `Let's analyze your fit for ${job.role} at ${job.company}.${fitNote} I can walk through your strengths, gaps, and tactics to stand out — pick a suggestion below or ask me anything.`;
+}
+
+function ChatMessageBody({
+  role,
+  content,
+  streaming,
+}: {
+  role: ChatMessage["role"];
+  content: string;
+  streaming?: boolean;
+}) {
+  if (!content) {
+    return streaming ? <>…</> : null;
+  }
+
+  if (role === "user") {
+    return <span style={{ whiteSpace: "pre-wrap" }}>{content}</span>;
+  }
+
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => (
+          <p style={{ margin: "0 0 8px", lineHeight: 1.55 }}>{children}</p>
+        ),
+        strong: ({ children }) => (
+          <strong style={{ fontWeight: 600, color: "#1A1A1A" }}>{children}</strong>
+        ),
+        ul: ({ children }) => (
+          <ul style={{ margin: "0 0 8px", paddingLeft: 18, lineHeight: 1.5 }}>{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol style={{ margin: "0 0 8px", paddingLeft: 18, lineHeight: 1.5 }}>{children}</ol>
+        ),
+        li: ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>,
+        h1: ({ children }) => (
+          <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 15 }}>{children}</p>
+        ),
+        h2: ({ children }) => (
+          <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 14 }}>{children}</p>
+        ),
+        h3: ({ children }) => (
+          <p style={{ margin: "0 0 6px", fontWeight: 600, fontSize: 14 }}>{children}</p>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 export function ChatWidget() {
@@ -173,7 +223,7 @@ export function ChatWidget() {
   };
 
   const panelWidth = chatView === "chat" ? 380 : 320;
-  const panelHeight = chatView === "chat" ? 480 : undefined;
+  const panelHeight = chatView === "chat" ? "min(640px, calc(100vh - 120px))" : undefined;
 
   return (
     <>
@@ -360,10 +410,13 @@ export function ChatWidget() {
                           fontFamily: sans,
                           fontSize: 14,
                           lineHeight: 1.55,
-                          whiteSpace: "pre-wrap",
                         }}
                       >
-                        {msg.content || (streaming && i === messages.length - 1 ? "…" : "")}
+                        <ChatMessageBody
+                          role={msg.role}
+                          content={msg.content}
+                          streaming={streaming && i === messages.length - 1}
+                        />
                       </div>
                     </div>
                   ))}
