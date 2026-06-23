@@ -536,18 +536,18 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
                       <p style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
-                        AI credits this month
+                        {isAdmin ? "Your AI access" : "AI credits this month"}
                       </p>
-                      <span style={{ fontSize: 14, color: credits.remaining <= 0 && !isAdmin ? "#C4574A" : "#8A7F72" }}>
-                        {credits.remaining} left · {credits.used}/{credits.limit} used
+                      <span style={{ fontSize: 14, color: isAdmin ? "#6B4A8A" : credits.remaining <= 0 ? "#C4574A" : "#8A7F72" }}>
+                        {isAdmin ? "Unlimited" : `${credits.remaining} left · ${credits.used}/${credits.limit} used`}
                       </span>
                     </div>
                     <div style={{ height: 6, background: "#EEE9E2", borderRadius: 4, overflow: "hidden" }}>
                       <div
                         style={{
                           height: "100%",
-                          width: `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
-                          background: credits.remaining <= 0 && !isAdmin ? "#C4574A" : credits.remaining <= 3 && !isAdmin ? "#C4A86A" : "#4A8B6A",
+                          width: isAdmin ? "100%" : `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
+                          background: isAdmin ? "#6B4A8A" : credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#4A8B6A",
                           borderRadius: 4,
                           transition: "width 0.3s ease",
                         }}
@@ -555,7 +555,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     </div>
                     {isAdmin && (
                       <p style={{ fontSize: 13, color: "#6B4A8A", margin: "8px 0 0", lineHeight: 1.5 }}>
-                        Admin account — unlimited AI. Balance shown for reference (free plan is {credits.limit}/month).
+                        You have unlimited AI as admin. The {credits.limit}/month figure is what free users get — not a cap on you.
                       </p>
                     )}
                     {!isAdmin && credits.remaining <= 0 && (
