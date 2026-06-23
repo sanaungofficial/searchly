@@ -29,7 +29,11 @@ export async function findOrCreateCompanyIntel(input: {
   website?: string | null;
   careersUrl?: string | null;
 }): Promise<CompanyIntel> {
-  const slug = input.slug ?? normalizeCompanySlug(input.name);
+  const slug = (input.slug ?? normalizeCompanySlug(input.name)).trim();
+  if (!slug) {
+    throw new Error("Company name must contain at least one letter or number.");
+  }
+
   const existing = await prisma.companyIntel.findUnique({ where: { slug } });
   if (existing) {
     const needsUpdate =
