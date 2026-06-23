@@ -32,6 +32,14 @@ export type DrawerUser = {
   _count: { jobs: number };
 };
 
+type AiDetail = {
+  totalCalls: number;
+  totalCostUsd: number;
+  totalTokensIn: number;
+  totalTokensOut: number;
+  byFeature: { feature: string; calls: number; costUsd: number }[];
+};
+
 const ROLE_OPTIONS: UserRole[] = ["USER", "COACH", "RECRUITER", "ADMIN"];
 
 const STATUS_STYLES: Record<SubscriptionStatus, string> = {
@@ -79,14 +87,24 @@ export function UserDrawer({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [aiDetail, setAiDetail] = useState<AiDetail | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // reset role when user changes
+  }, []);
+
+  useEffect(() => {
     setRole(user.role);
+    setAiDetail(null);
+    setAiLoading(true);
+    fetch(`/api/admin/users/${user.id}`)
+      .then((r) => r.json())
+      .then((data) => setAiDetail(data.aiSummary ?? null))
+      .catch(() => {})
+      .finally(() => setAiLoading(false));
   }, [user.id, user.role]);
 
-  // close on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -122,10 +140,7 @@ export function UserDrawer({
   const drawer = (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/25 z-[100]"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/25 z-[100]" onClick={onClose} />
 
       {/* Panel */}
       <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-[#F2EDE3] border-l border-stone-200 z-[101] overflow-y-auto shadow-2xl flex flex-col">
@@ -228,10 +243,7 @@ export function UserDrawer({
             {user.subscription?.stripeCurrentPeriodEnd && (
               <Row label="Renews" value={fmt(user.subscription.stripeCurrentPeriodEnd)} />
             )}
-            <Row
-              label="Resume"
-              value={user.profile?.resumeUrl ? "Uploaded ✓" : undefined}
-            />
+            <Row label="Resume" value={user.profile?.resumeUrl ? "Uploaded ✓" : undefined} />
             {user.profile?.linkedinUrl && (
               <div className="flex items-start gap-3 py-1.5 border-b border-stone-50 last:border-0">
                 <span className="text-xs text-stone-400 font-mono w-28 shrink-0 pt-0.5">LinkedIn</span>
@@ -250,24 +262,17 @@ export function UserDrawer({
           {/* Profile */}
           {user.profile && (
             <div className="bg-white rounded-xl border border-stone-200 p-4">
-              <p className="text-xs text-stone-400 font-mono uppercase tracking-wider mb-3">
-                Profile
-              </p>
+              <p className="text-xs text-stone-400 font-mono uppercase tracking-wider mb-3">Profile</p>
               <Row label="Status" value={user.profile.employmentStatus} />
               <Row label="Current comp" value={user.profile.currentSalary} />
               <Row label="Target comp" value={user.profile.targetSalary} />
               <Row label="Timeline" value={user.profile.jobTimeline} />
               {user.profile.targetRoles.length > 0 && (
                 <div className="flex items-start gap-3 py-1.5 border-b border-stone-50">
-                  <span className="text-xs text-stone-400 font-mono w-28 shrink-0 pt-0.5">
-                    Target roles
-                  </span>
+                  <span className="text-xs text-stone-400 font-mono w-28 shrink-0 pt-0.5">Target roles</span>
                   <div className="flex flex-wrap gap-1">
                     {user.profile.targetRoles.map((r) => (
-                      <span
-                        key={r}
-                        className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded font-mono"
-                      >
+                      <span key={r} className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded font-mono">
                         {r}
                       </span>
                     ))}
@@ -277,17 +282,13 @@ export function UserDrawer({
               {user.profile.careerMotivation && (
                 <div className="py-1.5">
                   <p className="text-xs text-stone-400 font-mono mb-1">Motivation</p>
-                  <p className="text-xs text-stone-700 leading-relaxed">
-                    {user.profile.careerMotivation}
-                  </p>
+                  <p className="text-xs text-stone-700 leading-relaxed">{user.profile.careerMotivation}</p>
                 </div>
               )}
               {user.profile.summary && (
                 <div className="py-1.5 border-t border-stone-50">
                   <p className="text-xs text-stone-400 font-mono mb-1">Summary</p>
-                  <p className="text-xs text-stone-700 leading-relaxed line-clamp-5">
-                    {user.profile.summary}
-                  </p>
+                  <p className="text-xs text-stone-700 leading-relaxed line-clamp-5">{user.profile.summary}</p>
                 </div>
               )}
             </div>
@@ -320,6 +321,68 @@ export function UserDrawer({
               </div>
             </div>
           )}
+
+          {/* AI Usage */}
+          <div className="bg-white rounded-xl border border-stone-200 p-4">
+            <p className="text-xs text-stone-400 font-mono uppercase tracking-wider mb-3">AI Usage (lifetime)</p>
+            {aiLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-3.5 bg-stone-100 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : aiDetail && aiDetail.totalCalls > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-stone-50 rounded-lg p-3 text-center">
+                    <p
+                      className="text-xl font-semibold text-stone-800"
+                      style={{ fontFamily: "var(--font-playfair)" }}
+                    >
+                      {aiDetail.totalCalls}
+                    </p>
+                    <p className="text-xs text-stone-400 font-mono mt-0.5">total calls</p>
+                  </div>
+                  <div className="bg-stone-50 rounded-lg p-3 text-center">
+                    <p
+                      className="text-xl font-semibold text-stone-800"
+                      style={{ fontFamily: "var(--font-playfair)" }}
+                    >
+                      ${aiDetail.totalCostUsd.toFixed(3)}
+                    </p>
+                    <p className="text-xs text-stone-400 font-mono mt-0.5">lifetime cost</p>
+                  </div>
+                </div>
+                {aiDetail.byFeature.length > 0 && (
+                  <div>
+                    <p className="text-xs text-stone-400 font-mono mb-2">By feature</p>
+                    <div className="space-y-0">
+                      {[...aiDetail.byFeature]
+                        .sort((a, b) => b.calls - a.calls)
+                        .map((f) => (
+                          <div
+                            key={f.feature}
+                            className="flex items-center justify-between py-1.5 border-b border-stone-50 last:border-0"
+                          >
+                            <span className="text-xs text-stone-600 font-mono">
+                              {f.feature.toLowerCase().replace(/_/g, " ")}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-stone-400">{f.calls}×</span>
+                              <span className="text-xs text-stone-500 font-mono w-14 text-right">
+                                ${f.costUsd.toFixed(3)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-stone-400 font-mono">No AI usage yet</p>
+            )}
+          </div>
 
           {!canEdit && (
             <p className="text-xs text-stone-400 font-mono text-center pb-2">
