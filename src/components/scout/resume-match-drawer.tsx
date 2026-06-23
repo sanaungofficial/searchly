@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
+import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface MatchData {
   score: number;
@@ -362,6 +364,9 @@ export function ResumeMatchDrawer({
   const [selectedMissingKw, setSelectedMissingKw] = useState<string[]>([]);
   const [tailoredData, setTailoredData] = useState<TailoredData | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const { isPro, isAdmin, startCheckout } = useSubscription();
+  const proUser = isPro || isAdmin;
   const kwInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -406,8 +411,13 @@ export function ResumeMatchDrawer({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
-      .then((r) => r.json())
-      .then((d) => {
+      .then(async (r) => {
+        const d = await r.json();
+        if (r.status === 402) {
+          setShowUpgrade(true);
+          setError(d.error ?? "Monthly AI limit reached");
+          return;
+        }
         if (d.error) setError(d.error);
         else setData(d);
       })
@@ -451,6 +461,11 @@ export function ResumeMatchDrawer({
           workEditMode,
         }),
       });
+      if (res.status === 402) {
+        setShowUpgrade(true);
+        setGenerateError("Monthly AI limit reached");
+        return;
+      }
       const json = await res.json();
       if (json.error) setGenerateError(json.error);
       else setTailoredData(json);
@@ -820,6 +835,13 @@ export function ResumeMatchDrawer({
                           <BigScoreGauge score={data.score} />
                         </div>
                       </div>
+
+                      {data.score < 6 && (
+                        <GrowthMatchOffer
+                          isPro={proUser}
+                          onUpgrade={() => startCheckout()}
+                        />
+                      )}
 
                       {/* Comparison table */}
                       <div
@@ -1950,6 +1972,13 @@ export function ResumeMatchDrawer({
           </div>
         )}
       </div>
+
+      {showUpgrade && (
+        <GrowthUpgradeModal
+          trigger="limit_hit"
+          onClose={() => setShowUpgrade(false)}
+        />
+      )}
     </>,
     document.body
   );

@@ -7,6 +7,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS, type KanbanCard } from "./workspace-data";
 import type { DrawerTool } from "./workspace-opportunities";
 import { fontSans } from "@/lib/typography";
+import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 
 const sans = fontSans;
 
@@ -93,6 +94,7 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [chatJobId, setChatJobId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -185,6 +187,11 @@ export function ChatWidget() {
       });
 
       if (!res.ok) {
+        if (res.status === 402) {
+          setShowUpgrade(true);
+          setMessages((prev) => prev.slice(0, -1));
+          return;
+        }
         const err = res.status === 503 ? "AI is not available right now." : "Something went wrong. Try again.";
         setMessages((prev) => {
           const copy = [...prev];
@@ -653,6 +660,12 @@ export function ChatWidget() {
             )}
           </div>
         </>
+      )}
+      {showUpgrade && (
+        <GrowthUpgradeModal
+          trigger="limit_hit"
+          onClose={() => setShowUpgrade(false)}
+        />
       )}
     </>
   );

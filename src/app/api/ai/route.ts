@@ -1,6 +1,6 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
+import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
@@ -11,23 +11,17 @@ function getAnthropic() {
   return anthropic;
 }
 
-async function getDbUser(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  return prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-}
-
 export async function POST(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
-  const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
-  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await getAuthedUserForAi();
+  if ("error" in auth) return auth.error;
+  const { dbUser } = auth;
+
+  const quotaError = await requireAiQuota(dbUser);
+  if (quotaError) return quotaError;
 
   const body = await request.json();
   const { tool, company, role, notes, jobId } = body as {

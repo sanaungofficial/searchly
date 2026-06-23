@@ -558,6 +558,11 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         Limit reached — upgrade for unlimited AI access.
                       </p>
                     )}
+                    {!isPro && !isAdmin && usage.used >= Math.ceil((usage.limit ?? 10) * 0.8) && usage.used < (usage.limit ?? 10) && (
+                      <p style={{ fontSize: 14, color: "#7A6020", margin: "8px 0 0", lineHeight: 1.5 }}>
+                        Running low — {Math.max(0, (usage.limit ?? 10) - usage.used)} AI run{(usage.limit ?? 10) - usage.used !== 1 ? "s" : ""} left this month.
+                      </p>
+                    )}
                   </div>
                 )}
 
