@@ -53,6 +53,12 @@ export async function POST(req: NextRequest) {
   if (jobId && !finalDescription) {
     const job = await prisma.job.findUnique({ where: { id: jobId } });
     if (job?.description) finalDescription = job.description;
+    if (!finalDescription && job?.notes) {
+      try {
+        const parsed = JSON.parse(job.notes) as { description?: string };
+        if (parsed?.description) finalDescription = parsed.description;
+      } catch { /* ignore */ }
+    }
   }
 
   if (!finalDescription) {
