@@ -6,7 +6,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS, type KanbanCard } from "./workspace-data";
 import type { DrawerTool } from "./workspace-opportunities";
 
-const sans = "var(--font-source-sans), system-ui";
+const sans = "var(--font-ui)";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -265,7 +265,7 @@ export function ChatWidget() {
                       borderRadius: 5,
                       cursor: "pointer",
                       fontFamily: sans,
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: 600,
                       color: "#E8D5A3",
                       padding: "4px 8px",
@@ -289,7 +289,7 @@ export function ChatWidget() {
                       borderRadius: 5,
                       cursor: currentJob ? "pointer" : "default",
                       fontFamily: sans,
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: 600,
                       color: currentJob ? "#E8D5A3" : "rgba(232,213,163,0.35)",
                       padding: "4px 8px",
@@ -329,10 +329,10 @@ export function ChatWidget() {
                       flexShrink: 0,
                     }}
                   >
-                    <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+                    <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
                       {currentJob.role}
                     </p>
-                    <p style={{ fontFamily: sans, fontSize: 10, color: "#7A7268", margin: "2px 0 0" }}>
+                    <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "2px 0 0" }}>
                       {currentJob.company}
                       {currentJob.fit > 0 ? ` · ${currentJob.fit}% match` : ""}
                     </p>
@@ -381,7 +381,7 @@ export function ChatWidget() {
                           border: "1px solid rgba(0,0,0,0.1)",
                           borderRadius: 16,
                           fontFamily: sans,
-                          fontSize: 10,
+                          fontSize: 13,
                           color: "#1A3A2F",
                           cursor: "pointer",
                           textAlign: "left",
@@ -402,7 +402,7 @@ export function ChatWidget() {
                   }}
                 >
                   {!currentJob ? (
-                    <p style={{ fontFamily: sans, fontSize: 11, color: "#A09890", margin: 0, textAlign: "center" }}>
+                    <p style={{ fontFamily: sans, fontSize: 12, color: "var(--scout-muted)", margin: 0, textAlign: "center" }}>
                       Open a job to chat about fit.
                     </p>
                   ) : (
@@ -442,7 +442,7 @@ export function ChatWidget() {
                           background: input.trim() && !streaming ? "#1A3A2F" : "rgba(0,0,0,0.08)",
                           border: "none",
                           cursor: input.trim() && !streaming ? "pointer" : "default",
-                          color: input.trim() && !streaming ? "#E8D5A3" : "#A09890",
+                          color: input.trim() && !streaming ? "#E8D5A3" : "var(--scout-muted)",
                           fontSize: 16,
                           flexShrink: 0,
                         }}
@@ -459,9 +459,9 @@ export function ChatWidget() {
                 <p
                   style={{
                     fontFamily: sans,
-                    fontSize: 9,
+                    fontSize: 12,
                     fontWeight: 600,
-                    color: "#A09890",
+                    color: "var(--scout-muted)",
                     textTransform: "uppercase",
                     letterSpacing: "1px",
                     marginBottom: 6,
@@ -493,7 +493,7 @@ export function ChatWidget() {
                         flexShrink: 0,
                       }}
                     >
-                      <span style={{ fontFamily: sans, fontSize: 9, fontWeight: 600, color: "#E8D5A3" }}>
+                      <span style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, color: "#E8D5A3" }}>
                         {currentJob.initials}
                       </span>
                     </div>
@@ -501,7 +501,7 @@ export function ChatWidget() {
                       <p
                         style={{
                           fontFamily: sans,
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: 600,
                           color: "#1A1A1A",
                           whiteSpace: "nowrap",
@@ -512,7 +512,7 @@ export function ChatWidget() {
                       >
                         {currentJob.role}
                       </p>
-                      <p style={{ fontFamily: sans, fontSize: 9, color: "#7A7268", margin: 0 }}>
+                      <p style={{ fontFamily: sans, fontSize: 12, color: "var(--scout-muted)", margin: 0 }}>
                         {currentJob.company}
                       </p>
                     </div>
@@ -528,7 +528,7 @@ export function ChatWidget() {
                       borderRadius: 6,
                       background: "#FFFFFF",
                       fontFamily: sans,
-                      fontSize: 11,
+                      fontSize: 12,
                       color: "#1A1A1A",
                       marginBottom: 12,
                       cursor: "pointer",
@@ -545,9 +545,9 @@ export function ChatWidget() {
                   <p
                     style={{
                       fontFamily: sans,
-                      fontSize: 11,
-                      fontWeight: 300,
-                      color: "#A09890",
+                      fontSize: 12,
+                      fontWeight: 400,
+                      color: "var(--scout-muted)",
                       marginBottom: 12,
                       lineHeight: 1.5,
                     }}
@@ -584,9 +584,9 @@ export function ChatWidget() {
                   <p
                     style={{
                       fontFamily: sans,
-                      fontSize: 9,
-                      fontWeight: 300,
-                      color: "#A09890",
+                      fontSize: 12,
+                      fontWeight: 400,
+                      color: "var(--scout-muted)",
                       marginTop: 12,
                       textAlign: "center",
                       lineHeight: 1.4,
@@ -627,7 +627,7 @@ function ToolButton({
         gap: 10,
         padding: "11px 12px",
         background: disabled ? "rgba(0,0,0,0.03)" : "#FFFFFF",
-        color: disabled ? "#A09890" : "#1A1A1A",
+        color: disabled ? "var(--scout-muted)" : "#1A1A1A",
         border: "1px solid rgba(0,0,0,0.08)",
         borderRadius: 7,
         fontFamily: sans,
@@ -643,7 +643,7 @@ function ToolButton({
       <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
       <span style={{ flex: 1 }}>
         {title}
-        <span style={{ display: "block", fontSize: 10, fontWeight: 300, color: "#7A7268", marginTop: 1 }}>
+        <span style={{ display: "block", fontSize: 13, fontWeight: 400, color: "var(--scout-muted)", marginTop: 1 }}>
           {subtitle}
         </span>
       </span>

@@ -170,7 +170,7 @@ function daysLabel(days: number): string {
 }
 
 function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => void }) {
-  const fitColor = fit >= 85 ? mint : fit >= 70 ? "#C4A86A" : "#A09890";
+  const fitColor = fit >= 85 ? mint : fit >= 70 ? "#C4A86A" : "var(--scout-muted)";
   const label = fit >= 85 ? "STRONG MATCH" : fit >= 70 ? "GOOD MATCH" : "FAIR MATCH";
   const exp = fit;
   const skill = Math.max(0, Math.min(100, fit - 4));
@@ -242,7 +242,7 @@ function AiToolCard({
       }}
     >
       <p style={{ fontFamily: sans, fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: "0 0 6px" }}>{title}</p>
-      <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
+      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
       <button
         onClick={onClick}
         style={{
@@ -432,7 +432,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   <CompanyLogo name={card.company} website={cardUrl} size={52} />
                   <div>
                     <p style={{ fontFamily: serif, fontSize: 24, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{card.company}</p>
-                    {location && <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", margin: "6px 0 0" }}>{location}</p>}
+                    {location && <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "6px 0 0" }}>{location}</p>}
                   </div>
                 </div>
                 <a
@@ -443,7 +443,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 >
                   View on LinkedIn ↗
                 </a>
-                <p style={{ fontFamily: sans, fontSize: 15, color: "#7A7268", lineHeight: 1.65, marginTop: 16 }}>
+                <p style={{ fontFamily: sans, fontSize: 15, color: "var(--scout-muted)", lineHeight: 1.65, marginTop: 16 }}>
                   Track this company and open roles from the Companies tab in Opportunities.
                 </p>
               </div>
@@ -459,7 +459,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                     <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
                       <CompanyLogo name={card.company} website={cardUrl} size={56} />
                       <div>
-                        <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", margin: 0 }}>
+                        <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
                           <a href={companyLinkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
                             {card.company}
                           </a>

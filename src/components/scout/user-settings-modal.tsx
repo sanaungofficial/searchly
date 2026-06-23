@@ -168,7 +168,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   {user.name ?? user.email.split("@")[0]}
                 </p>
                 {user.headline && (
-                  <p style={{ fontSize: 10, color: "#8A7F72", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <p style={{ fontSize: 13, color: "#8A7F72", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {user.headline}
                   </p>
                 )}
@@ -292,7 +292,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 {/* Avatar upload */}
                 <div>
-                  <p style={{ fontSize: 11, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                  <p style={{ fontSize: 12, fontWeight: 500, color: "#8A7F72", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
                     Profile Photo
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -377,11 +377,11 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       >
                         {uploading ? "Uploading…" : "Upload photo"}
                       </button>
-                      <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
+                      <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
                         JPG, PNG, WebP or GIF · Max 5 MB
                       </p>
                       {uploadError && (
-                        <p style={{ fontSize: 11, color: "#C4574A", margin: "6px 0 0" }}>{uploadError}</p>
+                        <p style={{ fontSize: 12, color: "#C4574A", margin: "6px 0 0" }}>{uploadError}</p>
                       )}
                     </div>
                   </div>
@@ -452,7 +452,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         {(isPro || isAdmin) && (
                           <span
                             style={{
-                              fontSize: 10,
+                              fontSize: 13,
                               fontWeight: 600,
                               color: "#FFFFFF",
                               background: isAdmin ? "#6B4A8A" : "#1A3A2F",
@@ -466,17 +466,17 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         )}
                       </div>
                       {isPro && !isAdmin && periodEndFormatted && (
-                        <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
                           Renews {periodEndFormatted}
                         </p>
                       )}
                       {isAdmin && (
-                        <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
                           Unlimited access · all features enabled
                         </p>
                       )}
                       {!isPro && !isAdmin && (
-                        <p style={{ fontSize: 11, color: "#8A7F72", margin: 0 }}>
+                        <p style={{ fontSize: 12, color: "#8A7F72", margin: 0 }}>
                           Unlock unlimited AI tools &amp; job tracking
                         </p>
                       )}
@@ -537,7 +537,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       <p style={{ fontSize: 12, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
                         AI requests this month
                       </p>
-                      <span style={{ fontSize: 11, color: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#8A7F72" }}>
+                      <span style={{ fontSize: 12, color: usage.used >= (usage.limit ?? 10) ? "#C4574A" : "#8A7F72" }}>
                         {usage.used} / {usage.limit ?? 10}
                       </span>
                     </div>
@@ -553,7 +553,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       />
                     </div>
                     {usage.used >= (usage.limit ?? 10) && (
-                      <p style={{ fontSize: 11, color: "#C4574A", margin: "8px 0 0" }}>
+                      <p style={{ fontSize: 12, color: "#C4574A", margin: "8px 0 0" }}>
                         Limit reached — upgrade for unlimited AI access.
                       </p>
                     )}
@@ -603,7 +603,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   <p style={{ fontSize: 12, fontWeight: 600, color: "#52493F", margin: "0 0 4px" }}>
                     Not seeing your updated subscription?
                   </p>
-                  <p style={{ fontSize: 11, color: "#8A7F72", margin: "0 0 10px", lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 12, color: "#8A7F72", margin: "0 0 10px", lineHeight: 1.5 }}>
                     If you just upgraded, refresh the page to sync your plan status.
                   </p>
                   <button
@@ -614,7 +614,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       border: "1px solid #D5CFC8",
                       background: "white",
                       color: "#52493F",
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 500,
                       cursor: "pointer",
                     }}
@@ -634,7 +634,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p style={{ fontSize: 11, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+      <p style={{ fontSize: 12, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
         {label}
       </p>
       <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "#F7F5F2", borderRadius: 7, border: "1px solid #EEE9E2" }}>

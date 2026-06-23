@@ -38,10 +38,10 @@ export function WorkspaceLive() {
       <div style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
         <p
           style={{
-            fontFamily: "var(--font-source-sans), system-ui",
+            fontFamily: "var(--font-ui)",
             fontSize: 12,
             fontWeight: 500,
-            color: "#A09890",
+            color: "var(--scout-muted)",
             letterSpacing: "1.1px",
             textTransform: "uppercase",
             marginBottom: 8,
@@ -51,7 +51,7 @@ export function WorkspaceLive() {
         </p>
         <h1
           style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
+            fontFamily: "var(--font-display)",
             fontSize: 32,
             fontWeight: 500,
             fontStyle: "italic",
@@ -87,8 +87,8 @@ export function WorkspaceLive() {
                 background: weekly.accentColor,
                 color: weekly.bgColor,
                 borderRadius: 100,
-                fontFamily: "var(--font-source-sans), system-ui",
-                fontSize: 11,
+                fontFamily: "var(--font-ui)",
+                fontSize: 12,
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "1px",
@@ -98,7 +98,7 @@ export function WorkspaceLive() {
             </span>
             <span
               style={{
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 13,
                 color: weekly.accentColor,
                 opacity: 0.6,
@@ -109,7 +109,7 @@ export function WorkspaceLive() {
           </div>
           <h2
             style={{
-              fontFamily: "var(--font-cormorant), Georgia, serif",
+              fontFamily: "var(--font-display)",
               fontSize: 26,
               fontWeight: 500,
               fontStyle: "italic",
@@ -122,9 +122,9 @@ export function WorkspaceLive() {
           </h2>
           <p
             style={{
-              fontFamily: "var(--font-source-sans), system-ui",
+              fontFamily: "var(--font-ui)",
               fontSize: 14,
-              fontWeight: 300,
+              fontWeight: 400,
               color: weekly.accentColor,
               opacity: 0.85,
               lineHeight: 1.6,
@@ -156,7 +156,7 @@ export function WorkspaceLive() {
             >
               <span
                 style={{
-                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 600,
                   color: weekly.bgColor,
@@ -168,7 +168,7 @@ export function WorkspaceLive() {
             <div>
               <p
                 style={{
-                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 600,
                   color: "#FFFFFF",
@@ -178,7 +178,7 @@ export function WorkspaceLive() {
               </p>
               <p
                 style={{
-                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 12,
                   color: weekly.accentColor,
                   opacity: 0.7,
@@ -195,7 +195,7 @@ export function WorkspaceLive() {
               color: weekly.bgColor,
               border: "none",
               borderRadius: 6,
-              fontFamily: "var(--font-source-sans), system-ui",
+              fontFamily: "var(--font-ui)",
               fontSize: 13,
               fontWeight: 600,
               cursor: "pointer",
@@ -221,7 +221,7 @@ export function WorkspaceLive() {
                   color,
                   border: "none",
                   borderRadius: 100,
-                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 500,
                   cursor: "pointer",
@@ -260,8 +260,8 @@ export function WorkspaceLive() {
                       background: s.accentColor,
                       color: s.bgColor,
                       borderRadius: 100,
-                      fontFamily: "var(--font-source-sans), system-ui",
-                      fontSize: 11,
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 12,
                       fontWeight: 700,
                       textTransform: "uppercase",
                       letterSpacing: "1px",
@@ -271,7 +271,7 @@ export function WorkspaceLive() {
                   </span>
                   <span
                     style={{
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 12,
                       color: s.accentColor,
                       opacity: 0.7,
@@ -282,7 +282,7 @@ export function WorkspaceLive() {
                 </div>
                 <p
                   style={{
-                    fontFamily: "var(--font-source-sans), system-ui",
+                    fontFamily: "var(--font-ui)",
                     fontSize: 14,
                     fontWeight: 600,
                     color: "#FFFFFF",
@@ -294,7 +294,7 @@ export function WorkspaceLive() {
                 </p>
                 <p
                   style={{
-                    fontFamily: "var(--font-source-sans), system-ui",
+                    fontFamily: "var(--font-ui)",
                     fontSize: 12,
                     color: s.accentColor,
                     opacity: 0.7,
@@ -306,9 +306,9 @@ export function WorkspaceLive() {
               <div style={{ padding: "12px 18px 14px" }}>
                 <p
                   style={{
-                    fontFamily: "var(--font-source-sans), system-ui",
+                    fontFamily: "var(--font-ui)",
                     fontSize: 13,
-                    fontWeight: 300,
+                    fontWeight: 400,
                     color: "#52493F",
                     lineHeight: 1.55,
                     marginBottom: 12,
@@ -326,9 +326,9 @@ export function WorkspaceLive() {
                 >
                   <span
                     style={{
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 12,
-                      color: "#7A7268",
+                      color: "var(--scout-muted)",
                     }}
                   >
                     {s.isLive ? `${s.registered} watching` : `${s.registered} registered`}
@@ -340,7 +340,7 @@ export function WorkspaceLive() {
                       color: "#FFFFFF",
                       border: "none",
                       borderRadius: 5,
-                      fontFamily: "var(--font-source-sans), system-ui",
+                      fontFamily: "var(--font-ui)",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: "pointer",

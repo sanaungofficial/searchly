@@ -225,7 +225,7 @@ export function WorkspaceSidebar({
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                fontFamily: "var(--font-source-sans), system-ui",
+                fontFamily: "var(--font-ui)",
                 fontSize: 12,
                 color: "rgba(232,213,163,0.75)",
                 letterSpacing: "0.4px",
@@ -264,10 +264,10 @@ export function WorkspaceSidebar({
             /* Full header: brand + bell (+ mobile close) */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontFamily: "var(--font-cormorant), Georgia, serif", fontSize: 22, fontWeight: 500, color: "#E8D5A3" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "#E8D5A3" }}>
                   Kimchi
                 </div>
-                <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "rgba(232,213,163,0.32)", letterSpacing: "1.1px", textTransform: "uppercase", marginTop: 3 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "rgba(232,213,163,0.32)", letterSpacing: "1.1px", textTransform: "uppercase", marginTop: 3 }}>
                   by Second Ladder
                 </div>
               </div>
@@ -334,7 +334,7 @@ export function WorkspaceSidebar({
                 <rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
               {!isRail && (
-                <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 15, fontWeight: 400, color: pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 400, color: pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
                   Admin
                 </span>
               )}
@@ -372,7 +372,7 @@ export function WorkspaceSidebar({
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
               {!isRail && (
-                <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 15, fontWeight: 400, color: pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 400, color: pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
                   Clients
                 </span>
               )}
@@ -410,7 +410,7 @@ export function WorkspaceSidebar({
                   )}
                 </span>
                 {!isRail && (
-                  <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 15, fontWeight: 400, color: active ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 400, color: active ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
                     {label}
                   </span>
                 )}
@@ -460,7 +460,7 @@ export function WorkspaceSidebar({
             <img src={user.avatarUrl} alt={user.name ?? ""} style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           ) : (
             <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(232,213,163,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 600, color: "rgba(232,213,163,0.8)" }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "rgba(232,213,163,0.8)" }}>
                 {user ? initials(user.name, user.email) : "?"}
               </span>
             </div>
@@ -468,11 +468,11 @@ export function WorkspaceSidebar({
           {!isRail && (
             <>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, fontWeight: 400, color: "rgba(232,213,163,0.65)", marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 400, color: "rgba(232,213,163,0.65)", marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {user?.name ?? user?.email?.split("@")[0] ?? "Account"}
                 </p>
                 {user?.headline && (
-                  <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 300, color: "rgba(232,213,163,0.28)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 400, color: "rgba(232,213,163,0.28)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {user.headline}
                   </p>
                 )}
@@ -499,13 +499,13 @@ export function WorkspaceSidebar({
             <div onClick={onToggleNotif} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
             <div style={{ position: "absolute", top: 76, right: 18, width: 320, background: "#FFFFFF", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)", zIndex: 50, overflow: "hidden", animation: "fadeIn 0.2s ease both" }}>
               <div style={{ padding: "14px 18px", borderBottom: "1px solid #EEE9E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>Notifications</p>
-                {notifUnreadCount > 0 && <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890" }}>{notifUnreadCount} unread</span>}
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>Notifications</p>
+                {notifUnreadCount > 0 && <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)" }}>{notifUnreadCount} unread</span>}
               </div>
               <div style={{ maxHeight: 360, overflowY: "auto" }}>
                 {NOTIFICATIONS.length === 0 ? (
                   <div style={{ padding: "36px 18px", textAlign: "center" }}>
-                    <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890", lineHeight: 1.5 }}>You&apos;re all caught up</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", lineHeight: 1.5 }}>You&apos;re all caught up</p>
                   </div>
                 ) : NOTIFICATIONS.map((n) => {
                   const dotColor = n.type === "role" ? "#4A8B6A" : n.type === "deadline" ? "#C4574A" : "#C4A86A";
@@ -518,11 +518,11 @@ export function WorkspaceSidebar({
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, marginTop: 6, flexShrink: 0, opacity: n.unread ? 1 : 0.3 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", gap: 6, alignItems: "baseline", marginBottom: 2 }}>
-                          <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{n.title}</span>
-                          <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890" }}>· {n.company}</span>
+                          <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{n.title}</span>
+                          <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)" }}>· {n.company}</span>
                         </div>
-                        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 300, color: "#52493F", lineHeight: 1.45, marginBottom: 4 }}>{n.body}</p>
-                        <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#A09890" }}>{n.time}</span>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: "#52493F", lineHeight: 1.45, marginBottom: 4 }}>{n.body}</p>
+                        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)" }}>{n.time}</span>
                       </div>
                     </button>
                   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { color } from "@/lib/typography";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 
 interface CachedJob {
@@ -100,7 +102,7 @@ function AutoTextarea({ value, placeholder, onBlur }: { value: string; placehold
   }, [local]);
   return (
     <div style={{ ...editableWrapStyle, background: focused ? "#fff" : hovered ? "#f5f3f0" : "transparent", outline: focused ? "1.5px solid #c5b9af" : "none" }} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-      <textarea ref={ref} value={local} onChange={(e) => setLocal(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur(local); }} placeholder={placeholder} rows={1} style={{ width: "100%", fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#1a1a1a", background: "transparent", border: "none", outline: "none", resize: "none", lineHeight: 1.55, padding: 0, overflow: "hidden" }} />
+      <textarea ref={ref} value={local} onChange={(e) => setLocal(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur(local); }} placeholder={placeholder} rows={1} style={{ width: "100%", fontFamily: "var(--font-ui)", fontSize: 12, color: "#1a1a1a", background: "transparent", border: "none", outline: "none", resize: "none", lineHeight: 1.55, padding: 0, overflow: "hidden" }} />
     </div>
   );
 }
@@ -112,7 +114,7 @@ function InlineInput({ value, placeholder, onBlur, mono, bold }: { value: string
   useEffect(() => { setLocal(value); }, [value]);
   return (
     <div style={{ ...editableWrapStyle, background: focused ? "#fff" : hovered ? "#f5f3f0" : "transparent", outline: focused ? "1.5px solid #c5b9af" : "none" }} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-      <input value={local} onChange={(e) => setLocal(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur(local); }} placeholder={placeholder} style={{ width: "100%", fontFamily: mono ? "monospace" : "var(--font-source-sans), system-ui", fontSize: mono ? 11 : 12, fontWeight: bold ? 600 : 400, color: mono ? "#6b7280" : "#1a1a1a", background: "transparent", border: "none", outline: "none", padding: 0 }} />
+      <input value={local} onChange={(e) => setLocal(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur(local); }} placeholder={placeholder} style={{ width: "100%", fontFamily: mono ? "monospace" : "var(--font-ui)", fontSize: mono ? 11 : 12, fontWeight: bold ? 600 : 400, color: mono ? "#6b7280" : "#1a1a1a", background: "transparent", border: "none", outline: "none", padding: 0 }} />
     </div>
   );
 }
@@ -133,7 +135,7 @@ function PriorityBadge({ value, onChange }: { value: string; onChange: (v: strin
   }
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
-      <button ref={btnRef} onClick={handleOpen} style={{ background: color.bg, color: color.text, border: "none", borderRadius: 5, padding: "3px 8px", fontSize: 11, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
+      <button ref={btnRef} onClick={handleOpen} style={{ background: color.bg, color: color.text, border: "none", borderRadius: 5, padding: "3px 8px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
       {open && (
         <div style={{ position: "fixed", top: coords.top, left: coords.left, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}>
           {["HIGH", "MEDIUM", "LOW", ""].map((opt) => (
@@ -165,16 +167,16 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
     <div style={{ minWidth: 160 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
         {hasJobs && (
-          <span style={{ background: "#f0fdf4", color: "#16a34a", borderRadius: 5, padding: "3px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+          <span style={{ background: "#f0fdf4", color: "#16a34a", borderRadius: 5, padding: "3px 8px", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
             {jobCount} {jobCount === 1 ? "role" : "roles"}
           </span>
         )}
-        <button onClick={handleRefresh} disabled={loading} title="Scan careers page for open roles" style={{ background: loading ? "#f3f4f6" : "transparent", color: loading ? "#9ca3af" : "#6b7280", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 8px", fontSize: 11, cursor: loading ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "var(--font-source-sans), system-ui" }}>
+        <button onClick={handleRefresh} disabled={loading} title="Scan careers page for open roles" style={{ background: loading ? "#f3f4f6" : "transparent", color: loading ? "#9ca3af" : "#6b7280", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 8px", fontSize: 12, cursor: loading ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "var(--font-ui)" }}>
           {loading ? "Scanning…" : hasJobs ? "↻ Refresh" : "Scan jobs"}
         </button>
       </div>
-      {company.lastJobsFetchedAt && <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3, fontFamily: "var(--font-source-sans), system-ui" }}>{timeAgo(company.lastJobsFetchedAt)}</div>}
-      {error && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4, lineHeight: 1.4, fontFamily: "var(--font-source-sans), system-ui" }}>{error}</div>}
+      {company.lastJobsFetchedAt && <div style={{ fontSize: 13, color: "#9ca3af", marginTop: 3, fontFamily: "var(--font-ui)" }}>{timeAgo(company.lastJobsFetchedAt)}</div>}
+      {error && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4, lineHeight: 1.4, fontFamily: "var(--font-ui)" }}>{error}</div>}
     </div>
   );
 }
@@ -184,7 +186,7 @@ function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefresh
 function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>{title}</div>
+      <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>{title}</div>
       {children}
     </div>
   );
@@ -193,7 +195,7 @@ function DrawerSection({ title, children }: { title: string; children: React.Rea
 function DrawerField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, fontWeight: 500, color: "#A09890", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 500, color: "var(--scout-muted)", marginBottom: 3 }}>{label}</div>
       {children}
     </div>
   );
@@ -271,8 +273,8 @@ function CompanyDrawer({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <InlineInput value={company.name} placeholder="Company name" onBlur={(v) => v.trim() && onPatch(company.id, "name", v)} bold />
                 <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                  {company.website && <a href={company.website.startsWith("http") ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 11, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Website</a>}
-                  {company.careersUrl && <a href={company.careersUrl.startsWith("http") ? company.careersUrl : `https://${company.careersUrl}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 11, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Careers</a>}
+                  {company.website && <a href={company.website.startsWith("http") ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 12, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Website</a>}
+                  {company.careersUrl && <a href={company.careersUrl.startsWith("http") ? company.careersUrl : `https://${company.careersUrl}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 12, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Careers</a>}
                 </div>
               </div>
             </div>
@@ -290,34 +292,34 @@ function CompanyDrawer({
           <DrawerSection title="Company Intel">
             {!intel ? (
               <div>
-                <button onClick={handleEnrich} disabled={enriching} style={{ background: enriching ? "#f3f4f6" : "#1a1a1a", color: enriching ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-source-sans), system-ui", fontWeight: 500 }}>
+                <button onClick={handleEnrich} disabled={enriching} style={{ background: enriching ? "#f3f4f6" : "#1a1a1a", color: enriching ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)", fontWeight: 500 }}>
                   {enriching ? "Researching…" : "✦ Enrich with AI"}
                 </button>
-                {enrichError && <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
-                <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#A09890", marginTop: 6 }}>Pulls company overview, funding, leadership, and recent news from AI.</div>
+                {enrichError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)", marginTop: 6 }}>Pulls company overview, funding, leadership, and recent news from AI.</div>
               </div>
             ) : (
               <div>
                 {/* Description */}
-                {intel.description && <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#374151", lineHeight: 1.6, margin: "0 0 14px 0" }}>{intel.description}</p>}
+                {intel.description && <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#374151", lineHeight: 1.6, margin: "0 0 14px 0" }}>{intel.description}</p>}
 
                 {/* Quick stats row */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-                  {intel.founded && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-source-sans), system-ui" }}>📅 Founded {intel.founded}</span>}
-                  {intel.headquarters && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-source-sans), system-ui" }}>📍 {intel.headquarters}</span>}
-                  {intel.employeeCount && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-source-sans), system-ui" }}>👥 {intel.employeeCount}</span>}
-                  {intel.industry && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#374151", fontFamily: "var(--font-source-sans), system-ui" }}>{intel.industry}</span>}
-                  {intel.glassdoorRating && <span style={{ background: "#f0fdf4", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#16a34a", fontFamily: "var(--font-source-sans), system-ui", fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
+                  {intel.founded && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 12, color: "#374151", fontFamily: "var(--font-ui)" }}>📅 Founded {intel.founded}</span>}
+                  {intel.headquarters && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 12, color: "#374151", fontFamily: "var(--font-ui)" }}>📍 {intel.headquarters}</span>}
+                  {intel.employeeCount && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 12, color: "#374151", fontFamily: "var(--font-ui)" }}>👥 {intel.employeeCount}</span>}
+                  {intel.industry && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 12, color: "#374151", fontFamily: "var(--font-ui)" }}>{intel.industry}</span>}
+                  {intel.glassdoorRating && <span style={{ background: "#f0fdf4", borderRadius: 5, padding: "3px 8px", fontSize: 12, color: "#16a34a", fontFamily: "var(--font-ui)", fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
                 </div>
 
                 {/* Funding */}
                 {(intel.fundingStage || intel.totalFunding || (intel.keyInvestors?.length > 0)) && (
                   <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
-                    <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Funding</div>
+                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Funding</div>
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                      {intel.fundingStage && <div><div style={{ fontSize: 10, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui" }}>Stage</div><div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-source-sans), system-ui" }}>{intel.fundingStage}</div></div>}
-                      {intel.totalFunding && <div><div style={{ fontSize: 10, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui" }}>Total</div><div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-source-sans), system-ui" }}>{intel.totalFunding}</div></div>}
-                      {intel.keyInvestors?.length > 0 && <div><div style={{ fontSize: 10, color: "#A09890", fontFamily: "var(--font-source-sans), system-ui" }}>Investors</div><div style={{ fontSize: 12, color: "#374151", fontFamily: "var(--font-source-sans), system-ui" }}>{intel.keyInvestors.join(", ")}</div></div>}
+                      {intel.fundingStage && <div><div style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-ui)" }}>Stage</div><div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-ui)" }}>{intel.fundingStage}</div></div>}
+                      {intel.totalFunding && <div><div style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-ui)" }}>Total</div><div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-ui)" }}>{intel.totalFunding}</div></div>}
+                      {intel.keyInvestors?.length > 0 && <div><div style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-ui)" }}>Investors</div><div style={{ fontSize: 12, color: "#374151", fontFamily: "var(--font-ui)" }}>{intel.keyInvestors.join(", ")}</div></div>}
                     </div>
                   </div>
                 )}
@@ -325,12 +327,12 @@ function CompanyDrawer({
                 {/* Leadership */}
                 {intel.leadership?.length > 0 && (
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Leadership</div>
+                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Leadership</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {intel.leadership.map((l, i) => (
                         <div key={i} style={{ background: "#fff", border: "1px solid #e8e3dd", borderRadius: 7, padding: "7px 12px", minWidth: 120 }}>
-                          <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{l.name}</div>
-                          <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#6b7280" }}>{l.title}</div>
+                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{l.name}</div>
+                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#6b7280" }}>{l.title}</div>
                         </div>
                       ))}
                     </div>
@@ -340,12 +342,12 @@ function CompanyDrawer({
                 {/* Recent News */}
                 {intel.recentNews?.length > 0 && (
                   <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 700, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Recent News</div>
+                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Recent News</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {intel.recentNews.map((n, i) => (
                         <div key={i} style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 7, padding: "8px 12px" }}>
-                          <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#1a1a1a" }}>{n.title}</div>
-                          <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#6b7280", marginTop: 2 }}>{n.summary} <span style={{ color: "#A09890" }}>· {n.date}</span></div>
+                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 500, color: "#1a1a1a" }}>{n.title}</div>
+                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#6b7280", marginTop: 2 }}>{n.summary} <span style={{ color: "var(--scout-muted)" }}>· {n.date}</span></div>
                         </div>
                       ))}
                     </div>
@@ -354,13 +356,13 @@ function CompanyDrawer({
 
                 {/* Re-enrich */}
                 <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 11, color: "#6b7280", background: "none", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-source-sans), system-ui" }}>
+                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 12, color: "#6b7280", background: "none", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)" }}>
                     {enriching ? "Refreshing…" : "↻ Refresh intel"}
                   </button>
-                  {company.enrichmentFetchedAt && <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, color: "#A09890" }}>Updated {timeAgo(company.enrichmentFetchedAt)}</span>}
+                  {company.enrichmentFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)" }}>Updated {timeAgo(company.enrichmentFetchedAt)}</span>}
                 </div>
-                {enrichError && <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
-                <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, color: "#d1d5db", marginTop: 6 }}>AI-generated · may not reflect latest data</div>
+                {enrichError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#d1d5db", marginTop: 6 }}>AI-generated · may not reflect latest data</div>
               </div>
             )}
           </DrawerSection>
@@ -368,15 +370,15 @@ function CompanyDrawer({
           {/* Open Roles */}
           <DrawerSection title="Open Roles">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <button onClick={handleScan} disabled={scanning} style={{ background: scanning ? "#f3f4f6" : "#1a1a1a", color: scanning ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: scanning ? "not-allowed" : "pointer", fontFamily: "var(--font-source-sans), system-ui", fontWeight: 500 }}>
+              <button onClick={handleScan} disabled={scanning} style={{ background: scanning ? "#f3f4f6" : "#1a1a1a", color: scanning ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12, cursor: scanning ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)", fontWeight: 500 }}>
                 {scanning ? "Scanning…" : jobs.length > 0 ? "↻ Re-scan" : "Scan for roles"}
               </button>
-              {company.lastJobsFetchedAt && <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#A09890" }}>Last scanned {timeAgo(company.lastJobsFetchedAt)}</span>}
+              {company.lastJobsFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)" }}>Last scanned {timeAgo(company.lastJobsFetchedAt)}</span>}
             </div>
-            {scanError && <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#dc2626", marginBottom: 8, lineHeight: 1.4 }}>{scanError}</div>}
+            {scanError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#dc2626", marginBottom: 8, lineHeight: 1.4 }}>{scanError}</div>}
 
             {jobs.length === 0 && !scanning ? (
-              <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#A09890", padding: "16px 0" }}>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", padding: "16px 0" }}>
                 No roles cached yet. Add a careers URL and click &ldquo;Scan for roles&rdquo;.
               </div>
             ) : (
@@ -387,18 +389,18 @@ function CompanyDrawer({
                     <div key={i} style={{ padding: "10px 14px", borderBottom: i < sorted.length - 1 ? "1px solid #f0ebe4" : "none", display: "flex", alignItems: "flex-start", gap: 10, background: match ? "#f9fffe" : "#fff" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {job.url ? (
-                          <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", display: "block" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
+                          <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", display: "block" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
                         ) : (
-                          <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, fontWeight: 500, color: "#1a1a1a" }}>{job.title}</span>
+                          <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "#1a1a1a" }}>{job.title}</span>
                         )}
                         {(job.department || job.location) && (
-                          <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#6b7280", marginTop: 2 }}>
                             {[job.department, job.location].filter(Boolean).join(" · ")}
                           </div>
                         )}
                       </div>
                       {match && (
-                        <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, marginTop: 2, fontFamily: "var(--font-source-sans), system-ui", letterSpacing: "0.03em" }}>Match</span>
+                        <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, marginTop: 2, fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
                       )}
                     </div>
                   );
@@ -406,7 +408,7 @@ function CompanyDrawer({
               </div>
             )}
             {jobs.length > 0 && userTargetRoles.length > 0 && (
-              <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 11, color: "#A09890", marginTop: 8 }}>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)", marginTop: 8 }}>
                 Matching against: {userTargetRoles.slice(0, 3).join(", ")}{userTargetRoles.length > 3 ? ` +${userTargetRoles.length - 3} more` : ""}
               </div>
             )}
@@ -446,7 +448,7 @@ function CompanyDrawer({
 
           {/* Danger zone */}
           <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 16 }}>
-            <button onClick={() => { onRemove(company.id); onClose(); }} style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onMouseEnter={(e) => { (e.currentTarget.style.background = "#fef2f2"); }} onMouseLeave={(e) => { (e.currentTarget.style.background = "none"); }}>
+            <button onClick={() => { onRemove(company.id); onClose(); }} style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onMouseEnter={(e) => { (e.currentTarget.style.background = "#fef2f2"); }} onMouseLeave={(e) => { (e.currentTarget.style.background = "none"); }}>
               Remove company
             </button>
           </div>
@@ -503,17 +505,17 @@ export function WorkspaceCompanies() {
 
   const selectedCompany = companies.find((c) => c.id === selectedId) ?? null;
 
-  const thStyle: React.CSSProperties = { fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 600, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.08em", padding: "10px 14px", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #e8e3dd", background: "#faf8f5" };
+  const thStyle: React.CSSProperties = { fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "10px 14px", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #e8e3dd", background: "#faf8f5" };
   const tdStyle: React.CSSProperties = { padding: "12px 14px", verticalAlign: "top", borderBottom: "1px solid #f0ebe4" };
 
   return (
     <div style={{ padding: "24px 32px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Tracked Companies</div>
-          <div style={{ fontFamily: "var(--font-source-sans), system-ui", color: "#A09890", fontSize: 13, marginTop: 2 }}>{companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist</div>
+          <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Tracked Companies</div>
+          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 13, marginTop: 2 }}>{companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist</div>
         </div>
-        <button onClick={() => setShowAdd((s) => !s)} style={{ background: showAdd ? "#f3f4f6" : "#1a1a1a", color: showAdd ? "#1a1a1a" : "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "var(--font-source-sans), system-ui" }}>
+        <button onClick={() => setShowAdd((s) => !s)} style={{ background: showAdd ? "#f3f4f6" : "#1a1a1a", color: showAdd ? "#1a1a1a" : "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "var(--font-ui)" }}>
           {showAdd ? "Cancel" : "+ Track company"}
         </button>
       </div>
@@ -521,20 +523,20 @@ export function WorkspaceCompanies() {
       {showAdd && (
         <form onSubmit={handleAdd} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-end" }}>
           <div style={{ flex: 1 }}>
-            <label style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 500, color: "#555", display: "block", marginBottom: 5 }}>Company name *</label>
-            <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Comcast, Aramark, Deloitte" style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-source-sans), system-ui" }} required />
+            <label style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 500, color: "#555", display: "block", marginBottom: 5 }}>Company name *</label>
+            <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Comcast, Aramark, Deloitte" style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }} required />
           </div>
-          <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-source-sans), system-ui" }}>{saving ? "Adding…" : "Add"}</button>
+          <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-ui)" }}>{saving ? "Adding…" : "Add"}</button>
         </form>
       )}
 
       {loading ? (
-        <div style={{ color: "#A09890", fontSize: 13, padding: "48px 0", textAlign: "center", fontFamily: "var(--font-source-sans), system-ui" }}>Loading…</div>
+        <div style={{ color: "var(--scout-muted)", fontSize: 13, padding: "48px 0", textAlign: "center", fontFamily: "var(--font-ui)" }}>Loading…</div>
       ) : companies.length === 0 ? (
         <div style={{ background: "#fff", border: "1.5px dashed #d1d5db", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🏢</div>
-          <div style={{ fontFamily: "var(--font-source-sans), system-ui", fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 6 }}>No companies tracked yet</div>
-          <div style={{ fontFamily: "var(--font-source-sans), system-ui", color: "#A09890", fontSize: 13 }}>Add companies you want to monitor for open roles and signals.</div>
+          <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 6 }}>No companies tracked yet</div>
+          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 13 }}>Add companies you want to monitor for open roles and signals.</div>
         </div>
       ) : (
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e8e3dd" }}>
@@ -565,7 +567,7 @@ export function WorkspaceCompanies() {
                     <td style={rowTd}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
                         {/* Avatar — click to open drawer */}
-                        <button onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} title="View company details" style={{ width: 30, height: 30, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11, flexShrink: 0, marginTop: 2, border: selectedId === c.id ? "2px solid #1a1a1a" : "2px solid transparent", cursor: "pointer", padding: 0 }}>{initials}</button>
+                        <button onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} title="View company details" style={{ width: 30, height: 30, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 12, flexShrink: 0, marginTop: 2, border: selectedId === c.id ? "2px solid #1a1a1a" : "2px solid transparent", cursor: "pointer", padding: 0 }}>{initials}</button>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <InlineInput value={c.name} placeholder="Company name" onBlur={(v) => v.trim() && patchField(c.id, "name", v)} bold />
                           <InlineInput value={c.website ?? ""} placeholder="Website" onBlur={(v) => patchField(c.id, "website", v)} mono />
@@ -583,7 +585,7 @@ export function WorkspaceCompanies() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <JobsCell company={c} onRefreshed={handleRefreshed} />
                         {jobCount > 0 && matchCount > 0 && (
-                          <button onClick={() => setSelectedId(c.id)} style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, color: "#16a34a", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", textDecoration: "underline" }}>
+                          <button onClick={() => setSelectedId(c.id)} style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#16a34a", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", textDecoration: "underline" }}>
                             {matchCount} match{matchCount !== 1 ? "es" : ""} for your roles
                           </button>
                         )}
