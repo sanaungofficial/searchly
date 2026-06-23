@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
-import { X, Download, Loader2, Check, Printer, RefreshCw } from "lucide-react";
+import { X, Download, Loader2, Check, RefreshCw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   type ParsedResumeData,
@@ -10,19 +10,15 @@ import {
   hasResumeBodyContent,
   type ResumeSectionId,
 } from "@/lib/resume-parse";
-import {
-  JR,
-  ReportPanel,
-  ResumePreview,
-  SectionsPanel,
-  type ReportIssue,
-} from "./profile-resume-editor-panels";
+import { JR, type ReportIssue } from "./profile-resume-editor-panels";
 import {
   ResumeAnalysisReportDrawer,
   buildFullReport,
-  GradeBadgeRow,
+  scoreToGrade,
   type ReportHighlightCategory,
 } from "./profile-resume-analysis-report";
+import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobright-document";
+import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
 
 interface ProfileResumeEditorProps {
   open: boolean;
@@ -87,13 +83,12 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
   const [assetName, setAssetName] = useState("");
   const [isPrimary, setIsPrimary] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedResumeData>(emptyParsedResumeData());
-  const [activeSection, setActiveSection] = useState<ResumeSectionId>("experience");
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [fixSection, setFixSection] = useState<{ sectionId: ResumeSectionId; entryLabel?: string } | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"report" | "preview" | "edit">("preview");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useLayoutEffect(() => {
@@ -117,22 +112,22 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     updatedAt: analysis?._cachedAt,
   });
 
-  function openFullReport() {
-    setReportOpen(true);
-  }
 
   function beginImprovements() {
     setReportOpen(false);
-    if (isMobile) setMobileTab("edit");
     const firstUrgent = fullReport.highlights
       .flatMap((g) => g.items)
       .find((i) => i.severity === "Urgent" || i.severity === "Critical");
     const title = firstUrgent?.title.toLowerCase() || "";
-    if (/summary|skill|keyword/.test(title)) setActiveSection("summary");
-    else if (/education|degree/.test(title)) setActiveSection("education");
-    else if (/skill/.test(title)) setActiveSection("skills");
-    else setActiveSection("experience");
+    if (/summary|skill|keyword/.test(title)) setFixSection({ sectionId: "summary" });
+    else if (/education|degree/.test(title)) setFixSection({ sectionId: "education" });
+    else if (/skill/.test(title)) setFixSection({ sectionId: "skills" });
+    else setFixSection({ sectionId: "experience" });
   }
+
+  const displayScore = report?.score ?? completeness.pct;
+  const { grade, label: gradeLabel } = scoreToGrade(displayScore);
+  const fixIssues = fixSection ? getSectionFixIssues(fixSection.sectionId, fullReport) : [];
 
   const loadAnalysis = useCallback(async (id: string, force = false) => {
     setAnalysisLoading(true);
@@ -218,7 +213,7 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     if (!open) {
       setAnalysis(null);
       setReportOpen(false);
-      setMobileTab("preview");
+      setFixSection(null);
     }
   }, [open, assetId, loadAsset]);
 
@@ -247,33 +242,6 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
     }
   }
 
-  const headerFields = (
-    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 8, marginBottom: 16 }}>
-      {[
-        { key: "name", label: "Full name", value: parsedData.name || "" },
-        { key: "email", label: "Email", value: parsedData.email || "" },
-        { key: "phone", label: "Phone", value: parsedData.phone || "" },
-        { key: "location", label: "Location", value: parsedData.location || "" },
-        { key: "linkedinUrl", label: "LinkedIn", value: parsedData.linkedinUrl || "" },
-        { key: "website", label: "Website", value: parsedData.website || "" },
-      ].map((field) => (
-        <input
-          key={field.key}
-          placeholder={field.label}
-          value={field.value}
-          onChange={(e) => queueSave({ ...parsedData, [field.key]: e.target.value })}
-          style={{
-            width: "100%",
-            padding: "8px 10px",
-            border: `1px solid ${JR.border}`,
-            borderRadius: 6,
-            fontSize: 13,
-            boxSizing: "border-box",
-          }}
-        />
-      ))}
-    </div>
-  );
 
   return (
     <div className="resume-print-outer" style={{ position: "fixed", inset: 0, zIndex: 1000, fontFamily: "var(--font-ui), sans-serif" }}>
@@ -307,61 +275,39 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: isMobile ? "0 12px" : "0 24px",
-            height: 56,
+            padding: isMobile ? "0 12px" : "0 20px",
+            height: 52,
             borderBottom: `1px solid ${JR.border}`,
             background: JR.panel,
             flexShrink: 0,
-            gap: 8,
+            gap: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: JR.muted, display: "flex" }}>
               <X size={18} />
             </button>
-            <span style={{ fontSize: 15, fontWeight: 600, color: JR.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{assetName}</span>
+            <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: JR.muted }}>RESUME</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: JR.text, padding: "4px 10px", background: JR.bg, borderRadius: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
+              {assetName}
+            </span>
             {isPrimary && (
               <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", background: JR.greenLight, color: JR.greenDark, borderRadius: 999 }}>Primary</span>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <JobrightScorePill score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} />
             {saved && <span style={{ fontSize: 13, color: JR.green, display: "flex", alignItems: "center", gap: 4 }}><Check size={13} /> Saved</span>}
             {saving && <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: JR.muted }} />}
-            <button type="button" onClick={() => window.print()} style={{ padding: "8px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              <Printer size={14} /> Print
+            <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
+              Preview
             </button>
-            <button type="button" onClick={downloadDocx} disabled={downloading} style={{ padding: "8px 16px", background: JR.green, color: "#FFF", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <button type="button" onClick={downloadDocx} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />}
-              Export
+              Download
             </button>
           </div>
         </div>
-
-        {isMobile && (
-          <div className="resume-print-hide" style={{ display: "flex", borderBottom: `1px solid ${JR.border}`, background: JR.panel }}>
-            {(["report", "preview", "edit"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setMobileTab(tab)}
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  background: mobileTab === tab ? JR.greenLight : "transparent",
-                  border: "none",
-                  borderBottom: mobileTab === tab ? `2px solid ${JR.green}` : "2px solid transparent",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: mobileTab === tab ? JR.greenDark : JR.muted,
-                  cursor: "pointer",
-                  textTransform: "capitalize",
-                }}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        )}
 
         {parseError && !loading && !reparsing && (
           <div className="resume-print-hide" style={{ padding: "10px 16px", background: JR.criticalBg, borderBottom: `1px solid ${JR.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -372,66 +318,22 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
           </div>
         )}
 
-        <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
-          {(!isMobile || mobileTab === "report") && (
-            <div className="resume-print-hide" style={{ width: isMobile ? "100%" : 300, flexShrink: 0, borderRight: isMobile ? "none" : `1px solid ${JR.border}` }}>
-              <ReportPanel
-                completenessPct={completeness.pct}
-                missing={completeness.missing}
-                score={report?.score}
-                headline={report?.headline}
-                strengths={report?.strengths}
-                issues={reportIssues}
-                loading={analysisLoading}
-                error={analysis?.error}
-                onRefresh={() => assetId && loadAnalysis(assetId, true)}
-                onViewFullReport={openFullReport}
-              />
+        <div className="resume-print-center" style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px 12px" : "24px 32px", display: "flex", flexDirection: "column", alignItems: "center", background: JR.bg }}>
+          {loading || reparsing ? (
+            <div style={{ marginTop: 80, textAlign: "center", color: JR.muted }}>
+              <Loader2 size={28} style={{ animation: "spin 1s linear infinite", marginBottom: 12 }} />
+              <p style={{ fontSize: 14 }}>{reparsing ? "Parsing resume structure…" : "Loading resume…"}</p>
             </div>
-          )}
-
-          {(!isMobile || mobileTab === "preview") && (
-            <div
-              className="resume-print-center"
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: isMobile ? "16px 12px" : "24px 32px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                background: JR.bg,
-              }}
-            >
-              {loading || reparsing ? (
-                <div style={{ marginTop: 80, textAlign: "center", color: JR.muted }}>
-                  <Loader2 size={28} style={{ animation: "spin 1s linear infinite", marginBottom: 12 }} />
-                  <p style={{ fontSize: 14 }}>{reparsing ? "Parsing resume structure…" : "Loading resume…"}</p>
-                </div>
-              ) : (
-                <>
-                  <div className="resume-print-hide" style={{ width: "100%", maxWidth: 720, marginBottom: 16 }}>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: JR.muted }}>Contact</p>
-                    {headerFields}
-                  </div>
-                  <div className="resume-print-hide" style={{ width: "100%", maxWidth: 720 }}>
-                    <GradeBadgeRow score={report?.score ?? completeness.pct} onViewReport={openFullReport} />
-                  </div>
-                  <ResumePreview data={parsedData} />
-                </>
-              )}
-            </div>
-          )}
-
-          {(!isMobile || mobileTab === "edit") && (
-            <div className="resume-print-hide" style={{ width: isMobile ? "100%" : 320, flexShrink: 0 }}>
-              <SectionsPanel
-                data={parsedData}
-                activeSection={activeSection}
-                onActiveSection={setActiveSection}
-                onChange={queueSave}
-              />
-            </div>
+          ) : (
+            <JobrightResumeDocument
+              data={parsedData}
+              onChange={queueSave}
+              onFixSection={(sectionId, entryLabel) => setFixSection({ sectionId, entryLabel })}
+              score={displayScore}
+              grade={grade}
+              gradeLabel={gradeLabel}
+              onViewReport={() => setReportOpen(true)}
+            />
           )}
         </div>
 
@@ -444,6 +346,14 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
           onBeginImprovements={beginImprovements}
           onRefresh={() => assetId && loadAnalysis(assetId, true)}
           aiUnavailable={!!analysis?.error && reportIssues.length > 0}
+        />
+
+        <ResumeSectionFixDrawer
+          open={!!fixSection}
+          sectionId={fixSection?.sectionId ?? null}
+          entryLabel={fixSection?.entryLabel}
+          issues={fixIssues}
+          onClose={() => setFixSection(null)}
         />
 
         <style>{`
