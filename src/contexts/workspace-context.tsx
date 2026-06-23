@@ -31,6 +31,13 @@ interface WorkspaceContextValue {
   setDrawerCardId: (id: number | null) => void;
   drawerTool: DrawerTool;
   setDrawerTool: (t: DrawerTool) => void;
+  chatOpen: boolean;
+  setChatOpen: (open: boolean) => void;
+  chatView: "tools" | "chat";
+  setChatView: (view: "tools" | "chat") => void;
+  chatPulse: boolean;
+  fitChatNonce: number;
+  openFitChat: (jobId: number) => void;
   notifOpen: boolean;
   setNotifOpen: React.Dispatch<React.SetStateAction<boolean>>;
   notifRead: Record<number, boolean>;
@@ -58,6 +65,20 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
   const [drawerCardId, setDrawerCardId] = useState<number | null>(null);
   const [drawerTool, setDrawerTool] = useState<DrawerTool>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatView, setChatView] = useState<"tools" | "chat">("tools");
+  const [chatPulse, setChatPulse] = useState(false);
+  const [fitChatNonce, setFitChatNonce] = useState(0);
+
+  const openFitChat = useCallback((jobId: number) => {
+    setDrawerCardId(jobId);
+    setDrawerTool(null);
+    setChatView("chat");
+    setChatOpen(true);
+    setChatPulse(true);
+    setFitChatNonce((n) => n + 1);
+    window.setTimeout(() => setChatPulse(false), 2400);
+  }, []);
 
   const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage, removeJob } =
     useJobs(INITIAL_KANBAN_CARDS);
@@ -130,6 +151,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setDrawerCardId,
         drawerTool,
         setDrawerTool,
+        chatOpen,
+        setChatOpen,
+        chatView,
+        setChatView,
+        chatPulse,
+        fitChatNonce,
+        openFitChat,
         notifOpen,
         setNotifOpen,
         notifRead,

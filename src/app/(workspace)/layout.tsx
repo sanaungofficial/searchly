@@ -1,23 +1,16 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { WorkspaceSidebar } from "@/components/scout/workspace-sidebar";
 import { ChatWidget } from "@/components/scout/chat-widget";
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const {
     user,
     isAdmin,
     userRole,
     authChecked,
-    kanbanCards,
-    drawerCardId,
-    setDrawerCardId,
-    drawerTool,
-    setDrawerTool,
   } = useWorkspace();
 
   const [isMobile, setIsMobile] = useState(false);
@@ -80,15 +73,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </div>
-      <ChatWidget
-        kanbanCards={kanbanCards}
-        currentJobId={drawerCardId}
-        onOpenTool={(jobId, tool) => {
-          setDrawerCardId(jobId);
-          setDrawerTool(tool as typeof drawerTool);
-          router.push("/opportunities");
-        }}
-      />
+      <ChatWidget />
     </div>
   );
 }

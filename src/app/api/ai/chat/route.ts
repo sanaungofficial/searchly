@@ -37,7 +37,11 @@ export async function POST(request: Request) {
     : "\nUser has no jobs in their pipeline yet.";
 
   const focusContext = focusedJob
-    ? `\nThe user is currently looking at: ${focusedJob.role} at ${focusedJob.company}.`
+    ? `\nThe user is currently looking at: ${focusedJob.role} at ${focusedJob.company}.${
+        (focusedJob as { intent?: string }).intent === "fit"
+          ? " They want to understand how well they fit this role — analyze strengths, gaps, and give honest, tactical advice."
+          : ""
+      }`
     : "";
 
   const resumeContext = resumeText

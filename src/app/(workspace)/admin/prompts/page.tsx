@@ -122,7 +122,7 @@ export default function PromptsPage() {
                   <button
                     key={p.key}
                     onClick={() => selectPrompt(p.key)}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-dm-sans)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-source-sans)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}
                   >
                     {p.label}
                   </button>
@@ -136,7 +136,7 @@ export default function PromptsPage() {
           {current ? (
             <>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "var(--font-dm-sans)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
+                <div style={{ fontFamily: "var(--font-source-sans)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
                   {current.label}
                 </div>
                 <div style={{ fontSize: 13, color: "#7a7268" }}>{current.description}</div>
@@ -159,14 +159,14 @@ export default function PromptsPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-dm-sans)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
+                  style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-source-sans)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
                 >
                   {saving ? "Saving…" : "Save"}
                 </button>
                 <button
                   onClick={handleReset}
                   disabled={saving}
-                  style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "#7a7268", fontFamily: "var(--font-dm-sans)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
+                  style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "#7a7268", fontFamily: "var(--font-source-sans)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
                 >
                   Reset to default
                 </button>

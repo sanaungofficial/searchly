@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
   JOBS,
@@ -13,6 +14,7 @@ import {
 import { ResumeEditor } from "./resume-editor";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
+import { fontSans, fontDisplay, fontMono } from "@/lib/typography";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -28,15 +30,17 @@ interface JobDrawerProps {
 
 type DrawerTab = "overview" | "company";
 
-const sans = "var(--font-dm-sans), system-ui";
-const serif = "var(--font-playfair), Georgia, serif";
-const mono = "var(--font-dm-mono), monospace";
+const sans = fontSans;
+const serif = fontDisplay;
+const mono = fontMono;
 const mint = "#4A8B6A";
 const mintLight = "rgba(74,139,106,0.12)";
 const mintBtn = "#3D7A5C";
 const border = "1px solid rgba(0,0,0,0.08)";
 const cardBg = "#FFFFFF";
 const pageBg = "#F4F6F5";
+const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
+const AI_SIDEBAR_WIDTH = 340;
 
 function extractCardDomain(website: string | null): string | null {
   if (!website) return null;
@@ -66,14 +70,14 @@ function CompanyLogo({ name, website, size = 48 }: { name: string; website: stri
   }
   return (
     <div style={{ width: size, height: size, borderRadius: br, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontFamily: sans, fontSize: size <= 36 ? 11 : 14, fontWeight: 700, color: "#FFF" }}>{initials}</span>
+      <span style={{ fontFamily: sans, fontSize: size <= 36 ? 12 : 14, fontWeight: 700, color: "#FFF" }}>{initials}</span>
     </div>
   );
 }
 
 function IconPin() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M12 21s7-4.5 7-10a7 7 0 1 0-14 0c0 5.5 7 10 7 10z" />
       <circle cx="12" cy="11" r="2.5" />
     </svg>
@@ -81,7 +85,7 @@ function IconPin() {
 }
 function IconClock() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
     </svg>
@@ -89,7 +93,7 @@ function IconClock() {
 }
 function IconBriefcase() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <rect x="3" y="8" width="18" height="12" rx="2" />
       <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>
@@ -97,14 +101,14 @@ function IconBriefcase() {
 }
 function IconHome() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
     </svg>
   );
 }
 function IconDollar() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M12 2v20M17 7.5A4.5 4.5 0 0 0 7.5 12H12a4.5 4.5 0 1 1 0 9H7" />
     </svg>
   );
@@ -112,7 +116,7 @@ function IconDollar() {
 
 function MetaRow({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: sans, fontSize: 12, color: "#5C534A" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: sans, fontSize: 14, color: "#5C534A" }}>
       <span style={{ color: "#8A8278", display: "flex" }}>{icon}</span>
       <span>{label}</span>
     </div>
@@ -121,21 +125,21 @@ function MetaRow({ icon, label }: { icon: React.ReactNode; label: string }) {
 
 function SectionTitle({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
       {icon && <span style={{ color: mint, display: "flex" }}>{icon}</span>}
-      <h3 style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{children}</h3>
+      <h3 style={{ fontFamily: sans, fontSize: 18, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{children}</h3>
     </div>
   );
 }
 
 function MatchBar({ label, pct }: { label: string; pct: number }) {
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ fontFamily: sans, fontSize: 11, color: "#5C534A" }}>{label}</span>
-        <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 600, color: mint }}>{pct}%</span>
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+        <span style={{ fontFamily: sans, fontSize: 13, color: "#5C534A" }}>{label}</span>
+        <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 600, color: mint }}>{pct}%</span>
       </div>
-      <div style={{ height: 5, borderRadius: 100, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
+      <div style={{ height: 6, borderRadius: 100, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, background: mint, borderRadius: 100 }} />
       </div>
     </div>
@@ -174,13 +178,13 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
 
   if (fit <= 0) {
     return (
-      <div style={{ background: "#F0F2F1", borderRadius: 12, padding: "16px 18px", minWidth: 180, border }}>
-        <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>Match score</p>
-        <p style={{ fontFamily: sans, fontSize: 11, color: "#8A8278", lineHeight: 1.5, marginBottom: 12 }}>See how well your resume fits this role.</p>
+      <div style={{ background: "#F0F2F1", borderRadius: 14, padding: "20px 22px", minWidth: 220, border }}>
+        <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>Match score</p>
+        <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
         {onRunMatch && (
           <button
             onClick={onRunMatch}
-            style={{ width: "100%", padding: "9px 12px", background: mintBtn, color: "#FFF", border: "none", borderRadius: 8, fontFamily: sans, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            style={{ width: "100%", padding: "11px 14px", background: mintBtn, color: "#FFF", border: "none", borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
             Analyze match
           </button>
@@ -190,21 +194,21 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
   }
 
   return (
-    <div style={{ background: "#F0F2F1", borderRadius: 12, padding: "16px 18px", minWidth: 180, border }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-        <div style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}>
-          <svg width="52" height="52" viewBox="0 0 52 52" style={{ transform: "rotate(-90deg)" }}>
-            <circle cx="26" cy="26" r="21" stroke="rgba(0,0,0,0.08)" strokeWidth="5" fill="none" />
-            <circle cx="26" cy="26" r="21" stroke={fitColor} strokeWidth="5" fill="none" strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 21 * fit / 100} ${2 * Math.PI * 21}`} />
+    <div style={{ background: "#F0F2F1", borderRadius: 14, padding: "20px 22px", minWidth: 220, border }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+        <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+          <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: "rotate(-90deg)" }}>
+            <circle cx="32" cy="32" r="26" stroke="rgba(0,0,0,0.08)" strokeWidth="6" fill="none" />
+            <circle cx="32" cy="32" r="26" stroke={fitColor} strokeWidth="6" fill="none" strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 26 * fit / 100} ${2 * Math.PI * 26}`} />
           </svg>
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 700, color: fitColor }}>{fit}%</span>
+            <span style={{ fontFamily: mono, fontSize: 16, fontWeight: 700, color: fitColor }}>{fit}%</span>
           </div>
         </div>
         <div>
-          <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, color: fitColor, letterSpacing: "0.4px", margin: 0 }}>{label}</p>
-          <p style={{ fontFamily: sans, fontSize: 10, color: "#8A8278", margin: "2px 0 0" }}>vs. your profile</p>
+          <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 700, color: fitColor, letterSpacing: "0.4px", margin: 0 }}>{label}</p>
+          <p style={{ fontFamily: sans, fontSize: 12, color: "#8A8278", margin: "3px 0 0" }}>vs. your profile</p>
         </div>
       </div>
       <MatchBar label="Experience Level" pct={exp} />
@@ -232,24 +236,24 @@ function AiToolCard({
       style={{
         background: highlighted ? mintLight : cardBg,
         border,
-        borderRadius: 12,
-        padding: "14px 16px",
-        marginBottom: 10,
+        borderRadius: 14,
+        padding: "18px 20px",
+        marginBottom: 12,
       }}
     >
-      <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 700, color: "#1A1A1A", margin: "0 0 4px" }}>{title}</p>
-      <p style={{ fontFamily: sans, fontSize: 11, color: "#7A7268", lineHeight: 1.45, margin: "0 0 12px" }}>{subtitle}</p>
+      <p style={{ fontFamily: sans, fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: "0 0 6px" }}>{title}</p>
+      <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
       <button
         onClick={onClick}
         style={{
           width: "100%",
-          padding: "10px 14px",
+          padding: "12px 16px",
           background: mintBtn,
           color: "#FFF",
           border: "none",
-          borderRadius: 8,
+          borderRadius: 10,
           fontFamily: sans,
-          fontSize: 12,
+          fontSize: 14,
           fontWeight: 600,
           cursor: "pointer",
         }}
@@ -261,6 +265,7 @@ function AiToolCard({
 }
 
 export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, tool = null, onToolChange }: JobDrawerProps) {
+  const { openFitChat } = useWorkspace();
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
@@ -333,7 +338,8 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
           top: 8,
           right: 8,
           bottom: 8,
-          width: "min(720px, calc(100vw - 16px))",
+          width: DRAWER_WIDTH,
+          maxWidth: "calc(100vw - 16px)",
           background: pageBg,
           borderRadius: 14,
           overflow: "hidden",
@@ -346,15 +352,15 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
         }}
       >
         {/* Top bar — tabs + actions (JobRight-style) */}
-        <div style={{ padding: "12px 20px", background: cardBg, borderBottom: border, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <div style={{ padding: "14px 28px", background: cardBg, borderBottom: border, display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
           <button
             onClick={onClose}
             aria-label="Close"
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#8A8278", padding: 0, lineHeight: 1, marginRight: 4 }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: "#8A8278", padding: 0, lineHeight: 1, marginRight: 4 }}
           >
             ×
           </button>
-          <div style={{ display: "flex", gap: 20 }}>
+          <div style={{ display: "flex", gap: 24 }}>
             {(["overview", "company"] as DrawerTab[]).map((t) => {
               const active = drawerTab === t;
               return (
@@ -365,9 +371,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                     background: "none",
                     border: "none",
                     borderBottom: active ? `2px solid ${mint}` : "2px solid transparent",
-                    padding: "4px 0 8px",
+                    padding: "6px 0 10px",
                     fontFamily: sans,
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: active ? 700 : 500,
                     color: active ? "#1A1A1A" : "#8A8278",
                     cursor: "pointer",
@@ -379,13 +385,13 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               );
             })}
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
             {urlValue && (
               <a
                 href={urlValue}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontFamily: sans, fontSize: 11, color: "#5C534A", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
+                style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
               >
                 Original job post ↗
               </a>
@@ -396,12 +402,12 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  padding: "8px 16px",
+                  padding: "10px 20px",
                   background: mintBtn,
                   color: "#FFF",
-                  borderRadius: 8,
+                  borderRadius: 10,
                   fontFamily: sans,
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 700,
                   textDecoration: "none",
                   letterSpacing: "0.2px",
@@ -413,41 +419,42 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          {drawerTab === "company" ? (
-            <div style={{ padding: "24px 28px" }}>
+        {drawerTab === "company" ? (
+          <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
               <SectionTitle>Company</SectionTitle>
               <div style={{ background: cardBg, border, borderRadius: 12, padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
                   <CompanyLogo name={card.company} website={cardUrl} size={52} />
                   <div>
-                    <p style={{ fontFamily: serif, fontSize: 20, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{card.company}</p>
-                    {location && <p style={{ fontFamily: sans, fontSize: 12, color: "#7A7268", margin: "4px 0 0" }}>{location}</p>}
+                    <p style={{ fontFamily: serif, fontSize: 24, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{card.company}</p>
+                    {location && <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", margin: "6px 0 0" }}>{location}</p>}
                   </div>
                 </div>
                 <a
                   href={companyLinkedinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontFamily: sans, fontSize: 12, color: mint, fontWeight: 600 }}
+                  style={{ fontFamily: sans, fontSize: 14, color: mint, fontWeight: 600 }}
                 >
                   View on LinkedIn ↗
                 </a>
-                <p style={{ fontFamily: sans, fontSize: 12, color: "#7A7268", lineHeight: 1.6, marginTop: 16 }}>
+                <p style={{ fontFamily: sans, fontSize: 15, color: "#7A7268", lineHeight: 1.65, marginTop: 16 }}>
                   Track this company and open roles from the Companies tab in Opportunities.
                 </p>
               </div>
             </div>
-          ) : (
-            <>
+        ) : (
+          /* Overview — JobRight-style: scrollable main column + fixed AI sidebar */
+          <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+            <div style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
               {/* Hero — title + match score */}
-              <div style={{ padding: "22px 28px 20px", background: cardBg, borderBottom: border }}>
-                <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+              <div style={{ padding: "28px 32px 24px", background: cardBg, borderBottom: border }}>
+                <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                      <CompanyLogo name={card.company} website={cardUrl} size={48} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
+                      <CompanyLogo name={card.company} website={cardUrl} size={56} />
                       <div>
-                        <p style={{ fontFamily: sans, fontSize: 12, color: "#7A7268", margin: 0 }}>
+                        <p style={{ fontFamily: sans, fontSize: 14, color: "#7A7268", margin: 0 }}>
                           <a href={companyLinkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
                             {card.company}
                           </a>
@@ -455,10 +462,10 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                         </p>
                       </div>
                     </div>
-                    <h2 style={{ fontFamily: serif, fontSize: 22, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.25 }}>
+                    <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 700, color: "#1A1A1A", margin: "0 0 16px", lineHeight: 1.2 }}>
                       {card.role}
                     </h2>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px 20px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 24px" }}>
                       {location && <MetaRow icon={<IconPin />} label={location} />}
                       {remoteLabel && <MetaRow icon={<IconHome />} label={remoteLabel} />}
                       {jobType && <MetaRow icon={<IconClock />} label={jobType} />}
@@ -469,14 +476,14 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   <MatchScoreCard fit={card.fit} onRunMatch={dbId ? () => setMatchDrawerOpen(true) : undefined} />
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18, flexWrap: "wrap" }}>
                   <span style={{
-                    padding: "4px 12px",
+                    padding: "5px 14px",
                     borderRadius: 100,
                     background: `${STAGE_COLORS[card.stage]}18`,
                     color: STAGE_COLORS[card.stage],
                     fontFamily: sans,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: 700,
                   }}>
                     {STAGE_LABELS[card.stage]}
@@ -484,7 +491,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   {dbId && (
                     <button
                       onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#C4574A", fontFamily: sans, padding: 0 }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#C4574A", fontFamily: sans, padding: 0 }}
                     >
                       Remove job
                     </button>
@@ -492,17 +499,15 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 </div>
               </div>
 
-              {/* Two-column body */}
-              <div style={{ display: "flex", gap: 0, alignItems: "flex-start", minHeight: 0 }}>
-                {/* Main column */}
-                <div style={{ flex: 1, minWidth: 0, padding: "22px 28px 32px" }}>
+              {/* Main job content */}
+              <div style={{ padding: "28px 32px 36px" }}>
                   {summary && (
                     <div style={{ marginBottom: 22 }}>
-                      <p style={{ fontFamily: sans, fontSize: 13, color: "#2A2218", lineHeight: 1.65, margin: 0 }}>{summary}</p>
+                      <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{summary}</p>
                       {tags.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
                           {tags.map((t, i) => (
-                            <span key={i} style={{ padding: "4px 10px", background: mintLight, borderRadius: 100, fontFamily: sans, fontSize: 11, fontWeight: 500, color: "#2A4A3A" }}>
+                            <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 100, fontFamily: sans, fontSize: 13, fontWeight: 500, color: "#2A4A3A" }}>
                               {t}
                             </span>
                           ))}
@@ -514,9 +519,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   {bullets.length > 0 && (
                     <div style={{ marginBottom: 22 }}>
                       <SectionTitle icon={<IconBriefcase />}>Responsibilities</SectionTitle>
-                      <ul style={{ margin: 0, paddingLeft: 18, fontFamily: sans, fontSize: 13, color: "#2A2218", lineHeight: 1.65 }}>
+                      <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7 }}>
                         {bullets.map((b, i) => (
-                          <li key={i} style={{ marginBottom: 6 }}>{b}</li>
+                          <li key={i} style={{ marginBottom: 8 }}>{b}</li>
                         ))}
                       </ul>
                     </div>
@@ -530,12 +535,12 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                           <span
                             key={i}
                             style={{
-                              padding: "5px 11px",
+                              padding: "6px 13px",
                               background: card.fit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
                               border: card.fit >= 70 ? `1px solid rgba(74,139,106,0.25)` : border,
                               borderRadius: 100,
                               fontFamily: sans,
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: 500,
                               color: card.fit >= 70 ? "#2A4A3A" : "#5C534A",
                             }}
@@ -548,20 +553,20 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   )}
 
                   {/* Pipeline controls — compact */}
-                  <div style={{ background: cardBg, border, borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
-                    <p style={{ fontFamily: sans, fontSize: 10, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>Move to</p>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                  <div style={{ background: cardBg, border, borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
+                    <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>Move to</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
                       {KANBAN_STAGES.filter((s) => s !== card.stage).map((s) => (
                         <button
                           key={s}
                           onClick={() => moveCard(card.id, s)}
                           style={{
-                            padding: "6px 12px",
+                            padding: "8px 14px",
                             background: "#FFF",
                             border,
                             borderRadius: 8,
                             fontFamily: sans,
-                            fontSize: 11,
+                            fontSize: 13,
                             fontWeight: 500,
                             color: "#1A1A1A",
                             cursor: "pointer",
@@ -571,21 +576,21 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                         </button>
                       ))}
                     </div>
-                    <p style={{ fontFamily: sans, fontSize: 10, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px" }}>Next action</p>
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>Next action</p>
+                    <div style={{ display: "flex", gap: 10 }}>
                       <input
                         value={nextStepValue}
                         onChange={(e) => setNextStepValue(e.target.value)}
                         onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
                         placeholder="e.g. Follow up with recruiter…"
-                        style={{ flex: 1, padding: "9px 11px", border, borderRadius: 8, fontFamily: sans, fontSize: 12, outline: "none", background: "#FFF" }}
+                        style={{ flex: 1, padding: "11px 13px", border, borderRadius: 8, fontFamily: sans, fontSize: 14, outline: "none", background: "#FFF" }}
                       />
                       <input
                         type="date"
                         value={nextStepDueValue}
                         onChange={(e) => setNextStepDueValue(e.target.value)}
                         onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                        style={{ width: 130, padding: "9px 11px", border, borderRadius: 8, fontFamily: sans, fontSize: 12, outline: "none", background: "#FFF", flexShrink: 0 }}
+                        style={{ width: 150, padding: "11px 13px", border, borderRadius: 8, fontFamily: sans, fontSize: 14, outline: "none", background: "#FFF", flexShrink: 0 }}
                       />
                     </div>
                   </div>
@@ -593,10 +598,10 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   {/* Mock job tool views */}
                   {tool !== null && !job && (
                     <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, marginBottom: 14 }}>
-                      <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
                         {tool === "resume" ? "Resume tailoring" : tool === "cover" ? "Cover letter" : "Fit analysis"} — coming soon
                       </p>
-                      <p style={{ fontFamily: sans, fontSize: 11, color: "#52493F", lineHeight: 1.6, margin: 0 }}>
+                      <p style={{ fontFamily: sans, fontSize: 14, color: "#52493F", lineHeight: 1.6, margin: 0 }}>
                         AI tools for manually added jobs are rolling out shortly.
                       </p>
                     </div>
@@ -606,7 +611,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                     <div style={{ marginBottom: 18 }}>
                       <SectionTitle>Cover letter</SectionTitle>
                       <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, borderLeft: `3px solid ${mint}` }}>
-                        <p style={{ fontFamily: sans, fontSize: 12, lineHeight: 1.75, whiteSpace: "pre-wrap", margin: 0 }}>{job.coverLetter}</p>
+                        <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.75, whiteSpace: "pre-wrap", margin: 0 }}>{job.coverLetter}</p>
                       </div>
                     </div>
                   )}
@@ -614,9 +619,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   {tool === "fit" && job && (
                     <div style={{ marginBottom: 18 }}>
                       <SectionTitle>Fit analysis</SectionTitle>
-                      <p style={{ fontFamily: sans, fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}>{job.fitSummary}</p>
+                      <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 12 }}>{job.fitSummary}</p>
                       {job.fitWorks.map((w, i) => (
-                        <div key={i} style={{ padding: "8px 10px", background: mintLight, borderRadius: 8, marginBottom: 6, fontSize: 11 }}>✓ {w}</div>
+                        <div key={i} style={{ padding: "10px 12px", background: mintLight, borderRadius: 8, marginBottom: 8, fontSize: 14 }}>✓ {w}</div>
                       ))}
                     </div>
                   )}
@@ -624,7 +629,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   {tool === null && job ? (
                     <div>
                       <SectionTitle>Kimchi&apos;s fit summary</SectionTitle>
-                      <p style={{ fontFamily: sans, fontSize: 13, lineHeight: 1.65, marginBottom: 16 }}>{job.fitSummary}</p>
+                      <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 16 }}>{job.fitSummary}</p>
                     </div>
                   ) : tool === null ? (
                     <div style={{ marginBottom: 18 }}>
@@ -638,15 +643,15 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                         style={{
                           width: "100%",
                           fontFamily: sans,
-                          fontSize: 13,
+                          fontSize: 15,
                           color: "#1A1A1A",
                           background: cardBg,
                           border,
                           borderRadius: 12,
-                          padding: "14px 16px",
+                          padding: "16px 18px",
                           resize: "vertical",
                           outline: "none",
-                          lineHeight: 1.65,
+                          lineHeight: 1.7,
                           boxSizing: "border-box",
                         }}
                       />
@@ -664,14 +669,14 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                       style={{
                         width: "100%",
                         fontFamily: sans,
-                        fontSize: 13,
+                        fontSize: 15,
                         background: cardBg,
                         border,
                         borderRadius: 12,
-                        padding: "14px 16px",
+                        padding: "16px 18px",
                         resize: "vertical",
                         outline: "none",
-                        lineHeight: 1.6,
+                        lineHeight: 1.65,
                         boxSizing: "border-box",
                       }}
                     />
@@ -684,40 +689,49 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                       onChange={(e) => setUrlValue(e.target.value)}
                       onBlur={() => patchField({ url: urlValue || null })}
                       placeholder="Job URL…"
-                      style={{ width: "100%", fontSize: 11, fontFamily: sans, color: "#8A8278", background: "transparent", border: "none", borderBottom: "1px solid rgba(0,0,0,0.1)", outline: "none", padding: "4px 0" }}
+                      style={{ width: "100%", fontSize: 13, fontFamily: sans, color: "#8A8278", background: "transparent", border: "none", borderBottom: "1px solid rgba(0,0,0,0.1)", outline: "none", padding: "4px 0" }}
                     />
                   </div>
                 </div>
-
-                {/* AI sidebar — JobRight "Boost your interview chances" */}
-                <div style={{ width: 248, flexShrink: 0, padding: "22px 20px 32px 0", borderLeft: border, background: pageBg }}>
-                  <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.3 }}>
-                    Boost your interview chances
-                  </p>
-                  <AiToolCard
-                    highlighted
-                    title="Improve resume match"
-                    subtitle="See your match score and tailor your resume for this role."
-                    buttonLabel="Optimize my resume"
-                    onClick={() => setMatchDrawerOpen(true)}
-                  />
-                  <AiToolCard
-                    title="Build cover letter"
-                    subtitle="Make your application stand out with a tailored letter."
-                    buttonLabel="Build cover letter"
-                    onClick={() => setCoverDrawerOpen(true)}
-                  />
-                  <AiToolCard
-                    title="Analyze how well you fit"
-                    subtitle="Understand your strengths and gaps for this role."
-                    buttonLabel="Analyze fit"
-                    onClick={() => setTool(tool === "fit" ? null : "fit")}
-                  />
-                </div>
               </div>
-            </>
-          )}
-        </div>
+
+            {/* AI sidebar — JobRight "Boost your interview chances" */}
+            <div
+              style={{
+                width: AI_SIDEBAR_WIDTH,
+                flexShrink: 0,
+                padding: "28px 24px 32px",
+                borderLeft: border,
+                background: cardBg,
+                overflowY: "auto",
+                overflowX: "hidden",
+              }}
+            >
+              <p style={{ fontFamily: sans, fontSize: 17, fontWeight: 700, color: "#1A1A1A", margin: "0 0 18px", lineHeight: 1.3 }}>
+                Boost your interview chances
+              </p>
+              <AiToolCard
+                highlighted
+                title="Improve resume match"
+                subtitle="See your match score and tailor your resume for this role."
+                buttonLabel="Optimize my resume"
+                onClick={() => setMatchDrawerOpen(true)}
+              />
+              <AiToolCard
+                title="Build cover letter"
+                subtitle="Make your application stand out with a tailored letter."
+                buttonLabel="Build cover letter"
+                onClick={() => setCoverDrawerOpen(true)}
+              />
+              <AiToolCard
+                title="Analyze how well you fit"
+                subtitle="Understand your strengths and gaps for this role."
+                buttonLabel="Analyze fit"
+                onClick={() => openFitChat(card.id)}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {dbId && (

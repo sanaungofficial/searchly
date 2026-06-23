@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRef, useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/hooks/useJobs";
 import {
@@ -14,6 +14,7 @@ import {
 import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
+import { fontSans, fontMono, color, type as T } from "@/lib/typography";
 
 export type { DrawerTool };
 
@@ -27,6 +28,7 @@ export function WorkspaceOpportunities() {
   const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const activeSubtab: OppTab = pathname === "/opportunities/companies" ? "companies" : "pipeline";
   const setSubtab = (t: OppTab) => { router.push(`/opportunities/${t}`); };
   const tab = activeSubtab;
@@ -47,6 +49,29 @@ export function WorkspaceOpportunities() {
     tags: string[];
   }>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const openAdd = searchParams.get("addJob") === "1";
+    const jobId = searchParams.get("job");
+
+    if (openAdd) {
+      setShowAddPanel(true);
+    }
+
+    if (jobId) {
+      const card = kanbanCards.find((c) => {
+        const ext = c as KanbanCard & { _dbId?: string };
+        return ext._dbId === jobId;
+      });
+      if (card) {
+        setDrawerCardId(card.id);
+      }
+    }
+
+    if (openAdd || jobId) {
+      router.replace("/opportunities/pipeline");
+    }
+  }, [searchParams, kanbanCards, router, setDrawerCardId]);
 
   // CSV upload state
   const [showCsvPanel, setShowCsvPanel] = useState(false);
@@ -187,10 +212,10 @@ export function WorkspaceOpportunities() {
                   border: "none",
                   borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
                   background: "transparent",
-                  color: active ? "#1A3A2F" : "#A09890",
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
-                  fontWeight: active ? 600 : 400,
+                  color: active ? color.forest : color.muted,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: active ? 600 : 500,
                   cursor: "pointer",
                   transition: "all 0.15s",
                   letterSpacing: "0.1px",
@@ -210,8 +235,8 @@ export function WorkspaceOpportunities() {
               color: "#E8D5A3",
               border: "none",
               borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 11,
+              fontFamily: fontSans,
+              fontSize: T.caption,
               fontWeight: 500,
               cursor: "pointer",
               letterSpacing: "0.2px",
@@ -231,8 +256,8 @@ export function WorkspaceOpportunities() {
                 color: showCsvPanel ? "#E8D5A3" : "#1A3A2F",
                 border: "1px solid rgba(26,58,47,0.2)",
                 borderRadius: 5,
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
+                fontFamily: fontSans,
+                fontSize: T.caption,
                 fontWeight: 500,
                 cursor: "pointer",
                 letterSpacing: "0.2px",
@@ -361,7 +386,7 @@ function StatusDropdown({
           background: `${stageColor}18`,
           border: `1px solid ${stageColor}40`,
           borderRadius: 5,
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: isSmall ? 10 : 11,
           fontWeight: 500,
           color: stageColor,
@@ -406,9 +431,9 @@ function StatusDropdown({
                   padding: "8px 14px",
                   background: s === stage ? `${STAGE_COLORS[s]}10` : "transparent",
                   border: "none",
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  fontWeight: s === stage ? 600 : 400,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: s === stage ? 600 : 500,
                   color: s === stage ? STAGE_COLORS[s] : "#2A2218",
                   cursor: "pointer",
                   textAlign: "left",
@@ -450,7 +475,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
+        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
           Upload CSV — bulk add jobs
         </p>
         {!loading && (
@@ -468,7 +493,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
             <div
               style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }}
             />
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest }}>
               Kimchi is analyzing {progress.done} of {progress.total} URLs…
             </p>
           </div>
@@ -478,8 +503,8 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
         </div>
       ) : (
         <>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#52493F", lineHeight: 1.55, marginBottom: 10, maxWidth: 520 }}>
-            Upload a CSV file with job URLs. One URL per line, or columns: <code style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: 3 }}>url,company,role</code>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 400, color: color.stone, lineHeight: 1.55, marginBottom: 10, maxWidth: 520 }}>
+            Upload a CSV file with job URLs. One URL per line, or columns: <code style={{ fontFamily: fontMono, fontSize: T.label, background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: 3 }}>url,company,role</code>
           </p>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
@@ -490,7 +515,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
                 color: "#E8D5A3",
                 border: "none",
                 borderRadius: 5,
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -508,7 +533,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               style={{ display: "none" }}
               onChange={onFileSelected}
             />
-            <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#A09890" }}>
+            <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight }}>
               .csv or .txt
             </span>
           </div>
@@ -522,10 +547,10 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               maxWidth: 520,
             }}
           >
-            <p style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 9, color: "#A09890", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 5 }}>
+            <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>
               Example CSV
             </p>
-            <pre style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#52493F", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
+            <pre style={{ fontFamily: fontMono, fontSize: T.label, color: color.stone, lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
 {`url,company,role
 https://stripe.com/jobs/...,Stripe,Senior PM
 https://linear.app/careers/...,Linear,Product Lead
@@ -580,7 +605,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             border: "1px solid rgba(26,58,47,0.2)",
             borderRadius: 6,
             background: "#FFFFFF",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 12,
             color: "#1A1A1A",
             minWidth: 0,
@@ -594,7 +619,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             color: "#E8D5A3",
             border: "none",
             borderRadius: 6,
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 12,
             cursor: "pointer",
             flexShrink: 0,
@@ -609,7 +634,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             background: "transparent",
             color: "#A09890",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 12,
             cursor: "pointer",
             flexShrink: 0,
@@ -621,12 +646,12 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
       {loading && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#1A3A2F" }}>Kimchi is analyzing this listing…</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest }}>Kimchi is analyzing this listing…</p>
         </div>
       )}
       {error && !loading && (
         <div style={{ padding: "8px 12px", background: "rgba(196,87,74,0.06)", borderRadius: 6, border: "1px solid rgba(196,87,74,0.15)", maxWidth: 560 }}>
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#C4574A" }}>{error}</p>
+          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, color: "#C4574A" }}>{error}</p>
         </div>
       )}
       {analysis && !loading && (
@@ -643,22 +668,22 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{analysis.company ?? "Unknown company"}</p>
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>{analysis.company ?? "Unknown company"}</p>
                 {analysis.role && (
                   <>
-                    <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, color: "#52493F" }}>·</span>
-                    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#52493F" }}>{analysis.role}</p>
+                    <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>·</span>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone }}>{analysis.role}</p>
                   </>
                 )}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {analysis.location && (
-                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#52493F" }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                     📍 {analysis.location}
                   </span>
                 )}
                 {analysis.salary && (
-                  <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A" }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
                     {analysis.salary}
                   </span>
                 )}
@@ -666,7 +691,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             </div>
           </div>
           {analysis.description && (
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 300, color: "#2A2218", lineHeight: 1.6, marginBottom: 10, textWrap: "pretty" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 400, color: color.ink, lineHeight: 1.6, marginBottom: 10, textWrap: "pretty" }}>
               {analysis.description}
             </p>
           )}
@@ -678,7 +703,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               color: "#E8D5A3",
               border: "none",
               borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 12,
               fontWeight: 600,
               cursor: "pointer",
@@ -721,7 +746,7 @@ function CompanyLogoCard({ name, website, size = 38 }: { name: string; website: 
   }
   return (
     <div style={{ width: size, height: size, borderRadius: br, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: size <= 30 ? 9 : 11, fontWeight: 600, color: "#FFFFFF" }}>{initials}</span>
+      <span style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: size <= 30 ? 9 : 11, fontWeight: 600, color: "#FFFFFF" }}>{initials}</span>
     </div>
   );
 }
@@ -777,13 +802,13 @@ function PipelineTab({
                 onClick={() => setFilter(id)}
                 style={{
                   padding: "5px 14px",
-                  color: active ? "#1A3A2F" : "#A09890",
-                  border: active ? "1px solid #1A3A2F" : "1px solid rgba(0,0,0,0.1)",
+                  color: active ? color.forest : color.muted,
+                  border: active ? `1px solid ${color.forest}` : "1px solid rgba(0,0,0,0.1)",
                   borderRadius: 100,
                   background: "transparent",
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  fontWeight: active ? 600 : 400,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: active ? 600 : 500,
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
@@ -791,7 +816,7 @@ function PipelineTab({
                 }}
               >
                 {label}
-                <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, opacity: 0.7 }}>{count}</span>
+                <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
               </button>
             );
           })}
@@ -808,7 +833,7 @@ function PipelineTab({
                 background: viewMode === mode ? "#1A3A2F" : "transparent",
                 color: viewMode === mode ? "#E8D5A3" : "#A09890",
                 border: "none",
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 13,
                 cursor: "pointer",
                 lineHeight: 1,
@@ -822,11 +847,11 @@ function PipelineTab({
 
       {/* Empty state */}
       {cards.length === 0 ? (
-        <div style={{ padding: 80, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13 }}>
+        <div style={{ padding: 80, textAlign: "center", color: color.mutedLight, fontFamily: fontSans, fontSize: T.caption }}>
           No jobs yet. Click &quot;+ Add job&quot; above to paste a URL, or &quot;Upload CSV&quot; to bulk-add jobs.
         </div>
       ) : sortedCards.length === 0 ? (
-        <div style={{ padding: 60, textAlign: "center", color: "#A09890", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13 }}>
+        <div style={{ padding: 60, textAlign: "center", color: color.mutedLight, fontFamily: fontSans, fontSize: T.caption }}>
           No jobs match this filter.
         </div>
       ) : viewMode === "kanban" ? (
@@ -839,8 +864,8 @@ function PipelineTab({
               <div key={stage} style={{ minWidth: 210, maxWidth: 210, flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, padding: "0 2px" }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: stageColor, flexShrink: 0 }} />
-                  <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: stageColor }}>{STAGE_LABELS[stage]}</span>
-                  <span style={{ fontFamily: "var(--font-dm-mono), monospace", fontSize: 10, color: "#A09890", marginLeft: "auto" }}>{colCards.length}</span>
+                  <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: stageColor }}>{STAGE_LABELS[stage]}</span>
+                  <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight, marginLeft: "auto" }}>{colCards.length}</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {colCards.map((c) => {
@@ -857,18 +882,18 @@ function PipelineTab({
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                           <CompanyLogoCard name={c.company} website={url} size={28} />
                           <div style={{ minWidth: 0, flex: 1 }}>
-                            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 11, fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.role}</p>
-                            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#7A7268", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.company}</p>
+                            <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.role}</p>
+                            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.company}</p>
                           </div>
                         </div>
                         {meta?.location && (
-                          <span style={{ display: "inline-block", padding: "1px 7px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: "#52493F", marginBottom: meta?.salary ? 3 : 0 }}>
+                          <span style={{ display: "inline-block", padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: fontSans, fontSize: T.label, color: color.stone, marginBottom: meta?.salary ? 3 : 0 }}>
                             📍 {meta.location}
                           </span>
                         )}
                         {meta?.nextStep && (
                           <div style={{ marginTop: 6, padding: "4px 7px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 4, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#4A8B6A"}` }}>
-                            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 9, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
+                            <p style={{ fontFamily: fontSans, fontSize: T.label, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
                               {isOverdue ? "⚠ " : "→ "}{meta.nextStep}
                             </p>
                           </div>
@@ -902,19 +927,19 @@ function PipelineTab({
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
                     <CompanyLogoCard name={c.company} website={url} size={38} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{c.role}</p>
-                      <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 12, color: "#7A7268", marginBottom: meta?.location || meta?.salary ? 6 : 0 }}>
+                      <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 2 }}>{c.role}</p>
+                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: meta?.location || meta?.salary ? 6 : 0 }}>
                         {c.company} · {c.days === 0 ? "Today" : `${c.days}d ago`}
                       </p>
                       {(meta?.location || meta?.salary) && (
                         <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                           {meta?.location && (
-                            <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: "#52493F" }}>
+                            <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                               📍 {meta.location}
                             </span>
                           )}
                           {meta?.salary && (
-                            <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.08)", borderRadius: 100, fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#2D6B4A" }}>
+                            <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.08)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
                               {meta.salary}
                             </span>
                           )}
@@ -922,7 +947,7 @@ function PipelineTab({
                       )}
                       {meta?.nextStep && (
                         <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 5, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#4A8B6A"}` }}>
-                          <span style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
+                          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
                             {isOverdue ? "⚠ " : "→ "}{meta.nextStep}
                             {meta.nextStepDue ? ` · ${meta.nextStepDue}` : ""}
                           </span>

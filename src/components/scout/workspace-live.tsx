@@ -38,7 +38,7 @@ export function WorkspaceLive() {
       <div style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 12,
             fontWeight: 500,
             color: "#A09890",
@@ -87,7 +87,7 @@ export function WorkspaceLive() {
                 background: weekly.accentColor,
                 color: weekly.bgColor,
                 borderRadius: 100,
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 11,
                 fontWeight: 700,
                 textTransform: "uppercase",
@@ -98,7 +98,7 @@ export function WorkspaceLive() {
             </span>
             <span
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 13,
                 color: weekly.accentColor,
                 opacity: 0.6,
@@ -122,7 +122,7 @@ export function WorkspaceLive() {
           </h2>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 14,
               fontWeight: 300,
               color: weekly.accentColor,
@@ -156,7 +156,7 @@ export function WorkspaceLive() {
             >
               <span
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 13,
                   fontWeight: 600,
                   color: weekly.bgColor,
@@ -168,7 +168,7 @@ export function WorkspaceLive() {
             <div>
               <p
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 13,
                   fontWeight: 600,
                   color: "#FFFFFF",
@@ -178,7 +178,7 @@ export function WorkspaceLive() {
               </p>
               <p
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   color: weekly.accentColor,
                   opacity: 0.7,
@@ -195,7 +195,7 @@ export function WorkspaceLive() {
               color: weekly.bgColor,
               border: "none",
               borderRadius: 6,
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 13,
               fontWeight: 600,
               cursor: "pointer",
@@ -221,7 +221,7 @@ export function WorkspaceLive() {
                   color,
                   border: "none",
                   borderRadius: 100,
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 13,
                   fontWeight: 500,
                   cursor: "pointer",
@@ -260,7 +260,7 @@ export function WorkspaceLive() {
                       background: s.accentColor,
                       color: s.bgColor,
                       borderRadius: 100,
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 11,
                       fontWeight: 700,
                       textTransform: "uppercase",
@@ -271,7 +271,7 @@ export function WorkspaceLive() {
                   </span>
                   <span
                     style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 12,
                       color: s.accentColor,
                       opacity: 0.7,
@@ -282,7 +282,7 @@ export function WorkspaceLive() {
                 </div>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 14,
                     fontWeight: 600,
                     color: "#FFFFFF",
@@ -294,7 +294,7 @@ export function WorkspaceLive() {
                 </p>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     color: s.accentColor,
                     opacity: 0.7,
@@ -306,7 +306,7 @@ export function WorkspaceLive() {
               <div style={{ padding: "12px 18px 14px" }}>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 13,
                     fontWeight: 300,
                     color: "#52493F",
@@ -326,7 +326,7 @@ export function WorkspaceLive() {
                 >
                   <span
                     style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 12,
                       color: "#7A7268",
                     }}
@@ -340,7 +340,7 @@ export function WorkspaceLive() {
                       color: "#FFFFFF",
                       border: "none",
                       borderRadius: 5,
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: "pointer",

@@ -257,7 +257,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         alignItems: "center",
         justifyContent: "center",
         padding: 24,
-        fontFamily: "var(--font-dm-sans), system-ui, sans-serif",
+        fontFamily: "var(--font-source-sans), system-ui, sans-serif",
       }}
     >
       {/* Backdrop */}
@@ -821,7 +821,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                         border: "1px solid #D8D0C5",
                         borderRadius: 5,
                         fontSize: 11,
-                        fontFamily: "var(--font-dm-sans), system-ui",
+                        fontFamily: "var(--font-source-sans), system-ui",
                         color: "#1A1A1A",
                         resize: "vertical",
                         background: "#FFFFFF",

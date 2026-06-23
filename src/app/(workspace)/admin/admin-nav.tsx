@@ -21,7 +21,7 @@ export function AdminNav() {
               padding: "5px 12px",
               borderRadius: 6,
               fontSize: 13,
-              fontFamily: "var(--font-dm-sans)",
+              fontFamily: "var(--font-source-sans)",
               fontWeight: active ? 600 : 400,
               color: active ? "#1a3a2f" : "#7a7268",
               background: active ? "rgba(26,58,47,0.07)" : "transparent",

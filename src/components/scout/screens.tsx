@@ -15,7 +15,9 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3;
+export type Screen = 0 | 1 | 2 | 3 | 4;
+
+const ONBOARDING_STEP_COUNT = 5;
 
 export interface Job {
   id: number;
@@ -52,7 +54,7 @@ const DISPLAY_H2: React.CSSProperties = {
 };
 
 const ONBOARDING_BODY: React.CSSProperties = {
-  fontFamily: "var(--font-dm-sans), system-ui",
+  fontFamily: "var(--font-source-sans), system-ui",
   fontSize: "clamp(1rem, 2.5vw, 1.125rem)",
   fontWeight: 300,
   color: "#52493F",
@@ -69,7 +71,7 @@ const PRIMARY_CTA: React.CSSProperties = {
   color: "#E8D5A3",
   border: "none",
   borderRadius: 5,
-  fontFamily: "var(--font-dm-sans), system-ui",
+  fontFamily: "var(--font-source-sans), system-ui",
   fontSize: 14,
   fontWeight: 500,
   cursor: "pointer",
@@ -78,6 +80,7 @@ const PRIMARY_CTA: React.CSSProperties = {
 };
 
 export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutClick?: () => void }) {
+  const logoTitle = onScoutClick ? "Go to workspace" : "Finish setup first";
   return (
     <div
       className="w-full max-w-[720px] flex justify-between items-start onboarding-header"
@@ -102,13 +105,13 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
           }}
           onMouseEnter={(e) => onScoutClick && (e.currentTarget.style.opacity = "0.6")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          title={onScoutClick ? "Go to workspace" : undefined}
+          title={logoTitle}
         >
           Kimchi
         </button>
         <div
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 9,
             fontWeight: 400,
             color: "#A09890",
@@ -121,7 +124,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
         </div>
       </div>
       <div className="flex gap-[5px] items-center" style={{ paddingTop: 6 }}>
-        {[0, 1, 2, 3].map((i) => (
+        {Array.from({ length: ONBOARDING_STEP_COUNT }, (_, i) => i).map((i) => (
           <div
             key={i}
             style={{
@@ -150,6 +153,7 @@ interface WelcomeProps {
   onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onContinue: () => void;
+  onLinkedInOnly: () => void;
   onSkip: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
@@ -167,6 +171,7 @@ export function ScreenWelcome({
   onLIChange,
   onLIKey,
   onContinue,
+  onLinkedInOnly,
   onSkip,
   onDragOver,
   onDragLeave,
@@ -177,7 +182,8 @@ export function ScreenWelcome({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.22)";
   const dropBg = resumeError ? "rgba(192,57,43,0.04)" : isDragging ? "rgba(26,58,47,0.04)" : "transparent";
-  const canContinue = resumeUploaded || liInput.trim().length > 0;
+  const canContinueWithResume = resumeUploaded;
+  const canSaveLinkedInOnly = liInput.trim().length > 0 && !resumeUploaded;
 
   return (
     <div className="flex flex-col gap-[28px] onboarding-screen-gap">
@@ -198,7 +204,7 @@ export function ScreenWelcome({
           animationDelay: "0.4s",
         }}
       >
-        Drop your resume or share your LinkedIn — I&apos;ll use it to build your profile.
+        Drop your resume and I&apos;ll read it — then I&apos;ll tell you what I see about your career.
       </p>
 
       {/* Upload zone */}
@@ -227,7 +233,7 @@ export function ScreenWelcome({
             <div className="text-center flex flex-col gap-[5px]">
               <span
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 15,
                   fontWeight: 400,
                   color: "#2E2820",
@@ -237,7 +243,7 @@ export function ScreenWelcome({
               </span>
               <span
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
@@ -262,7 +268,7 @@ export function ScreenWelcome({
             <CheckCircleFilled />
             <span
               style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 14,
                 fontWeight: 500,
                 color: "#1A3A2F",
@@ -275,7 +281,7 @@ export function ScreenWelcome({
               <span
                 className="anim-pulse"
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
@@ -289,7 +295,7 @@ export function ScreenWelcome({
                 style={{
                   background: "none",
                   border: "none",
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 12,
                   fontWeight: 300,
                   color: "#A09890",
@@ -312,7 +318,7 @@ export function ScreenWelcome({
           onChange={onFileChange}
         />
         {resumeError && (
-          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C0392B", marginTop: 10, fontWeight: 300 }}>
+          <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 13, color: "#C0392B", marginTop: 10, fontWeight: 300 }}>
             Upload failed — please try again or paste your LinkedIn below.
           </p>
         )}
@@ -331,7 +337,7 @@ export function ScreenWelcome({
         <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
         <span
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 11,
             fontWeight: 400,
             color: "#A09890",
@@ -343,8 +349,21 @@ export function ScreenWelcome({
         <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
       </div>
 
-      {/* LinkedIn input */}
+      {/* LinkedIn input — saved to profile only; does not power readback */}
       <div className="anim-fade-up" style={{ animationDelay: "1.0s" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-source-sans), system-ui",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#A09890",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}
+        >
+          LinkedIn <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" }}>(optional)</span>
+        </p>
         <div
           style={{
             display: "flex",
@@ -365,7 +384,7 @@ export function ScreenWelcome({
               flex: 1,
               border: "none",
               background: "transparent",
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 16,
               fontWeight: 400,
               color: "#1A1A1A",
@@ -373,10 +392,22 @@ export function ScreenWelcome({
             }}
           />
         </div>
+        <p
+          style={{
+            fontFamily: "var(--font-source-sans), system-ui",
+            fontSize: 12,
+            fontWeight: 300,
+            color: "#A09890",
+            marginTop: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          We&apos;ll save this on your profile. Kimchi&apos;s read comes from your resume, not LinkedIn.
+        </p>
       </div>
 
-      {/* Continue button */}
-      {canContinue && (
+      {/* Continue after resume upload → readback */}
+      {canContinueWithResume && (
         <div className="anim-fade-up">
           <button
             className="onboarding-cta"
@@ -385,7 +416,27 @@ export function ScreenWelcome({
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            Continue →
+            See what Kimchi read →
+          </button>
+        </div>
+      )}
+
+      {canSaveLinkedInOnly && (
+        <div className="anim-fade-up">
+          <button
+            type="button"
+            className="onboarding-cta"
+            onClick={onLinkedInOnly}
+            style={{
+              ...PRIMARY_CTA,
+              background: "transparent",
+              color: "#52493F",
+              border: "1.5px solid rgba(26,58,47,0.22)",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            Save LinkedIn &amp; continue without resume
           </button>
         </div>
       )}
@@ -396,7 +447,7 @@ export function ScreenWelcome({
         style={{
           background: "none",
           border: "none",
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 13,
           fontWeight: 400,
           color: "#A09890",
@@ -453,7 +504,7 @@ export function ScreenLinkedIn({
         <CheckCircleTiny />
         <span
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 12,
             fontWeight: 500,
             color: "#1A3A2F",
@@ -481,7 +532,7 @@ export function ScreenLinkedIn({
       <p
         className="anim-fade-up"
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 17,
           fontWeight: 300,
           color: "#52493F",
@@ -518,7 +569,7 @@ export function ScreenLinkedIn({
                 flex: 1,
                 border: "none",
                 background: "transparent",
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 16,
                 fontWeight: 400,
                 color: "#1A1A1A",
@@ -543,7 +594,7 @@ export function ScreenLinkedIn({
           </div>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 12,
               fontWeight: 300,
               color: "#A09890",
@@ -572,7 +623,7 @@ export function ScreenLinkedIn({
           <p
             className="anim-pulse"
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 16,
               fontWeight: 300,
               color: "#52493F",
@@ -590,7 +641,7 @@ export function ScreenLinkedIn({
           style={{
             background: "none",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 13,
             fontWeight: 400,
             color: "#A09890",
@@ -621,6 +672,7 @@ export interface ReadBackData {
 interface ReadBackProps {
   onConfirm: (data: ReadBackData | null) => void;
   onRefine: () => void;
+  onSkip: () => void;
 }
 
 function fitColor(fit: string): string {
@@ -629,7 +681,7 @@ function fitColor(fit: string): string {
   return "#8A7A6A";
 }
 
-export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
+export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
   const [data, setData] = React.useState<ReadBackData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -650,7 +702,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
       <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -684,7 +736,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
         >
           {loading && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>
                 Reading your resume...
               </p>
               {[180, 220, 140].map((w, i) => (
@@ -698,16 +750,35 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
           )}
 
           {!loading && (error || !data) && (
-            <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6 }}>
-              We couldn&apos;t generate a profile read — your resume may not have uploaded correctly. You can continue and update your profile in the workspace.
-            </p>
+            <>
+              <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 8 }}>
+                We couldn&apos;t generate your read right now — that happens sometimes. You can keep going and add a job; upload a resume anytime from Profile → Assets for the full read.
+              </p>
+              <button
+                type="button"
+                onClick={onSkip}
+                style={{
+                  padding: "12px 22px",
+                  background: "#1A3A2F",
+                  color: "#E8D5A3",
+                  border: "none",
+                  borderRadius: 5,
+                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Continue →
+              </button>
+            </>
           )}
 
           {!loading && data && (
             <>
               <p
                 style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 10,
                   fontWeight: 500,
                   color: "#A09890",
@@ -751,7 +822,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
                       padding: "6px 14px",
                       background: "#F5F3EF",
                       borderRadius: 100,
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 12,
                       color: "#2A2218",
                     }}
@@ -771,7 +842,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
               >
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 10,
                     fontWeight: 500,
                     color: "#A09890",
@@ -800,7 +871,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
                       </span>
                       <span
                         style={{
-                          fontFamily: "var(--font-dm-sans), system-ui",
+                          fontFamily: "var(--font-source-sans), system-ui",
                           fontSize: 11,
                           fontWeight: 400,
                           color: fitColor(r.fit),
@@ -817,7 +888,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
               <div style={{ padding: "18px 22px", background: "#FBF8F2", borderRadius: 7 }}>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 10,
                     fontWeight: 500,
                     color: "#A09890",
@@ -830,7 +901,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
                 </p>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 13,
                     fontWeight: 300,
                     color: "#6B6258",
@@ -846,7 +917,8 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
         </div>
       </div>
 
-      {/* Follow-up + CTA */}
+      {/* Follow-up + CTA — only when readback loaded successfully */}
+      {!loading && data && !error && (
       <div className="anim-fade-up" style={{ animationDelay: "0.85s" }}>
         <p
           style={{
@@ -880,7 +952,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
               color: "#52493F",
               border: "1px solid rgba(26,58,47,0.2)",
               borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 14,
               fontWeight: 400,
               cursor: "pointer",
@@ -893,6 +965,7 @@ export function ScreenReadBack({ onConfirm, onRefine }: ReadBackProps) {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -942,7 +1015,7 @@ export function ScreenTargetJobs({
       <p
         className="anim-fade-up"
         style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 17,
           fontWeight: 300,
           color: "#52493F",
@@ -979,7 +1052,7 @@ export function ScreenTargetJobs({
                 flex: 1,
                 border: "none",
                 background: "transparent",
-                fontFamily: "var(--font-dm-sans), system-ui",
+                fontFamily: "var(--font-source-sans), system-ui",
                 fontSize: 15,
                 fontWeight: 400,
                 color: "#1A1A1A",
@@ -1007,7 +1080,7 @@ export function ScreenTargetJobs({
           </div>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 12,
               fontWeight: 300,
               color: "#A09890",
@@ -1050,7 +1123,7 @@ export function ScreenTargetJobs({
               >
                 <span
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 11,
                     fontWeight: 600,
                     color: "#3A3020",
@@ -1062,7 +1135,7 @@ export function ScreenTargetJobs({
               <div>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 14,
                     fontWeight: 500,
                     color: "#1A1A1A",
@@ -1073,7 +1146,7 @@ export function ScreenTargetJobs({
                 </p>
                 <p
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     fontWeight: 400,
                     color: "#A09890",
@@ -1088,7 +1161,7 @@ export function ScreenTargetJobs({
                 <span
                   className="anim-pulse"
                   style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 12,
                     fontWeight: 300,
                     color: "#A09890",
@@ -1106,7 +1179,7 @@ export function ScreenTargetJobs({
                   <CheckCircleSmall />
                   <span
                     style={{
-                      fontFamily: "var(--font-dm-sans), system-ui",
+                      fontFamily: "var(--font-source-sans), system-ui",
                       fontSize: 12,
                       fontWeight: 500,
                       color: "#1A3A2F",
@@ -1132,7 +1205,7 @@ export function ScreenTargetJobs({
               color: "#E8D5A3",
               border: "none",
               borderRadius: 5,
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 15,
               fontWeight: 500,
               cursor: "pointer",
@@ -1154,7 +1227,7 @@ export function ScreenTargetJobs({
           style={{
             background: "none",
             border: "none",
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 13,
             fontWeight: 400,
             color: "#A09890",
@@ -1290,6 +1363,7 @@ interface TargetRolesProps {
   onToggleBucket: (id: string) => void;
   onToggleTitle: (title: string) => void;
   onContinue: () => void;
+  onSkip: () => void;
 }
 
 export function ScreenTargetRoles({
@@ -1298,6 +1372,7 @@ export function ScreenTargetRoles({
   onToggleBucket,
   onToggleTitle,
   onContinue,
+  onSkip,
 }: TargetRolesProps) {
   const availableTitles = ROLE_BUCKETS
     .filter((b) => selectedBuckets.includes(b.id))
@@ -1327,7 +1402,7 @@ export function ScreenTargetRoles({
             maxWidth: 440,
           }}
         >
-          Pick a category, then choose up to 3 specific titles.
+          Pick a category, then choose up to 3 specific titles. We&apos;ll use these when you add jobs and score your fit.
         </p>
       </div>
 
@@ -1335,7 +1410,7 @@ export function ScreenTargetRoles({
       <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -1360,7 +1435,7 @@ export function ScreenTargetRoles({
                   color: active ? "#E8D5A3" : "#52493F",
                   border: `1.5px solid ${active ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
                   borderRadius: 6,
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 13,
                   fontWeight: active ? 500 : 400,
                   cursor: "pointer",
@@ -1392,7 +1467,7 @@ export function ScreenTargetRoles({
         <div className="anim-fade-up" style={{ background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
+              fontFamily: "var(--font-source-sans), system-ui",
               fontSize: 10,
               fontWeight: 500,
               color: "#A09890",
@@ -1418,7 +1493,7 @@ export function ScreenTargetRoles({
                     color: disabled ? "#C5BFB7" : selected ? "#1A3A2F" : "#52493F",
                     border: `1.5px solid ${selected ? "#1A3A2F" : disabled ? "rgba(26,58,47,0.1)" : "rgba(26,58,47,0.2)"}`,
                     borderRadius: 100,
-                    fontFamily: "var(--font-dm-sans), system-ui",
+                    fontFamily: "var(--font-source-sans), system-ui",
                     fontSize: 13,
                     fontWeight: selected ? 500 : 400,
                     cursor: disabled ? "default" : "pointer",
@@ -1453,6 +1528,29 @@ export function ScreenTargetRoles({
           </button>
         </div>
       )}
+
+      {!canContinue && (
+        <button
+          type="button"
+          onClick={onSkip}
+          style={{
+            background: "none",
+            border: "none",
+            fontFamily: "var(--font-source-sans), system-ui",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
+            cursor: "pointer",
+            padding: "8px 0",
+            minHeight: 44,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Skip for now
+        </button>
+      )}
     </div>
   );
 }
@@ -1474,6 +1572,7 @@ interface AboutYouProps {
   onTogglePriority: (p: string) => void;
   onAttributionChange: (v: string) => void;
   onContinue: () => void;
+  onSkip: () => void;
 }
 
 export function ScreenAboutYou({
@@ -1490,11 +1589,13 @@ export function ScreenAboutYou({
   onTogglePriority,
   onAttributionChange,
   onContinue,
+  onSkip,
 }: AboutYouProps) {
   const salaryRows = [
     { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
     { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
   ];
+  const showFilterNudge = !jobTimeline && !targetSalary;
 
   const chipBtn = (selected: boolean, onClick: () => void, label: string) => (
     <button
@@ -1507,7 +1608,7 @@ export function ScreenAboutYou({
         color: selected ? "#1A3A2F" : "#52493F",
         border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.2)"}`,
         borderRadius: 100,
-        fontFamily: "var(--font-dm-sans), system-ui",
+        fontFamily: "var(--font-source-sans), system-ui",
         fontSize: 13,
         fontWeight: selected ? 500 : 400,
         cursor: "pointer",
@@ -1521,10 +1622,17 @@ export function ScreenAboutYou({
     </button>
   );
 
-  const sectionLabel = (text: string, optional?: boolean) => (
-    <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase" as const, marginBottom: 12 }}>
-      {text}{optional && <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
-    </p>
+  const sectionLabel = (text: string, hint?: string, optional?: boolean) => (
+    <div style={{ marginBottom: 12 }}>
+      <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 10, fontWeight: 500, color: "#A09890", letterSpacing: "1px", textTransform: "uppercase" as const }}>
+        {text}{optional && <span style={{ fontWeight: 300, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
+      </p>
+      {hint && (
+        <p style={{ fontFamily: "var(--font-source-sans), system-ui", fontSize: 12, fontWeight: 300, color: "#A09890", marginTop: 6, lineHeight: 1.5 }}>
+          {hint}
+        </p>
+      )}
+    </div>
   );
 
   return (
@@ -1534,13 +1642,13 @@ export function ScreenAboutYou({
           A few more things.
         </h2>
         <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, maxWidth: 440 }}>
-          Helps us match you to the right roles and filter out the wrong ones.
+          Two quick picks help Kimchi rank opportunities and skip bad fits. Salary and the rest are optional.
         </p>
       </div>
 
       {/* Career motivation */}
       <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What's driving your move?")}
+        {sectionLabel("What's driving your move?", "Surfaces roles that match why you're leaving — not just your title.")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {CAREER_MOTIVATIONS.map((m) => chipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m))}
         </div>
@@ -1548,7 +1656,7 @@ export function ScreenAboutYou({
 
       {/* Job timeline */}
       <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("When do you want to make a move?")}
+        {sectionLabel("When do you want to make a move?", "Helps Kimchi prioritize urgent openings vs. long-shots.")}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {JOB_TIMELINES.map(({ value, label }) => {
             const selected = jobTimeline === value;
@@ -1563,7 +1671,7 @@ export function ScreenAboutYou({
                   color: selected ? "#E8D5A3" : "#52493F",
                   border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
                   borderRadius: 6,
-                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontFamily: "var(--font-source-sans), system-ui",
                   fontSize: 14,
                   fontWeight: selected ? 500 : 400,
                   cursor: "pointer",
@@ -1585,12 +1693,12 @@ export function ScreenAboutYou({
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           {salaryRows.map(({ label, value, onChange }) => (
             <div key={label} style={{ flex: "1 1 200px" }}>
-              {sectionLabel(label, true)}
+              {sectionLabel(label, undefined, true)}
               <div style={{ position: "relative" }}>
                 <select
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
-                  style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-source-sans), system-ui", fontSize: 16, fontWeight: 400, color: value ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
                 >
                   <option value="">Select a range</option>
                   {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -1606,7 +1714,7 @@ export function ScreenAboutYou({
 
       {/* Priorities */}
       <div className="anim-fade-up" style={{ animationDelay: "0.65s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What matters most to you?", true)}
+        {sectionLabel("What matters most to you?", "Filters listings that clash with how you want to work.", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {PRIORITIES.map((p) => chipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
         </div>
@@ -1614,12 +1722,12 @@ export function ScreenAboutYou({
 
       {/* Attribution */}
       <div className="anim-fade-up" style={{ animationDelay: "0.8s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("How did you hear about Kimchi?", true)}
+        {sectionLabel("How did you hear about Kimchi?", undefined, true)}
         <div style={{ position: "relative", maxWidth: 280, width: "100%" }}>
           <select
             value={attribution}
             onChange={(e) => onAttributionChange(e.target.value)}
-            style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-dm-sans), system-ui", fontSize: 16, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
+            style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-source-sans), system-ui", fontSize: 16, fontWeight: 400, color: attribution ? "#1A1A1A" : "#A09890", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
           >
             <option value="">Select one</option>
             {ATTRIBUTION_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -1632,6 +1740,21 @@ export function ScreenAboutYou({
 
       {/* CTA */}
       <div className="anim-fade-up" style={{ animationDelay: "0.95s" }}>
+        {showFilterNudge && (
+          <p
+            style={{
+              fontFamily: "var(--font-source-sans), system-ui",
+              fontSize: 13,
+              fontWeight: 300,
+              color: "#6B6258",
+              lineHeight: 1.55,
+              marginBottom: 16,
+              maxWidth: 440,
+            }}
+          >
+            Adding a timeline and target salary helps Kimchi filter bad-fit roles — optional, but worth a quick pick.
+          </p>
+        )}
         <button
           className="onboarding-cta"
           onClick={onContinue}
@@ -1639,7 +1762,29 @@ export function ScreenAboutYou({
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Let&apos;s go →
+          Continue →
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          style={{
+            display: "block",
+            marginTop: 16,
+            background: "none",
+            border: "none",
+            fontFamily: "var(--font-source-sans), system-ui",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
+            cursor: "pointer",
+            padding: "8px 0",
+            minHeight: 44,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Skip for now — you can add this on your profile later
         </button>
       </div>
     </div>
@@ -1647,21 +1792,50 @@ export function ScreenAboutYou({
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Screen 3 — Transition
+   Screen 4 — Transition + first job
    ────────────────────────────────────────────────────────────── */
-export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnterWorkspace: () => void; targetRoles?: string[] }) {
-  const previewRoles = (targetRoles.length > 0 ? targetRoles : ["Director of Strategy", "VP of Operations", "Chief of Staff"]).slice(0, 3);
-  const roleCount = previewRoles.length;
+export interface TransitionJobAnalysis {
+  company: string | null;
+  role: string | null;
+  location: string | null;
+  salary: string | null;
+  description: string | null;
+  requirements: string[];
+}
+
+interface TransitionProps {
+  targetRoles?: string[];
+  jobUrl: string;
+  onJobUrlChange: (value: string) => void;
+  onAnalyze: () => void;
+  onAddJob: () => void;
+  onSkip: () => void;
+  onReviewProfile?: () => void;
+  loading: boolean;
+  error: string | null;
+  analysis: TransitionJobAnalysis | null;
+}
+
+export function ScreenTransition({
+  targetRoles = [],
+  jobUrl,
+  onJobUrlChange,
+  onAnalyze,
+  onAddJob,
+  onSkip,
+  onReviewProfile,
+  loading,
+  error,
+  analysis,
+}: TransitionProps) {
+  const canAnalyze = jobUrl.trim().length > 0 && !loading;
 
   return (
-    <div
-      className="flex flex-col gap-10 anim-fade-up"
-      style={{ animationDuration: "0.9s" }}
-    >
+    <div className="flex flex-col gap-8 anim-fade-up onboarding-screen-gap" style={{ animationDuration: "0.9s" }}>
       <div>
         <p
           style={{
-            fontFamily: "var(--font-dm-sans), system-ui",
+            fontFamily: "var(--font-source-sans), system-ui",
             fontSize: 10,
             fontWeight: 500,
             color: "#A09890",
@@ -1672,169 +1846,247 @@ export function ScreenTransition({ onEnterWorkspace, targetRoles = [] }: { onEnt
         >
           You&apos;re set up
         </p>
-        <h2
-          style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
-            fontSize: 58,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
-            lineHeight: 1.02,
-            letterSpacing: "-0.4px",
-          }}
-        >
+        <h2 style={{ ...DISPLAY_H2, lineHeight: 1.02, marginBottom: 14 }}>
           Let&apos;s get you
           <br />
           interviews.
         </h2>
+        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(1rem, 2.5vw, 1.125rem)", maxWidth: 440 }}>
+          Paste a job you&apos;re considering. Kimchi will read the listing and score your fit.
+        </p>
       </div>
-      <p
-        style={{
-          fontFamily: "var(--font-dm-sans), system-ui",
-          fontSize: 18,
-          fontWeight: 300,
-          color: "#52493F",
-          lineHeight: 1.65,
-          maxWidth: 400,
-          textWrap: "pretty",
-        }}
-      >
-        Kimchi has your background and knows what you&apos;re built for. Your workspace is ready.
-      </p>
 
-      {/* Workspace preview */}
+      {targetRoles.length > 0 && (
+        <div className="anim-fade-up">
+          <p
+            style={{
+              fontFamily: "var(--font-source-sans), system-ui",
+              fontSize: 10,
+              fontWeight: 500,
+              color: "#A09890",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            Roles you&apos;re targeting
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {targetRoles.map((role) => (
+              <span
+                key={role}
+                style={{
+                  padding: "6px 14px",
+                  background: "rgba(26,58,47,0.08)",
+                  borderRadius: 100,
+                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontSize: 12,
+                  color: "#1A3A2F",
+                }}
+              >
+                {role}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div
         className="anim-fade-up"
         style={{
           background: "#FFFFFF",
-          borderRadius: 10,
-          overflow: "hidden",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.05), 0 14px 36px rgba(0,0,0,0.08)",
-          animationDelay: "0.35s",
+          borderRadius: 12,
+          padding: ONBOARDING_SECTION_PAD,
+          border: "1px solid rgba(0,0,0,0.07)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
         }}
       >
-        <div
+        <p
           style={{
-            background: "#1A3A2F",
-            padding: "20px 30px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            fontFamily: "var(--font-source-sans), system-ui",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#A09890",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span
-              style={{
-                fontFamily: "var(--font-playfair), serif",
-                fontSize: 16,
-                fontWeight: 400,
-                color: "#E8D5A3",
-              }}
-            >
-              Kimchi
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
-                fontWeight: 300,
-                color: "rgba(232,213,163,0.45)",
-              }}
-            >
-              workspace
-            </span>
-          </div>
-          <span
+          Add your first job
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input
+            type="url"
+            autoFocus
+            placeholder="Paste a job listing URL…"
+            value={jobUrl}
+            onChange={(e) => onJobUrlChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (analysis) onAddJob();
+                else if (canAnalyze) onAnalyze();
+              }
+            }}
             style={{
-              fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 10,
-              fontWeight: 400,
-              color: "rgba(232,213,163,0.55)",
-              letterSpacing: "0.6px",
-              textTransform: "uppercase",
+              width: "100%",
+              minHeight: 48,
+              padding: "12px 14px",
+              border: "1.5px solid rgba(26,58,47,0.22)",
+              borderRadius: 6,
+              background: "#F7F5F2",
+              fontFamily: "var(--font-source-sans), system-ui",
+              fontSize: 16,
+              color: "#1A1A1A",
+              boxSizing: "border-box",
+            }}
+          />
+          {!analysis && (
+            <button
+              type="button"
+              className="onboarding-cta"
+              disabled={!canAnalyze}
+              onClick={onAnalyze}
+              style={{
+                ...PRIMARY_CTA,
+                opacity: canAnalyze ? 1 : 0.45,
+                cursor: canAnalyze ? "pointer" : "not-allowed",
+              }}
+            >
+              {loading ? "Reading listing…" : "Analyze this job →"}
+            </button>
+          )}
+        </div>
+
+        {loading && (
+          <p
+            className="anim-pulse"
+            style={{
+              fontFamily: "var(--font-source-sans), system-ui",
+              fontSize: 13,
+              fontWeight: 300,
+              color: "#52493F",
+              marginTop: 14,
             }}
           >
-            {roleCount} role{roleCount !== 1 ? "s" : ""} queued
-          </span>
-        </div>
-        <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 9 }}>
-          {previewRoles.map((role, i) => (
-            <div
-              key={i}
+            Kimchi is reading the listing…
+          </p>
+        )}
+
+        {error && !loading && (
+          <p
+            style={{
+              fontFamily: "var(--font-source-sans), system-ui",
+              fontSize: 13,
+              color: "#C4574A",
+              marginTop: 14,
+              lineHeight: 1.5,
+            }}
+          >
+            {error}
+          </p>
+        )}
+
+        {analysis && !loading && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: "16px 18px",
+              background: "#F8F6F2",
+              borderRadius: 8,
+              border: "1px solid rgba(26,58,47,0.1)",
+            }}
+          >
+            <p
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "13px 18px",
-                background: "#F8F6F2",
-                borderRadius: 7,
-                opacity: i === 0 ? 1 : 0.6,
+                fontFamily: "var(--font-source-sans), system-ui",
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#1A1A1A",
+                marginBottom: 4,
               }}
             >
-              <div>
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "#1A1A1A",
-                    marginBottom: 2,
-                  }}
-                >
-                  {role}
-                </p>
-                <p
-                  className="anim-pulse"
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
-                    fontWeight: 300,
-                    color: "#A09890",
-                  }}
-                >
-                  {i === 0 ? "Setting up your workspace…" : "Queued"}
-                </p>
-              </div>
-              <span
+              {analysis.company ?? "Company"}
+            </p>
+            <p
+              style={{
+                fontFamily: "var(--font-source-sans), system-ui",
+                fontSize: 14,
+                fontWeight: 400,
+                color: "#52493F",
+                marginBottom: 10,
+              }}
+            >
+              {analysis.role ?? "Role"}
+            </p>
+            {(analysis.location || analysis.salary) && (
+              <p
                 style={{
-                  padding: "4px 11px",
-                  background: "rgba(0,0,0,0.05)",
-                  borderRadius: 100,
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  fontWeight: 400,
+                  fontFamily: "var(--font-source-sans), system-ui",
+                  fontSize: 12,
+                  fontWeight: 300,
                   color: "#A09890",
+                  marginBottom: 14,
                 }}
               >
-                {i === 0 ? "Preparing" : "Queued"}
-              </span>
-            </div>
-          ))}
-        </div>
+                {[analysis.location, analysis.salary].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            <button
+              type="button"
+              className="onboarding-cta"
+              onClick={onAddJob}
+              style={PRIMARY_CTA}
+            >
+              Add to my pipeline →
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="anim-fade-up" style={{ animationDelay: "0.65s" }}>
+      <div className="anim-fade-up">
         <button
-          onClick={onEnterWorkspace}
+          type="button"
+          onClick={onSkip}
           style={{
-            display: "inline-block",
-            padding: "16px 36px",
-            background: "#1A3A2F",
-            color: "#E8D5A3",
+            background: "none",
             border: "none",
-            borderRadius: 5,
-            fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 15,
-            fontWeight: 500,
+            fontFamily: "var(--font-source-sans), system-ui",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
             cursor: "pointer",
-            letterSpacing: "0.2px",
-            transition: "opacity 0.15s",
+            padding: "8px 0",
+            minHeight: 44,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Open your workspace →
+          I&apos;ll add a job later — take me to my workspace
         </button>
+        {onReviewProfile && (
+          <button
+            type="button"
+            onClick={onReviewProfile}
+            style={{
+              display: "block",
+              background: "none",
+              border: "none",
+              fontFamily: "var(--font-source-sans), system-ui",
+              fontSize: 13,
+              fontWeight: 400,
+              color: "#A09890",
+              cursor: "pointer",
+              padding: "8px 0",
+              minHeight: 44,
+              textAlign: "left",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Review your profile
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1857,7 +2109,7 @@ export function DemoNextButton({ onClick }: { onClick: () => void }) {
           color: "rgba(232,213,163,0.88)",
           border: "none",
           borderRadius: 6,
-          fontFamily: "var(--font-dm-sans), system-ui",
+          fontFamily: "var(--font-source-sans), system-ui",
           fontSize: 12,
           fontWeight: 500,
           cursor: "pointer",

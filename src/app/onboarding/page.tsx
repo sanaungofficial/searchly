@@ -9,11 +9,44 @@ import {
   ScreenReadBack,
   ScreenTargetRoles,
   ScreenAboutYou,
+  ScreenTransition,
   DemoNextButton,
   ROLE_BUCKETS,
   type Screen,
   type ReadBackData,
+  type TransitionJobAnalysis,
 } from "@/components/scout/screens";
+
+function saveLinkedIn(url: string) {
+  if (!url.trim()) return;
+  fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ linkedinUrl: url.trim() }),
+  }).catch(() => {});
+}
+
+function saveAboutYou(fields: {
+  careerMotivation: string;
+  jobTimeline: string;
+  currentSalary: string;
+  targetSalary: string;
+  priorities: string[];
+  attribution: string;
+}) {
+  fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      careerMotivation: fields.careerMotivation || null,
+      jobTimeline: fields.jobTimeline || null,
+      currentSalary: fields.currentSalary || null,
+      targetSalary: fields.targetSalary || null,
+      priorities: fields.priorities,
+      attribution: fields.attribution || null,
+    }),
+  }).catch(() => {});
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -44,6 +77,10 @@ export default function OnboardingPage() {
   const [priorities, setPriorities] = useState<string[]>([]);
   const [attribution, setAttribution] = useState("");
   const [resumeError, setResumeError] = useState(false);
+  const [jobUrl, setJobUrl] = useState("");
+  const [jobLoading, setJobLoading] = useState(false);
+  const [jobError, setJobError] = useState<string | null>(null);
+  const [jobAnalysis, setJobAnalysis] = useState<TransitionJobAnalysis | null>(null);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
@@ -58,6 +95,7 @@ export default function OnboardingPage() {
       const res = await fetch("/api/resume", { method: "POST", body: formData });
       if (res.ok) {
         setResumeUploaded(true);
+        if (liInput.trim()) saveLinkedIn(liInput);
         goTo(1);
       } else {
         setResumeError(true);
@@ -67,7 +105,7 @@ export default function OnboardingPage() {
       setResumeError(true);
       setResumeFilename(null);
     }
-  }, [goTo]);
+  }, [goTo, liInput]);
 
   const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
@@ -88,21 +126,23 @@ export default function OnboardingPage() {
   const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => setLiInput(e.target.value);
 
   const onWelcomeContinue = useCallback(() => {
-    if (liInput.trim()) {
-      fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkedinUrl: liInput.trim() }),
-      }).catch(() => {});
-    }
+    if (!resumeUploaded) return;
+    if (liInput.trim()) saveLinkedIn(liInput);
     goTo(1);
+  }, [liInput, resumeUploaded, goTo]);
+
+  const onLinkedInOnly = useCallback(() => {
+    saveLinkedIn(liInput);
+    goTo(2);
   }, [liInput, goTo]);
 
   const onLIKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && (resumeUploaded || liInput.trim())) onWelcomeContinue();
-  }, [resumeUploaded, liInput, onWelcomeContinue]);
+    if (e.key !== "Enter") return;
+    if (resumeUploaded) onWelcomeContinue();
+    else if (liInput.trim()) onLinkedInOnly();
+  }, [resumeUploaded, liInput, onWelcomeContinue, onLinkedInOnly]);
 
-  const onSkipProfile = useCallback(() => goTo(1), [goTo]);
+  const onSkipProfile = useCallback(() => goTo(2), [goTo]);
 
   const onToggleBucket = useCallback((id: string) => {
     const newBuckets = selectedBuckets.includes(id)
@@ -127,6 +167,8 @@ export default function OnboardingPage() {
     goTo(2);
   }, [goTo]);
 
+  const onReadBackSkip = useCallback(() => goTo(2), [goTo]);
+
   const onReadBackRefine = useCallback(() => {
     goTo(0);
   }, [goTo]);
@@ -142,23 +184,101 @@ export default function OnboardingPage() {
     goTo(3);
   }, [selectedTitles, goTo]);
 
+  const onRolesSkip = useCallback(() => goTo(3), [goTo]);
+
   const onTogglePriority = useCallback((p: string) => {
     setPriorities((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   }, []);
 
-  const onAboutYouContinue = useCallback(() => {
-    fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        careerMotivation: careerMotivation || null,
-        jobTimeline: jobTimeline || null,
-        currentSalary: currentSalary || null,
-        targetSalary: targetSalary || null,
-        priorities,
-        attribution: attribution || null,
-      }),
-    }).catch(() => {});
+  const goToTransition = useCallback(() => {
+    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
+    goTo(4);
+  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, goTo]);
+
+  const analyzeFirstJob = useCallback(async () => {
+    const url = jobUrl.trim();
+    if (!url) return;
+    setJobLoading(true);
+    setJobError(null);
+    setJobAnalysis(null);
+    try {
+      const res = await fetch("/api/ai/parse-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setJobError(data.error ?? "Could not read that URL. Try another listing link.");
+      } else {
+        setJobAnalysis(data);
+      }
+    } catch {
+      setJobError("Network error — please try again.");
+    } finally {
+      setJobLoading(false);
+    }
+  }, [jobUrl]);
+
+  const addFirstJob = useCallback(async () => {
+    if (!jobAnalysis) return;
+    const url = jobUrl.trim();
+    const company = jobAnalysis.company ?? "Unknown Company";
+    const role = jobAnalysis.role ?? "Unknown Role";
+    const notes = JSON.stringify({
+      location: jobAnalysis.location,
+      salary: jobAnalysis.salary,
+      description: jobAnalysis.description,
+      requirements: jobAnalysis.requirements,
+    });
+    setJobLoading(true);
+    setJobError(null);
+    try {
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company, role, url, notes }),
+      });
+      const job = await res.json();
+      if (!res.ok) {
+        setJobError(job.error ?? "Could not save this job.");
+        return;
+      }
+      if (jobAnalysis.description && job.id) {
+        fetch("/api/ai/job-match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobTitle: role,
+            company,
+            description: jobAnalysis.description,
+          }),
+        })
+          .then((r) => r.json())
+          .then((matchData: { score?: number }) => {
+            if (!matchData.score || !job.id) return;
+            fetch(`/api/jobs/${job.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: matchData.score }) }),
+            }).catch(() => {});
+          })
+          .catch(() => {});
+      }
+      router.push(`/opportunities/pipeline?job=${job.id}`);
+    } catch {
+      setJobError("Network error — please try again.");
+    } finally {
+      setJobLoading(false);
+    }
+  }, [jobAnalysis, jobUrl, router]);
+
+  const skipToWorkspace = useCallback(() => {
+    router.push("/opportunities/pipeline");
+  }, [router]);
+
+  const onReviewProfile = useCallback(() => {
+    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
     router.push("/profile");
   }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, router]);
 
@@ -170,6 +290,8 @@ export default function OnboardingPage() {
       goTo(2);
     } else if (screen === 2) {
       goTo(3);
+    } else if (screen === 3) {
+      goTo(4);
     }
   };
 
@@ -192,7 +314,7 @@ export default function OnboardingPage() {
         onChange={onFileChange}
       />
       <div className="onboarding-shell">
-        <ScoutHeader screen={screen} onScoutClick={() => router.push("/opportunities")} />
+        <ScoutHeader screen={screen} />
         <div className="onboarding-content">
           {screen === 0 && (
             <ScreenWelcome
@@ -204,6 +326,7 @@ export default function OnboardingPage() {
               onLIChange={onLIChange}
               onLIKey={onLIKey}
               onContinue={onWelcomeContinue}
+              onLinkedInOnly={onLinkedInOnly}
               onSkip={onSkipProfile}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
@@ -216,6 +339,7 @@ export default function OnboardingPage() {
             <ScreenReadBack
               onConfirm={onReadBackConfirm}
               onRefine={onReadBackRefine}
+              onSkip={onReadBackSkip}
             />
           )}
           {screen === 2 && (
@@ -225,6 +349,7 @@ export default function OnboardingPage() {
               onToggleBucket={onToggleBucket}
               onToggleTitle={onToggleTitle}
               onContinue={onRolesContinue}
+              onSkip={onRolesSkip}
             />
           )}
           {screen === 3 && (
@@ -241,7 +366,26 @@ export default function OnboardingPage() {
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
               onAttributionChange={setAttribution}
-              onContinue={onAboutYouContinue}
+              onContinue={goToTransition}
+              onSkip={goToTransition}
+            />
+          )}
+          {screen === 4 && (
+            <ScreenTransition
+              targetRoles={selectedTitles}
+              jobUrl={jobUrl}
+              onJobUrlChange={(v) => {
+                setJobUrl(v);
+                if (jobAnalysis) setJobAnalysis(null);
+                if (jobError) setJobError(null);
+              }}
+              onAnalyze={analyzeFirstJob}
+              onAddJob={addFirstJob}
+              onSkip={skipToWorkspace}
+              onReviewProfile={onReviewProfile}
+              loading={jobLoading}
+              error={jobError}
+              analysis={jobAnalysis}
             />
           )}
         </div>
