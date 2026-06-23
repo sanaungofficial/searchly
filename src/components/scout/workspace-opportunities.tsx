@@ -40,8 +40,12 @@ export function WorkspaceOpportunities() {
     role: string | null;
     location: string | null;
     salary: string | null;
+    jobType: string | null;
+    remote: boolean | null;
+    seniority: string | null;
     description: string | null;
     requirements: string[];
+    tags: string[];
   }>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
@@ -127,8 +131,12 @@ export function WorkspaceOpportunities() {
     const meta: JobMeta = {
       location: jobAnalysis.location,
       salary: jobAnalysis.salary,
+      jobType: jobAnalysis.jobType,
+      remote: jobAnalysis.remote,
+      seniority: jobAnalysis.seniority,
       description: jobAnalysis.description,
       requirements: jobAnalysis.requirements,
+      tags: jobAnalysis.tags,
     };
     await addJob(company, role, addJobUrl.trim() || undefined, meta);
     setShowAddPanel(false);
@@ -1771,4 +1779,5 @@ function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, copied, se
     </>
   );
 }
+
 
