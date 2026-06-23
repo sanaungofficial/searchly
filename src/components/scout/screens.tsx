@@ -1792,24 +1792,46 @@ export function ScreenAboutYou({
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Screen 3 — Transition
+   Screen 4 — Transition + first job
    ────────────────────────────────────────────────────────────── */
-export function ScreenTransition({
-  onEnterWorkspace,
-  onReviewProfile,
-  targetRoles = [],
-}: {
-  onEnterWorkspace: () => void;
-  onReviewProfile?: () => void;
+export interface TransitionJobAnalysis {
+  company: string | null;
+  role: string | null;
+  location: string | null;
+  salary: string | null;
+  description: string | null;
+  requirements: string[];
+}
+
+interface TransitionProps {
   targetRoles?: string[];
-}) {
-  const previewRoles = (targetRoles.length > 0 ? targetRoles : ["Director of Strategy", "VP of Operations"]).slice(0, 2);
+  jobUrl: string;
+  onJobUrlChange: (value: string) => void;
+  onAnalyze: () => void;
+  onAddJob: () => void;
+  onSkip: () => void;
+  onReviewProfile?: () => void;
+  loading: boolean;
+  error: string | null;
+  analysis: TransitionJobAnalysis | null;
+}
+
+export function ScreenTransition({
+  targetRoles = [],
+  jobUrl,
+  onJobUrlChange,
+  onAnalyze,
+  onAddJob,
+  onSkip,
+  onReviewProfile,
+  loading,
+  error,
+  analysis,
+}: TransitionProps) {
+  const canAnalyze = jobUrl.trim().length > 0 && !loading;
 
   return (
-    <div
-      className="flex flex-col gap-10 anim-fade-up"
-      style={{ animationDuration: "0.9s" }}
-    >
+    <div className="flex flex-col gap-8 anim-fade-up onboarding-screen-gap" style={{ animationDuration: "0.9s" }}>
       <div>
         <p
           style={{
@@ -1824,209 +1846,223 @@ export function ScreenTransition({
         >
           You&apos;re set up
         </p>
-        <h2
-          style={{
-            ...DISPLAY_H2,
-            lineHeight: 1.02,
-          }}
-        >
+        <h2 style={{ ...DISPLAY_H2, lineHeight: 1.02, marginBottom: 14 }}>
           Let&apos;s get you
           <br />
           interviews.
         </h2>
+        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(1rem, 2.5vw, 1.125rem)", maxWidth: 440 }}>
+          Paste a job you&apos;re considering. Kimchi will read the listing and score your fit.
+        </p>
       </div>
-      <p
-        style={{
-          ...ONBOARDING_BODY,
-          fontSize: "clamp(1rem, 2.5vw, 1.125rem)",
-          maxWidth: 420,
-        }}
-      >
-        You&apos;re set up. Add a job you&apos;re considering — Kimchi will score your fit in under a minute.
-      </p>
 
-      {/* Workspace preview */}
+      {targetRoles.length > 0 && (
+        <div className="anim-fade-up">
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 10,
+              fontWeight: 500,
+              color: "#A09890",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            Roles you&apos;re targeting
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {targetRoles.map((role) => (
+              <span
+                key={role}
+                style={{
+                  padding: "6px 14px",
+                  background: "rgba(26,58,47,0.08)",
+                  borderRadius: 100,
+                  fontFamily: "var(--font-dm-sans), system-ui",
+                  fontSize: 12,
+                  color: "#1A3A2F",
+                }}
+              >
+                {role}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div
         className="anim-fade-up"
         style={{
           background: "#FFFFFF",
-          borderRadius: 10,
-          overflow: "hidden",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.05), 0 14px 36px rgba(0,0,0,0.08)",
-          animationDelay: "0.35s",
+          borderRadius: 12,
+          padding: ONBOARDING_SECTION_PAD,
+          border: "1px solid rgba(0,0,0,0.07)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
         }}
       >
-        <div
+        <p
           style={{
-            background: "#1A3A2F",
-            padding: "20px 30px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            fontFamily: "var(--font-dm-sans), system-ui",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#A09890",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            marginBottom: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span
+          Add your first job
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input
+            type="url"
+            autoFocus
+            placeholder="Paste a job listing URL…"
+            value={jobUrl}
+            onChange={(e) => onJobUrlChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (analysis) onAddJob();
+                else if (canAnalyze) onAnalyze();
+              }
+            }}
+            style={{
+              width: "100%",
+              minHeight: 48,
+              padding: "12px 14px",
+              border: "1.5px solid rgba(26,58,47,0.22)",
+              borderRadius: 6,
+              background: "#F7F5F2",
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 16,
+              color: "#1A1A1A",
+              boxSizing: "border-box",
+            }}
+          />
+          {!analysis && (
+            <button
+              type="button"
+              className="onboarding-cta"
+              disabled={!canAnalyze}
+              onClick={onAnalyze}
               style={{
-                fontFamily: "var(--font-playfair), serif",
-                fontSize: 16,
-                fontWeight: 400,
-                color: "#E8D5A3",
+                ...PRIMARY_CTA,
+                opacity: canAnalyze ? 1 : 0.45,
+                cursor: canAnalyze ? "pointer" : "not-allowed",
               }}
             >
-              Kimchi
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
-                fontWeight: 300,
-                color: "rgba(232,213,163,0.45)",
-              }}
-            >
-              workspace
-            </span>
-          </div>
-          <span
+              {loading ? "Reading listing…" : "Analyze this job →"}
+            </button>
+          )}
+        </div>
+
+        {loading && (
+          <p
+            className="anim-pulse"
             style={{
               fontFamily: "var(--font-dm-sans), system-ui",
-              fontSize: 10,
-              fontWeight: 400,
-              color: "rgba(232,213,163,0.55)",
-              letterSpacing: "0.6px",
-              textTransform: "uppercase",
+              fontSize: 13,
+              fontWeight: 300,
+              color: "#52493F",
+              marginTop: 14,
             }}
           >
-            Next step
-          </span>
-        </div>
-        <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 9 }}>
+            Kimchi is reading the listing…
+          </p>
+        )}
+
+        {error && !loading && (
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans), system-ui",
+              fontSize: 13,
+              color: "#C4574A",
+              marginTop: 14,
+              lineHeight: 1.5,
+            }}
+          >
+            {error}
+          </p>
+        )}
+
+        {analysis && !loading && (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "13px 18px",
-              background: "rgba(26,58,47,0.08)",
-              borderRadius: 7,
-              border: "1px solid rgba(26,58,47,0.12)",
+              marginTop: 16,
+              padding: "16px 18px",
+              background: "#F8F6F2",
+              borderRadius: 8,
+              border: "1px solid rgba(26,58,47,0.1)",
             }}
           >
-            <div>
-              <p
-                style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "#1A3A2F",
-                  marginBottom: 2,
-                }}
-              >
-                Paste a job URL
-              </p>
-              <p
-                style={{
-                  fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  fontWeight: 300,
-                  color: "#6B6258",
-                }}
-              >
-                Get a fit score and tailored materials
-              </p>
-            </div>
-            <span
+            <p
               style={{
-                padding: "4px 11px",
-                background: "#1A3A2F",
-                borderRadius: 100,
                 fontFamily: "var(--font-dm-sans), system-ui",
-                fontSize: 11,
-                fontWeight: 500,
-                color: "#E8D5A3",
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#1A1A1A",
+                marginBottom: 4,
               }}
             >
-              Start here
-            </span>
-          </div>
-          {previewRoles.map((role, i) => (
-            <div
-              key={i}
+              {analysis.company ?? "Company"}
+            </p>
+            <p
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "13px 18px",
-                background: "#F8F6F2",
-                borderRadius: 7,
-                opacity: i === 0 ? 1 : 0.6,
+                fontFamily: "var(--font-dm-sans), system-ui",
+                fontSize: 14,
+                fontWeight: 400,
+                color: "#52493F",
+                marginBottom: 10,
               }}
             >
-              <div>
-                <p
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "#1A1A1A",
-                    marginBottom: 2,
-                  }}
-                >
-                  {role}
-                </p>
-                <p
-                  className="anim-pulse"
-                  style={{
-                    fontFamily: "var(--font-dm-sans), system-ui",
-                    fontSize: 11,
-                    fontWeight: 300,
-                    color: "#A09890",
-                  }}
-                >
-                  {i === 0 ? "Target role saved" : "Target role saved"}
-                </p>
-              </div>
-              <span
+              {analysis.role ?? "Role"}
+            </p>
+            {(analysis.location || analysis.salary) && (
+              <p
                 style={{
-                  padding: "4px 11px",
-                  background: "rgba(0,0,0,0.05)",
-                  borderRadius: 100,
                   fontFamily: "var(--font-dm-sans), system-ui",
-                  fontSize: 11,
-                  fontWeight: 400,
+                  fontSize: 12,
+                  fontWeight: 300,
                   color: "#A09890",
+                  marginBottom: 14,
                 }}
               >
-                Saved
-              </span>
-            </div>
-          ))}
-        </div>
+                {[analysis.location, analysis.salary].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            <button
+              type="button"
+              className="onboarding-cta"
+              onClick={onAddJob}
+              style={PRIMARY_CTA}
+            >
+              Add to my pipeline →
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="anim-fade-up" style={{ animationDelay: "0.65s" }}>
+      <div className="anim-fade-up">
         <button
-          className="onboarding-cta"
-          onClick={onEnterWorkspace}
+          type="button"
+          onClick={onSkip}
           style={{
-            display: "inline-block",
-            padding: "16px 36px",
-            background: "#1A3A2F",
-            color: "#E8D5A3",
+            background: "none",
             border: "none",
-            borderRadius: 5,
             fontFamily: "var(--font-dm-sans), system-ui",
-            fontSize: 15,
-            fontWeight: 500,
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#A09890",
             cursor: "pointer",
-            letterSpacing: "0.2px",
-            transition: "opacity 0.15s",
-            minHeight: 48,
+            padding: "8px 0",
+            minHeight: 44,
+            textAlign: "left",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Add my first job →
+          I&apos;ll add a job later — take me to my workspace
         </button>
         {onReviewProfile && (
           <button
@@ -2034,7 +2070,6 @@ export function ScreenTransition({
             onClick={onReviewProfile}
             style={{
               display: "block",
-              marginTop: 16,
               background: "none",
               border: "none",
               fontFamily: "var(--font-dm-sans), system-ui",
