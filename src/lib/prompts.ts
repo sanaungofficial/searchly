@@ -89,9 +89,21 @@ export const PROMPT_META: Record<string, PromptMeta> = {
   },
   RESUME_PARSE: {
     label: "Resume Parser",
-    description: "Extracts structured JSON (name, education, work experience, skills) from a resume.",
+    description: "Extracts structured JSON (contact, summary, education, experience, skills, certifications) from a resume.",
     category: "Resume",
     variables: [],
+  },
+  RESUME_ASSET_ANALYSIS: {
+    label: "Resume Asset Analysis",
+    description: "Scores a resume and returns strengths, gaps, and improvement tips.",
+    category: "Resume",
+    variables: ["resumeSlice"],
+  },
+  COMPANY_JOBS_SCAN: {
+    label: "Company Careers Scan",
+    description: "Extracts open job listings from a careers page HTML snapshot. Shared across all users tracking the same company.",
+    category: "Companies",
+    variables: ["careersUrl", "pageText"],
   },
 };
 
@@ -386,9 +398,12 @@ Return ONLY the JSON array, no other text.`,
 
 {
   "name": "full name or null",
+  "email": "email or null",
   "phone": "phone number or null",
   "location": "city, state or null",
   "website": "personal website or null",
+  "linkedinUrl": "LinkedIn URL or null",
+  "summary": "professional summary paragraph or null",
   "education": [
     {
       "id": "edu_0",
@@ -410,15 +425,51 @@ Return ONLY the JSON array, no other text.`,
       "bullets": ["achievement or responsibility bullet point"]
     }
   ],
-  "skills": ["skill1", "skill2"]
+  "skills": ["skill1", "skill2"],
+  "skillGroups": [
+    { "id": "sg_0", "label": "Technical Skills", "skills": ["skill1", "skill2"] }
+  ],
+  "certifications": [
+    { "id": "cert_0", "name": "certification name", "issuer": "issuer or null", "date": "YYYY-MM or null" }
+  ]
 }
 
 Rules:
-- IDs must be unique strings like edu_0, edu_1, exp_0, exp_1 etc.
+- IDs must be unique strings like edu_0, exp_0, sg_0, cert_0 etc.
 - workExperience should be ordered newest first
-- Include all jobs and education entries
-- Extract every skill mentioned
+- Include all jobs, education entries, and certifications
+- Extract every skill mentioned; group into skillGroups when the resume uses categories
 - Return ONLY the JSON object, nothing else`,
+
+  RESUME_ASSET_ANALYSIS: `You are a senior career coach reviewing a resume. Analyze the resume below and return ONLY valid JSON:
+
+{
+  "score": 0-100 integer,
+  "headline": "one-line overall assessment",
+  "strengths": ["strength 1", "strength 2"],
+  "gaps": ["gap or weakness 1"],
+  "tips": ["actionable improvement tip 1", "tip 2", "tip 3"]
+}
+
+Resume:
+{{resumeSlice}}
+
+Return ONLY the JSON object.`,
+  COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
+
+Page URL: {{careersUrl}}
+Page text (truncated):
+{{pageText}}
+
+Extract all visible job listings. For each job return:
+- title: job title (string)
+- location: city/state or "Remote" (string, null if not shown)
+- department: team or department (string, null if not shown)
+- url: direct link to the job posting (string, null if not extractable)
+
+Return ONLY a JSON object: { "jobs": [...], "scanned_url": "{{careersUrl}}" }
+If no jobs are found, return { "jobs": [], "scanned_url": "{{careersUrl}}" }
+Do not include any explanation outside the JSON.`,
 };
 
 /* ── Runtime interpolation ── */

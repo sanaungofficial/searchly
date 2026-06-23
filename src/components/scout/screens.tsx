@@ -15,9 +15,9 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5;
 
-const ONBOARDING_STEP_COUNT = 5;
+const ONBOARDING_STEP_COUNT = 6;
 
 export interface Job {
   id: number;
@@ -65,6 +65,20 @@ const ONBOARDING_BODY: React.CSSProperties = {
 const ONBOARDING_CARD_PAD = "clamp(18px, 4vw, 40px)";
 const ONBOARDING_SECTION_PAD = "clamp(16px, 4vw, 24px)";
 
+const ONBOARDING_CARD: React.CSSProperties = {
+  background: "#FFFFFF",
+  borderRadius: 12,
+  padding: ONBOARDING_SECTION_PAD,
+  border: "1px solid rgba(26,58,47,0.14)",
+  boxShadow: "0 2px 10px rgba(26,58,47,0.06)",
+};
+
+const ONBOARDING_FIELD_BG = "#F7F5F2";
+const ONBOARDING_FIELD_BORDER = "1.5px solid rgba(26,58,47,0.2)";
+const ONBOARDING_TEXT = "#1A1A1A";
+const ONBOARDING_TEXT_SECONDARY = "#52493F";
+const ONBOARDING_LABEL_COLOR = "#2A2218";
+
 const PRIMARY_CTA: React.CSSProperties = {
   padding: "14px 30px",
   background: "#1A3A2F",
@@ -78,6 +92,82 @@ const PRIMARY_CTA: React.CSSProperties = {
   letterSpacing: "0.2px",
   transition: "opacity 0.15s",
 };
+
+function OnboardingHeroIntro({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.1s" }}>
+      <h1 style={{ ...DISPLAY_H1, lineHeight: 1.03, marginBottom: 12 }}>{title}</h1>
+      <p style={{ ...ONBOARDING_BODY, margin: 0, maxWidth: 460, color: ONBOARDING_TEXT_SECONDARY }}>{body}</p>
+    </div>
+  );
+}
+
+function OnboardingEyebrowIntro({ eyebrow, title, body }: { eyebrow?: string; title: string; body?: string }) {
+  return (
+    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.1s" }}>
+      {eyebrow && (
+        <p
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontWeight: 600,
+            color: ONBOARDING_TEXT_SECONDARY,
+            letterSpacing: "1.1px",
+            textTransform: "uppercase",
+            marginBottom: 12,
+            marginTop: 0,
+          }}
+        >
+          {eyebrow}
+        </p>
+      )}
+      <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: body ? 12 : 0 }}>{title}</h2>
+      {body && (
+        <p style={{ ...ONBOARDING_BODY, margin: 0, color: ONBOARDING_TEXT_SECONDARY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65 }}>
+          {body}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const ONBOARDING_SKIP_LINK: React.CSSProperties = {
+  display: "block",
+  marginTop: 16,
+  background: "none",
+  border: "none",
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  fontWeight: 400,
+  color: ONBOARDING_TEXT_SECONDARY,
+  cursor: "pointer",
+  padding: "8px 0",
+  minHeight: 44,
+  textAlign: "left",
+  textDecoration: "underline",
+  textUnderlineOffset: 3,
+};
+
+function OnboardingActions({
+  children,
+  skipLabel,
+  onSkip,
+}: {
+  children: React.ReactNode;
+  skipLabel?: string;
+  onSkip?: () => void;
+}) {
+  return (
+    <div className="anim-fade-up" style={ONBOARDING_CARD}>
+      {children}
+      {skipLabel && onSkip && (
+        <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
+          {skipLabel}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutClick?: () => void }) {
   const logoTitle = onScoutClick ? "Go to workspace" : "Finish setup first";
@@ -180,35 +270,33 @@ export function ScreenWelcome({
   onFileChange,
 }: WelcomeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.22)";
-  const dropBg = resumeError ? "rgba(192,57,43,0.04)" : isDragging ? "rgba(26,58,47,0.04)" : "transparent";
+  const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.35)";
+  const dropBg = resumeError ? "rgba(192,57,43,0.06)" : isDragging ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG;
   const canContinueWithResume = resumeUploaded;
   const canSaveLinkedInOnly = liInput.trim().length > 0 && !resumeUploaded;
 
   return (
-    <div className="flex flex-col gap-[28px] onboarding-screen-gap">
-      <h1
-        className="anim-fade-up"
-        style={{
-          ...DISPLAY_H1,
-          animationDelay: "0.1s",
-        }}
-      >
-        Hello. I&apos;m Kimchi.
-      </h1>
-      <p
-        className="anim-fade-up"
-        style={{
-          ...ONBOARDING_BODY,
-          maxWidth: 460,
-          animationDelay: "0.4s",
-        }}
-      >
-        Drop your resume and I&apos;ll read it — then I&apos;ll tell you what I see about your career.
-      </p>
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <OnboardingHeroIntro
+        title="Hello. I'm Kimchi."
+        body="Drop your resume and I'll read it — then I'll tell you what I see about your career."
+      />
 
-      {/* Upload zone */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.75s" }}>
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
+        <p
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontWeight: 600,
+            color: ONBOARDING_LABEL_COLOR,
+            letterSpacing: "0.6px",
+            textTransform: "uppercase",
+            marginBottom: 12,
+            marginTop: 0,
+          }}
+        >
+          Your resume
+        </p>
         {!resumeFilename ? (
           <div
             onDragOver={onDragOver}
@@ -216,8 +304,8 @@ export function ScreenWelcome({
             onDrop={onDrop}
             onClick={onFileClick}
             style={{
-              border: `1.5px dashed ${dropBorder}`,
-              borderRadius: 10,
+              border: `2px dashed ${dropBorder}`,
+              borderRadius: 8,
               padding: ONBOARDING_CARD_PAD,
               display: "flex",
               flexDirection: "column",
@@ -231,24 +319,10 @@ export function ScreenWelcome({
           >
             <UploadIcon />
             <div className="text-center flex flex-col gap-[5px]">
-              <span
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 15,
-                  fontWeight: 400,
-                  color: "#2E2820",
-                }}
-              >
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: ONBOARDING_TEXT }}>
                 Drop your resume here
               </span>
-              <span
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "var(--scout-muted)",
-                }}
-              >
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY }}>
                 PDF or DOCX · click to browse
               </span>
             </div>
@@ -260,33 +334,18 @@ export function ScreenWelcome({
               display: "flex",
               alignItems: "center",
               gap: 10,
-              padding: "14px 20px",
-              background: "rgba(26,58,47,0.06)",
+              padding: "14px 18px",
+              background: ONBOARDING_FIELD_BG,
+              border: ONBOARDING_FIELD_BORDER,
               borderRadius: 8,
             }}
           >
             <CheckCircleFilled />
-            <span
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#1A3A2F",
-                flex: 1,
-              }}
-            >
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A3A2F", flex: 1 }}>
               {resumeFilename}
             </span>
             {!resumeUploaded ? (
-              <span
-                className="anim-pulse"
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "var(--scout-muted)",
-                }}
-              >
+              <span className="anim-pulse" style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY }}>
                 Reading…
               </span>
             ) : (
@@ -296,9 +355,9 @@ export function ScreenWelcome({
                   background: "none",
                   border: "none",
                   fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "var(--scout-muted)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: ONBOARDING_TEXT_SECONDARY,
                   cursor: "pointer",
                   padding: 0,
                   textDecoration: "underline",
@@ -318,59 +377,36 @@ export function ScreenWelcome({
           onChange={onFileChange}
         />
         {resumeError && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#C0392B", marginTop: 10, fontWeight: 400 }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#C0392B", marginTop: 12, marginBottom: 0, fontWeight: 500 }}>
             Upload failed — please try again or paste your LinkedIn below.
           </p>
         )}
       </div>
 
-      {/* Or divider */}
-      <div
-        className="anim-fade-up"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          animationDelay: "0.9s",
-        }}
-      >
-        <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
-        <span
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            letterSpacing: "0.5px",
-          }}
-        >
-          or
-        </span>
-        <div style={{ flex: 1, height: 1, background: "rgba(26,58,47,0.12)" }} />
-      </div>
-
-      {/* LinkedIn input — saved to profile only; does not power readback */}
-      <div className="anim-fade-up" style={{ animationDelay: "1.0s" }}>
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.5s" }}>
         <p
           style={{
             fontFamily: "var(--font-ui)",
             fontSize: 13,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1px",
+            fontWeight: 600,
+            color: ONBOARDING_LABEL_COLOR,
+            letterSpacing: "0.6px",
             textTransform: "uppercase",
-            marginBottom: 10,
+            marginBottom: 12,
+            marginTop: 0,
           }}
         >
-          LinkedIn <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none" }}>(optional)</span>
+          LinkedIn <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", color: ONBOARDING_TEXT_SECONDARY }}>(optional)</span>
         </p>
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 12,
-            borderBottom: "1.5px solid rgba(26,58,47,0.22)",
-            paddingBottom: 12,
+            padding: "12px 14px",
+            background: ONBOARDING_FIELD_BG,
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: 8,
           }}
         >
           <LinkedInIcon style={{ flexShrink: 0 }} />
@@ -386,81 +422,60 @@ export function ScreenWelcome({
               background: "transparent",
               fontFamily: "var(--font-ui)",
               fontSize: 16,
-              fontWeight: 400,
-              color: "#1A1A1A",
+              fontWeight: 500,
+              color: ONBOARDING_TEXT,
               caretColor: "#1A3A2F",
+              outline: "none",
             }}
           />
         </div>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            marginTop: 10,
-            lineHeight: 1.5,
-          }}
-        >
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 12, marginBottom: 0, lineHeight: 1.55 }}>
           We&apos;ll save this on your profile. Kimchi&apos;s read comes from your resume, not LinkedIn.
         </p>
       </div>
 
-      {/* Continue after resume upload → readback */}
-      {canContinueWithResume && (
-        <div className="anim-fade-up">
-          <button
-            className="onboarding-cta"
-            onClick={onContinue}
-            style={PRIMARY_CTA}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            See what Kimchi read →
+      {(canContinueWithResume || canSaveLinkedInOnly) && (
+        <OnboardingActions skipLabel="Skip for now" onSkip={onSkip}>
+          {canContinueWithResume && (
+            <button
+              className="onboarding-cta"
+              onClick={onContinue}
+              style={{ ...PRIMARY_CTA, width: "100%" }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              See what Kimchi read →
+            </button>
+          )}
+          {canSaveLinkedInOnly && (
+            <button
+              type="button"
+              className="onboarding-cta"
+              onClick={onLinkedInOnly}
+              style={{
+                ...PRIMARY_CTA,
+                width: "100%",
+                marginTop: canContinueWithResume ? 10 : 0,
+                background: ONBOARDING_FIELD_BG,
+                color: ONBOARDING_TEXT,
+                border: ONBOARDING_FIELD_BORDER,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+            >
+              Save LinkedIn &amp; continue without resume
+            </button>
+          )}
+        </OnboardingActions>
+      )}
+
+      {!canContinueWithResume && !canSaveLinkedInOnly && (
+        <div className="anim-fade-up" style={ONBOARDING_CARD}>
+          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+            Skip for now
           </button>
         </div>
       )}
-
-      {canSaveLinkedInOnly && (
-        <div className="anim-fade-up">
-          <button
-            type="button"
-            className="onboarding-cta"
-            onClick={onLinkedInOnly}
-            style={{
-              ...PRIMARY_CTA,
-              background: "transparent",
-              color: "#52493F",
-              border: "1.5px solid rgba(26,58,47,0.22)",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            Save LinkedIn &amp; continue without resume
-          </button>
-        </div>
-      )}
-
-      {/* Skip link */}
-      <button
-        onClick={onSkip}
-        style={{
-          background: "none",
-          border: "none",
-          fontFamily: "var(--font-ui)",
-          fontSize: 13,
-          fontWeight: 400,
-          color: "var(--scout-muted)",
-          cursor: "pointer",
-          padding: "8px 0",
-          minHeight: 44,
-          textAlign: "left",
-          textDecoration: "underline",
-          textUnderlineOffset: 3,
-        }}
-      >
-        Skip for now
-      </button>
     </div>
   );
 }
@@ -698,45 +713,13 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-9">
-      <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1.1px",
-            textTransform: "uppercase",
-            marginBottom: 14,
-          }}
-        >
-          Kimchi&apos;s read
-        </p>
-        <h2
-          style={{
-            ...DISPLAY_H2,
-            lineHeight: 1.04,
-          }}
-        >
-          Here&apos;s what I see.
-        </h2>
-      </div>
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <OnboardingEyebrowIntro eyebrow="Kimchi's read" title="Here's what I see." />
 
-      {/* Profile card */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.45s" }}>
-        <div
-          style={{
-            background: "#FFFFFF",
-            borderRadius: 10,
-            padding: ONBOARDING_CARD_PAD,
-            boxShadow: "0 2px 4px rgba(0,0,0,0.04), 0 10px 28px rgba(0,0,0,0.07)",
-            minHeight: loading ? 320 : undefined,
-          }}
-        >
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s", minHeight: loading ? 320 : undefined }}>
           {loading && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "var(--scout-muted)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 6 }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: ONBOARDING_LABEL_COLOR, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 6, marginTop: 0 }}>
                 Reading your resume...
               </p>
               {[180, 220, 140].map((w, i) => (
@@ -751,23 +734,13 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
 
           {!loading && (error || !data) && (
             <>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6B6258", lineHeight: 1.6, marginBottom: 8 }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.6, marginBottom: 16, marginTop: 0 }}>
                 We couldn&apos;t generate your read right now — that happens sometimes. You can keep going and add a job; upload a resume anytime from Profile → Assets for the full read.
               </p>
               <button
                 type="button"
                 onClick={onSkip}
-                style={{
-                  padding: "12px 22px",
-                  background: "#1A3A2F",
-                  color: "#E8D5A3",
-                  border: "none",
-                  borderRadius: 5,
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
+                style={{ ...PRIMARY_CTA, width: "100%" }}
               >
                 Continue →
               </button>
@@ -780,11 +753,12 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                 style={{
                   fontFamily: "var(--font-ui)",
                   fontSize: 13,
-                  fontWeight: 500,
-                  color: "var(--scout-muted)",
-                  letterSpacing: "1px",
+                  fontWeight: 600,
+                  color: ONBOARDING_LABEL_COLOR,
+                  letterSpacing: "0.6px",
                   textTransform: "uppercase",
-                  marginBottom: 20,
+                  marginBottom: 16,
+                  marginTop: 0,
                 }}
               >
                 A picture of you
@@ -819,12 +793,14 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                   <span
                     key={s}
                     style={{
-                      padding: "6px 14px",
-                      background: "#F5F3EF",
-                      borderRadius: 100,
+                      padding: "8px 14px",
+                      background: ONBOARDING_FIELD_BG,
+                      border: ONBOARDING_FIELD_BORDER,
+                      borderRadius: 8,
                       fontFamily: "var(--font-ui)",
-                      fontSize: 12,
-                      color: "#2A2218",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: ONBOARDING_TEXT,
                     }}
                   >
                     {s}
@@ -835,20 +811,24 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               {/* Target roles */}
               <div
                 style={{
-                  borderLeft: "2px solid #1A3A2F",
-                  paddingLeft: 20,
-                  marginBottom: 28,
+                  marginBottom: 24,
+                  padding: "14px 16px",
+                  background: ONBOARDING_FIELD_BG,
+                  borderRadius: 8,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderLeft: "3px solid #1A3A2F",
                 }}
               >
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
                     fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--scout-muted)",
-                    letterSpacing: "0.9px",
+                    fontWeight: 600,
+                    color: ONBOARDING_LABEL_COLOR,
+                    letterSpacing: "0.6px",
                     textTransform: "uppercase",
-                    marginBottom: 14,
+                    marginBottom: 12,
+                    marginTop: 0,
                   }}
                 >
                   You&apos;d thrive as
@@ -885,16 +865,17 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               </div>
 
               {/* One honest note */}
-              <div style={{ padding: "18px 22px", background: "#FBF8F2", borderRadius: 7 }}>
+              <div style={{ padding: "14px 16px", background: ONBOARDING_FIELD_BG, borderRadius: 8, border: ONBOARDING_FIELD_BORDER }}>
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
                     fontSize: 13,
-                    fontWeight: 500,
-                    color: "var(--scout-muted)",
-                    letterSpacing: "0.9px",
+                    fontWeight: 600,
+                    color: ONBOARDING_LABEL_COLOR,
+                    letterSpacing: "0.6px",
                     textTransform: "uppercase",
                     marginBottom: 9,
+                    marginTop: 0,
                   }}
                 >
                   One honest note
@@ -902,11 +883,12 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: 400,
-                    color: "#6B6258",
+                    color: ONBOARDING_TEXT_SECONDARY,
                     lineHeight: 1.6,
                     textWrap: "pretty",
+                    margin: 0,
                   }}
                 >
                   {data.honestNote}
@@ -914,57 +896,60 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               </div>
             </>
           )}
-        </div>
       </div>
 
-      {/* Follow-up + CTA — only when readback loaded successfully */}
       {!loading && data && !error && (
-      <div className="anim-fade-up" style={{ animationDelay: "0.85s" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 21,
-            fontStyle: "italic",
-            fontWeight: 400,
-            color: "#52493F",
-            lineHeight: 1.55,
-            marginBottom: 24,
-          }}
-        >
-          Does this feel like you?
-        </p>
-        <div className="onboarding-readback-actions">
-          <button
-            className="onboarding-cta"
-            onClick={() => onConfirm(data)}
-            style={PRIMARY_CTA}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            Yes, carry on →
-          </button>
-          <button
-            className="onboarding-cta"
-            onClick={onRefine}
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.55s" }}>
+          <p
             style={{
-              padding: "14px 24px",
-              background: "transparent",
-              color: "#52493F",
-              border: "1px solid rgba(26,58,47,0.2)",
-              borderRadius: 5,
-              fontFamily: "var(--font-ui)",
-              fontSize: 14,
+              fontFamily: "var(--font-display)",
+              fontSize: 21,
+              fontStyle: "italic",
               fontWeight: 400,
-              cursor: "pointer",
-              transition: "background 0.15s",
+              color: ONBOARDING_TEXT_SECONDARY,
+              lineHeight: 1.55,
+              marginBottom: 20,
+              marginTop: 0,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(26,58,47,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            Refine this
+            Does this feel like you?
+          </p>
+          <div className="onboarding-readback-actions">
+            <button
+              className="onboarding-cta"
+              onClick={() => onConfirm(data)}
+              style={{ ...PRIMARY_CTA, flex: 1 }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              Yes, carry on →
+            </button>
+            <button
+              className="onboarding-cta"
+              onClick={onRefine}
+              style={{
+                padding: "14px 24px",
+                background: ONBOARDING_FIELD_BG,
+                color: ONBOARDING_TEXT,
+                border: ONBOARDING_FIELD_BORDER,
+                borderRadius: 8,
+                fontFamily: "var(--font-ui)",
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background 0.15s",
+                flex: 1,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
+            >
+              Refine this
+            </button>
+          </div>
+          <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
+            Skip for now
           </button>
         </div>
-      </div>
       )}
     </div>
   );
@@ -1383,38 +1368,21 @@ export function ScreenTargetRoles({
   const atMax = selectedTitles.length >= 3;
 
   return (
-    <div className="flex flex-col gap-8 onboarding-screen-gap">
-      <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
-        <h2
-          style={{
-            ...DISPLAY_H2,
-            lineHeight: 1.04,
-            marginBottom: 14,
-          }}
-        >
-          What roles are you targeting?
-        </h2>
-        <p
-          style={{
-            ...ONBOARDING_BODY,
-            fontSize: "clamp(0.9375rem, 2.5vw, 1rem)",
-            lineHeight: 1.65,
-            maxWidth: 440,
-          }}
-        >
-          Pick a category, then choose up to 3 specific titles. We&apos;ll use these when you add jobs and score your fit.
-        </p>
-      </div>
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <AboutYouIntro
+        title="What roles are you targeting?"
+        body="Pick a category, then choose up to 3 specific titles. We'll use these when you add jobs and score your fit."
+      />
 
       {/* Bucket chips */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
         <p
           style={{
             fontFamily: "var(--font-ui)",
             fontSize: 13,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1px",
+            fontWeight: 600,
+            color: ONBOARDING_LABEL_COLOR,
+            letterSpacing: "0.6px",
             textTransform: "uppercase",
             marginBottom: 12,
           }}
@@ -1431,13 +1399,13 @@ export function ScreenTargetRoles({
                 onClick={() => onToggleBucket(b.id)}
                 style={{
                   padding: "10px 18px",
-                  background: active ? "#1A3A2F" : "transparent",
-                  color: active ? "#E8D5A3" : "#52493F",
-                  border: `1.5px solid ${active ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
-                  borderRadius: 6,
+                  background: active ? "#1A3A2F" : ONBOARDING_FIELD_BG,
+                  color: active ? "#E8D5A3" : ONBOARDING_TEXT,
+                  border: active ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
+                  borderRadius: 8,
                   fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  fontWeight: active ? 500 : 400,
+                  fontSize: 14,
+                  fontWeight: active ? 600 : 500,
                   cursor: "pointer",
                   transition: "all 0.15s",
                   letterSpacing: "0.1px",
@@ -1464,14 +1432,14 @@ export function ScreenTargetRoles({
 
       {/* Title chips — appear once a bucket is selected */}
       {availableTitles.length > 0 && (
-        <div className="anim-fade-up" style={{ background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.45s" }}>
           <p
             style={{
               fontFamily: "var(--font-ui)",
               fontSize: 13,
-              fontWeight: 500,
-              color: "var(--scout-muted)",
-              letterSpacing: "1px",
+              fontWeight: 600,
+              color: ONBOARDING_LABEL_COLOR,
+              letterSpacing: "0.6px",
               textTransform: "uppercase",
               marginBottom: 12,
             }}
@@ -1488,14 +1456,14 @@ export function ScreenTargetRoles({
                   className="onboarding-chip"
                   onClick={() => !disabled && onToggleTitle(title)}
                   style={{
-                    padding: "8px 16px",
-                    background: selected ? "rgba(26,58,47,0.1)" : "transparent",
-                    color: disabled ? "#C5BFB7" : selected ? "#1A3A2F" : "#52493F",
-                    border: `1.5px solid ${selected ? "#1A3A2F" : disabled ? "rgba(26,58,47,0.1)" : "rgba(26,58,47,0.2)"}`,
-                    borderRadius: 100,
+                    padding: "10px 16px",
+                    background: selected ? "rgba(26,58,47,0.12)" : ONBOARDING_FIELD_BG,
+                    color: disabled ? "#A09890" : selected ? "#1A3A2F" : ONBOARDING_TEXT,
+                    border: `1.5px solid ${selected ? "#1A3A2F" : disabled ? "rgba(26,58,47,0.12)" : "rgba(26,58,47,0.2)"}`,
+                    borderRadius: 8,
                     fontFamily: "var(--font-ui)",
-                    fontSize: 13,
-                    fontWeight: selected ? 500 : 400,
+                    fontSize: 14,
+                    fontWeight: selected ? 600 : 500,
                     cursor: disabled ? "default" : "pointer",
                     transition: "all 0.15s",
                   }}
@@ -1516,11 +1484,11 @@ export function ScreenTargetRoles({
 
       {/* Continue */}
       {canContinue && (
-        <div className="anim-fade-up">
+        <div className="anim-fade-up" style={ONBOARDING_CARD}>
           <button
             className="onboarding-cta"
             onClick={onContinue}
-            style={PRIMARY_CTA}
+            style={{ ...PRIMARY_CTA, width: "100%" }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
@@ -1530,133 +1498,159 @@ export function ScreenTargetRoles({
       )}
 
       {!canContinue && (
-        <button
-          type="button"
-          onClick={onSkip}
-          style={{
-            background: "none",
-            border: "none",
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            cursor: "pointer",
-            padding: "8px 0",
-            minHeight: 44,
-            textAlign: "left",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-          }}
-        >
-          Skip for now
-        </button>
+        <div className="anim-fade-up" style={ONBOARDING_CARD}>
+          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
+            Skip for now
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Screen 2 — About You
+   Screen 3–4 — About You (split for scroll)
    ────────────────────────────────────────────────────────────── */
-interface AboutYouProps {
-  careerMotivation: string;
-  jobTimeline: string;
-  currentSalary: string;
-  targetSalary: string;
-  priorities: string[];
-  attribution: string;
-  onCareerMotivationChange: (v: string) => void;
-  onJobTimelineChange: (v: string) => void;
-  onCurrentSalaryChange: (v: string) => void;
-  onTargetSalaryChange: (v: string) => void;
-  onTogglePriority: (p: string) => void;
-  onAttributionChange: (v: string) => void;
-  onContinue: () => void;
-  onSkip: () => void;
-}
-
-export function ScreenAboutYou({
-  careerMotivation,
-  jobTimeline,
-  currentSalary,
-  targetSalary,
-  priorities,
-  attribution,
-  onCareerMotivationChange,
-  onJobTimelineChange,
-  onCurrentSalaryChange,
-  onTargetSalaryChange,
-  onTogglePriority,
-  onAttributionChange,
-  onContinue,
-  onSkip,
-}: AboutYouProps) {
-  const salaryRows = [
-    { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
-    { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
-  ];
-  const showFilterNudge = !jobTimeline && !targetSalary;
-
-  const chipBtn = (selected: boolean, onClick: () => void, label: string) => (
+function aboutYouChipBtn(selected: boolean, onClick: () => void, label: string) {
+  return (
     <button
       key={label}
       className="onboarding-chip"
       onClick={onClick}
       style={{
-        padding: "8px 16px",
-        background: selected ? "rgba(26,58,47,0.1)" : "transparent",
-        color: selected ? "#1A3A2F" : "#52493F",
-        border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.2)"}`,
-        borderRadius: 100,
+        padding: "10px 16px",
+        background: selected ? "rgba(26,58,47,0.12)" : ONBOARDING_FIELD_BG,
+        color: selected ? "#1A3A2F" : ONBOARDING_TEXT,
+        border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
+        borderRadius: 8,
         fontFamily: "var(--font-ui)",
-        fontSize: 13,
-        fontWeight: selected ? 500 : 400,
+        fontSize: 14,
+        fontWeight: selected ? 600 : 500,
         cursor: "pointer",
         transition: "all 0.15s",
         whiteSpace: "nowrap" as const,
+        boxShadow: selected ? "inset 0 0 0 1px rgba(26,58,47,0.08)" : "none",
       }}
-      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.4)"; }}
+      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.45)"; }}
       onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)"; }}
     >
       {label}
     </button>
   );
+}
 
-  const sectionLabel = (text: string, hint?: string, optional?: boolean) => (
+function aboutYouSectionLabel(text: string, hint?: string, optional?: boolean) {
+  return (
     <div style={{ marginBottom: 12 }}>
-      <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "var(--scout-muted)", letterSpacing: "1px", textTransform: "uppercase" as const }}>
-        {text}{optional && <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none" as const }}> (optional)</span>}
+      <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: ONBOARDING_LABEL_COLOR, letterSpacing: "0.6px", textTransform: "uppercase" as const }}>
+        {text}{optional && <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none" as const, color: ONBOARDING_TEXT_SECONDARY }}> (optional)</span>}
       </p>
       {hint && (
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 400, color: "var(--scout-muted)", marginTop: 6, lineHeight: 1.5 }}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 6, lineHeight: 1.55 }}>
           {hint}
         </p>
       )}
     </div>
   );
+}
 
+const ABOUT_YOU_SKIP_LINK: React.CSSProperties = {
+  display: "block",
+  marginTop: 16,
+  background: "none",
+  border: "none",
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  fontWeight: 400,
+  color: ONBOARDING_TEXT_SECONDARY,
+  cursor: "pointer",
+  padding: "8px 0",
+  minHeight: 44,
+  textAlign: "left",
+  textDecoration: "underline",
+  textUnderlineOffset: 3,
+};
+
+function AboutYouIntro({ title, body }: { title: string; body: string }) {
   return (
-    <div className="flex flex-col gap-8 onboarding-screen-gap">
-      <div className="anim-fade-up" style={{ animationDelay: "0.1s" }}>
-        <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 14 }}>
-          A few more things.
-        </h2>
-        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, maxWidth: 440 }}>
-          Two quick picks help Kimchi rank opportunities and skip bad fits. Salary and the rest are optional.
-        </p>
-      </div>
+    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.1s" }}>
+      <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 12 }}>{title}</h2>
+      <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, margin: 0, color: ONBOARDING_TEXT_SECONDARY }}>
+        {body}
+      </p>
+    </div>
+  );
+}
 
-      {/* Career motivation */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.2s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What's driving your move?", "Surfaces roles that match why you're leaving — not just your title.")}
+function AboutYouActions({ onContinue, onSkip, nudge }: { onContinue: () => void; onSkip: () => void; nudge?: string }) {
+  return (
+    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.55s" }}>
+      {nudge && (
+        <p
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontWeight: 400,
+            color: ONBOARDING_TEXT_SECONDARY,
+            lineHeight: 1.55,
+            marginBottom: 16,
+            marginTop: 0,
+          }}
+        >
+          {nudge}
+        </p>
+      )}
+      <button
+        className="onboarding-cta"
+        onClick={onContinue}
+        style={{ ...PRIMARY_CTA, width: "100%" }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+      >
+        Continue →
+      </button>
+      <button type="button" onClick={onSkip} style={{ ...ABOUT_YOU_SKIP_LINK, color: ONBOARDING_TEXT_SECONDARY }}>
+        Skip for now — you can add this on your profile later
+      </button>
+    </div>
+  );
+}
+
+interface AboutYouSearchProps {
+  careerMotivation: string;
+  jobTimeline: string;
+  onCareerMotivationChange: (v: string) => void;
+  onJobTimelineChange: (v: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+}
+
+export function ScreenAboutYouSearch({
+  careerMotivation,
+  jobTimeline,
+  onCareerMotivationChange,
+  onJobTimelineChange,
+  onContinue,
+  onSkip,
+}: AboutYouSearchProps) {
+  return (
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <AboutYouIntro
+        title="Your search."
+        body="Two quick picks help Kimchi rank opportunities and skip bad fits."
+      />
+
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
+        {aboutYouSectionLabel("What's driving your move?", "Surfaces roles that match why you're leaving — not just your title.")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {CAREER_MOTIVATIONS.map((m) => chipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m))}
+          {CAREER_MOTIVATIONS.map((m) =>
+            aboutYouChipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m)
+          )}
         </div>
       </div>
 
-      {/* Job timeline */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.35s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("When do you want to make a move?", "Helps Kimchi prioritize urgent openings vs. long-shots.")}
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
+        {aboutYouSectionLabel("When do you want to make a move?", "Helps Kimchi prioritize urgent openings vs. long-shots.")}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {JOB_TIMELINES.map(({ value, label }) => {
             const selected = jobTimeline === value;
@@ -1666,20 +1660,21 @@ export function ScreenAboutYou({
                 className="onboarding-chip"
                 onClick={() => onJobTimelineChange(selected ? "" : value)}
                 style={{
-                  padding: "12px 18px",
-                  background: selected ? "#1A3A2F" : "transparent",
-                  color: selected ? "#E8D5A3" : "#52493F",
-                  border: `1.5px solid ${selected ? "#1A3A2F" : "rgba(26,58,47,0.22)"}`,
-                  borderRadius: 6,
+                  padding: "14px 18px",
+                  background: selected ? "#1A3A2F" : ONBOARDING_FIELD_BG,
+                  color: selected ? "#E8D5A3" : ONBOARDING_TEXT,
+                  border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
+                  borderRadius: 8,
                   fontFamily: "var(--font-ui)",
-                  fontSize: 14,
-                  fontWeight: selected ? 500 : 400,
+                  fontSize: 15,
+                  fontWeight: selected ? 600 : 500,
                   cursor: "pointer",
                   transition: "all 0.15s",
                   textAlign: "left" as const,
+                  width: "100%",
                 }}
-                onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.5)"; }}
-                onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.22)"; }}
+                onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.45)"; }}
+                onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)"; }}
               >
                 {label}
               </button>
@@ -1688,23 +1683,79 @@ export function ScreenAboutYou({
         </div>
       </div>
 
-      {/* Salary dropdowns */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.5s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
+      <AboutYouActions onContinue={onContinue} onSkip={onSkip} />
+    </div>
+  );
+}
+
+interface AboutYouPreferencesProps {
+  jobTimeline: string;
+  currentSalary: string;
+  targetSalary: string;
+  priorities: string[];
+  attribution: string;
+  onCurrentSalaryChange: (v: string) => void;
+  onTargetSalaryChange: (v: string) => void;
+  onTogglePriority: (p: string) => void;
+  onAttributionChange: (v: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+}
+
+export function ScreenAboutYouPreferences({
+  jobTimeline,
+  currentSalary,
+  targetSalary,
+  priorities,
+  attribution,
+  onCurrentSalaryChange,
+  onTargetSalaryChange,
+  onTogglePriority,
+  onAttributionChange,
+  onContinue,
+  onSkip,
+}: AboutYouPreferencesProps) {
+  const salaryRows = [
+    { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
+    { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
+  ];
+  const showFilterNudge = !jobTimeline && !targetSalary;
+  const selectStyle = (hasValue: boolean): React.CSSProperties => ({
+    width: "100%",
+    minHeight: 48,
+    padding: "11px 36px 11px 14px",
+    border: ONBOARDING_FIELD_BORDER,
+    borderRadius: 8,
+    background: ONBOARDING_FIELD_BG,
+    fontFamily: "var(--font-ui)",
+    fontSize: 16,
+    fontWeight: 500,
+    color: hasValue ? ONBOARDING_TEXT : ONBOARDING_TEXT_SECONDARY,
+    cursor: "pointer",
+    appearance: "none",
+    outline: "none",
+    boxSizing: "border-box",
+  });
+
+  return (
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <AboutYouIntro
+        title="Your preferences."
+        body="All optional — helps Kimchi filter listings that clash with how you want to work."
+      />
+
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           {salaryRows.map(({ label, value, onChange }) => (
             <div key={label} style={{ flex: "1 1 200px" }}>
-              {sectionLabel(label, undefined, true)}
+              {aboutYouSectionLabel(label, undefined, true)}
               <div style={{ position: "relative" }}>
-                <select
-                  value={value}
-                  onChange={(e) => onChange(e.target.value)}
-                  style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 400, color: value ? "#1A1A1A" : "var(--scout-muted)", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
-                >
+                <select value={value} onChange={(e) => onChange(e.target.value)} style={selectStyle(!!value)}>
                   <option value="">Select a range</option>
                   {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
                 <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
-                  <path d="M1 1L6 6L11 1" stroke="var(--scout-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M1 1L6 6L11 1" stroke={ONBOARDING_TEXT_SECONDARY} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
             </div>
@@ -1712,87 +1763,36 @@ export function ScreenAboutYou({
         </div>
       </div>
 
-      {/* Priorities */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.65s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("What matters most to you?", "Filters listings that clash with how you want to work.", true)}
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
+        {aboutYouSectionLabel("What matters most to you?", "Filters listings that clash with how you want to work.", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {PRIORITIES.map((p) => chipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
+          {PRIORITIES.map((p) => aboutYouChipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
         </div>
       </div>
 
-      {/* Attribution */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.8s", background: "#FFFFFF", borderRadius: 12, padding: ONBOARDING_SECTION_PAD, border: "1px solid rgba(0,0,0,0.07)" }}>
-        {sectionLabel("How did you hear about Kimchi?", undefined, true)}
-        <div style={{ position: "relative", maxWidth: 280, width: "100%" }}>
-          <select
-            value={attribution}
-            onChange={(e) => onAttributionChange(e.target.value)}
-            style={{ width: "100%", minHeight: 48, padding: "11px 36px 11px 14px", border: "1.5px solid rgba(26,58,47,0.22)", borderRadius: 6, background: "#F7F5F2", fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 400, color: attribution ? "#1A1A1A" : "var(--scout-muted)", cursor: "pointer", appearance: "none", outline: "none", boxSizing: "border-box" }}
-          >
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.5s" }}>
+        {aboutYouSectionLabel("How did you hear about Kimchi?", undefined, true)}
+        <div style={{ position: "relative", maxWidth: 320, width: "100%" }}>
+          <select value={attribution} onChange={(e) => onAttributionChange(e.target.value)} style={selectStyle(!!attribution)}>
             <option value="">Select one</option>
             {ATTRIBUTION_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
-            <path d="M1 1L6 6L11 1" stroke="var(--scout-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M1 1L6 6L11 1" stroke={ONBOARDING_TEXT_SECONDARY} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="anim-fade-up" style={{ animationDelay: "0.95s" }}>
-        {showFilterNudge && (
-          <p
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 13,
-              fontWeight: 400,
-              color: "#6B6258",
-              lineHeight: 1.55,
-              marginBottom: 16,
-              maxWidth: 440,
-            }}
-          >
-            Adding a timeline and target salary helps Kimchi filter bad-fit roles — optional, but worth a quick pick.
-          </p>
-        )}
-        <button
-          className="onboarding-cta"
-          onClick={onContinue}
-          style={PRIMARY_CTA}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-        >
-          Continue →
-        </button>
-        <button
-          type="button"
-          onClick={onSkip}
-          style={{
-            display: "block",
-            marginTop: 16,
-            background: "none",
-            border: "none",
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            cursor: "pointer",
-            padding: "8px 0",
-            minHeight: 44,
-            textAlign: "left",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-          }}
-        >
-          Skip for now — you can add this on your profile later
-        </button>
-      </div>
+      <AboutYouActions
+        onContinue={onContinue}
+        onSkip={onSkip}
+        nudge={showFilterNudge ? "Adding a timeline and target salary helps Kimchi filter bad-fit roles — optional, but worth a quick pick." : undefined}
+      />
     </div>
   );
 }
-
 /* ──────────────────────────────────────────────────────────────
-   Screen 4 — Transition + first job
+   Screen 5 — Transition + first job
    ────────────────────────────────────────────────────────────── */
 export interface TransitionJobAnalysis {
   company: string | null;
@@ -1901,57 +1901,61 @@ export function ScreenTransition({
       : "#9B3A2A";
 
   return (
-    <div className="flex flex-col gap-8 anim-fade-up onboarding-screen-gap" style={{ animationDuration: "0.9s" }}>
-      <div>
+    <div className="flex flex-col gap-5 anim-fade-up onboarding-screen-gap" style={{ animationDuration: "0.9s" }}>
+      <div style={ONBOARDING_CARD}>
         <p
           style={{
             fontFamily: "var(--font-ui)",
             fontSize: 13,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
+            fontWeight: 600,
+            color: ONBOARDING_TEXT_SECONDARY,
             letterSpacing: "1.1px",
             textTransform: "uppercase",
-            marginBottom: 14,
+            marginBottom: 12,
+            marginTop: 0,
           }}
         >
           You&apos;re set up
         </p>
-        <h2 style={{ ...DISPLAY_H2, lineHeight: 1.02, marginBottom: 14 }}>
+        <h2 style={{ ...DISPLAY_H2, lineHeight: 1.02, marginBottom: 12 }}>
           Let&apos;s get you
           <br />
           interviews.
         </h2>
-        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(1rem, 2.5vw, 1.125rem)", maxWidth: 440 }}>
+        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(1rem, 2.5vw, 1.125rem)", maxWidth: 440, margin: 0, color: ONBOARDING_TEXT_SECONDARY }}>
           Paste a job you&apos;re considering. Kimchi will read the listing and score your fit.
         </p>
       </div>
 
       {targetRoles.length > 0 && (
-        <div className="anim-fade-up">
+        <div className="anim-fade-up" style={ONBOARDING_CARD}>
           <p
             style={{
               fontFamily: "var(--font-ui)",
               fontSize: 13,
-              fontWeight: 500,
-              color: "var(--scout-muted)",
-              letterSpacing: "1px",
+              fontWeight: 600,
+              color: ONBOARDING_LABEL_COLOR,
+              letterSpacing: "0.6px",
               textTransform: "uppercase",
-              marginBottom: 10,
+              marginBottom: 12,
+              marginTop: 0,
             }}
           >
             Roles you&apos;re targeting
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {targetRoles.map((role) => (
               <span
                 key={role}
                 style={{
-                  padding: "6px 14px",
-                  background: "rgba(26,58,47,0.08)",
-                  borderRadius: 100,
+                  padding: "8px 14px",
+                  background: ONBOARDING_FIELD_BG,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: 8,
                   fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  color: "#1A3A2F",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: ONBOARDING_TEXT,
                 }}
               >
                 {role}
@@ -1961,23 +1965,14 @@ export function ScreenTransition({
         </div>
       )}
 
-      <div
-        className="anim-fade-up"
-        style={{
-          background: "#FFFFFF",
-          borderRadius: 12,
-          padding: ONBOARDING_SECTION_PAD,
-          border: "1px solid rgba(0,0,0,0.07)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-        }}
-      >
+      <div className="anim-fade-up" style={ONBOARDING_CARD}>
         <p
           style={{
             fontFamily: "var(--font-ui)",
             fontSize: 13,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1px",
+            fontWeight: 600,
+            color: ONBOARDING_LABEL_COLOR,
+            letterSpacing: "0.6px",
             textTransform: "uppercase",
             marginBottom: 12,
           }}
@@ -2002,12 +1997,13 @@ export function ScreenTransition({
               width: "100%",
               minHeight: 48,
               padding: "12px 14px",
-              border: "1.5px solid rgba(26,58,47,0.22)",
-              borderRadius: 6,
-              background: "#F7F5F2",
+              border: ONBOARDING_FIELD_BORDER,
+              borderRadius: 8,
+              background: ONBOARDING_FIELD_BG,
               fontFamily: "var(--font-ui)",
               fontSize: 16,
-              color: "#1A1A1A",
+              fontWeight: 500,
+              color: ONBOARDING_TEXT,
               boxSizing: "border-box",
             }}
           />
@@ -2064,9 +2060,9 @@ export function ScreenTransition({
             style={{
               marginTop: 16,
               padding: "16px 18px",
-              background: "#F8F6F2",
+              background: ONBOARDING_FIELD_BG,
               borderRadius: 8,
-              border: "1px solid rgba(26,58,47,0.1)",
+              border: ONBOARDING_FIELD_BORDER,
             }}
           >
             <p
@@ -2266,47 +2262,12 @@ export function ScreenTransition({
         )}
       </div>
 
-      <div className="anim-fade-up">
-        <button
-          type="button"
-          onClick={onSkip}
-          style={{
-            background: "none",
-            border: "none",
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            cursor: "pointer",
-            padding: "8px 0",
-            minHeight: 44,
-            textAlign: "left",
-            textDecoration: "underline",
-            textUnderlineOffset: 3,
-          }}
-        >
+      <div className="anim-fade-up" style={ONBOARDING_CARD}>
+        <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
           I&apos;ll add a job later — take me to my workspace
         </button>
         {onReviewProfile && (
-          <button
-            type="button"
-            onClick={onReviewProfile}
-            style={{
-              display: "block",
-              background: "none",
-              border: "none",
-              fontFamily: "var(--font-ui)",
-              fontSize: 13,
-              fontWeight: 400,
-              color: "var(--scout-muted)",
-              cursor: "pointer",
-              padding: "8px 0",
-              minHeight: 44,
-              textAlign: "left",
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
-            }}
-          >
+          <button type="button" onClick={onReviewProfile} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 8 }}>
             Review your profile
           </button>
         )}

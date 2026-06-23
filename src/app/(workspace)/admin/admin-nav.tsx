@@ -8,6 +8,7 @@ export function AdminNav() {
   const tabs = [
     { label: "Dashboard", href: "/admin" },
     { label: "Prompts", href: "/admin/prompts" },
+    { label: "Company scans", href: "/admin/company-scans" },
   ];
   return (
     <div className="flex items-center gap-1">

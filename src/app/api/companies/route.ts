@@ -1,10 +1,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import type { CompanyIntel, TrackedCompany } from "@prisma/client";
 import { ensureDbUser } from "@/lib/ensure-db-user";
 import { mergeTrackedWithIntel, resolveCompanyIntelFromInput } from "@/lib/company-intel";
 import { getCatalogCompany } from "@/lib/company-catalog";
+import { intelNeedsScan, scanCompanyIntel } from "@/lib/company-jobs-scan";
 
 async function loadTrackedCompanies(userId: string): Promise<TrackedCompany[]> {
   return prisma.trackedCompany.findMany({
@@ -118,7 +119,19 @@ export async function POST(request: Request) {
     });
 
     const [merged] = await attachIntel([company]);
-    return NextResponse.json(merged, { status: 201 });
+    let scanPending = false;
+
+    if (intel && (await intelNeedsScan(intel))) {
+      scanPending = true;
+      const intelId = intel.id;
+      after(async () => {
+        await scanCompanyIntel(intelId).catch((err) => {
+          console.error("[companies POST scan]", err);
+        });
+      });
+    }
+
+    return NextResponse.json({ ...merged, scanPending }, { status: 201 });
   } catch (err) {
     console.error("[companies POST]", err);
     if (!name?.trim()) {

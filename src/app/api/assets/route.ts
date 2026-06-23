@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -11,7 +12,7 @@ export async function GET() {
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return NextResponse.json([], { status: 200 });
 
-  const assets = await prisma.userAsset.findMany({
+  let assets = await prisma.userAsset.findMany({
     where: { userId: dbUser.id },
     orderBy: [{ isPrimary: "desc" }, { createdAt: "desc" }],
   });
@@ -27,11 +28,24 @@ export async function GET() {
           name: "Resume",
           url: profile.resumeUrl,
           isPrimary: true,
+          resumeText: profile.resumeText,
+          parsedData: profile.parsedData ?? undefined,
         },
       });
       return NextResponse.json([created, ...assets]);
     }
   }
+
+  await Promise.all(
+    assets
+      .filter((a) => a.type === "RESUME" && a.isPrimary)
+      .map((a) => hydrateResumeAsset(a.id, dbUser.id)),
+  );
+
+  assets = await prisma.userAsset.findMany({
+    where: { userId: dbUser.id },
+    orderBy: [{ isPrimary: "desc" }, { createdAt: "desc" }],
+  });
 
   return NextResponse.json(assets);
 }

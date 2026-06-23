@@ -308,42 +308,76 @@ function PriorityBadge({ value, onChange }: { value: string; onChange: (v: strin
   );
 }
 
-function JobsCell({ company, onRefreshed }: { company: TrackedCompany; onRefreshed: (updated: TrackedCompany) => void }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function companySubtitle(company: TrackedCompany): string | null {
+  return company.type?.trim() || company.hqLocation?.trim() || null;
+}
+
+function priorityRank(priority: string | null): number {
+  if (priority === "HIGH") return 0;
+  if (priority === "MEDIUM") return 1;
+  if (priority === "LOW") return 2;
+  return 3;
+}
+
+function sortCompanies(list: TrackedCompany[]): TrackedCompany[] {
+  return [...list].sort((a, b) => {
+    const byPriority = priorityRank(a.priority) - priorityRank(b.priority);
+    if (byPriority !== 0) return byPriority;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function OpenRolesSummary({
+  company,
+  userTargetRoles,
+  scanning,
+}: {
+  company: TrackedCompany;
+  userTargetRoles: string[];
+  scanning?: boolean;
+}) {
   const cache = company.jobsCache as JobsCache | null;
   const jobCount = cache?.jobs?.length ?? 0;
-  const hasJobs = jobCount > 0;
-  const canScan = hasScanSource(company);
+  const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
+  const matchCount = cache?.jobs?.filter((j) => isJobMatch(j.title, matchRoles)).length ?? 0;
 
-  async function handleRefresh() {
-    if (!canScan) {
-      setError("Add a careers URL (or website) before scanning.");
-      return;
-    }
-    setLoading(true); setError(null);
-    try {
-      const res = await fetch(`/api/companies/${company.id}/refresh`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) { setError(humanizeApiError(data.error, res.status)); } else { onRefreshed(data); }
-    } catch { setError("Network error — couldn't scan careers page."); } finally { setLoading(false); }
+  if (scanning) {
+    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280" }}>Scanning…</span>;
   }
-
+  if (!hasScanSource(company)) {
+    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>Add careers URL</span>;
+  }
+  if (jobCount === 0) {
+    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>No roles yet</span>;
+  }
   return (
-    <div style={{ minWidth: 160 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        {hasJobs && (
-          <span style={{ background: "#f0fdf4", color: "#16a34a", borderRadius: 5, padding: "3px 8px", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>
-            {jobCount} {jobCount === 1 ? "role" : "roles"}
-          </span>
+    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1a1a1a" }}>
+      {jobCount} {jobCount === 1 ? "role" : "roles"}
+      {matchCount > 0 && (
+        <span style={{ color: "#16a34a", fontWeight: 600 }}> · {matchCount} match{matchCount !== 1 ? "es" : ""}</span>
+      )}
+    </span>
+  );
+}
+
+function DrawerJobRow({ job, match }: { job: CachedJob; match: boolean }) {
+  return (
+    <div style={{ padding: "10px 14px", borderBottom: "1px solid #f0ebe4", display: "flex", alignItems: "flex-start", gap: 10, background: match ? "#f9fffe" : "#fff" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {job.url ? (
+          <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", display: "block" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
+        ) : (
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>{job.title}</span>
         )}
-        <button onClick={handleRefresh} disabled={loading || !canScan} title={canScan ? "Scan careers page for open roles" : "Add a careers URL first"} style={{ background: loading || !canScan ? "#f3f4f6" : "transparent", color: loading || !canScan ? "#9ca3af" : "#6b7280", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 8px", fontSize: 14, cursor: loading || !canScan ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "var(--font-ui)" }}>
-          {loading ? "Scanning…" : hasJobs ? "↻ Refresh" : "Scan jobs"}
-        </button>
+        {(job.department || job.location) && (
+          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", marginTop: 2 }}>
+            {[job.department, job.location].filter(Boolean).join(" · ")}
+          </div>
+        )}
       </div>
-      <ScanHint company={company} />
-      {company.lastJobsFetchedAt && <div style={{ fontSize: 14, color: "#9ca3af", marginTop: 3, fontFamily: "var(--font-ui)" }}>{timeAgo(company.lastJobsFetchedAt)}</div>}
-      {error && <div style={{ fontSize: 14, color: "#dc2626", marginTop: 4, lineHeight: 1.4, fontFamily: "var(--font-ui)" }}>{error}</div>}
+      {match && (
+        <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, marginTop: 2, fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
+      )}
     </div>
   );
 }
@@ -394,6 +428,8 @@ function CompanyDrawer({
   const intel = company.enrichmentCache as EnrichmentCache | null;
   const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
   const canScan = hasScanSource(company);
+  const matchingJobs = jobs.filter((j) => isJobMatch(j.title, matchRoles));
+  const otherJobs = jobs.filter((j) => !isJobMatch(j.title, matchRoles));
 
   async function handleEnrich() {
     setEnriching(true); setEnrichError(null);
@@ -403,13 +439,6 @@ function CompanyDrawer({
       if (!res.ok) { setEnrichError(humanizeApiError(data.error, res.status)); } else { onRefreshed(data); }
     } catch { setEnrichError("Network error — couldn't enrich company."); } finally { setEnriching(false); }
   }
-
-  // Sort: matched jobs first
-  const sorted = [...jobs].sort((a, b) => {
-    const aMatch = isJobMatch(a.title, matchRoles) ? 0 : 1;
-    const bMatch = isJobMatch(b.title, matchRoles) ? 0 : 1;
-    return aMatch - bMatch;
-  });
 
   async function handleScan() {
     if (!canScan) {
@@ -558,33 +587,35 @@ function CompanyDrawer({
             {jobs.length === 0 && !scanning ? (
               <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", padding: "16px 0", lineHeight: 1.5 }}>
                 {canScan
-                  ? "No roles cached yet. Click \"Scan for roles\" to pull listings from the careers page."
-                  : "Add a careers URL above, then scan to see open roles here."}
+                  ? "Scanning runs automatically when you add a company. Roles appear here once the shared cache is ready — or click Re-scan."
+                  : "Add a careers URL in Details — roles scan automatically once a URL is set."}
               </div>
             ) : (
-              <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden" }}>
-                {sorted.map((job, i) => {
-                  const match = isJobMatch(job.title, matchRoles);
-                  return (
-                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < sorted.length - 1 ? "1px solid #f0ebe4" : "none", display: "flex", alignItems: "flex-start", gap: 10, background: match ? "#f9fffe" : "#fff" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {job.url ? (
-                          <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", display: "block" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
-                        ) : (
-                          <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>{job.title}</span>
-                        )}
-                        {(job.department || job.location) && (
-                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", marginTop: 2 }}>
-                            {[job.department, job.location].filter(Boolean).join(" · ")}
-                          </div>
-                        )}
-                      </div>
-                      {match && (
-                        <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, marginTop: 2, fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
-                      )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {matchingJobs.length > 0 && (
+                  <div>
+                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "#16a34a", marginBottom: 8 }}>
+                      Matches for you ({matchingJobs.length})
                     </div>
-                  );
-                })}
+                    <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden" }}>
+                      {matchingJobs.map((job, i) => (
+                        <DrawerJobRow key={`m-${i}-${job.title}`} job={job} match />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {otherJobs.length > 0 && (
+                  <div>
+                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", marginBottom: 8 }}>
+                      All open roles ({otherJobs.length})
+                    </div>
+                    <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden", maxHeight: 360, overflowY: "auto" }}>
+                      {otherJobs.map((job, i) => (
+                        <DrawerJobRow key={`o-${i}-${job.title}`} job={job} match={false} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {jobs.length > 0 && matchRoles.length > 0 && (
@@ -656,6 +687,7 @@ export function WorkspaceCompanies() {
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [userTargetRoles, setUserTargetRoles] = useState<string[]>([]);
+  const [pendingScanIds, setPendingScanIds] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -679,6 +711,23 @@ export function WorkspaceCompanies() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
+    if (pendingScanIds.length === 0) return;
+    const interval = setInterval(() => { load(); }, 4000);
+    const timeout = setTimeout(() => setPendingScanIds([]), 60000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, [pendingScanIds, load]);
+
+  useEffect(() => {
+    if (pendingScanIds.length === 0) return;
+    setPendingScanIds((ids) =>
+      ids.filter((id) => {
+        const row = companies.find((c) => c.id === id);
+        return row && !(row.jobsCache as JobsCache | null)?.jobs?.length && !row.lastJobsFetchedAt;
+      })
+    );
+  }, [companies, pendingScanIds.length]);
+
+  useEffect(() => {
     fetch("/api/profile").then((r) => r.json()).then((d) => {
       if (Array.isArray(d.targetRoles)) setUserTargetRoles(d.targetRoles);
     }).catch(() => {});
@@ -700,8 +749,10 @@ export function WorkspaceCompanies() {
         }),
       });
       if (res.ok) {
-        const created = await res.json();
-        setCompanies((prev) => [created, ...prev]);
+        const created = await res.json() as TrackedCompany & { scanPending?: boolean };
+        const { scanPending, ...companyRow } = created;
+        setCompanies((prev) => [companyRow, ...prev]);
+        if (scanPending) setPendingScanIds((ids) => [...ids, companyRow.id]);
         setNewName("");
         setSelectedSuggestion(null);
         setShowAdd(false);
@@ -821,64 +872,61 @@ export function WorkspaceCompanies() {
         </div>
       ) : (
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e8e3dd" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: 175 }}>Company</th>
-                <th style={{ ...thStyle, width: 130 }}>Type</th>
-                <th style={{ ...thStyle, width: 120 }}>HQ / Location</th>
-                <th style={{ ...thStyle, width: 85 }}>Priority</th>
-                <th style={{ ...thStyle, width: 200 }}>{"Culture & Mission"}</th>
-                <th style={{ ...thStyle, width: 200 }}>{"Candidate's Edge"}</th>
-                <th style={{ ...thStyle, width: 150 }}>Target Roles</th>
-                <th style={{ ...thStyle, width: 170 }}>Open Roles</th>
+                <th style={thStyle}>Company</th>
+                <th style={{ ...thStyle, width: 100 }}>Priority</th>
+                <th style={{ ...thStyle, width: 160 }}>Open roles</th>
+                <th style={{ ...thStyle, width: 130 }}>Last scanned</th>
                 <th style={{ ...thStyle, width: 48 }}></th>
               </tr>
             </thead>
             <tbody>
-              {companies.map((c, i) => {
+              {(() => {
+                const sorted = sortCompanies(companies);
+                return sorted.map((c, i) => {
                 const color = getColor(c.name);
                 const initials = getInitials(c.name);
-                const isLast = i === companies.length - 1;
+                const isLast = i === sorted.length - 1;
                 const rowTd: React.CSSProperties = { ...tdStyle, borderBottom: isLast ? "none" : tdStyle.borderBottom };
-                const jobCount = (c.jobsCache as JobsCache | null)?.jobs?.length ?? 0;
-                const matchRoles = buildMatchRoles(userTargetRoles, c.targetRoles);
-                const matchCount = (c.jobsCache as JobsCache | null)?.jobs?.filter((j) => isJobMatch(j.title, matchRoles)).length ?? 0;
+                const scanning = pendingScanIds.includes(c.id);
+                const subtitle = companySubtitle(c);
                 return (
-                  <tr key={c.id} style={{ background: selectedId === c.id ? "#faf8f5" : "#fff" }}>
+                  <tr
+                    key={c.id}
+                    onClick={() => setSelectedId(c.id)}
+                    style={{ background: selectedId === c.id ? "#faf8f5" : "#fff", cursor: "pointer" }}
+                  >
                     <td style={rowTd}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-                        {/* Avatar — click to open drawer */}
-                        <button onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} title="View company details" style={{ width: 30, height: 30, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, flexShrink: 0, marginTop: 2, border: selectedId === c.id ? "2px solid #1a1a1a" : "2px solid transparent", cursor: "pointer", padding: 0 }}>{initials}</button>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <InlineInput value={c.name} placeholder="Company name" onBlur={(v) => v.trim() && patchField(c.id, "name", v)} bold />
-                          <InlineInput value={c.website ?? ""} placeholder="Website" onBlur={(v) => patchField(c.id, "website", v)} mono />
-                          <InlineInput value={c.careersUrl ?? ""} placeholder="Careers URL (direct ATS link)" onBlur={(v) => patchField(c.id, "careersUrl", v)} mono />
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 7, background: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{initials}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{c.name}</div>
+                          {subtitle && (
+                            <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", marginTop: 2 }}>{subtitle}</div>
+                          )}
                         </div>
                       </div>
                     </td>
-                    <td style={rowTd}><AutoTextarea value={c.type ?? ""} placeholder="e.g. Media / Technology" onBlur={(v) => patchField(c.id, "type", v)} /></td>
-                    <td style={rowTd}><InlineInput value={c.hqLocation ?? ""} placeholder="e.g. Philadelphia, PA" onBlur={(v) => patchField(c.id, "hqLocation", v)} /></td>
-                    <td style={rowTd}><PriorityBadge value={c.priority ?? ""} onChange={(v) => patchField(c.id, "priority", v)} /></td>
-                    <td style={rowTd}><AutoTextarea value={c.cultureMission ?? ""} placeholder="Describe culture and mission…" onBlur={(v) => patchField(c.id, "cultureMission", v)} /></td>
-                    <td style={rowTd}><AutoTextarea value={c.candidateEdge ?? ""} placeholder="Why you're a strong fit…" onBlur={(v) => patchField(c.id, "candidateEdge", v)} /></td>
-                    <td style={rowTd}><AutoTextarea value={c.targetRoles ?? ""} placeholder="e.g. Director Business Operations…" onBlur={(v) => patchField(c.id, "targetRoles", v)} /></td>
-                    <td style={rowTd}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <JobsCell company={c} onRefreshed={handleRefreshed} />
-                        {jobCount > 0 && matchCount > 0 && (
-                          <button onClick={() => setSelectedId(c.id)} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#16a34a", background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", textDecoration: "underline" }}>
-                            {matchCount} matching role{matchCount !== 1 ? "s" : ""}
-                          </button>
-                        )}
-                      </div>
+                    <td style={rowTd} onClick={(e) => e.stopPropagation()}>
+                      <PriorityBadge value={c.priority ?? ""} onChange={(v) => patchField(c.id, "priority", v)} />
                     </td>
-                    <td style={{ ...rowTd, textAlign: "center" }}>
+                    <td style={rowTd}>
+                      <OpenRolesSummary company={c} userTargetRoles={userTargetRoles} scanning={scanning} />
+                    </td>
+                    <td style={rowTd}>
+                      <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: c.lastJobsFetchedAt ? "#1a1a1a" : "#9ca3af" }}>
+                        {scanning ? "Scanning…" : c.lastJobsFetchedAt ? timeAgo(c.lastJobsFetchedAt) : "—"}
+                      </span>
+                    </td>
+                    <td style={{ ...rowTd, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => handleRemove(c.id)} title="Remove company" style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 5, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>×</button>
                     </td>
                   </tr>
                 );
-              })}
+              });
+              })()}
             </tbody>
           </table>
         </div>

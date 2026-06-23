@@ -141,3 +141,9 @@ export function getEffectiveCareersUrl(tracked: TrackedCompany, intel?: CompanyI
   if (!website) return null;
   return website.replace(/\/$/, "") + "/careers";
 }
+
+export function getIntelCareersUrl(intel: Pick<CompanyIntel, "careersUrl" | "website">): string | null {
+  if (intel.careersUrl?.trim()) return intel.careersUrl.trim();
+  if (!intel.website?.trim()) return null;
+  return intel.website.replace(/\/$/, "") + "/careers";
+}
