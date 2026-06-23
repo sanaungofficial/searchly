@@ -31,13 +31,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Passcode gate — bypass for the passcode page itself and static assets
-  if (!pathname.startsWith("/passcode") && !pathname.startsWith("/api/")) {
-    const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
-    if (!passcodeValid) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/passcode";
-      return NextResponse.redirect(url);
+  // Passcode gate — production only (VERCEL_ENV=production). Dev/preview bypass.
+  if (process.env.VERCEL_ENV === "production") {
+    if (!pathname.startsWith("/passcode") && !pathname.startsWith("/api/")) {
+      const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
+      if (!passcodeValid) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/passcode";
+        return NextResponse.redirect(url);
+      }
     }
   }
 
@@ -49,7 +51,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/passcode") ||
-    pathname.startsWith("/api/")
+    pathname.startsWith("/api/") // API routes handle their own auth and must return JSON, not HTML redirects
   ) {
     return supabaseResponse;
   }
