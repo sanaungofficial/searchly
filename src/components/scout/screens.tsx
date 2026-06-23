@@ -15,7 +15,7 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2;
+export type Screen = 0 | 1 | 2 | 3;
 
 export interface Job {
   id: number;
@@ -75,7 +75,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
         </div>
       </div>
       <div className="flex gap-[5px] items-center" style={{ paddingTop: 6 }}>
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
             style={{
@@ -98,6 +98,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
 interface WelcomeProps {
   resumeFilename: string | null;
   resumeUploaded: boolean;
+  resumeError?: boolean;
   isDragging: boolean;
   liInput: string;
   onLIChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -114,6 +115,7 @@ interface WelcomeProps {
 export function ScreenWelcome({
   resumeFilename,
   resumeUploaded,
+  resumeError,
   isDragging,
   liInput,
   onLIChange,
@@ -127,8 +129,8 @@ export function ScreenWelcome({
   onFileChange,
 }: WelcomeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropBorder = isDragging ? "#1A3A2F" : "rgba(26,58,47,0.22)";
-  const dropBg = isDragging ? "rgba(26,58,47,0.04)" : "transparent";
+  const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.22)";
+  const dropBg = resumeError ? "rgba(192,57,43,0.04)" : isDragging ? "rgba(26,58,47,0.04)" : "transparent";
   const canContinue = resumeUploaded || liInput.trim().length > 0;
 
   return (
@@ -274,6 +276,11 @@ export function ScreenWelcome({
           style={{ display: "none" }}
           onChange={onFileChange}
         />
+        {resumeError && (
+          <p style={{ fontFamily: "var(--font-dm-sans), system-ui", fontSize: 13, color: "#C0392B", marginTop: 10, fontWeight: 300 }}>
+            Upload failed — please try again or paste your LinkedIn below.
+          </p>
+        )}
       </div>
 
       {/* Or divider */}

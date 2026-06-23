@@ -133,43 +133,55 @@ export async function POST(request: Request) {
     ? await extractResume(file, structuredPrompt)
     : { text: "", parsed: null, tokensIn: 0, tokensOut: 0 };
 
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-  if (dbUser) {
-    if (resumeText) logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, rTokIn, rTokOut);
-    const extractedName = (parsedData as Record<string, unknown> | null)?.name as string | undefined;
-    if (extractedName && !dbUser.name) {
-      await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
-    }
+  const name =
+    user.user_metadata?.full_name ??
+    user.user_metadata?.name ??
+    user.email!.split("@")[0];
 
-    await prisma.profile.upsert({
-      where: { userId: dbUser.id },
-      update: {
-        resumeUrl: publicUrl,
-        ...(resumeText ? { resumeText } : {}),
-        ...(parsedData ? { parsedData } : {}),
-      },
-      create: {
-        userId: dbUser.id,
-        resumeUrl: publicUrl,
-        resumeText: resumeText || undefined,
-        parsedData: parsedData ?? undefined,
-      },
-    });
+  const dbUser = await prisma.user.upsert({
+    where: { email: user.email! },
+    update: {},
+    create: { email: user.email!, name },
+  });
 
-    await prisma.userAsset.updateMany({
-      where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
-      data: { isPrimary: false },
-    });
-    await prisma.userAsset.create({
-      data: {
-        userId: dbUser.id,
-        type: "RESUME",
-        name: file.name.replace(/\.[^/.]+$/, "") || "Resume",
-        url: publicUrl,
-        isPrimary: true,
-      },
-    });
+  if (resumeText) logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, rTokIn, rTokOut);
+
+  const extractedName = (parsedData as Record<string, unknown> | null)?.name as string | undefined;
+  if (extractedName && !dbUser.name) {
+    await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
   }
 
-  return NextResponse.json({ url: publicUrl, parsed: !!parsedData });
+  await prisma.profile.upsert({
+    where: { userId: dbUser.id },
+    update: {
+      resumeUrl: publicUrl,
+      ...(resumeText ? { resumeText } : {}),
+      ...(parsedData ? { parsedData } : {}),
+    },
+    create: {
+      userId: dbUser.id,
+      resumeUrl: publicUrl,
+      resumeText: resumeText || undefined,
+      parsedData: parsedData ?? undefined,
+      targetRoles: [],
+      priorities: [],
+    },
+  });
+
+  await prisma.userAsset.updateMany({
+    where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
+    data: { isPrimary: false },
+  });
+
+  const asset = await prisma.userAsset.create({
+    data: {
+      userId: dbUser.id,
+      type: "RESUME",
+      name: file.name.replace(/\.[^/.]+$/, "") || "Resume",
+      url: publicUrl,
+      isPrimary: true,
+    },
+  });
+
+  return NextResponse.json({ url: publicUrl, parsed: !!parsedData, asset });
 }

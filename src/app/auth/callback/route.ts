@@ -47,7 +47,17 @@ export async function GET(request: Request) {
     if (!existing && process.env.RESEND_API_KEY) {
       sendWelcomeEmail(user.email, name).catch(() => {});
     }
+
+    const destination =
+      next === "/" || next === ""
+        ? existing
+          ? "/dashboard"
+          : "/onboarding"
+        : next;
+
+    return NextResponse.redirect(`${origin}${destination}`);
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  const fallback = next === "/" || next === "" ? "/dashboard" : next;
+  return NextResponse.redirect(`${origin}${fallback}`);
 }
