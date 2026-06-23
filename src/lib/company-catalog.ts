@@ -104,6 +104,9 @@ export const COMPANY_CATALOG: CatalogCompany[] = [
   { slug: "aramark", name: "Aramark", website: "https://aramark.com", careersUrl: "https://careers.aramark.com", type: "Food / Facilities" },
 ];
 
+/** First 50 curated catalog companies — Hirebase company-data pilot. */
+export const TOP_50_CATALOG: CatalogCompany[] = COMPANY_CATALOG.slice(0, 50);
+
 const CATALOG_BY_SLUG = new Map(COMPANY_CATALOG.map((c) => [c.slug, c]));
 
 export function getCatalogCompany(slug: string): CatalogCompany | undefined {

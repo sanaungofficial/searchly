@@ -8,11 +8,15 @@ export type CompanyScanCronSummary = {
   errors: string[];
 };
 
+export type JobsScanProvider = "hirebase" | "ai" | "hirebase_then_ai";
+
 export type CompanyScanSettings = {
   refreshIntervalDays: number;
   maxCompaniesPerCronRun: number;
   autoScanOnAdd: boolean;
   cronEnabled: boolean;
+  jobsScanProvider: JobsScanProvider;
+  hirebaseMaxJobsPerCompany: number;
   lastCronRunAt: string | null;
   lastCronSummary: CompanyScanCronSummary | null;
 };
@@ -24,6 +28,8 @@ export const DEFAULT_COMPANY_SCAN_SETTINGS: CompanyScanSettings = {
   maxCompaniesPerCronRun: 20,
   autoScanOnAdd: true,
   cronEnabled: true,
+  jobsScanProvider: "hirebase_then_ai",
+  hirebaseMaxJobsPerCompany: 500,
   lastCronRunAt: null,
   lastCronSummary: null,
 };
@@ -46,11 +52,22 @@ function parseSettings(content: string | undefined | null): CompanyScanSettings 
   if (!content) return { ...DEFAULT_COMPANY_SCAN_SETTINGS };
   try {
     const parsed = JSON.parse(content) as Partial<CompanyScanSettings>;
+    const provider = parsed.jobsScanProvider;
+    const jobsScanProvider: JobsScanProvider =
+      provider === "hirebase" || provider === "ai" || provider === "hirebase_then_ai"
+        ? provider
+        : DEFAULT_COMPANY_SCAN_SETTINGS.jobsScanProvider;
+
     return {
       refreshIntervalDays: Math.max(1, Number(parsed.refreshIntervalDays) || DEFAULT_COMPANY_SCAN_SETTINGS.refreshIntervalDays),
       maxCompaniesPerCronRun: Math.max(1, Math.min(100, Number(parsed.maxCompaniesPerCronRun) || DEFAULT_COMPANY_SCAN_SETTINGS.maxCompaniesPerCronRun)),
       autoScanOnAdd: parsed.autoScanOnAdd ?? DEFAULT_COMPANY_SCAN_SETTINGS.autoScanOnAdd,
       cronEnabled: parsed.cronEnabled ?? DEFAULT_COMPANY_SCAN_SETTINGS.cronEnabled,
+      jobsScanProvider,
+      hirebaseMaxJobsPerCompany: Math.max(
+        10,
+        Math.min(5000, Number(parsed.hirebaseMaxJobsPerCompany) || DEFAULT_COMPANY_SCAN_SETTINGS.hirebaseMaxJobsPerCompany)
+      ),
       lastCronRunAt: parsed.lastCronRunAt ?? null,
       lastCronSummary: parsed.lastCronSummary ?? null,
     };

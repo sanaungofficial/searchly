@@ -7,6 +7,8 @@ export type CompanyScanSettings = {
   maxCompaniesPerCronRun: number;
   autoScanOnAdd: boolean;
   cronEnabled: boolean;
+  jobsScanProvider: "hirebase" | "ai" | "hirebase_then_ai";
+  hirebaseMaxJobsPerCompany: number;
   lastCronRunAt: string | null;
   lastCronSummary: {
     scanned: number;
@@ -19,6 +21,7 @@ export type CompanyScanSettings = {
 type PanelData = {
   settings: CompanyScanSettings;
   vercelCronSchedule: string;
+  hirebaseConfigured: boolean;
 };
 
 function formatWhen(iso: string | null) {
@@ -65,7 +68,7 @@ export function CompanyScanSettingsPanel({
       const res = await fetch("/api/admin/company-scans");
       if (res.ok) {
         const body = await res.json();
-        setData({ settings: body.settings, vercelCronSchedule: body.vercelCronSchedule });
+        setData({ settings: body.settings, vercelCronSchedule: body.vercelCronSchedule, hirebaseConfigured: !!body.hirebaseConfigured });
       }
     } finally {
       setLoading(false);
@@ -135,7 +138,50 @@ export function CompanyScanSettingsPanel({
 
       <p style={{ fontSize: 12, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>
         Vercel cron: {data.vercelCronSchedule}
+        {" · "}
+        Hirebase: {data.hirebaseConfigured ? "configured (HIREBASE_API_KEY set)" : "not configured — set HIREBASE_API_KEY on Vercel"}
       </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: compact ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 16 }}>
+        <label style={labelStyle}>
+          Jobs data provider
+          <select
+            value={settings.jobsScanProvider}
+            onChange={(e) => {
+              setData({
+                ...data,
+                settings: {
+                  ...settings,
+                  jobsScanProvider: e.target.value as CompanyScanSettings["jobsScanProvider"],
+                },
+              });
+              setSaveStatus("idle");
+            }}
+            style={inputStyle}
+          >
+            <option value="hirebase_then_ai">Hirebase first, AI scrape fallback</option>
+            <option value="hirebase">Hirebase only</option>
+            <option value="ai">AI careers page scrape only</option>
+          </select>
+        </label>
+        <label style={labelStyle}>
+          Max Hirebase jobs per company
+          <input
+            type="number"
+            min={10}
+            max={5000}
+            value={settings.hirebaseMaxJobsPerCompany}
+            onChange={(e) => {
+              setData({
+                ...data,
+                settings: { ...settings, hirebaseMaxJobsPerCompany: Number(e.target.value) || 500 },
+              });
+              setSaveStatus("idle");
+            }}
+            style={inputStyle}
+          />
+        </label>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: compact ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 16 }}>
         <label style={labelStyle}>

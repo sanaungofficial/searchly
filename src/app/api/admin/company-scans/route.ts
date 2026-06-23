@@ -9,7 +9,9 @@ import {
 } from "@/lib/company-scan-config";
 import { getIntelCareersUrl } from "@/lib/company-intel";
 import { getCatalogCompany } from "@/lib/company-catalog";
-import { parseJobsCache } from "@/lib/company-jobs-scan";
+import { parseJobsCache, canScanCompanyIntel } from "@/lib/company-jobs-scan";
+import { isHirebaseConfigured } from "@/lib/hirebase";
+import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
 
 export async function GET() {
   try {
@@ -29,6 +31,7 @@ export async function GET() {
     const careersUrl = getIntelCareersUrl(intel);
     const catalog = getCatalogCompany(intel.slug);
     const website = intel.website ?? catalog?.website ?? null;
+    const hirebase = getHirebaseMetaFromEnrichment(intel.enrichmentCache);
     return {
       id: intel.id,
       name: intel.name,
@@ -37,15 +40,22 @@ export async function GET() {
       careersUrl,
       watchlistCount: intel._count.trackedCompanies,
       jobCount: cache?.jobs.length ?? 0,
+      jobsSource: cache?.source ?? null,
+      hirebaseSlug: cache?.hirebase_slug ?? hirebase?.slug ?? null,
+      hirebaseJobBoard: hirebase?.jobBoard ?? null,
+      hirebaseOpenJobs: hirebase?.totalOpenJobs ?? null,
+      hirebaseLinkedIn: hirebase?.linkedinLink ?? null,
+      hirebaseProfileAt: hirebase ? intel.enrichmentFetchedAt?.toISOString() ?? null : null,
       lastScannedAt: intel.lastJobsFetchedAt?.toISOString() ?? null,
       stale: isIntelScanStale(intel.lastJobsFetchedAt, settings.refreshIntervalDays),
-      scannable: !!careersUrl,
+      scannable: canScanCompanyIntel(intel),
     };
   });
 
   return NextResponse.json({
     settings,
     defaults: DEFAULT_COMPANY_SCAN_SETTINGS,
+    hirebaseConfigured: isHirebaseConfigured(),
     vercelCronSchedule: "0 6 * * 0 (Sundays 06:00 UTC — edit vercel.json to change)",
     companies,
     totals: {
@@ -53,6 +63,7 @@ export async function GET() {
       scannable: companies.filter((c) => c.scannable).length,
       stale: companies.filter((c) => c.scannable && c.stale).length,
       withJobs: companies.filter((c) => c.jobCount > 0).length,
+      withHirebaseProfile: companies.filter((c) => c.hirebaseProfileAt).length,
     },
   });
 }
@@ -72,6 +83,8 @@ export async function PATCH(request: Request) {
       maxCompaniesPerCronRun: body.maxCompaniesPerCronRun,
       autoScanOnAdd: body.autoScanOnAdd,
       cronEnabled: body.cronEnabled,
+      jobsScanProvider: body.jobsScanProvider,
+      hirebaseMaxJobsPerCompany: body.hirebaseMaxJobsPerCompany,
     },
     admin.email
   );
