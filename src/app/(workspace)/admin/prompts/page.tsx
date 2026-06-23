@@ -94,7 +94,7 @@ export default function PromptsPage() {
   const categories = Array.from(new Set(prompts.map((p) => p.category)));
 
   if (loading) {
-    return <p style={{ fontSize: 13, color: "#a09890" }}>Loading prompts…</p>;
+    return <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading prompts…</p>;
   }
 
   return (
@@ -103,7 +103,7 @@ export default function PromptsPage() {
         <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
           AI Prompts
         </h1>
-        <p style={{ fontSize: 13, color: "#7a7268" }}>
+        <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>
           Edit the prompts used by every AI feature. Changes take effect immediately (60-second cache).
         </p>
       </div>
@@ -113,7 +113,7 @@ export default function PromptsPage() {
         <div style={{ width: 220, flexShrink: 0, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           {categories.map((cat) => (
             <div key={cat}>
-              <div style={{ padding: "8px 14px", fontSize: 11, color: "#a09890", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>
+              <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>
                 {cat}
               </div>
               {prompts
@@ -122,7 +122,7 @@ export default function PromptsPage() {
                   <button
                     key={p.key}
                     onClick={() => selectPrompt(p.key)}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-source-sans)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 14px", border: "none", borderBottom: "1px solid #f7f4f0", background: selected === p.key ? "#f0ece6" : "transparent", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 13, color: selected === p.key ? "#1a1a1a" : "#3d3530" }}
                   >
                     {p.label}
                   </button>
@@ -136,14 +136,14 @@ export default function PromptsPage() {
           {current ? (
             <>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "var(--font-source-sans)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
                   {current.label}
                 </div>
-                <div style={{ fontSize: 13, color: "#7a7268" }}>{current.description}</div>
+                <div style={{ fontSize: 13, color: "var(--scout-muted)" }}>{current.description}</div>
                 {current.variables.length > 0 && (
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {current.variables.map((v) => (
-                      <span key={v} style={{ fontSize: 11, fontFamily: "var(--font-dm-mono)", background: "#f0ece6", color: "#5a4a3a", padding: "2px 7px", borderRadius: 4 }}>
+                      <span key={v} style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", background: "#f0ece6", color: "#5a4a3a", padding: "2px 7px", borderRadius: 4 }}>
                         {`{{${v}}}`}
                       </span>
                     ))}
@@ -159,28 +159,28 @@ export default function PromptsPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-source-sans)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
+                  style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
                 >
                   {saving ? "Saving…" : "Save"}
                 </button>
                 <button
                   onClick={handleReset}
                   disabled={saving}
-                  style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "#7a7268", fontFamily: "var(--font-source-sans)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
+                  style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
                 >
                   Reset to default
                 </button>
                 {saveStatus === "saved" && <span style={{ fontSize: 13, color: "#2d7a50" }}>Saved</span>}
                 {saveStatus === "error" && <span style={{ fontSize: 13, color: "#b45309" }}>Error saving</span>}
                 {current.updatedAt && (
-                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#a09890", fontFamily: "var(--font-dm-mono)" }}>
+                  <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>
                     Last saved {new Date(current.updatedAt).toLocaleDateString()}
                   </span>
                 )}
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 13, color: "#a09890" }}>Select a prompt to edit.</p>
+            <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Select a prompt to edit.</p>
           )}
         </div>
       </div>

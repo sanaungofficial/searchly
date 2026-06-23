@@ -59,6 +59,15 @@
   --scout-muted: #6B6258;
   --scout-muted-light: #A09890;
 
+  /* Typography aliases — use in inline styles without JS imports */
+  --font-ui: var(--font-source-sans), system-ui, sans-serif;
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-mono-ui: var(--font-dm-mono), ui-monospace, monospace;
+  --type-body: 15px;
+  --type-body-sm: 14px;
+  --type-caption: 13px;
+  --type-label: 12px;
+
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -131,7 +140,7 @@
   body {
     @apply text-foreground;
     background: #F7F5F2;
-    font-family: var(--font-source-sans), system-ui, sans-serif;
+    font-family: var(--font-ui);
   }
   input::placeholder {
     color: rgba(74, 69, 64, 0.45);
@@ -193,7 +202,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
-  font-family: var(--font-source-sans), system-ui, sans-serif;
+  font-family: var(--font-ui);
   box-sizing: border-box;
 }
 
@@ -309,7 +318,7 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  font-family: var(--font-source-sans), system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   color: var(--scout-muted-light);
 }

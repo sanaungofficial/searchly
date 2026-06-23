@@ -59,7 +59,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
                   <!-- Footer -->
                   <tr>
                     <td style="padding:24px 40px;border-top:1px solid #E5DDD0;">
-                      <p style="margin:0;font-size:12px;color:#A09890;line-height:1.6;">
+                      <p style="margin:0;font-size:12px;color:#6B6258;line-height:1.6;">
                         You're receiving this because you signed up for Kimchi. Questions? Reply to this email.
                       </p>
                     </td>

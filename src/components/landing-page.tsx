@@ -4,12 +4,12 @@ import Link from "next/link";
 
 export function LandingPage() {
   return (
-    <div style={{ background: "#F7F5F2", minHeight: "100vh", fontFamily: "var(--font-source-sans), system-ui, sans-serif" }}>
+    <div style={{ background: "#F7F5F2", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
       {/* Nav */}
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <div>
           <span style={{ fontSize: 18, fontWeight: 600, color: "#1C3A2F", letterSpacing: "-0.3px" }}>Kimchi</span>
-          <span style={{ marginLeft: 8, fontSize: 10, color: "#A09890", letterSpacing: "0.8px", textTransform: "uppercase" }}>by Second Ladder</span>
+          <span style={{ marginLeft: 8, fontSize: 13, color: "var(--scout-muted)", letterSpacing: "0.8px", textTransform: "uppercase" }}>by Second Ladder</span>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Link href="/pricing" style={{ fontSize: 14, color: "#52493F", textDecoration: "none", padding: "8px 16px" }}>Pricing</Link>
@@ -39,7 +39,7 @@ export function LandingPage() {
             See pricing
           </Link>
         </div>
-        <p style={{ marginTop: 20, fontSize: 13, color: "#A09890" }}>No credit card required to start.</p>
+        <p style={{ marginTop: 20, fontSize: 13, color: "var(--scout-muted)" }}>No credit card required to start.</p>
       </section>
 
       {/* Features */}
@@ -82,10 +82,10 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer style={{ borderTop: "1px solid #E5DDD0", padding: "24px 48px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 13, color: "#A09890" }}>© 2025 Second Ladder. All rights reserved.</span>
+        <span style={{ fontSize: 13, color: "var(--scout-muted)" }}>© 2025 Second Ladder. All rights reserved.</span>
         <div style={{ display: "flex", gap: 24 }}>
-          <Link href="/pricing" style={{ fontSize: 13, color: "#A09890", textDecoration: "none" }}>Pricing</Link>
-          <Link href="/login" style={{ fontSize: 13, color: "#A09890", textDecoration: "none" }}>Log in</Link>
+          <Link href="/pricing" style={{ fontSize: 13, color: "var(--scout-muted)", textDecoration: "none" }}>Pricing</Link>
+          <Link href="/login" style={{ fontSize: 13, color: "var(--scout-muted)", textDecoration: "none" }}>Log in</Link>
         </div>
       </footer>
     </div>

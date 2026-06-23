@@ -1,8 +1,8 @@
 /** Kimchi typography — Source Sans 3 UI + Cormorant display */
 
-export const fontSans = "var(--font-source-sans), system-ui, sans-serif";
-export const fontDisplay = "var(--font-cormorant), Georgia, serif";
-export const fontMono = "var(--font-dm-mono), ui-monospace, monospace";
+export const fontSans = "var(--font-ui)";
+export const fontDisplay = "var(--font-display)";
+export const fontMono = "var(--font-mono-ui)";
 
 export const color = {
   ink: "#1A1A1A",
