@@ -80,6 +80,84 @@ export function ScoutLabel({ children }: { children: ReactNode }) {
   );
 }
 
+const btnBase: CSSProperties = {
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 0,
+};
+
+export function ScoutPrimaryBtn({
+  children,
+  onClick,
+  disabled,
+  type = "button",
+  style,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
+  style?: CSSProperties;
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        ...btnBase,
+        padding: "8px 16px",
+        background: disabled ? "rgba(26,58,47,0.35)" : "var(--scout-forest)",
+        color: "var(--scout-gold)",
+        border: border.lineStrong,
+        opacity: disabled ? 0.7 : 1,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function ScoutSecondaryBtn({
+  children,
+  onClick,
+  disabled,
+  active,
+  type = "button",
+  style,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  type?: "button" | "submit";
+  style?: CSSProperties;
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        ...btnBase,
+        padding: "8px 16px",
+        background: active ? "var(--scout-forest)" : surface.card,
+        color: active ? "var(--scout-gold)" : "var(--scout-forest)",
+        border: border.lineStrong,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function ScoutDisplayTitle({
   children,
   size = 32,

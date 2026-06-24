@@ -2,12 +2,12 @@
 
 import { CompanyLogo } from "@/components/scout/company-logo";
 import type { HirebaseCompanyProfileResponse } from "@/lib/hirebase-company-profile";
-import { fontSans, fontDisplay } from "@/lib/typography";
+import { fontSans, fontDisplay, border as B, surface, color } from "@/lib/typography";
+import { ScoutBox } from "./scout-box";
 
 const sans = fontSans;
 const serif = fontDisplay;
-const mint = "#4A8B6A";
-const border = "1px solid rgba(0,0,0,0.08)";
+const line = B.line;
 
 function formatEmployeeRange(min?: number | null, max?: number | null): string | null {
   if (min != null && max != null) return `${min.toLocaleString()}–${max.toLocaleString()} employees`;
@@ -21,8 +21,9 @@ function CompanyMetaChip({ label }: { label: string }) {
     <span
       style={{
         padding: "5px 10px",
-        background: "rgba(0,0,0,0.05)",
-        borderRadius: 100,
+        background: surface.inset,
+        border: line,
+        borderRadius: 0,
         fontFamily: sans,
         fontSize: 12,
         fontWeight: 500,
@@ -75,7 +76,7 @@ export function JobDrawerCompanySection({
   const uniqueIndustries = [...new Set(industries)].slice(0, 6);
 
   return (
-    <div style={{ background: "#FFF", border, borderRadius: 12, padding: 20 }}>
+    <ScoutBox padding={20}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
         <CompanyLogo
           name={companyName}
@@ -144,7 +145,7 @@ export function JobDrawerCompanySection({
             href={linkedinUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontFamily: sans, fontSize: 14, color: mint, fontWeight: 600 }}
+            style={{ fontFamily: sans, fontSize: 14, color: color.forest, fontWeight: 600 }}
           >
             View on LinkedIn ↗
           </a>
@@ -154,7 +155,7 @@ export function JobDrawerCompanySection({
             href={websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontFamily: sans, fontSize: 14, color: mint, fontWeight: 600 }}
+            style={{ fontFamily: sans, fontSize: 14, color: color.forest, fontWeight: 600 }}
           >
             Company website ↗
           </a>
@@ -162,6 +163,6 @@ export function JobDrawerCompanySection({
       </div>
 
       {trackPanel}
-    </div>
+    </ScoutBox>
   );
 }

@@ -16,7 +16,7 @@ import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
-import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "./scout-box";
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
 import { fontSans, fontMono, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
 
 export type { DrawerTool };
@@ -505,25 +505,9 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
             Upload a CSV file with job URLs. One URL per line, or columns: <code style={{ fontFamily: fontMono, fontSize: T.label, background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: 3 }}>url,company,role</code>
           </p>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => inputRef.current?.click()}
-              style={{
-                padding: "8px 16px",
-                background: "#1A3A2F",
-                color: "#E8D5A3",
-                border: "none",
-                borderRadius: 5,
-                fontFamily: "var(--font-ui)",
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
+            <ScoutPrimaryBtn onClick={() => inputRef.current?.click()}>
               <UploadIcon /> Choose file
-            </button>
+            </ScoutPrimaryBtn>
             <input
               ref={inputRef}
               type="file"
@@ -535,16 +519,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               .csv or .txt
             </span>
           </div>
-          <div
-            style={{
-              marginTop: 12,
-              padding: "10px 14px",
-              background: "#FFFFFF",
-              borderRadius: 5,
-              border: "1px solid rgba(0,0,0,0.06)",
-              maxWidth: 520,
-            }}
-          >
+          <ScoutBox style={{ maxWidth: 520, marginTop: 12 }} padding={14}>
             <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>
               Example CSV
             </p>
@@ -554,7 +529,7 @@ https://stripe.com/jobs/...,Stripe,Senior PM
 https://linear.app/careers/...,Linear,Product Lead
 https://figma.com/careers/...,Figma,Design Systems PM`}
             </pre>
-          </div>
+          </ScoutBox>
         </>
       )}
     </div>

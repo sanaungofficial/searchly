@@ -20,7 +20,8 @@ import { CreditsStatusBar } from "./credits-display";
 import { InsiderConnectionPanel } from "./insider-connection-panel";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
-import { fontSans, fontDisplay, fontMono, color, type as T, drawerType as DT } from "@/lib/typography";
+import { fontSans, fontDisplay, fontMono, color, surface, border as B, type as T, drawerType as DT } from "@/lib/typography";
+import { ScoutBox, ScoutLabel } from "./scout-box";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -39,12 +40,12 @@ type ScrollSection = "overview" | "company";
 const sans = fontSans;
 const serif = fontDisplay;
 const mono = fontMono;
+const line = B.line;
+const lineStrong = B.lineStrong;
+const cardBg = surface.card;
+const pageBg = surface.page;
 const mint = "#4A8B6A";
 const mintLight = "rgba(74,139,106,0.12)";
-const mintBtn = "#3D7A5C";
-const border = "1px solid rgba(0,0,0,0.08)";
-const cardBg = "#FFFFFF";
-const pageBg = "#F4F6F5";
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 const AI_SIDEBAR_WIDTH = 340;
 
@@ -146,7 +147,7 @@ function CompanyTrackPanel({
   }
 
   return (
-    <div style={{ marginTop: 20, paddingTop: 20, borderTop: border }}>
+    <div style={{ marginTop: 20, paddingTop: 20, borderTop: line }}>
       {loading ? (
         <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>Checking watchlist…</p>
       ) : tracked ? (
@@ -173,14 +174,15 @@ function CompanyTrackPanel({
             onClick={() => router.push("/opportunities/companies")}
             style={{
               padding: "10px 18px",
-              background: mintBtn,
+              background: color.forest,
               color: "#FFF",
               border: "none",
-              borderRadius: 10,
+              borderRadius: 0,
               fontFamily: sans,
               fontSize: 14,
               fontWeight: 600,
               cursor: "pointer",
+              border: lineStrong,
             }}
           >
             Open in Companies →
@@ -201,7 +203,7 @@ function CompanyTrackPanel({
               disabled={saving}
               style={{
                 padding: "10px 18px",
-                background: saving ? "rgba(26,58,47,0.35)" : mintBtn,
+                background: saving ? "rgba(26,58,47,0.35)" : color.forest,
                 color: "#FFF",
                 border: "none",
                 borderRadius: 10,
@@ -415,13 +417,13 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
 
   if (fit <= 0) {
     return (
-      <div style={{ background: "#F0F2F1", borderRadius: 14, padding: "20px 22px", minWidth: 220, border }}>
+      <div style={{ background: surface.card, borderRadius: 0, padding: "20px 22px", minWidth: 220, border: line }}>
         <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>Match score</p>
         <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
         {onRunMatch && (
           <button
             onClick={onRunMatch}
-            style={{ width: "100%", padding: "11px 14px", background: mintBtn, color: "#FFF", border: "none", borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            style={{ width: "100%", padding: "11px 14px", background: color.forest, color: "#FFF", border: "none", borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
             Analyze match
           </button>
@@ -431,7 +433,7 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
   }
 
   return (
-    <div style={{ background: "#F0F2F1", borderRadius: 14, padding: "20px 22px", minWidth: 220, border }}>
+    <div style={{ background: surface.card, borderRadius: 0, padding: "20px 22px", minWidth: 220, border: line }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
         <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
           <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: "rotate(-90deg)" }}>
@@ -473,9 +475,9 @@ function AiToolCard({
   return (
     <div
       style={{
-        background: highlighted ? mintLight : cardBg,
-        border,
-        borderRadius: 14,
+        background: highlighted ? surface.inset : cardBg,
+        border: highlighted ? lineStrong : line,
+        borderRadius: 0,
         padding: "18px 20px",
         marginBottom: 12,
       }}
@@ -494,10 +496,10 @@ function AiToolCard({
         style={{
           width: "100%",
           padding: "12px 16px",
-          background: mintBtn,
-          color: "#FFF",
-          border: "none",
-          borderRadius: 10,
+          background: color.forest,
+          color: color.gold,
+          border: lineStrong,
+          borderRadius: 0,
           fontFamily: sans,
           fontSize: 14,
           fontWeight: 600,
@@ -655,11 +657,11 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
           bottom: 8,
           width: DRAWER_WIDTH,
           maxWidth: "calc(100vw - 16px)",
-          background: pageBg,
-          borderRadius: 14,
+          background: surface.inset,
+          borderRadius: 0,
           overflow: "hidden",
           zIndex: 70,
-          boxShadow: "0 12px 48px rgba(0,0,0,0.16)",
+          boxShadow: "3px 3px 0 rgba(17,17,17,0.08)",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",
           display: "flex",
@@ -667,7 +669,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
         }}
       >
         {/* Top bar — scroll anchors + actions */}
-        <div style={{ padding: "14px 28px", background: cardBg, borderBottom: border, display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+        <div style={{ padding: "14px 28px", background: cardBg, borderBottom: line, display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -686,7 +688,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   style={{
                     background: "none",
                     border: "none",
-                    borderBottom: active ? `2px solid ${mint}` : "2px solid transparent",
+                    borderBottom: active ? `2px solid ${color.forest}` : "2px solid transparent",
                     padding: "6px 0 10px",
                     fontFamily: sans,
                     fontSize: 15,
@@ -719,14 +721,15 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 rel="noopener noreferrer"
                 style={{
                   padding: "10px 20px",
-                  background: mintBtn,
+                  background: color.forest,
                   color: "#FFF",
-                  borderRadius: 10,
+                  borderRadius: 0,
                   fontFamily: sans,
                   fontSize: 14,
                   fontWeight: 700,
                   textDecoration: "none",
                   letterSpacing: "0.2px",
+                  border: lineStrong,
                 }}
               >
                 APPLY NOW
@@ -738,7 +741,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
         <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
           <div ref={scrollRef} style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden" }}>
             {/* Hero — title + match score */}
-            <div style={{ padding: "28px 32px 24px", background: cardBg, borderBottom: border }}>
+            <div style={{ padding: "28px 32px 24px", background: cardBg, borderBottom: line }}>
               <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
@@ -758,7 +761,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                       </p>
                     </div>
                   </div>
-                  <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 700, color: "#1A1A1A", margin: "0 0 16px", lineHeight: 1.2 }}>
+                  <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 500, fontVariationSettings: '"opsz" 72, "WONK" 1', color: color.ink, margin: "0 0 16px", lineHeight: 1.2 }}>
                     {card.role}
                   </h2>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 24px" }}>
@@ -810,7 +813,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                           style={{
                             padding: "6px 13px",
                             background: card.fit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
-                            border: card.fit >= 70 ? "1px solid rgba(74,139,106,0.25)" : border,
+                            border: card.fit >= 70 ? "1px solid rgba(74,139,106,0.25)" : line,
                             borderRadius: 100,
                             fontFamily: sans,
                             fontSize: 13,
@@ -846,7 +849,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               )}
 
               {tool !== null && !job && (
-                <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, marginBottom: 14 }}>
+                <div style={{ padding: 16, background: cardBg, border: line, borderRadius: 0, marginBottom: 14 }}>
                   <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
                     {tool === "resume" ? "Resume tailoring" : tool === "cover" ? "Cover letter" : "Fit analysis"} — coming soon
                   </p>
@@ -859,7 +862,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               {tool === "cover" && job && (
                 <div style={{ marginBottom: 18 }}>
                   <SectionTitle>Cover letter</SectionTitle>
-                  <div style={{ padding: 16, background: cardBg, borderRadius: 12, border, borderLeft: `3px solid ${mint}` }}>
+                  <div style={{ padding: 16, background: cardBg, border: line, borderRadius: 0, borderLeft: `3px solid ${mint}` }}>
                     <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.75, whiteSpace: "pre-wrap", margin: 0 }}>{job.coverLetter}</p>
                   </div>
                 </div>
@@ -895,8 +898,8 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                       fontSize: 15,
                       color: "#1A1A1A",
                       background: cardBg,
-                      border,
-                      borderRadius: 12,
+                      border: line,
+                      borderRadius: 0,
                       padding: "16px 18px",
                       resize: "vertical",
                       outline: "none",
@@ -910,7 +913,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               <div
                 ref={companySectionRef}
                 id="job-drawer-company"
-                style={{ marginTop: 28, paddingTop: 24, borderTop: border }}
+                style={{ marginTop: 28, paddingTop: 24, borderTop: line }}
               >
                 <SectionTitle icon={<IconBuilding />}>Company</SectionTitle>
                 <JobDrawerCompanySection
@@ -930,7 +933,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 />
               </div>
 
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: border }}>
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: line }}>
                 <input
                   value={urlValue}
                   onChange={(e) => setUrlValue(e.target.value)}
@@ -948,7 +951,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               width: AI_SIDEBAR_WIDTH,
               flexShrink: 0,
               padding: "24px 20px 32px",
-              borderLeft: border,
+              borderLeft: line,
               background: cardBg,
               overflowY: "auto",
               overflowX: "hidden",
@@ -959,7 +962,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
           >
             {/* Pipeline */}
             <div>
-              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
                 Pipeline
               </p>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
@@ -993,9 +996,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                     onClick={() => moveCard(card.id, s)}
                     style={{
                       padding: "6px 10px",
-                      background: pageBg,
-                      border,
-                      borderRadius: 7,
+                      background: surface.inset,
+                      border: line,
+                      borderRadius: 0,
                       fontFamily: sans,
                       fontSize: 12,
                       fontWeight: 500,
@@ -1013,14 +1016,14 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 onChange={(e) => setNextStepValue(e.target.value)}
                 onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
                 placeholder="e.g. Follow up with recruiter…"
-                style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, marginBottom: 8, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", border: line, borderRadius: 0, fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 8, boxSizing: "border-box" }}
               />
               <input
                 type="date"
                 value={nextStepDueValue}
                 onChange={(e) => setNextStepDueValue(e.target.value)}
                 onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                style={{ width: "100%", padding: "10px 12px", border, borderRadius: 8, fontFamily: sans, fontSize: 13, outline: "none", background: pageBg, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", border: line, borderRadius: 0, fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
               />
             </div>
 
@@ -1039,9 +1042,9 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   width: "100%",
                   fontFamily: sans,
                   fontSize: 13,
-                  background: pageBg,
-                  border,
-                  borderRadius: 10,
+                  background: surface.inset,
+                  border: line,
+                  borderRadius: 0,
                   padding: "12px 14px",
                   resize: "vertical",
                   outline: "none",
