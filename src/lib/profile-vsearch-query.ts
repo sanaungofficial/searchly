@@ -24,7 +24,7 @@ export function buildProfileVSearchQuery(input: ProfileVSearchInput): string | n
   const parsed = normalizeParsedResumeData(input.parsedData ?? null);
   const segments: string[] = [];
 
-  const targetRoles = input.targetRoles?.map((r) => r.trim()).filter(Boolean) ?? [];
+  const targetRoles = input.targetRoles?.map((r) => r.trim()).filter(Boolean).slice(0, 20) ?? [];
   if (targetRoles.length) {
     segments.push(`Looking for roles such as ${targetRoles.join(", ")}.`);
   }

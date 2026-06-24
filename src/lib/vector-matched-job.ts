@@ -14,6 +14,8 @@ export type VectorSearchFilters = {
   accuracy?: number;
   topK?: number;
   minScore?: number;
+  /** Free-form text merged into the semantic vsearch query (profile + user focus). */
+  semanticQuery?: string;
   companyName?: string;
   companySlug?: string;
   jobTitles?: string[];
@@ -75,3 +77,6 @@ export const DEFAULT_VECTOR_SEARCH_FILTERS: VectorSearchFilters = {
   page: 1,
   accuracy: 0.35,
 };
+
+/** Max jobs returned per recommended search (product cap). */
+export const VECTOR_SEARCH_RESULTS_MAX = 20;

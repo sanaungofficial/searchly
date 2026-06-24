@@ -9,6 +9,7 @@ import {
   HIREBASE_EXPERIENCE_LEVELS,
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
+  VECTOR_SEARCH_RESULTS_MAX,
   type VectorMatchedJob,
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
@@ -38,6 +39,7 @@ function splitInputList(value: string): string[] {
 
 function filtersToForm(f: VectorSearchFilters) {
   return {
+    semanticQuery: f.semanticQuery ?? "",
     jobTitles: (f.jobTitles ?? []).join(", "),
     keywords: (f.keywords ?? []).join(", "),
     companyName: f.companyName ?? "",
@@ -66,7 +68,8 @@ function formToFilters(form: ReturnType<typeof filtersToForm>, page: number): Ve
   return {
     ...DEFAULT_VECTOR_SEARCH_FILTERS,
     page,
-    limit: 20,
+    limit: VECTOR_SEARCH_RESULTS_MAX,
+    semanticQuery: form.semanticQuery.trim() || undefined,
     jobTitles: splitInputList(form.jobTitles),
     keywords: splitInputList(form.keywords),
     companyName: form.companyName.trim() || undefined,
@@ -111,6 +114,17 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
   background: surface.card,
 };
+
+const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_recommended_semantic_query";
+
+function loadStoredSemanticQuery(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem(SEMANTIC_QUERY_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 function ChipToggle({
   label,
@@ -179,7 +193,10 @@ export function PipelineRecommendedSection({
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
 }) {
-  const [form, setForm] = useState(() => filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS));
+  const [form, setForm] = useState(() => ({
+    ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+    semanticQuery: loadStoredSemanticQuery(),
+  }));
   const [showFilters, setShowFilters] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +226,14 @@ export function PipelineRecommendedSection({
     setLoading(true);
     setError(null);
     try {
+      const semanticQuery = filtersForm.semanticQuery.trim();
+      try {
+        if (semanticQuery) localStorage.setItem(SEMANTIC_QUERY_STORAGE_KEY, semanticQuery);
+        else localStorage.removeItem(SEMANTIC_QUERY_STORAGE_KEY);
+      } catch {
+        /* ignore storage errors */
+      }
+
       const res = await fetch("/api/jobs/vector-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -254,7 +279,7 @@ export function PipelineRecommendedSection({
           <div>
             <ScoutLabel>Recommended for you</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles ranked by semantic fit to your resume via Hirebase. Save any role to move it into Saved.
+              Roles ranked by semantic fit to your profile via Hirebase. Add your own focus words below, then save any role to move it into Saved.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -262,10 +287,23 @@ export function PipelineRecommendedSection({
               {showFilters ? "Hide filters" : "Filters"}
             </ScoutSecondaryBtn>
             <ScoutPrimaryBtn onClick={() => runSearch(1)} disabled={loading}>
-              {loading ? "Searching…" : "Apply filters"}
+              {loading ? "Searching…" : "Search"}
             </ScoutPrimaryBtn>
           </div>
         </div>
+
+        <FilterField label="Your search focus">
+          <textarea
+            style={{ ...inputStyle, minHeight: 72, resize: "vertical", lineHeight: 1.5 }}
+            value={form.semanticQuery}
+            onChange={(e) => setForm((f) => ({ ...f, semanticQuery: e.target.value }))}
+            placeholder="e.g. B2B SaaS corporate strategy, remote-friendly, Series B startups, healthcare tech…"
+            maxLength={400}
+          />
+          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0", lineHeight: 1.45 }}>
+            Optional — merged with your profile and resume. Shows up to {VECTOR_SEARCH_RESULTS_MAX} roles per search.
+          </p>
+        </FilterField>
 
         {showFilters && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>

@@ -8,6 +8,7 @@ import {
 } from "@/lib/profile-vsearch-query";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
+import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
@@ -29,13 +30,18 @@ function num(value: unknown): number | undefined {
 }
 
 function parseFilters(body: Record<string, unknown>): VectorSearchFilters {
+  const limit = num(body.limit);
   return {
-    limit: num(body.limit),
+    limit: limit != null ? Math.min(Math.max(1, limit), VECTOR_SEARCH_RESULTS_MAX) : undefined,
     page: num(body.page),
     offset: num(body.offset),
     accuracy: num(body.accuracy),
     topK: num(body.topK),
     minScore: num(body.minScore),
+    semanticQuery:
+      typeof body.semanticQuery === "string"
+        ? body.semanticQuery.trim().slice(0, 400) || undefined
+        : undefined,
     companyName: typeof body.companyName === "string" ? body.companyName : undefined,
     companySlug: typeof body.companySlug === "string" ? body.companySlug : undefined,
     jobSlug: typeof body.jobSlug === "string" ? body.jobSlug : undefined,
@@ -92,7 +98,7 @@ export async function POST(request: Request) {
 
   const profileInput = {
     headline: profile?.headline,
-    targetRoles: profile?.targetRoles ?? [],
+    targetRoles: (profile?.targetRoles ?? []).slice(0, 20),
     resumeText: profile?.resumeText,
     parsedData,
     careerMotivation: profile?.careerMotivation,
@@ -113,12 +119,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const targetRoles = profile?.targetRoles ?? [];
-  const jobTitles = filters.jobTitles?.length ? filters.jobTitles : targetRoles.slice(0, 3);
+  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
+  const jobTitles = filters.jobTitles?.length ? filters.jobTitles.slice(0, 20) : targetRoles.slice(0, 20);
   const titlesAlreadyInQuery = !filters.jobTitles?.length && targetRoles.length > 0;
   const queryExtras: string[] = [];
   if (jobTitles.length && !titlesAlreadyInQuery) {
     queryExtras.push(`Focus on titles like ${jobTitles.join(", ")}.`);
+  }
+  if (filters.semanticQuery) {
+    queryExtras.push(filters.semanticQuery);
   }
   if (filters.keywords?.length) {
     queryExtras.push(`Keywords: ${filters.keywords.join(", ")}.`);
@@ -135,7 +144,7 @@ export async function POST(request: Request) {
       query,
       ...filters,
       jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
-      limit: filters.limit ?? 20,
+      limit: Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX),
       page: filters.page ?? 1,
     });
 

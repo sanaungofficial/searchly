@@ -524,7 +524,7 @@ export async function fetchHirebaseVectorJobs(
     return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
   }
 
-  const limit = Math.max(1, Math.min(input.limit ?? 20, 30));
+  const limit = Math.max(1, Math.min(input.limit ?? 20, 20));
   const page = Math.max(1, input.page ?? 1);
 
   const body: Record<string, unknown> = {
