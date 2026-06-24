@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS, type KanbanCard } from "./workspace-data";
+import type { JobMeta } from "@/lib/job-meta";
+import { resolveJobDescriptionText } from "@/lib/job-meta";
 import type { DrawerTool } from "./workspace-opportunities";
 import { fontSans } from "@/lib/typography";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
@@ -178,13 +180,25 @@ export function ChatWidget() {
         stage: STAGE_LABELS[c.stage],
       }));
 
+      const meta = (currentJob as KanbanCard & { _meta?: JobMeta })._meta;
+      const jobDescription = resolveJobDescriptionText(
+        meta,
+        currentJob.role,
+        currentJob.company,
+      );
+
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextMessages,
           pipeline,
-          focusedJob: { company: currentJob.company, role: currentJob.role, intent: "fit" },
+          focusedJob: {
+            company: currentJob.company,
+            role: currentJob.role,
+            intent: "fit",
+            description: jobDescription || undefined,
+          },
         }),
       });
 

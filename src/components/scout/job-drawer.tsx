@@ -4,6 +4,7 @@ import { useLayoutEffect, useEffect, useState, useCallback, useRef } from "react
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/lib/job-meta";
+import { resolveJobDescriptionText } from "@/lib/job-meta";
 import {
   JOBS,
   KANBAN_STAGES,
@@ -646,6 +647,8 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
     hirebaseCompany?.enrichment?.hirebase?.linkedinLink?.trim() ||
     companyLinkedinUrl;
 
+  const jobDescription = resolveJobDescriptionText(meta, card.role, card.company);
+
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
@@ -1102,7 +1105,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
         <ResumeMatchDrawer
           jobTitle={card.role}
           company={card.company}
-          description={meta?.description ?? ""}
+          description={jobDescription}
           jobId={dbId ?? undefined}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => { if (dbId) setResumeEditorOpen(true); }}
@@ -1113,7 +1116,8 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
         <CoverLetterDrawer
           jobTitle={card.role}
           company={card.company}
-          description={meta?.description ?? ""}
+          description={jobDescription}
+          jobId={dbId ?? undefined}
           onClose={() => setCoverDrawerOpen(false)}
         />
       )}
