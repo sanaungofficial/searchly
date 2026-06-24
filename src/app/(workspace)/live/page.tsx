@@ -1,11 +1,10 @@
-import { redirect } from "next/navigation";
 import { WorkspaceLive } from "@/components/scout/workspace-live";
-import { isAdmin } from "@/lib/auth";
-import { canAccessBetaFeatures } from "@/lib/beta-features";
+import { BetaFeaturePage } from "@/lib/beta-feature-page";
 
-export default async function LivePage() {
-  if (!canAccessBetaFeatures(await isAdmin())) {
-    redirect("/dashboard");
-  }
-  return <WorkspaceLive />;
+export default function LivePage() {
+  return (
+    <BetaFeaturePage feature="live">
+      <WorkspaceLive />
+    </BetaFeaturePage>
+  );
 }

@@ -1,11 +1,10 @@
-import { redirect } from "next/navigation";
 import { WorkspaceNetwork } from "@/components/scout/workspace-network";
-import { isAdmin } from "@/lib/auth";
-import { canAccessBetaFeatures } from "@/lib/beta-features";
+import { BetaFeaturePage } from "@/lib/beta-feature-page";
 
-export default async function NetworkPage() {
-  if (!canAccessBetaFeatures(await isAdmin())) {
-    redirect("/dashboard");
-  }
-  return <WorkspaceNetwork />;
+export default function NetworkPage() {
+  return (
+    <BetaFeaturePage feature="network">
+      <WorkspaceNetwork />
+    </BetaFeaturePage>
+  );
 }
