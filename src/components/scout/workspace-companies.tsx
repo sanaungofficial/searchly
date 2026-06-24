@@ -205,7 +205,7 @@ function CompanySuggestInput({
               onMouseEnter={(e) => { e.currentTarget.style.background = "#faf8f5"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = picked?.catalogSlug === item.catalogSlug ? "#f0f7f4" : "#fff"; }}
             >
-              <CompanyLogo name={item.name} website={item.website} careersUrl={item.careersUrl} size={24} borderRadius={6} />
+              <CompanyLogo name={item.name} website={item.website} careersUrl={item.careersUrl} size={24} borderRadius={0} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{item.name}</div>
                 <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>{formatSuggestionMeta(item)}</div>
@@ -219,7 +219,7 @@ function CompanySuggestInput({
 }
 
 const editableWrapStyle: React.CSSProperties = {
-  borderRadius: 6,
+  borderRadius: 0,
   padding: "4px 6px",
   margin: "-4px -6px",
   transition: "background 0.15s",
@@ -270,9 +270,9 @@ function PriorityBadge({ value, onChange }: { value: string; onChange: (v: strin
   }
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
-      <button ref={btnRef} onClick={handleOpen} style={{ background: color.bg, color: color.text, border: "none", borderRadius: 5, padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
+      <button ref={btnRef} onClick={handleOpen} style={{ background: color.bg, color: color.text, border: "none", borderRadius: 0, padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
       {open && (
-        <div style={{ position: "fixed", top: coords.top, left: coords.left, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}>
+        <div style={{ position: "fixed", top: coords.top, left: coords.left, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}>
           {["HIGH", "MEDIUM", "LOW", ""].map((opt) => (
             <button key={opt || "none"} onClick={() => { onChange(opt); setOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: value === opt ? "#f3f4f6" : "transparent", border: "none", cursor: "pointer", fontSize: 14, fontWeight: opt ? 600 : 400, color: opt === "HIGH" ? "#dc2626" : opt === "MEDIUM" ? "#d97706" : opt === "LOW" ? "#16a34a" : "#6b7280" }}>{opt || "None"}</button>
           ))}
@@ -367,7 +367,7 @@ function DrawerJobRow({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 2 }}>
         {match && (
-          <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
+          <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 0, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
         )}
         {job.url && (
           <a
@@ -482,7 +482,7 @@ function CompanyDrawer({
                 careersUrl={company.careersUrl}
                 enrichmentWebsiteUrl={enrichmentWebsite(company)}
                 size={40}
-                borderRadius={10}
+                borderRadius={0}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <InlineInput value={company.name} placeholder="Company name" onBlur={(v) => v.trim() && onPatch(company.id, "name", v)} bold />
@@ -494,7 +494,7 @@ function CompanyDrawer({
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
               <PriorityBadge value={company.priority ?? ""} onChange={(v) => onPatch(company.id, "priority", v)} />
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "2px 6px", borderRadius: 5, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#333")} onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}>×</button>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "2px 6px", borderRadius: 0, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#333")} onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}>×</button>
             </div>
           </div>
         </div>
@@ -517,11 +517,11 @@ function CompanyDrawer({
 
                 {/* Quick stats row */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-                  {intel.founded && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>📅 Founded {intel.founded}</span>}
-                  {intel.headquarters && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>📍 {intel.headquarters}</span>}
-                  {intel.employeeCount && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>👥 {intel.employeeCount}</span>}
-                  {intel.industry && <span style={{ background: "#f3f4f6", borderRadius: 5, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>{intel.industry}</span>}
-                  {intel.glassdoorRating && <span style={{ background: "#f0fdf4", borderRadius: 5, padding: "3px 8px", fontSize: 14, color: "#16a34a", fontFamily: "var(--font-ui)", fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
+                  {intel.founded && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>📅 Founded {intel.founded}</span>}
+                  {intel.headquarters && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>📍 {intel.headquarters}</span>}
+                  {intel.employeeCount && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>👥 {intel.employeeCount}</span>}
+                  {intel.industry && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>{intel.industry}</span>}
+                  {intel.glassdoorRating && <span style={{ background: "#f0fdf4", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#16a34a", fontFamily: "var(--font-ui)", fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
                 </div>
 
                 {/* Funding */}
@@ -542,7 +542,7 @@ function CompanyDrawer({
                     <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Leadership</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {intel.leadership.map((l, i) => (
-                        <div key={i} style={{ background: "#fff", border: "1px solid #e8e3dd", borderRadius: 7, padding: "7px 12px", minWidth: 120 }}>
+                        <div key={i} style={{ background: "#fff", border: "1px solid #e8e3dd", borderRadius: 0, padding: "7px 12px", minWidth: 120 }}>
                           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{l.name}</div>
                           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280" }}>{l.title}</div>
                         </div>
@@ -557,7 +557,7 @@ function CompanyDrawer({
                     <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Recent News</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {intel.recentNews.map((n, i) => (
-                        <div key={i} style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 7, padding: "8px 12px" }}>
+                        <div key={i} style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "8px 12px" }}>
                           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>{n.title}</div>
                           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", marginTop: 2 }}>{n.summary} <span style={{ color: "var(--scout-muted)" }}>· {n.date}</span></div>
                         </div>
@@ -568,7 +568,7 @@ function CompanyDrawer({
 
                 {/* Re-enrich */}
                 <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 14, color: "#6b7280", background: "none", border: "1px solid #e5e7eb", borderRadius: 5, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)" }}>
+                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 14, color: "#6b7280", background: "none", border: "1px solid #e5e7eb", borderRadius: 0, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)" }}>
                     {enriching ? "Refreshing…" : "↻ Refresh intel"}
                   </button>
                   {company.enrichmentFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Updated {timeAgo(company.enrichmentFetchedAt)}</span>}
@@ -582,7 +582,7 @@ function CompanyDrawer({
           {/* Matching roles */}
           <DrawerSection title="Matching roles">
             {matchRoles.length === 0 && (
-              <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
+              <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
                 Add target roles in Profile → Target Roles, or under Details below. We only pull openings that match your targets — not every role at this company.
               </div>
             )}
@@ -642,7 +642,7 @@ function CompanyDrawer({
 
           {/* Notes */}
           <DrawerSection title="Notes">
-            <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px" }}>
               <AutoTextarea value={company.notes ?? ""} placeholder="Add notes about this company, contacts, conversations…" onBlur={(v) => onPatch(company.id, "notes", v)} />
             </div>
           </DrawerSection>
@@ -674,7 +674,7 @@ function CompanyDrawer({
 
           {/* Danger zone */}
           <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 16 }}>
-            <button onClick={() => { onRemove(company.id); onClose(); }} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onMouseEnter={(e) => { (e.currentTarget.style.background = "#fef2f2"); }} onMouseLeave={(e) => { (e.currentTarget.style.background = "none"); }}>
+            <button onClick={() => { onRemove(company.id); onClose(); }} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: 0, padding: "6px 14px", cursor: "pointer" }} onMouseEnter={(e) => { (e.currentTarget.style.background = "#fef2f2"); }} onMouseLeave={(e) => { (e.currentTarget.style.background = "none"); }}>
               Remove company
             </button>
           </div>
@@ -942,7 +942,7 @@ export function WorkspaceCompanies({
                           careersUrl={c.careersUrl}
                           enrichmentWebsiteUrl={enrichmentWebsite(c)}
                           size={32}
-                          borderRadius={7}
+                          borderRadius={0}
                         />
                         <div style={{ minWidth: 0 }}>
                           <div style={displayTitleStyle(T.body, { lineHeight: 1.2 })}>{c.name}</div>
@@ -964,7 +964,7 @@ export function WorkspaceCompanies({
                       </span>
                     </td>
                     <td style={{ ...rowTd, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => handleRemove(c.id)} title="Remove company" style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 5, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>×</button>
+                      <button onClick={() => handleRemove(c.id)} title="Remove company" style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 0, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>×</button>
                     </td>
                   </tr>
                 );

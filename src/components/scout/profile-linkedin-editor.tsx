@@ -7,6 +7,8 @@ import {
   type LinkedInProfileDraft,
 } from "@/lib/linkedin-profile";
 import { LinkedInGenerateLoader } from "./linkedin-generate-loader";
+import { ScoutBox, ScoutDisplayTitle, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { border, color, fontSans, surface } from "@/lib/typography";
 
 const LI = {
   bg: "#f3f2ef",
@@ -168,19 +170,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         }}
       >
         <div>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: isMobile ? 22 : 26,
-              fontWeight: 500,
-              fontStyle: "italic",
-              color: "#1A1A1A",
-              margin: 0,
-            }}
-          >
-            LinkedIn profile preview
-          </h2>
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: LI.muted, margin: "6px 0 0" }}>
+          <ScoutDisplayTitle size={isMobile ? 22 : 26}>LinkedIn profile preview</ScoutDisplayTitle>
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "6px 0 0" }}>
             Your target LinkedIn — edit here, then copy each section into LinkedIn.
             {updatedAt && (
               <span> Last saved {new Date(updatedAt).toLocaleDateString()}.</span>
@@ -198,38 +189,25 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               Saving…
             </span>
           )}
-          <button
-            type="button"
-            onClick={() => void generate()}
-            disabled={generating}
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 13,
-              fontWeight: 600,
-              padding: "10px 18px",
-              borderRadius: 24,
-              border: `1px solid ${LI.blue}`,
-              background: generating ? "#e8f4fc" : LI.blue,
-              color: generating ? LI.blue : "#fff",
-              cursor: generating ? "wait" : "pointer",
-            }}
-          >
+          <ScoutPrimaryBtn onClick={() => void generate()} disabled={generating} style={{ padding: "10px 18px" }}>
             {generating ? "Generating…" : draft ? "Regenerate from resume" : "Generate from resume"}
-          </button>
+          </ScoutPrimaryBtn>
           <a
             href={liUrl}
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              fontFamily: "var(--font-ui)",
+              fontFamily: fontSans,
               fontSize: 13,
               fontWeight: 600,
               padding: "10px 18px",
-              borderRadius: 24,
-              border: `1px solid ${LI.border}`,
-              background: LI.card,
-              color: LI.blue,
+              borderRadius: 0,
+              border: border.lineStrong,
+              background: surface.card,
+              color: color.forest,
               textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
             }}
           >
             Open LinkedIn →
@@ -242,39 +220,17 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       )}
 
       {!draft && !generating && (
-        <div
-          style={{
-            background: LI.card,
-            borderRadius: 12,
-            border: `1px solid ${LI.border}`,
-            padding: isMobile ? 24 : 40,
-            textAlign: "center",
-          }}
-        >
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, color: LI.text, marginBottom: 8 }}>
+        <ScoutBox padding={isMobile ? 24 : 40} style={{ textAlign: "center" }}>
+          <p style={{ fontFamily: fontSans, fontSize: 15, color: color.ink, marginBottom: 8 }}>
             No LinkedIn preview yet
           </p>
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: LI.muted, marginBottom: 20, maxWidth: 420, margin: "0 auto 20px" }}>
+          <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginBottom: 20, maxWidth: 420, margin: "0 auto 20px" }}>
             Kimchi will transform your resume into a LinkedIn-style profile with paragraphs, headline, and skills — frozen until you regenerate.
           </p>
-          <button
-            type="button"
-            onClick={() => void generate()}
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 14,
-              fontWeight: 600,
-              padding: "12px 24px",
-              borderRadius: 24,
-              border: "none",
-              background: LI.blue,
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
+          <ScoutPrimaryBtn onClick={() => void generate()} style={{ padding: "12px 24px", fontSize: 14 }}>
             Generate LinkedIn preview
-          </button>
-        </div>
+          </ScoutPrimaryBtn>
+        </ScoutBox>
       )}
 
       {draft && (
@@ -455,20 +411,17 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
           </div>
 
           {/* Checklist */}
-          <div
+          <ScoutBox
+            padding={isMobile ? 16 : 20}
             style={{
-              background: LI.card,
-              borderRadius: 12,
-              border: `1px solid ${LI.border}`,
-              padding: isMobile ? 16 : 20,
               position: isMobile ? undefined : "sticky",
               top: 16,
             }}
           >
-            <h4 style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 700, margin: "0 0 4px", color: LI.text }}>
+            <h4 style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, margin: "0 0 4px", color: color.ink }}>
               What to update on LinkedIn
             </h4>
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: LI.muted, margin: "0 0 16px" }}>
+            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 16px" }}>
               Copy each block, paste into LinkedIn. Your preview stays here until you regenerate.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -476,9 +429,10 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 <div
                   key={item.id}
                   style={{
-                    border: `1px solid ${LI.border}`,
-                    borderRadius: 8,
+                    border: border.line,
+                    borderRadius: 0,
                     padding: 12,
+                    background: surface.inset,
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
@@ -493,24 +447,20 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                         {item.linkedInHint}
                       </p>
                     </div>
-                    <button
+                    <ScoutSecondaryBtn
                       type="button"
                       onClick={() => void handleCopy(item.id, item.copyText)}
+                      active={copiedId === item.id}
                       style={{
                         flexShrink: 0,
-                        fontFamily: "var(--font-ui)",
                         fontSize: 12,
-                        fontWeight: 600,
                         padding: "6px 12px",
-                        borderRadius: 16,
-                        border: `1px solid ${LI.border}`,
-                        background: copiedId === item.id ? "#e8f5ee" : "#fff",
-                        color: copiedId === item.id ? "#4A8B6A" : LI.blue,
-                        cursor: "pointer",
+                        background: copiedId === item.id ? "rgba(74,139,106,0.1)" : surface.card,
+                        color: copiedId === item.id ? "#4A8B6A" : color.forest,
                       }}
                     >
                       {copiedId === item.id ? "Copied" : "Copy"}
-                    </button>
+                    </ScoutSecondaryBtn>
                   </div>
                   <p
                     style={{
@@ -530,7 +480,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 </div>
               ))}
             </div>
-          </div>
+          </ScoutBox>
         </div>
       )}
     </div>

@@ -67,7 +67,7 @@ export function WorkspaceLive() {
         <div
           style={{
             background: weekly.bgColor,
-            borderRadius: 12,
+            borderRadius: 0,
             padding: 24,
             marginBottom: 20,
             color: weekly.accentColor,
@@ -86,7 +86,7 @@ export function WorkspaceLive() {
                 padding: "3px 10px",
                 background: weekly.accentColor,
                 color: weekly.bgColor,
-                borderRadius: 100,
+                borderRadius: 0,
                 fontFamily: "var(--font-ui)",
                 fontSize: 12,
                 fontWeight: 700,
@@ -220,7 +220,7 @@ export function WorkspaceLive() {
                   background: bg,
                   color,
                   border: "none",
-                  borderRadius: 100,
+                  borderRadius: 0,
                   fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 500,
@@ -247,7 +247,7 @@ export function WorkspaceLive() {
               key={s.id}
               style={{
                 background: "#FFFFFF",
-                borderRadius: 10,
+                borderRadius: 0,
                 overflow: "hidden",
                 border: "1px solid rgba(0,0,0,0.06)",
               }}
@@ -259,7 +259,7 @@ export function WorkspaceLive() {
                       padding: "2px 8px",
                       background: s.accentColor,
                       color: s.bgColor,
-                      borderRadius: 100,
+                      borderRadius: 0,
                       fontFamily: "var(--font-ui)",
                       fontSize: 12,
                       fontWeight: 700,

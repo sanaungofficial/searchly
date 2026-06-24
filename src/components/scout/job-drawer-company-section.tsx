@@ -115,7 +115,7 @@ export function JobDrawerCompanySection({
               style={{
                 padding: "5px 11px",
                 background: "rgba(74,139,106,0.12)",
-                borderRadius: 100,
+                borderRadius: 0,
                 fontFamily: sans,
                 fontSize: 12,
                 fontWeight: 500,

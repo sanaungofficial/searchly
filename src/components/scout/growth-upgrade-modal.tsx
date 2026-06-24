@@ -72,7 +72,7 @@ export function GrowthUpgradeModal({ trigger, onClose, secondaryHref }: Props) {
         style={{
           position: "relative",
           background: "#fff",
-          borderRadius: 14,
+          borderRadius: 0,
           padding: "36px 32px",
           maxWidth: 420,
           width: "100%",
@@ -115,7 +115,7 @@ export function GrowthUpgradeModal({ trigger, onClose, secondaryHref }: Props) {
             padding: "12px 0",
             background: "#1A3A2F",
             color: "#E8D5A3",
-            borderRadius: 8,
+            borderRadius: 0,
             fontFamily: "var(--font-ui)",
             fontSize: 14,
             fontWeight: 600,
@@ -138,7 +138,7 @@ export function GrowthUpgradeModal({ trigger, onClose, secondaryHref }: Props) {
               padding: "12px 0",
               background: "#F7F5F2",
               color: "#1A3A2F",
-              borderRadius: 8,
+              borderRadius: 0,
               fontFamily: "var(--font-ui)",
               fontSize: 14,
               fontWeight: 600,
@@ -187,7 +187,7 @@ export function GrowthMatchOffer({
           marginTop: 14,
           padding: "14px 16px",
           background: "rgba(26,58,47,0.04)",
-          borderRadius: 8,
+          borderRadius: 0,
           border: "1px solid rgba(26,58,47,0.12)",
         }}
       >
@@ -218,7 +218,7 @@ export function GrowthMatchOffer({
         marginTop: 14,
         padding: "14px 16px",
         background: "rgba(196,87,74,0.06)",
-        borderRadius: 8,
+        borderRadius: 0,
         border: "1px solid rgba(196,87,74,0.15)",
       }}
     >
@@ -236,7 +236,7 @@ export function GrowthMatchOffer({
             background: "#1A3A2F",
             color: "#E8D5A3",
             border: "none",
-            borderRadius: 6,
+            borderRadius: 0,
             fontFamily: "var(--font-ui)",
             fontSize: 14,
             fontWeight: 600,
@@ -254,7 +254,7 @@ export function GrowthMatchOffer({
             background: "transparent",
             color: "#1A3A2F",
             border: "1px solid rgba(26,58,47,0.2)",
-            borderRadius: 6,
+            borderRadius: 0,
             fontFamily: "var(--font-ui)",
             fontSize: 14,
             fontWeight: 600,

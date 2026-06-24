@@ -705,7 +705,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         </div>
       )}
       {error && !loading && (
-        <div style={{ padding: "8px 12px", background: "rgba(196,87,74,0.06)", borderRadius: 6, border: "1px solid rgba(196,87,74,0.15)", maxWidth: 560 }}>
+        <div style={{ padding: "8px 12px", background: "rgba(196,87,74,0.06)", borderRadius: 0, border: "1px solid rgba(196,87,74,0.15)", maxWidth: 560 }}>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#C4574A" }}>{error}</p>
         </div>
       )}
@@ -724,12 +724,12 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {typeof analysis.location === "string" && analysis.location && (
-                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 0, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                     📍 {analysis.location}
                   </span>
                 )}
                 {typeof analysis.salary === "string" && analysis.salary && (
-                  <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
                     {analysis.salary}
                   </span>
                 )}
@@ -1063,7 +1063,7 @@ function PipelineTab({
                           </div>
                         </div>
                         {meta?.location && (
-                          <span style={{ display: "inline-block", padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: fontSans, fontSize: T.label, color: color.stone, marginBottom: meta?.salary ? 3 : 0 }}>
+                          <span style={{ display: "inline-block", padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 0, fontFamily: fontSans, fontSize: T.label, color: color.stone, marginBottom: meta?.salary ? 3 : 0 }}>
                             📍 {meta.location}
                           </span>
                         )}

@@ -259,7 +259,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: 9,
+                borderRadius: 0,
                 background: "#1A3A2F",
                 display: "flex",
                 alignItems: "center",
@@ -349,7 +349,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                 <div
                   style={{
                     background: "#FFFFFF",
-                    borderRadius: 8,
+                    borderRadius: 0,
                     boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
                     padding: "48px 52px",
                     minHeight: "100%",
@@ -445,7 +445,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                     {/* Status message */}
                     <div style={{
                       background: "#F0F4F1",
-                      borderRadius: 10,
+                      borderRadius: 0,
                       padding: "14px 16px",
                       marginBottom: 20,
                       fontFamily: fontSans,
@@ -474,7 +474,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                           rows={5}
                           style={{
                             width: "100%", padding: "10px 12px",
-                            border: "1px solid rgba(0,0,0,0.12)", borderRadius: 8,
+                            border: "1px solid rgba(0,0,0,0.12)", borderRadius: 0,
                             fontFamily: fontSans, fontSize: 14,
                             color: "#1A1A1A", resize: "none", background: "#FFFFFF",
                             lineHeight: 1.5, boxSizing: "border-box",
@@ -487,7 +487,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                             marginTop: 8, width: "100%", padding: "10px",
                             background: manualDesc.trim() ? "#1C3A2F" : "rgba(0,0,0,0.05)",
                             color: manualDesc.trim() ? "#E8D5A3" : "var(--scout-muted)",
-                            border: "none", borderRadius: 8,
+                            border: "none", borderRadius: 0,
                             fontFamily: fontSans,
                             fontSize: 14, fontWeight: 600,
                             cursor: manualDesc.trim() ? "pointer" : "not-allowed",
@@ -510,7 +510,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                               padding: "10px 14px",
                               background: "#FFFFFF",
                               border: "1px solid rgba(0,0,0,0.1)",
-                              borderRadius: 8,
+                              borderRadius: 0,
                               fontFamily: fontSans,
                               fontSize: 14,
                               color: "#1A1A1A",
@@ -536,7 +536,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                             padding: "10px 14px",
                             background: "none",
                             border: "1px dashed rgba(0,0,0,0.12)",
-                            borderRadius: 8,
+                            borderRadius: 0,
                             fontFamily: fontSans,
                             fontSize: 14,
                             color: "#9CA3AF",
@@ -570,7 +570,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                       disabled={!letter || streaming}
                       style={{
                         flex: 1, padding: "10px 12px",
-                        border: "1px solid rgba(0,0,0,0.12)", borderRadius: 8,
+                        border: "1px solid rgba(0,0,0,0.12)", borderRadius: 0,
                         fontFamily: fontSans, fontSize: 14,
                         color: "#1A1A1A", resize: "none", lineHeight: 1.4,
                         background: (!letter || streaming) ? "#F5F3EF" : "#FFFFFF",
@@ -584,7 +584,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                         padding: "10px 16px",
                         background: (chatInput.trim() && letter && !streaming) ? "#1C3A2F" : "rgba(0,0,0,0.06)",
                         color: (chatInput.trim() && letter && !streaming) ? "#E8D5A3" : "var(--scout-muted)",
-                        border: "none", borderRadius: 8,
+                        border: "none", borderRadius: 0,
                         fontFamily: fontSans,
                         fontSize: 14, fontWeight: 600,
                         cursor: (chatInput.trim() && letter && !streaming) ? "pointer" : "not-allowed",
@@ -617,7 +617,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                         padding: "5px 10px",
                         background: copied ? "#1C3A2F" : "#FFFFFF",
                         color: copied ? "#E8D5A3" : "#1A1A1A",
-                        border: "1px solid rgba(0,0,0,0.12)", borderRadius: 6,
+                        border: "1px solid rgba(0,0,0,0.12)", borderRadius: 0,
                         fontFamily: fontSans,
                         fontSize: 14, fontWeight: 500, cursor: "pointer",
                         transition: "all 0.15s",
@@ -656,7 +656,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                   <div style={{
                     position: "absolute", bottom: "calc(100% + 6px)", left: 22,
                     background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)",
-                    borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.14)",
+                    borderRadius: 0, boxShadow: "0 4px 20px rgba(0,0,0,0.14)",
                     overflow: "hidden", minWidth: 220, zIndex: 20,
                   }}>
                     <button
@@ -695,7 +695,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                 style={{
                   flex: 1, padding: "11px 14px", background: "#FFFFFF",
                   color: (letter && !streaming) ? "#1A1A1A" : "var(--scout-muted)",
-                  border: "1px solid rgba(0,0,0,0.15)", borderRadius: 24,
+                  border: "1px solid rgba(0,0,0,0.15)", borderRadius: 0,
                   fontFamily: fontSans, fontSize: 13, fontWeight: 500,
                   cursor: (letter && !streaming && !downloading) ? "pointer" : "not-allowed",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -711,7 +711,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                   flex: 1, padding: "11px 14px",
                   background: streaming ? "rgba(0,0,0,0.06)" : "#22C55E",
                   color: streaming ? "var(--scout-muted)" : "#FFFFFF",
-                  border: "none", borderRadius: 24,
+                  border: "none", borderRadius: 0,
                   fontFamily: fontSans, fontSize: 13, fontWeight: 700,
                   cursor: streaming ? "not-allowed" : "pointer",
                   transition: "all 0.15s",
