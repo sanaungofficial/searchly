@@ -679,6 +679,7 @@ function DreamRoleTab({
 }) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysisView | "loading" | "error">>({});
+  const [analysisErrors, setAnalysisErrors] = useState<Record<string, string>>({});
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [skillMenu, setSkillMenu] = useState<{ role: string; skill: string } | null>(null);
@@ -735,6 +736,11 @@ function DreamRoleTab({
     }
 
     setAnalysis((prev) => ({ ...prev, [role]: "loading" }));
+    setAnalysisErrors((prev) => {
+      const next = { ...prev };
+      delete next[role];
+      return next;
+    });
     try {
       const params = new URLSearchParams({ role });
       if (force) params.set("force", "true");
@@ -742,6 +748,11 @@ function DreamRoleTab({
       const res = await fetch(`/api/ai/role-gap?${params.toString()}`);
       const data = await res.json();
       if (data.error) {
+        const message =
+          data.error === "AI not configured"
+            ? "Full AI analysis needs production — we could not parse your resume for a preview."
+            : data.error;
+        setAnalysisErrors((prev) => ({ ...prev, [role]: message }));
         if (stored) {
           setAnalysis((prev) => ({ ...prev, [role]: viewFromStored(stored, role) }));
         } else {
@@ -883,7 +894,9 @@ function DreamRoleTab({
                   ) : result === "loading" || isLoading ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing…</p>
                   ) : result === "error" ? (
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>Analysis unavailable — tap to retry</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>
+                      {analysisErrors[role] ?? "Analysis unavailable — tap to retry"}
+                    </p>
                   ) : (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Tap to view fit details</p>
                   )}
@@ -936,7 +949,9 @@ function DreamRoleTab({
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
                   )}
                   {result === "error" && !loaded && (
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>
+                      {analysisErrors[role] ?? "Could not run analysis. Make sure your resume is uploaded and try again."}
+                    </p>
                   )}
                   {!hasResume && (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
