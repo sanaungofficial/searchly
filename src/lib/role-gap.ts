@@ -12,7 +12,12 @@ export interface StoredRoleAnalysis extends RoleGapAnalysis {
   resumeAssetId?: string | null;
 }
 
-export type RoleAnalysesMap = Record<string, StoredRoleAnalysis>;
+/** role → resume key → analysis (one cached result per role + resume). */
+export type RoleAnalysesMap = Record<string, Record<string, StoredRoleAnalysis>>;
+
+export function resumeAnalysisKey(resumeAssetId: string | null | undefined): string {
+  return resumeAssetId ?? "primary";
+}
 
 export function buildResumeFingerprint(
   resumeAssetId: string | null | undefined,
@@ -54,17 +59,62 @@ export function normalizeRoleGapAnalysis(raw: unknown): RoleGapAnalysis | null {
   return { fitScore, summary, requiredSkills, gaps, nextSteps };
 }
 
+function normalizeSingleStored(value: unknown): StoredRoleAnalysis | null {
+  const analysis = normalizeRoleGapAnalysis(value);
+  if (!analysis) return null;
+  const meta = value as Record<string, unknown>;
+  const analyzedAt = typeof meta.analyzedAt === "string" ? meta.analyzedAt : new Date(0).toISOString();
+  const resumeFingerprint = typeof meta.resumeFingerprint === "string" ? meta.resumeFingerprint : "";
+  const resumeAssetId = typeof meta.resumeAssetId === "string" ? meta.resumeAssetId : null;
+  return { ...analysis, analyzedAt, resumeFingerprint, resumeAssetId };
+}
+
+function isStoredRoleAnalysisShape(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && "fitScore" in value;
+}
+
+export function getStoredRoleAnalysis(
+  map: RoleAnalysesMap,
+  role: string,
+  resumeAssetId: string | null | undefined,
+): StoredRoleAnalysis | undefined {
+  return map[role]?.[resumeAnalysisKey(resumeAssetId)];
+}
+
+export function setStoredRoleAnalysis(
+  map: RoleAnalysesMap,
+  role: string,
+  analysis: StoredRoleAnalysis,
+): RoleAnalysesMap {
+  const key = resumeAnalysisKey(analysis.resumeAssetId);
+  return {
+    ...map,
+    [role]: {
+      ...(map[role] ?? {}),
+      [key]: analysis,
+    },
+  };
+}
+
 export function normalizeRoleAnalysesMap(raw: unknown): RoleAnalysesMap {
   if (!raw || typeof raw !== "object") return {};
   const out: RoleAnalysesMap = {};
   for (const [role, value] of Object.entries(raw as Record<string, unknown>)) {
-    const analysis = normalizeRoleGapAnalysis(value);
-    if (!analysis) continue;
-    const meta = value as Record<string, unknown>;
-    const analyzedAt = typeof meta.analyzedAt === "string" ? meta.analyzedAt : new Date(0).toISOString();
-    const resumeFingerprint = typeof meta.resumeFingerprint === "string" ? meta.resumeFingerprint : "";
-    const resumeAssetId = typeof meta.resumeAssetId === "string" ? meta.resumeAssetId : null;
-    out[role] = { ...analysis, analyzedAt, resumeFingerprint, resumeAssetId };
+    if (!value || typeof value !== "object") continue;
+
+    if (isStoredRoleAnalysisShape(value)) {
+      const analysis = normalizeSingleStored(value);
+      if (!analysis) continue;
+      out[role] = { [resumeAnalysisKey(analysis.resumeAssetId)]: analysis };
+      continue;
+    }
+
+    const bucket: Record<string, StoredRoleAnalysis> = {};
+    for (const [resumeKey, entry] of Object.entries(value as Record<string, unknown>)) {
+      const analysis = normalizeSingleStored(entry);
+      if (analysis) bucket[resumeKey] = analysis;
+    }
+    if (Object.keys(bucket).length > 0) out[role] = bucket;
   }
   return out;
 }

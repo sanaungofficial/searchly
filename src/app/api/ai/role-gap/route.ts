@@ -2,10 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import {
   buildResumeFingerprint,
-  isRoleAnalysisStale,
+  getStoredRoleAnalysis,
   normalizeRoleAnalysesMap,
   normalizeRoleGapAnalysis,
-  type RoleAnalysesMap,
+  setStoredRoleAnalysis,
   type StoredRoleAnalysis,
 } from "@/lib/role-gap";
 import { getActingUser } from "@/lib/acting-user";
@@ -26,7 +26,7 @@ async function saveRoleAnalysis(
 ): Promise<void> {
   const profile = await prisma.profile.findUnique({ where: { userId } });
   const existing = normalizeRoleAnalysesMap(profile?.roleAnalyses);
-  const next: RoleAnalysesMap = { ...existing, [role]: analysis };
+  const next = setStoredRoleAnalysis(existing, role, analysis);
   await prisma.profile.upsert({
     where: { userId },
     update: { roleAnalyses: next as object },
@@ -89,17 +89,14 @@ export async function GET(request: Request) {
 
   const fingerprint = buildResumeFingerprint(source.resumeAssetId, source.resumeUrl, source.skills);
   const analyses = normalizeRoleAnalysesMap(profile?.roleAnalyses);
-  const cached = analyses[role];
+  const cached = getStoredRoleAnalysis(analyses, role, source.resumeAssetId);
+  const stale = cached ? cached.resumeFingerprint !== fingerprint : false;
 
-  if (
-    !force &&
-    cached &&
-    !isRoleAnalysisStale(cached, fingerprint) &&
-    (cached.resumeAssetId ?? null) === source.resumeAssetId
-  ) {
+  if (!force && cached) {
     return NextResponse.json({
       ...cached,
       cached: true,
+      stale,
       analyzedAt: cached.analyzedAt,
     });
   }
@@ -153,6 +150,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ...stored,
       cached: false,
+      stale: false,
     });
   } catch {
     return NextResponse.json({ error: "Failed to parse response" }, { status: 500 });
@@ -166,10 +164,26 @@ export async function DELETE(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role")?.trim();
+  const assetId = searchParams.get("assetId")?.trim();
+
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+  const existing = normalizeRoleAnalysesMap(profile?.roleAnalyses);
+
+  if (role && assetId) {
+    if (existing[role]) {
+      const nextRole = { ...existing[role] };
+      delete nextRole[assetId];
+      if (Object.keys(nextRole).length === 0) delete existing[role];
+      else existing[role] = nextRole;
+    }
+    await prisma.profile.updateMany({
+      where: { userId: dbUser.id },
+      data: { roleAnalyses: existing as object },
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   if (role) {
-    const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-    const existing = normalizeRoleAnalysesMap(profile?.roleAnalyses);
     delete existing[role];
     await prisma.profile.updateMany({
       where: { userId: dbUser.id },
