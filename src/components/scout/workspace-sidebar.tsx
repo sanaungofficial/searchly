@@ -22,6 +22,7 @@ import { useCredits } from "@/hooks/useCredits";
 import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
+import { canAccessBetaFeatures } from "@/lib/beta-features";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -61,8 +62,14 @@ const NAV_SEARCH: NavItem[] = [
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
 ];
 
-const NAV_YOU: NavItem[] = [
-  { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
+const NAV_PROFILE: NavItem = {
+  id: "profile",
+  label: "Profile",
+  path: "/profile",
+  Icon: ProfileIcon,
+};
+
+const NAV_BETA: NavItem[] = [
   { id: "live", label: "Live", path: "/live", Icon: LiveIcon },
   { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon },
   { id: "network", label: "Network", path: "/network", Icon: NetworkIcon },
@@ -259,6 +266,7 @@ export function WorkspaceSidebar({
   const user = userProp ?? ctxUser ?? undefined;
   const isAdmin = isAdminProp ?? ctxIsAdmin;
   const userRole = userRoleProp ?? ctxUserRole;
+  const showBetaNav = canAccessBetaFeatures(isAdmin);
 
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
   const { loading: subLoading, startCheckout } = useSubscription();
@@ -585,8 +593,8 @@ export function WorkspaceSidebar({
             </React.Fragment>
           ))}
 
-          <SidebarSectionLabel isRail={isRail}>You</SidebarSectionLabel>
-          {NAV_YOU.map(({ id, label, path, Icon }) => (
+          {showBetaNav && <SidebarSectionLabel isRail={isRail}>You</SidebarSectionLabel>}
+          {[NAV_PROFILE, ...(showBetaNav ? NAV_BETA : [])].map(({ id, label, path, Icon }) => (
             <SidebarNavButton
               key={id}
               active={isActive(path)}
