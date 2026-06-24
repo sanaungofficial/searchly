@@ -495,7 +495,10 @@ function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
 }
 
 export type HirebaseVSearchInput = VectorSearchFilters & {
-  query: string;
+  /** Hirebase resume embed artifact from onboarding / resume upload. */
+  artifactId: string;
+  /** Optional natural-language focus from the Recommended search box. */
+  query?: string;
 };
 
 type HirebaseVSearchResponse = PaginatedJobs;
@@ -507,7 +510,7 @@ function assignIfPresent(body: Record<string, unknown>, key: string, value: unkn
   body[key] = value;
 }
 
-/** Profile/query-based semantic job search via `/v2/jobs/vsearch` (summary mode — no resume embed). */
+/** Resume-based job search via `/v2/jobs/vsearch` (search_type=resume + optional query). */
 export async function fetchHirebaseVectorJobs(
   input: HirebaseVSearchInput
 ): Promise<{
@@ -519,22 +522,26 @@ export async function fetchHirebaseVectorJobs(
   limit: number;
   totalPages: number;
 }> {
-  const query = trimVSearchQuery(input.query.trim());
-  if (!query) {
+  const artifactId = input.artifactId.trim();
+  if (!artifactId) {
     return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
   }
+
+  const optionalQuery = input.query?.trim() ? trimVSearchQuery(input.query.trim()) : undefined;
 
   const limit = Math.max(1, Math.min(input.limit ?? 20, 20));
   const page = Math.max(1, input.page ?? 1);
 
   const body: Record<string, unknown> = {
-    search_type: "summary",
-    query,
+    search_type: "resume",
+    artifact_id: artifactId,
     limit,
     page,
     accuracy: input.accuracy ?? 0.35,
     top_k: input.topK ?? limit,
   };
+
+  if (optionalQuery) body.query = optionalQuery;
 
   if (input.offset != null) body.offset = input.offset;
   if (input.minScore != null) body.score = input.minScore;

@@ -279,7 +279,7 @@ export function PipelineRecommendedSection({
           <div>
             <ScoutLabel>Recommended for you</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles ranked by semantic fit to your profile via Hirebase. Add your own focus words below, then save any role to move it into Saved.
+              Roles matched to your uploaded resume via Hirebase. Add optional focus words below to narrow results, then save any role to move it into Saved.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -297,11 +297,11 @@ export function PipelineRecommendedSection({
             style={{ ...inputStyle, minHeight: 72, resize: "vertical", lineHeight: 1.5 }}
             value={form.semanticQuery}
             onChange={(e) => setForm((f) => ({ ...f, semanticQuery: e.target.value }))}
-            placeholder="e.g. B2B SaaS corporate strategy, remote-friendly, Series B startups, healthcare tech…"
+            placeholder="Optional — e.g. remote corporate strategy roles at Series B startups"
             maxLength={400}
           />
           <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0", lineHeight: 1.45 }}>
-            Optional — merged with your profile and resume. Shows up to {VECTOR_SEARCH_RESULTS_MAX} roles per search.
+            Matches are based on your resume. This adds a natural-language filter on top. Up to {VECTOR_SEARCH_RESULTS_MAX} roles per search.
           </p>
         </FilterField>
 

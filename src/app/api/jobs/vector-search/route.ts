@@ -1,12 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured, fetchHirebaseVectorJobs } from "@/lib/hirebase";
 import { enrichVectorJobsWithMatchReasons } from "@/lib/hirebase-match-reasons";
-import {
-  buildMinimalVSearchQuery,
-  buildProfileVSearchQuery,
-  isHarmfulPatternQueryError,
-  profileTextForMatchReasons,
-} from "@/lib/profile-vsearch-query";
+import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
+import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
@@ -86,8 +82,22 @@ export async function POST(request: Request) {
   }
 
   const filters = parseFilters(rawBody);
+
+  const artifactResult = await ensureHirebaseArtifactForUser(dbUser.id);
+  if (!artifactResult.artifactId) {
+    return NextResponse.json(
+      {
+        error:
+          artifactResult.error ||
+          "Upload a resume on Profile so we can match jobs to your experience.",
+        needsResume: true,
+      },
+      { status: 404 },
+    );
+  }
+
   const parsedData = mergeParsedWithReadback(
-    normalizeParsedResumeData(profile?.parsedData ?? null),
+    artifactResult.parsed ?? normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
   );
 
@@ -95,51 +105,29 @@ export async function POST(request: Request) {
   const profileInput = {
     headline: profile?.headline,
     targetRoles,
-    resumeText: profile?.resumeText,
+    resumeText: artifactResult.resumeText ?? profile?.resumeText,
     parsedData,
     careerMotivation: profile?.careerMotivation,
     priorities: profile?.priorities ?? [],
     employmentStatus: profile?.employmentStatus,
     jobTimeline: profile?.jobTimeline,
     targetSalary: profile?.targetSalary,
-    semanticQuery: filters.semanticQuery,
-    filterKeywords: filters.keywords,
   };
-
-  let query = buildProfileVSearchQuery(profileInput);
-  if (!query) {
-    return NextResponse.json(
-      {
-        error: "Add target roles or upload a resume on Profile so we can find matching jobs.",
-        needsProfile: true,
-      },
-      { status: 404 }
-    );
-  }
 
   const jobTitles = filters.jobTitles?.length ? filters.jobTitles.slice(0, 20) : targetRoles.slice(0, 20);
   const resumeText = profileTextForMatchReasons(profileInput);
 
-  const searchParams = {
-    query,
-    ...filters,
-    jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
-    limit: Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX),
-    page: filters.page ?? 1,
-  };
+  const optionalQuery = filters.semanticQuery ? trimVSearchQuery(filters.semanticQuery) : undefined;
 
   try {
-    let search;
-    try {
-      search = await fetchHirebaseVectorJobs(searchParams);
-    } catch (err) {
-      if (!isHarmfulPatternQueryError(err)) throw err;
-      const fallbackQuery = buildMinimalVSearchQuery(
-        filters.semanticQuery ? [filters.semanticQuery, ...targetRoles] : targetRoles,
-      );
-      if (!fallbackQuery || fallbackQuery === query) throw err;
-      search = await fetchHirebaseVectorJobs({ ...searchParams, query: fallbackQuery });
-    }
+    const search = await fetchHirebaseVectorJobs({
+      artifactId: artifactResult.artifactId,
+      query: optionalQuery,
+      ...filters,
+      jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
+      limit: Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX),
+      page: filters.page ?? 1,
+    });
 
     const jobs = await enrichVectorJobsWithMatchReasons({
       rawJobs: search.rawJobs,
