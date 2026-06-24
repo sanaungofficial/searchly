@@ -11,6 +11,8 @@ type Props = {
   iconOnly?: boolean;
   label?: string;
   align?: "left" | "right";
+  /** Use on dark backgrounds (e.g. forest green progress card). */
+  light?: boolean;
 };
 
 export function ScoreExplainerPopover({
@@ -18,6 +20,7 @@ export function ScoreExplainerPopover({
   iconOnly = true,
   label = "How this score works",
   align = "left",
+  light = false,
 }: Props) {
   const content = SCORE_EXPLAINERS[variant];
   const [open, setOpen] = useState(false);
@@ -83,7 +86,7 @@ export function ScoreExplainerPopover({
           border: iconOnly ? "none" : border.line,
           borderRadius: 0,
           cursor: "pointer",
-          color: color.muted,
+          color: light ? "rgba(232,213,163,0.75)" : color.muted,
           fontFamily: fontSans,
           fontSize: T.label,
           fontWeight: 600,
@@ -91,7 +94,7 @@ export function ScoreExplainerPopover({
           flexShrink: 0,
         }}
       >
-        <EyeIcon style={{ width: iconOnly ? 13 : 14, height: iconOnly ? 13 : 14, opacity: 0.7 }} />
+        <EyeIcon style={{ width: iconOnly ? 13 : 14, height: iconOnly ? 13 : 14, opacity: light ? 0.9 : 0.7 }} />
         {!iconOnly && <span>{label}</span>}
       </button>
 

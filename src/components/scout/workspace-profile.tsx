@@ -51,7 +51,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { ScoreExplainerLabel } from "./score-explainer-popover";
+import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1005,8 +1005,9 @@ function DreamRoleTab({
                                     </div>
                                   ))}
                                 </div>
-                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic" }}>
-                                  Add to skills if you already have it, or obtain it to track learning in Upskilling.
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                  <span>Add to skills if you already have it, or obtain it to track learning in Upskilling.</span>
+                                  <ScoreExplainerPopover variant="upskill-recommendations" />
                                 </p>
                               </div>
                             )}
@@ -1097,6 +1098,15 @@ function DreamRoleTab({
 // ─── Tab: Upskilling ──────────────────────────────────────────────────────────
 
 const CUSTOM_LEARNING_KEY = "kimchi_custom_learning";
+
+function UpskillSectionLabel({ children, variant }: { children: React.ReactNode; variant: "upskill-recommendations" | "upskill-progress" }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <ScoutLabel>{children}</ScoutLabel>
+      <ScoreExplainerPopover variant={variant} />
+    </span>
+  );
+}
 
 function ProgramLinks({ programs }: { programs: UpskillProgram[] }) {
   if (!programs.length) return null;
@@ -1321,7 +1331,7 @@ function LearningTab({
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
           <div>
-            <ScoutLabel>Skills to obtain</ScoutLabel>
+            <UpskillSectionLabel variant="upskill-recommendations">Skills to obtain</UpskillSectionLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0", lineHeight: 1.5 }}>
               Grouped by the role they support. Add your own or queue from Target Roles.
             </p>
@@ -1418,7 +1428,10 @@ function LearningTab({
       <ScoutBox stack padding={isMobile ? "16px" : "18px 20px"} style={{ marginBottom: 24, background: color.forest, border: border.lineStrong }}>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 16 : 0 }}>
           <div>
-            <span style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(232,213,163,0.75)" }}>Your learning progress</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(232,213,163,0.75)" }}>Your learning progress</span>
+              <ScoreExplainerPopover variant="upskill-progress" light />
+            </span>
             <p style={displayTitleStyle(22, { color: color.gold, margin: "6px 0 0" })}>{doneCount + customDone} of {total + customItems.length} complete</p>
           </div>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: `conic-gradient(#E8D5A3 ${((doneCount + customDone) / (total + customItems.length || 1)) * 360}deg, rgba(232,213,163,0.15) 0)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1431,7 +1444,7 @@ function LearningTab({
 
       {/* Section C — Programs for skills to obtain */}
       <div style={{ marginBottom: 32 }}>
-        <ScoutLabel>Recommended programs</ScoutLabel>
+        <UpskillSectionLabel variant="upskill-recommendations">Recommended programs</UpskillSectionLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.6 }}>
           Courses and certifications matched to skills you&apos;re trying to obtain.
         </p>
