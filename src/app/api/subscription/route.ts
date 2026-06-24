@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
 import { getUsage } from "@/lib/usage";
+import { hasActiveProTrial } from "@/lib/referrals";
 import { FREE_MONTHLY_CREDITS } from "@/lib/credits";
 
 export async function GET() {
@@ -32,13 +33,15 @@ export async function GET() {
 
   const adminUser = dbUser.role === "ADMIN";
   const paidPro = isPro(dbUser.subscription);
-  const proUser = adminUser || paidPro;
-  const credits = await getUsage(dbUser.id, { unlimited: adminUser });
+  const trialPro = await hasActiveProTrial(dbUser.id);
+  const proUser = adminUser || paidPro || trialPro;
+  const credits = await getUsage(dbUser.id, { unlimited: adminUser || paidPro || trialPro });
 
   return NextResponse.json({
     isPro: proUser,
     isAdmin: adminUser,
     paidPro,
+    trialPro,
     status: adminUser ? "admin" : (dbUser.subscription?.status ?? null),
     currentPeriodEnd: dbUser.subscription?.stripeCurrentPeriodEnd ?? null,
     credits,

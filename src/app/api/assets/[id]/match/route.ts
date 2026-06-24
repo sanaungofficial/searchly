@@ -38,7 +38,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json(fallbackJobMatch(description, resumeText));
   }
 
-  const quotaError = await requireAiQuota(dbUser);
+  const quotaError = await requireAiQuota(dbUser, "MATCH");
   if (quotaError) return quotaError;
 
   const template = await getPrompt("JOB_MATCH");

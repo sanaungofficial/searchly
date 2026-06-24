@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
   const { dbUser } = auth;
 
-  const quotaError = await requireAiQuota(dbUser);
+  const quotaError = await requireAiQuota(dbUser, "SCOUT");
   if (quotaError) {
     const body = await quotaError.json();
     return new Response(JSON.stringify(body), {

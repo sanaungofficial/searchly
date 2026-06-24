@@ -316,6 +316,7 @@ export default function OnboardingPage() {
 
         const params = new URLSearchParams({ job: job.id });
         if (tool) params.set("tool", tool);
+        fetch("/api/referrals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "complete-onboarding" }) }).catch(() => {});
         router.push(`/opportunities/pipeline?${params.toString()}`);
       } catch {
         setJobError("Network error — please try again.");
@@ -327,11 +328,13 @@ export default function OnboardingPage() {
   );
 
   const skipToWorkspace = useCallback(() => {
+    fetch("/api/referrals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "complete-onboarding" }) }).catch(() => {});
     router.push("/opportunities/pipeline");
   }, [router]);
 
   const onReviewProfile = useCallback(() => {
     saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
+    fetch("/api/referrals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "complete-onboarding" }) }).catch(() => {});
     router.push("/profile");
   }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, router]);
 
