@@ -59,7 +59,7 @@ export function LinkedInGenerateLoader({ active }: { active: boolean }) {
             {/* shadow */}
             <ellipse cx="80" cy="168" rx="36" ry="6" fill="rgba(0,0,0,0.08)" className="li-gen-shadow" />
             {/* body */}
-            <rect x="52" y="98" width="56" height="58" rx="18" fill="#4A8B6A" />
+            <rect x="52" y="98" width="56" height="58" rx="18" fill="#1A3A2F" />
             <rect x="58" y="108" width="44" height="36" rx="10" fill="#5fa67f" opacity="0.5" />
             {/* head */}
             <circle cx="80" cy="72" r="38" fill="#FFE8D6" />
@@ -161,7 +161,7 @@ export function LinkedInGenerateLoader({ active }: { active: boolean }) {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: #4A8B6A;
+          background: #1A3A2F;
           opacity: 0.7;
         }
         .li-gen-spark--1 {

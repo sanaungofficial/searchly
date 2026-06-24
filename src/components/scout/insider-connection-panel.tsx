@@ -8,7 +8,7 @@ import { ScoutBox } from "./scout-box";
 
 const sans = fontSans;
 const line = border.line;
-const mint = "#4A8B6A";
+const mint = "#1A3A2F";
 
 type ConnectionBucket = "beyond" | "previous_company" | "school";
 
