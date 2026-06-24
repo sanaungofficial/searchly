@@ -52,6 +52,12 @@ export type TopEchelonNetworkJobRaw = {
   remote_option?: string | null;
   remoteOption?: string | null;
   description?: string | null;
+  uuid?: string;
+  job_uuid?: string;
+  jobUuid?: string;
+  network_job_uuid?: string;
+  networkJobUuid?: string;
+  comments?: string | null;
   network_status?: string | null;
   networkStatus?: string | null;
   most_recently_shared_at?: string | null;

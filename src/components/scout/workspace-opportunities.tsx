@@ -308,7 +308,12 @@ export function WorkspaceOpportunities() {
     try {
       const card = buildNetworkProspectCard(job, 0);
       const meta = card._meta;
-      const created = await addJob(job.companyName ?? job.recruiter?.agencyName ?? "Confidential employer", job.positionTitle, job.topEchelonUrl, meta);
+      const created = await addJob(
+        job.companyName ?? job.recruiter?.agencyName ?? "Confidential employer",
+        job.positionTitle,
+        job.topEchelonUrl ?? undefined,
+        meta
+      );
       closeNetworkDrawer();
       if (created) {
         setDrawerCardId(created.cardId);

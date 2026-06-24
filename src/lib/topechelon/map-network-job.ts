@@ -74,7 +74,7 @@ export function mapTopEchelonNetworkJob(job: TopEchelonNetworkJobRaw) {
     networkStatus: (job.networkStatus ?? job.network_status ?? null) as string | null,
     recruiterName: recruiterName(job),
     recruiterId: job.recruiter?.id != null ? String(job.recruiter.id) : null,
-    topEchelonUrl: topEchelonNetworkJobUrl(externalId),
+    topEchelonUrl: topEchelonNetworkJobUrl(job),
     sharedAt:
       job.mostRecentlySharedAt || job.most_recently_shared_at
         ? new Date((job.mostRecentlySharedAt ?? job.most_recently_shared_at) as string)

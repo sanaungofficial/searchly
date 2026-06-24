@@ -133,16 +133,18 @@ export function JobDrawerNetworkAdminSection({
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 16 }}>
-        <a
-          href={networkJob.topEchelonUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
-        >
-          Open in Top Echelon Big Biller ↗
-        </a>
-      </div>
+      {networkJob.topEchelonUrl && (
+        <div style={{ marginTop: 16 }}>
+          <a
+            href={networkJob.topEchelonUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
+          >
+            Open in Top Echelon Big Biller ↗
+          </a>
+        </div>
+      )}
     </ScoutBox>
   );
 }

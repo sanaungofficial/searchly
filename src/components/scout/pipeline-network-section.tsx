@@ -112,15 +112,17 @@ function NetworkJobCard({
             {saving ? "Saving…" : "Save to pipeline"}
           </ScoutPrimaryBtn>
         )}
-        <a
-          href={job.topEchelonUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
-        >
-          Top Echelon ↗
-        </a>
+        {job.topEchelonUrl && (
+          <a
+            href={job.topEchelonUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
+          >
+            Top Echelon ↗
+          </a>
+        )}
       </div>
     </ScoutBox>
   );

@@ -1,6 +1,7 @@
 import type { JobMeta } from "@/lib/job-meta";
 import type { KanbanCard } from "@/components/scout/workspace-data";
 import type { MappedNetworkJob } from "@/lib/topechelon/map-network-job";
+import { topEchelonNetworkJobUrl, resolveTopEchelonJobWebUuid } from "@/lib/topechelon/top-echelon-url";
 import type { MappedNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
 import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
@@ -34,7 +35,7 @@ export type NetworkJobListing = {
   sharedAt: string | null;
   description: string | null;
   recruiterNotes: string | null;
-  topEchelonUrl: string;
+  topEchelonUrl: string | null;
   adminDetails: Array<{ label: string; value: string }>;
   recruiter: NetworkRecruiterDisplay | null;
   raw: TopEchelonNetworkJobRaw;
@@ -75,7 +76,9 @@ function buildAdminDetails(mapped: MappedNetworkJob, raw: TopEchelonNetworkJobRa
 
   push("Network ID", mapped.networkId);
   push("Network status", mapped.networkStatus);
-  push("TE job ID", mapped.externalId);
+  push("TE API job ID", mapped.externalId);
+  push("Big Biller web UUID", resolveTopEchelonJobWebUuid(raw));
+  push("Big Biller URL", mapped.topEchelonUrl ?? topEchelonNetworkJobUrl(raw));
   push("Fee", mapped._display.feeLabel ?? mapped.fee);
   push("Guarantee", raw.guarantee);
   push("Guarantee period (days)", raw.guarantee_period ?? raw.guaranteePeriod);
@@ -158,7 +161,7 @@ export function buildNetworkProspectCard(
     fit: 0,
     jobRef: null,
     days,
-    _url: job.topEchelonUrl,
+    _url: job.topEchelonUrl ?? undefined,
     _meta: meta,
     _networkJobId: job.id,
   };

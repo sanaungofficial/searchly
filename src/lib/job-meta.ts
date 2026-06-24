@@ -32,7 +32,7 @@ export interface JobMeta {
   networkJob?: {
     externalId: string;
     networkId: string | null;
-    topEchelonUrl: string;
+    topEchelonUrl: string | null;
     recruiterNotes: string | null;
     fee: string | null;
     networkStatus: string | null;
