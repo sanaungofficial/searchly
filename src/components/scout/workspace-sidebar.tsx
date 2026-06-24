@@ -24,7 +24,7 @@ import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
 import { KimchiBySecondLadder } from "./scout-box";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
-import { canAccessBetaFeatures } from "@/lib/beta-features";
+import { isProductionEnv, shouldShowBetaNav, BETA_FEATURES } from "@/lib/beta-features";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -50,7 +50,7 @@ interface NavItem {
   Icon: (p: { className?: string }) => React.ReactElement;
 }
 
-const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
+const IS_PROD = isProductionEnv();
 
 const SIDEBAR_FOREST = "#1A3A2F";
 const SIDEBAR_GOLD = "#E8D5A3";
@@ -71,10 +71,10 @@ const NAV_PROFILE: NavItem = {
   Icon: ProfileIcon,
 };
 
-const NAV_BETA: NavItem[] = [
-  { id: "live", label: "Live", path: "/live", Icon: LiveIcon },
-  { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon },
-  { id: "network", label: "Network", path: "/network", Icon: NetworkIcon },
+const NAV_COMMUNITY: NavItem[] = [
+  { id: "live", label: BETA_FEATURES.live.navLabel, path: "/live", Icon: LiveIcon },
+  { id: "coaching", label: BETA_FEATURES.coaching.navLabel, path: "/coaching", Icon: CoachingIcon },
+  { id: "network", label: BETA_FEATURES.network.navLabel, path: "/network", Icon: NetworkIcon },
 ];
 
 const OPP_SUBNAV = [
@@ -268,7 +268,7 @@ export function WorkspaceSidebar({
   const user = userProp ?? ctxUser ?? undefined;
   const isAdmin = isAdminProp ?? ctxIsAdmin;
   const userRole = userRoleProp ?? ctxUserRole;
-  const showBetaNav = canAccessBetaFeatures(isAdmin);
+  const showCommunityNav = shouldShowBetaNav(isAdmin);
 
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
   const { loading: subLoading } = useSubscription();
@@ -581,19 +581,32 @@ export function WorkspaceSidebar({
             </React.Fragment>
           ))}
 
-          {showBetaNav && <SidebarSectionLabel isRail={isRail}>You</SidebarSectionLabel>}
-          {[NAV_PROFILE, ...(showBetaNav ? NAV_BETA : [])].map(({ id, label, path, Icon }) => (
-            <SidebarNavButton
-              key={id}
-              active={isActive(path)}
-              onClick={() => navigate(path)}
-              label={label}
-              Icon={Icon}
-              isRail={isRail}
-              showLiveDot={id === "live" && hasLiveNow}
-              showIncompleteDot={id === "profile" && profileIncomplete}
-            />
-          ))}
+          <SidebarSectionLabel isRail={isRail}>You</SidebarSectionLabel>
+          <SidebarNavButton
+            active={isActive(NAV_PROFILE.path)}
+            onClick={() => navigate(NAV_PROFILE.path)}
+            label={NAV_PROFILE.label}
+            Icon={NAV_PROFILE.Icon}
+            isRail={isRail}
+            showIncompleteDot={profileIncomplete}
+          />
+
+          {showCommunityNav && (
+            <>
+              <SidebarSectionLabel isRail={isRail}>Community</SidebarSectionLabel>
+              {NAV_COMMUNITY.map(({ id, label, path, Icon }) => (
+                <SidebarNavButton
+                  key={id}
+                  active={isActive(path)}
+                  onClick={() => navigate(path)}
+                  label={label}
+                  Icon={Icon}
+                  isRail={isRail}
+                  showLiveDot={id === "live" && hasLiveNow}
+                />
+              ))}
+            </>
+          )}
         </div>
 
         <div style={{ flex: 1 }} />
