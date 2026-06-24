@@ -21,7 +21,10 @@ import {
 import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { DataSourcesPopover } from "./data-sources-popover";
 import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipeline-recommended-section";
+import { PipelineNetworkSection } from "./pipeline-network-section";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
+import type { NetworkJobListing } from "@/lib/network-job-display";
+import { buildNetworkProspectCard } from "@/lib/network-job-display";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
@@ -30,7 +33,7 @@ import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as 
 
 export type { DrawerTool };
 
-type OppTab = "pipeline" | "companies";
+type OppTab = "pipeline" | "network" | "companies";
 export type PipelineFilter = "all" | "recommended" | KanbanStage;
 
 // Props now sourced from WorkspaceContext
@@ -42,7 +45,12 @@ export function WorkspaceOpportunities() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeSubtab: OppTab = pathname === "/opportunities/companies" ? "companies" : "pipeline";
+  const activeSubtab: OppTab =
+    pathname === "/opportunities/companies"
+      ? "companies"
+      : pathname === "/opportunities/network"
+        ? "network"
+        : "pipeline";
   const setSubtab = (t: OppTab) => { router.push(`/opportunities/${t}`); };
   const tab = activeSubtab;
   const setTab = setSubtab;
@@ -97,6 +105,9 @@ export function WorkspaceOpportunities() {
   const [prospectCard, setProspectCard] = useState<(KanbanCard & { _url?: string; _meta?: JobMeta }) | null>(null);
   const [prospectDetailLoading, setProspectDetailLoading] = useState(false);
   const [addingProspect, setAddingProspect] = useState(false);
+  const [networkProspectJob, setNetworkProspectJob] = useState<NetworkJobListing | null>(null);
+  const [networkProspectCard, setNetworkProspectCard] = useState<(KanbanCard & { _url?: string; _meta?: JobMeta }) | null>(null);
+  const [addingNetworkJob, setAddingNetworkJob] = useState(false);
 
   /* ── Add job (single URL) — calls real parse-job API ── */
   const submitAddJob = async () => {
@@ -279,6 +290,44 @@ export function WorkspaceOpportunities() {
     setTab("pipeline");
   };
 
+  const closeNetworkDrawer = () => {
+    setNetworkProspectJob(null);
+    setNetworkProspectCard(null);
+    setAddingNetworkJob(false);
+  };
+
+  const openNetworkJob = useCallback((job: NetworkJobListing) => {
+    const drawerId = -Math.abs(Date.now() % 1_000_000);
+    setNetworkProspectJob(job);
+    setNetworkProspectCard(buildNetworkProspectCard(job, drawerId));
+  }, []);
+
+  const addNetworkJobToPipeline = async (job: NetworkJobListing = networkProspectJob!) => {
+    if (!job) return;
+    setAddingNetworkJob(true);
+    try {
+      const card = buildNetworkProspectCard(job, 0);
+      const meta = card._meta;
+      const created = await addJob(
+        job.companyName ?? job.recruiter?.agencyName ?? "Confidential employer",
+        job.positionTitle,
+        job.topEchelonUrl ?? undefined,
+        meta
+      );
+      closeNetworkDrawer();
+      if (created) {
+        setDrawerCardId(created.cardId);
+        setTab("pipeline");
+      }
+    } finally {
+      setAddingNetworkJob(false);
+    }
+  };
+
+  const existingNetworkPipelineCard = networkProspectJob
+    ? findPipelineCardByUrl(kanbanCards, networkProspectJob.topEchelonUrl)
+    : null;
+
   return (
     <div
       style={{
@@ -306,6 +355,7 @@ export function WorkspaceOpportunities() {
         <div style={{ display: "flex", gap: 0 }}>
           {([
             ["pipeline", "Pipeline"],
+            ["network", "In-Network"],
             ["companies", "Companies"],
           ] as [OppTab, string][]).map(([id, label]) => {
             const active = tab === id;
@@ -334,7 +384,7 @@ export function WorkspaceOpportunities() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <DataSourcesPopover compact />
-          {tab !== "companies" && <button
+          {tab !== "companies" && tab !== "network" && <button
             onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
             style={{
               padding: "8px 16px",
@@ -415,6 +465,12 @@ export function WorkspaceOpportunities() {
         }}
       >
         {tab === "companies" && <WorkspaceCompanies onOpenProspectJob={openProspectJob} />}
+        {tab === "network" && (
+          <PipelineNetworkSection
+            onOpenJob={openNetworkJob}
+            onSaveJob={addNetworkJobToPipeline}
+          />
+        )}
         {tab === "pipeline" && (
           <PipelineTab
             cards={kanbanCards}
@@ -464,6 +520,26 @@ export function WorkspaceOpportunities() {
           addingToPipeline={addingProspect}
           existingPipelineCardId={existingProspectPipelineCard?.id ?? null}
           onOpenInPipeline={existingProspectPipelineCard ? openProspectInPipeline : undefined}
+        />
+      )}
+
+      {networkProspectCard && networkProspectJob && (
+        <JobDrawer
+          card={networkProspectCard}
+          onClose={closeNetworkDrawer}
+          moveCard={() => {}}
+          onDelete={closeNetworkDrawer}
+          onCardUpdate={() => {}}
+          prospectMode
+          elevated
+          onAddToPipeline={existingNetworkPipelineCard ? undefined : () => addNetworkJobToPipeline(networkProspectJob)}
+          addingToPipeline={addingNetworkJob}
+          existingPipelineCardId={existingNetworkPipelineCard?.id ?? null}
+          onOpenInPipeline={existingNetworkPipelineCard ? () => {
+            closeNetworkDrawer();
+            setDrawerCardId(existingNetworkPipelineCard.id);
+            setTab("pipeline");
+          } : undefined}
         />
       )}
     </div>

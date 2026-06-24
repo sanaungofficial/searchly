@@ -28,9 +28,11 @@ import {
 } from "@/lib/upskill-programs";
 import {
   buildResumeFingerprint,
+  getStoredRoleAnalysis,
   LEGACY_ANALYSIS_CACHE_KEY,
   normalizeRoleAnalysesMap,
   normalizeRoleGapAnalysis,
+  setStoredRoleAnalysis,
   type RoleAnalysesMap,
   type StoredRoleAnalysis,
 } from "@/lib/role-gap";
@@ -122,10 +124,17 @@ type RoleAnalysisView = {
   gaps: { skill: string; why: string }[];
   nextSteps: string[];
   _cachedAt?: string;
+  _stale?: boolean;
 };
 
-function toRoleAnalysisView(stored: StoredRoleAnalysis): RoleAnalysisView {
-  return { ...stored, _cachedAt: stored.analyzedAt };
+function toRoleAnalysisView(stored: StoredRoleAnalysis, stale = false): RoleAnalysisView {
+  return { ...stored, _cachedAt: stored.analyzedAt, _stale: stale };
+}
+
+function formatLastRefreshed(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 const SKILL_GOALS_KEY = "kimchi_skill_goals";
@@ -136,7 +145,7 @@ async function migrateLegacyProfileData(
 ): Promise<{ roleAnalyses: RoleAnalysesMap; skillGoals: SkillGoal[] }> {
   const patch: Record<string, unknown> = {};
   let skillGoals = userProfile.skillGoals ?? [];
-  let roleAnalyses = userProfile.roleAnalyses ?? {};
+  let roleAnalyses = normalizeRoleAnalysesMap(userProfile.roleAnalyses);
 
   if (!skillGoals.length) {
     try {
@@ -152,30 +161,31 @@ async function migrateLegacyProfileData(
   }
 
   const roles = userProfile.targetRoles || [];
-  const mergedAnalyses = { ...roleAnalyses };
   const fingerprint = buildResumeFingerprint(
     null,
     userProfile.resumeUrl,
     userProfile.parsedData?.skills ?? [],
   );
+  let migratedAnalyses = { ...roleAnalyses };
   for (const role of roles) {
-    if (mergedAnalyses[role]) continue;
+    if (getStoredRoleAnalysis(migratedAnalyses, role, null)) continue;
     try {
       const cached = localStorage.getItem(LEGACY_ANALYSIS_CACHE_KEY(role));
       if (!cached) continue;
       const { data, cachedAt } = JSON.parse(cached) as { data: unknown; cachedAt?: string };
       const normalized = normalizeRoleGapAnalysis(data);
       if (!normalized) continue;
-      mergedAnalyses[role] = {
+      migratedAnalyses = setStoredRoleAnalysis(migratedAnalyses, role, {
         ...normalized,
         analyzedAt: cachedAt ?? new Date().toISOString(),
         resumeFingerprint: fingerprint,
-      };
+        resumeAssetId: null,
+      });
     } catch {}
   }
-  if (Object.keys(mergedAnalyses).length > Object.keys(roleAnalyses).length) {
-    roleAnalyses = mergedAnalyses;
-    patch.roleAnalyses = mergedAnalyses;
+  if (JSON.stringify(migratedAnalyses) !== JSON.stringify(roleAnalyses)) {
+    roleAnalyses = migratedAnalyses;
+    patch.roleAnalyses = migratedAnalyses;
   }
 
   if (Object.keys(patch).length > 0) {
@@ -669,9 +679,9 @@ function DreamRoleTab({
 }) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysisView | "loading" | "error">>({});
+  const [analysisErrors, setAnalysisErrors] = useState<Record<string, string>>({});
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [needsRefresh, setNeedsRefresh] = useState<Set<string>>(new Set());
   const [skillMenu, setSkillMenu] = useState<{ role: string; skill: string } | null>(null);
   const analyzingRef = useRef(new Set<string>());
   const isMobile = useIsMobile();
@@ -680,16 +690,24 @@ function DreamRoleTab({
   const resumeIdForRole = (role: string) =>
     getRoleResumeAssetId(role, targetRoleSettings, resumeAssets);
 
-  const isAnalysisForCurrentResume = (role: string, stored: StoredRoleAnalysis) =>
-    (stored.resumeAssetId ?? null) === resumeIdForRole(role);
+  const storedForRole = (role: string) =>
+    getStoredRoleAnalysis(roleAnalyses, role, resumeIdForRole(role));
+
+  const isStoredStale = (stored: StoredRoleAnalysis, role: string) => {
+    const assetId = resumeIdForRole(role);
+    const asset = resumeAssets.find((a) => a.id === assetId);
+    const fingerprint = buildResumeFingerprint(assetId, asset?.url ?? null, userSkills);
+    return stored.resumeFingerprint !== fingerprint;
+  };
+
+  const viewFromStored = (stored: StoredRoleAnalysis, role: string) =>
+    toRoleAnalysisView(stored, isStoredStale(stored, role));
 
   const getLoaded = (role: string): RoleAnalysisView | null => {
     const result = analysis[role];
     if (result && result !== "loading" && result !== "error") return result;
-    const stored = roleAnalyses[role];
-    if (stored && isAnalysisForCurrentResume(role, stored)) {
-      return toRoleAnalysisView(stored);
-    }
+    const stored = storedForRole(role);
+    if (stored) return viewFromStored(stored, role);
     return null;
   };
 
@@ -697,27 +715,32 @@ function DreamRoleTab({
     setAnalysis((prev) => {
       const next = { ...prev };
       for (const role of dreamList) {
-        const stored = roleAnalyses[role];
-        if (stored && isAnalysisForCurrentResume(role, stored) && prev[role] !== "loading") {
-          next[role] = toRoleAnalysisView(stored);
+        const stored = storedForRole(role);
+        if (stored && prev[role] !== "loading") {
+          next[role] = viewFromStored(stored, role);
         }
       }
       return next;
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dreamList, roleAnalyses, targetRoleSettings, resumeAssets]);
+  }, [dreamList, roleAnalyses, targetRoleSettings, resumeAssets, userSkills]);
 
   const fetchAnalysis = async (role: string, force = false) => {
     const assetId = resumeIdForRole(role);
     if (!assetId && !hasResume) return;
 
-    const stored = roleAnalyses[role];
-    if (!force && stored && isAnalysisForCurrentResume(role, stored)) {
-      setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(stored) }));
+    const stored = storedForRole(role);
+    if (!force && stored) {
+      setAnalysis((prev) => ({ ...prev, [role]: viewFromStored(stored, role) }));
       return;
     }
 
     setAnalysis((prev) => ({ ...prev, [role]: "loading" }));
+    setAnalysisErrors((prev) => {
+      const next = { ...prev };
+      delete next[role];
+      return next;
+    });
     try {
       const params = new URLSearchParams({ role });
       if (force) params.set("force", "true");
@@ -725,8 +748,13 @@ function DreamRoleTab({
       const res = await fetch(`/api/ai/role-gap?${params.toString()}`);
       const data = await res.json();
       if (data.error) {
-        if (stored && isAnalysisForCurrentResume(role, stored)) {
-          setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(stored) }));
+        const message =
+          data.error === "AI not configured"
+            ? "Full AI analysis needs production — we could not parse your resume for a preview."
+            : data.error;
+        setAnalysisErrors((prev) => ({ ...prev, [role]: message }));
+        if (stored) {
+          setAnalysis((prev) => ({ ...prev, [role]: viewFromStored(stored, role) }));
         } else {
           setAnalysis((prev) => ({ ...prev, [role]: "error" }));
         }
@@ -742,7 +770,10 @@ function DreamRoleTab({
           resumeAssetId: data.resumeAssetId ?? assetId,
         };
         onRoleAnalysisUpdate(role, storedResult);
-        setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(storedResult) }));
+        setAnalysis((prev) => ({
+          ...prev,
+          [role]: toRoleAnalysisView(storedResult, Boolean(data.stale)),
+        }));
       }
     } catch {
       setAnalysis((prev) => ({ ...prev, [role]: "error" }));
@@ -753,8 +784,7 @@ function DreamRoleTab({
     if (!hasResume) return;
     dreamList.forEach((role) => {
       if (!resumeIdForRole(role)) return;
-      const stored = roleAnalyses[role];
-      if (stored && isAnalysisForCurrentResume(role, stored)) return;
+      if (storedForRole(role)) return;
       if (analysis[role] === "loading" || analyzingRef.current.has(role)) return;
       analyzingRef.current.add(role);
       void fetchAnalysis(role).finally(() => analyzingRef.current.delete(role));
@@ -770,7 +800,7 @@ function DreamRoleTab({
     onInitRoleSettings(title);
     setShowSearch(false);
     setSearchQuery("");
-    if (hasResume) void fetchAnalysis(title, true);
+    if (hasResume) void fetchAnalysis(title);
   };
 
   const removeRole = (title: string) => {
@@ -791,17 +821,20 @@ function DreamRoleTab({
 
   const handleResumeChange = async (role: string, assetId: string) => {
     onTargetRoleSettingsChange(role, assetId);
-    onClearRoleAnalysis(role);
+    const cached = getStoredRoleAnalysis(roleAnalyses, role, assetId);
+    if (cached) {
+      setAnalysis((prev) => ({ ...prev, [role]: viewFromStored(cached, role) }));
+      return;
+    }
     setAnalysis((prev) => {
       const next = { ...prev };
       delete next[role];
       return next;
     });
-    await fetchAnalysis(role, true);
+    await fetchAnalysis(role);
   };
 
   const handleRefresh = async (role: string) => {
-    setNeedsRefresh((prev) => { const n = new Set(prev); n.delete(role); return n; });
     await fetchAnalysis(role, true);
   };
 
@@ -824,7 +857,7 @@ function DreamRoleTab({
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
-        Add up to 3 roles you&apos;re targeting. Pick a resume per role — fit is scored against that version. Expand a card for skills and next steps.
+        Add up to 3 roles you&apos;re targeting. Pick a resume per role — each resume keeps its own saved fit score. Refresh when you want an updated analysis.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -832,8 +865,7 @@ function DreamRoleTab({
           const isOpen = expandedRole === role;
           const result = analysis[role];
           const loaded = getLoaded(role);
-          const roleNeedsRefresh = needsRefresh.has(role);
-          const isLoading = result === "loading" || (!loaded && hasResume && !result);
+          const isLoading = result === "loading" || (!loaded && hasResume && result !== "error");
 
           return (
             <div key={role} style={{ background: surface.card, border: isOpen ? border.lineStrong : border.line, overflow: "hidden" }}>
@@ -854,15 +886,17 @@ function DreamRoleTab({
                   {loaded ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: scoreColor(loaded.fitScore) }}>
                       {scoreLabel(loaded.fitScore)}
-                      {loaded._cachedAt ? ` · ${timeAgo(loaded._cachedAt)}` : ""}
-                      {roleNeedsRefresh ? " · refresh score" : ""}
+                      {loaded._cachedAt ? ` · Last refreshed ${formatLastRefreshed(loaded._cachedAt)}` : ""}
+                      {loaded._stale ? " · resume or skills changed" : ""}
                     </p>
                   ) : !hasResume ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload a resume to see your fit score</p>
                   ) : result === "loading" || isLoading ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing…</p>
                   ) : result === "error" ? (
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>Analysis unavailable — tap to retry</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>
+                      {analysisErrors[role] ?? "Analysis unavailable — tap to retry"}
+                    </p>
                   ) : (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Tap to view fit details</p>
                   )}
@@ -915,7 +949,9 @@ function DreamRoleTab({
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
                   )}
                   {result === "error" && !loaded && (
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>Could not run analysis. Make sure your resume is uploaded and try again.</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>
+                      {analysisErrors[role] ?? "Could not run analysis. Make sure your resume is uploaded and try again."}
+                    </p>
                   )}
                   {!hasResume && (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
@@ -984,7 +1020,6 @@ function DreamRoleTab({
                                             onClick={() => {
                                               onAddToPortfolio(skill);
                                               setSkillMenu(null);
-                                              setNeedsRefresh((prev) => new Set([...prev, role]));
                                             }}
                                             style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: border.line, background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
                                           >
@@ -1023,9 +1058,12 @@ function DreamRoleTab({
                                 </div>
                               </div>
                             )}
-                            <div style={{ marginTop: 4, padding: "10px 14px", background: "rgba(0,0,0,0.025)", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <div style={{ marginTop: 4, padding: "10px 14px", background: "rgba(0,0,0,0.025)", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                               <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", margin: 0, lineHeight: 1.5 }}>
-                                Scores stay saved until your resume or skills change. Refresh after upskilling.
+                                {loaded._cachedAt
+                                  ? `Last refreshed ${formatLastRefreshed(loaded._cachedAt)}. Scores are saved per resume — switch resumes to compare, or refresh for a new analysis.`
+                                  : "Scores are saved per resume. Refresh when you want an updated analysis."}
+                                {loaded._stale ? " Your profile changed since this score — refresh when ready." : ""}
                               </p>
                               <button onClick={() => handleRefresh(role)} style={{ padding: "5px 12px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
                                 ↻ Refresh
@@ -2426,15 +2464,9 @@ export function WorkspaceProfile() {
     await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
   };
 
-  const invalidateRoleAnalyses = async () => {
-    setRoleAnalyses({});
-    await patchProfile({ roleAnalyses: {} });
-    await fetch("/api/ai/role-gap", { method: "DELETE" }).catch(() => {});
-  };
-
   const handleRoleAnalysisUpdate = (role: string, analysis: StoredRoleAnalysis) => {
     setRoleAnalyses((prev) => {
-      const next = { ...prev, [role]: analysis };
+      const next = setStoredRoleAnalysis(prev, role, analysis);
       void patchProfile({ roleAnalyses: next });
       return next;
     });
@@ -2569,7 +2601,6 @@ export function WorkspaceProfile() {
     const newParsedData = { ...(profile.parsedData || { education: [], workExperience: [] }), skills };
     await patchProfile({ parsedData: newParsedData });
     setProfile((p) => p ? { ...p, parsedData: newParsedData } : p);
-    await invalidateRoleAnalyses();
   };
 
   const handleCareerPrefSave = async (patch: CareerPrefPatch) => {
@@ -2581,8 +2612,6 @@ export function WorkspaceProfile() {
     const currentSkills = profile?.parsedData?.skills || [];
     if (!currentSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) {
       await handleSkillsSave([...currentSkills, skill]);
-    } else {
-      await invalidateRoleAnalyses();
     }
     setSkillGoals((prev) => {
       const next = prev.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase());
@@ -2604,7 +2633,6 @@ export function WorkspaceProfile() {
         return;
       }
       if (data.url) {
-        await invalidateRoleAnalyses();
         const profileRes = await fetch("/api/profile");
         const profileData = await profileRes.json();
         if (!profileData.error) {

@@ -28,6 +28,26 @@ export interface JobMeta {
     gapSkills?: string[];
     vectorRank?: number;
   };
+  /** Top Echelon in-network job (admin / internal). */
+  networkJob?: {
+    externalId: string;
+    networkId: string | null;
+    topEchelonUrl: string | null;
+    recruiterNotes: string | null;
+    fee: string | null;
+    networkStatus: string | null;
+    adminDetails: Array<{ label: string; value: string }>;
+    recruiter: {
+      id: string;
+      externalId: string;
+      name: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string | null;
+      phone: string | null;
+      agencyName: string | null;
+    } | null;
+  };
 }
 
 function str(v: unknown): string | null {

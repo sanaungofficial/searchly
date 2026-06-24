@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/company-jobs-scan",
       "schedule": "0 6 * * 0"
+    },
+    {
+      "path": "/api/cron/topechelon-sync",
+      "schedule": "0 7 * * 0"
     }
   ]
 }

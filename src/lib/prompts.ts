@@ -81,6 +81,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Profile",
     variables: ["name", "targetRoles", "resumeJson"],
   },
+  LINKEDIN_DRAFT_ANALYSIS: {
+    label: "LinkedIn Draft Analysis",
+    description: "Scores a LinkedIn profile draft and returns section-specific improvements.",
+    category: "Profile",
+    variables: ["draftJson"],
+  },
   RESUME_TAILOR: {
     label: "Resume Tailor",
     description: "Parses and tailors a resume for a specific job. Returns JSON sections.",
@@ -574,6 +580,53 @@ Include 8-15 total improvement items across improvements and highlights.
 
 Resume:
 {{resumeSlice}}
+
+Return ONLY the JSON object.`,
+  LINKEDIN_DRAFT_ANALYSIS: `You are a LinkedIn profile coach reviewing a draft LinkedIn profile (NOT a resume). Score how recruiter-ready it is for discovery and inbound interest.
+
+Return ONLY valid JSON:
+{
+  "score": 0-100 integer,
+  "headline": "2-3 sentence overall assessment",
+  "strengths": ["strength 1", "strength 2"],
+  "improvements": [
+    { "priority": "Urgent", "title": "short issue title", "detail": "actionable fix for LinkedIn" },
+    { "priority": "Critical", "title": "short issue title", "detail": "actionable fix" },
+    { "priority": "Optional", "title": "short issue title", "detail": "actionable fix" }
+  ],
+  "highlights": [
+    {
+      "category": "Discovery & Headline",
+      "items": [
+        {
+          "severity": "Urgent",
+          "title": "Headline lacks keywords",
+          "issueCount": 1,
+          "summary": "what is wrong",
+          "whyItMatters": "why recruiters care",
+          "sectionHint": "headline"
+        }
+      ]
+    },
+    {
+      "category": "About & Story",
+      "items": []
+    },
+    {
+      "category": "Experience & Impact",
+      "items": []
+    }
+  ]
+}
+
+Use priority: Urgent, Critical, or Optional.
+Use severity: Minor, Urgent, Critical, or Optional.
+sectionHint must be one of: headline, about, experience, education, skills.
+Focus on LinkedIn norms: keyword headline, scannable About hook, paragraph impact in experience, skills for search.
+Include 8-12 improvements across improvements and highlights.
+
+LinkedIn draft JSON:
+{{draftJson}}
 
 Return ONLY the JSON object.`,
   COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
