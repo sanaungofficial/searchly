@@ -1,26 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Kimchi — Save Jobs",
-  "version": "0.2.1",
-  "description": "Save jobs to your Kimchi pipeline from Greenhouse, Lever, Ashby, LinkedIn, and career pages.",
+  "name": "Kimchi",
+  "version": "0.3.0",
+  "description": "Save jobs to your Kimchi pipeline and see resume match scores on LinkedIn and top ATS boards.",
   "permissions": ["storage", "activeTab", "cookies", "scripting"],
   "host_permissions": [
     "https://app.kimchi.so/*",
-    "https://kimchi-git-dev-second-ladder.vercel.app/*",
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*",
     "https://boards.greenhouse.io/*",
     "https://job-boards.greenhouse.io/*",
     "https://jobs.lever.co/*",
-    "https://jobs.ashbyhq.com/*",
-    "https://www.linkedin.com/jobs/*",
-    "https://linkedin.com/jobs/*"
+    "https://jobs.ashbyhq.com/*"
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Save to Kimchi",
+    "default_title": "Open Kimchi",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -35,12 +33,12 @@
   "content_scripts": [
     {
       "matches": [
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*",
         "https://boards.greenhouse.io/*",
         "https://job-boards.greenhouse.io/*",
         "https://jobs.lever.co/*",
-        "https://jobs.ashbyhq.com/*",
-        "https://www.linkedin.com/jobs/*",
-        "https://linkedin.com/jobs/*"
+        "https://jobs.ashbyhq.com/*"
       ],
       "js": ["content.js"],
       "css": ["content.css"],

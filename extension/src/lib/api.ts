@@ -1,5 +1,4 @@
 import { checkAuth, fetchWithKimchiAuth } from "./auth";
-import { getSettings } from "./storage";
 import type { ParsedJob, SaveJobResult } from "./types";
 
 export async function saveJob(parsed: ParsedJob): Promise<SaveJobResult> {
@@ -7,14 +6,12 @@ export async function saveJob(parsed: ParsedJob): Promise<SaveJobResult> {
   if (!auth.authenticated) {
     return {
       ok: false,
-      error: "Not signed in. Click the Kimchi icon and sign in first.",
+      error: "Sign in to Kimchi first — use the sidebar on this page.",
     };
   }
 
-  const { env } = await getSettings();
-
   try {
-    const res = await fetchWithKimchiAuth(env, "/api/jobs", {
+    const res = await fetchWithKimchiAuth("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

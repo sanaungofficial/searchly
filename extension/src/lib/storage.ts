@@ -2,13 +2,8 @@ import { DEFAULT_SETTINGS, STORAGE_KEYS } from "./config";
 import type { AuthState, ExtensionSettings } from "./types";
 
 export async function getSettings(): Promise<ExtensionSettings> {
-  const result = await chrome.storage.sync.get(STORAGE_KEYS.settings);
-  const settings = result[STORAGE_KEYS.settings] as ExtensionSettings | undefined;
-  return settings ?? DEFAULT_SETTINGS;
-}
-
-export async function setSettings(settings: ExtensionSettings): Promise<void> {
-  await chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings });
+  // Always production — ignore any legacy dev setting in storage.
+  return DEFAULT_SETTINGS;
 }
 
 export async function getAuthCache(): Promise<AuthState | null> {

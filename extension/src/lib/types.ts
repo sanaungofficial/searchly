@@ -8,7 +8,7 @@ export type JobStage =
   | "REJECTED"
   | "WITHDRAWN";
 
-export type KimchiEnv = "dev" | "prod";
+export type KimchiEnv = "prod";
 
 export type ParserId =
   | "greenhouse"

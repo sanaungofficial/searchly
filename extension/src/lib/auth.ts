@@ -1,6 +1,6 @@
-import { getBaseUrl } from "./config";
-import { clearAuthCache, getAuthCache, getSettings, setAuthCache } from "./storage";
-import type { AuthState, KimchiEnv } from "./types";
+import { getBaseUrl, kimchiCookieUrls } from "./config";
+import { clearAuthCache, getAuthCache, setAuthCache } from "./storage";
+import type { AuthState } from "./types";
 
 function pickCookie(existing: chrome.cookies.Cookie, next: chrome.cookies.Cookie): chrome.cookies.Cookie {
   if (existing.path === "/" && next.path !== "/") return existing;
@@ -8,16 +8,17 @@ function pickCookie(existing: chrome.cookies.Cookie, next: chrome.cookies.Cookie
   return next.value.length > existing.value.length ? next : existing;
 }
 
-async function collectKimchiCookies(env: KimchiEnv): Promise<chrome.cookies.Cookie[]> {
-  const baseUrl = getBaseUrl(env);
-  const hostname = new URL(baseUrl).hostname;
-
-  const batches = await Promise.all([
-    chrome.cookies.getAll({ url: baseUrl }),
-    chrome.cookies.getAll({ url: `${baseUrl}/` }),
-    chrome.cookies.getAll({ domain: hostname }),
-    chrome.cookies.getAll({ domain: `.${hostname}` }),
-  ]);
+async function collectKimchiCookies(): Promise<chrome.cookies.Cookie[]> {
+  const batches = await Promise.all(
+    kimchiCookieUrls().flatMap((url) => {
+      const hostname = new URL(url).hostname;
+      return [
+        chrome.cookies.getAll({ url }),
+        chrome.cookies.getAll({ domain: hostname }),
+        chrome.cookies.getAll({ domain: `.${hostname}` }),
+      ];
+    })
+  );
 
   const byName = new Map<string, chrome.cookies.Cookie>();
   for (const cookie of batches.flat()) {
@@ -28,31 +29,26 @@ async function collectKimchiCookies(env: KimchiEnv): Promise<chrome.cookies.Cook
   return Array.from(byName.values());
 }
 
-async function buildCookieHeader(env: KimchiEnv): Promise<string> {
-  const cookies = await collectKimchiCookies(env);
+async function buildCookieHeader(): Promise<string> {
+  const cookies = await collectKimchiCookies();
   return cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
 }
 
-export async function fetchWithKimchiAuth(
-  env: KimchiEnv,
-  path: string,
-  init: RequestInit = {}
-): Promise<Response> {
-  const baseUrl = getBaseUrl(env);
-  const cookieHeader = await buildCookieHeader(env);
+export async function fetchWithKimchiAuth(path: string, init: RequestInit = {}): Promise<Response> {
+  const cookieHeader = await buildCookieHeader();
   const headers = new Headers(init.headers);
   if (cookieHeader) headers.set("Cookie", cookieHeader);
 
-  return fetch(`${baseUrl}${path}`, {
+  return fetch(`${getBaseUrl()}${path}`, {
     ...init,
     headers,
   });
 }
 
-async function verifySession(env: KimchiEnv): Promise<AuthState> {
+async function verifySession(): Promise<AuthState> {
   const checkedAt = new Date().toISOString();
 
-  const sessionRes = await fetchWithKimchiAuth(env, "/api/auth/extension-session", {
+  const sessionRes = await fetchWithKimchiAuth("/api/auth/extension-session", {
     method: "GET",
   });
 
@@ -66,18 +62,18 @@ async function verifySession(env: KimchiEnv): Promise<AuthState> {
     }
   }
 
-  const jobsRes = await fetchWithKimchiAuth(env, "/api/jobs", { method: "GET" });
+  const jobsRes = await fetchWithKimchiAuth("/api/jobs", { method: "GET" });
   if (jobsRes.ok) {
     return { authenticated: true, checkedAt };
   }
 
-  const hasCookies = Boolean(await buildCookieHeader(env));
+  const hasCookies = Boolean(await buildCookieHeader());
   return {
     authenticated: false,
     checkedAt,
     error: hasCookies
-      ? `Signed in on ${getBaseUrl(env)}? Check popup environment matches your login tab.`
-      : `No session on ${getBaseUrl(env)}. Sign in via the Kimchi tab first.`,
+      ? "Session expired. Sign in again at Kimchi."
+      : "Sign in to Kimchi to save jobs and see your match score.",
   };
 }
 
@@ -87,21 +83,20 @@ export async function checkAuth(force = false): Promise<AuthState> {
     return cached;
   }
 
-  const { env } = await getSettings();
-  const cookieHeader = await buildCookieHeader(env);
+  const cookieHeader = await buildCookieHeader();
 
   if (!cookieHeader) {
     const state: AuthState = {
       authenticated: false,
       checkedAt: new Date().toISOString(),
-      error: `No Kimchi cookies for ${getBaseUrl(env)}.`,
+      error: "Sign in to Kimchi to save jobs and see your match score.",
     };
     await setAuthCache(state);
     return state;
   }
 
   try {
-    const state = await verifySession(env);
+    const state = await verifySession();
     await setAuthCache(state);
     return state;
   } catch {
@@ -116,9 +111,7 @@ export async function checkAuth(force = false): Promise<AuthState> {
 }
 
 export async function openLoginTab(): Promise<number | undefined> {
-  const { env } = await getSettings();
-  const baseUrl = getBaseUrl(env);
-  const tab = await chrome.tabs.create({ url: `${baseUrl}/login` });
+  const tab = await chrome.tabs.create({ url: `${getBaseUrl()}/login` });
   return tab.id;
 }
 
@@ -130,6 +123,16 @@ export async function broadcastAuthState(auth: AuthState): Promise<void> {
   try {
     await chrome.runtime.sendMessage({ type: "AUTH_STATE_CHANGED", payload: auth });
   } catch {
-    // popup may be closed
+    // no listeners
+  }
+
+  const tabs = await chrome.tabs.query({ url: ["https://www.linkedin.com/*", "https://linkedin.com/*"] });
+  for (const tab of tabs) {
+    if (!tab.id) continue;
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: "AUTH_STATE_CHANGED", payload: auth });
+    } catch {
+      // tab has no content script yet
+    }
   }
 }

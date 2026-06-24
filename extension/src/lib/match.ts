@@ -1,5 +1,4 @@
 import { fetchWithKimchiAuth } from "./auth";
-import { getSettings } from "./storage";
 import type { JobMatchResult } from "./types";
 
 export async function fetchJobMatch(input: {
@@ -7,10 +6,8 @@ export async function fetchJobMatch(input: {
   company: string;
   description: string;
 }): Promise<{ ok: true; data: JobMatchResult } | { ok: false; error: string }> {
-  const { env } = await getSettings();
-
   try {
-    const res = await fetchWithKimchiAuth(env, "/api/ai/job-match", {
+    const res = await fetchWithKimchiAuth("/api/ai/job-match", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),

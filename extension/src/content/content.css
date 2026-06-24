@@ -377,6 +377,11 @@ html.kimchi-jr-active .global-nav {
   border: 1px solid #e5e9ef;
 }
 
+.kimchi-jr-sidebar__section--auth {
+  border-color: #c6f6e3;
+  background: #f0fdf8;
+}
+
 .kimchi-jr-sidebar__section-title {
   font-size: 13px;
   font-weight: 700;

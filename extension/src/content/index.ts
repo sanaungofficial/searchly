@@ -4,12 +4,13 @@ import {
   fetchMatchFromBackground,
   isLinkedInJobPage,
   observeLinkedInNavigation,
+  placeholderJob,
 } from "./jobright-ui";
 import { ensureFloatingButton, setButtonState, showToast } from "./ui";
-import type { ParsedJob, SaveJobResult } from "../lib/types";
+import type { AuthState, ParsedJob, SaveJobResult } from "../lib/types";
 
 const ATS_HOST_RE =
-  /(?:boards|job-boards)\.greenhouse\.io|jobs\.lever\.co|jobs\.ashbyhq\.com|linkedin\.com/i;
+  /(?:boards|job-boards)\.greenhouse\.io|jobs\.lever\.co|jobs\.ashbyhq\.com/i;
 
 const KIMCHI_LOADED_KEY = "__kimchiExtensionLoaded";
 
@@ -22,16 +23,18 @@ function isKnownAtsPage(): boolean {
   return ATS_HOST_RE.test(window.location.hostname);
 }
 
+async function getAuth(force = false): Promise<AuthState> {
+  const response = await chrome.runtime.sendMessage({ type: "GET_AUTH", force });
+  if (response?.type === "AUTH_STATE") return response.payload as AuthState;
+  return response as AuthState;
+}
+
 async function saveParsedJob(): Promise<SaveJobResult> {
   const parsed = await parseCurrentPageAsync();
-  console.info("[Kimchi] parsed job", parsed);
-
-  const response = await chrome.runtime.sendMessage({
+  return (await chrome.runtime.sendMessage({
     type: "SAVE_PARSED_JOB",
     payload: parsed,
-  });
-
-  return response as SaveJobResult;
+  })) as SaveJobResult;
 }
 
 async function handleSaveClick(): Promise<void> {
@@ -40,7 +43,7 @@ async function handleSaveClick(): Promise<void> {
     const result = await saveParsedJob();
     if (result.ok) {
       setButtonState("success");
-      showToast(`Saved ${result.jobId ? "to Kimchi" : ""}`, "success");
+      showToast("Saved to Kimchi", "success");
       window.setTimeout(() => setButtonState("idle"), 2500);
     } else {
       setButtonState("error");
@@ -54,6 +57,7 @@ async function handleSaveClick(): Promise<void> {
 
 let linkedInUI: JobRightUI | null = null;
 let linkedInRefreshTimer: number | null = null;
+let linkedInRefreshRunning = false;
 
 async function refreshLinkedInUI(): Promise<void> {
   if (!isLinkedInJobPage()) {
@@ -62,31 +66,46 @@ async function refreshLinkedInUI(): Promise<void> {
     return;
   }
 
-  const parsed = await parseCurrentPageAsync();
-  if (!isUsableParsedJob(parsed)) return;
+  if (linkedInRefreshRunning) return;
+  linkedInRefreshRunning = true;
 
-  if (!linkedInUI) {
-    linkedInUI = new JobRightUI(
-      async () => {
+  try {
+    if (!linkedInUI) {
+      linkedInUI = new JobRightUI(async () => {
         const fresh = await parseCurrentPageAsync();
         return (await chrome.runtime.sendMessage({
           type: "SAVE_PARSED_JOB",
           payload: fresh,
         })) as SaveJobResult;
-      },
-      async (job) => fetchMatchFromBackground(job)
-    );
-  }
+      });
+    }
 
-  const match = await fetchMatchFromBackground(parsed);
-  await linkedInUI.mount(parsed, match);
+    const auth = await getAuth();
+
+    // Show sidebar immediately — don't wait for parse
+    await linkedInUI.render(placeholderJob(), null, auth, true);
+
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const parsed = await parseCurrentPageAsync();
+      if (isUsableParsedJob(parsed)) {
+        const match = auth.authenticated ? await fetchMatchFromBackground(parsed) : null;
+        await linkedInUI.render(parsed, match, auth, false);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 400 + attempt * 150));
+    }
+
+    await linkedInUI.render(placeholderJob(), null, auth, false);
+  } finally {
+    linkedInRefreshRunning = false;
+  }
 }
 
 function scheduleLinkedInRefresh(): void {
   if (linkedInRefreshTimer) window.clearTimeout(linkedInRefreshTimer);
   linkedInRefreshTimer = window.setTimeout(() => {
     void refreshLinkedInUI();
-  }, 700);
+  }, 300);
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -99,12 +118,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "REFRESH_UI" || message?.type === "AUTH_STATE_CHANGED") {
+    scheduleLinkedInRefresh();
+    return false;
+  }
+
   if (message?.type === "TRIGGER_SAVE") {
-    if (isLinkedInJobPage() && linkedInUI) {
-      saveParsedJob().then(sendResponse);
-    } else {
-      handleSaveClick().then(sendResponse);
-    }
+    saveParsedJob().then(sendResponse);
     return true;
   }
 

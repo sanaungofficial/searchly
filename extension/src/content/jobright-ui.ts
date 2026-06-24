@@ -1,6 +1,5 @@
 import { getBaseUrl } from "../lib/config";
-import { getSettings } from "../lib/storage";
-import type { JobMatchResult, ParsedJob, SaveJobResult } from "../lib/types";
+import type { AuthState, JobMatchResult, ParsedJob, SaveJobResult } from "../lib/types";
 import { getDescriptionFromParsed } from "../parsers/linkedin-jobs";
 
 const SIDEBAR_ID = "kimchi-jr-sidebar";
@@ -11,7 +10,13 @@ const SIDEBAR_WIDTH = 380;
 const COLLAPSED_WIDTH = 0;
 
 export function isLinkedInJobPage(): boolean {
-  return /linkedin\.com/i.test(window.location.hostname) && /\/jobs\//i.test(window.location.href);
+  if (!/linkedin\.com/i.test(window.location.hostname)) return false;
+  const href = window.location.href;
+  return (
+    /\/jobs\//i.test(href) ||
+    /[?&]currentJobId=\d+/i.test(href) ||
+    /\/jobs\/view\/\d+/i.test(href)
+  );
 }
 
 function escapeHtml(value: string): string {
@@ -29,6 +34,17 @@ function initials(text: string): string {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function placeholderJob(): ParsedJob {
+  return {
+    company: "Loading…",
+    role: "Reading job details",
+    url: window.location.href.split("#")[0],
+    stage: "SAVED",
+    parser: "linkedin-jobs",
+    notes: JSON.stringify({ source: "extension", parser: "linkedin-jobs" }),
+  };
 }
 
 function findActionRow(): Element | null {
@@ -50,6 +66,8 @@ function findMatchMount(): Element | null {
     document.querySelector(".jobs-unified-top-card__content") ??
     document.querySelector(".top-card-layout__card") ??
     document.querySelector(".top-card-layout") ??
+    document.querySelector(".jobs-search__job-details") ??
+    document.querySelector(".scaffold-layout__detail") ??
     null
   );
 }
@@ -68,7 +86,8 @@ function gaugeLabel(score: number, label?: string): string {
   return "Poor";
 }
 
-function keywordCopy(match: JobMatchResult | null): string {
+function keywordCopy(match: JobMatchResult | null, loading: boolean): string {
+  if (loading) return "Analyzing this role against your Kimchi resume…";
   if (!match?.keywords?.length) {
     return "Save this role to Kimchi and analyze your resume match.";
   }
@@ -104,11 +123,29 @@ function renderRing(score: number): string {
   `;
 }
 
+function authSection(auth: AuthState): string {
+  if (auth.authenticated) {
+    return `
+      <div class="kimchi-jr-sidebar__section">
+        <div class="kimchi-jr-sidebar__section-title"><span class="kimchi-jr-dot"></span> Your Kimchi Profile</div>
+        <div class="kimchi-jr-sidebar__section-copy">${auth.email ? `Signed in as ${escapeHtml(auth.email)}` : "Signed in to Kimchi."}</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="kimchi-jr-sidebar__section kimchi-jr-sidebar__section--auth">
+      <div class="kimchi-jr-sidebar__section-title">Sign in to Kimchi</div>
+      <div class="kimchi-jr-sidebar__section-copy">Connect your Kimchi account to save jobs, see match scores, and optimize your resume.</div>
+      <button type="button" class="kimchi-jr-sidebar__cta kimchi-jr-sidebar__cta--primary" data-action="signin">
+        Sign in to Kimchi
+      </button>
+    </div>
+  `;
+}
+
 export class JobRightUI {
-  constructor(
-    private onSave: () => Promise<SaveJobResult>,
-    _onMatch: (parsed: ParsedJob) => Promise<JobMatchResult | null>
-  ) {}
+  constructor(private onSave: () => Promise<SaveJobResult>) {}
 
   teardown(): void {
     document.getElementById(SIDEBAR_ID)?.remove();
@@ -122,53 +159,61 @@ export class JobRightUI {
     document.documentElement.style.setProperty("--kimchi-jr-sidebar-width", `${width}px`);
   }
 
-  async mount(parsed: ParsedJob, match: JobMatchResult | null): Promise<void> {
+  async render(
+    parsed: ParsedJob,
+    match: JobMatchResult | null,
+    auth: AuthState,
+    loading = false
+  ): Promise<void> {
     if (!isLinkedInJobPage()) return;
-    this.teardown();
+
     document.documentElement.classList.add(ROOT_CLASS);
     this.setSidebarWidth(SIDEBAR_WIDTH);
 
-    const { env } = await getSettings();
-    const baseUrl = getBaseUrl(env);
+    const baseUrl = getBaseUrl();
     const description = getDescriptionFromParsed(parsed);
     const score = match?.score ?? 0;
     const hasMatch = Boolean(match?.score);
 
+    this.mountSidebar(parsed, baseUrl, score, hasMatch, description, auth);
+    this.mountMatchCard(parsed, match, loading);
     this.mountInlineButton();
-    this.mountMatchCard(parsed, match);
-    this.mountSidebar(parsed, baseUrl, score, hasMatch, description);
   }
 
   private mountInlineButton(): void {
     const row = findActionRow();
-    if (!row || row.querySelector(`.${INLINE_BTN_CLASS}`)) return;
+    if (!row) return;
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = INLINE_BTN_CLASS;
-    btn.innerHTML = `<span class="kimchi-jr-spark">✦</span> Apply with Kimchi`;
-    btn.addEventListener("click", () => void this.handleSave());
-    row.appendChild(btn);
+    let btn = row.querySelector<HTMLButtonElement>(`.${INLINE_BTN_CLASS}`);
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = INLINE_BTN_CLASS;
+      btn.innerHTML = `<span class="kimchi-jr-spark">✦</span> Apply with Kimchi`;
+      btn.addEventListener("click", () => void this.handleSave());
+      row.appendChild(btn);
+    }
   }
 
-  private mountMatchCard(parsed: ParsedJob, match: JobMatchResult | null): void {
-    const mount = findMatchMount();
-    if (!mount) return;
+  private mountMatchCard(parsed: ParsedJob, match: JobMatchResult | null, loading: boolean): void {
+    document.getElementById(MATCH_CARD_ID)?.remove();
 
+    const mount = findMatchMount() ?? document.body;
     const score = match?.score ?? 0;
     const hasMatch = Boolean(match?.score);
+
     const card = document.createElement("section");
     card.id = MATCH_CARD_ID;
     card.className = "kimchi-jr-match-card";
     card.innerHTML = `
       <div class="kimchi-jr-match-card__body">
         <div class="kimchi-jr-match-card__copy">
-          <div class="kimchi-jr-match-card__title">${escapeHtml(matchHeadline(score, match?.scoreLabel))}</div>
-          <div class="kimchi-jr-match-card__subtitle">${escapeHtml(keywordCopy(match))}</div>
+          <div class="kimchi-jr-match-card__title">${escapeHtml(loading ? "Analyzing match…" : matchHeadline(score, match?.scoreLabel))}</div>
+          <div class="kimchi-jr-match-card__subtitle">${escapeHtml(keywordCopy(match, loading))}</div>
         </div>
         <div class="kimchi-jr-match-card__gauge-wrap">
           ${renderGauge(hasMatch ? score : 0)}
-          <div class="kimchi-jr-match-card__gauge-label">${escapeHtml(hasMatch ? gaugeLabel(score, match?.scoreLabel) : "—")}</div>
+          <div class="kimchi-jr-match-card__gauge-label">${escapeHtml(hasMatch ? gaugeLabel(score, match?.scoreLabel) : loading ? "…" : "—")}</div>
         </div>
       </div>
       <div class="kimchi-jr-match-card__footer">
@@ -184,8 +229,10 @@ export class JobRightUI {
     const actionRow = findActionRow();
     if (actionRow?.parentElement) {
       actionRow.parentElement.insertBefore(card, actionRow.nextSibling);
-    } else {
+    } else if (mount !== document.body) {
       mount.prepend(card);
+    } else {
+      document.body.prepend(card);
     }
   }
 
@@ -194,8 +241,11 @@ export class JobRightUI {
     baseUrl: string,
     score: number,
     hasMatch: boolean,
-    description: string
+    description: string,
+    auth: AuthState
   ): void {
+    document.getElementById(SIDEBAR_ID)?.remove();
+
     const sidebar = document.createElement("aside");
     sidebar.id = SIDEBAR_ID;
     sidebar.className = "kimchi-jr-sidebar";
@@ -203,7 +253,7 @@ export class JobRightUI {
       <div class="kimchi-jr-sidebar__header">
         <div class="kimchi-jr-sidebar__logo">Kimchi</div>
         <div class="kimchi-jr-sidebar__header-actions">
-          <a class="kimchi-jr-sidebar__link" href="${baseUrl}/opportunities/pipeline" target="_blank" rel="noreferrer">Feedback</a>
+          <a class="kimchi-jr-sidebar__link" href="${baseUrl}/opportunities/pipeline" target="_blank" rel="noreferrer">Pipeline</a>
           <button type="button" class="kimchi-jr-sidebar__icon-btn" data-action="collapse" title="Collapse">›</button>
         </div>
       </div>
@@ -219,10 +269,7 @@ export class JobRightUI {
         </div>
       </div>
 
-      <div class="kimchi-jr-sidebar__section">
-        <div class="kimchi-jr-sidebar__section-title"><span class="kimchi-jr-dot"></span> Your Kimchi Profile</div>
-        <div class="kimchi-jr-sidebar__section-copy">Resume and pipeline sync from your Kimchi account.</div>
-      </div>
+      ${authSection(auth)}
 
       <div class="kimchi-jr-sidebar__section">
         <div class="kimchi-jr-sidebar__section-title">Improve Resume Match</div>
@@ -246,7 +293,7 @@ export class JobRightUI {
       </div>
 
       <div class="kimchi-jr-sidebar__footer">
-        <a href="${baseUrl}/opportunities/pipeline" target="_blank" rel="noreferrer">Save another job in Kimchi</a>
+        <a href="${baseUrl}/opportunities/pipeline" target="_blank" rel="noreferrer">Open Kimchi pipeline</a>
       </div>
     `;
 
@@ -259,8 +306,12 @@ export class JobRightUI {
       void this.handleSave();
     });
 
+    sidebar.querySelector('[data-action="signin"]')?.addEventListener("click", () => {
+      void chrome.runtime.sendMessage({ type: "OPEN_LOGIN" });
+    });
+
     sidebar.querySelector('[data-action="optimize"]')?.addEventListener("click", () => {
-      window.open(`${baseUrl}/opportunities/pipeline`, "_blank");
+      window.open(`${baseUrl}/profile`, "_blank");
     });
 
     sidebar.querySelector('[data-action="cover"]')?.addEventListener("click", () => {
@@ -313,11 +364,13 @@ export function observeLinkedInNavigation(onChange: () => void): void {
         lastUrl = url;
         onChange();
       }
-    }, 600);
+    }, 400);
   };
 
   window.addEventListener("popstate", schedule);
+  window.addEventListener("hashchange", schedule);
   new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+  schedule();
 }
 
 export async function fetchMatchFromBackground(parsed: ParsedJob): Promise<JobMatchResult | null> {
@@ -336,3 +389,5 @@ export async function fetchMatchFromBackground(parsed: ParsedJob): Promise<JobMa
   if (response?.ok && response.data) return response.data as JobMatchResult;
   return null;
 }
+
+export { placeholderJob };

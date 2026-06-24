@@ -1,6 +1,7 @@
 import { saveJob } from "../lib/api";
 import { fetchJobMatch } from "../lib/match";
 import { broadcastAuthState, checkAuth, logout, openLoginTab } from "../lib/auth";
+import { getBaseUrl } from "../lib/config";
 import type {
   BackgroundMessage,
   ParsedJob,
@@ -31,11 +32,9 @@ async function parseTab(tabId: number): Promise<ParsedJob | null> {
 
 async function saveFromTab(tabId: number): Promise<SaveJobResult> {
   const parsed = await parseTab(tabId);
-
   if (!isUsableParsedJob(parsed)) {
     return { ok: false, error: "Could not extract company and role from this page." };
   }
-
   return saveJob(parsed);
 }
 
@@ -44,22 +43,42 @@ async function refreshAndBroadcastAuth(force = true): Promise<void> {
   await broadcastAuthState(auth);
 }
 
+chrome.runtime.onInstalled.addListener(() => {
+  void refreshAndBroadcastAuth(true);
+});
+
+chrome.action.onClicked.addListener(async () => {
+  const auth = await checkAuth(true);
+  const url = auth.authenticated
+    ? `${getBaseUrl()}/opportunities/pipeline`
+    : `${getBaseUrl()}/login`;
+  await chrome.tabs.create({ url });
+});
+
 chrome.cookies.onChanged.addListener((change) => {
   const domain = change.cookie.domain.replace(/^\./, "");
-  if (domain === "app.kimchi.so" || domain.endsWith("vercel.app")) {
+  if (domain === "app.kimchi.so") {
     void refreshAndBroadcastAuth(true);
   }
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (tabId !== loginTabId || changeInfo.status !== "complete") return;
   const url = tab.url ?? "";
-  if (
-    /\/(dashboard|opportunities|profile|onboarding)(\/|$|\?)/.test(url) ||
-    url.includes("/auth/callback")
-  ) {
-    loginTabId = null;
-    void refreshAndBroadcastAuth(true);
+
+  if (tabId === loginTabId && changeInfo.status === "complete") {
+    if (
+      /\/(dashboard|opportunities|profile|onboarding)(\/|$|\?)/.test(url) ||
+      url.includes("/auth/callback")
+    ) {
+      loginTabId = null;
+      void refreshAndBroadcastAuth(true);
+    }
+    return;
+  }
+
+  // Nudge LinkedIn job tabs to mount sidebar after SPA navigation
+  if (changeInfo.status === "complete" && /linkedin\.com\/jobs/i.test(url)) {
+    void chrome.tabs.sendMessage(tabId, { type: "REFRESH_UI" }).catch(() => {});
   }
 });
 
