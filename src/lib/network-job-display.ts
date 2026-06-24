@@ -7,6 +7,15 @@ import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
 import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
 import { SEED_RAW_NETWORK_JOBS } from "@/lib/network-job-seed-raw";
+import {
+  type CompensationBand,
+  COMPENSATION_BAND_LABELS,
+  compensationBand,
+  extractIndustries,
+  formatCompensationLabel,
+  formatNetworkSharedDate,
+  formatNetworkStatus,
+} from "@/lib/network-job-format";
 
 export type NetworkRecruiterDisplay = {
   id: string;
@@ -25,14 +34,23 @@ export type NetworkJobListing = {
   networkId: string | null;
   positionTitle: string;
   companyName: string | null;
+  city: string | null;
+  state: string | null;
   location: string | null;
+  industries: string[];
   salary: string | null;
+  compensationMin: number | null;
+  compensationMax: number | null;
+  compensationBand: CompensationBand | null;
   jobType: string | null;
   remoteOption: string | null;
   fee: string | null;
   feeType: string | null;
   networkStatus: string | null;
+  networkStatusLabel: string | null;
   sharedAt: string | null;
+  sharedAtLabel: string;
+  sharedAtRelative: string;
   description: string | null;
   recruiterNotes: string | null;
   topEchelonUrl: string | null;
@@ -59,7 +77,13 @@ function recruiterToDisplay(r: MappedNetworkRecruiter): NetworkRecruiterDisplay 
   };
 }
 
-function buildAdminDetails(mapped: MappedNetworkJob, raw: TopEchelonNetworkJobRaw): Array<{ label: string; value: string }> {
+function buildAdminDetails(
+  mapped: MappedNetworkJob,
+  raw: TopEchelonNetworkJobRaw,
+  shared: ReturnType<typeof formatNetworkSharedDate>,
+  industries: string[],
+  salary: string | null
+): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [];
   const push = (label: string, value: unknown) => {
     if (value == null || value === "") return;
@@ -75,19 +99,20 @@ function buildAdminDetails(mapped: MappedNetworkJob, raw: TopEchelonNetworkJobRa
   };
 
   push("Network ID", mapped.networkId);
-  push("Network status", mapped.networkStatus);
+  push("Network status", formatNetworkStatus(mapped.networkStatus) ?? mapped.networkStatus);
   push("TE API job ID", mapped.externalId);
   push("Big Biller web UUID", resolveTopEchelonJobWebUuid(raw));
   push("Big Biller URL", mapped.topEchelonUrl ?? topEchelonNetworkJobUrl(raw));
   push("Fee", mapped._display.feeLabel ?? mapped.fee);
   push("Guarantee", raw.guarantee);
   push("Guarantee period (days)", raw.guarantee_period ?? raw.guaranteePeriod);
-  push("Industries", raw.industries);
-  push("Shared", mapped.sharedAt?.toISOString() ?? null);
+  push("Industries", industries);
+  push("Shared", shared.cardLabel);
   push("Job type", mapped.jobType);
   push("Remote option", mapped.remoteOption);
   push("City", mapped.city);
   push("State", mapped.state);
+  push("Compensation", salary);
   push("Compensation (min)", mapped.minimumCompensation);
   push("Compensation (max)", mapped.maximumCompensation);
 
@@ -97,6 +122,15 @@ function buildAdminDetails(mapped: MappedNetworkJob, raw: TopEchelonNetworkJobRa
 export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobListing {
   const mapped = mapTopEchelonNetworkJob(raw);
   const recruiterRaw = mapTopEchelonNetworkRecruiter(raw);
+  const industries = extractIndustries(raw);
+  const compensationMin = mapped.minimumCompensation;
+  const compensationMax = mapped.maximumCompensation;
+  const salary =
+    formatCompensationLabel(compensationMin, compensationMax, mapped.jobType) ?? mapped._display.salary;
+  const band = compensationBand(compensationMin, compensationMax, mapped.jobType);
+  const networkStatusLabel = formatNetworkStatus(mapped.networkStatus);
+  const sharedAtIso = mapped.sharedAt?.toISOString() ?? null;
+  const shared = formatNetworkSharedDate(sharedAtIso);
 
   return {
     id: mapped.externalId,
@@ -104,18 +138,27 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
     networkId: mapped.networkId,
     positionTitle: mapped.positionTitle,
     companyName: mapped.companyName,
+    city: mapped.city,
+    state: mapped.state,
     location: mapped.location,
-    salary: mapped._display.salary,
+    industries,
+    salary,
+    compensationMin,
+    compensationMax,
+    compensationBand: band,
     jobType: mapped.jobType,
     remoteOption: mapped.remoteOption,
     fee: mapped._display.feeLabel,
     feeType: mapped.feeType,
     networkStatus: mapped.networkStatus,
-    sharedAt: mapped.sharedAt?.toISOString() ?? null,
+    networkStatusLabel,
+    sharedAt: sharedAtIso,
+    sharedAtLabel: shared.dateLabel,
+    sharedAtRelative: shared.relativeLabel,
     description: mapped._display.descriptionText || null,
     recruiterNotes: mapped._display.recruiterNotesText || null,
     topEchelonUrl: mapped.topEchelonUrl,
-    adminDetails: buildAdminDetails(mapped, raw),
+    adminDetails: buildAdminDetails(mapped, raw, shared, industries, salary),
     recruiter: recruiterRaw ? recruiterToDisplay(recruiterRaw) : null,
     raw,
   };
@@ -133,17 +176,21 @@ export function buildNetworkProspectCard(
     location: job.location,
     salary: job.salary,
     jobType: job.jobType,
-    remote: job.remoteOption?.toLowerCase().includes("remote") ? true : job.remoteOption?.toLowerCase().includes("on-site") ? false : null,
+    remote: job.remoteOption?.toLowerCase().includes("remote")
+      ? true
+      : job.remoteOption?.toLowerCase().includes("on-site")
+        ? false
+        : null,
     description: aiDescription || null,
     jobSummary: job.recruiterNotes ?? undefined,
-    tags: ["Recruiter network", job.networkStatus ?? "network"].filter(Boolean),
+    tags: ["Recruiter network", job.networkStatusLabel ?? job.networkStatus ?? "network"].filter(Boolean),
     networkJob: {
       externalId: job.externalId,
       networkId: job.networkId,
       topEchelonUrl: job.topEchelonUrl,
       recruiterNotes: job.recruiterNotes,
       fee: job.fee,
-      networkStatus: job.networkStatus,
+      networkStatus: job.networkStatusLabel ?? job.networkStatus,
       adminDetails: job.adminDetails,
       recruiter: job.recruiter,
     },
@@ -176,10 +223,10 @@ export function previewPlainText(text: string | null | undefined, maxLen = 160):
 
 export const SEED_NETWORK_JOBS: NetworkJobListing[] = SEED_RAW_NETWORK_JOBS.map(interpretNetworkJob);
 
+/** @deprecated use sharedAtLabel / sharedAtRelative from listing */
 export function formatSharedLabel(iso: string | null): string {
-  if (!iso) return "Unknown";
-  const days = daysSince(iso);
-  if (days === 0) return "Today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
+  if (!iso) return "Share date unknown";
+  return formatNetworkSharedDate(iso).cardLabel;
 }
+
+export { COMPENSATION_BAND_LABELS };

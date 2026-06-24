@@ -51,7 +51,7 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
     remote_option: "Hybrid",
     fee: 20000,
     fee_type: "flat",
-    network_status: "active",
+    network_status: "on_hold",
     most_recently_shared_at: "2026-06-15T09:10:00.000Z",
     description:
       "<p>Growth-stage B2B SaaS company hiring a <strong>Key Account Manager</strong> for Western US strategic accounts.</p><p><strong>Responsibilities:</strong></p><ul><li>Own 8–12 enterprise accounts ($500K–$2M ARR)</li><li>Drive renewals, upsells, and executive QBRs</li><li>Partner with CS and Product on outcomes</li></ul><p><strong>Profile:</strong> 7+ years enterprise AM/CS; seven-figure account growth track record; Sacramento hybrid.</p><p>OTE $230K–$250K + equity.</p>",

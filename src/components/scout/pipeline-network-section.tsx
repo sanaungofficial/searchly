@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NetworkJobListing } from "@/lib/network-job-display";
-import { SEED_NETWORK_JOBS, formatSharedLabel, previewPlainText } from "@/lib/network-job-display";
+import { SEED_NETWORK_JOBS, previewPlainText } from "@/lib/network-job-display";
+import {
+  EMPTY_NETWORK_JOB_FILTERS,
+  buildNetworkJobFilterOptions,
+  filterNetworkJobs,
+} from "@/lib/network-job-filters";
+import { NetworkJobFilterPanel } from "./network-job-filter-panel";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -25,6 +31,11 @@ function NetworkJobCard({
 }) {
   const company = job.companyName ?? job.recruiter?.agencyName ?? "Confidential employer";
   const summary = previewPlainText(job.description);
+  const shareLabel = job.sharedAt
+    ? job.sharedAtRelative
+      ? `Shared ${job.sharedAtLabel} · ${job.sharedAtRelative}`
+      : `Shared ${job.sharedAtLabel}`
+    : null;
 
   return (
     <ScoutBox stack padding={18} style={{ borderTop: "3px solid rgba(196,168,106,0.55)" }}>
@@ -58,9 +69,9 @@ function NetworkJobCard({
             >
               Recruiter network
             </span>
-            {job.networkStatus && (
+            {job.networkStatusLabel && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>
-                {job.networkStatus}
+                {job.networkStatusLabel}
               </span>
             )}
             {job.networkId && (
@@ -69,13 +80,20 @@ function NetworkJobCard({
           </div>
 
           <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.positionTitle}</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
             {company}
             {job.location ? ` · ${job.location}` : ""}
-            {job.sharedAt ? ` · ${formatSharedLabel(job.sharedAt)}` : ""}
           </p>
+          {shareLabel && (
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 8px" }}>{shareLabel}</p>
+          )}
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: summary ? 10 : 0 }}>
+            {job.industries.map((industry) => (
+              <span key={industry} style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                {industry}
+              </span>
+            ))}
             {job.jobType && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                 {job.jobType}
@@ -132,6 +150,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   const [jobs, setJobs] = useState<NetworkJobListing[]>(SEED_NETWORK_JOBS);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [filters, setFilters] = useState(EMPTY_NETWORK_JOB_FILTERS);
+  const [wideLayout, setWideLayout] = useState(false);
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -152,6 +172,17 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
     void loadJobs();
   }, [loadJobs]);
 
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 960px)");
+    const update = () => setWideLayout(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const filterOptions = useMemo(() => buildNetworkJobFilterOptions(jobs), [jobs]);
+  const visibleJobs = useMemo(() => filterNetworkJobs(jobs, filters), [jobs, filters]);
+
   return (
     <div style={{ padding: "32px 36px 48px" }}>
       <div style={{ marginBottom: 28 }}>
@@ -163,7 +194,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
           In-network & second-tier roles
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Shared privately through Top Echelon Big Biller — not public job boards. Open a role for the full pipeline drawer with match tools, recruiter profile, and TE link.
+          Shared privately through Top Echelon Big Biller — not public job boards. Filter by location, industry, status, and compensation. Open a role for the full pipeline drawer with match tools, recruiter profile, and TE link.
         </p>
       </div>
 
@@ -172,19 +203,59 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
           <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>Loading network roles…</p>
         </ScoutBox>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {jobs.map((job) => (
-            <NetworkJobCard
-              key={job.id}
-              job={job}
-              onOpen={() => onOpenJob(job)}
-              onSave={onSaveJob ? () => {
-                setSavingId(job.id);
-                onSaveJob(job).finally(() => setSavingId(null));
-              } : undefined}
-              saving={savingId === job.id}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: wideLayout ? "minmax(0, 1fr) 280px" : "1fr",
+            gap: 20,
+            alignItems: "start",
+          }}
+        >
+          <div>
+            {!wideLayout && (
+              <NetworkJobFilterPanel
+                filters={filters}
+                options={filterOptions}
+                totalCount={jobs.length}
+                filteredCount={visibleJobs.length}
+                onChange={setFilters}
+              />
+            )}
+
+            {visibleJobs.length === 0 ? (
+              <ScoutBox style={{ padding: 48, textAlign: "center" }}>
+                <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
+                  No roles match these filters. Try clearing a filter or broadening your search.
+                </p>
+              </ScoutBox>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {visibleJobs.map((job) => (
+                  <NetworkJobCard
+                    key={job.id}
+                    job={job}
+                    onOpen={() => onOpenJob(job)}
+                    onSave={onSaveJob ? () => {
+                      setSavingId(job.id);
+                      onSaveJob(job).finally(() => setSavingId(null));
+                    } : undefined}
+                    saving={savingId === job.id}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {wideLayout && (
+            <NetworkJobFilterPanel
+              filters={filters}
+              options={filterOptions}
+              totalCount={jobs.length}
+              filteredCount={visibleJobs.length}
+              onChange={setFilters}
+              wideLayout
             />
-          ))}
+          )}
         </div>
       )}
     </div>
