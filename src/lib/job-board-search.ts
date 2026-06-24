@@ -25,7 +25,7 @@ export function buildJobBoardLinks(role: string): JobBoardLink[] {
     },
     {
       id: "google",
-      label: "Google",
+      label: "Google Jobs",
       url: `https://www.google.com/search?q=${encodeURIComponent(`${q} jobs`)}&ibp=htl;jobs`,
     },
   ];

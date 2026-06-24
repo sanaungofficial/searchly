@@ -22,6 +22,7 @@ import {
 } from "@/components/scout/screens";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
+import { normalizeJobListingUrl } from "@/lib/job-listing-url";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -254,8 +255,16 @@ export default function OnboardingPage() {
   }, [aboutYouFields, goTo]);
 
   const analyzeFirstJob = useCallback(async () => {
-    const url = jobUrl.trim();
-    if (!url) return;
+    const normalized = normalizeJobListingUrl(jobUrl);
+    if (!normalized.ok) {
+      setJobError(normalized.error);
+      return;
+    }
+    if (normalized.normalized) {
+      setJobUrl(normalized.url);
+    }
+
+    const url = normalized.url;
     setJobLoading(true);
     setJobLoadingPhase("parse");
     setJobError(null);

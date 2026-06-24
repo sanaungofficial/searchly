@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { PARSE_JOB_JSON_SHAPE, parsedJobToMeta } from "@/lib/job-meta";
+import { normalizeJobListingUrl } from "@/lib/job-listing-url";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -169,8 +170,14 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! }, select: { id: true } });
 
-  const { url } = await request.json();
-  if (!url) return NextResponse.json({ error: "URL required" }, { status: 400 });
+  const { url: rawUrl } = await request.json();
+  if (!rawUrl) return NextResponse.json({ error: "URL required" }, { status: 400 });
+
+  const normalized = normalizeJobListingUrl(String(rawUrl));
+  if (!normalized.ok) {
+    return NextResponse.json({ error: normalized.error }, { status: 422 });
+  }
+  const url = normalized.url;
 
   const anthropic = getAnthropic();
 
