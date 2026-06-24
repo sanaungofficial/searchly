@@ -709,8 +709,8 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                 disabled={streaming}
                 style={{
                   flex: 1, padding: "11px 14px",
-                  background: streaming ? "rgba(0,0,0,0.06)" : "#22C55E",
-                  color: streaming ? "var(--scout-muted)" : "#FFFFFF",
+                  background: streaming ? "rgba(0,0,0,0.06)" : "#1A3A2F",
+                  color: streaming ? "var(--scout-muted)" : "#E8D5A3",
                   border: "none", borderRadius: 0,
                   fontFamily: fontSans, fontSize: 13, fontWeight: 700,
                   cursor: streaming ? "not-allowed" : "pointer",

@@ -8,7 +8,7 @@ import { STAGE_LABELS, type KanbanCard } from "./workspace-data";
 import type { JobMeta } from "@/lib/job-meta";
 import { resolveJobDescriptionText } from "@/lib/job-meta";
 import type { DrawerTool } from "./workspace-opportunities";
-import { fontSans } from "@/lib/typography";
+import { fontSans, color } from "@/lib/typography";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditCostBadge, CreditsInlineHint, CreditsStatusBar } from "@/components/scout/credits-display";
 import { notifyCreditsChanged } from "@/lib/credits";
@@ -261,11 +261,11 @@ export function ChatWidget() {
           right: 24,
           width: 52,
           height: 52,
-          borderRadius: "50%",
+          borderRadius: 0,
           background: chatOpen ? "#1A3A2F" : "#FFFFFF",
-          border: chatPulse ? "2px solid #4A8B6A" : "1px solid rgba(26,58,47,0.15)",
+          border: chatPulse ? `2px solid ${color.forest}` : "1px solid rgba(26,58,47,0.15)",
           boxShadow: chatPulse
-            ? "0 0 0 6px rgba(74,139,106,0.25), 0 4px 16px rgba(0,0,0,0.12)"
+            ? "0 0 0 6px rgba(26,58,47,0.2), 0 4px 16px rgba(0,0,0,0.12)"
             : "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
           cursor: "pointer",
           zIndex: 90,
@@ -339,7 +339,7 @@ export function ChatWidget() {
                     style={{
                       background: "rgba(232,213,163,0.12)",
                       border: "none",
-                      borderRadius: 5,
+                      borderRadius: 0,
                       cursor: "pointer",
                       fontFamily: sans,
                       fontSize: 13,
@@ -363,7 +363,7 @@ export function ChatWidget() {
                     style={{
                       background: currentJob ? "rgba(232,213,163,0.12)" : "transparent",
                       border: "none",
-                      borderRadius: 5,
+                      borderRadius: 0,
                       cursor: currentJob ? "pointer" : "default",
                       fontFamily: sans,
                       fontSize: 13,
@@ -430,7 +430,7 @@ export function ChatWidget() {
                         style={{
                           maxWidth: "88%",
                           padding: "10px 12px",
-                          borderRadius: msg.role === "user" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
+                          borderRadius: 0,
                           background: msg.role === "user" ? "#1A3A2F" : "rgba(26,58,47,0.06)",
                           color: msg.role === "user" ? "#E8D5A3" : "#1A1A1A",
                           fontFamily: sans,
@@ -561,7 +561,7 @@ export function ChatWidget() {
                       gap: 8,
                       padding: "8px 10px",
                       background: "rgba(26,58,47,0.04)",
-                      borderRadius: 6,
+                      borderRadius: 0,
                       marginBottom: 12,
                     }}
                   >
@@ -569,7 +569,7 @@ export function ChatWidget() {
                       style={{
                         width: 24,
                         height: 24,
-                        borderRadius: 5,
+                        borderRadius: 0,
                         background: "#1A3A2F",
                         display: "flex",
                         alignItems: "center",
@@ -609,7 +609,7 @@ export function ChatWidget() {
                       width: "100%",
                       padding: "8px 10px",
                       border: "1px solid rgba(0,0,0,0.12)",
-                      borderRadius: 6,
+                      borderRadius: 0,
                       background: "#FFFFFF",
                       fontFamily: sans,
                       fontSize: 14,
@@ -719,7 +719,7 @@ function ToolButton({
         background: disabled ? "rgba(0,0,0,0.03)" : "#FFFFFF",
         color: disabled ? "var(--scout-muted)" : "#1A1A1A",
         border: "1px solid rgba(0,0,0,0.08)",
-        borderRadius: 7,
+        borderRadius: 0,
         fontFamily: sans,
         fontSize: 14,
         fontWeight: 500,

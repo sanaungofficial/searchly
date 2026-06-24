@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ScoutBox } from "./scout-box";
+import { WorkspacePageShell } from "./workspace-page-shell";
+import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
+import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type CoachTab = "clients" | "profile";
 
@@ -71,10 +75,10 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   background: "#fff",
   border: "1px solid rgba(26,58,47,0.12)",
-  borderRadius: 8,
+  borderRadius: 0,
   padding: "9px 12px",
   outline: "none",
-  fontFamily: "var(--font-ui)",
+  fontFamily: fontSans,
   boxSizing: "border-box",
   color: "#1a1a1a",
 };
@@ -85,14 +89,14 @@ const labelStyle: React.CSSProperties = {
   color: "var(--scout-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.8px",
-  fontFamily: "var(--font-dm-mono)",
+  fontFamily: fontMono,
   marginBottom: 5,
 };
 
 function StageBadge({ stage }: { stage: JobStage }) {
   const { bg, color } = STAGE_COLORS[stage] ?? STAGE_COLORS.SAVED;
   return (
-    <span style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", padding: "2px 7px", borderRadius: 4, background: bg, color }}>
+    <span style={{ fontSize: 12, fontFamily: fontMono, padding: "2px 7px", borderRadius: 0, background: bg, color }}>
       {stage.toLowerCase()}
     </span>
   );
@@ -117,7 +121,7 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
     <div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
         {value.map((t) => (
-          <span key={t} style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(26,58,47,0.08)", borderRadius: 4, padding: "2px 8px", fontSize: 13, color: "#1a3a2f" }}>
+          <span key={t} style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(26,58,47,0.08)", borderRadius: 0, padding: "2px 8px", fontSize: 13, color: "#1a3a2f" }}>
             {t}
             <button onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
           </span>
@@ -131,7 +135,7 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
           placeholder={placeholder ?? "Type and press Enter"}
           style={{ ...inputStyle, flex: 1 }}
         />
-        <button onClick={add} style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid rgba(26,58,47,0.15)", background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a3a2f", fontFamily: "var(--font-ui)" }}>Add</button>
+        <button onClick={add} style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid rgba(26,58,47,0.15)", background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a3a2f", fontFamily: fontSans }}>Add</button>
       </div>
     </div>
   );
@@ -180,7 +184,7 @@ function MyProfileTab() {
 
   if (loading) return <p style={{ color: "var(--scout-muted)", fontSize: 14, padding: "40px 0" }}>Loading…</p>;
   if (!profile) return (
-    <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: 24 }}>
+    <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: 24 }}>
       <p style={{ fontSize: 14, color: "var(--scout-muted)" }}>No coach profile found linked to your account. Contact an admin to get set up.</p>
     </div>
   );
@@ -188,8 +192,8 @@ function MyProfileTab() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 60 }}>
       {/* Basic info */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Basic Info</p>
+      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
+        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>Basic Info</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div>
             <label style={labelStyle}>Display Name *</label>
@@ -219,8 +223,8 @@ function MyProfileTab() {
       </div>
 
       {/* Headline & bio */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>About</p>
+      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
+        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>About</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={labelStyle}>Headline</label>
@@ -240,8 +244,8 @@ function MyProfileTab() {
       </div>
 
       {/* Links */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Links</p>
+      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
+        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>Links</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div>
             <label style={labelStyle}>LinkedIn URL</label>
@@ -255,8 +259,8 @@ function MyProfileTab() {
       </div>
 
       {/* Tags */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 16 }}>Background & Expertise</p>
+      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
+        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>Background & Expertise</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={labelStyle}>Firms (MBB, Big 4, etc.)</label>
@@ -281,11 +285,11 @@ function MyProfileTab() {
         <button
           onClick={save}
           disabled={saving}
-          style={{ padding: "10px 24px", background: saving ? "#d4c9b8" : "#1a3a2f", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "var(--font-ui)" }}
+          style={{ padding: "10px 24px", background: saving ? "#d4c9b8" : color.forest, color: color.gold, border: "none", borderRadius: 0, fontSize: 14, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: fontSans }}
         >
           {saving ? "Saving…" : "Save Changes"}
         </button>
-        {saved && <p style={{ fontSize: 13, color: "#2d7a50", fontFamily: "var(--font-ui)" }}>Saved ✓</p>}
+        {saved && <p style={{ fontSize: 13, color: "#2d7a50", fontFamily: fontSans }}>Saved ✓</p>}
       </div>
     </div>
   );
@@ -311,19 +315,15 @@ export function WorkspaceCoach() {
     return (c.name ?? "").toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
   });
 
-  /* Tab bar */
-  const tabBar = (
-    <div style={{ display: "inline-flex", gap: 3, background: "rgba(0,0,0,0.05)", padding: 3, borderRadius: 7, marginBottom: 24 }}>
-      {([["clients", "Clients"], ["profile", "My Profile"]] as [CoachTab, string][]).map(([id, label]) => {
-        const active = tab === id;
-        return (
-          <button key={id} onClick={() => { setTab(id); setSelected(null); }}
-            style={{ padding: "7px 18px", border: "none", borderRadius: 5, background: active ? "#fff" : "transparent", color: active ? "#1a1a1a" : "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
-            {label}
-          </button>
-        );
-      })}
-    </div>
+  const tabs = (
+    <WorkspaceSegmentTabs
+      tabs={[
+        { id: "clients" as const, label: "Clients" },
+        { id: "profile" as const, label: "My Profile" },
+      ]}
+      active={tab}
+      onChange={(id) => { setTab(id); setSelected(null); }}
+    />
   );
 
   if (loading && tab === "clients") return (
@@ -342,31 +342,28 @@ export function WorkspaceCoach() {
     const activeJobs = selected.jobs.filter((j) => activeStage(j.stage));
     const appliedJobs = selected.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
     return (
-      <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F7F5F2" }}>
-        {tabBar}
+      <WorkspacePageShell label="Coach portal" title={selected.name ?? selected.email.split("@")[0]}>
+        {tabs}
         <button onClick={() => setSelected(null)}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 13, fontFamily: "var(--font-ui)", marginBottom: 24, padding: 0 }}>
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: color.muted, fontSize: T.caption, fontFamily: fontSans, marginBottom: 24, padding: 0 }}>
           ← All Clients
         </button>
 
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
           <div>
-            <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
-              {selected.name ?? selected.email.split("@")[0]}
-            </h1>
-            <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{selected.email}</p>
-            {selected.profile?.headline && <p style={{ fontSize: 14, color: "#52493f", marginTop: 6 }}>{selected.profile.headline}</p>}
+            <p style={{ fontSize: T.caption, color: color.muted, fontFamily: fontMono, margin: "0 0 6px" }}>{selected.email}</p>
+            {selected.profile?.headline && <p style={{ fontSize: T.bodySm, color: color.stone, margin: 0 }}>{selected.profile.headline}</p>}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {selected.profile?.linkedinUrl && (
               <a href={selected.profile.linkedinUrl} target="_blank" rel="noreferrer"
-                style={{ fontSize: 13, fontFamily: "var(--font-dm-mono)", padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(26,58,47,0.15)", color: "#1a3a2f", textDecoration: "none", background: "#fff" }}>
+                style={{ fontSize: T.caption, fontFamily: fontMono, padding: "5px 12px", borderRadius: 0, border: border.line, color: color.forest, textDecoration: "none", background: surface.card }}>
                 LinkedIn ↗
               </a>
             )}
             {selected.profile?.resumeUrl && (
               <a href={selected.profile.resumeUrl} target="_blank" rel="noreferrer"
-                style={{ fontSize: 13, fontFamily: "var(--font-dm-mono)", padding: "5px 12px", borderRadius: 6, border: "1px solid rgba(26,58,47,0.15)", color: "#1a3a2f", textDecoration: "none", background: "#fff" }}>
+                style={{ fontSize: T.caption, fontFamily: fontMono, padding: "5px 12px", borderRadius: 0, border: border.line, color: color.forest, textDecoration: "none", background: surface.card }}>
                 Resume ↗
               </a>
             )}
@@ -380,23 +377,23 @@ export function WorkspaceCoach() {
             { label: "Applied / In Process", value: appliedJobs.length },
             { label: "Tailored Resumes", value: selected._count.tailoredResumes },
           ].map(({ label, value }) => (
-            <div key={label} style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "14px 18px" }}>
-              <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
-              <p style={{ fontSize: 24, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)", lineHeight: 1 }}>{value}</p>
-            </div>
+            <ScoutBox key={label} padding="14px 18px">
+              <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 6, marginTop: 0 }}>{label}</p>
+              <p style={{ ...displayTitleStyle(24), margin: 0 }}>{value}</p>
+            </ScoutBox>
           ))}
         </div>
 
         {selected.profile && (selected.profile.targetRoles.length > 0 || selected.profile.targetSalary) && (
-          <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px", marginBottom: 20 }}>
-            <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 10 }}>Targets</p>
+          <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px", marginBottom: 20 }}>
+            <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 10 }}>Targets</p>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
               {selected.profile.targetRoles.length > 0 && (
                 <div>
                   <p style={{ fontSize: 13, color: "var(--scout-muted)", marginBottom: 4 }}>Roles</p>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {selected.profile.targetRoles.map((r) => (
-                      <span key={r} style={{ fontSize: 13, background: "rgba(26,58,47,0.06)", color: "#1a3a2f", padding: "2px 8px", borderRadius: 4 }}>{r}</span>
+                      <span key={r} style={{ fontSize: 13, background: "rgba(26,58,47,0.06)", color: "#1a3a2f", padding: "2px 8px", borderRadius: 0 }}>{r}</span>
                     ))}
                   </div>
                 </div>
@@ -411,9 +408,9 @@ export function WorkspaceCoach() {
           </div>
         )}
 
-        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+        <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           <div style={{ padding: "14px 20px", borderBottom: "1px solid #f0ece6" }}>
-            <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)" }}>Job Pipeline ({selected.jobs.length})</p>
+            <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono }}>Job Pipeline ({selected.jobs.length})</p>
           </div>
           {selected.jobs.length === 0 ? (
             <p style={{ padding: "24px 20px", color: "var(--scout-muted)", fontSize: 14 }}>No jobs tracked yet.</p>
@@ -422,7 +419,7 @@ export function WorkspaceCoach() {
               <thead>
                 <tr style={{ borderBottom: "1px solid #f0ece6" }}>
                   {["Company", "Role", "Stage", "Added"].map((h, i) => (
-                    <th key={h} style={{ padding: "9px 20px", textAlign: i === 3 ? "right" : "left", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", fontWeight: 400 }}>{h}</th>
+                    <th key={h} style={{ padding: "9px 20px", textAlign: i === 3 ? "right" : "left", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, fontWeight: 400 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -432,24 +429,20 @@ export function WorkspaceCoach() {
                     <td style={{ padding: "9px 20px", fontWeight: 500, color: "#1a1a1a" }}>{j.company}</td>
                     <td style={{ padding: "9px 20px", color: "#52493f" }}>{j.role}</td>
                     <td style={{ padding: "9px 20px" }}><StageBadge stage={j.stage} /></td>
-                    <td style={{ padding: "9px 20px", textAlign: "right", fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{formatDate(j.createdAt)}</td>
+                    <td style={{ padding: "9px 20px", textAlign: "right", fontSize: 13, color: "var(--scout-muted)", fontFamily: fontMono }}>{formatDate(j.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-      </div>
+      </WorkspacePageShell>
     );
   }
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F7F5F2" }}>
-      <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 600, color: "#1a1a1a", marginBottom: 20 }}>
-        {tab === "clients" ? "Clients" : "My Profile"}
-      </h1>
-
-      {tabBar}
+    <WorkspacePageShell label="Coach portal" title={tab === "clients" ? "Clients" : "My Profile"}>
+      {tabs}
 
       {tab === "profile" ? (
         <MyProfileTab />
@@ -462,16 +455,16 @@ export function WorkspaceCoach() {
               { label: "With Jobs", value: clients.filter((c) => c._count.jobs > 0).length },
               { label: "In Interviews", value: clients.filter((c) => c.jobs.some((j) => j.stage === "INTERVIEWING")).length },
             ].map(({ label, value }) => (
-              <div key={label} style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "14px 18px" }}>
-                <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
-                <p style={{ fontSize: 24, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)", lineHeight: 1 }}>{value}</p>
-              </div>
+              <ScoutBox key={label} padding="14px 18px">
+                <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 6, marginTop: 0 }}>{label}</p>
+                <p style={{ ...displayTitleStyle(24), margin: 0 }}>{value}</p>
+              </ScoutBox>
             ))}
           </div>
 
           <div style={{ marginBottom: 16 }}>
             <input type="text" placeholder="Search clients…" value={search} onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", fontSize: 14, background: "#fff", border: "1px solid rgba(26,58,47,0.12)", borderRadius: 8, padding: "9px 14px", outline: "none", fontFamily: "var(--font-ui)", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, background: surface.card, border: border.line, borderRadius: 0, padding: "9px 14px", outline: "none", fontFamily: fontSans, boxSizing: "border-box" }} />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -481,26 +474,26 @@ export function WorkspaceCoach() {
               const hasOffer = client.jobs.some((j) => j.stage === "OFFER");
               return (
                 <button key={client.id} onClick={() => setSelected(client)}
-                  style={{ background: "#fff", borderRadius: 10, border: `1px solid ${hasOffer ? "rgba(5,150,105,0.3)" : inInterview ? "rgba(124,58,237,0.2)" : "rgba(26,58,47,0.08)"}`, padding: "16px 20px", cursor: "pointer", textAlign: "left", transition: "box-shadow 0.15s", width: "100%" }}
+                  style={{ background: "#fff", borderRadius: 0, border: `1px solid ${hasOffer ? "rgba(5,150,105,0.3)" : inInterview ? "rgba(124,58,237,0.2)" : "rgba(26,58,47,0.08)"}`, padding: "16px 20px", cursor: "pointer", textAlign: "left", transition: "box-shadow 0.15s", width: "100%" }}
                   onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.06)")}
                   onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                         <p style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 14 }}>{client.name ?? client.email.split("@")[0]}</p>
-                        {hasOffer && <span style={{ fontSize: 12, background: "rgba(5,150,105,0.1)", color: "#059669", padding: "1px 7px", borderRadius: 4, fontFamily: "var(--font-dm-mono)" }}>offer</span>}
-                        {inInterview && !hasOffer && <span style={{ fontSize: 12, background: "rgba(124,58,237,0.1)", color: "#7c3aed", padding: "1px 7px", borderRadius: 4, fontFamily: "var(--font-dm-mono)" }}>interviewing</span>}
+                        {hasOffer && <span style={{ fontSize: 12, background: "rgba(5,150,105,0.1)", color: "#059669", padding: "1px 7px", borderRadius: 0, fontFamily: fontMono }}>offer</span>}
+                        {inInterview && !hasOffer && <span style={{ fontSize: 12, background: "rgba(124,58,237,0.1)", color: "#7c3aed", padding: "1px 7px", borderRadius: 0, fontFamily: fontMono }}>interviewing</span>}
                       </div>
-                      <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>{client.email}</p>
+                      <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: fontMono }}>{client.email}</p>
                       {client.profile?.headline && <p style={{ fontSize: 13, color: "#52493f", marginTop: 4 }}>{client.profile.headline}</p>}
                     </div>
                     <div style={{ display: "flex", gap: 16, flexShrink: 0, marginLeft: 16 }}>
                       <div style={{ textAlign: "right" }}>
-                        <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{client._count.jobs}</p>
+                        <p style={{ fontSize: 20, fontWeight: 600, color: color.ink, fontFamily: fontSans, margin: 0 }}>{client._count.jobs}</p>
                         <p style={{ fontSize: 12, color: "var(--scout-muted)" }}>jobs</p>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{activeJobs.length}</p>
+                        <p style={{ fontSize: 20, fontWeight: 600, color: color.ink, fontFamily: fontSans, margin: 0 }}>{activeJobs.length}</p>
                         <p style={{ fontSize: 12, color: "var(--scout-muted)" }}>active</p>
                       </div>
                     </div>
@@ -508,7 +501,7 @@ export function WorkspaceCoach() {
                   {client.jobs.length > 0 && (
                     <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                       {client.jobs.slice(0, 4).map((j) => (
-                        <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 5, background: "#faf8f5", borderRadius: 5, padding: "3px 8px" }}>
+                        <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 5, background: "#faf8f5", borderRadius: 0, padding: "3px 8px" }}>
                           <span style={{ fontSize: 13, color: "#3d3530" }}>{j.company}</span>
                           <StageBadge stage={j.stage} />
                         </div>
@@ -523,6 +516,6 @@ export function WorkspaceCoach() {
           </div>
         </>
       )}
-    </div>
+    </WorkspacePageShell>
   );
 }

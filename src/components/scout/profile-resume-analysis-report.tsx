@@ -214,7 +214,7 @@ export function ResumeAnalysisReportDrawer({
           ) : error ? (
             <div style={{ padding: 20, textAlign: "center" }}>
               <p style={{ fontSize: 14, color: JR.muted, marginBottom: 12 }}>{error}</p>
-              <button type="button" onClick={onRefresh} style={{ padding: "8px 16px", background: JR.green, color: "#FFF", border: "none", borderRadius: 8, cursor: "pointer" }}>
+              <button type="button" onClick={onRefresh} style={{ padding: "8px 16px", background: JR.green, color: JR.gold, border: "none", borderRadius: 0, cursor: "pointer" }}>
                 Retry analysis
               </button>
             </div>
@@ -224,7 +224,7 @@ export function ResumeAnalysisReportDrawer({
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
                 <HexGradeBadge grade={report.grade} />
                 <div>
-                  <span style={{ display: "inline-block", padding: "3px 10px", background: "#FEF3C7", color: "#92400E", borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
+                  <span style={{ display: "inline-block", padding: "3px 10px", background: "#FEF3C7", color: "#92400E", borderRadius: 0, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
                     {report.gradeLabel}
                   </span>
                   <p style={{ margin: "6px 0 0", fontSize: 13, color: JR.muted }}>Overall score {report.score}%</p>
@@ -238,7 +238,7 @@ export function ResumeAnalysisReportDrawer({
                   { count: criticalCount, label: "CRITICAL FIX", bg: "#FFEDD5", color: "#EA580C" },
                   { count: optionalCount, label: "OPTIONAL FIX", bg: "#E0F2FE", color: "#0284C7" },
                 ].map((box) => (
-                  <div key={box.label} style={{ background: box.bg, borderRadius: 10, padding: "12px 8px", textAlign: "center" }}>
+                  <div key={box.label} style={{ background: box.bg, borderRadius: 0, padding: "12px 8px", textAlign: "center" }}>
                     <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: box.color }}>{box.count}</p>
                     <p style={{ margin: "4px 0 0", fontSize: 9, fontWeight: 700, letterSpacing: 0.4, color: box.color }}>{box.label}</p>
                   </div>
@@ -247,7 +247,7 @@ export function ResumeAnalysisReportDrawer({
 
               {/* Summary */}
               {aiUnavailable && report.issues.length > 0 && (
-                <p style={{ fontSize: 12, color: JR.muted, margin: "0 0 12px", padding: "10px 12px", background: JR.bg, borderRadius: 8 }}>
+                <p style={{ fontSize: 12, color: JR.muted, margin: "0 0 12px", padding: "10px 12px", background: JR.bg, borderRadius: 0 }}>
                   AI analysis unavailable — showing completeness-based feedback. Re-analyze on production for full AI insights.
                 </p>
               )}
@@ -266,7 +266,7 @@ export function ResumeAnalysisReportDrawer({
                       key={`${item.title}-${i}`}
                       style={{
                         border: `1px solid ${JR.border}`,
-                        borderRadius: 10,
+                        borderRadius: 0,
                         padding: "14px 16px",
                         marginBottom: 10,
                         background: JR.panel,
@@ -291,7 +291,7 @@ export function ResumeAnalysisReportDrawer({
                             padding: "6px 12px",
                             background: JR.panel,
                             border: `1px solid ${JR.border}`,
-                            borderRadius: 6,
+                            borderRadius: 0,
                             fontSize: 12,
                             color: JR.text,
                             cursor: "pointer",
@@ -323,7 +323,7 @@ export function ResumeAnalysisReportDrawer({
                 background: JR.green,
                 color: "#FFFFFF",
                 border: "none",
-                borderRadius: 10,
+                borderRadius: 0,
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -353,7 +353,7 @@ export function GradeBadgeRow({
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
       <HexGradeBadge grade={grade} size={48} />
       <div>
-        <span style={{ display: "inline-block", padding: "3px 10px", background: "#FEF3C7", color: "#92400E", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+        <span style={{ display: "inline-block", padding: "3px 10px", background: "#FEF3C7", color: "#92400E", borderRadius: 0, fontSize: 11, fontWeight: 700 }}>
           {label}
         </span>
         <button

@@ -263,18 +263,18 @@ function PriorityBadge({ value, onChange }: { value: string; onChange: (v: strin
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-  const color = value === "HIGH" ? { bg: "#fef2f2", text: "#dc2626" } : value === "MEDIUM" ? { bg: "#fffbeb", text: "#d97706" } : value === "LOW" ? { bg: "#f0fdf4", text: "#16a34a" } : { bg: "#f3f4f6", text: "#6b7280" };
+  const priorityColors = value === "HIGH" ? { bg: "#fef2f2", text: "#dc2626" } : value === "MEDIUM" ? { bg: "#fffbeb", text: "#d97706" } : value === "LOW" ? { bg: "rgba(26,58,47,0.08)", text: color.forest } : { bg: surface.inset, text: color.muted };
   function handleOpen() {
     if (btnRef.current) { const r = btnRef.current.getBoundingClientRect(); setCoords({ top: r.bottom + 4, left: r.left }); }
     setOpen((o) => !o);
   }
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
-      <button ref={btnRef} onClick={handleOpen} style={{ background: color.bg, color: color.text, border: "none", borderRadius: 0, padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
+      <button ref={btnRef} onClick={handleOpen} style={{ background: priorityColors.bg, color: priorityColors.text, border: "none", borderRadius: 0, padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
       {open && (
-        <div style={{ position: "fixed", top: coords.top, left: coords.left, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}>
+        <div style={{ position: "fixed", top: coords.top, left: coords.left, background: surface.card, border: border.line, borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}>
           {["HIGH", "MEDIUM", "LOW", ""].map((opt) => (
-            <button key={opt || "none"} onClick={() => { onChange(opt); setOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: value === opt ? "#f3f4f6" : "transparent", border: "none", cursor: "pointer", fontSize: 14, fontWeight: opt ? 600 : 400, color: opt === "HIGH" ? "#dc2626" : opt === "MEDIUM" ? "#d97706" : opt === "LOW" ? "#16a34a" : "#6b7280" }}>{opt || "None"}</button>
+            <button key={opt || "none"} onClick={() => { onChange(opt); setOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: value === opt ? surface.inset : "transparent", border: "none", cursor: "pointer", fontSize: 14, fontWeight: opt ? 600 : 400, color: opt === "HIGH" ? "#dc2626" : opt === "MEDIUM" ? "#d97706" : opt === "LOW" ? color.forest : color.muted }}>{opt || "None"}</button>
           ))}
         </div>
       )}
@@ -324,7 +324,7 @@ function OpenRolesSummary({
     return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>No matches yet</span>;
   }
   return (
-    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#16a34a", fontWeight: 600 }}>
+    <span style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 600 }}>
       {jobCount} match{jobCount !== 1 ? "es" : ""}
     </span>
   );
@@ -367,7 +367,7 @@ function DrawerJobRow({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 2 }}>
         {match && (
-          <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 0, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
+          <span style={{ background: "rgba(26,58,47,0.08)", color: color.forest, border: border.line, borderRadius: 0, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", fontFamily: fontSans, letterSpacing: "0.03em" }}>Match</span>
         )}
         {job.url && (
           <a
@@ -513,15 +513,15 @@ function CompanyDrawer({
             ) : (
               <div>
                 {/* Description */}
-                {intel.description && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#374151", lineHeight: 1.6, margin: "0 0 14px 0" }}>{intel.description}</p>}
+                {intel.description && <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.6, margin: "0 0 14px 0" }}>{intel.description}</p>}
 
                 {/* Quick stats row */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-                  {intel.founded && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>📅 Founded {intel.founded}</span>}
-                  {intel.headquarters && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>📍 {intel.headquarters}</span>}
-                  {intel.employeeCount && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>👥 {intel.employeeCount}</span>}
-                  {intel.industry && <span style={{ background: "#f3f4f6", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>{intel.industry}</span>}
-                  {intel.glassdoorRating && <span style={{ background: "#f0fdf4", borderRadius: 0, padding: "3px 8px", fontSize: 14, color: "#16a34a", fontFamily: "var(--font-ui)", fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
+                  {intel.founded && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>📅 Founded {intel.founded}</span>}
+                  {intel.headquarters && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>📍 {intel.headquarters}</span>}
+                  {intel.employeeCount && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>👥 {intel.employeeCount}</span>}
+                  {intel.industry && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>{intel.industry}</span>}
+                  {intel.glassdoorRating && <span style={{ background: "rgba(26,58,47,0.08)", border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.forest, fontFamily: fontSans, fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
                 </div>
 
                 {/* Funding */}
@@ -542,9 +542,9 @@ function CompanyDrawer({
                     <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Leadership</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {intel.leadership.map((l, i) => (
-                        <div key={i} style={{ background: "#fff", border: "1px solid #e8e3dd", borderRadius: 0, padding: "7px 12px", minWidth: 120 }}>
-                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{l.name}</div>
-                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280" }}>{l.title}</div>
+                        <div key={i} style={{ background: surface.card, border: border.line, borderRadius: 0, padding: "7px 12px", minWidth: 120 }}>
+                          <div style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink }}>{l.name}</div>
+                          <div style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>{l.title}</div>
                         </div>
                       ))}
                     </div>
@@ -557,9 +557,9 @@ function CompanyDrawer({
                     <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Recent News</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {intel.recentNews.map((n, i) => (
-                        <div key={i} style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "8px 12px" }}>
-                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>{n.title}</div>
-                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", marginTop: 2 }}>{n.summary} <span style={{ color: "var(--scout-muted)" }}>· {n.date}</span></div>
+                        <div key={i} style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "8px 12px" }}>
+                          <div style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 500, color: color.ink }}>{n.title}</div>
+                          <div style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginTop: 2 }}>{n.summary} <span style={{ color: color.mutedLight }}>· {n.date}</span></div>
                         </div>
                       ))}
                     </div>
@@ -568,7 +568,7 @@ function CompanyDrawer({
 
                 {/* Re-enrich */}
                 <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 14, color: "#6b7280", background: "none", border: "1px solid #e5e7eb", borderRadius: 0, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)" }}>
+                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 14, color: color.muted, background: "none", border: border.line, borderRadius: 0, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: fontSans }}>
                     {enriching ? "Refreshing…" : "↻ Refresh intel"}
                   </button>
                   {company.enrichmentFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Updated {timeAgo(company.enrichmentFetchedAt)}</span>}

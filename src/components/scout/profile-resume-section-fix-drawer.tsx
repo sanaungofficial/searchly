@@ -136,7 +136,7 @@ export function ResumeSectionFixDrawer({
           </button>
           <p style={{ margin: 0, flex: 1, fontSize: 15, fontWeight: 700, color: JR.text }}>{title}</p>
           {urgentCount > 0 && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: JR.urgentBg, color: JR.urgent, fontSize: 12, fontWeight: 700 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 0, background: JR.urgentBg, color: JR.urgent, fontSize: 12, fontWeight: 700 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: JR.urgent }} />
               {urgentCount} Urgent
             </span>
@@ -152,7 +152,7 @@ export function ResumeSectionFixDrawer({
                 width: "100%",
                 textAlign: "left",
                 padding: "10px 12px",
-                borderRadius: 8,
+                borderRadius: 0,
                 border: "none",
                 cursor: "pointer",
                 background: activeIssueId === "overall" ? JR.bg : "transparent",
@@ -176,7 +176,7 @@ export function ResumeSectionFixDrawer({
                   width: "100%",
                   textAlign: "left",
                   padding: "10px 12px",
-                  borderRadius: 8,
+                  borderRadius: 0,
                   border: "none",
                   cursor: "pointer",
                   background: activeIssueId === issue.id ? JR.bg : "transparent",
@@ -207,7 +207,7 @@ export function ResumeSectionFixDrawer({
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: sev.color }} />
                       <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: JR.text }}>{issue.title}</p>
                     </div>
-                    <div style={{ background: "#FFF5F5", borderRadius: 12, padding: "18px 20px", border: `1px solid #FECACA` }}>
+                    <div style={{ background: "#FFF5F5", borderRadius: 0, padding: "18px 20px", border: `1px solid #FECACA` }}>
                       <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: JR.text }}>Issue Detected</p>
                       <p style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.55, color: JR.text }}>{issue.issueDetected}</p>
                       <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: JR.text }}>Why This Is Important</p>
@@ -219,10 +219,10 @@ export function ResumeSectionFixDrawer({
                           Was This Suggestion Helpful? <HelpCircle size={12} />
                         </span>
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button type="button" style={{ background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                          <button type="button" style={{ background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, padding: "6px 10px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                             <ThumbsUp size={12} /> Looks Great!
                           </button>
-                          <button type="button" style={{ background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                          <button type="button" style={{ background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, padding: "6px 10px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                             <ThumbsDown size={12} /> Not What I Expected
                           </button>
                         </div>

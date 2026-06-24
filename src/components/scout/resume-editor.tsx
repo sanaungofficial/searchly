@@ -295,7 +295,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         maxWidth: 1200,
         height: "90vh",
         background: "#F7F5F2",
-        borderRadius: 14,
+        borderRadius: 0,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -319,7 +319,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <button
             onClick={() => onOpenChange(false)}
-            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 5, color: "#52493F" }}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 0, color: "#52493F" }}
           >
             <X size={16} />
           </button>
@@ -332,7 +332,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {saved && (
-            <span style={{ fontSize: 14, color: "#4A8B6A", display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 14, color: "#1A3A2F", display: "flex", alignItems: "center", gap: 4 }}>
               <Check size={13} /> Saved
             </span>
           )}
@@ -343,7 +343,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               background: fitToPage ? "#1C3A2F" : "#F5F3EF",
               color: fitToPage ? "#E8D5A3" : "#52493F",
               border: "1px solid #D8D0C5",
-              borderRadius: 5,
+              borderRadius: 0,
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
@@ -358,7 +358,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               background: "#FFFFFF",
               color: "#52493F",
               border: "1px solid #D8D0C5",
-              borderRadius: 5,
+              borderRadius: 0,
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
@@ -391,7 +391,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             <div style={{ marginBottom: 20 }}>
               <div
                 style={{
-                  width: 40, height: 40, borderRadius: 8, background: "#1C3A2F",
+                  width: 40, height: 40, borderRadius: 0, background: "#1C3A2F",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   marginBottom: 10,
                 }}
@@ -405,12 +405,12 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           {/* Match score */}
           <div style={{ marginBottom: 16 }}>
             {matchLoading ? (
-              <div style={{ padding: "14px 16px", background: "#F5F3EF", borderRadius: 7, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ padding: "14px 16px", background: "#F5F3EF", borderRadius: 0, display: "flex", alignItems: "center", gap: 8 }}>
                 <Loader2 size={13} style={{ color: "var(--scout-muted)", animation: "spin 1s linear infinite" }} />
                 <span style={{ fontSize: 14, color: "#7A6E64" }}>Analyzing keyword match…</span>
               </div>
             ) : matchData ? (
-              <div style={{ padding: "14px 16px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
+              <div style={{ padding: "14px 16px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 0 }}>
                 {/* Score header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: "#52493F", textTransform: "uppercase", letterSpacing: 0.5 }}>Keyword Match</span>
@@ -423,12 +423,12 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                   </span>
                 </div>
                 {/* Score bar */}
-                <div style={{ height: 5, background: "#F0EDE8", borderRadius: 3, marginBottom: 12, overflow: "hidden" }}>
+                <div style={{ height: 5, background: "#F0EDE8", borderRadius: 0, marginBottom: 12, overflow: "hidden" }}>
                   <div style={{
                     height: "100%",
                     width: `${matchData.score}%`,
                     background: matchData.score >= 70 ? "#2E7D52" : matchData.score >= 40 ? "#D4A017" : "#C0392B",
-                    borderRadius: 3,
+                    borderRadius: 0,
                     transition: "width 0.4s ease",
                   }} />
                 </div>
@@ -446,7 +446,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           background: "#FFF0EE",
                           color: "#C0392B",
                           border: "1px solid #FADADD",
-                          borderRadius: 10,
+                          borderRadius: 0,
                         }}>{kw}</span>
                       ))}
                     </div>
@@ -466,7 +466,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           background: "#F0FAF4",
                           color: "#2E7D52",
                           border: "1px solid #C8E6D0",
-                          borderRadius: 10,
+                          borderRadius: 0,
                         }}>{kw}</span>
                       ))}
                     </div>
@@ -492,7 +492,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 background: coverOpen ? "#F5F3EF" : "#1C3A2F",
                 color: coverOpen ? "#52493F" : "#E8D5A3",
                 border: coverOpen ? "1px solid #D8D0C5" : "none",
-                borderRadius: 6,
+                borderRadius: 0,
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: coverLoading ? "wait" : "pointer",
@@ -512,7 +512,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             </button>
 
             {coverOpen && (
-              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
+              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 0 }}>
                 {coverLoading ? (
                   <p style={{ fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>Writing your cover letter…</p>
                 ) : coverLetter ? (
@@ -524,7 +524,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           padding: "4px 10px",
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
-                          borderRadius: 4,
+                          borderRadius: 0,
                           fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
@@ -541,7 +541,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           padding: "4px 10px",
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
-                          borderRadius: 4,
+                          borderRadius: 0,
                           fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
@@ -558,7 +558,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           padding: "4px 10px",
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
-                          borderRadius: 4,
+                          borderRadius: 0,
                           fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
@@ -594,7 +594,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 background: fitOpen ? "#F5F3EF" : "#2C5F8A",
                 color: fitOpen ? "#52493F" : "#DDEEFF",
                 border: fitOpen ? "1px solid #D8D0C5" : "none",
-                borderRadius: 6,
+                borderRadius: 0,
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: fitLoading ? "wait" : "pointer",
@@ -614,7 +614,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             </button>
 
             {fitOpen && (
-              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 7 }}>
+              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 0 }}>
                 {fitLoading ? (
                   <p style={{ fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>Analyzing your fit for this role…</p>
                 ) : fitAnalysis ? (
@@ -626,7 +626,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           padding: "4px 10px",
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
-                          borderRadius: 4,
+                          borderRadius: 0,
                           fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
@@ -643,7 +643,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                           padding: "4px 10px",
                           background: "#F5F3EF",
                           border: "1px solid #D8D0C5",
-                          borderRadius: 4,
+                          borderRadius: 0,
                           fontSize: 13,
                           color: "#52493F",
                           cursor: "pointer",
@@ -673,7 +673,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               padding: "14px 16px",
               background: "#FFF8F0",
               border: "1px solid #F0E8D8",
-              borderRadius: 7,
+              borderRadius: 0,
               fontSize: 14,
               color: "#7A6E64",
               lineHeight: 1.6,
@@ -716,7 +716,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 maxWidth: 720,
                 padding: "52px 60px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.10)",
-                borderRadius: 4,
+                borderRadius: 0,
                 fontSize: fitToPage ? 10 : 11,
                 lineHeight: 1.55,
                 color: "#1A1A1A",
@@ -760,7 +760,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 marginTop: 20,
                 padding: "14px 20px",
                 background: "#1C3A2F",
-                borderRadius: 8,
+                borderRadius: 0,
                 display: "flex",
                 alignItems: "center",
                 gap: 14,
@@ -769,8 +769,8 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               }}
             >
               <span style={{ fontSize: 13, color: "#E8D5A3", flex: 1 }}>AI has regenerated your resume. Accept to apply changes.</span>
-              <button onClick={acceptRegenerate} style={{ padding: "7px 16px", background: "#E8D5A3", color: "#1C3A2F", border: "none", borderRadius: 5, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Accept</button>
-              <button onClick={() => setPreviewSections(null)} style={{ padding: "7px 16px", background: "transparent", color: "#E8D5A3", border: "1px solid rgba(232,213,163,0.4)", borderRadius: 5, fontSize: 14, cursor: "pointer" }}>Discard</button>
+              <button onClick={acceptRegenerate} style={{ padding: "7px 16px", background: "#E8D5A3", color: "#1C3A2F", border: "none", borderRadius: 0, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Accept</button>
+              <button onClick={() => setPreviewSections(null)} style={{ padding: "7px 16px", background: "transparent", color: "#E8D5A3", border: "1px solid rgba(232,213,163,0.4)", borderRadius: 0, fontSize: 14, cursor: "pointer" }}>Discard</button>
             </div>
           )}
         </div>
@@ -839,7 +839,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                         width: "100%",
                         padding: "8px 10px",
                         border: "1px solid #D8D0C5",
-                        borderRadius: 5,
+                        borderRadius: 0,
                         fontSize: 14,
                         fontFamily: fontSans,
                         color: "#1A1A1A",
@@ -864,7 +864,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 padding: "8px 0",
                 background: "transparent",
                 border: "1px dashed #D8D0C5",
-                borderRadius: 5,
+                borderRadius: 0,
                 fontSize: 14,
                 color: "#6B6258",
                 cursor: "pointer",
@@ -906,7 +906,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               background: "#1C3A2F",
               color: "#E8D5A3",
               border: "none",
-              borderRadius: 6,
+              borderRadius: 0,
               fontSize: 13,
               fontWeight: 500,
               cursor: "pointer",
@@ -925,7 +925,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 left: 0,
                 background: "#FFFFFF",
                 border: "1px solid #E5DDD0",
-                borderRadius: 7,
+                borderRadius: 0,
                 boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
                 minWidth: 180,
                 overflow: "hidden",
@@ -959,10 +959,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             alignItems: "center",
             gap: 8,
             padding: "10px 20px",
-            background: "#4A8B6A",
+            background: "#1A3A2F",
             color: "#FFFFFF",
             border: "none",
-            borderRadius: 6,
+            borderRadius: 0,
             fontSize: 13,
             fontWeight: 600,
             cursor: "pointer",
