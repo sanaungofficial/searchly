@@ -10,6 +10,36 @@ export function hostnameFromUrl(url: string | null | undefined): string | null {
   }
 }
 
+/** Hosts that host job postings, not the employer — skip for logo lookup. */
+export function isJobBoardOrAtsHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^www\./, "");
+  if (host.endsWith(".myworkdayjobs.com") || host === "myworkdayjobs.com") return true;
+  if (/workday/i.test(host)) return true;
+
+  const exact = new Set([
+    "boards.greenhouse.io",
+    "jobs.lever.co",
+    "jobs.ashbyhq.com",
+    "smartrecruiters.com",
+    "icims.com",
+    "linkedin.com",
+    "indeed.com",
+    "glassdoor.com",
+    "ziprecruiter.com",
+    "monster.com",
+    "job-boards.greenhouse.io",
+  ]);
+  if (exact.has(host)) return true;
+
+  return /\.(greenhouse\.io|lever\.co|ashbyhq\.com)$/.test(host);
+}
+
+function hostnameForLogo(url: string | null | undefined): string | null {
+  const host = hostnameFromUrl(url);
+  if (!host || isJobBoardOrAtsHost(host)) return null;
+  return host;
+}
+
 /** Best domain for logo lookup — website first, then enrichment, catalog, then careers host. */
 export function extractCompanyDomain(input: {
   name?: string | null;
@@ -17,10 +47,10 @@ export function extractCompanyDomain(input: {
   careersUrl?: string | null;
   enrichmentWebsiteUrl?: string | null;
 }): string | null {
-  const fromWebsite = hostnameFromUrl(input.website);
+  const fromWebsite = hostnameForLogo(input.website);
   if (fromWebsite) return fromWebsite;
 
-  const fromEnrichment = hostnameFromUrl(input.enrichmentWebsiteUrl);
+  const fromEnrichment = hostnameForLogo(input.enrichmentWebsiteUrl);
   if (fromEnrichment) return fromEnrichment;
 
   if (input.name?.trim()) {
@@ -31,25 +61,7 @@ export function extractCompanyDomain(input: {
     }
   }
 
-  const careersHost = hostnameFromUrl(input.careersUrl);
-  if (!careersHost) return null;
-
-  const atsHosts = new Set([
-    "boards.greenhouse.io",
-    "jobs.lever.co",
-    "jobs.ashbyhq.com",
-    "myworkdayjobs.com",
-    "wd1.myworkdayjobs.com",
-    "wd3.myworkdayjobs.com",
-    "wd5.myworkdayjobs.com",
-    "smartrecruiters.com",
-    "icims.com",
-  ]);
-  if (atsHosts.has(careersHost) || careersHost.endsWith(".myworkdayjobs.com")) {
-    return null;
-  }
-
-  return careersHost;
+  return hostnameForLogo(input.careersUrl);
 }
 
 export function companyLogoUrls(domain: string): { primary: string; fallback: string } {
