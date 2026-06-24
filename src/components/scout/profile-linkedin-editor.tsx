@@ -41,7 +41,8 @@ type PhotoType = "profile" | "cover";
 type FixSectionState = {
   sectionId: LinkedInSectionId;
   entryLabel?: string;
-  mode?: "all" | "impact";
+  entryId?: string;
+  mode: "fix" | "impact";
 } | null;
 
 const liField: React.CSSProperties = {
@@ -226,6 +227,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [fixSection, setFixSection] = useState<FixSectionState>(null);
+  const [fixSuggestions, setFixSuggestions] = useState<{ id: string; label: string; text: string }[]>([]);
+  const [fixSuggestionsLoading, setFixSuggestionsLoading] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
@@ -398,8 +401,55 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     e.target.value = "";
   };
 
-  const openFix = (sectionId: LinkedInSectionId, entryLabel?: string, mode: "all" | "impact" = "all") => {
+  const openFix = (sectionId: LinkedInSectionId, entryLabel?: string, mode: "fix" | "impact" = "fix") => {
     setFixSection({ sectionId, entryLabel, mode });
+    setFixSuggestions([]);
+    if (mode === "impact") return;
+
+    setFixSuggestionsLoading(true);
+    void fetch("/api/profile/linkedin-draft/section-suggest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, entryLabel }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.suggestions)) {
+          setFixSuggestions(data.suggestions);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setFixSuggestionsLoading(false));
+  };
+
+  const applyFixSuggestion = (text: string) => {
+    if (!fixSection) return;
+    const { sectionId, entryLabel } = fixSection;
+    patchDraft((d) => {
+      if (sectionId === "headline") return { ...d, headline: text.slice(0, 120) };
+      if (sectionId === "about") return { ...d, about: text };
+      if (sectionId === "skills") {
+        return {
+          ...d,
+          skills: text.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 50),
+        };
+      }
+      if (sectionId === "experience") {
+        return {
+          ...d,
+          experience: d.experience.map((exp) => {
+            const match =
+              entryLabel &&
+              (exp.company === entryLabel || exp.title === entryLabel || `${exp.company} ${exp.title}`.includes(entryLabel));
+            return match ? { ...exp, description: text } : exp;
+          }),
+        };
+      }
+      return d;
+    });
+    void saveDraft(draftRef.current ?? undefined);
+    setFixSection(null);
+    setFixSuggestions([]);
   };
 
   const fieldStyle = (id: string, extra?: React.CSSProperties): React.CSSProperties => ({
@@ -431,7 +481,11 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     updatedAt: analysisReport.updatedAt,
   });
   const fixIssues = fixSection
-    ? getLinkedInSectionFixIssues(fixSection.sectionId, analysisReport, fixSection.mode ?? "all")
+    ? getLinkedInSectionFixIssues(
+        fixSection.sectionId,
+        { ...analysisReport, highlights: fullReport.highlights, issues: fullReport.issues },
+        fixSection.mode === "impact" ? "impact" : "all",
+      )
     : [];
 
   return (
@@ -753,7 +807,14 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         entryLabel={fixSection?.entryLabel}
         sectionTitle={fixSection ? LINKEDIN_SECTION_TITLES[fixSection.sectionId] : undefined}
         issues={fixIssues}
-        onClose={() => setFixSection(null)}
+        drawerMode={fixSection?.mode ?? "fix"}
+        suggestions={fixSuggestions}
+        suggestionsLoading={fixSuggestionsLoading}
+        onApplySuggestion={applyFixSuggestion}
+        onClose={() => {
+          setFixSection(null);
+          setFixSuggestions([]);
+        }}
       />
     </div>
   );
