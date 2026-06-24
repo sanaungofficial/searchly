@@ -2111,7 +2111,7 @@ export function WorkspaceProfile() {
     maxWidth: isMobile ? undefined : 1120,
     margin: "0 auto",
   };
-  const showReadbackHero = !!(readback || readbackLoading);
+  const showReadback = !!(readback || readbackLoading);
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
@@ -2136,12 +2136,6 @@ export function WorkspaceProfile() {
               Resume, preferences, and target roles — white boxes on cream, same as Opportunities.
             </p>
           )}
-          {showReadbackHero && (
-            <>
-              <CreditsStatusBar onUpgrade={openPricing} />
-              <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack />
-            </>
-          )}
           {profile && (() => {
             const pct = profileCompleteness(profile);
             const missing: { label: string; points: number; action: () => void }[] = [];
@@ -2157,7 +2151,7 @@ export function WorkspaceProfile() {
             if (!(profile.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: () => setPage("preferences") });
 
             return (
-              <ScoutBox style={{ marginTop: showReadbackHero ? 16 : 14 }} padding={16}>
+              <ScoutBox style={{ marginTop: 14 }} padding={16}>
                 <button
                   onClick={() => missing.length > 0 && setShowChecklist(s => !s)}
                   style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
@@ -2293,7 +2287,14 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "about" && profile && (
-          <div style={{ display: isMobile ? "block" : "flex", gap: 24, alignItems: "flex-start", paddingBottom: 40 }}>
+          <div style={{ paddingBottom: 40 }}>
+            {showReadback && (
+              <div style={{ marginBottom: isMobile ? 16 : 20 }}>
+                <CreditsStatusBar onUpgrade={openPricing} />
+                <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded />
+              </div>
+            )}
+            <div style={{ display: isMobile ? "block" : "flex", gap: 24, alignItems: "flex-start" }}>
             {!isMobile && (
               <ScoutBox padding={0} style={{ width: 196, flexShrink: 0, position: "sticky", top: 16, alignSelf: "flex-start" }}>
                 <div style={{ padding: "14px 18px", borderBottom: border.line, background: surface.inset }}>
@@ -2344,6 +2345,7 @@ export function WorkspaceProfile() {
             <AboutSectionCard section="skills" gridColumn={isMobile ? undefined : "1 / -1"} sectionRef={(el) => { sectionRefs.current.skills = el; }} padding={sectionCardPad}>
               <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
             </AboutSectionCard>
+            </div>
             </div>
           </div>
         )}
