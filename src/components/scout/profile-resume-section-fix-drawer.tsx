@@ -81,6 +81,10 @@ export function ResumeSectionFixDrawer({
   issues,
   onClose,
   sectionTitle,
+  drawerMode = "fix",
+  suggestions = [],
+  suggestionsLoading = false,
+  onApplySuggestion,
 }: {
   open: boolean;
   sectionId: ResumeSectionId | string | null;
@@ -88,6 +92,10 @@ export function ResumeSectionFixDrawer({
   issues: SectionFixIssue[];
   onClose: () => void;
   sectionTitle?: string;
+  drawerMode?: "impact" | "fix";
+  suggestions?: { id: string; label: string; text: string }[];
+  suggestionsLoading?: boolean;
+  onApplySuggestion?: (text: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
   const [activeIssueId, setActiveIssueId] = useState<string>("overall");
@@ -196,9 +204,45 @@ export function ResumeSectionFixDrawer({
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-            <p style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: JR.text }}>Check Your Issues</p>
+            <p style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: JR.text }}>
+              {drawerMode === "impact" ? "Why this matters" : "Suggested fixes"}
+            </p>
 
-            {issues.length === 0 ? (
+            {suggestionsLoading && (
+              <p style={{ fontSize: 14, color: JR.muted, marginBottom: 16 }}>Generating options…</p>
+            )}
+
+            {drawerMode === "fix" && suggestions.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: JR.text }}>Apply a suggestion</p>
+                {suggestions.map((s) => (
+                  <div key={s.id} style={{ marginBottom: 12, padding: "14px 16px", border: `1px solid ${JR.border}`, background: JR.bg }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: JR.muted }}>{s.label}</p>
+                    <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55, color: JR.text, whiteSpace: "pre-wrap" }}>{s.text}</p>
+                    {onApplySuggestion && (
+                      <button
+                        type="button"
+                        onClick={() => onApplySuggestion(s.text)}
+                        style={{
+                          padding: "8px 14px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          border: "none",
+                          borderRadius: 0,
+                          background: JR.greenDark,
+                          color: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Apply this option
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {issues.length === 0 && !suggestionsLoading && suggestions.length === 0 ? (
               <p style={{ fontSize: 14, color: JR.muted }}>No specific issues for this section yet. Run analysis for tailored feedback.</p>
             ) : (
               issues.map((issue) => {
@@ -216,8 +260,12 @@ export function ResumeSectionFixDrawer({
                       <p style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.55, color: JR.text }}>{issue.issueDetected}</p>
                       <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: JR.text }}>Why This Is Important</p>
                       <p style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.55, color: JR.muted }}>{issue.whyItMatters}</p>
-                      <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: JR.text }}>How To Improve</p>
-                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: JR.text }}>{issue.howToImprove}</p>
+                      {drawerMode === "fix" && (
+                        <>
+                          <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: JR.text }}>How To Improve</p>
+                          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: JR.text }}>{issue.howToImprove}</p>
+                        </>
+                      )}
                       <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${JR.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                         <span style={{ fontSize: 12, color: JR.muted, display: "flex", alignItems: "center", gap: 4 }}>
                           Was This Suggestion Helpful? <HelpCircle size={12} />
