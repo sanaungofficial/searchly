@@ -1,10 +1,16 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/lib/job-meta";
 import { parsedJobToMeta } from "@/lib/job-meta";
+import {
+  buildProspectKanbanCard,
+  cachedJobToMeta,
+  findPipelineCardByUrl,
+  type CachedJob,
+} from "@/lib/cached-job";
 import {
   KANBAN_STAGES,
   STAGE_LABELS,
@@ -17,7 +23,7 @@ import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
-import { fontSans, fontMono, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
+import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 export type { DrawerTool };
 
@@ -79,6 +85,13 @@ export function WorkspaceOpportunities() {
 
   // Pipeline flat-list filter
   const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>("all");
+  const [prospectJob, setProspectJob] = useState<{
+    companyName: string;
+    job: CachedJob;
+    drawerId: number;
+  } | null>(null);
+  const [prospectCard, setProspectCard] = useState<(KanbanCard & { _url?: string; _meta?: JobMeta }) | null>(null);
+  const [addingProspect, setAddingProspect] = useState(false);
 
   /* ── Add job (single URL) — calls real parse-job API ── */
   const submitAddJob = async () => {
@@ -162,6 +175,65 @@ export function WorkspaceOpportunities() {
   const closeDrawer = () => {
     setDrawerCardId(null);
     setDrawerTool(null);
+  };
+
+  const closeProspectDrawer = () => {
+    setProspectJob(null);
+    setProspectCard(null);
+    setAddingProspect(false);
+  };
+
+  const openProspectJob = useCallback(async (companyName: string, job: CachedJob) => {
+    const drawerId = -Math.abs(Date.now() % 1_000_000);
+    setProspectJob({ companyName, job, drawerId });
+    setProspectCard(buildProspectKanbanCard(companyName, job, drawerId));
+
+    try {
+      const res = await fetch("/api/companies/prospect-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job }),
+      });
+      const data = await res.json().catch(() => ({})) as { job?: CachedJob };
+      if (res.ok && data.job) {
+        setProspectJob((prev) => (prev ? { ...prev, job: data.job! } : null));
+        setProspectCard(buildProspectKanbanCard(companyName, data.job, drawerId));
+      }
+    } catch {
+      // Drawer still opens with cached snapshot.
+    }
+  }, []);
+
+  const existingProspectPipelineCard = prospectJob
+    ? findPipelineCardByUrl(kanbanCards, prospectJob.job.url)
+    : null;
+
+  const addProspectToPipeline = async () => {
+    if (!prospectJob || !prospectCard) return;
+    setAddingProspect(true);
+    try {
+      const meta = cachedJobToMeta(prospectJob.job);
+      const created = await addJob(
+        prospectJob.companyName,
+        prospectJob.job.title,
+        prospectJob.job.url ?? undefined,
+        meta
+      );
+      closeProspectDrawer();
+      if (created) {
+        setDrawerCardId(created.cardId);
+        setTab("pipeline");
+      }
+    } finally {
+      setAddingProspect(false);
+    }
+  };
+
+  const openProspectInPipeline = () => {
+    if (!existingProspectPipelineCard) return;
+    closeProspectDrawer();
+    setDrawerCardId(existingProspectPipelineCard.id);
+    setTab("pipeline");
   };
 
   return (
@@ -298,7 +370,7 @@ export function WorkspaceOpportunities() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {tab === "companies" && <WorkspaceCompanies />}
+        {tab === "companies" && <WorkspaceCompanies onOpenProspectJob={openProspectJob} />}
         {tab === "pipeline" && (
           <PipelineTab
             cards={kanbanCards}
@@ -331,6 +403,22 @@ export function WorkspaceOpportunities() {
           />
         );
       })()}
+
+      {prospectCard && prospectJob && (
+        <JobDrawer
+          card={prospectCard}
+          onClose={closeProspectDrawer}
+          moveCard={() => {}}
+          onDelete={closeProspectDrawer}
+          onCardUpdate={() => {}}
+          prospectMode
+          elevated
+          onAddToPipeline={existingProspectPipelineCard ? undefined : addProspectToPipeline}
+          addingToPipeline={addingProspect}
+          existingPipelineCardId={existingProspectPipelineCard?.id ?? null}
+          onOpenInPipeline={existingProspectPipelineCard ? openProspectInPipeline : undefined}
+        />
+      )}
     </div>
   );
 }
@@ -792,10 +880,10 @@ function PipelineTab({
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 20 }}>
-            <span style={{ fontFamily: fontDisplay, fontSize: 48, fontWeight: 600, color: color.ink, lineHeight: 1 }}>
+            <span style={displayTitleStyle(48, { lineHeight: 1 })}>
               {activeCount}
             </span>
-            <span style={{ fontFamily: fontDisplay, fontSize: 22, color: color.muted }}>/ roles</span>
+            <span style={displayTitleStyle(22, { color: color.muted, lineHeight: 1.1 })}>/ roles</span>
           </div>
           {stageCounts.map(({ stage, count }, i) => (
             <PipelineStatBar
@@ -1015,17 +1103,7 @@ function PipelineTab({
                   >
                     <CompanyLogo name={c.company} website={url} size={40} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p
-                        style={{
-                          fontFamily: fontDisplay,
-                          fontSize: T.heading,
-                          fontWeight: 500,
-                          fontVariationSettings: '"opsz" 72, "WONK" 1',
-                          color: color.ink,
-                          margin: "0 0 4px",
-                          lineHeight: 1.15,
-                        }}
-                      >
+                      <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>
                         {c.role}
                       </p>
                       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>

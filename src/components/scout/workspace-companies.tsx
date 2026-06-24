@@ -4,14 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
-import { fontSans, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
-
-interface CachedJob {
-  title: string;
-  location: string | null;
-  department: string | null;
-  url: string | null;
-}
+import type { CachedJob } from "@/lib/cached-job";
+import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 interface JobsCache {
   jobs: CachedJob[];
@@ -336,24 +330,60 @@ function OpenRolesSummary({
   );
 }
 
-function DrawerJobRow({ job, match }: { job: CachedJob; match: boolean }) {
+function DrawerJobRow({
+  job,
+  match,
+  onSelect,
+}: {
+  job: CachedJob;
+  match: boolean;
+  onSelect?: () => void;
+}) {
   return (
-    <div style={{ padding: "10px 14px", borderBottom: border.line, display: "flex", alignItems: "flex-start", gap: 10, background: match ? surface.inset : surface.card }}>
+    <div
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={onSelect}
+      onKeyDown={onSelect ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } } : undefined}
+      style={{
+        padding: "10px 14px",
+        borderBottom: border.line,
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10,
+        background: match ? surface.inset : surface.card,
+        cursor: onSelect ? "pointer" : "default",
+      }}
+      onMouseEnter={onSelect ? (e) => { e.currentTarget.style.background = "#f5f2ed"; } : undefined}
+      onMouseLeave={onSelect ? (e) => { e.currentTarget.style.background = match ? surface.inset : surface.card; } : undefined}
+    >
       <div style={{ flex: 1, minWidth: 0 }}>
-        {job.url ? (
-          <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", display: "block" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
-        ) : (
-          <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>{job.title}</span>
-        )}
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a", display: "block" }}>{job.title}</span>
         {(job.department || job.location) && (
           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", marginTop: 2 }}>
             {[job.department, job.location].filter(Boolean).join(" · ")}
           </div>
         )}
       </div>
-      {match && (
-        <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, marginTop: 2, fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
-      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 2 }}>
+        {match && (
+          <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: 4, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", fontFamily: "var(--font-ui)", letterSpacing: "0.03em" }}>Match</span>
+        )}
+        {job.url && (
+          <a
+            href={job.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open job posting"
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#6b7280", textDecoration: "none", padding: "2px 4px" }}
+            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+          >
+            ↗
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -385,6 +415,7 @@ function CompanyDrawer({
   onPatch,
   onRefreshed,
   onRemove,
+  onOpenJob,
 }: {
   company: TrackedCompany;
   userTargetRoles: string[];
@@ -392,6 +423,7 @@ function CompanyDrawer({
   onPatch: (id: string, field: Field, value: string) => void;
   onRefreshed: (updated: TrackedCompany) => void;
   onRemove: (id: string) => void;
+  onOpenJob?: (job: CachedJob) => void;
 }) {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -576,7 +608,12 @@ function CompanyDrawer({
                   <div>
                     <div style={{ border: border.line, borderRadius: 0, overflow: "hidden" }}>
                       {matchingJobs.map((job, i) => (
-                        <DrawerJobRow key={`m-${i}-${job.title}`} job={job} match />
+                        <DrawerJobRow
+                          key={`m-${i}-${job.url ?? job.title}`}
+                          job={job}
+                          match
+                          onSelect={onOpenJob ? () => onOpenJob(job) : undefined}
+                        />
                       ))}
                     </div>
                     {company.careersUrl && (
@@ -649,7 +686,11 @@ function CompanyDrawer({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function WorkspaceCompanies() {
+export function WorkspaceCompanies({
+  onOpenProspectJob,
+}: {
+  onOpenProspectJob?: (companyName: string, job: CachedJob) => void;
+}) {
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -904,7 +945,7 @@ export function WorkspaceCompanies() {
                           borderRadius={7}
                         />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontFamily: fontDisplay, fontSize: T.body, fontWeight: 500, color: color.ink }}>{c.name}</div>
+                          <div style={displayTitleStyle(T.body, { lineHeight: 1.2 })}>{c.name}</div>
                           {subtitle && (
                             <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", marginTop: 2 }}>{subtitle}</div>
                           )}
@@ -943,6 +984,7 @@ export function WorkspaceCompanies() {
           onPatch={patchField}
           onRefreshed={handleRefreshed}
           onRemove={handleRemove}
+          onOpenJob={onOpenProspectJob ? (job) => onOpenProspectJob(selectedCompany.name, job) : undefined}
         />
       )}
     </div>

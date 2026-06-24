@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
 import type { ParsedResumeData } from "@/lib/resume-parse";
-import { fontSans, color, surface, border } from "@/lib/typography";
+import { fontSans, color, surface, border, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox } from "./scout-box";
 
 const sans = fontSans;
@@ -192,7 +192,7 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
           <span style={{ color: color.forest, display: "flex" }}>
             <IconPeople />
           </span>
-          <h3 style={{ fontFamily: sans, fontSize: 18, fontWeight: 700, color: color.ink, margin: 0 }}>
+          <h3 style={displayTitleStyle(18)}>
             Insider Connection @{companyName}
           </h3>
         </div>
@@ -243,7 +243,7 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
       </div>
 
       <div>
-        <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: "0 0 10px" }}>Find Any Email</p>
+        <p style={displayTitleStyle(15, { margin: "0 0 10px" })}>Find Any Email</p>
         <form onSubmit={handleFindEmail} style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
           <input
             type="url"

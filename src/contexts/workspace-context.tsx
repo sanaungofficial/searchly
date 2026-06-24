@@ -24,7 +24,7 @@ interface WorkspaceContextValue {
   authChecked: boolean;
   kanbanCards: KanbanCard[];
   setKanbanCards: React.Dispatch<React.SetStateAction<KanbanCard[]>>;
-  addJob: (company: string, role: string, url?: string, meta?: JobMeta) => Promise<void>;
+  addJob: (company: string, role: string, url?: string, meta?: JobMeta) => Promise<{ id: string; cardId: number } | null>;
   updateStage: (cardId: number, stage: KanbanStage) => Promise<void>;
   removeJob: (cardId: number) => Promise<void>;
   drawerCardId: number | null;

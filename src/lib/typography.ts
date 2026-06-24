@@ -1,8 +1,13 @@
 /** Kimchi typography — Source Sans 3 UI + Fraunces display */
 
+import type { CSSProperties } from "react";
+
 export const fontSans = "var(--font-ui)";
 export const fontDisplay = "var(--font-display)";
 export const fontMono = "var(--font-mono-ui)";
+
+/** Fraunces editorial variation — match Citebound mockup */
+export const displayVariation = '"opsz" 72, "WONK" 1' as const;
 
 export const color = {
   ink: "#1A1A1A",
@@ -13,6 +18,20 @@ export const color = {
   gold: "#E8D5A3",
   cream: "#F7F5F2",
 } as const;
+
+export function displayTitleStyle(size: number, overrides?: CSSProperties): CSSProperties {
+  return {
+    fontFamily: fontDisplay,
+    fontSize: size,
+    fontWeight: 500,
+    fontVariationSettings: displayVariation,
+    color: color.ink,
+    margin: 0,
+    lineHeight: size >= 34 ? 0.94 : size >= 22 ? 1.12 : 1.2,
+    letterSpacing: size >= 34 ? "-0.035em" : size >= 22 ? "-0.015em" : "-0.01em",
+    ...overrides,
+  };
+}
 
 /** Citebound-style surfaces — cream page, white cards */
 export const surface = {

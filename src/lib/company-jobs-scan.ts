@@ -18,13 +18,9 @@ import {
   filterMatchingJobs,
   hasMatchRoles,
 } from "@/lib/job-match";
+import type { CachedJob } from "@/lib/cached-job";
 
-export type CachedJob = {
-  title: string;
-  location: string | null;
-  department: string | null;
-  url: string | null;
-};
+export type { CachedJob };
 
 export type JobsCacheSource = "hirebase" | "ai_scrape";
 
