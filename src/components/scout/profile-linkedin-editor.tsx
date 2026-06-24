@@ -318,7 +318,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {saveHint && (
-            <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#4A8B6A", alignSelf: "center" }}>
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#1A3A2F", alignSelf: "center" }}>
               {saveHint}
             </span>
           )}
@@ -384,12 +384,12 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
           <div
             style={{
               background: LI.bg,
-              borderRadius: 12,
+              borderRadius: 0,
               padding: isMobile ? 12 : 16,
               border: `1px solid ${LI.border}`,
             }}
           >
-            <div style={{ background: LI.card, borderRadius: 8, overflow: "hidden", boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: 0, overflow: "hidden", boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <div
                 style={{
                   position: "relative",
@@ -478,7 +478,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             </div>
 
             {/* About */}
-            <div style={{ background: LI.card, borderRadius: 8, marginTop: 8, padding: isMobile ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: isMobile ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: "0 0 12px", color: LI.text }}>About</h4>
               <textarea
                 value={draft.about}
@@ -501,7 +501,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             </div>
 
             {/* Experience */}
-            <div style={{ background: LI.card, borderRadius: 8, marginTop: 8, padding: isMobile ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: isMobile ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: "0 0 16px", color: LI.text }}>Experience</h4>
               {draft.experience.map((exp, idx) => (
                 <div key={exp.id} style={{ marginBottom: idx < draft.experience.length - 1 ? 24 : 0, paddingBottom: idx < draft.experience.length - 1 ? 24 : 0, borderBottom: idx < draft.experience.length - 1 ? `1px solid ${LI.border}` : undefined }}>
@@ -554,7 +554,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
 
             {/* Skills */}
             {draft.skills.length > 0 && (
-              <div style={{ background: LI.card, borderRadius: 8, marginTop: 8, padding: isMobile ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+              <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: isMobile ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
                 <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: "0 0 12px", color: LI.text }}>Skills</h4>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {draft.skills.map((skill) => (
@@ -623,8 +623,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                         flexShrink: 0,
                         fontSize: 12,
                         padding: "6px 12px",
-                        background: copiedId === item.id ? "rgba(74,139,106,0.1)" : surface.card,
-                        color: copiedId === item.id ? "#4A8B6A" : color.forest,
+                        background: copiedId === item.id ? "rgba(26,58,47,0.08)" : surface.card,
+                        color: copiedId === item.id ? "#1A3A2F" : color.forest,
                       }}
                     >
                       {copiedId === item.id ? "Copied" : item.imageUrl ? "Copy URL" : "Copy"}

@@ -548,7 +548,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         style={{
                           height: "100%",
                           width: `${Math.min(100, (credits.used / credits.limit) * 100)}%`,
-                          background: credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#4A8B6A",
+                          background: credits.remaining <= 0 ? "#C4574A" : credits.remaining <= 3 ? "#C4A86A" : "#1A3A2F",
                           borderRadius: 4,
                           transition: "width 0.3s ease",
                         }}
@@ -599,7 +599,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       "Priority support",
                     ].map((feat) => (
                       <div key={feat} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4A8B6A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1A3A2F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         <span style={{ fontSize: 14, color: "#52493F" }}>{feat}</span>

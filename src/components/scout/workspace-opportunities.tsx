@@ -729,7 +729,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
                   </span>
                 )}
                 {typeof analysis.salary === "string" && analysis.salary && (
-                  <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.1)", borderRadius: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(26,58,47,0.08)", borderRadius: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
                     {analysis.salary}
                   </span>
                 )}
@@ -1068,8 +1068,8 @@ function PipelineTab({
                           </span>
                         )}
                         {meta?.nextStep && (
-                          <div style={{ marginTop: 6, padding: "4px 7px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 4, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#4A8B6A"}` }}>
-                            <p style={{ fontFamily: fontSans, fontSize: T.label, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
+                          <div style={{ marginTop: 6, padding: "4px 7px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 0, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#1A3A2F"}` }}>
+                            <p style={{ fontFamily: fontSans, fontSize: T.label, color: isOverdue ? "#C4574A" : "#1A3A2F", fontWeight: 500 }}>
                               {isOverdue ? "⚠ " : "→ "}{meta.nextStep}
                             </p>
                           </div>
