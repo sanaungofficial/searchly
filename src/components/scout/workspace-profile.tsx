@@ -725,11 +725,11 @@ function DreamRoleTab({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dreamList, roleAnalyses, targetRoleSettings, resumeAssets, userSkills]);
 
-  const fetchAnalysis = async (role: string, force = false) => {
-    const assetId = resumeIdForRole(role);
+  const fetchAnalysis = async (role: string, force = false, resumeAssetIdOverride?: string | null) => {
+    const assetId = resumeAssetIdOverride ?? resumeIdForRole(role);
     if (!assetId && !hasResume) return;
 
-    const stored = storedForRole(role);
+    const stored = getStoredRoleAnalysis(roleAnalyses, role, assetId);
     if (!force && stored) {
       setAnalysis((prev) => ({ ...prev, [role]: viewFromStored(stored, role) }));
       return;
@@ -746,51 +746,53 @@ function DreamRoleTab({
       if (force) params.set("force", "true");
       if (assetId) params.set("assetId", assetId);
       const res = await fetch(`/api/ai/role-gap?${params.toString()}`);
-      const data = await res.json();
-      if (data.error) {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
         const message =
-          data.error === "AI not configured"
-            ? "Full AI analysis needs production — we could not parse your resume for a preview."
-            : data.error;
+          typeof data.error === "string"
+            ? data.error === "AI not configured"
+              ? "Full AI analysis needs production — we could not parse your resume for a preview."
+              : data.error
+            : `Analysis failed (${res.status}). Tap to retry.`;
         setAnalysisErrors((prev) => ({ ...prev, [role]: message }));
         if (stored) {
           setAnalysis((prev) => ({ ...prev, [role]: viewFromStored(stored, role) }));
         } else {
           setAnalysis((prev) => ({ ...prev, [role]: "error" }));
         }
-      } else {
-        const storedResult: StoredRoleAnalysis = {
-          fitScore: data.fitScore,
-          summary: data.summary,
-          requiredSkills: data.requiredSkills ?? [],
-          gaps: data.gaps ?? [],
-          nextSteps: data.nextSteps ?? [],
-          analyzedAt: data.analyzedAt ?? new Date().toISOString(),
-          resumeFingerprint: data.resumeFingerprint ?? "",
-          resumeAssetId: data.resumeAssetId ?? assetId,
-        };
-        onRoleAnalysisUpdate(role, storedResult);
-        setAnalysis((prev) => ({
-          ...prev,
-          [role]: toRoleAnalysisView(storedResult, Boolean(data.stale)),
-        }));
+        return;
       }
+      if (typeof data.fitScore !== "number" || !data.summary) {
+        setAnalysisErrors((prev) => ({
+          ...prev,
+          [role]: "Unexpected analysis response. Tap to retry.",
+        }));
+        setAnalysis((prev) => ({ ...prev, [role]: "error" }));
+        return;
+      }
+      const storedResult: StoredRoleAnalysis = {
+        fitScore: data.fitScore,
+        summary: data.summary,
+        requiredSkills: data.requiredSkills ?? [],
+        gaps: data.gaps ?? [],
+        nextSteps: data.nextSteps ?? [],
+        analyzedAt: data.analyzedAt ?? new Date().toISOString(),
+        resumeFingerprint: data.resumeFingerprint ?? "",
+        resumeAssetId: data.resumeAssetId ?? assetId,
+      };
+      onRoleAnalysisUpdate(role, storedResult);
+      setAnalysis((prev) => ({
+        ...prev,
+        [role]: toRoleAnalysisView(storedResult, Boolean(data.stale)),
+      }));
     } catch {
+      setAnalysisErrors((prev) => ({
+        ...prev,
+        [role]: "Network error — check your connection and tap to retry.",
+      }));
       setAnalysis((prev) => ({ ...prev, [role]: "error" }));
     }
   };
-
-  useEffect(() => {
-    if (!hasResume) return;
-    dreamList.forEach((role) => {
-      if (!resumeIdForRole(role)) return;
-      if (storedForRole(role)) return;
-      if (analysis[role] === "loading" || analyzingRef.current.has(role)) return;
-      analyzingRef.current.add(role);
-      void fetchAnalysis(role).finally(() => analyzingRef.current.delete(role));
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dreamList, hasResume, roleAnalyses, targetRoleSettings, resumeAssets]);
 
   const addRole = (title: string) => {
     if (dreamList.includes(title) || dreamList.length >= 3) return;
@@ -800,7 +802,6 @@ function DreamRoleTab({
     onInitRoleSettings(title);
     setShowSearch(false);
     setSearchQuery("");
-    if (hasResume) void fetchAnalysis(title);
   };
 
   const removeRole = (title: string) => {
@@ -815,8 +816,17 @@ function DreamRoleTab({
     if (expandedRole === role) { setExpandedRole(null); return; }
     setExpandedRole(role);
     setSkillMenu(null);
-    if (getLoaded(role) || !hasResume) return;
-    await fetchAnalysis(role);
+    if (!hasResume) return;
+    const loaded = getLoaded(role);
+    const result = analysis[role];
+    if (loaded && result !== "error") return;
+    if (result === "loading" || analyzingRef.current.has(role)) return;
+    analyzingRef.current.add(role);
+    try {
+      await fetchAnalysis(role, result === "error");
+    } finally {
+      analyzingRef.current.delete(role);
+    }
   };
 
   const handleResumeChange = async (role: string, assetId: string) => {
@@ -831,7 +841,7 @@ function DreamRoleTab({
       delete next[role];
       return next;
     });
-    await fetchAnalysis(role);
+    await fetchAnalysis(role, false, assetId);
   };
 
   const handleRefresh = async (role: string) => {
@@ -857,7 +867,7 @@ function DreamRoleTab({
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
-        Add up to 3 roles you&apos;re targeting. Pick a resume per role — each resume keeps its own saved fit score. Refresh when you want an updated analysis.
+        Add up to 3 roles you&apos;re targeting. Pick a resume per role — each resume keeps its own saved fit score. Tap a role to run analysis; use Refresh for an updated score.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -865,7 +875,7 @@ function DreamRoleTab({
           const isOpen = expandedRole === role;
           const result = analysis[role];
           const loaded = getLoaded(role);
-          const isLoading = result === "loading" || (!loaded && hasResume && result !== "error");
+          const isLoading = result === "loading";
 
           return (
             <div key={role} style={{ background: surface.card, border: isOpen ? border.lineStrong : border.line, overflow: "hidden" }}>
@@ -891,7 +901,7 @@ function DreamRoleTab({
                     </p>
                   ) : !hasResume ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload a resume to see your fit score</p>
-                  ) : result === "loading" || isLoading ? (
+                  ) : result === "loading" ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing…</p>
                   ) : result === "error" ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>

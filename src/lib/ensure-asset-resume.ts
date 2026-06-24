@@ -6,6 +6,7 @@ import {
 } from "@/lib/resume-extract";
 import { hasResumeBodyContent, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
+import { createClient } from "@/utils/supabase/server";
 import type { UserAsset } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
@@ -26,6 +27,36 @@ function urlsMatch(a: string, b: string): boolean {
     return left.pathname === right.pathname;
   } catch {
     return false;
+  }
+}
+
+function storagePathFromAssetUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url).pathname;
+    const signed = pathname.split("/object/sign/resumes/")[1]?.split("?")[0];
+    if (signed) return decodeURIComponent(signed);
+    const publicPath = pathname.split("/object/public/resumes/")[1]?.split("?")[0];
+    if (publicPath) return decodeURIComponent(publicPath);
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function fetchAssetBytes(asset: UserAsset): Promise<Buffer | null> {
+  const fromUrl = await fetchResumeBytes(asset.url);
+  if (fromUrl?.length) return fromUrl;
+
+  const storagePath = storagePathFromAssetUrl(asset.url);
+  if (!storagePath) return null;
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.storage.from("resumes").download(storagePath);
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
+  } catch {
+    return null;
   }
 }
 
@@ -72,7 +103,7 @@ export async function ensureAssetResumeParsed(
   if (!asset) return null;
 
   const parsed = normalizeParsedResumeData(asset.parsedData);
-  if (asset.resumeText?.trim() && hasResumeBodyContent(parsed)) {
+  if (asset.resumeText?.trim()) {
     return asset;
   }
 
@@ -80,7 +111,7 @@ export async function ensureAssetResumeParsed(
     return asset.resumeText?.trim() ? asset : null;
   }
 
-  const bytes = await fetchResumeBytes(asset.url);
+  const bytes = await fetchAssetBytes(asset);
   if (!bytes?.length) {
     return asset.resumeText?.trim() ? asset : null;
   }
