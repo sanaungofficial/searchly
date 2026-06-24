@@ -13,7 +13,14 @@ import {
   UPSKILL_CATEGORIES,
 } from "./workspace-data";
 import {
+  defaultResumeAssetId,
+  getRoleResumeAssetId,
+  normalizeTargetRoleSettings,
+  type TargetRoleSettingsMap,
+} from "@/lib/target-role-settings";
+import {
   buildSkillGoal,
+  findProgramsForSkill,
   normalizeSkillGoals,
   type SkillGoalRecord,
   type UpskillProgram,
@@ -68,6 +75,16 @@ interface WorkEntry {
   bullets: string[];
 }
 
+interface UserAssetRow {
+  id: string;
+  type: "RESUME" | "COVER_LETTER" | "JOB_SEARCH_STRATEGY" | "OTHER";
+  name: string;
+  url: string;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ParsedData {
   name?: string | null;
   phone?: string | null;
@@ -95,6 +112,7 @@ interface UserProfile {
   roleAnalyses?: RoleAnalysesMap;
   skillGoals?: SkillGoalRecord[];
   upskillProgress?: UpskillProgressMap;
+  targetRoleSettings?: TargetRoleSettingsMap;
 }
 
 type RoleAnalysisView = {
@@ -136,6 +154,7 @@ async function migrateLegacyProfileData(
   const roles = userProfile.targetRoles || [];
   const mergedAnalyses = { ...roleAnalyses };
   const fingerprint = buildResumeFingerprint(
+    null,
     userProfile.resumeUrl,
     userProfile.parsedData?.skills ?? [],
   );
@@ -621,36 +640,57 @@ function DreamRoleTab({
   dreamList,
   setDreamList,
   onSave,
-  hasResume,
+  resumeAssets,
   userSkills,
   skillGoals,
   roleAnalyses,
+  targetRoleSettings,
+  onTargetRoleSettingsChange,
   onRoleAnalysisUpdate,
-  onAddToLearning,
+  onClearRoleAnalysis,
+  onAddToPortfolio,
+  onObtainSkill,
+  onInitRoleSettings,
 }: {
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
-  hasResume: boolean;
+  resumeAssets: UserAssetRow[];
   userSkills: string[];
   skillGoals: SkillGoal[];
   roleAnalyses: RoleAnalysesMap;
+  targetRoleSettings: TargetRoleSettingsMap;
+  onTargetRoleSettingsChange: (role: string, resumeAssetId: string | null) => void;
   onRoleAnalysisUpdate: (role: string, analysis: StoredRoleAnalysis) => void;
-  onAddToLearning: (skill: string, role: string) => void;
+  onClearRoleAnalysis: (role: string) => void;
+  onAddToPortfolio: (skill: string) => void;
+  onObtainSkill: (skill: string, role: string) => void;
+  onInitRoleSettings: (role: string) => void;
 }) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysisView | "loading" | "error">>({});
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [needsRefresh, setNeedsRefresh] = useState<Set<string>>(new Set());
+  const [skillMenu, setSkillMenu] = useState<{ role: string; skill: string } | null>(null);
   const analyzingRef = useRef(new Set<string>());
   const isMobile = useIsMobile();
+  const hasResume = resumeAssets.length > 0;
+
+  const resumeIdForRole = (role: string) =>
+    getRoleResumeAssetId(role, targetRoleSettings, resumeAssets);
+
+  const isAnalysisForCurrentResume = (role: string, stored: StoredRoleAnalysis) =>
+    (stored.resumeAssetId ?? null) === resumeIdForRole(role);
 
   const getLoaded = (role: string): RoleAnalysisView | null => {
     const result = analysis[role];
     if (result && result !== "loading" && result !== "error") return result;
     const stored = roleAnalyses[role];
-    return stored ? toRoleAnalysisView(stored) : null;
+    if (stored && isAnalysisForCurrentResume(role, stored)) {
+      return toRoleAnalysisView(stored);
+    }
+    return null;
   };
 
   useEffect(() => {
@@ -658,32 +698,40 @@ function DreamRoleTab({
       const next = { ...prev };
       for (const role of dreamList) {
         const stored = roleAnalyses[role];
-        if (stored && prev[role] !== "loading") {
+        if (stored && isAnalysisForCurrentResume(role, stored) && prev[role] !== "loading") {
           next[role] = toRoleAnalysisView(stored);
         }
       }
       return next;
     });
-  }, [dreamList, roleAnalyses]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dreamList, roleAnalyses, targetRoleSettings, resumeAssets]);
 
   const fetchAnalysis = async (role: string, force = false) => {
-    if (!force && roleAnalyses[role]) {
-      setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(roleAnalyses[role]) }));
+    const assetId = resumeIdForRole(role);
+    if (!assetId && !hasResume) return;
+
+    const stored = roleAnalyses[role];
+    if (!force && stored && isAnalysisForCurrentResume(role, stored)) {
+      setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(stored) }));
       return;
     }
+
     setAnalysis((prev) => ({ ...prev, [role]: "loading" }));
     try {
-      const url = `/api/ai/role-gap?role=${encodeURIComponent(role)}${force ? "&force=true" : ""}`;
-      const res = await fetch(url);
+      const params = new URLSearchParams({ role });
+      if (force) params.set("force", "true");
+      if (assetId) params.set("assetId", assetId);
+      const res = await fetch(`/api/ai/role-gap?${params.toString()}`);
       const data = await res.json();
       if (data.error) {
-        if (roleAnalyses[role]) {
-          setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(roleAnalyses[role]) }));
+        if (stored && isAnalysisForCurrentResume(role, stored)) {
+          setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(stored) }));
         } else {
           setAnalysis((prev) => ({ ...prev, [role]: "error" }));
         }
       } else {
-        const stored: StoredRoleAnalysis = {
+        const storedResult: StoredRoleAnalysis = {
           fitScore: data.fitScore,
           summary: data.summary,
           requiredSkills: data.requiredSkills ?? [],
@@ -691,9 +739,10 @@ function DreamRoleTab({
           nextSteps: data.nextSteps ?? [],
           analyzedAt: data.analyzedAt ?? new Date().toISOString(),
           resumeFingerprint: data.resumeFingerprint ?? "",
+          resumeAssetId: data.resumeAssetId ?? assetId,
         };
-        onRoleAnalysisUpdate(role, stored);
-        setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(stored) }));
+        onRoleAnalysisUpdate(role, storedResult);
+        setAnalysis((prev) => ({ ...prev, [role]: toRoleAnalysisView(storedResult) }));
       }
     } catch {
       setAnalysis((prev) => ({ ...prev, [role]: "error" }));
@@ -703,40 +752,52 @@ function DreamRoleTab({
   useEffect(() => {
     if (!hasResume) return;
     dreamList.forEach((role) => {
-      if (roleAnalyses[role] || analysis[role] === "loading" || analyzingRef.current.has(role)) return;
+      if (!resumeIdForRole(role)) return;
+      const stored = roleAnalyses[role];
+      if (stored && isAnalysisForCurrentResume(role, stored)) return;
+      if (analysis[role] === "loading" || analyzingRef.current.has(role)) return;
       analyzingRef.current.add(role);
       void fetchAnalysis(role).finally(() => analyzingRef.current.delete(role));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dreamList, hasResume, roleAnalyses]);
+  }, [dreamList, hasResume, roleAnalyses, targetRoleSettings, resumeAssets]);
 
   const addRole = (title: string) => {
     if (dreamList.includes(title) || dreamList.length >= 3) return;
     const next = [...dreamList, title];
     setDreamList(next);
     onSave(next);
+    onInitRoleSettings(title);
     setShowSearch(false);
     setSearchQuery("");
-    if (hasResume) void fetchAnalysis(title);
+    if (hasResume) void fetchAnalysis(title, true);
   };
 
   const removeRole = (title: string) => {
     const next = dreamList.filter((r) => r !== title);
     setDreamList(next);
     onSave(next);
+    onClearRoleAnalysis(title);
     if (expandedRole === title) setExpandedRole(null);
   };
 
   const toggleExpand = async (role: string) => {
     if (expandedRole === role) { setExpandedRole(null); return; }
     setExpandedRole(role);
+    setSkillMenu(null);
     if (getLoaded(role) || !hasResume) return;
     await fetchAnalysis(role);
   };
 
-  const handleAddToLearning = (skill: string, role: string) => {
-    setNeedsRefresh((prev) => new Set([...prev, role]));
-    onAddToLearning(skill, role);
+  const handleResumeChange = async (role: string, assetId: string) => {
+    onTargetRoleSettingsChange(role, assetId);
+    onClearRoleAnalysis(role);
+    setAnalysis((prev) => {
+      const next = { ...prev };
+      delete next[role];
+      return next;
+    });
+    await fetchAnalysis(role, true);
   };
 
   const handleRefresh = async (role: string) => {
@@ -763,8 +824,7 @@ function DreamRoleTab({
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
-        Add up to 3 roles you&apos;re targeting. Fit scores save automatically — expand any card to see your{" "}
-        <ScoreExplainerLabel variant="role-gap">fit score</ScoreExplainerLabel>, what skills you already have, what you&apos;re missing, and your next steps.
+        Add up to 3 roles you&apos;re targeting. Pick a resume per role — fit is scored against that version. Expand a card for skills and next steps.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -821,6 +881,36 @@ function DreamRoleTab({
 
               {isOpen && (
                 <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", padding: "16px 16px 20px" }}>
+                  <div style={{ marginBottom: 16 }} onClick={(e) => e.stopPropagation()}>
+                    <label style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Resume for this role
+                    </label>
+                    <select
+                      value={resumeIdForRole(role) ?? ""}
+                      onChange={(e) => void handleResumeChange(role, e.target.value)}
+                      disabled={!resumeAssets.length}
+                      style={{
+                        width: "100%",
+                        maxWidth: 420,
+                        padding: "10px 12px",
+                        border: border.lineStrong,
+                        background: surface.card,
+                        fontFamily: fontSans,
+                        fontSize: T.bodySm,
+                        color: color.ink,
+                      }}
+                    >
+                      {resumeAssets.length === 0 ? (
+                        <option value="">Upload a resume in Assets</option>
+                      ) : (
+                        resumeAssets.map((asset) => (
+                          <option key={asset.id} value={asset.id}>
+                            {asset.name}{asset.isPrimary ? " (primary)" : ""}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
                   {result === "loading" && !loaded && (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
                   )}
@@ -860,17 +950,64 @@ function DreamRoleTab({
                                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you&apos;re missing</p>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                   {missingSkills.map((skill) => (
-                                    <div key={skill} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                      <button onClick={() => handleAddToLearning(skill, role)} style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                        <span style={{ color: "#1A3A2F", fontWeight: 700, fontSize: 14, lineHeight: 1 }}>+</span> {skill}
+                                    <div key={skill} style={{ position: "relative" }}>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSkillMenu((prev) =>
+                                            prev?.role === role && prev.skill === skill ? null : { role, skill },
+                                          );
+                                        }}
+                                        style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+                                      >
+                                        {skill}
+                                        <span style={{ fontSize: 10, color: color.muted }}>▼</span>
                                       </button>
                                       {gapWhy.get(skill.toLowerCase()) && (
-                                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#B0A898", margin: "0 0 0 4px", lineHeight: 1.45 }}>{gapWhy.get(skill.toLowerCase())}</p>
+                                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#B0A898", margin: "4px 0 0 4px", lineHeight: 1.45 }}>{gapWhy.get(skill.toLowerCase())}</p>
+                                      )}
+                                      {skillMenu?.role === role && skillMenu.skill === skill && (
+                                        <div
+                                          style={{
+                                            marginTop: 6,
+                                            border: border.lineStrong,
+                                            background: surface.card,
+                                            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                                            minWidth: 220,
+                                            zIndex: 2,
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              onAddToPortfolio(skill);
+                                              setSkillMenu(null);
+                                              setNeedsRefresh((prev) => new Set([...prev, role]));
+                                            }}
+                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: border.line, background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
+                                          >
+                                            Add to my skills
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              onObtainSkill(skill, role);
+                                              setSkillMenu(null);
+                                            }}
+                                            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, cursor: "pointer" }}
+                                          >
+                                            Obtain this skill
+                                          </button>
+                                        </div>
                                       )}
                                     </div>
                                   ))}
                                 </div>
-                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic" }}>+ adds the skill to Upskilling — programs and certifications appear there.</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic" }}>
+                                  Add to skills if you already have it, or obtain it to track learning in Upskilling.
+                                </p>
                               </div>
                             )}
                             {learningSkills.length > 0 && (
@@ -1000,12 +1137,16 @@ function LearningTab({
   progress,
   setProgress,
   skillGoals,
+  dreamList,
+  roleAnalyses,
   onGraduate,
   highlightSkill,
 }: {
   progress: UpskillProgressMap;
   setProgress: (p: UpskillProgressMap) => void;
   skillGoals: SkillGoal[];
+  dreamList: string[];
+  roleAnalyses: RoleAnalysesMap;
   onGraduate: (skill: string) => Promise<void>;
   highlightSkill?: string | null;
 }) {
@@ -1082,16 +1223,65 @@ function LearningTab({
 
   const removeCustomItem = (id: string) => saveCustomItems(customItems.filter((i) => i.id !== id));
 
+  const obtainSkills = skillGoals.map((g) => g.skill.toLowerCase());
+  const programItems = UPSKILL_CATEGORIES.flatMap((cat) =>
+    cat.items.filter((item) =>
+      item.closesGap?.some((gap) =>
+        obtainSkills.some(
+          (s) =>
+            s === gap.toLowerCase() ||
+            gap.toLowerCase().includes(s) ||
+            s.includes(gap.toLowerCase()),
+        ),
+      ),
+    ),
+  );
+
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
 
-      {/* Section A — From your target roles */}
-      {skillGoals.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <ScoutLabel>From your target roles</ScoutLabel>
+      {/* Section A — Target roles context */}
+      {dreamList.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <ScoutLabel>Your target roles</ScoutLabel>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 10px", lineHeight: 1.5 }}>
-            Skills you&apos;re building toward a target role. Programs below are matched to each gap.
+            Roles you&apos;re working toward. Skills to obtain below come from gap analysis on Target Roles.
           </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {dreamList.map((role) => {
+              const analysis = roleAnalyses[role];
+              return (
+                <ScoutBox key={role} padding="12px 14px">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{role}</p>
+                    {analysis ? (
+                      <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 13, fontWeight: 600, color: color.forest }}>
+                        {analysis.fitScore}% fit
+                      </span>
+                    ) : (
+                      <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No score yet</span>
+                    )}
+                  </div>
+                </ScoutBox>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Section B — Skills to obtain */}
+      <div style={{ marginBottom: 32 }}>
+        <ScoutLabel>Skills to obtain</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 10px", lineHeight: 1.5 }}>
+          From Target Roles when you choose &ldquo;Obtain this skill&rdquo;. Mark acquired once you&apos;ve built the skill.
+        </p>
+        {skillGoals.length === 0 ? (
+          <ScoutBox padding={16}>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.6 }}>
+              No skills queued yet. On Target Roles, open a missing skill and choose &ldquo;Obtain this skill&rdquo;.
+            </p>
+          </ScoutBox>
+        ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
             {skillGoals.map((g) => {
               const isHighlighted = highlightSkill?.toLowerCase() === g.skill.toLowerCase();
@@ -1106,32 +1296,28 @@ function LearningTab({
                 >
                   <div
                     ref={(el) => { skillGoalRefs.current[g.skill.toLowerCase()] = el; }}
-                    style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "flex-start", gap: 12 }}
+                    style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}
                   >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{g.skill}</p>
-                      <span style={{ padding: "1px 7px", background: surface.inset, border: border.line, fontFamily: fontSans, fontSize: T.caption, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{g.skill}</p>
+                        <span style={{ padding: "1px 7px", background: surface.inset, border: border.line, fontFamily: fontSans, fontSize: T.caption, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
+                      </div>
                     </div>
-                    <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0" }}>
-                      Goal: build this skill, then mark acquired to update your profile and refresh fit scores.
-                    </p>
-                    <ProgramLinks programs={g.programs} />
-                  </div>
-                  <ScoutPrimaryBtn
-                    onClick={() => handleGraduate(g.skill)}
-                    disabled={graduating === g.skill}
-                    style={{ minHeight: 44, width: isMobile ? "100%" : undefined, opacity: graduating === g.skill ? 0.6 : 1, flexShrink: 0 }}
-                  >
-                    {graduating === g.skill ? "Saving…" : "Mark as acquired"}
-                  </ScoutPrimaryBtn>
+                    <ScoutPrimaryBtn
+                      onClick={() => handleGraduate(g.skill)}
+                      disabled={graduating === g.skill}
+                      style={{ minHeight: 44, width: isMobile ? "100%" : undefined, opacity: graduating === g.skill ? 0.6 : 1, flexShrink: 0 }}
+                    >
+                      {graduating === g.skill ? "Saving…" : "Mark as acquired"}
+                    </ScoutPrimaryBtn>
                   </div>
                 </ScoutBox>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Progress bar */}
       <ScoutBox stack padding={isMobile ? "16px" : "18px 20px"} style={{ marginBottom: 24, background: color.forest, border: border.lineStrong }}>
@@ -1148,88 +1334,71 @@ function LearningTab({
         </div>
       </ScoutBox>
 
-      {/* Section B — Recommended paths */}
+      {/* Section C — Programs for skills to obtain */}
       <div style={{ marginBottom: 32 }}>
-        <ScoutLabel>Recommended paths</ScoutLabel>
+        <ScoutLabel>Recommended programs</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.6 }}>
-          Curated by Kimchi based on what hiring managers look for. Partner certifications will be added here as we grow.
+          Courses and certifications matched to skills you&apos;re trying to obtain.
         </p>
-        {UPSKILL_CATEGORIES.map((cat) => {
-          const gapSkills = new Set(skillGoals.map((g) => g.skill.toLowerCase()));
-          const sorted = [...cat.items].sort((a, b) => {
-            const aMatch = a.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ? 1 : 0;
-            const bMatch = b.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ? 1 : 0;
-            return bMatch - aMatch;
-          });
-          return (
-          <div key={cat.title} style={{ marginBottom: 20 }}>
-            <ScoutDisplayTitle size={16} style={{ marginBottom: 4 }}>{cat.title}</ScoutDisplayTitle>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginBottom: 10 }}>{cat.subtitle}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {sorted.map((item) => {
-                const prog = getProgress(item.id);
-                const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
-                const statusColor = prog === "completed" ? "#1A3A2F" : prog === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
-                const isGapMatch = item.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ?? false;
-                const isHighlighted = highlightSkill
-                  ? item.closesGap?.some((s) => s.toLowerCase() === highlightSkill.toLowerCase())
-                  : false;
-                return (
-                  <ScoutBox
-                    key={item.id}
-                    padding="14px 16px"
-                    style={isHighlighted ? { borderColor: color.forest, boxShadow: "0 0 0 1px rgba(26,58,47,0.2)" } : undefined}
-                  >
-                    <div
-                      ref={(el) => { courseRefs.current[String(item.id)] = el; }}
-                      style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}
-                    >
-                    <div style={{ width: 32, height: 32, background: item.platformColor, border: border.line, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: "#FFFFFF" }}>{item.platformInitial}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{item.name}</p>
-                        {item.scoutPick && <span style={{ padding: "1px 7px", background: surface.inset, border: border.line, fontFamily: fontSans, fontSize: T.caption, color: "#7A6020", fontWeight: 600 }}>Kimchi pick</span>}
-                        {isGapMatch && <span style={{ padding: "1px 7px", background: surface.inset, border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.forest, fontWeight: 500 }}>closes gap</span>}
-                      </div>
-                      {item.closesGap && item.closesGap.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
-                          {item.closesGap.map((skill) => {
-                            const isSkillGap = gapSkills.has(skill.toLowerCase());
-                            return (
-                              <span key={skill} className={isSkillGap
-                                ? "inline-flex items-center px-2.5 py-1 rounded-none text-xs font-medium bg-[#1A3A2F]/10 text-[#1A3A2F]"
-                                : "inline-flex items-center px-2.5 py-1 rounded-none text-xs font-medium bg-[#E8D5A3]/50 text-[#52493F]"
-                              }>
-                                {skill}
-                              </span>
-                            );
-                          })}
+        {skillGoals.length === 0 ? (
+          <ScoutBox padding={16}>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+              Programs appear here once you queue skills to obtain from Target Roles.
+            </p>
+          </ScoutBox>
+        ) : (
+          <>
+            {skillGoals.map((g) => (
+              <div key={`programs-${g.skill}`} style={{ marginBottom: 20 }}>
+                <ScoutDisplayTitle size={16} style={{ marginBottom: 8 }}>{g.skill}</ScoutDisplayTitle>
+                <ProgramLinks programs={g.programs.length ? g.programs : findProgramsForSkill(g.skill)} />
+              </div>
+            ))}
+            {programItems.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <ScoutDisplayTitle size={16} style={{ marginBottom: 8 }}>Kimchi picks</ScoutDisplayTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {programItems.map((item) => {
+                    const prog = getProgress(item.id);
+                    const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
+                    const isHighlighted = highlightSkill
+                      ? item.closesGap?.some((s) => s.toLowerCase() === highlightSkill.toLowerCase())
+                      : false;
+                    return (
+                      <ScoutBox
+                        key={item.id}
+                        padding="14px 16px"
+                        style={isHighlighted ? { borderColor: color.forest, boxShadow: "0 0 0 1px rgba(26,58,47,0.2)" } : undefined}
+                      >
+                        <div
+                          ref={(el) => { courseRefs.current[String(item.id)] = el; }}
+                          style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>{item.name}</p>
+                            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>{item.platform} · {item.duration} · {statusLabel}</p>
+                          </div>
+                          {prog === "completed" ? (
+                            <ScoutSecondaryBtn onClick={() => setCourseProgress(item.id, "inprogress")} style={{ minHeight: 44, width: isMobile ? "100%" : undefined, color: color.forest }}>
+                              Review →
+                            </ScoutSecondaryBtn>
+                          ) : (
+                            <ScoutPrimaryBtn onClick={() => setCourseProgress(item.id, prog === "none" ? "inprogress" : "completed")} style={{ minHeight: 44, width: isMobile ? "100%" : undefined }}>
+                              {prog === "inprogress" ? "Complete →" : "Start →"}
+                            </ScoutPrimaryBtn>
+                          )}
                         </div>
-                      )}
-                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 3 }}>{item.platform} &middot; {item.duration} &middot; {item.credential}</p>
-                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: statusColor }}>{statusLabel}</p>
-                    </div>
-                    {prog === "completed" ? (
-                      <ScoutSecondaryBtn onClick={() => setCourseProgress(item.id, "inprogress")} style={{ minHeight: 44, width: isMobile ? "100%" : undefined, color: color.forest }}>
-                        Review →
-                      </ScoutSecondaryBtn>
-                    ) : (
-                      <ScoutPrimaryBtn onClick={() => setCourseProgress(item.id, prog === "none" ? "inprogress" : "completed")} style={{ minHeight: 44, width: isMobile ? "100%" : undefined }}>
-                        {prog === "inprogress" ? "Complete →" : "Start →"}
-                      </ScoutPrimaryBtn>
-                    )}
-                    </div>
-                  </ScoutBox>
-                );
-              })}
-            </div>
-          </div>
-        )})}
+                      </ScoutBox>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Section C — My Learning */}
+      {/* My Learning */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <ScoutLabel>My learning</ScoutLabel>
@@ -1314,16 +1483,6 @@ function LearningTab({
 }
 
 // ─── Tab: Resume Assets ───────────────────────────────────────────────────────
-
-interface UserAssetRow {
-  id: string;
-  type: "RESUME" | "COVER_LETTER" | "JOB_SEARCH_STRATEGY" | "OTHER";
-  name: string;
-  url: string;
-  isPrimary: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   onClose: () => void;
@@ -2037,6 +2196,8 @@ export function WorkspaceProfile() {
   const [roleAnalyses, setRoleAnalyses] = useState<RoleAnalysesMap>({});
   const [upskillProgress, setUpskillProgress] = useState<UpskillProgressMap>({});
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
+  const [targetRoleSettings, setTargetRoleSettings] = useState<TargetRoleSettingsMap>({});
+  const [upskillToast, setUpskillToast] = useState<string | null>(null);
   const legacyMigratedRef = useRef(false);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
@@ -2075,6 +2236,7 @@ export function WorkspaceProfile() {
         setRoleAnalyses(normalizeRoleAnalysesMap(userProfile.roleAnalyses));
         setSkillGoals(normalizeSkillGoals(userProfile.skillGoals));
         setUpskillProgress(userProfile.upskillProgress ?? {});
+        setTargetRoleSettings(normalizeTargetRoleSettings(userProfile.targetRoleSettings));
 
         if (!legacyMigratedRef.current) {
           legacyMigratedRef.current = true;
@@ -2165,6 +2327,51 @@ export function WorkspaceProfile() {
     });
   };
 
+  const handleClearRoleAnalysis = (role: string) => {
+    setRoleAnalyses((prev) => {
+      const next = { ...prev };
+      delete next[role];
+      void patchProfile({ roleAnalyses: next });
+      return next;
+    });
+    void fetch(`/api/ai/role-gap?role=${encodeURIComponent(role)}`, { method: "DELETE" }).catch(() => {});
+  };
+
+  const handleTargetRoleSettingsChange = (role: string, resumeAssetId: string | null) => {
+    setTargetRoleSettings((prev) => {
+      const next = { ...prev, [role]: { resumeAssetId } };
+      void patchProfile({ targetRoleSettings: next });
+      return next;
+    });
+  };
+
+  const initRoleSettings = (role: string) => {
+    const resumes = assets.filter((a) => a.type === "RESUME");
+    if (targetRoleSettings[role]) return;
+    const resumeAssetId = defaultResumeAssetId(resumes);
+    setTargetRoleSettings((prev) => {
+      const next = { ...prev, [role]: { resumeAssetId } };
+      void patchProfile({ targetRoleSettings: next });
+      return next;
+    });
+  };
+
+  const addSkillToPortfolio = async (skill: string) => {
+    const currentSkills = profile?.parsedData?.skills || [];
+    if (currentSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) return;
+    await handleSkillsSave([...currentSkills, skill]);
+  };
+
+  const obtainSkill = (skill: string, role: string) => {
+    if (!skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase())) {
+      const next = [...skillGoals, buildSkillGoal(skill, role)];
+      setSkillGoals(next);
+      void patchProfile({ skillGoals: next });
+    }
+    setUpskillToast(skill);
+    window.setTimeout(() => setUpskillToast(null), 4500);
+  };
+
   const persistUpskillProgress = (next: UpskillProgressMap) => {
     setUpskillProgress(next);
     void patchProfile({ upskillProgress: next });
@@ -2178,7 +2385,7 @@ export function WorkspaceProfile() {
   };
 
   useEffect(() => {
-    if (page === "assets") refreshAssets();
+    if (page === "assets" || page === "dreamrole" || page === "learning") refreshAssets();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
@@ -2233,17 +2440,6 @@ export function WorkspaceProfile() {
   const handleCareerPrefSave = async (patch: CareerPrefPatch) => {
     await patchProfile(patch as Record<string, unknown>);
     setProfile((p) => p ? { ...p, ...patch } : p);
-  };
-
-  const addSkillGoal = (skill: string, role: string) => {
-    if (skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase())) {
-      router.push(`/profile/learning-path?skill=${encodeURIComponent(skill)}`);
-      return;
-    }
-    const next = [...skillGoals, buildSkillGoal(skill, role)];
-    setSkillGoals(next);
-    void patchProfile({ skillGoals: next });
-    router.push(`/profile/learning-path?skill=${encodeURIComponent(skill)}`);
   };
 
   const graduateSkill = async (skill: string) => {
@@ -2329,6 +2525,7 @@ export function WorkspaceProfile() {
   const workExperience = pd?.workExperience || [];
   const skills = pd?.skills || [];
   const highlightSkill = searchParams.get("skill");
+  const resumeAssets = assets.filter((a) => a.type === "RESUME");
 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
@@ -2352,6 +2549,16 @@ export function WorkspaceProfile() {
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
       <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" }}>
         <div style={contentShell}>
+        {upskillToast && (
+          <ScoutBox
+            padding="12px 16px"
+            style={{ marginBottom: 16, background: "rgba(26,58,47,0.06)", borderColor: color.forest }}
+          >
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, margin: 0, lineHeight: 1.5 }}>
+              Added &ldquo;{upskillToast}&rdquo; to Upskilling — view it under Skills to obtain.
+            </p>
+          </ScoutBox>
+        )}
         {/* Header */}
         <div style={{ marginBottom: isMobile ? 24 : 28 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -2510,12 +2717,17 @@ export function WorkspaceProfile() {
             dreamList={dreamList}
             setDreamList={setDreamList}
             onSave={(list) => patchProfile({ targetRoles: list })}
-            hasResume={!!profile?.resumeUrl}
+            resumeAssets={resumeAssets}
             userSkills={skills}
             skillGoals={skillGoals}
             roleAnalyses={roleAnalyses}
+            targetRoleSettings={targetRoleSettings}
+            onTargetRoleSettingsChange={handleTargetRoleSettingsChange}
             onRoleAnalysisUpdate={handleRoleAnalysisUpdate}
-            onAddToLearning={addSkillGoal}
+            onClearRoleAnalysis={handleClearRoleAnalysis}
+            onAddToPortfolio={addSkillToPortfolio}
+            onObtainSkill={obtainSkill}
+            onInitRoleSettings={initRoleSettings}
           />
         )}
 
@@ -2603,6 +2815,8 @@ export function WorkspaceProfile() {
             progress={upskillProgress}
             setProgress={persistUpskillProgress}
             skillGoals={skillGoals}
+            dreamList={dreamList}
+            roleAnalyses={roleAnalyses}
             onGraduate={graduateSkill}
             highlightSkill={highlightSkill}
           />

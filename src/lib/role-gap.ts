@@ -9,13 +9,18 @@ export interface RoleGapAnalysis {
 export interface StoredRoleAnalysis extends RoleGapAnalysis {
   analyzedAt: string;
   resumeFingerprint: string;
+  resumeAssetId?: string | null;
 }
 
 export type RoleAnalysesMap = Record<string, StoredRoleAnalysis>;
 
-export function buildResumeFingerprint(resumeUrl: string | null | undefined, skills: string[]): string {
+export function buildResumeFingerprint(
+  resumeAssetId: string | null | undefined,
+  resumeUrl: string | null | undefined,
+  skills: string[],
+): string {
   const normalizedSkills = [...skills].map((s) => s.trim().toLowerCase()).filter(Boolean).sort().join("|");
-  return `${resumeUrl ?? ""}::${normalizedSkills}`;
+  return `${resumeAssetId ?? "primary"}::${resumeUrl ?? ""}::${normalizedSkills}`;
 }
 
 export function normalizeRoleGapAnalysis(raw: unknown): RoleGapAnalysis | null {
@@ -58,7 +63,8 @@ export function normalizeRoleAnalysesMap(raw: unknown): RoleAnalysesMap {
     const meta = value as Record<string, unknown>;
     const analyzedAt = typeof meta.analyzedAt === "string" ? meta.analyzedAt : new Date(0).toISOString();
     const resumeFingerprint = typeof meta.resumeFingerprint === "string" ? meta.resumeFingerprint : "";
-    out[role] = { ...analysis, analyzedAt, resumeFingerprint };
+    const resumeAssetId = typeof meta.resumeAssetId === "string" ? meta.resumeAssetId : null;
+    out[role] = { ...analysis, analyzedAt, resumeFingerprint, resumeAssetId };
   }
   return out;
 }
