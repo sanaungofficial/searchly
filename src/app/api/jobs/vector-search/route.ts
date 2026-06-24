@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured, fetchHirebaseVectorJobs } from "@/lib/hirebase";
 import { enrichVectorJobsWithMatchReasons } from "@/lib/hirebase-match-reasons";
 import {
+  buildMinimalVSearchQuery,
   buildProfileVSearchQuery,
+  isHarmfulPatternQueryError,
   profileTextForMatchReasons,
-  sanitizeHirebaseVSearchQuery,
 } from "@/lib/profile-vsearch-query";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -67,12 +68,6 @@ function parseFilters(body: Record<string, unknown>): VectorSearchFilters {
   };
 }
 
-function appendQueryParts(base: string, parts: string[]): string {
-  const extra = parts.map((p) => p.trim()).filter(Boolean);
-  if (!extra.length) return base;
-  return sanitizeHirebaseVSearchQuery(`${base} ${extra.join(" ")}`.replace(/\s+/g, " ").trim());
-}
-
 export async function POST(request: Request) {
   if (!isHirebaseConfigured()) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
@@ -96,9 +91,10 @@ export async function POST(request: Request) {
     profile?.readbackData,
   );
 
+  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
   const profileInput = {
     headline: profile?.headline,
-    targetRoles: (profile?.targetRoles ?? []).slice(0, 20),
+    targetRoles,
     resumeText: profile?.resumeText,
     parsedData,
     careerMotivation: profile?.careerMotivation,
@@ -106,6 +102,8 @@ export async function POST(request: Request) {
     employmentStatus: profile?.employmentStatus,
     jobTimeline: profile?.jobTimeline,
     targetSalary: profile?.targetSalary,
+    semanticQuery: filters.semanticQuery,
+    filterKeywords: filters.keywords,
   };
 
   let query = buildProfileVSearchQuery(profileInput);
@@ -119,34 +117,29 @@ export async function POST(request: Request) {
     );
   }
 
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
   const jobTitles = filters.jobTitles?.length ? filters.jobTitles.slice(0, 20) : targetRoles.slice(0, 20);
-  const titlesAlreadyInQuery = !filters.jobTitles?.length && targetRoles.length > 0;
-  const queryExtras: string[] = [];
-  if (jobTitles.length && !titlesAlreadyInQuery) {
-    queryExtras.push(`Focus on titles like ${jobTitles.join(", ")}.`);
-  }
-  if (filters.semanticQuery) {
-    queryExtras.push(filters.semanticQuery);
-  }
-  if (filters.keywords?.length) {
-    queryExtras.push(`Keywords: ${filters.keywords.join(", ")}.`);
-  }
-  if (filters.locationTypes?.length) {
-    queryExtras.push(`Work arrangement: ${filters.locationTypes.join(", ")}.`);
-  }
-  query = appendQueryParts(query, queryExtras);
-
   const resumeText = profileTextForMatchReasons(profileInput);
 
+  const searchParams = {
+    query,
+    ...filters,
+    jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
+    limit: Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX),
+    page: filters.page ?? 1,
+  };
+
   try {
-    const search = await fetchHirebaseVectorJobs({
-      query,
-      ...filters,
-      jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
-      limit: Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX),
-      page: filters.page ?? 1,
-    });
+    let search;
+    try {
+      search = await fetchHirebaseVectorJobs(searchParams);
+    } catch (err) {
+      if (!isHarmfulPatternQueryError(err)) throw err;
+      const fallbackQuery = buildMinimalVSearchQuery(
+        filters.semanticQuery ? [filters.semanticQuery, ...targetRoles] : targetRoles,
+      );
+      if (!fallbackQuery || fallbackQuery === query) throw err;
+      search = await fetchHirebaseVectorJobs({ ...searchParams, query: fallbackQuery });
+    }
 
     const jobs = await enrichVectorJobsWithMatchReasons({
       rawJobs: search.rawJobs,
