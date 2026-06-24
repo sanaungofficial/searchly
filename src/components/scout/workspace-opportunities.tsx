@@ -19,6 +19,7 @@ import {
   type KanbanStage,
 } from "./workspace-data";
 import { PlusIcon, UploadIcon } from "./workspace-icons";
+import { DataSourcesPopover } from "./data-sources-popover";
 import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipeline-recommended-section";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import { WorkspaceCompanies } from "./workspace-companies";
@@ -324,6 +325,7 @@ export function WorkspaceOpportunities() {
           })}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <DataSourcesPopover compact />
           {tab !== "companies" && <button
             onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
             style={{
