@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 
 export type DrawerUser = {
@@ -83,12 +84,14 @@ export function UserDrawer({
   onClose: () => void;
   onRoleUpdate: (id: string, role: UserRole) => void;
 }) {
+  const router = useRouter();
   const [role, setRole] = useState<UserRole>(user.role);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [aiDetail, setAiDetail] = useState<AiDetail | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -117,6 +120,24 @@ export function UserDrawer({
 
   const isDirty = role !== user.role;
   const aiThisMonth = user.monthlyUsage[0]?.count ?? 0;
+
+  async function viewAsClient() {
+    setImpersonating(true);
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      onClose();
+      router.push("/profile");
+      router.refresh();
+      window.location.reload();
+    } catch {
+      setImpersonating(false);
+    }
+  }
 
   async function handleRoleSave() {
     setSaving(true);
@@ -156,6 +177,15 @@ export function UserDrawer({
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mt-1 truncate">{user.email}</p>
             {user.profile?.headline && (
               <p className="text-xs text-[var(--scout-muted)] mt-1 italic">{user.profile.headline}</p>
+            )}
+            {user.role === "USER" && (
+              <button
+                onClick={viewAsClient}
+                disabled={impersonating}
+                className="mt-3 text-xs font-semibold px-3 py-1.5 bg-[#1A3A2F] text-[#E8D5A3] border-0 rounded-none disabled:opacity-60"
+              >
+                {impersonating ? "Opening…" : "View as client"}
+              </button>
             )}
           </div>
           <button

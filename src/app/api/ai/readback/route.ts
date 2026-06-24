@@ -1,8 +1,8 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { getActingUser } from "@/lib/acting-user";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -20,24 +20,22 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const force = searchParams.get("force") === "true";
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { dbUser: actingUser } = await getActingUser(request);
+  if (!actingUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
+    where: { id: actingUser.id },
     include: { profile: true, subscription: true },
   });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  if (!force && dbUser?.profile) {
+  if (!force && dbUser.profile) {
     const cached = dbUser.profile.readbackData as Record<string, unknown> | null;
     const cachedAt = dbUser.profile.readbackUpdatedAt;
     if (cached && cachedAt) {
       return NextResponse.json({ ...cached, _cachedAt: cachedAt.toISOString() });
     }
   }
-
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const quotaError = await requireAiQuota(dbUser, "READBACK");
   if (quotaError) return quotaError;

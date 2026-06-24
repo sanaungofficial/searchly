@@ -1,20 +1,13 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-
-async function getDbUser(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  return prisma.user.findUnique({ where: { email: user.email! } });
-}
+import { getActingUser } from "@/lib/acting-user";
 
 // PATCH /api/jobs/[id] — update stage, notes, etc.
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
@@ -43,11 +36,10 @@ export async function PATCH(
 
 // DELETE /api/jobs/[id]
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
-  const dbUser = await getDbUser(supabase);
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

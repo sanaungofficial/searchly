@@ -5,22 +5,14 @@ import {
   extensionPreflightResponse,
   withExtensionCors,
 } from "@/lib/extension-api";
-
-async function getDbUser(request: Request) {
-  const supabase = createSupabaseFromRequest(request);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  return prisma.user.findUnique({ where: { email: user.email! } });
-}
+import { getActingUser } from "@/lib/acting-user";
 
 // GET /api/jobs — list all jobs for current user
 export async function GET(request: Request) {
   const preflight = extensionPreflightResponse(request);
   if (preflight) return preflight;
 
-  const dbUser = await getDbUser(request);
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) {
     return withExtensionCors(
       request,
@@ -41,7 +33,7 @@ export async function POST(request: Request) {
   const preflight = extensionPreflightResponse(request);
   if (preflight) return preflight;
 
-  const dbUser = await getDbUser(request);
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) {
     return withExtensionCors(
       request,

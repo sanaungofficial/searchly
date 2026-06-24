@@ -3,13 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
 import { NextResponse } from "next/server";
+import { getActingUser } from "@/lib/acting-user";
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
+  const { dbUser } = await getActingUser();
   if (!dbUser) return NextResponse.json([], { status: 200 });
 
   let assets = await prisma.userAsset.findMany({
@@ -51,16 +48,15 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
+  const { authUser, dbUser } = await getActingUser(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const asset = await prisma.userAsset.findFirst({ where: { id, userId: dbUser.id } });
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });

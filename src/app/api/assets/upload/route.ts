@@ -1,11 +1,13 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getActingUser } from "@/lib/acting-user";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { authUser, dbUser } = await getActingUser(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
@@ -18,7 +20,7 @@ export async function POST(request: Request) {
 
   const ext = file.name.split(".").pop();
   const prefix = type.toLowerCase().replace(/_/g, "-");
-  const path = `${user.id}/${prefix}-${Date.now()}.${ext}`;
+  const path = `${authUser.id}/${prefix}-${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("resumes")
@@ -33,9 +35,6 @@ export async function POST(request: Request) {
   if (signedError || !signedData) {
     return NextResponse.json({ error: "Could not generate file URL" }, { status: 500 });
   }
-
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const asset = await prisma.userAsset.create({
     data: {
