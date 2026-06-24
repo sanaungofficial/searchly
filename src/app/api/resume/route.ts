@@ -5,6 +5,7 @@ import { getPrompt } from "@/lib/prompts";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { shouldReplaceNameWithResumeName } from "@/lib/resume-parse";
 import { PARSE_MODEL, parseResumeFile } from "@/lib/resume-extract";
+import { getActingUser } from "@/lib/acting-user";
 import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -17,8 +18,12 @@ function getAnthropic() {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { authUser, dbUser: actingUser } = await getActingUser(request);
 
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!actingUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const formData = await request.formData();
@@ -63,16 +68,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not read text from this file. Try PDF, DOCX, or TXT." }, { status: 422 });
   }
 
-  const name =
-    user.user_metadata?.full_name ??
-    user.user_metadata?.name ??
-    user.email!.split("@")[0];
-
-  const dbUser = await prisma.user.upsert({
-    where: { email: user.email! },
-    update: {},
-    create: { email: user.email!, name },
-  });
+  const dbUser = actingUser;
 
   if (tokensIn > 0) {
     logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
@@ -81,12 +77,10 @@ export async function POST(request: Request) {
   const parsedData = parsedRaw;
 
   const extractedName = parsedData?.name;
-  const metadataName =
-    (user.user_metadata?.full_name as string | undefined) ??
-    (user.user_metadata?.name as string | undefined);
+  const metadataName = dbUser.name ?? undefined;
   if (
     extractedName &&
-    shouldReplaceNameWithResumeName(dbUser.name, user.email!, metadataName)
+    shouldReplaceNameWithResumeName(dbUser.name, dbUser.email, metadataName)
   ) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
   }

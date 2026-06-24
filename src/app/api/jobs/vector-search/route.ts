@@ -1,10 +1,10 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured, fetchHirebaseVectorJobsByResume } from "@/lib/hirebase";
 import { enrichVectorJobsWithMatchReasons } from "@/lib/hirebase-match-reasons";
 import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
+import { getActingUser } from "@/lib/acting-user";
 
 function splitCsv(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
@@ -60,17 +60,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { dbUser } = await getActingUser(request);
+  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
 
   let rawBody: Record<string, unknown> = {};
   try {
@@ -93,12 +86,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const resumeText = artifactState.resumeText ?? dbUser.profile?.resumeText ?? "";
+  const resumeText = artifactState.resumeText ?? profile?.resumeText ?? "";
   if (!resumeText.trim()) {
     return NextResponse.json({ error: "No resume text found." }, { status: 404 });
   }
 
-  const targetRoles = dbUser.profile?.targetRoles ?? [];
+  const targetRoles = profile?.targetRoles ?? [];
   const jobTitles = filters.jobTitles?.length ? filters.jobTitles : targetRoles.slice(0, 3);
 
   try {

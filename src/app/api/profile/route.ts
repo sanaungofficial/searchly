@@ -1,39 +1,39 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { NextResponse } from "next/server";
+import { getActingUser } from "@/lib/acting-user";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { authUser, dbUser, isImpersonating } = await getActingUser();
+    if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const dbUser = await prisma.user.findUnique({
-      where: { email: user.email! },
-      include: { profile: true },
-    });
+    const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
 
     const parsedData = mergeParsedWithReadback(
-      normalizeParsedResumeData(dbUser?.profile?.parsedData ?? null),
-      dbUser?.profile?.readbackData,
+      normalizeParsedResumeData(profile?.parsedData ?? null),
+      profile?.readbackData,
     );
 
     return NextResponse.json({
-      name: dbUser?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
-      email: user.email,
-      avatarUrl: dbUser?.avatarUrl || null,
-      resumeUrl: dbUser?.profile?.resumeUrl || null,
-      linkedinUrl: dbUser?.profile?.linkedinUrl || null,
-      headline: dbUser?.profile?.headline || null,
-      targetRoles: dbUser?.profile?.targetRoles || [],
+      name: dbUser.name || authUser.email.split("@")[0] || "You",
+      email: dbUser.email,
+      avatarUrl: dbUser.avatarUrl || null,
+      resumeUrl: profile?.resumeUrl || null,
+      linkedinUrl: profile?.linkedinUrl || null,
+      headline: profile?.headline || null,
+      targetRoles: profile?.targetRoles || [],
       parsedData,
-      employmentStatus: dbUser?.profile?.employmentStatus || null,
-      currentSalary: dbUser?.profile?.currentSalary || null,
-      targetSalary: dbUser?.profile?.targetSalary || null,
-      careerMotivation: dbUser?.profile?.careerMotivation || null,
-      jobTimeline: dbUser?.profile?.jobTimeline || null,
-      priorities: dbUser?.profile?.priorities || [],
+      employmentStatus: profile?.employmentStatus || null,
+      currentSalary: profile?.currentSalary || null,
+      targetSalary: profile?.targetSalary || null,
+      careerMotivation: profile?.careerMotivation || null,
+      jobTimeline: profile?.jobTimeline || null,
+      priorities: profile?.priorities || [],
+      impersonating: isImpersonating
+        ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
+        : undefined,
     });
   } catch (err) {
     console.error("[profile GET]", err);
@@ -42,15 +42,11 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+  const { authUser, dbUser } = await getActingUser();
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
   const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution } = body;
-
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   if (name !== undefined) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name } });

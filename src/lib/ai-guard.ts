@@ -6,25 +6,40 @@ import { consumeFeatureCredit, type FeatureCreditStatus } from "@/lib/feature-cr
 import { hasActiveProTrial } from "@/lib/referrals";
 import { CREDITS_EXHAUSTED_ERROR } from "@/lib/credits";
 import type { PlanCreditFeature } from "@prisma/client";
+import { getActingUser, quotaUserFor } from "@/lib/acting-user";
 
 export async function getAuthedUserForAi() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const acting = await getActingUser();
+  if (!acting.authUser) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) as NextResponse };
+  }
+  if (!acting.dbUser) {
+    return { error: NextResponse.json({ error: "User not found" }, { status: 404 }) as NextResponse };
   }
 
   const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
+    where: { id: acting.dbUser.id },
     include: { profile: true, subscription: true },
   });
   if (!dbUser) {
     return { error: NextResponse.json({ error: "User not found" }, { status: 404 }) as NextResponse };
   }
 
-  return { dbUser, supabase };
+  const quotaUser = quotaUserFor(acting);
+  const quotaDbUser = quotaUser
+    ? await prisma.user.findUnique({
+        where: { id: quotaUser.id },
+        include: { subscription: true },
+      })
+    : null;
+
+  return {
+    dbUser,
+    quotaDbUser: quotaDbUser ?? dbUser,
+    isImpersonating: acting.isImpersonating,
+    supabase,
+  };
 }
 
 export async function hasUnlimitedAiAccess(dbUser: {
@@ -65,8 +80,24 @@ export async function requireAiQuota(
     subscription: { status: string; stripeCurrentPeriodEnd: Date } | null;
   },
   feature: PlanCreditFeature,
+  quotaDbUser?: {
+    id: string;
+    role: string;
+    subscription: { status: string; stripeCurrentPeriodEnd: Date } | null;
+  },
 ): Promise<NextResponse | null> {
-  const unlimited = await hasUnlimitedAiAccess(dbUser);
+  let billingUser = quotaDbUser ?? dbUser;
+  if (!quotaDbUser) {
+    const acting = await getActingUser();
+    if (acting.isImpersonating && acting.realDbUser) {
+      const adminWithSub = await prisma.user.findUnique({
+        where: { id: acting.realDbUser.id },
+        include: { subscription: true },
+      });
+      if (adminWithSub) billingUser = adminWithSub;
+    }
+  }
+  const unlimited = await hasUnlimitedAiAccess(billingUser);
   const { allowed, ...status } = await consumeFeatureCredit(dbUser.id, feature, unlimited);
   if (!allowed) {
     return NextResponse.json(creditsErrorBody(status), { status: 402 });
