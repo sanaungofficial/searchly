@@ -12,9 +12,7 @@ import {
   type CachedJob,
 } from "@/lib/cached-job";
 import {
-  KANBAN_STAGES,
   STAGE_LABELS,
-  STAGE_COLORS,
   type KanbanCard,
   type KanbanStage,
 } from "./workspace-data";
@@ -28,14 +26,13 @@ import { buildNetworkProspectCard } from "@/lib/network-job-display";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
-import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import type { StageFilter } from "@/lib/role-listings";
 
 export type { DrawerTool };
 
 type OppTab = "pipeline" | "network" | "companies";
-export type PipelineFilter = "all" | "recommended" | KanbanStage;
 
 // Props now sourced from WorkspaceContext
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -96,8 +93,7 @@ export function WorkspaceOpportunities() {
   const [csvProgress, setCsvProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  // Pipeline flat-list filter
-  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>("all");
+  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [prospectJob, setProspectJob] = useState<{
     companyName: string;
     job: CachedJob;
@@ -230,7 +226,6 @@ export function WorkspaceOpportunities() {
     const meta = buildRecommendedProspectCard(job, 0)._meta;
     const created = await addJob(job.companyName, job.title, job.url ?? undefined, meta);
     if (created) {
-      setPipelineFilter("saved");
       setDrawerCardId(created.cardId);
     }
   }, [addJob]);
@@ -477,15 +472,12 @@ export function WorkspaceOpportunities() {
         {tab === "pipeline" && (
           <PipelineTab
             cards={kanbanCards}
-            filter={pipelineFilter}
-            setFilter={setPipelineFilter}
+            stageFilter={stageFilter}
+            setStageFilter={setStageFilter}
             onChangeStage={changeStage}
             onOpenDrawer={openDrawer}
             onOpenRecommended={openRecommendedJob}
             onSaveRecommended={saveRecommendedJob}
-            drawerCard={drawerCardId !== null ? kanbanCards.find((c) => c.id === drawerCardId) || null : null}
-            closeDrawer={closeDrawer}
-            moveCard={moveCard}
           />
         )}
       </div>
@@ -551,7 +543,7 @@ export function WorkspaceOpportunities() {
 
 
 /* ──────────────────────────────────────────────────────────────
-   Helpers: CSV parser, StatusDropdown, CsvUploadPanel, MyJobsUrlPastePanel
+   Helpers: CSV parser, CsvUploadPanel, MyJobsUrlPastePanel
    ───────────────────────────────────────────────────────────────── */
 
 /* Parse CSV text into a list of {url, company?, role?} objects.
@@ -572,98 +564,6 @@ function parseCsv(text: string): Array<{ url: string; company?: string; role?: s
       return { url: parts[0], company: parts[1] || undefined, role: parts[2] || undefined };
     })
     .filter((item) => item.url);
-}
-
-/* ── StatusDropdown — colored stage selector used in My Jobs + Pipeline cards ── */
-function StatusDropdown({
-  stage,
-  onChange,
-  size = "normal",
-}: {
-  stage: KanbanStage;
-  onChange: (s: KanbanStage) => void;
-  size?: "small" | "normal";
-}) {
-  const [open, setOpen] = useState(false);
-  const stageColor = STAGE_COLORS[stage];
-  const isSmall = size === "small";
-  return (
-    <div style={{ position: "relative", flexShrink: 0 }}>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(!open);
-        }}
-        style={{
-          padding: isSmall ? "4px 10px" : "6px 14px",
-          background: surface.card,
-          border: border.line,
-          borderRadius: 0,
-          fontFamily: fontSans,
-          fontSize: isSmall ? T.label : T.caption,
-          fontWeight: 600,
-          color: stageColor,
-          cursor: "pointer",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: stageColor, flexShrink: 0 }} />
-        {STAGE_LABELS[stage]} ▾
-      </button>
-      {open && (
-        <>
-          <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              right: 0,
-              marginTop: 4,
-              background: surface.card,
-              border: border.line,
-              boxShadow: "3px 3px 0 rgba(17,17,17,0.06)",
-              zIndex: 100,
-              minWidth: 150,
-              overflow: "hidden",
-            }}
-          >
-            {KANBAN_STAGES.map((s) => (
-              <button
-                key={s}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange(s);
-                  setOpen(false);
-                }}
-                style={{
-                  width: "100%",
-                  padding: "8px 14px",
-                  background: s === stage ? `${STAGE_COLORS[s]}10` : "transparent",
-                  border: "none",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: s === stage ? 600 : 500,
-                  color: s === stage ? STAGE_COLORS[s] : "#2A2218",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: STAGE_COLORS[s], flexShrink: 0 }} />
-                {STAGE_LABELS[s]}
-                {s === stage && <span style={{ marginLeft: "auto", color: STAGE_COLORS[s] }}>✓</span>}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
 }
 
 /* ── CsvUploadPanel — file picker + progress for bulk URL upload ── */
@@ -893,14 +793,6 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
    Pipeline tab — Citebound-style list with summary + filter boxes
    ────────────────────────────────────────────────────────────── */
 
-function getFeaturedJobId(cards: KanbanCard[]): number | null {
-  const withNext = cards.find((c) => (c as KanbanCard & { _meta?: JobMeta })._meta?.nextStep);
-  if (withNext) return withNext.id;
-  const interviewing = cards.find((c) => c.stage === "interview");
-  if (interviewing) return interviewing.id;
-  return cards[0]?.id ?? null;
-}
-
 function PipelineStatBar({ label, pct, highlight }: { label: string; pct: number; highlight?: boolean }) {
   return (
     <div style={{ marginBottom: 10 }}>
@@ -926,27 +818,23 @@ function PipelineStatBar({ label, pct, highlight }: { label: string; pct: number
 
 interface PipelineTabProps {
   cards: KanbanCard[];
-  filter: PipelineFilter;
-  setFilter: (f: PipelineFilter) => void;
+  stageFilter: StageFilter;
+  setStageFilter: (f: StageFilter) => void;
   onChangeStage: (id: number, stage: KanbanStage) => void;
   onOpenDrawer: (id: number) => void;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
-  drawerCard: KanbanCard | null;
-  closeDrawer: () => void;
-  moveCard: (id: number, stage: KanbanStage) => void;
 }
 
 function PipelineTab({
   cards,
-  filter,
-  setFilter,
+  stageFilter,
+  setStageFilter,
   onChangeStage,
   onOpenDrawer,
   onOpenRecommended,
   onSaveRecommended,
 }: PipelineTabProps) {
-  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [wideLayout, setWideLayout] = useState(false);
 
   useEffect(() => {
@@ -957,44 +845,37 @@ function PipelineTab({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const visibleCards = filter === "all" || filter === "recommended" ? cards : cards.filter((c) => c.stage === filter);
   const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer", "closed"];
-  const sortedCards = [...visibleCards].sort((a, b) => stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage));
-  const featuredId = getFeaturedJobId(sortedCards);
-
-  const filterChips: [PipelineFilter, string][] = [
-    ["all", "All"],
-    ["recommended", "Recommended"],
-    ["saved", "Saved"],
-    ["applied", "Applied"],
-    ["interview", "Interviewing"],
-    ["offer", "Offer"],
-    ["closed", "Closed"],
-  ];
-
   const activeCount = cards.filter((c) => c.stage !== "closed").length;
   const stageCounts = stageOrder
     .filter((s) => s !== "closed")
     .map((s) => ({ stage: s, count: cards.filter((c) => c.stage === s).length }));
   const maxCount = Math.max(1, ...stageCounts.map((s) => s.count));
 
+  const stageFilterChips: [StageFilter, string][] = [
+    ["all", "All roles"],
+    ["saved", STAGE_LABELS.saved],
+    ["applied", STAGE_LABELS.applied],
+    ["interview", STAGE_LABELS.interview],
+    ["offer", STAGE_LABELS.offer],
+    ["closed", STAGE_LABELS.closed],
+  ];
+
   return (
     <div style={{ padding: "32px 36px 48px" }}>
-      {/* Editorial header */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-          <ScoutLabel>Job search pipeline</ScoutLabel>
+          <ScoutLabel>Recommended roles</ScoutLabel>
         </div>
         <ScoutDisplayTitle size={36} style={{ marginBottom: 10 }}>
-          Track every role in one place
+          Every role in one place
         </ScoutDisplayTitle>
-        <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
-          Add roles from job URLs, track stage and next steps, and open any listing for match tools.
+        <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
+          Discover matching roles at tracked companies, search everything you have, and track Saved through Offer in one list.
         </p>
       </div>
 
-      {/* Summary + filter (desktop sidebar) or summary only + mobile chips */}
       <div
         style={{
           display: "grid",
@@ -1014,7 +895,7 @@ function PipelineTab({
             <span style={displayTitleStyle(48, { lineHeight: 1 })}>
               {activeCount}
             </span>
-            <span style={displayTitleStyle(22, { color: color.muted, lineHeight: 1.1 })}>/ roles</span>
+            <span style={displayTitleStyle(22, { color: color.muted, lineHeight: 1.1 })}>/ in pipeline</span>
           </div>
           {stageCounts.map(({ stage, count }, i) => (
             <PipelineStatBar
@@ -1029,22 +910,22 @@ function PipelineTab({
         {wideLayout && (
           <ScoutBox padding={0}>
             <div style={{ padding: "14px 18px", borderBottom: border.line, background: surface.inset }}>
-              <ScoutLabel>Filter</ScoutLabel>
+              <ScoutLabel>Pipeline stage</ScoutLabel>
             </div>
-            {filterChips.map(([id, label], i) => {
-              const active = filter === id;
-              const count = id === "all" ? cards.length : id === "recommended" ? null : cards.filter((c) => c.stage === id).length;
+            {stageFilterChips.map(([id, label], i) => {
+              const active = stageFilter === id;
+              const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
               return (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setFilter(id)}
+                  onClick={() => setStageFilter(id)}
                   style={{
                     display: "block",
                     width: "100%",
                     padding: "11px 18px",
                     border: "none",
-                    borderBottom: i < filterChips.length - 1 ? border.line : "none",
+                    borderBottom: i < stageFilterChips.length - 1 ? border.line : "none",
                     fontFamily: fontSans,
                     fontSize: T.bodySm,
                     fontWeight: active ? 600 : 500,
@@ -1055,9 +936,7 @@ function PipelineTab({
                   }}
                 >
                   {label}
-                  {count != null && (
-                    <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7, marginLeft: 6 }}>{count}</span>
-                  )}
+                  <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7, marginLeft: 6 }}>{count}</span>
                 </button>
               );
             })}
@@ -1065,231 +944,15 @@ function PipelineTab({
         )}
       </div>
 
-      {/* Mobile / narrow filter chips + view toggle */}
-      {!wideLayout && filter !== "recommended" && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
-            {filterChips.map(([id, label]) => {
-              const active = filter === id;
-              const count = id === "all" ? cards.length : id === "recommended" ? null : cards.filter((c) => c.stage === id).length;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setFilter(id)}
-                  style={{
-                    padding: "6px 12px",
-                    color: active ? color.forest : color.muted,
-                    border: active ? border.lineStrong : border.line,
-                    borderRadius: 0,
-                    background: active ? surface.card : "transparent",
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    fontWeight: active ? 600 : 500,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                  }}
-                >
-                  {label}
-                  {count != null && (
-                    <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: "flex", border: border.line, flexShrink: 0 }}>
-            {(["list", "kanban"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setViewMode(mode)}
-                title={mode === "list" ? "List view" : "Board view"}
-                style={{
-                  padding: "6px 10px",
-                  background: viewMode === mode ? color.forest : surface.card,
-                  color: viewMode === mode ? color.gold : color.muted,
-                  border: "none",
-                  borderLeft: mode === "kanban" ? border.line : "none",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  cursor: "pointer",
-                  lineHeight: 1,
-                }}
-              >
-                {mode === "list" ? "☰" : "⊞"}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {wideLayout && filter !== "recommended" && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <ScoutLabel>Open roles</ScoutLabel>
-          <div style={{ display: "flex", border: border.line }}>
-            {(["list", "kanban"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setViewMode(mode)}
-                title={mode === "list" ? "List view" : "Board view"}
-                style={{
-                  padding: "6px 10px",
-                  background: viewMode === mode ? color.forest : surface.card,
-                  color: viewMode === mode ? color.gold : color.muted,
-                  border: "none",
-                  borderLeft: mode === "kanban" ? border.line : "none",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  cursor: "pointer",
-                  lineHeight: 1,
-                }}
-              >
-                {mode === "list" ? "List" : "Board"}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {filter === "recommended" ? (
-        <PipelineRecommendedSection
-          pipelineCards={cards}
-          onOpenJob={onOpenRecommended}
-          onSaveJob={onSaveRecommended}
-        />
-      ) : cards.length === 0 ? (
-        <ScoutBox style={{ padding: 60, textAlign: "center" }}>
-          <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
-            No jobs yet. Click &quot;Add job&quot; above to paste a URL, or &quot;Upload CSV&quot; to bulk-add jobs.
-          </p>
-        </ScoutBox>
-      ) : sortedCards.length === 0 ? (
-        <ScoutBox style={{ padding: 48, textAlign: "center" }}>
-          <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
-            No jobs match this filter.
-          </p>
-        </ScoutBox>
-      ) : viewMode === "kanban" ? (
-        /* ── Kanban board ── */
-        <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 20, alignItems: "flex-start" }}>
-          {stageOrder.map((stage) => {
-            const colCards = cards.filter((c) => c.stage === stage);
-            const stageColor = STAGE_COLORS[stage];
-            return (
-              <div key={stage} style={{ minWidth: 210, maxWidth: 210, flexShrink: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, padding: "0 2px" }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: stageColor, flexShrink: 0 }} />
-                  <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: stageColor }}>{STAGE_LABELS[stage]}</span>
-                  <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight, marginLeft: "auto" }}>{colCards.length}</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {colCards.map((c) => {
-                    const meta = (c as KanbanCard & { _meta?: JobMeta })._meta;
-                    const url = (c as KanbanCard & { _url?: string })._url ?? null;
-                    const nextStepDue = meta?.nextStepDue;
-                    const isOverdue = nextStepDue ? new Date(nextStepDue) < new Date() : false;
-                    return (
-                      <div key={c.id} onClick={() => onOpenDrawer(c.id)} style={{ cursor: "pointer" }}>
-                        <ScoutBox padding="12px 14px" style={{ borderTop: `2px solid ${stageColor}` }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <CompanyLogo name={c.company} website={url} size={28} />
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.role}</p>
-                            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.company}</p>
-                          </div>
-                        </div>
-                        {meta?.location && (
-                          <span style={{ display: "inline-block", padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 0, fontFamily: fontSans, fontSize: T.label, color: color.stone, marginBottom: meta?.salary ? 3 : 0 }}>
-                            📍 {meta.location}
-                          </span>
-                        )}
-                        {meta?.nextStep && (
-                          <div style={{ marginTop: 6, padding: "4px 7px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 0, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#1A3A2F"}` }}>
-                            <p style={{ fontFamily: fontSans, fontSize: T.label, color: isOverdue ? "#C4574A" : "#1A3A2F", fontWeight: 500 }}>
-                              {isOverdue ? "⚠ " : "→ "}{meta.nextStep}
-                            </p>
-                          </div>
-                        )}
-                        </ScoutBox>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* ── List view ── */
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {sortedCards.map((c) => {
-            const meta = (c as KanbanCard & { _meta?: JobMeta })._meta;
-            const url = (c as KanbanCard & { _url?: string })._url ?? null;
-            const nextStepDue = meta?.nextStepDue;
-            const isOverdue = nextStepDue ? new Date(nextStepDue) < new Date() : false;
-            const isFeatured = c.id === featuredId;
-            return (
-              <ScoutBox key={c.id} stack={isFeatured} padding={18}>
-                <div
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "start", gap: 16, flex: 1, minWidth: 0, cursor: "pointer" }}
-                    onClick={() => onOpenDrawer(c.id)}
-                  >
-                    <CompanyLogo name={c.company} website={url} size={40} />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>
-                        {c.role}
-                      </p>
-                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
-                        {c.company} · {c.days === 0 ? "Today" : `${c.days}d ago`}
-                      </p>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: meta?.nextStep ? 8 : 0 }}>
-                        <span
-                          style={{
-                            padding: "2px 8px",
-                            border: border.line,
-                            fontFamily: fontSans,
-                            fontSize: T.label,
-                            fontWeight: 600,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            color: color.stone,
-                          }}
-                        >
-                          {STAGE_LABELS[c.stage]}
-                        </span>
-                        {meta?.location && (
-                          <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                            {meta.location}
-                          </span>
-                        )}
-                        {meta?.salary && (
-                          <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
-                            {meta.salary}
-                          </span>
-                        )}
-                      </div>
-                      {meta?.nextStep && (
-                        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: isOverdue ? "#C4574A" : color.stone, margin: 0, fontWeight: 500 }}>
-                          {isOverdue ? "⚠ " : "Next · "}{meta.nextStep}
-                          {meta.nextStepDue ? ` · ${meta.nextStepDue}` : ""}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <StatusDropdown stage={c.stage} onChange={(s) => { onChangeStage(c.id, s); }} />
-                </div>
-              </ScoutBox>
-            );
-          })}
-        </div>
-      )}
+      <PipelineRecommendedSection
+        pipelineCards={cards}
+        stageFilter={stageFilter}
+        onStageFilterChange={setStageFilter}
+        onOpenJob={onOpenRecommended}
+        onOpenPipeline={onOpenDrawer}
+        onSaveJob={onSaveRecommended}
+        onChangeStage={onChangeStage}
+      />
     </div>
   );
 }
