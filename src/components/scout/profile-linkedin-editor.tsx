@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   linkedInChecklist,
   linkedInEditUrl,
@@ -43,6 +43,85 @@ async function copyText(text: string) {
   }
 }
 
+type PhotoType = "profile" | "cover";
+
+function PhotoEditOverlay({
+  label,
+  uploading,
+  hasPhoto,
+  visible,
+  onUploadClick,
+  onRemoveClick,
+  shape = "rect",
+}: {
+  label: string;
+  uploading: boolean;
+  hasPhoto: boolean;
+  visible: boolean;
+  onUploadClick: () => void;
+  onRemoveClick: () => void;
+  shape?: "rect" | "circle";
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        background: "rgba(0,0,0,0.45)",
+        opacity: visible || uploading ? 1 : 0,
+        transition: "opacity 0.15s ease",
+        borderRadius: shape === "circle" ? "50%" : 0,
+        cursor: uploading ? "wait" : "pointer",
+        pointerEvents: visible || uploading ? "auto" : "none",
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!uploading) onUploadClick();
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "system-ui, sans-serif",
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#fff",
+          textAlign: "center",
+          padding: "0 8px",
+        }}
+      >
+        {uploading ? "Uploading…" : hasPhoto ? `Change ${label}` : `Upload ${label}`}
+      </span>
+      {hasPhoto && !uploading && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemoveClick();
+          }}
+          style={{
+            fontFamily: "system-ui, sans-serif",
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#fff",
+            background: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.5)",
+            borderRadius: 4,
+            padding: "4px 10px",
+            cursor: "pointer",
+          }}
+        >
+          Remove
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -55,6 +134,10 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saveHint, setSaveHint] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState<PhotoType | null>(null);
+  const [photoHover, setPhotoHover] = useState<PhotoType | null>(null);
+  const profileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,6 +227,45 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     }
   };
 
+  const handlePhotoUpload = async (file: File, type: PhotoType) => {
+    if (!draft) return;
+    setUploadingPhoto(type);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("type", type);
+      const res = await fetch("/api/profile/linkedin-draft/photo", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Upload failed");
+      const next: LinkedInProfileDraft = {
+        ...draft,
+        ...(type === "profile" ? { profilePhotoUrl: data.url } : { coverPhotoUrl: data.url }),
+      };
+      if (type === "profile") setAvatarUrl(data.url);
+      await saveDraft(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingPhoto(null);
+    }
+  };
+
+  const handlePhotoRemove = async (type: PhotoType) => {
+    if (!draft) return;
+    const next: LinkedInProfileDraft = {
+      ...draft,
+      ...(type === "profile" ? { profilePhotoUrl: null } : { coverPhotoUrl: null }),
+    };
+    await saveDraft(next);
+  };
+
+  const onPhotoFileChange = (type: PhotoType) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void handlePhotoUpload(file, type);
+    e.target.value = "";
+  };
+
   if (loading) {
     return (
       <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", padding: "24px 0" }}>
@@ -154,9 +276,25 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
 
   const checklist = draft ? linkedInChecklist(draft) : [];
   const liUrl = linkedInEditUrl(linkedinUrl);
+  const profilePhotoUrl = draft?.profilePhotoUrl ?? avatarUrl;
+  const coverPhotoUrl = draft?.coverPhotoUrl ?? null;
 
   return (
     <div style={{ paddingBottom: 48 }}>
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        style={{ display: "none" }}
+        onChange={onPhotoFileChange("cover")}
+      />
+      <input
+        ref={profileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        style={{ display: "none" }}
+        onChange={onPhotoFileChange("profile")}
+      />
       <LinkedInGenerateLoader active={generating} />
       {/* Toolbar */}
       <div
@@ -252,15 +390,33 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             }}
           >
             <div style={{ background: LI.card, borderRadius: 8, overflow: "hidden", boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-              <div style={{ height: isMobile ? 80 : 120, background: LI.banner }} />
+              <div
+                style={{
+                  position: "relative",
+                  height: isMobile ? 80 : 120,
+                  background: coverPhotoUrl ? `url(${coverPhotoUrl}) center/cover no-repeat` : LI.banner,
+                }}
+                onMouseEnter={() => setPhotoHover("cover")}
+                onMouseLeave={() => setPhotoHover(null)}
+              >
+                <PhotoEditOverlay
+                  label="cover photo"
+                  uploading={uploadingPhoto === "cover"}
+                  hasPhoto={Boolean(coverPhotoUrl)}
+                  visible={photoHover === "cover" || isMobile}
+                  onUploadClick={() => coverInputRef.current?.click()}
+                  onRemoveClick={() => void handlePhotoRemove("cover")}
+                />
+              </div>
               <div style={{ padding: isMobile ? "0 16px 20px" : "0 24px 28px", marginTop: isMobile ? -36 : -48 }}>
                 <div
                   style={{
+                    position: "relative",
                     width: isMobile ? 72 : 96,
                     height: isMobile ? 72 : 96,
                     borderRadius: "50%",
                     border: "4px solid white",
-                    background: avatarUrl ? `url(${avatarUrl}) center/cover` : "#c4c4c4",
+                    background: profilePhotoUrl ? `url(${profilePhotoUrl}) center/cover no-repeat` : "#c4c4c4",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -268,9 +424,21 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                     fontSize: 28,
                     fontWeight: 600,
                     color: "#fff",
+                    overflow: "hidden",
                   }}
+                  onMouseEnter={() => setPhotoHover("profile")}
+                  onMouseLeave={() => setPhotoHover(null)}
                 >
-                  {!avatarUrl && initials(name)}
+                  {!profilePhotoUrl && initials(name)}
+                  <PhotoEditOverlay
+                    label="profile photo"
+                    uploading={uploadingPhoto === "profile"}
+                    hasPhoto={Boolean(profilePhotoUrl)}
+                    visible={photoHover === "profile" || isMobile}
+                    shape="circle"
+                    onUploadClick={() => profileInputRef.current?.click()}
+                    onRemoveClick={() => void handlePhotoRemove("profile")}
+                  />
                 </div>
                 <h3
                   style={{
@@ -459,24 +627,55 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                         color: copiedId === item.id ? "#4A8B6A" : color.forest,
                       }}
                     >
-                      {copiedId === item.id ? "Copied" : "Copy"}
+                      {copiedId === item.id ? "Copied" : item.imageUrl ? "Copy URL" : "Copy"}
                     </ScoutSecondaryBtn>
                   </div>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-ui)",
-                      fontSize: 12,
-                      color: LI.muted,
-                      margin: 0,
-                      lineHeight: 1.45,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {item.copyText}
-                  </p>
+                  {item.imageUrl ? (
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <img
+                        src={item.imageUrl}
+                        alt={item.label}
+                        style={{
+                          width: item.id === "cover_photo" ? 72 : 48,
+                          height: item.id === "cover_photo" ? 40 : 48,
+                          objectFit: "cover",
+                          borderRadius: item.id === "profile_photo" ? "50%" : 4,
+                          border: `1px solid ${LI.border}`,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <a
+                        href={item.imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: LI.blue,
+                          textDecoration: "none",
+                        }}
+                      >
+                        Open image →
+                      </a>
+                    </div>
+                  ) : (
+                    <p
+                      style={{
+                        fontFamily: "var(--font-ui)",
+                        fontSize: 12,
+                        color: LI.muted,
+                        margin: 0,
+                        lineHeight: 1.45,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {item.copyText}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

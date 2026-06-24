@@ -33,6 +33,8 @@ export interface LinkedInProfileDraft {
   education: LinkedInEducationEntry[];
   skills: string[];
   featured: LinkedInFeaturedLink[];
+  profilePhotoUrl?: string | null;
+  coverPhotoUrl?: string | null;
   sourceAssetId?: string | null;
   generatedAt?: string | null;
 }
@@ -222,6 +224,8 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
     education,
     skills,
     featured,
+    profilePhotoUrl: asStringOrNull(obj.profilePhotoUrl),
+    coverPhotoUrl: asStringOrNull(obj.coverPhotoUrl),
     sourceAssetId: asStringOrNull(obj.sourceAssetId),
     generatedAt: asStringOrNull(obj.generatedAt),
   };
@@ -237,10 +241,35 @@ export type LinkedInChecklistItem = {
   label: string;
   copyText: string;
   linkedInHint: string;
+  imageUrl?: string | null;
 };
 
 export function linkedInChecklist(draft: LinkedInProfileDraft): LinkedInChecklistItem[] {
-  const items: LinkedInChecklistItem[] = [
+  const items: LinkedInChecklistItem[] = [];
+
+  if (draft.coverPhotoUrl) {
+    items.push({
+      id: "cover_photo",
+      section: "Intro",
+      label: "Cover photo",
+      copyText: draft.coverPhotoUrl,
+      linkedInHint: "Profile → Intro → Background photo → Upload",
+      imageUrl: draft.coverPhotoUrl,
+    });
+  }
+
+  if (draft.profilePhotoUrl) {
+    items.push({
+      id: "profile_photo",
+      section: "Intro",
+      label: "Profile photo",
+      copyText: draft.profilePhotoUrl,
+      linkedInHint: "Profile photo → Camera icon → Upload photo",
+      imageUrl: draft.profilePhotoUrl,
+    });
+  }
+
+  items.push(
     {
       id: "headline",
       section: "Intro",
@@ -255,7 +284,7 @@ export function linkedInChecklist(draft: LinkedInProfileDraft): LinkedInChecklis
       copyText: draft.about,
       linkedInHint: "Profile → About → Description",
     },
-  ];
+  );
 
   draft.experience.forEach((exp) => {
     items.push({
