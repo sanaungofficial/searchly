@@ -103,6 +103,32 @@ export function ArrowRightSmall(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/* Indeed icon */
+export function IndeedIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true" {...props}>
+      <rect width="22" height="22" rx="4" fill="#2557A7" />
+      <path
+        d="M7.2 16V6.2h2.4V16H7.2zm6.1-9.8c1.3 0 2.3 1 2.3 2.3s-1 2.3-2.3 2.3-2.3-1-2.3-2.3 1-2.3 2.3-2.3zm-1.2 9.8V9.4h2.4V16h-2.4z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+/* Google icon — used for Google Jobs shortcut */
+export function GoogleIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true" {...props}>
+      <rect width="22" height="22" rx="4" fill="#FFFFFF" stroke="rgba(26,58,47,0.12)" />
+      <path d="M17.6 11.2c0-.7-.1-1.2-.2-1.7H11v3.1h3.7c-.2 1-.7 1.6-1.5 2.1v1.7h2.4c1.4-1.3 2.2-3.2 2.2-5.2z" fill="#4285F4" />
+      <path d="M11 17.5c2 0 3.7-.7 4.9-1.8l-2.4-1.9c-.7.5-1.5.7-2.5.7-1.9 0-3.6-1.3-4.2-3.1H4.4v2c1.2 2.3 3.6 3.7 6.6 3.7z" fill="#34A853" />
+      <path d="M6.8 9.4c-.2-.5-.3-1.1-.3-1.7s.1-1.2.3-1.7V3.9H4.4C3.7 5.3 3.3 6.8 3.3 8.4s.4 3.1 1.1 4.5l2.4-1.9z" fill="#FBBC05" />
+      <path d="M11 4.9c1.1 0 2.1.4 2.9 1.2l2.2-2.2C14.7 2.7 13 2 11 2 7.5 2 4.5 4.3 3.3 7.6l2.4 1.9C6.4 7.6 8.1 4.9 11 4.9z" fill="#EA4335" />
+    </svg>
+  );
+}
+
 /* Clock icon — for job URL input */
 export function ClockIcon(props: SVGProps<SVGSVGElement>) {
   return (

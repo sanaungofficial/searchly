@@ -1,13 +1,21 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { JobBoardId } from "@/lib/job-board-search";
 import { buildJobBoardLinks } from "@/lib/job-board-search";
+import {
+  mergeRoleSuggestions,
+  normalizeCustomRoleTitle,
+  TARGET_ROLE_SUGGESTIONS,
+} from "@/lib/target-roles";
 import {
   UploadIcon,
   CheckCircleFilled,
   CheckCircleSmall,
   CheckCircleTiny,
   LinkedInIcon,
+  IndeedIcon,
+  GoogleIcon,
   ArrowRightIcon,
   ArrowRightSmall,
   ClockIcon,
@@ -1051,7 +1059,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
             >
-              Refine this
+              Re-upload resume
             </button>
           </div>
           <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
@@ -1341,65 +1349,6 @@ export function ScreenTargetJobs({
 /* ──────────────────────────────────────────────────────────────
    Role / preference data
    ────────────────────────────────────────────────────────────── */
-export const ROLE_BUCKETS = [
-  {
-    id: "pm",
-    label: "Product Management",
-    titles: [
-      "Product Manager",
-      "Senior Product Manager",
-      "Principal / Staff Product Manager",
-      "Group Product Manager",
-      "Director of Product Management",
-      "VP of Product",
-      "Head of Product",
-      "Chief Product Officer (CPO)",
-    ],
-  },
-  {
-    id: "strategy",
-    label: "Corporate Strategy / CorpDev",
-    titles: [
-      "Strategy Manager",
-      "Senior Strategy Manager",
-      "Director of Strategy",
-      "VP of Corporate Strategy",
-      "Head of Corporate Development",
-      "Director of Corporate Development",
-      "Chief Strategy Officer (CSO)",
-      "Business Development Director",
-      "Chief of Staff",
-    ],
-  },
-  {
-    id: "ops",
-    label: "Operations / BizOps",
-    titles: [
-      "Business Operations Manager",
-      "Director of Operations",
-      "VP of Operations",
-      "Chief Operating Officer (COO)",
-      "Chief of Staff",
-      "Head of BizOps",
-      "General Manager",
-      "Director of Program Management",
-      "Transformation Director",
-    ],
-  },
-  {
-    id: "pevc",
-    label: "PE / VC Operations",
-    titles: [
-      "Operating Partner",
-      "Head of Portfolio Operations",
-      "Portfolio Operations Manager",
-      "Value Creation Manager",
-      "Chief of Staff (PE/VC-backed)",
-      "VP of Operations (PE-backed)",
-    ],
-  },
-];
-
 export const SALARY_RANGES = [
   "Under $100K",
   "$100K – $150K",
@@ -1448,149 +1397,367 @@ const ATTRIBUTION_SOURCES = [
 ];
 
 /* ──────────────────────────────────────────────────────────────
-   Screen 1 — Target Roles
+   Screen 2 — Target Roles
    ────────────────────────────────────────────────────────────── */
 interface TargetRolesProps {
-  selectedBuckets: string[];
   selectedTitles: string[];
-  onToggleBucket: (id: string) => void;
-  onToggleTitle: (title: string) => void;
+  suggestedTitles?: string[];
+  onAddTitle: (title: string) => void;
+  onRemoveTitle: (title: string) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
 
-export function ScreenTargetRoles({
-  selectedBuckets,
-  selectedTitles,
-  onToggleBucket,
-  onToggleTitle,
-  onContinue,
-  onSkip,
-}: TargetRolesProps) {
-  const availableTitles = ROLE_BUCKETS
-    .filter((b) => selectedBuckets.includes(b.id))
-    .flatMap((b) => b.titles)
-    .filter((t, i, arr) => arr.indexOf(t) === i);
+function TargetRoleChip({
+  title,
+  onRemove,
+}: {
+  title: string;
+  onRemove?: () => void;
+}) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 12px",
+        background: "rgba(26,58,47,0.12)",
+        border: "1.5px solid #1A3A2F",
+        borderRadius: 8,
+        fontFamily: "var(--font-ui)",
+        fontSize: 14,
+        fontWeight: 600,
+        color: "#1A3A2F",
+      }}
+    >
+      {title}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${title}`}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontFamily: "var(--font-ui)",
+            fontSize: 16,
+            lineHeight: 1,
+            color: "#1A3A2F",
+          }}
+        >
+          ×
+        </button>
+      )}
+    </span>
+  );
+}
 
-  const canContinue = selectedTitles.length > 0;
+function TargetRoleAutocomplete({
+  selectedTitles,
+  suggestedTitles,
+  onAddTitle,
+  onRemoveTitle,
+  onDropdownOpenChange,
+}: {
+  selectedTitles: string[];
+  suggestedTitles: string[];
+  onAddTitle: (title: string) => void;
+  onRemoveTitle: (title: string) => void;
+  onDropdownOpenChange?: (open: boolean) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const atMax = selectedTitles.length >= 3;
+  const readbackSuggestions = suggestedTitles.filter((t) => !selectedTitles.includes(t));
+
+  const dropdownOptions = useMemo(() => {
+    if (atMax) return [];
+    return mergeRoleSuggestions(query, readbackSuggestions, 10).filter(
+      (t) => !selectedTitles.includes(t)
+    );
+  }, [query, readbackSuggestions, selectedTitles, atMax]);
+
+  useEffect(() => {
+    setHighlight(0);
+  }, [query, dropdownOptions.length]);
+
+  useEffect(() => {
+    onDropdownOpenChange?.(open && dropdownOptions.length > 0);
+  }, [open, dropdownOptions.length, onDropdownOpenChange]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  const tryAdd = (raw: string) => {
+    const normalized = normalizeCustomRoleTitle(raw);
+    if (!normalized || selectedTitles.includes(normalized) || selectedTitles.length >= 3) return false;
+    onAddTitle(normalized);
+    setQuery("");
+    setOpen(false);
+    return true;
+  };
+
+  const pickOption = (title: string) => {
+    tryAdd(title);
+    inputRef.current?.focus();
+  };
 
   return (
-    <div className="flex flex-col gap-5 onboarding-screen-gap">
-      <AboutYouIntro
-        title="What roles are you targeting?"
-        body="Pick a category, then choose up to 3 specific titles. We'll use these when you add jobs and score your fit."
-      />
+    <div ref={containerRef}>
+      {selectedTitles.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {selectedTitles.map((title) => (
+            <TargetRoleChip key={title} title={title} onRemove={() => onRemoveTitle(title)} />
+          ))}
+        </div>
+      )}
 
-      {/* Bucket chips */}
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
-        <p
+      {readbackSuggestions.length > 0 && !atMax && (
+        <div style={{ marginBottom: 14 }}>
+          <p
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 12,
+              fontWeight: 600,
+              color: ONBOARDING_TEXT_SECONDARY,
+              letterSpacing: "0.4px",
+              textTransform: "uppercase",
+              marginBottom: 8,
+              marginTop: 0,
+            }}
+          >
+            Suggested from your resume
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {readbackSuggestions.slice(0, 4).map((title) => (
+              <button
+                key={title}
+                type="button"
+                className="onboarding-chip"
+                onClick={() => pickOption(title)}
+                style={{
+                  padding: "8px 14px",
+                  background: ONBOARDING_FIELD_BG,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: 8,
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: ONBOARDING_TEXT,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                {title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ position: "relative" }}>
+        <label
+          htmlFor="target-role-input"
           style={{
+            display: "block",
             fontFamily: "var(--font-ui)",
             fontSize: 13,
             fontWeight: 600,
             color: ONBOARDING_LABEL_COLOR,
             letterSpacing: "0.6px",
             textTransform: "uppercase",
-            marginBottom: 12,
+            marginBottom: 10,
           }}
         >
-          Category
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {ROLE_BUCKETS.map((b) => {
-            const active = selectedBuckets.includes(b.id);
-            return (
-              <button
-                key={b.id}
-                className="onboarding-chip"
-                onClick={() => onToggleBucket(b.id)}
-                style={{
-                  padding: "10px 18px",
-                  background: active ? "#1A3A2F" : ONBOARDING_FIELD_BG,
-                  color: active ? "#E8D5A3" : ONBOARDING_TEXT,
-                  border: active ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-                  borderRadius: 8,
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 14,
-                  fontWeight: active ? 600 : 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  letterSpacing: "0.1px",
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.borderColor = "rgba(26,58,47,0.5)";
-                    e.currentTarget.style.color = "#1A1A1A";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.borderColor = "rgba(26,58,47,0.22)";
-                    e.currentTarget.style.color = "#52493F";
-                  }
-                }}
-              >
-                {b.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+          {atMax ? "Target roles · max 3 selected" : `Target role · ${selectedTitles.length}/3`}
+        </label>
+        <input
+          id="target-role-input"
+          ref={inputRef}
+          type="text"
+          value={query}
+          disabled={atMax}
+          placeholder={atMax ? "Remove one to add another" : "Start typing a role title…"}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open && dropdownOptions.length > 0}
+          aria-controls="target-role-listbox"
+          aria-autocomplete="list"
+          onFocus={() => setOpen(true)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setOpen(true);
+              setHighlight((i) => Math.min(i + 1, Math.max(dropdownOptions.length - 1, 0)));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlight((i) => Math.max(i - 1, 0));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              if (open && dropdownOptions[highlight]) pickOption(dropdownOptions[highlight]);
+              else tryAdd(query);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            }
+          }}
+          style={{
+            width: "100%",
+            minHeight: 48,
+            padding: "12px 14px",
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: 8,
+            background: atMax ? "rgba(247,245,242,0.6)" : ONBOARDING_FIELD_BG,
+            fontFamily: "var(--font-ui)",
+            fontSize: 16,
+            fontWeight: 500,
+            color: ONBOARDING_TEXT,
+            boxSizing: "border-box",
+            outline: "none",
+          }}
+        />
 
-      {/* Title chips — appear once a bucket is selected */}
-      {availableTitles.length > 0 && (
-        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.45s" }}>
-          <p
+        {open && !atMax && dropdownOptions.length > 0 && (
+          <ul
+            id="target-role-listbox"
+            role="listbox"
             style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: ONBOARDING_LABEL_COLOR,
-              letterSpacing: "0.6px",
-              textTransform: "uppercase",
-              marginBottom: 12,
+              position: "absolute",
+              zIndex: 20,
+              top: "calc(100% + 6px)",
+              left: 0,
+              right: 0,
+              margin: 0,
+              padding: 6,
+              listStyle: "none",
+              background: "#FFFFFF",
+              border: "1px solid rgba(26,58,47,0.16)",
+              borderRadius: 8,
+              boxShadow: "0 8px 24px rgba(26,58,47,0.12)",
+              maxHeight: 240,
+              overflowY: "auto",
             }}
           >
-            {atMax ? "Specific role · max 3 selected" : "Specific role · pick up to 3"}
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {availableTitles.map((title) => {
-              const selected = selectedTitles.includes(title);
-              const disabled = !selected && atMax;
-              return (
+            {dropdownOptions.map((title, index) => (
+              <li key={title} role="option" aria-selected={index === highlight}>
                 <button
-                  key={title}
-                  className="onboarding-chip"
-                  onClick={() => !disabled && onToggleTitle(title)}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pickOption(title)}
+                  onMouseEnter={() => setHighlight(index)}
                   style={{
-                    padding: "10px 16px",
-                    background: selected ? "rgba(26,58,47,0.12)" : ONBOARDING_FIELD_BG,
-                    color: disabled ? "#A09890" : selected ? "#1A3A2F" : ONBOARDING_TEXT,
-                    border: `1.5px solid ${selected ? "#1A3A2F" : disabled ? "rgba(26,58,47,0.12)" : "rgba(26,58,47,0.2)"}`,
-                    borderRadius: 8,
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 12px",
+                    border: "none",
+                    borderRadius: 6,
+                    background: index === highlight ? "rgba(26,58,47,0.08)" : "transparent",
                     fontFamily: "var(--font-ui)",
                     fontSize: 14,
-                    fontWeight: selected ? 600 : 500,
-                    cursor: disabled ? "default" : "pointer",
-                    transition: "all 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!selected && !disabled) e.currentTarget.style.borderColor = "rgba(26,58,47,0.4)";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!selected && !disabled) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)";
+                    fontWeight: 500,
+                    color: ONBOARDING_TEXT,
+                    cursor: "pointer",
                   }}
                 >
                   {title}
                 </button>
-              );
-            })}
-          </div>
-        </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {!atMax && query.trim() && dropdownOptions.length === 0 && (
+        <button
+          type="button"
+          onClick={() => tryAdd(query)}
+          style={{
+            marginTop: 10,
+            background: "none",
+            border: "none",
+            padding: 0,
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontWeight: 500,
+            color: "#1A3A2F",
+            cursor: "pointer",
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Use &ldquo;{normalizeCustomRoleTitle(query) ?? query.trim()}&rdquo;
+        </button>
       )}
 
-      {/* Continue */}
+      {!query && !atMax && (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+          {TARGET_ROLE_SUGGESTIONS.length}+ common titles — type to filter, Enter to add.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function ScreenTargetRoles({
+  selectedTitles,
+  suggestedTitles = [],
+  onAddTitle,
+  onRemoveTitle,
+  onContinue,
+  onSkip,
+}: TargetRolesProps) {
+  const canContinue = selectedTitles.length > 0;
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <AboutYouIntro
+        title="What roles are you targeting?"
+        body="Search and pick up to 3 titles. We'll use these for job search, fit scoring, and your pipeline."
+      />
+
+      <div
+        className="anim-fade-up"
+        style={{
+          ...ONBOARDING_CARD,
+          animationDelay: "0.2s",
+          position: "relative",
+          zIndex: dropdownOpen ? 30 : undefined,
+        }}
+      >
+        <TargetRoleAutocomplete
+          selectedTitles={selectedTitles}
+          suggestedTitles={suggestedTitles}
+          onAddTitle={onAddTitle}
+          onRemoveTitle={onRemoveTitle}
+          onDropdownOpenChange={setDropdownOpen}
+        />
+
+        {!canContinue && (
+          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 16 }}>
+            Skip for now
+          </button>
+        )}
+      </div>
+
       {canContinue && (
         <div className="anim-fade-up" style={ONBOARDING_CARD}>
           <button
@@ -1601,14 +1768,6 @@ export function ScreenTargetRoles({
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Continue →
-          </button>
-        </div>
-      )}
-
-      {!canContinue && (
-        <div className="anim-fade-up" style={ONBOARDING_CARD}>
-          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
-            Skip for now
           </button>
         </div>
       )}
@@ -1979,17 +2138,23 @@ interface TransitionProps {
   match: TransitionJobMatch | null;
 }
 
-function JobBoardShortcutButton({ label, url }: { label: string; url: string }) {
+function matchArticle(label: string): "a" | "an" {
+  return /^[aeiou]/i.test(label.trim()) ? "an" : "a";
+}
+
+function JobBoardShortcutButton({ id, label, url }: { id: JobBoardId; label: string; url: string }) {
+  const Icon = id === "linkedin" ? LinkedInIcon : id === "indeed" ? IndeedIcon : GoogleIcon;
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
+      aria-label={`Search ${label}`}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "10px 16px",
+        gap: 8,
+        padding: "10px 14px",
         background: ONBOARDING_FIELD_BG,
         border: ONBOARDING_FIELD_BORDER,
         borderRadius: 8,
@@ -2001,6 +2166,7 @@ function JobBoardShortcutButton({ label, url }: { label: string; url: string }) 
         cursor: "pointer",
       }}
     >
+      <Icon style={{ flexShrink: 0 }} />
       {label}
     </a>
   );
@@ -2056,7 +2222,7 @@ export function ScreenTransition({
           interviews.
         </h2>
         <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(1rem, 2.5vw, 1.125rem)", maxWidth: 440, margin: 0, color: ONBOARDING_TEXT_SECONDARY }}>
-          Paste a job you&apos;re considering. Kimchi will read the listing and score your fit.
+          Paste one job listing URL. Kimchi reads the posting and scores how well your resume fits.
         </p>
       </div>
 
@@ -2116,12 +2282,13 @@ export function ScreenTransition({
         {jobBoardLinks.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.55, marginTop: 0, marginBottom: 10 }}>
-              Need inspiration? Search for{" "}
-              <span style={{ fontWeight: 600, color: ONBOARDING_TEXT }}>{primarySearchRole}</span> on:
+              Browse openings for{" "}
+              <span style={{ fontWeight: 600, color: ONBOARDING_TEXT }}>{primarySearchRole}</span>
+              , then paste one listing URL below:
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {jobBoardLinks.map((link) => (
-                <JobBoardShortcutButton key={link.id} label={link.label} url={link.url} />
+                <JobBoardShortcutButton key={link.id} id={link.id} label={link.label} url={link.url} />
               ))}
             </div>
           </div>
@@ -2131,7 +2298,7 @@ export function ScreenTransition({
           <input
             type="url"
             autoFocus
-            placeholder="Paste a job listing URL…"
+            placeholder="Paste a job listing URL (not a search page)…"
             value={jobUrl}
             onChange={(e) => onJobUrlChange(e.target.value)}
             onKeyDown={(e) => {
@@ -2166,7 +2333,12 @@ export function ScreenTransition({
                 cursor: canAnalyze ? "pointer" : "not-allowed",
               }}
             >
-              {loading ? "Reading listing…" : "Analyze this job →"}
+              {loading ? "Reading listing…" : "Read listing & score fit →"}
+            </button>
+          )}
+          {!analysis && !loading && (
+            <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 4 }}>
+              Skip — finish without a job →
             </button>
           )}
         </div>
@@ -2212,28 +2384,56 @@ export function ScreenTransition({
               border: ONBOARDING_FIELD_BORDER,
             }}
           >
-            <p
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#1A1A1A",
-                marginBottom: 4,
-              }}
-            >
-              {analysis.company ?? "Company"}
-            </p>
-            <p
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 14,
-                fontWeight: 400,
-                color: "#52493F",
-                marginBottom: 10,
-              }}
-            >
-              {analysis.role ?? "Role"}
-            </p>
+            {(!analysis.company || !analysis.role) && (
+              <p
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  color: "#9A6B2E",
+                  lineHeight: 1.55,
+                  marginTop: 0,
+                  marginBottom: 14,
+                  padding: "10px 12px",
+                  background: "rgba(196,168,106,0.12)",
+                  borderRadius: 8,
+                }}
+              >
+                We couldn&apos;t pull the company or job title from that link. Open one job from the boards above and paste its direct listing URL (e.g. linkedin.com/jobs/view/…).
+              </p>
+            )}
+
+            {(analysis.company || analysis.role) && (
+              <>
+                {analysis.company && (
+                  <p
+                    style={{
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: "#1A1A1A",
+                      marginBottom: 4,
+                      marginTop: 0,
+                    }}
+                  >
+                    {analysis.company}
+                  </p>
+                )}
+                {analysis.role && (
+                  <p
+                    style={{
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 14,
+                      fontWeight: 400,
+                      color: "#52493F",
+                      marginBottom: 10,
+                      marginTop: 0,
+                    }}
+                  >
+                    {analysis.role}
+                  </p>
+                )}
+              </>
+            )}
             {(analysis.location || analysis.salary) && (
               <p
                 style={{
@@ -2248,7 +2448,7 @@ export function ScreenTransition({
               </p>
             )}
 
-            {match && (
+            {match && analysis.role && (
               <div
                 style={{
                   display: "flex",
@@ -2273,8 +2473,8 @@ export function ScreenTransition({
                       lineHeight: 1.35,
                     }}
                   >
-                    Your resume is a{" "}
-                    <span style={{ color: scoreColor }}>{match.scoreLabel}</span> match
+                    You&apos;re {matchArticle(match.scoreLabel)} {match.scoreLabel} match for{" "}
+                    <span style={{ color: scoreColor }}>{analysis.role}</span>
                   </p>
                   {match.score < 6 ? (
                     <p
@@ -2333,6 +2533,20 @@ export function ScreenTransition({
               </div>
             )}
 
+            {match && !analysis.role && (
+              <p
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  color: ONBOARDING_TEXT_SECONDARY,
+                  lineHeight: 1.5,
+                  marginBottom: 14,
+                }}
+              >
+                We found listing text but need a direct job URL before we can show a fit score for a specific role.
+              </p>
+            )}
+
             {matchError && !match && (
               <p
                 style={{
@@ -2349,37 +2563,28 @@ export function ScreenTransition({
 
             {analysis && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-                <button
-                  type="button"
-                  className="onboarding-cta"
-                  onClick={onFinishWithJob}
-                  style={PRIMARY_CTA}
-                >
-                  {match ? "Finish setup — see my resume match →" : "Finish setup with this job →"}
-                </button>
-                {match && (
+                {analysis.role && (
+                  <button
+                    type="button"
+                    className="onboarding-cta"
+                    onClick={onFinishWithJob}
+                    style={PRIMARY_CTA}
+                  >
+                    {match ? "Save job & open my resume →" : "Save job & continue →"}
+                  </button>
+                )}
+                {match && analysis.role && (
                   <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.5, margin: 0, textAlign: "center" }}>
-                    We&apos;ll save this job to Pipeline and open your resume with this match score.
+                    We&apos;ll add this to Pipeline and open your resume with this match score.
                   </p>
                 )}
+                <button type="button" onClick={onFinish} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 4 }}>
+                  {analysis.role ? "Continue without saving this job →" : "Finish setup without this job →"}
+                </button>
               </div>
             )}
           </div>
         )}
-      </div>
-
-      <div className="anim-fade-up" style={ONBOARDING_CARD}>
-        <button
-          type="button"
-          className="onboarding-cta"
-          onClick={onFinish}
-          style={{ ...PRIMARY_CTA, width: "100%" }}
-        >
-          {analysis ? "Finish without saving this job →" : "Finish setup →"}
-        </button>
-        <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 12 }}>
-          Skip for now — finish with what I&apos;ve added
-        </button>
       </div>
     </div>
   );

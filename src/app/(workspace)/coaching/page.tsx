@@ -1,7 +1,11 @@
+import { redirect } from "next/navigation";
 import { WorkspaceCoaching } from "@/components/scout/workspace-coaching";
+import { isAdmin } from "@/lib/auth";
+import { canAccessBetaFeatures } from "@/lib/beta-features";
 
-export default function CoachingPage() {
-  const showBeta = process.env.NEXT_PUBLIC_SHOW_BETA === "true";
-  if (!showBeta) return null;
+export default async function CoachingPage() {
+  if (!canAccessBetaFeatures(await isAdmin())) {
+    redirect("/dashboard");
+  }
   return <WorkspaceCoaching />;
 }
