@@ -30,7 +30,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
                   <tr>
                     <td style="background:#1C3A2F;padding:32px 40px;">
                       <p style="margin:0;font-size:22px;font-weight:500;color:#E8D5A3;letter-spacing:-0.3px;">Kimchi</p>
-                      <p style="margin:4px 0 0;font-size:10px;color:rgba(232,213,163,0.4);letter-spacing:1px;text-transform:uppercase;">by Second Ladder</p>
+                      <p style="margin:4px 0 0;font-size:11px;color:rgba(232,213,163,0.55);letter-spacing:0.02em;">by <span style="font-weight:500;">Second Ladder</span></p>
                     </td>
                   </tr>
                   <!-- Body -->

@@ -80,6 +80,38 @@ export function ScoutLabel({ children }: { children: ReactNode }) {
   );
 }
 
+/** "by Second Ladder" tagline — title case, not all-caps */
+export function KimchiBySecondLadder({
+  color = "var(--scout-muted)",
+  brandColor,
+  fontSize = 12,
+  marginTop,
+  style,
+}: {
+  color?: string;
+  brandColor?: string;
+  fontSize?: number | string;
+  marginTop?: number | string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        fontFamily: "var(--font-ui)",
+        fontSize,
+        fontWeight: 400,
+        color,
+        letterSpacing: "0.02em",
+        marginTop,
+        ...style,
+      }}
+    >
+      by{" "}
+      <span style={{ fontWeight: 500, color: brandColor ?? color }}>Second Ladder</span>
+    </div>
+  );
+}
+
 const btnBase: CSSProperties = {
   fontFamily: "var(--font-ui)",
   fontSize: 13,

@@ -22,6 +22,7 @@ import {
   ArrowRightSmall,
   ClockIcon,
 } from "./icons";
+import { KimchiBySecondLadder } from "./scout-box";
 
 /* ──────────────────────────────────────────────────────────────
    Types
@@ -210,19 +211,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
         >
           Kimchi
         </button>
-        <div
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 400,
-            color: "var(--scout-muted)",
-            letterSpacing: "1.1px",
-            textTransform: "uppercase",
-            marginTop: 4,
-          }}
-        >
-          by Second Ladder
-        </div>
+        <KimchiBySecondLadder fontSize={12} color="var(--scout-muted)" marginTop={4} />
       </div>
       <div className="flex gap-[5px] items-center" style={{ paddingTop: 6 }}>
         {Array.from({ length: ONBOARDING_STEP_COUNT }, (_, i) => i).map((i) => (

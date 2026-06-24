@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 
 export function LandingPage() {
   return (
@@ -9,7 +10,7 @@ export function LandingPage() {
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <div>
           <span style={{ fontSize: 18, fontWeight: 600, color: "#1C3A2F", letterSpacing: "-0.3px" }}>Kimchi</span>
-          <span style={{ marginLeft: 8, fontSize: 13, color: "var(--scout-muted)", letterSpacing: "0.8px", textTransform: "uppercase" }}>by Second Ladder</span>
+          <KimchiBySecondLadder fontSize={13} style={{ marginLeft: 8, display: "inline-block" }} />
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Link href="/pricing" style={{ fontSize: 14, color: "#52493F", textDecoration: "none", padding: "8px 16px" }}>Pricing</Link>

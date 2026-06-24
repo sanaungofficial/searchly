@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { KimchiBySecondLadder, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, displayTitleStyle } from "@/lib/typography";
 
 export default function PasscodePage() {
@@ -44,9 +44,7 @@ export default function PasscodePage() {
     >
       <div style={{ marginBottom: 32, textAlign: "center" }}>
         <div style={{ ...displayTitleStyle(22), color: color.forest, marginBottom: 4 }}>Kimchi</div>
-        <div style={{ fontSize: 12, color: color.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          by Second Ladder
-        </div>
+        <KimchiBySecondLadder fontSize={12} color={color.muted} />
       </div>
 
       <div
