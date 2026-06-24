@@ -6,6 +6,7 @@ import {
   linkedInEditUrl,
   type LinkedInProfileDraft,
 } from "@/lib/linkedin-profile";
+import { LinkedInGenerateLoader } from "./linkedin-generate-loader";
 
 const LI = {
   bg: "#f3f2ef",
@@ -89,10 +90,18 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     setError(null);
     try {
       const res = await fetch("/api/profile/linkedin-draft/generate", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
-      setDraft(data.draft);
-      setUpdatedAt(data.updatedAt ?? new Date().toISOString());
+      const text = await res.text();
+      let data: Record<string, unknown> = {};
+      if (text) {
+        try {
+          data = JSON.parse(text) as Record<string, unknown>;
+        } catch {
+          throw new Error("Invalid server response");
+        }
+      }
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Generation failed");
+      setDraft(data.draft as LinkedInProfileDraft);
+      setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : new Date().toISOString());
       setSaveHint(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
@@ -146,6 +155,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
 
   return (
     <div style={{ paddingBottom: 48 }}>
+      <LinkedInGenerateLoader active={generating} />
       {/* Toolbar */}
       <div
         style={{
