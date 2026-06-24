@@ -6,6 +6,7 @@ import { normalizeJobUrl } from "@/lib/cached-job";
 import { parseJobsCache } from "@/lib/company-jobs-scan";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
 import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
+import { applyListingFiltersToSources, jobMatchesListingFilters } from "@/lib/job-listing-filters";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 
@@ -50,11 +51,16 @@ function jobsFromCache(
   companyName: string,
   matchRoles: string[],
   maxJobs: number,
+  filters?: VectorSearchFilters,
 ): RecommendedJobSource[] {
   if (!cache?.jobs?.length) return [];
-  const jobs = cache.match_only
-    ? cache.jobs.slice(0, maxJobs)
-    : filterMatchingJobs(cache.jobs, matchRoles, maxJobs);
+  let jobs = cache.match_only
+    ? cache.jobs.slice(0, maxJobs * 3)
+    : filterMatchingJobs(cache.jobs, matchRoles, maxJobs * 3);
+  if (filters) {
+    jobs = jobs.filter((job) => jobMatchesListingFilters(job, companyName, filters));
+  }
+  jobs = jobs.slice(0, maxJobs);
   return jobs.map((job) => ({
     cached: job,
     companyName,
@@ -69,6 +75,8 @@ async function liveCompanyMatches(input: {
   website: string | null;
   matchRoles: string[];
   maxJobs: number;
+  filters?: VectorSearchFilters;
+  extraKeywords?: string[];
 }): Promise<RecommendedJobSource[]> {
   if (!input.matchRoles.length) return [];
   try {
@@ -78,9 +86,16 @@ async function liveCompanyMatches(input: {
       hirebaseSlug: input.hirebaseSlug,
       website: input.website,
       jobTitles: input.matchRoles,
+      extraKeywords: input.extraKeywords,
       maxJobs: input.maxJobs,
+      filters: input.filters,
     });
-    const matched = filterMatchingJobs(result.jobs, input.matchRoles, input.maxJobs);
+    let matched = filterMatchingJobs(result.jobs, input.matchRoles, input.maxJobs);
+    if (input.filters) {
+      matched = matched.filter((job) =>
+        jobMatchesListingFilters(job, input.companyName, input.filters!),
+      );
+    }
     return matched.map((job) => ({
       cached: job,
       companyName: input.companyName,
@@ -98,6 +113,7 @@ async function liveCompanyMatches(input: {
 export async function fetchRecommendedFromTrackedCompanies(input: {
   userId: string;
   profileTargetRoles: string[];
+  filters?: VectorSearchFilters;
   maxJobs?: number;
 }): Promise<{
   sources: RecommendedJobSource[];
@@ -105,29 +121,39 @@ export async function fetchRecommendedFromTrackedCompanies(input: {
   trackedWithMatches: number;
 }> {
   const maxJobs = Math.min(input.maxJobs ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+  const filters = input.filters;
+  const roleBase = filters?.jobTitles?.length
+    ? filters.jobTitles.slice(0, 20)
+    : input.profileTargetRoles;
 
-  const tracked = await prisma.trackedCompany.findMany({
+  let tracked = await prisma.trackedCompany.findMany({
     where: { userId: input.userId },
     include: { companyIntel: true },
     orderBy: { updatedAt: "desc" },
   });
 
+  if (filters?.companyName?.trim()) {
+    const q = filters.companyName.trim().toLowerCase();
+    tracked = tracked.filter((c) => (c.companyIntel?.name ?? c.name).toLowerCase().includes(q));
+  }
+
   if (!tracked.length) {
     return { sources: [], companyCount: 0, trackedWithMatches: 0 };
   }
 
+  const extraKeywords = filters?.keywords ?? [];
   const perCompanyLimit = Math.max(3, Math.ceil(maxJobs / Math.max(tracked.length, 1)));
   const collected: RecommendedJobSource[] = [];
 
   for (const company of tracked) {
-    const matchRoles = buildMatchRoles(input.profileTargetRoles, company.targetRoles);
-    if (!matchRoles.length) continue;
+    const matchRoles = buildMatchRoles(roleBase, company.targetRoles);
+    if (!matchRoles.length && !filters?.keywords?.length) continue;
 
     const companyName = company.companyIntel?.name ?? company.name;
     const cache = parseJobsCache(company.jobsCache);
-    let sources = jobsFromCache(cache, companyName, matchRoles, perCompanyLimit);
+    let sources = jobsFromCache(cache, companyName, matchRoles, perCompanyLimit, filters);
 
-    if (!sources.length) {
+    if (!sources.length && matchRoles.length) {
       const enrichment = company.companyIntel?.enrichmentCache ?? company.enrichmentCache;
       const hirebaseMeta = getHirebaseMetaFromEnrichment(enrichment);
       sources = await liveCompanyMatches({
@@ -137,13 +163,15 @@ export async function fetchRecommendedFromTrackedCompanies(input: {
         website: company.website ?? company.companyIntel?.website ?? null,
         matchRoles,
         maxJobs: perCompanyLimit,
+        filters,
+        extraKeywords,
       });
     }
 
     collected.push(...sources);
   }
 
-  const sources = dedupeSources(collected, maxJobs);
+  const sources = applyListingFiltersToSources(dedupeSources(collected, maxJobs), filters);
   const trackedWithMatches = new Set(sources.map((s) => s.companyName)).size;
 
   return {
@@ -223,7 +251,7 @@ export async function fetchSemanticSearchOnTrackedCompanies(input: {
   }
 
   return {
-    sources: dedupeSources(collected, limit),
+    sources: applyListingFiltersToSources(dedupeSources(collected, limit), input.filters),
     scoped: true,
   };
 }

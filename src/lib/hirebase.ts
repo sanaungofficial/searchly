@@ -415,6 +415,12 @@ export async function fetchHirebaseCompanyJobs(input: {
 }
 
 /** Targeted search: company + role titles — bills only for jobs returned (match-only scans). */
+/** Apply Hirebase search filters except company scope (set per company call). */
+function assignJobSearchFiltersExceptCompany(body: Record<string, unknown>, input: VectorSearchFilters) {
+  const { companyName: _cn, companySlug: _cs, ...rest } = input;
+  assignJobSearchFilters(body, rest);
+}
+
 export async function fetchHirebaseMatchingJobs(input: {
   companyName: string;
   slugHint?: string | null;
@@ -423,6 +429,7 @@ export async function fetchHirebaseMatchingJobs(input: {
   jobTitles: string[];
   extraKeywords?: string[];
   maxJobs?: number;
+  filters?: VectorSearchFilters;
 }): Promise<{
   jobs: CachedJob[];
   hirebaseSlug: string | null;
@@ -464,6 +471,7 @@ export async function fetchHirebaseMatchingJobs(input: {
 
   for (const body of attempts) {
     if (collected.length >= maxJobs) break;
+    if (input.filters) assignJobSearchFiltersExceptCompany(body, input.filters);
     try {
       const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/search", {
         method: "POST",

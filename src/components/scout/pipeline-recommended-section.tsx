@@ -5,7 +5,6 @@ import type { JobMeta } from "@/lib/job-meta";
 import type { KanbanCard } from "./workspace-data";
 import {
   DEFAULT_VECTOR_SEARCH_FILTERS,
-  HIREBASE_COMPANY_SIZE_BUCKETS,
   HIREBASE_EXPERIENCE_LEVELS,
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
@@ -125,6 +124,81 @@ function loadStoredSemanticQuery(): string {
   } catch {
     return "";
   }
+}
+
+function formToRecommendedFilters(form: ReturnType<typeof filtersToForm>): VectorSearchFilters {
+  const f = formToFilters(form, 1);
+  delete f.semanticQuery;
+  return f;
+}
+
+type FilterForm = ReturnType<typeof filtersToForm>;
+
+function JobFiltersGrid({
+  form,
+  setForm,
+  toggleSet,
+  includeCompany = true,
+}: {
+  form: FilterForm;
+  setForm: React.Dispatch<React.SetStateAction<FilterForm>>;
+  toggleSet: (set: Set<string>, value: string) => Set<string>;
+  includeCompany?: boolean;
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
+      <FilterField label="Job titles">
+        <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Operations" />
+      </FilterField>
+      <FilterField label="Keywords">
+        <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" />
+      </FilterField>
+      {includeCompany && (
+        <FilterField label="Company">
+          <input style={inputStyle} value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Stripe" />
+        </FilterField>
+      )}
+      <FilterField label="City">
+        <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} />
+      </FilterField>
+      <FilterField label="State / region">
+        <input style={inputStyle} value={form.locationRegion} onChange={(e) => setForm((f) => ({ ...f, locationRegion: e.target.value }))} />
+      </FilterField>
+      <FilterField label="Country">
+        <input style={inputStyle} value={form.locationCountry} onChange={(e) => setForm((f) => ({ ...f, locationCountry: e.target.value }))} />
+      </FilterField>
+      <FilterField label="Posted after">
+        <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
+      </FilterField>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <FilterField label="Work arrangement">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_LOCATION_TYPES.map((t) => (
+              <ChipToggle key={t} label={t} active={form.locationTypes.has(t)} onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <FilterField label="Employment type">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_JOB_TYPES.map((t) => (
+              <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <FilterField label="Experience level">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
+              <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, color: color.ink, cursor: "pointer" }}>
+          <input type="checkbox" checked={form.visaSponsored} onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))} />
+          Visa sponsorship only
+        </label>
+      </div>
+    </div>
+  );
 }
 
 function ChipToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -288,6 +362,8 @@ export function PipelineRecommendedSection({
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
 }) {
+  const [recommendedForm, setRecommendedForm] = useState(() => filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS));
+  const [showRecommendedFilters, setShowRecommendedFilters] = useState(false);
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadStoredSemanticQuery(),
@@ -315,11 +391,15 @@ export function PipelineRecommendedSection({
     return set;
   }, [pipelineCards]);
 
-  const loadRecommended = useCallback(async () => {
+  const loadRecommended = useCallback(async (filtersForm = recommendedForm) => {
     setRecommendedLoading(true);
     setRecommendedError(null);
     try {
-      const res = await fetch("/api/jobs/recommended");
+      const res = await fetch("/api/jobs/recommended", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formToRecommendedFilters(filtersForm)),
+      });
       const data = (await res.json()) as JobsApiResponse;
       if (!res.ok) {
         setRecommendedError(formatApiErrorMessage(data.error, "Could not load recommended jobs."));
@@ -333,7 +413,7 @@ export function PipelineRecommendedSection({
     } finally {
       setRecommendedLoading(false);
     }
-  }, []);
+  }, [recommendedForm]);
 
   const runKeywordSearch = useCallback(async (filtersForm = form) => {
     const semanticQuery = filtersForm.semanticQuery.trim();
@@ -387,17 +467,30 @@ export function PipelineRecommendedSection({
   return (
     <div>
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: showRecommendedFilters ? 0 : undefined }}>
           <div>
             <ScoutLabel>Recommended for you</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Matching roles at your tracked companies — same results as Companies → Matching roles. Does not use resume embed.
+              Matching roles at your tracked companies — same as Companies → Matching roles. Use filters to narrow the list.
             </p>
           </div>
-          <ScoutSecondaryBtn onClick={loadRecommended} disabled={recommendedLoading}>
-            {recommendedLoading ? "Loading…" : "Refresh"}
-          </ScoutSecondaryBtn>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <ScoutSecondaryBtn onClick={() => setShowRecommendedFilters((v) => !v)}>
+              {showRecommendedFilters ? "Hide filters" : "Filters"}
+            </ScoutSecondaryBtn>
+            <ScoutSecondaryBtn onClick={() => loadRecommended()} disabled={recommendedLoading}>
+              {recommendedLoading ? "Loading…" : "Refresh"}
+            </ScoutSecondaryBtn>
+            <ScoutPrimaryBtn onClick={() => loadRecommended(recommendedForm)} disabled={recommendedLoading}>
+              Apply filters
+            </ScoutPrimaryBtn>
+          </div>
         </div>
+
+        {showRecommendedFilters && (
+          <JobFiltersGrid form={recommendedForm} setForm={setRecommendedForm} toggleSet={toggleSet} includeCompany />
+        )}
+
         {recommendedError && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{recommendedError}</p>
         )}
@@ -421,7 +514,7 @@ export function PipelineRecommendedSection({
             emptyMessage={
               recommendedError
                 ? "Fix the issue above, then refresh."
-                : "No matching roles yet — track companies and refresh matching roles on the Companies page."
+                : "No roles match these filters — try broadening filters or refresh matching roles on Companies."
             }
           />
         </div>
@@ -456,53 +549,7 @@ export function PipelineRecommendedSection({
         </FilterField>
 
         {showFilters && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
-            <FilterField label="Job titles">
-              <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Product Manager, Engineer" />
-            </FilterField>
-            <FilterField label="Keywords">
-              <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="Python, B2B SaaS" />
-            </FilterField>
-            <FilterField label="City">
-              <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} />
-            </FilterField>
-            <FilterField label="State / region">
-              <input style={inputStyle} value={form.locationRegion} onChange={(e) => setForm((f) => ({ ...f, locationRegion: e.target.value }))} />
-            </FilterField>
-            <FilterField label="Country">
-              <input style={inputStyle} value={form.locationCountry} onChange={(e) => setForm((f) => ({ ...f, locationCountry: e.target.value }))} />
-            </FilterField>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <FilterField label="Work arrangement">
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {HIREBASE_LOCATION_TYPES.map((t) => (
-                    <ChipToggle key={t} label={t} active={form.locationTypes.has(t)} onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))} />
-                  ))}
-                </div>
-              </FilterField>
-              <FilterField label="Employment type">
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {HIREBASE_JOB_TYPES.map((t) => (
-                    <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))} />
-                  ))}
-                </div>
-              </FilterField>
-              <FilterField label="Experience level">
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
-                    <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
-                  ))}
-                </div>
-              </FilterField>
-              <FilterField label="Company size">
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {HIREBASE_COMPANY_SIZE_BUCKETS.map((t) => (
-                    <ChipToggle key={t} label={t} active={form.companySizeBuckets.has(t)} onClick={() => setForm((f) => ({ ...f, companySizeBuckets: toggleSet(f.companySizeBuckets, t) }))} />
-                  ))}
-                </div>
-              </FilterField>
-            </div>
-          </div>
+          <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} includeCompany />
         )}
 
         {searchError && (
