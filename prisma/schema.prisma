@@ -103,6 +103,8 @@ model Profile {
   linkedInDraft              Json?
   linkedInDraftUpdatedAt     DateTime?
   linkedInDraftSourceAssetId String?
+  linkedInDraftAnalysis      Json?
+  linkedInDraftAnalysisUpdatedAt DateTime?
 
   roleAnalyses    Json?
   skillGoals      Json?
