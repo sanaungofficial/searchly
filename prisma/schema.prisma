@@ -107,6 +107,7 @@ model Profile {
   roleAnalyses    Json?
   skillGoals      Json?
   upskillProgress Json?
+  targetRoleSettings Json?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

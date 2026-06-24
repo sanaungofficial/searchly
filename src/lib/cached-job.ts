@@ -47,14 +47,20 @@ function pickArray(primary?: string[], fallback?: string[]): string[] | undefine
 }
 
 export function mergeCachedJobs(base: CachedJob, detail: CachedJob): CachedJob {
-  return {
+  const detailDescription = detail.description?.trim() ?? "";
+  const baseDescription = base.description?.trim() ?? "";
+  const description =
+    detailDescription.length >= baseDescription.length ? detail.description ?? base.description ?? null : base.description ?? detail.description ?? null;
+  const fullDescription = hasFullJobDescription(description);
+
+  const merged: CachedJob = {
     title: detail.title || base.title,
     location: detail.location ?? base.location,
     department: detail.department ?? base.department,
     url: detail.url ?? base.url,
     hirebaseId: detail.hirebaseId ?? base.hirebaseId ?? null,
     jobSlug: detail.jobSlug ?? base.jobSlug ?? null,
-    description: detail.description ?? base.description ?? null,
+    description,
     jobSummary: detail.jobSummary ?? base.jobSummary ?? null,
     companySummary: detail.companySummary ?? base.companySummary ?? null,
     jobType: detail.jobType ?? base.jobType ?? null,
@@ -65,7 +71,13 @@ export function mergeCachedJobs(base: CachedJob, detail: CachedJob): CachedJob {
     skills: pickArray(detail.skills, base.skills),
     technologies: pickArray(detail.technologies, base.technologies),
     benefits: pickArray(detail.benefits, base.benefits),
-    requiredQualifications: pickArray(detail.requiredQualifications, base.requiredQualifications),
+    requiredQualifications: fullDescription
+      ? (() => {
+          const quals = pickArray(detail.requiredQualifications, base.requiredQualifications);
+          const filtered = quals?.filter((q) => q.trim() !== (base.jobSummary?.trim() ?? "") && q.trim() !== (detail.jobSummary?.trim() ?? ""));
+          return filtered?.length ? filtered : undefined;
+        })()
+      : pickArray(detail.requiredQualifications, base.requiredQualifications),
     tags: pickArray(detail.tags, base.tags),
     datePosted: detail.datePosted ?? base.datePosted ?? null,
     team: detail.team ?? base.team ?? null,
@@ -73,6 +85,16 @@ export function mergeCachedJobs(base: CachedJob, detail: CachedJob): CachedJob {
     visaSponsored: detail.visaSponsored ?? base.visaSponsored ?? null,
     jobBoard: detail.jobBoard ?? base.jobBoard ?? null,
   };
+
+  if (fullDescription && merged.requiredQualifications?.length === 1 && merged.requiredQualifications[0] === merged.jobSummary?.trim()) {
+    merged.requiredQualifications = undefined;
+  }
+
+  return merged;
+}
+
+function hasFullJobDescription(description: string | null | undefined): boolean {
+  return (description?.trim().length ?? 0) >= 200;
 }
 
 export function cachedJobToMeta(job: CachedJob): JobMeta {

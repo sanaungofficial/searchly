@@ -41,6 +41,8 @@ interface JobDrawerProps {
   existingPipelineCardId?: number | null;
   onOpenInPipeline?: () => void;
   elevated?: boolean;
+  /** Prospect/recommended drawer — fetching full Hirebase posting */
+  detailLoading?: boolean;
 }
 
 type ScrollSection = "overview" | "company";
@@ -398,6 +400,108 @@ function resolveJobFields(meta: JobMeta | null) {
   };
 }
 
+function JobDescriptionPanel({
+  text,
+  loading,
+  editable,
+  value,
+  onChange,
+  onBlur,
+}: {
+  text: string;
+  loading?: boolean;
+  editable?: boolean;
+  value?: string;
+  onChange?: (v: string) => void;
+  onBlur?: () => void;
+}) {
+  if (loading) {
+    return (
+      <div style={{ marginBottom: 22 }}>
+        <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
+        <div style={{ padding: "18px 20px", background: surface.inset, border: line }}>
+          <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "0 0 14px" }}>
+            Loading full posting from Hirebase…
+          </p>
+          {[88, 72, 94, 60].map((w, i) => (
+            <div
+              key={i}
+              style={{
+                height: 12,
+                width: `${w}%`,
+                marginBottom: 10,
+                background: "#F0EDE8",
+                animation: "pulse 1.5s ease-in-out infinite",
+                animationDelay: `${i * 0.12}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!text.trim() && !editable) {
+    return (
+      <div style={{ marginBottom: 22 }}>
+        <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
+        <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.65, margin: 0 }}>
+          Full posting text isn&apos;t available yet. Open the job link below or refresh matching roles on Companies.
+        </p>
+      </div>
+    );
+  }
+
+  if (editable) {
+    return (
+      <div style={{ marginBottom: 22 }}>
+        <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
+        <textarea
+          value={value ?? text}
+          onChange={(e) => onChange?.(e.target.value)}
+          onBlur={onBlur}
+          placeholder="Paste or type the job description here. AI will fill this in automatically when you add via URL."
+          rows={value || text ? Math.min(16, Math.max(8, (value ?? text).split("\n").length + 2)) : 8}
+          style={{
+            width: "100%",
+            fontFamily: sans,
+            fontSize: 15,
+            color: "#1A1A1A",
+            background: cardBg,
+            border: line,
+            borderRadius: 0,
+            padding: "16px 18px",
+            resize: "vertical",
+            outline: "none",
+            lineHeight: 1.7,
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
+      <div
+        style={{
+          padding: "18px 20px",
+          background: cardBg,
+          border: line,
+          fontFamily: sans,
+          fontSize: 15,
+          color: "#2A2218",
+          lineHeight: 1.75,
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
 function BulletList({ items }: { items: string[] }) {
   if (items.length === 0) return null;
   return (
@@ -538,6 +642,7 @@ export function JobDrawer({
   existingPipelineCardId = null,
   onOpenInPipeline,
   elevated = false,
+  detailLoading = false,
 }: JobDrawerProps) {
   const { openFitChat } = useWorkspace();
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
@@ -568,6 +673,10 @@ export function JobDrawer({
       container.scrollTo({ top, behavior: "smooth" });
     }
   }, []);
+
+  useEffect(() => {
+    setDescValue(meta?.description ?? "");
+  }, [card.id, meta?.description]);
 
   useEffect(() => {
     setActiveSection("overview");
@@ -673,6 +782,15 @@ export function JobDrawer({
     companyLinkedinUrl;
 
   const jobDescription = resolveJobDescriptionText(meta, card.role, card.company);
+  const fullDescriptionText = meta?.description?.trim() || jobDescription;
+  const hasFullPosting = (meta?.description?.trim().length ?? 0) >= 200;
+  const showStructuredExtras =
+    !hasFullPosting &&
+    (responsibilities.length > 0 ||
+      skills.length > 0 ||
+      requiredQualifications.length > 0 ||
+      preferredQualifications.length > 0 ||
+      benefits.length > 0);
   const backdropZ = elevated ? 210 : 60;
   const drawerZ = elevated ? 211 : 70;
 
@@ -806,9 +924,18 @@ export function JobDrawer({
               </div>
             </div>
 
-            {/* Main job content — single scrollable column */}
+            {/* Main job content — full posting first, then insider, then company */}
             <div style={{ padding: "28px 32px 36px" }}>
-              {jobSummary && (
+              <JobDescriptionPanel
+                text={fullDescriptionText}
+                loading={detailLoading && !hasFullPosting}
+                editable={!prospectMode && tool === null && !hasFullPosting && !hasStructuredSections}
+                value={descValue}
+                onChange={setDescValue}
+                onBlur={() => patchDescription(descValue)}
+              />
+
+              {!hasFullPosting && jobSummary && (
                 <div style={{ marginBottom: 22 }}>
                   <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{jobSummary}</p>
                   {tags.length > 0 && (
@@ -851,14 +978,14 @@ export function JobDrawer({
 
               <InsiderConnectionPanel companyName={card.company} />
 
-              {responsibilities.length > 0 && (
+              {showStructuredExtras && responsibilities.length > 0 && (
                 <div style={{ marginBottom: 22 }}>
                   <SectionTitle icon={<IconBriefcase />}>Responsibilities</SectionTitle>
                   <BulletList items={responsibilities} />
                 </div>
               )}
 
-              {(skills.length > 0 || requiredQualifications.length > 0 || preferredQualifications.length > 0) && (
+              {showStructuredExtras && (skills.length > 0 || requiredQualifications.length > 0 || preferredQualifications.length > 0) && (
                 <div style={{ marginBottom: 22 }}>
                   <SectionTitle icon={<IconTarget />}>Qualification</SectionTitle>
                   {skills.length > 0 && (
@@ -897,7 +1024,7 @@ export function JobDrawer({
                 </div>
               )}
 
-              {benefits.length > 0 && (
+              {showStructuredExtras && benefits.length > 0 && (
                 <div style={{ marginBottom: 22 }}>
                   <SectionTitle icon={<IconGift />}>Benefits</SectionTitle>
                   <BulletList items={benefits} />
@@ -938,31 +1065,6 @@ export function JobDrawer({
                 <div style={{ marginBottom: 18 }}>
                   <SectionTitle>Kimchi&apos;s fit summary</SectionTitle>
                   <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 16 }}>{job.fitSummary}</p>
-                </div>
-              ) : tool === null && !hasStructuredSections ? (
-                <div style={{ marginBottom: 18 }}>
-                  <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
-                  <textarea
-                    value={descValue}
-                    onChange={(e) => setDescValue(e.target.value)}
-                    onBlur={() => patchDescription(descValue)}
-                    placeholder="Paste or type the job description here. AI will fill this in automatically when you add via URL."
-                    rows={descValue ? Math.min(12, Math.max(6, descValue.split("\n").length + 2)) : 6}
-                    style={{
-                      width: "100%",
-                      fontFamily: sans,
-                      fontSize: 15,
-                      color: "#1A1A1A",
-                      background: cardBg,
-                      border: line,
-                      borderRadius: 0,
-                      padding: "16px 18px",
-                      resize: "vertical",
-                      outline: "none",
-                      lineHeight: 1.7,
-                      boxSizing: "border-box",
-                    }}
-                  />
                 </div>
               ) : null}
 
