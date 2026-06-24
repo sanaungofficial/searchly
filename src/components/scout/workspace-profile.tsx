@@ -23,7 +23,7 @@ import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { fontSans, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
+import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -157,7 +157,7 @@ function profileCompleteness(p: UserProfile): number {
 function SectionHeader({ title, onEdit }: { title: string; onEdit?: () => void }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h3 style={{ fontFamily: fontDisplay, fontSize: T.heading, fontWeight: 500, fontVariationSettings: '"opsz" 72, "WONK" 1', color: color.ink, margin: 0 }}>{title}</h3>
+      <h3 style={displayTitleStyle(T.heading)}>{title}</h3>
       {onEdit && (
         <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-[#E8D5A3]/40 transition-colors" aria-label={`Edit ${title}`}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -670,7 +670,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                   <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{role}</p>
+                  <p style={displayTitleStyle(T.body, { marginBottom: 2 })}>{role}</p>
                   {loaded ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: scoreColor(loaded.fitScore) }}>
                       {scoreLabel(loaded.fitScore)}
@@ -940,7 +940,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 16 : 0 }}>
           <div>
             <span style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(232,213,163,0.75)" }}>Your learning progress</span>
-            <p style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: 500, color: color.gold, margin: "6px 0 0" }}>{doneCount + customDone} of {total + customItems.length} complete</p>
+            <p style={displayTitleStyle(22, { color: color.gold, margin: "6px 0 0" })}>{doneCount + customDone} of {total + customItems.length} complete</p>
           </div>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: `conic-gradient(#E8D5A3 ${((doneCount + customDone) / (total + customItems.length || 1)) * 360}deg, rgba(232,213,163,0.15) 0)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: 50, height: 50, borderRadius: "50%", background: "#1A3A2F", display: "flex", alignItems: "center", justifyContent: "center" }}>

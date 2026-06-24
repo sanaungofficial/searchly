@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
-import { fontSans, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
+import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 interface CachedJob {
   title: string;
@@ -904,7 +904,7 @@ export function WorkspaceCompanies() {
                           borderRadius={7}
                         />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontFamily: fontDisplay, fontSize: T.body, fontWeight: 500, color: color.ink }}>{c.name}</div>
+                          <div style={displayTitleStyle(T.body, { lineHeight: 1.2 })}>{c.name}</div>
                           {subtitle && (
                             <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", marginTop: 2 }}>{subtitle}</div>
                           )}

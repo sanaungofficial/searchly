@@ -14,7 +14,7 @@ import {
 } from "./workspace-data";
 import { PlusIcon, RefreshIcon } from "./workspace-icons";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { fontSans, fontMono, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
+import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 const STAT_LABEL: React.CSSProperties = {
   fontFamily: fontSans,
@@ -501,10 +501,10 @@ export function WorkspaceDashboard() {
                   <ScoutBox stack padding={statCardPad} style={{ marginTop: 10, marginBottom: 20 }}>
                     <ScoutLabel>Active roles</ScoutLabel>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
-                      <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? 40 : 48, fontWeight: 600, color: color.ink, lineHeight: 1 }}>
+                      <span style={displayTitleStyle(isMobile ? 40 : 48, { lineHeight: 1 })}>
                         {total}
                       </span>
-                      <span style={{ fontFamily: fontDisplay, fontSize: 20, color: color.muted }}>in pipeline</span>
+                      <span style={displayTitleStyle(20, { color: color.muted, lineHeight: 1.1 })}>in pipeline</span>
                     </div>
                   </ScoutBox>
                 )}
@@ -614,17 +614,7 @@ export function WorkspaceDashboard() {
               <>
                 <ScoutBox stack padding={isMobile ? "16px 18px" : "18px 22px"} style={{ marginBottom: 12 }}>
                   <ScoutLabel>This week&apos;s read</ScoutLabel>
-                  <p
-                    style={{
-                      fontFamily: fontDisplay,
-                      fontSize: isMobile ? 20 : 24,
-                      fontWeight: 500,
-                      fontVariationSettings: '"opsz" 72, "WONK" 1',
-                      color: color.ink,
-                      lineHeight: 1.4,
-                      margin: "10px 0 0",
-                    }}
-                  >
+                  <p style={displayTitleStyle(isMobile ? 20 : 24, { margin: "10px 0 0", color: color.ink })}>
                     {signalsData.headline}
                   </p>
                 </ScoutBox>
@@ -673,17 +663,7 @@ export function WorkspaceDashboard() {
                             </span>
                           )}
                         </div>
-                        <p
-                          style={{
-                            fontFamily: fontDisplay,
-                            fontSize: isMobile ? 17 : 19,
-                            fontWeight: 500,
-                            fontVariationSettings: '"opsz" 72, "WONK" 1',
-                            color: color.ink,
-                            marginBottom: 8,
-                            lineHeight: 1.35,
-                          }}
-                        >
+                        <p style={displayTitleStyle(isMobile ? 17 : 19, { marginBottom: 8, lineHeight: 1.35 })}>
                           {s.title}
                         </p>
                         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, lineHeight: 1.55, margin: 0 }}>
@@ -709,16 +689,7 @@ export function WorkspaceDashboard() {
             >
               <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
                 <ScoutLabel>Salary benchmark</ScoutLabel>
-                <p
-                  style={{
-                    fontFamily: fontDisplay,
-                    fontSize: isMobile ? 20 : 22,
-                    fontWeight: 500,
-                    fontVariationSettings: '"opsz" 72, "WONK" 1',
-                    color: color.ink,
-                    margin: "8px 0",
-                  }}
-                >
+                <p style={displayTitleStyle(isMobile ? 20 : 22, { margin: "8px 0" })}>
                   {signalsData.salaryBenchmark.role}
                 </p>
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
