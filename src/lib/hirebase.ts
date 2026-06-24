@@ -275,6 +275,24 @@ export async function resolveHirebaseCompanySlug(
   return exact?.company_slug ?? exact?.slug ?? companies[0].company_slug ?? companies[0].slug ?? null;
 }
 
+/** Typeahead search for company watchlist (onboarding + Companies). */
+export async function searchHirebaseCompanies(query: string, limit = 8): Promise<HirebaseCompany[]> {
+  if (!isHirebaseConfigured()) return [];
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const search = await hirebaseFetch<CompanySearchResponse>("/v2/hirebase/companies/search", {
+    method: "POST",
+    body: JSON.stringify({
+      company_name: q,
+      limit: Math.min(limit, 12),
+      page: 1,
+    }),
+  });
+
+  return (search.companies ?? []).slice(0, limit);
+}
+
 function normalizeCompanyProfile(
   raw: HirebaseCompany,
   sampleOpenJobs = 0

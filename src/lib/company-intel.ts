@@ -1,6 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import type { CompanyIntel, TrackedCompany } from "@prisma/client";
 import { getCatalogCompany, normalizeCompanySlug, type CatalogCompany } from "@/lib/company-catalog";
+import type { HirebaseCompany } from "@/lib/hirebase";
+
+export type CompanySuggestItem = {
+  id: string | null;
+  catalogSlug: string;
+  name: string;
+  website: string | null;
+  careersUrl: string | null;
+  type: string | null;
+  source: "catalog" | "intel" | "hirebase";
+};
 
 export async function backfillIntelWebsitesFromCatalog(): Promise<{ updated: number; skipped: number }> {
   const rows = await prisma.companyIntel.findMany({ where: { website: null } });
@@ -105,6 +116,15 @@ export async function resolveCompanyIntelFromInput(body: {
     });
   }
 
+  if (body.catalogSlug?.trim() && body.name?.trim()) {
+    return findOrCreateCompanyIntel({
+      name: body.name.trim(),
+      slug: body.catalogSlug.trim(),
+      website: body.website,
+      careersUrl: body.careersUrl,
+    });
+  }
+
   if (body.companyIntelId) {
     const intel = await prisma.companyIntel.findUnique({ where: { id: body.companyIntelId } });
     if (intel) return intel;
@@ -132,7 +152,7 @@ export async function resolveCompanyIntelFromInput(body: {
   return null;
 }
 
-export function catalogToSuggestItem(company: CatalogCompany, intelId?: string) {
+export function catalogToSuggestItem(company: CatalogCompany, intelId?: string): CompanySuggestItem {
   return {
     id: intelId ?? null,
     catalogSlug: company.slug,
@@ -140,7 +160,24 @@ export function catalogToSuggestItem(company: CatalogCompany, intelId?: string) 
     website: company.website ?? null,
     careersUrl: company.careersUrl ?? null,
     type: company.type ?? null,
-    source: "catalog" as const,
+    source: "catalog",
+  };
+}
+
+export function hirebaseToSuggestItem(company: HirebaseCompany): CompanySuggestItem {
+  const slug =
+    company.company_slug?.trim() ||
+    company.slug?.trim() ||
+    normalizeCompanySlug(company.company_name ?? "");
+  const type = company.industries?.[0] ?? company.subindustries?.[0] ?? null;
+  return {
+    id: null,
+    catalogSlug: slug,
+    name: company.company_name?.trim() || slug,
+    website: company.company_link ?? null,
+    careersUrl: null,
+    type,
+    source: "hirebase",
   };
 }
 

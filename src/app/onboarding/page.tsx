@@ -11,13 +11,10 @@ import {
   ScreenTargetCompanies,
   ScreenAboutYouSearch,
   ScreenAboutYouPreferences,
-  ScreenTransition,
   ScreenSetup,
   DemoNextButton,
   type Screen,
   type ReadBackData,
-  type TransitionJobAnalysis,
-  type TransitionJobMatch,
   type SetupStep,
   type SetupStepStatus,
   type OnboardingCompanyPick,
@@ -25,7 +22,6 @@ import {
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
-import { normalizeJobListingUrl } from "@/lib/job-listing-url";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -35,6 +31,22 @@ function saveLinkedIn(handle: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ linkedinUrl: url }),
   }).then(() => {});
+}
+
+async function importLinkedInProfile(handle: string): Promise<SetupStepStatus> {
+  const url = normalizeLinkedInUrl(handle);
+  if (!url) return "skipped";
+  try {
+    const res = await fetch("/api/profile/linkedin-import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linkedinUrl: url }),
+    });
+    if (res.status === 503) return "skipped";
+    return res.ok ? "done" : "skipped";
+  } catch {
+    return "skipped";
+  }
 }
 
 function saveAboutYou(fields: {
@@ -59,13 +71,21 @@ function saveAboutYou(fields: {
   }).then(() => {});
 }
 
+function saveTargetRoles(roles: string[]): Promise<void> {
+  if (!roles.length) return Promise.resolve();
+  return fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ targetRoles: roles }),
+  }).then(() => {});
+}
+
 const INITIAL_SETUP_STEPS: SetupStep[] = [
   { id: "profile", label: "Saving your profile", status: "pending" },
+  { id: "linkedin", label: "Importing your LinkedIn profile", status: "pending" },
   { id: "resume", label: "Building your base resume", status: "pending" },
   { id: "analysis", label: "Running your resume review", status: "pending" },
   { id: "companies", label: "Scanning your companies for matching roles", status: "pending" },
-  { id: "job", label: "Saving your first job", status: "pending" },
-  { id: "match", label: "Scoring your fit for this role", status: "pending" },
 ];
 
 export default function OnboardingPage() {
@@ -98,13 +118,6 @@ export default function OnboardingPage() {
   const [priorities, setPriorities] = useState<string[]>([]);
   const [attribution, setAttribution] = useState("");
   const [resumeError, setResumeError] = useState(false);
-  const [jobUrl, setJobUrl] = useState("");
-  const [jobLoading, setJobLoading] = useState(false);
-  const [jobLoadingPhase, setJobLoadingPhase] = useState<"parse" | "match" | null>(null);
-  const [jobError, setJobError] = useState<string | null>(null);
-  const [jobMatchError, setJobMatchError] = useState<string | null>(null);
-  const [jobAnalysis, setJobAnalysis] = useState<TransitionJobAnalysis | null>(null);
-  const [jobMatch, setJobMatch] = useState<TransitionJobMatch | null>(null);
   const [setupSteps, setSetupSteps] = useState<SetupStep[]>(INITIAL_SETUP_STEPS);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
@@ -219,7 +232,9 @@ export default function OnboardingPage() {
 
   const onReadBackConfirm = useCallback((data: ReadBackData | null) => {
     if (data?.targetRoles?.length) {
-      setReadbackRoleSuggestions(data.targetRoles.map((r) => r.role).filter(Boolean));
+      const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 3);
+      setReadbackRoleSuggestions(roles);
+      setSelectedTitles((prev) => (prev.length ? prev : roles));
     }
     goTo(2);
   }, [goTo]);
@@ -230,18 +245,15 @@ export default function OnboardingPage() {
     goTo(0);
   }, [goTo]);
 
-  const onRolesContinue = useCallback(() => {
-    if (selectedTitles.length) {
-      fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetRoles: selectedTitles }),
-      }).catch(() => {});
-    }
+  const onRolesContinue = useCallback(async () => {
+    await saveTargetRoles(selectedTitles);
     goTo(3);
   }, [selectedTitles, goTo]);
 
-  const onRolesSkip = useCallback(() => goTo(3), [goTo]);
+  const onRolesSkip = useCallback(async () => {
+    await saveTargetRoles(selectedTitles);
+    goTo(3);
+  }, [selectedTitles, goTo]);
 
   const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
     setSelectedCompanies((prev) => {
@@ -265,119 +277,26 @@ export default function OnboardingPage() {
 
   const goToPreferences = useCallback(() => goTo(5), [goTo]);
 
-  const goToTransition = useCallback(() => {
-    saveAboutYou(aboutYouFields).catch(() => {});
-    goTo(6);
-  }, [aboutYouFields, goTo]);
-
-  const skipAboutYouToTransition = useCallback(() => {
-    saveAboutYou(aboutYouFields).catch(() => {});
-    goTo(6);
-  }, [aboutYouFields, goTo]);
-
-  const analyzeFirstJob = useCallback(async () => {
-    const normalized = normalizeJobListingUrl(jobUrl);
-    if (!normalized.ok) {
-      setJobError(normalized.error);
-      return;
-    }
-    if (normalized.normalized) {
-      setJobUrl(normalized.url);
-    }
-
-    const url = normalized.url;
-    setJobLoading(true);
-    setJobLoadingPhase("parse");
-    setJobError(null);
-    setJobMatchError(null);
-    setJobAnalysis(null);
-    setJobMatch(null);
-    try {
-      const res = await fetch("/api/ai/parse-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setJobError(data.error ?? "Could not read that URL. Try another listing link.");
-        return;
-      }
-
-      const analysis: TransitionJobAnalysis = {
-        company: data.company ?? null,
-        role: data.role ?? null,
-        location: data.location ?? null,
-        salary: data.salary ?? null,
-        description: data.description ?? null,
-        requirements: data.requirements ?? [],
-      };
-      setJobAnalysis(analysis);
-
-      if (!analysis.description) {
-        setJobMatchError("We saved the listing details but couldn't score your fit without a job description.");
-        return;
-      }
-
-      setJobLoadingPhase("match");
-      const matchRes = await fetch("/api/ai/job-match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobTitle: analysis.role ?? "Unknown Role",
-          company: analysis.company ?? "Unknown Company",
-          description: analysis.description,
-        }),
-      });
-      const matchData = await matchRes.json();
-      if (!matchRes.ok) {
-        if (matchRes.status === 404) {
-          setJobMatchError("Upload a resume to see your match score — you can still finish setup.");
-        } else if (matchRes.status === 503) {
-          setJobMatchError("Fit scoring isn't available here yet — we'll open your resume and you can run match in production.");
-        } else {
-          setJobMatchError(matchData.error ?? "Couldn't score your fit right now. You can still finish setup.");
-        }
-        return;
-      }
-
-      if (typeof matchData.score === "number") {
-        setJobMatch({
-          score: matchData.score,
-          scoreLabel: matchData.scoreLabel ?? "Fair",
-          summaryNote: matchData.summaryNote ?? "",
-        });
-      }
-    } catch {
-      setJobError("Network error — please try again.");
-    } finally {
-      setJobLoading(false);
-      setJobLoadingPhase(null);
-    }
-  }, [jobUrl]);
-
-  const runFinishSetup = useCallback(async (saveJob: boolean) => {
+  const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
-    goTo(7);
+    goTo(6);
 
     let primaryAssetId: string | undefined;
-    let savedJobId: string | null = null;
-    const analysisSnapshot = jobAnalysis;
-    const matchSnapshot = jobMatch;
     const companiesSnapshot = selectedCompanies;
 
     try {
       setStepStatus("profile", "active");
       await saveAboutYou(aboutYouFields);
-      if (selectedTitles.length) {
-        await fetch("/api/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targetRoles: selectedTitles }),
-        });
-      }
+      await saveTargetRoles(selectedTitles);
       if (liInput.trim()) await saveLinkedIn(liInput);
       setStepStatus("profile", "done");
+
+      if (liInput.trim()) {
+        setStepStatus("linkedin", "active");
+        setStepStatus("linkedin", await importLinkedInProfile(liInput));
+      } else {
+        setStepStatus("linkedin", "skipped");
+      }
 
       setStepStatus("resume", "active");
       const assetsRes = await fetch("/api/assets");
@@ -428,56 +347,9 @@ export default function OnboardingPage() {
         setStepStatus("companies", "skipped");
       }
 
-      if (saveJob && analysisSnapshot) {
-        setStepStatus("job", "active");
-        const url = jobUrl.trim();
-        const company = analysisSnapshot.company ?? "Unknown Company";
-        const role = analysisSnapshot.role ?? "Unknown Role";
-        const notes = JSON.stringify({
-          location: analysisSnapshot.location,
-          salary: analysisSnapshot.salary,
-          description: analysisSnapshot.description,
-          requirements: analysisSnapshot.requirements,
-        });
-        const res = await fetch("/api/jobs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ company, role, url, notes }),
-        });
-        const job = await res.json();
-        if (res.ok && job.id) {
-          savedJobId = job.id;
-          if (matchSnapshot?.score != null) {
-            await fetch(`/api/jobs/${job.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: matchSnapshot.score }) }),
-            }).catch(() => {});
-          }
-          setStepStatus("job", "done");
-        } else {
-          setStepStatus("job", "skipped");
-        }
-      } else {
-        setStepStatus("job", "skipped");
-      }
-
-      const hasMatchJob = saveJob && !!analysisSnapshot?.description && !!primaryAssetId;
-      if (hasMatchJob) {
-        setStepStatus("match", "active");
-        await new Promise((r) => setTimeout(r, 400));
-        setStepStatus("match", "done");
-      } else {
-        setStepStatus("match", "skipped");
-      }
-
       writeOnboardingFinishPayload({
         primaryAssetId,
-        jobDescription: saveJob ? analysisSnapshot?.description ?? null : null,
-        jobTitle: saveJob ? analysisSnapshot?.role ?? null : null,
-        company: saveJob ? analysisSnapshot?.company ?? null : null,
-        jobId: savedJobId,
-        autoRunMatch: hasMatchJob,
+        autoRunMatch: false,
       });
 
       fetch("/api/referrals", {
@@ -486,11 +358,8 @@ export default function OnboardingPage() {
         body: JSON.stringify({ action: "complete-onboarding" }),
       }).catch(() => {});
 
-      const finishDestination = hasMatchJob
-        ? "/profile/assets?open=primary"
-        : companiesSnapshot.length > 0
-          ? "/opportunities/companies"
-          : "/profile/assets?open=primary";
+      const finishDestination =
+        companiesSnapshot.length > 0 ? "/opportunities/companies" : "/profile/dream-role";
 
       router.push(finishDestination);
     } catch {
@@ -501,15 +370,12 @@ export default function OnboardingPage() {
       }).catch(() => {});
       writeOnboardingFinishPayload({ primaryAssetId, autoRunMatch: false });
       router.push(
-        companiesSnapshot.length > 0 ? "/opportunities/companies" : "/profile/assets?open=primary"
+        companiesSnapshot.length > 0 ? "/opportunities/companies" : "/profile/dream-role"
       );
     }
   }, [
     aboutYouFields,
     goTo,
-    jobAnalysis,
-    jobMatch,
-    jobUrl,
     liInput,
     selectedTitles,
     selectedCompanies,
@@ -517,8 +383,10 @@ export default function OnboardingPage() {
     router,
   ]);
 
-  const finishSetup = useCallback(() => runFinishSetup(false), [runFinishSetup]);
-  const finishSetupWithJob = useCallback(() => runFinishSetup(true), [runFinishSetup]);
+  const finishOnboarding = useCallback(() => {
+    saveAboutYou(aboutYouFields).catch(() => {});
+    void runFinishSetup();
+  }, [aboutYouFields, runFinishSetup]);
 
   const demoAdvance = () => {
     if (screen === 0) {
@@ -533,7 +401,7 @@ export default function OnboardingPage() {
     } else if (screen === 4) {
       goTo(5);
     } else if (screen === 5) {
-      goTo(6);
+      void runFinishSetup();
     }
   };
 
@@ -546,7 +414,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const headerScreen = screen === 7 ? 6 : screen;
+  const headerScreen = screen === 6 ? 5 : screen;
 
   return (
     <div style={{ background: "#F7F5F2" }}>
@@ -613,7 +481,7 @@ export default function OnboardingPage() {
               onCareerMotivationChange={setCareerMotivation}
               onJobTimelineChange={setJobTimeline}
               onContinue={goToPreferences}
-              onSkip={skipAboutYouToTransition}
+              onSkip={finishOnboarding}
             />
           )}
           {screen === 5 && (
@@ -627,37 +495,14 @@ export default function OnboardingPage() {
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
               onAttributionChange={setAttribution}
-              onContinue={goToTransition}
-              onSkip={goToTransition}
+              onContinue={finishOnboarding}
+              onSkip={finishOnboarding}
             />
           )}
-          {screen === 6 && (
-            <ScreenTransition
-              targetRoles={selectedTitles}
-              jobUrl={jobUrl}
-              onJobUrlChange={(v) => {
-                setJobUrl(v);
-                if (jobAnalysis) setJobAnalysis(null);
-                if (jobMatch) setJobMatch(null);
-                if (jobError) setJobError(null);
-                if (jobMatchError) setJobMatchError(null);
-              }}
-              onAnalyze={analyzeFirstJob}
-              onFinish={finishSetup}
-              onFinishWithJob={finishSetupWithJob}
-              onSkip={finishSetup}
-              loading={jobLoading}
-              loadingPhase={jobLoadingPhase}
-              error={jobError}
-              matchError={jobMatchError}
-              analysis={jobAnalysis}
-              match={jobMatch}
-            />
-          )}
-          {screen === 7 && <ScreenSetup steps={setupSteps} />}
+          {screen === 6 && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
-      {process.env.NODE_ENV === "development" && screen !== 7 && <DemoNextButton onClick={demoAdvance} />}
+      {process.env.NODE_ENV === "development" && screen !== 6 && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }
