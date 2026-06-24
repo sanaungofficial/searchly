@@ -29,7 +29,7 @@ export const DEFAULT_COMPANY_SCAN_SETTINGS: CompanyScanSettings = {
   autoScanOnAdd: true,
   cronEnabled: true,
   jobsScanProvider: "hirebase_then_ai",
-  hirebaseMaxJobsPerCompany: 500,
+  hirebaseMaxJobsPerCompany: 50,
   lastCronRunAt: null,
   lastCronSummary: null,
 };

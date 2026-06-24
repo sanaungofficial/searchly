@@ -12,6 +12,7 @@ export interface ParsedWorkEntry {
   company: string;
   title: string;
   description?: string | null;
+  location?: string | null;
   from?: string | null;
   to?: string | null;
   bullets: string[];
@@ -193,6 +194,7 @@ function normalizeWorkExperience(raw: unknown): ParsedWorkEntry[] {
         company: company || "Unknown company",
         title: title || "Role",
         description: asStringOrNull(row.description),
+        location: asStringOrNull(row.location),
         from: asStringOrNull(row.from),
         to: asStringOrNull(row.to),
         bullets: asStringArray(row.bullets),
@@ -514,7 +516,7 @@ export function sectionTextBlob(data: ParsedResumeData, sectionId: ResumeSection
   }
   if (sectionId === "experience") {
     const entries = entryId ? data.workExperience.filter((w) => w.id === entryId) : data.workExperience;
-    return entries.map((w) => `${w.title} ${w.company} ${w.bullets.join(" ")}`).join(" ");
+    return entries.map((w) => `${w.title} ${w.company} ${w.location ?? ""} ${w.bullets.join(" ")}`).join(" ");
   }
   if (sectionId === "education") {
     return data.education.map((e) => `${e.degree} ${e.school}`).join(" ");

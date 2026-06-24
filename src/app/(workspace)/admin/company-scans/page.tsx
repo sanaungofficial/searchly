@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CompanyScanSettingsPanel } from "@/components/admin/company-scan-settings-panel";
+import { CompanyIntelDrawer } from "@/components/admin/company-intel-drawer";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { COMPANY_SCAN_SETTINGS_SIDEBAR } from "@/lib/company-scan-config";
 
@@ -60,6 +61,7 @@ export default function CompanyScansAdminPage() {
   const [syncingHirebase, setSyncingHirebase] = useState(false);
   const [syncResults, setSyncResults] = useState<SyncResult[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedIntelId, setSelectedIntelId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -217,7 +219,10 @@ export default function CompanyScansAdminPage() {
 
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between gap-4">
-          <h2 className="text-sm font-semibold text-stone-800">Shared company intel</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-stone-800">Shared company intel</h2>
+            <p className="text-xs text-stone-500 mt-1">Click a row to open full profile, Hirebase data, and cached roles.</p>
+          </div>
           <button
             type="button"
             onClick={backfillWebsites}
@@ -243,7 +248,11 @@ export default function CompanyScansAdminPage() {
             </thead>
             <tbody>
               {data.companies.map((row) => (
-                <tr key={row.id} className="border-b border-stone-50">
+                <tr
+                  key={row.id}
+                  className="border-b border-stone-50 cursor-pointer hover:bg-stone-50/80 transition-colors"
+                  onClick={() => setSelectedIntelId(row.id)}
+                >
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3">
                       <CompanyLogo name={row.name} website={row.website} careersUrl={row.careersUrl} size={28} />
@@ -275,6 +284,14 @@ export default function CompanyScansAdminPage() {
           </table>
         </div>
       </section>
+
+      {selectedIntelId && (
+        <CompanyIntelDrawer
+          intelId={selectedIntelId}
+          onClose={() => setSelectedIntelId(null)}
+          onUpdated={load}
+        />
+      )}
     </div>
   );
 }

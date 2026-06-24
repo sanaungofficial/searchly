@@ -152,6 +152,54 @@ export async function parseResumePdf(
   }
 }
 
+async function parseFileWithClaude(
+  anthropic: Anthropic,
+  bytes: Buffer,
+  ext: string,
+  rawText: string,
+  structuredPrompt: string,
+): Promise<Omit<ResumeFileParseResult, "usedFallback" | "hirebaseArtifactId">> {
+  if (ext === "pdf" || isPdfBuffer(bytes)) {
+    const base64 = bytes.toString("base64");
+    const result = await parseResumePdf(anthropic, base64, structuredPrompt);
+    const text = result.text.trim() || rawText;
+    const parsed = result.parsed || (text ? fallbackParseResumeFromText(text) : null);
+    return {
+      text,
+      parsed,
+      tokensIn: result.tokensIn,
+      tokensOut: result.tokensOut,
+      provider: result.parsed ? "claude" : "heuristic",
+    };
+  }
+
+  const sourceText = rawText.trim();
+  if (!sourceText) {
+    return { text: "", parsed: null, tokensIn: 0, tokensOut: 0, provider: "heuristic" };
+  }
+
+  const { parsed, tokensIn, tokensOut } = await parseResumeText(anthropic, sourceText, structuredPrompt);
+  return {
+    text: sourceText,
+    parsed: parsed || fallbackParseResumeFromText(sourceText),
+    tokensIn,
+    tokensOut,
+    provider: parsed ? "claude" : "heuristic",
+  };
+}
+
+function parseFileHeuristic(rawText: string): ResumeFileParseResult {
+  const text = rawText.trim();
+  return {
+    text,
+    parsed: text ? fallbackParseResumeFromText(text) : null,
+    tokensIn: 0,
+    tokensOut: 0,
+    usedFallback: true,
+    provider: "heuristic",
+  };
+}
+
 export async function parseResumeFile(
   anthropic: Anthropic | null,
   bytes: Buffer,
@@ -160,13 +208,15 @@ export async function parseResumeFile(
   filename?: string,
 ): Promise<ResumeFileParseResult> {
   const rawText = await extractRawResumeText(bytes, ext);
+  const hirebaseEnabled = isHirebaseResumeConfigured();
+  let hirebaseFailed = false;
 
-  if (isHirebaseResumeConfigured()) {
+  if (hirebaseEnabled) {
     try {
       const hirebase = await parseResumeWithHirebase({ bytes, ext, filename });
       if (hirebase?.parsed) {
         return {
-          text: hirebase.resumeText || rawText,
+          text: rawText || hirebase.resumeText,
           parsed: hirebase.parsed,
           tokensIn: 0,
           tokensOut: 0,
@@ -175,56 +225,34 @@ export async function parseResumeFile(
           hirebaseArtifactId: hirebase.artifactId,
         };
       }
+      hirebaseFailed = true;
     } catch (err) {
-      console.error("[resume-parse] Hirebase embed failed:", err);
+      hirebaseFailed = true;
+      console.error("[resume-parse] Hirebase embed failed, falling back to Claude:", err);
     }
   }
 
-  if (!rawText) {
-    return {
-      text: "",
-      parsed: null,
-      tokensIn: 0,
-      tokensOut: 0,
-      usedFallback: false,
-      provider: "heuristic",
-    };
+  if (anthropic) {
+    const claude = await parseFileWithClaude(anthropic, bytes, ext, rawText, structuredPrompt);
+    if (claude.parsed || claude.text) {
+      return {
+        ...claude,
+        usedFallback: hirebaseFailed,
+      };
+    }
   }
 
-  if (!anthropic) {
-    return {
-      text: rawText,
-      parsed: fallbackParseResumeFromText(rawText),
-      tokensIn: 0,
-      tokensOut: 0,
-      usedFallback: true,
-      provider: "heuristic",
-    };
+  if (rawText.trim()) {
+    return parseFileHeuristic(rawText);
   }
 
-  if (ext === "pdf" || isPdfBuffer(bytes)) {
-    const base64 = bytes.toString("base64");
-    const result = await parseResumePdf(anthropic, base64, structuredPrompt);
-    const text = result.text.trim() || rawText;
-    const parsed = result.parsed || fallbackParseResumeFromText(text);
-    return {
-      text,
-      parsed,
-      tokensIn: result.tokensIn,
-      tokensOut: result.tokensOut,
-      usedFallback: !result.parsed,
-      provider: result.parsed ? "claude" : "heuristic",
-    };
-  }
-
-  const { parsed, tokensIn, tokensOut } = await parseResumeText(anthropic, rawText, structuredPrompt);
   return {
-    text: rawText,
-    parsed: parsed || fallbackParseResumeFromText(rawText),
-    tokensIn,
-    tokensOut,
-    usedFallback: !parsed,
-    provider: parsed ? "claude" : "heuristic",
+    text: "",
+    parsed: null,
+    tokensIn: 0,
+    tokensOut: 0,
+    usedFallback: hirebaseFailed,
+    provider: "heuristic",
   };
 }
 

@@ -5,7 +5,7 @@ import type { CompanyIntel, TrackedCompany } from "@prisma/client";
 import { ensureDbUser } from "@/lib/ensure-db-user";
 import { mergeTrackedWithIntel, resolveCompanyIntelFromInput } from "@/lib/company-intel";
 import { getCatalogCompany } from "@/lib/company-catalog";
-import { intelNeedsScan, scanCompanyIntel } from "@/lib/company-jobs-scan";
+import { scanTrackedCompanyMatches, trackedCompanyNeedsScan } from "@/lib/company-jobs-scan";
 
 async function loadTrackedCompanies(userId: string): Promise<TrackedCompany[]> {
   return prisma.trackedCompany.findMany({
@@ -111,8 +111,6 @@ export async function POST(request: Request) {
         cultureMission: cultureMission ?? null,
         candidateEdge: candidateEdge ?? null,
         targetRoles: targetRoles ?? null,
-        jobsCache: intel?.jobsCache ?? undefined,
-        lastJobsFetchedAt: intel?.lastJobsFetchedAt ?? null,
         enrichmentCache: intel?.enrichmentCache ?? undefined,
         enrichmentFetchedAt: intel?.enrichmentFetchedAt ?? null,
       },
@@ -121,11 +119,11 @@ export async function POST(request: Request) {
     const [merged] = await attachIntel([company]);
     let scanPending = false;
 
-    if (intel && (await intelNeedsScan(intel))) {
+    if (await trackedCompanyNeedsScan(company.id, dbUser.id)) {
       scanPending = true;
-      const intelId = intel.id;
+      const trackedId = company.id;
       after(async () => {
-        await scanCompanyIntel(intelId).catch((err) => {
+        await scanTrackedCompanyMatches(trackedId, dbUser.id).catch((err) => {
           console.error("[companies POST scan]", err);
         });
       });

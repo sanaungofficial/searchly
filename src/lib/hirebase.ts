@@ -326,3 +326,60 @@ export async function fetchHirebaseCompanyJobs(input: {
     scannedUrl,
   };
 }
+
+/** Targeted search: company + role titles — bills only for jobs returned (match-only scans). */
+export async function fetchHirebaseMatchingJobs(input: {
+  companyName: string;
+  slugHint?: string | null;
+  hirebaseSlug?: string | null;
+  website?: string | null;
+  jobTitles: string[];
+  maxJobs?: number;
+}): Promise<{
+  jobs: Array<{
+    title: string;
+    location: string | null;
+    department: string | null;
+    url: string | null;
+  }>;
+  hirebaseSlug: string | null;
+  totalCount: number;
+  scannedUrl: string;
+}> {
+  const titles = input.jobTitles.map((t) => t.trim()).filter(Boolean);
+  if (!titles.length) {
+    return { jobs: [], hirebaseSlug: null, totalCount: 0, scannedUrl: "" };
+  }
+
+  const maxJobs = Math.max(1, Math.min(input.maxJobs ?? 50, 100));
+  let slug = input.hirebaseSlug?.trim() || (await resolveHirebaseCompanySlug(input.companyName, input.slugHint));
+
+  const searchBody: Record<string, unknown> = {
+    company_name: input.companyName.trim(),
+    job_titles: titles,
+    page: 1,
+    limit: maxJobs,
+    sort_by: "date_posted",
+    sort_order: "desc",
+  };
+  if (slug) searchBody.company_slug = slug;
+
+  const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/search", {
+    method: "POST",
+    body: JSON.stringify(searchBody),
+  });
+
+  const collected = data.jobs ?? [];
+  slug = slug ?? collected[0]?.company_slug ?? null;
+  const jobs = collected.slice(0, maxJobs).map(mapHirebaseJob);
+  const scannedUrl = slug
+    ? `https://api.hirebase.org/v2/jobs/search?company_slug=${encodeURIComponent(slug)}`
+    : `https://api.hirebase.org/v2/jobs/search?company_name=${encodeURIComponent(input.companyName.trim())}`;
+
+  return {
+    jobs,
+    hirebaseSlug: slug,
+    totalCount: data.total_count ?? jobs.length,
+    scannedUrl,
+  };
+}

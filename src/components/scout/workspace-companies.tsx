@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
+import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 
 interface CachedJob {
   title: string;
@@ -67,29 +68,6 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-function parseRolesText(text: string | null | undefined): string[] {
-  if (!text?.trim()) return [];
-  return text.split(/[,;\n]+/).map((r) => r.trim()).filter(Boolean);
-}
-
-function buildMatchRoles(profileRoles: string[], companyTargetRoles: string | null): string[] {
-  const seen = new Set<string>();
-  return [...profileRoles, ...parseRolesText(companyTargetRoles)].filter((role) => {
-    const key = role.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function isJobMatch(jobTitle: string, matchRoles: string[]): boolean {
-  if (!matchRoles.length) return false;
-  const title = jobTitle.toLowerCase();
-  return matchRoles.some((role) =>
-    role.toLowerCase().split(/\s+/).filter((w) => w.length > 3).some((w) => title.includes(w))
-  );
-}
-
 function hasScanSource(company: TrackedCompany): boolean {
   return !!(company.careersUrl?.trim() || company.website?.trim());
 }
@@ -97,6 +75,9 @@ function hasScanSource(company: TrackedCompany): boolean {
 function humanizeApiError(message: string | undefined, status: number): string {
   if (status === 503 || message === "AI not configured") {
     return "AI scanning isn't available on staging — try on app.kimchi.so.";
+  }
+  if (message?.includes("target roles")) {
+    return "Add target roles in Profile → Target Roles (or below) to find matching jobs.";
   }
   if (message?.includes("Careers URL or website")) {
     return "Add a careers URL (or website) before scanning.";
@@ -336,23 +317,19 @@ function OpenRolesSummary({
   const cache = company.jobsCache as JobsCache | null;
   const jobCount = cache?.jobs?.length ?? 0;
   const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
-  const matchCount = cache?.jobs?.filter((j) => isJobMatch(j.title, matchRoles)).length ?? 0;
 
   if (scanning) {
     return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280" }}>Scanning…</span>;
   }
-  if (!hasScanSource(company)) {
-    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>Add careers URL</span>;
+  if (matchRoles.length === 0) {
+    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>Set target roles</span>;
   }
   if (jobCount === 0) {
-    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>No roles yet</span>;
+    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>No matches yet</span>;
   }
   return (
-    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1a1a1a" }}>
-      {jobCount} {jobCount === 1 ? "role" : "roles"}
-      {matchCount > 0 && (
-        <span style={{ color: "#16a34a", fontWeight: 600 }}> · {matchCount} match{matchCount !== 1 ? "es" : ""}</span>
-      )}
+    <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#16a34a", fontWeight: 600 }}>
+      {jobCount} match{jobCount !== 1 ? "es" : ""}
     </span>
   );
 }
@@ -422,9 +399,8 @@ function CompanyDrawer({
   const jobs = cache?.jobs ?? [];
   const intel = company.enrichmentCache as EnrichmentCache | null;
   const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
-  const canScan = hasScanSource(company);
-  const matchingJobs = jobs.filter((j) => isJobMatch(j.title, matchRoles));
-  const otherJobs = jobs.filter((j) => !isJobMatch(j.title, matchRoles));
+  const canScan = matchRoles.length > 0;
+  const matchingJobs = jobs;
 
   async function handleEnrich() {
     setEnriching(true); setEnrichError(null);
@@ -436,8 +412,8 @@ function CompanyDrawer({
   }
 
   async function handleScan() {
-    if (!canScan) {
-      setScanError("Add a careers URL (or website) in Details below before scanning.");
+    if (!matchRoles.length) {
+      setScanError("Add target roles in Profile → Target Roles (or below) before scanning.");
       return;
     }
     setScanning(true); setScanError(null);
@@ -571,16 +547,16 @@ function CompanyDrawer({
             )}
           </DrawerSection>
 
-          {/* Open Roles */}
-          <DrawerSection title="Open Roles">
-            {!canScan && (
+          {/* Matching roles */}
+          <DrawerSection title="Matching roles">
+            {matchRoles.length === 0 && (
               <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
-                Paste the direct careers or jobs listing URL in Details below. Homepage links often fail — ATS pages (Greenhouse, Lever, Workday) work best.
+                Add target roles in Profile → Target Roles, or under Details below. We only pull openings that match your targets — not every role at this company.
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <button onClick={handleScan} disabled={scanning || !canScan} style={{ background: scanning || !canScan ? "#f3f4f6" : "#1a1a1a", color: scanning || !canScan ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 14, cursor: scanning || !canScan ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)", fontWeight: 500 }}>
-                {scanning ? "Scanning…" : jobs.length > 0 ? "↻ Re-scan" : "Scan for roles"}
+                {scanning ? "Scanning…" : jobs.length > 0 ? "↻ Refresh matches" : "Find matching roles"}
               </button>
               {company.lastJobsFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Last scanned {timeAgo(company.lastJobsFetchedAt)}</span>}
             </div>
@@ -588,34 +564,31 @@ function CompanyDrawer({
 
             {jobs.length === 0 && !scanning ? (
               <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", padding: "16px 0", lineHeight: 1.5 }}>
-                {canScan
-                  ? "Scanning runs automatically when you add a company. Roles appear here once the shared cache is ready — or click Re-scan."
-                  : "Add a careers URL in Details — roles scan automatically once a URL is set."}
+                {matchRoles.length === 0
+                  ? "Set your target roles first — then we'll search this company for matching openings."
+                  : canScan
+                    ? "Click Find matching roles — we scan when you add a company if your target roles are set."
+                    : "Matching scan runs via Hirebase when configured, or from the careers page on production."}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {matchingJobs.length > 0 && (
                   <div>
-                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "#16a34a", marginBottom: 8 }}>
-                      Matches for you ({matchingJobs.length})
-                    </div>
                     <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden" }}>
                       {matchingJobs.map((job, i) => (
                         <DrawerJobRow key={`m-${i}-${job.title}`} job={job} match />
                       ))}
                     </div>
-                  </div>
-                )}
-                {otherJobs.length > 0 && (
-                  <div>
-                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", marginBottom: 8 }}>
-                      All open roles ({otherJobs.length})
-                    </div>
-                    <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden", maxHeight: 360, overflowY: "auto" }}>
-                      {otherJobs.map((job, i) => (
-                        <DrawerJobRow key={`o-${i}-${job.title}`} job={job} match={false} />
-                      ))}
-                    </div>
+                    {company.careersUrl && (
+                      <a
+                        href={company.careersUrl.startsWith("http") ? company.careersUrl : `https://${company.careersUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "inline-block", marginTop: 10, fontFamily: "var(--font-ui)", fontSize: 13, color: "#6b7280", textDecoration: "underline" }}
+                      >
+                        View all roles on careers site →
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

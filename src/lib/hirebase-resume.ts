@@ -45,6 +45,9 @@ type HirebaseEducationEntry = {
   location?: string;
   start_date?: string;
   end_date?: string;
+  GPA?: string;
+  relevant_courses?: string[];
+  thesis_or_project?: string;
 };
 
 type HirebaseCertification = string | { name?: string; title?: string; issuer?: string; date?: string };
@@ -121,8 +124,30 @@ function asTrimmed(value: unknown): string | null {
 function formatLocation(address?: HirebaseAddress, fallback?: string | null): string | null {
   if (fallback?.trim()) return fallback.trim();
   if (!address) return null;
-  const parts = [address.city, address.state, address.country].map((p) => p?.trim()).filter(Boolean);
+  const parts = [address.street, address.city, address.state, address.zip_code, address.country]
+    .map((p) => p?.trim())
+    .filter(Boolean);
   return parts.length ? parts.join(", ") : null;
+}
+
+/** Split "B.S. in Computer Science" → { degree, field }. */
+function splitDegreeAndField(degreeRaw: string | null): { degree: string; field: string | null } {
+  if (!degreeRaw) return { degree: "Degree", field: null };
+  const inMatch = degreeRaw.match(/^(.+?)\s+in\s+(.+)$/i);
+  if (inMatch) {
+    return { degree: inMatch[1].trim(), field: inMatch[2].trim() || null };
+  }
+  return { degree: degreeRaw, field: null };
+}
+
+function educationField(entry: HirebaseEducationEntry, degreeRaw: string | null): string | null {
+  const fromDegree = splitDegreeAndField(degreeRaw).field;
+  if (fromDegree) return fromDegree;
+  const thesis = asTrimmed(entry.thesis_or_project);
+  if (thesis) return thesis;
+  const courses = (entry.relevant_courses ?? []).map((c) => c.trim()).filter(Boolean);
+  if (courses.length) return courses.slice(0, 4).join(", ");
+  return null;
 }
 
 function pickLink(links: string[] | undefined, pattern: RegExp): string | null {
@@ -185,10 +210,12 @@ export function mapHirebaseResumeToParsedData(
       const bullets = [...(entry.responsibilities ?? []), ...(entry.achievements ?? [])]
         .map((line) => line.trim())
         .filter(Boolean);
+      const jobLocation = asTrimmed(entry.location);
       return {
         id: `exp_${index}`,
         title: title || "Role",
         company: company || "Company",
+        location: jobLocation,
         from: asTrimmed(entry.start_date),
         to: asTrimmed(entry.end_date),
         bullets,
@@ -199,12 +226,14 @@ export function mapHirebaseResumeToParsedData(
   const education = (resume.education ?? [])
     .map((entry, index) => {
       const school = asTrimmed(entry.institution);
-      const degree = asTrimmed(entry.degree);
-      if (!school && !degree) return null;
+      const degreeRaw = asTrimmed(entry.degree);
+      if (!school && !degreeRaw) return null;
+      const { degree } = splitDegreeAndField(degreeRaw);
       return {
         id: `edu_${index}`,
-        school: school || "School",
-        degree: degree || "Degree",
+        school: school || asTrimmed(entry.location) || "School",
+        degree,
+        field: educationField(entry, degreeRaw),
         from: asTrimmed(entry.start_date),
         to: asTrimmed(entry.end_date),
       };
