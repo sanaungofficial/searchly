@@ -1,4 +1,5 @@
 import { hostnameFromUrl } from "@/lib/company-domain";
+import { roleSearchKeywords } from "@/lib/job-match";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
 
@@ -353,25 +354,43 @@ export async function fetchHirebaseMatchingJobs(input: {
 
   const maxJobs = Math.max(1, Math.min(input.maxJobs ?? 50, 100));
   let slug = input.hirebaseSlug?.trim() || (await resolveHirebaseCompanySlug(input.companyName, input.slugHint));
+  const keywords = roleSearchKeywords(titles);
 
-  const searchBody: Record<string, unknown> = {
-    company_name: input.companyName.trim(),
-    job_titles: titles,
+  const baseSort = {
     page: 1,
     limit: maxJobs,
     sort_by: "date_posted",
     sort_order: "desc",
   };
-  if (slug) searchBody.company_slug = slug;
 
-  const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/search", {
-    method: "POST",
-    body: JSON.stringify(searchBody),
-  });
+  const attempts: Record<string, unknown>[] = [];
+  if (slug) {
+    attempts.push({ company_slug: slug, keywords, job_titles: titles, ...baseSort });
+    attempts.push({ company_slug: slug, keywords, ...baseSort });
+  }
+  attempts.push({ company_name: input.companyName.trim(), keywords, job_titles: titles, ...baseSort });
+  attempts.push({ company_name: input.companyName.trim(), keywords, ...baseSort });
 
-  const collected = data.jobs ?? [];
-  slug = slug ?? collected[0]?.company_slug ?? null;
-  const jobs = collected.slice(0, maxJobs).map(mapHirebaseJob);
+  let collected: HirebaseJob[] = [];
+  let totalCount = 0;
+
+  for (const body of attempts) {
+    if (collected.length >= maxJobs) break;
+    try {
+      const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/search", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      totalCount = data.total_count ?? collected.length + (data.jobs?.length ?? 0);
+      collected.push(...(data.jobs ?? []));
+      slug = slug ?? collected[0]?.company_slug ?? null;
+      if (collected.length) break;
+    } catch {
+      continue;
+    }
+  }
+
+  const jobs = dedupeHirebaseJobs(collected).slice(0, maxJobs).map(mapHirebaseJob);
   const scannedUrl = slug
     ? `https://api.hirebase.org/v2/jobs/search?company_slug=${encodeURIComponent(slug)}`
     : `https://api.hirebase.org/v2/jobs/search?company_name=${encodeURIComponent(input.companyName.trim())}`;
@@ -379,7 +398,17 @@ export async function fetchHirebaseMatchingJobs(input: {
   return {
     jobs,
     hirebaseSlug: slug,
-    totalCount: data.total_count ?? jobs.length,
+    totalCount: totalCount || jobs.length,
     scannedUrl,
   };
+}
+
+function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
+  const seen = new Set<string>();
+  return jobs.filter((job) => {
+    const key = (job.application_link ?? job.job_title ?? job.title ?? "").toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

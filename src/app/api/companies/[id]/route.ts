@@ -1,7 +1,9 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ensureDbUser } from "@/lib/ensure-db-user";
+import { mergeTrackedWithIntel } from "@/lib/company-intel";
+import { scanTrackedCompanyMatches } from "@/lib/company-jobs-scan";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
@@ -11,7 +13,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await request.json();
 
-  const existing = await prisma.trackedCompany.findFirst({ where: { id, userId: dbUser.id } });
+  const existing = await prisma.trackedCompany.findFirst({
+    where: { id, userId: dbUser.id },
+    include: { companyIntel: true },
+  });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const company = await prisma.trackedCompany.update({
@@ -30,7 +35,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     },
   });
 
-  return NextResponse.json(company);
+  if (body.targetRoles !== undefined) {
+    after(async () => {
+      await scanTrackedCompanyMatches(id, dbUser.id).catch((err) => {
+        console.error("[companies PATCH targetRoles scan]", err);
+      });
+    });
+  }
+
+  return NextResponse.json(mergeTrackedWithIntel(company, existing.companyIntel));
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {

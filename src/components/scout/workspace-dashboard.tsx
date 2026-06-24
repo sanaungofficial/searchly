@@ -13,17 +13,8 @@ import {
   type SignalsData,
 } from "./workspace-data";
 import { PlusIcon, RefreshIcon } from "./workspace-icons";
-import { fontSans, fontMono, color, type as T } from "@/lib/typography";
-
-const SECTION_LABEL: React.CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: T.label,
-  fontWeight: 600,
-  color: color.muted,
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  marginBottom: 14,
-};
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { fontSans, fontMono, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
 
 const STAT_LABEL: React.CSSProperties = {
   fontFamily: fontSans,
@@ -75,6 +66,18 @@ function ActivityFeedItem({
   const { stageLabel, stageColor } = stageMeta(card.stage);
   const timeLabel = formatDaysAgo(card.days);
 
+  const stageBadge: React.CSSProperties = {
+    fontFamily: fontMono,
+    fontSize: T.label,
+    color: stageColor,
+    background: surface.inset,
+    padding: "4px 10px",
+    border: border.line,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  };
+
   if (isMobile) {
     return (
       <button
@@ -85,9 +88,8 @@ function ActivityFeedItem({
           width: "100%",
           textAlign: "left",
           padding: "14px 16px",
-          background: "#FFFFFF",
-          borderRadius: 10,
-          border: "1px solid #d6d3d1",
+          background: surface.card,
+          border: border.line,
           cursor: "pointer",
           WebkitTapHighlightColor: "transparent",
         }}
@@ -104,56 +106,17 @@ function ActivityFeedItem({
             }}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 15,
-                color: "#1c1917",
-                fontWeight: 600,
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
+            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.ink, fontWeight: 600, margin: 0, lineHeight: 1.3 }}>
               {card.company}
             </p>
-            <p
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 13,
-                color: "#57534e",
-                margin: "4px 0 0",
-                lineHeight: 1.4,
-              }}
-            >
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
               {card.role}
             </p>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingLeft: 18 }}>
-          <span
-            style={{
-              fontFamily: "ui-monospace, monospace",
-              fontSize: T.label,
-              color: stageColor,
-              background: stageColor + "20",
-              padding: "4px 10px",
-              borderRadius: 100,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {stageLabel}
-          </span>
-          <span
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 12,
-              color: "#78716c",
-            }}
-          >
-            {timeLabel}
-          </span>
+          <span style={stageBadge}>{stageLabel}</span>
+          <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{timeLabel}</span>
         </div>
       </button>
     );
@@ -169,70 +132,23 @@ function ActivityFeedItem({
         gap: 10,
         width: "100%",
         padding: "14px 18px",
-        background: "#FFFFFF",
-        borderRadius: 10,
-        border: "1px solid #d6d3d1",
+        background: surface.card,
+        border: border.line,
         cursor: "pointer",
         textAlign: "left",
         WebkitTapHighlightColor: "transparent",
       }}
     >
-      <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: stageColor }} />
-      <span
-        style={{
-          fontFamily: "var(--font-ui)",
-          fontSize: 15,
-          color: "#1c1917",
-          fontWeight: 500,
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <div style={{ width: 8, height: 8, flexShrink: 0, background: stageColor }} />
+      <span style={{ fontFamily: fontSans, fontSize: T.body, color: color.ink, fontWeight: 500, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {card.company}
       </span>
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#c7c4bf" }}>·</span>
-      <span
-        style={{
-          fontFamily: "var(--font-ui)",
-          fontSize: 14,
-          color: "#44403c",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          maxWidth: 220,
-        }}
-      >
+      <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight }}>·</span>
+      <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
         {card.role}
       </span>
-      <span
-        style={{
-          fontFamily: "ui-monospace, monospace",
-          fontSize: T.label,
-          color: stageColor,
-          background: stageColor + "20",
-          padding: "3px 10px",
-          borderRadius: 100,
-          flexShrink: 0,
-          fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        {stageLabel}
-      </span>
-      <span
-        style={{
-          fontFamily: "var(--font-ui)",
-          fontSize: 13,
-          color: "#78716c",
-          flexShrink: 0,
-        }}
-      >
-        {timeLabel}
-      </span>
+      <span style={{ ...stageBadge, flexShrink: 0, padding: "3px 10px" }}>{stageLabel}</span>
+      <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, flexShrink: 0 }}>{timeLabel}</span>
     </button>
   );
 }
@@ -292,8 +208,8 @@ export function WorkspaceDashboard() {
   ];
 
   const headerPad = isMobile ? "12px 16px 12px 56px" : "12px 28px";
-  const panelPad = isMobile ? "12px 16px" : "12px 28px";
-  const contentPad = isMobile ? "20px 16px 40px" : "28px 32px 48px";
+  const panelPad = isMobile ? "12px 16px 12px 56px" : "12px 28px";
+  const contentPad = isMobile ? "24px 16px 40px 56px" : "32px 36px 48px";
   const statValueSize = isMobile ? 36 : T.stat;
   const statCardPad = isMobile ? "16px 18px" : "20px 24px";
 
@@ -370,19 +286,20 @@ export function WorkspaceDashboard() {
   return (
     <div
       style={{
-        flex: 1,
+        height: "100%",
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: "#F2EDE3",
+        background: surface.page,
         animation: "fadeIn 0.3s ease both",
       }}
     >
-      {/* Header bar — left padding clears mobile hamburger */}
       <div
         style={{
           padding: headerPad,
-          borderBottom: "1px solid rgba(0,0,0,0.07)",
+          borderBottom: border.line,
+          background: surface.card,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -390,53 +307,21 @@ export function WorkspaceDashboard() {
           gap: 12,
         }}
       >
-        <div style={{ display: "flex", gap: 0, minWidth: 0 }}>
-          <span
-            style={{
-              padding: isMobile ? "7px 0" : "7px 18px",
-              fontFamily: "var(--font-ui)",
-              fontSize: isMobile ? 15 : 13,
-              fontWeight: 600,
-              color: "#1A3A2F",
-              borderBottom: "2px solid #1A3A2F",
-            }}
-          >
-            Dashboard
-          </span>
-        </div>
-        <button
+        <ScoutLabel>Dashboard</ScoutLabel>
+        <ScoutPrimaryBtn
           onClick={() => setShowAddPanel((p) => !p)}
-          aria-expanded={showAddPanel}
-          aria-label={showAddPanel ? "Close add job panel" : "Add job"}
-          style={{
-            padding: isMobile ? "10px 14px" : "7px 16px",
-            minHeight: 44,
-            background: "#1A3A2F",
-            color: "#E8D5A3",
-            border: "none",
-            borderRadius: 5,
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: "pointer",
-            letterSpacing: "0.2px",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            flexShrink: 0,
-          }}
+          style={{ minHeight: 44, padding: isMobile ? "10px 14px" : "8px 16px" }}
         >
           <PlusIcon /> {isMobile && showAddPanel ? "Close" : "Add job"}
-        </button>
+        </ScoutPrimaryBtn>
       </div>
 
-      {/* Add job panel */}
       {showAddPanel && (
         <div
           style={{
             padding: panelPad,
-            background: "rgba(26,58,47,0.04)",
-            borderBottom: "1px solid rgba(0,0,0,0.07)",
+            background: surface.inset,
+            borderBottom: border.line,
             animation: "fadeIn 0.2s ease both",
           }}
         >
@@ -461,36 +346,25 @@ export function WorkspaceDashboard() {
               style={{
                 flex: 1,
                 padding: "12px 12px",
-                border: "1px solid rgba(26,58,47,0.2)",
-                borderRadius: 6,
-                background: "#FFFFFF",
-                fontFamily: "var(--font-ui)",
-                fontSize: 16,
-                color: "#1A1A1A",
+                border: border.line,
+                borderRadius: 0,
+                background: surface.card,
+                fontFamily: fontSans,
+                fontSize: isMobile ? 16 : T.bodySm,
+                color: color.ink,
                 minWidth: 0,
                 width: "100%",
                 boxSizing: "border-box",
+                outline: "none",
               }}
             />
-            <button
+            <ScoutPrimaryBtn
               onClick={submitAddJob}
               disabled={addJobLoading || !addJobUrl.trim()}
-              style={{
-                padding: "12px 18px",
-                minHeight: 44,
-                background: addJobUrl.trim() ? "#1A3A2F" : "rgba(26,58,47,0.35)",
-                color: "#E8D5A3",
-                border: "none",
-                borderRadius: 6,
-                fontFamily: "var(--font-ui)",
-                fontSize: 13,
-                cursor: addJobUrl.trim() ? "pointer" : "not-allowed",
-                flexShrink: 0,
-                width: isMobile ? "100%" : undefined,
-              }}
+              style={{ minHeight: 44, width: isMobile ? "100%" : undefined }}
             >
               Search →
-            </button>
+            </ScoutPrimaryBtn>
           </div>
 
           {addJobLoading && (
@@ -504,26 +378,16 @@ export function WorkspaceDashboard() {
                   animation: "pulse 1s ease infinite",
                 }}
               />
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#1A3A2F" }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest }}>
                 Kimchi is analyzing this listing…
               </p>
             </div>
           )}
 
           {addJobError && (
-            <div
-              style={{
-                marginTop: 10,
-                padding: "10px 14px",
-                background: "rgba(196,87,74,0.06)",
-                borderRadius: 6,
-                border: "1px solid rgba(196,87,74,0.15)",
-              }}
-            >
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#C4574A" }}>
-                {addJobError}
-              </p>
-            </div>
+            <ScoutBox style={{ marginTop: 10, borderColor: "rgba(196,87,74,0.25)" }} padding="10px 14px">
+              <p style={{ fontFamily: fontSans, fontSize: T.label, color: "#C4574A", margin: 0 }}>{addJobError}</p>
+            </ScoutBox>
           )}
 
           {jobAnalysis && (
@@ -531,24 +395,24 @@ export function WorkspaceDashboard() {
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: "#1A1A1A" }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, margin: 0 }}>
                       {jobAnalysis.company ?? "Unknown company"}
                     </p>
                     {jobAnalysis.role && (
                       <>
-                        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#52493F" }}>·</span>
-                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#52493F" }}>{jobAnalysis.role}</p>
+                        <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>·</span>
+                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>{jobAnalysis.role}</p>
                       </>
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                     {jobAnalysis.location && (
-                      <span style={{ padding: "3px 10px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 13, color: "#52493F" }}>
+                      <span style={{ padding: "3px 10px", background: surface.inset, border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                         📍 {jobAnalysis.location}
                       </span>
                     )}
                     {jobAnalysis.salary && (
-                      <span style={{ padding: "3px 10px", background: "rgba(74,139,106,0.1)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, color: "#2D6B4A" }}>
+                      <span style={{ padding: "3px 10px", background: surface.inset, border: border.line, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: color.forest }}>
                         {jobAnalysis.salary}
                       </span>
                     )}
@@ -558,127 +422,92 @@ export function WorkspaceDashboard() {
 
               <div style={{ display: "grid", gridTemplateColumns: jobAnalysisColumns, gap: 14, marginBottom: 14 }}>
                 {jobAnalysis.description && (
-                  <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={SECTION_LABEL}>Role Summary</p>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.65 }}>
+                  <ScoutBox padding="14px 16px">
+                    <ScoutLabel>Role summary</ScoutLabel>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.65, margin: "8px 0 0" }}>
                       {jobAnalysis.description}
                     </p>
-                  </div>
+                  </ScoutBox>
                 )}
                 {jobAnalysis.requirements.length > 0 && (
-                  <div style={{ background: "#FFFFFF", borderRadius: 8, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)" }}>
-                    <p style={{ ...SECTION_LABEL, marginBottom: 10 }}>Key Requirements</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <ScoutBox padding="14px 16px">
+                    <ScoutLabel>Key requirements</ScoutLabel>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8 }}>
                       {jobAnalysis.requirements.map((r: string, i: number) => (
                         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
-                          <span style={{ color: "#4A8B6A", fontSize: 12, flexShrink: 0, marginTop: 1 }}>✓</span>
-                          <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#2A2218", lineHeight: 1.5 }}>{r}</p>
+                          <span style={{ color: color.forest, fontSize: 12, flexShrink: 0, marginTop: 1 }}>✓</span>
+                          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.5, margin: 0 }}>{r}</p>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </ScoutBox>
                 )}
               </div>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  onClick={addToKanban}
-                  style={{
-                    padding: "12px 22px",
-                    minHeight: 44,
-                    background: "#1A3A2F",
-                    color: "#E8D5A3",
-                    border: "none",
-                    borderRadius: 6,
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    flex: isMobile ? 1 : undefined,
-                  }}
-                >
+                <ScoutPrimaryBtn onClick={addToKanban} style={{ minHeight: 44, flex: isMobile ? 1 : undefined }}>
                   + Add to pipeline
-                </button>
-                <button
-                  onClick={dismissJobAnalysis}
-                  style={{
-                    padding: "12px 16px",
-                    minHeight: 44,
-                    background: "transparent",
-                    color: "#a8a29e",
-                    border: "none",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
+                </ScoutPrimaryBtn>
+                <ScoutSecondaryBtn onClick={dismissJobAnalysis} style={{ minHeight: 44 }}>
                   Dismiss
-                </button>
+                </ScoutSecondaryBtn>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Main scrollable content */}
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           overflowX: "hidden",
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <div style={{ padding: contentPad }}>
+        <div style={{ padding: contentPad, maxWidth: 1120, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
 
-          {/* Pipeline */}
+          <div style={{ marginBottom: isMobile ? 24 : 28 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+              <ScoutLabel>Overview</ScoutLabel>
+            </div>
+            <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 10 }}>
+              Your job search at a glance
+            </ScoutDisplayTitle>
+            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
+              Pipeline counts, recent activity, and weekly market signals — white boxes on cream, same as Opportunities.
+            </p>
+          </div>
+
           <div style={{ marginBottom: isMobile ? 24 : 32 }}>
-            <p style={SECTION_LABEL}>Your pipeline</p>
+            <ScoutLabel>Your pipeline</ScoutLabel>
 
             {total === 0 ? (
-              <div
-                style={{
-                  background: "#FFFFFF",
-                  borderRadius: 12,
-                  padding: isMobile ? "24px 20px" : "20px 24px",
-                  border: "1px solid #e7e5e4",
-                  textAlign: "center",
-                }}
-              >
-                <p
-                  style={{
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 13,
-                    color: "#a8a29e",
-                    marginBottom: isMobile ? 16 : 0,
-                    lineHeight: 1.5,
-                  }}
-                >
+              <ScoutBox style={{ marginTop: 10, textAlign: "center" }} padding={isMobile ? "24px 20px" : "20px 24px"}>
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: isMobile ? 16 : 0, lineHeight: 1.5 }}>
                   No jobs tracked yet — add your first job to start building your pipeline.
                 </p>
                 {isMobile && (
-                  <button
-                    type="button"
-                    onClick={openAddPanel}
-                    style={{
-                      padding: "12px 20px",
-                      minHeight: 44,
-                      background: "#1A3A2F",
-                      color: "#E8D5A3",
-                      border: "none",
-                      borderRadius: 6,
-                      fontFamily: "var(--font-ui)",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
+                  <ScoutPrimaryBtn onClick={openAddPanel} style={{ marginTop: 16, minHeight: 44 }}>
                     + Add your first job
-                  </button>
+                  </ScoutPrimaryBtn>
                 )}
-              </div>
+              </ScoutBox>
             ) : (
               <>
+                {total > 0 && (
+                  <ScoutBox stack padding={statCardPad} style={{ marginTop: 10, marginBottom: 20 }}>
+                    <ScoutLabel>Active roles</ScoutLabel>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
+                      <span style={{ fontFamily: fontDisplay, fontSize: isMobile ? 40 : 48, fontWeight: 600, color: color.ink, lineHeight: 1 }}>
+                        {total}
+                      </span>
+                      <span style={{ fontFamily: fontDisplay, fontSize: 20, color: color.muted }}>in pipeline</span>
+                    </div>
+                  </ScoutBox>
+                )}
                 <div
                   style={{
                     display: "grid",
@@ -692,15 +521,7 @@ export function WorkspaceDashboard() {
                     const prevCount = idx === 0 ? null : pipeline[funnelStages[idx - 1].key];
                     const rate = prevCount !== null ? convRate(prevCount, count) : null;
                     return (
-                      <div
-                        key={stage.key}
-                        style={{
-                          background: "#FFFFFF",
-                          borderRadius: 12,
-                          border: "1px solid #e7e5e4",
-                          padding: statCardPad,
-                        }}
-                      >
+                      <ScoutBox key={stage.key} padding={statCardPad}>
                         <p style={STAT_LABEL}>{stage.label}</p>
                         <p
                           style={{
@@ -719,14 +540,16 @@ export function WorkspaceDashboard() {
                             {rate}% from previous
                           </p>
                         )}
-                      </div>
+                      </ScoutBox>
                     );
                   })}
                 </div>
 
                 {recentActivity.length > 0 && (
                   <div>
-                    <p style={SECTION_LABEL}>Last 7 days</p>
+                    <div style={{ marginTop: 4, marginBottom: 10 }}>
+                      <ScoutLabel>Last 7 days</ScoutLabel>
+                    </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 8 : 6 }}>
                       {recentActivity.slice(0, 6).map((card: KanbanCard) => (
                         <ActivityFeedItem
@@ -743,85 +566,68 @@ export function WorkspaceDashboard() {
             )}
           </div>
 
-          {/* Market signals */}
           <div style={{ marginBottom: 28 }}>
             <div
               style={{
                 display: "flex",
                 alignItems: isMobile ? "flex-start" : "center",
                 justifyContent: "space-between",
-                marginBottom: 14,
+                marginBottom: 10,
                 gap: 12,
                 flexDirection: isMobile ? "column" : "row",
               }}
             >
-              <p style={{ ...SECTION_LABEL, marginBottom: isMobile ? 0 : 14 }}>Kimchi signals · updated weekly</p>
+              <ScoutLabel>Kimchi signals · updated weekly</ScoutLabel>
               <button
                 onClick={refreshSignals}
                 style={{
                   background: "none",
-                  border: "none",
+                  border: border.line,
                   cursor: "pointer",
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  color: "#1A3A2F",
-                  padding: isMobile ? "8px 0" : 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  color: color.forest,
+                  padding: isMobile ? "10px 14px" : "6px 12px",
                   minHeight: isMobile ? 44 : undefined,
                   display: "flex",
                   alignItems: "center",
                   gap: 4,
                 }}
               >
-                <RefreshIcon /> Refresh →
+                <RefreshIcon /> Refresh
               </button>
             </div>
 
             {signalsLoading && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "14px 18px",
-                  background: "#FFFFFF",
-                  borderRadius: 12,
-                  border: "1px solid #d6d3d1",
-                }}
-              >
-                <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#1A3A2F" }}>
-                  Kimchi is scanning the market…
-                </p>
-              </div>
+              <ScoutBox padding="14px 18px">
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: color.forest, animation: "pulse 1s ease infinite", flexShrink: 0 }} />
+                  <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
+                    Kimchi is scanning the market…
+                  </p>
+                </div>
+              </ScoutBox>
             )}
 
             {signalsData && (
               <>
-                <div
-                  style={{
-                    background: "#FFFFFF",
-                    borderRadius: 12,
-                    padding: isMobile ? "16px 18px" : "18px 22px",
-                    marginBottom: 12,
-                    border: "1px solid #d6d3d1",
-                    borderLeft: "3px solid #1A3A2F",
-                  }}
-                >
-                  <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 12, fontWeight: 600, color: "#57534e", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
-                    This week&apos;s read
-                  </p>
+                <ScoutBox stack padding={isMobile ? "16px 18px" : "18px 22px"} style={{ marginBottom: 12 }}>
+                  <ScoutLabel>This week&apos;s read</ScoutLabel>
                   <p
                     style={{
-                      fontFamily: "var(--font-display)",
+                      fontFamily: fontDisplay,
                       fontSize: isMobile ? 20 : 24,
-                      fontWeight: 600,
-                      color: "#1c1917",
+                      fontWeight: 500,
+                      fontVariationSettings: '"opsz" 72, "WONK" 1',
+                      color: color.ink,
                       lineHeight: 1.4,
+                      margin: "10px 0 0",
                     }}
                   >
                     {signalsData.headline}
                   </p>
-                </div>
+                </ScoutBox>
                 <div
                   style={{
                     display: "flex",
@@ -838,28 +644,21 @@ export function WorkspaceDashboard() {
                 >
                   {signalsData.signals.map((s: SignalItem, i: number) => {
                     const sentimentColor = s.sentiment === "positive" ? "#2D6B4A" : s.sentiment === "negative" ? "#8B3A3A" : "#7A6020";
-                    const sentimentBg = s.sentiment === "positive" ? "rgba(45,107,74,0.08)" : s.sentiment === "negative" ? "rgba(139,58,58,0.08)" : "rgba(122,96,32,0.08)";
                     const typeLabel = s.type === "hiring_surge" ? "Hiring" : s.type === "hiring_freeze" ? "Freeze" : s.type === "funding" ? "Funding" : s.type === "role_demand" ? "Demand" : s.type === "salary" ? "Salary" : "Trend";
                     return (
-                      <div
+                      <ScoutBox
                         key={i}
-                        style={{
-                          flex: "none",
-                          width: isMobile ? "min(85vw, 272px)" : 272,
-                          background: "#FFFFFF",
-                          borderRadius: 12,
-                          padding: "18px 20px",
-                          border: "1px solid #d6d3d1",
-                        }}
+                        padding="18px 20px"
+                        style={{ flex: "none", width: isMobile ? "min(85vw, 272px)" : 272 }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
                           <span
                             style={{
                               padding: "2px 8px",
-                              borderRadius: 100,
-                              background: sentimentBg,
-                              fontFamily: "ui-monospace, monospace",
-                              fontSize: 13,
+                              background: surface.inset,
+                              border: border.line,
+                              fontFamily: fontMono,
+                              fontSize: T.caption,
                               fontWeight: 700,
                               color: sentimentColor,
                               textTransform: "uppercase",
@@ -869,34 +668,28 @@ export function WorkspaceDashboard() {
                             {typeLabel}
                           </span>
                           {s.company && (
-                            <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
+                            <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
                               {s.company}
                             </span>
                           )}
                         </div>
                         <p
                           style={{
-                            fontFamily: "var(--font-display)",
+                            fontFamily: fontDisplay,
                             fontSize: isMobile ? 17 : 19,
-                            fontWeight: 600,
-                            color: "#1c1917",
+                            fontWeight: 500,
+                            fontVariationSettings: '"opsz" 72, "WONK" 1',
+                            color: color.ink,
                             marginBottom: 8,
                             lineHeight: 1.35,
                           }}
                         >
                           {s.title}
                         </p>
-                        <p
-                          style={{
-                            fontFamily: "var(--font-ui)",
-                            fontSize: 13,
-                            color: "#2D6B4A",
-                            lineHeight: 1.55,
-                          }}
-                        >
+                        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, lineHeight: 1.55, margin: 0 }}>
                           → {s.actionable}
                         </p>
-                      </div>
+                      </ScoutBox>
                     );
                   })}
                 </div>
@@ -914,66 +707,64 @@ export function WorkspaceDashboard() {
                 marginTop: 20,
               }}
             >
-              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: isMobile ? "18px 20px" : "22px 24px", border: "1px solid #d6d3d1" }}>
-                <p style={SECTION_LABEL}>Salary benchmark</p>
+              <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
+                <ScoutLabel>Salary benchmark</ScoutLabel>
                 <p
                   style={{
-                    fontFamily: "var(--font-display)",
+                    fontFamily: fontDisplay,
                     fontSize: isMobile ? 20 : 22,
                     fontWeight: 500,
-                    fontStyle: "italic",
-                    color: "#1c1917",
-                    marginBottom: 8,
+                    fontVariationSettings: '"opsz" 72, "WONK" 1',
+                    color: color.ink,
+                    margin: "8px 0",
                   }}
                 >
                   {signalsData.salaryBenchmark.role}
                 </p>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#44403c", lineHeight: 1.6 }}>
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
                   {signalsData.salaryBenchmark.note}
                 </p>
-              </div>
+              </ScoutBox>
 
-              <div style={{ background: "#FFFFFF", borderRadius: 12, padding: isMobile ? "18px 20px" : "22px 24px", border: "1px solid #d6d3d1" }}>
-                <p style={SECTION_LABEL}>Skills in demand</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+              <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
+                <ScoutLabel>Skills in demand</ScoutLabel>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 14px" }}>
                   {signalsData.hotSkills.map((s) => (
                     <span
                       key={s}
                       style={{
                         padding: "4px 12px",
-                        background: "rgba(74,139,106,0.1)",
-                        borderRadius: 100,
-                        fontFamily: "var(--font-ui)",
-                        fontSize: 13,
+                        background: surface.inset,
+                        border: border.line,
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
                         fontWeight: 500,
-                        color: "#2D6B4A",
+                        color: color.forest,
                       }}
                     >
                       ↑ {s}
                     </span>
                   ))}
                 </div>
-                <p style={{ fontFamily: "ui-monospace, 'Courier New', monospace", fontSize: 12, fontWeight: 600, color: "#78716c", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
-                  Cooling
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <ScoutLabel>Cooling</ScoutLabel>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
                   {signalsData.coldSkills.map((s) => (
                     <span
                       key={s}
                       style={{
                         padding: "4px 12px",
-                        background: "rgba(160,152,144,0.12)",
-                        borderRadius: 100,
-                        fontFamily: "var(--font-ui)",
-                        fontSize: 13,
-                        color: "#57534e",
+                        background: surface.inset,
+                        border: border.line,
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
+                        color: color.muted,
                       }}
                     >
                       ↓ {s}
                     </span>
                   ))}
                 </div>
-              </div>
+              </ScoutBox>
             </div>
           )}
 
