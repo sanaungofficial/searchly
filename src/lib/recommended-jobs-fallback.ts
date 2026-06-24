@@ -115,6 +115,8 @@ export async function fetchRecommendedFromTrackedCompanies(input: {
   profileTargetRoles: string[];
   filters?: VectorSearchFilters;
   maxJobs?: number;
+  /** When true, only use stored company job caches — skip live Hirebase fetches. */
+  preferCache?: boolean;
 }): Promise<{
   sources: RecommendedJobSource[];
   companyCount: number;
@@ -153,7 +155,7 @@ export async function fetchRecommendedFromTrackedCompanies(input: {
     const cache = parseJobsCache(company.jobsCache);
     let sources = jobsFromCache(cache, companyName, matchRoles, perCompanyLimit, filters);
 
-    if (!sources.length && matchRoles.length) {
+    if (!sources.length && matchRoles.length && !input.preferCache) {
       const enrichment = company.companyIntel?.enrichmentCache ?? company.enrichmentCache;
       const hirebaseMeta = getHirebaseMetaFromEnrichment(enrichment);
       sources = await liveCompanyMatches({

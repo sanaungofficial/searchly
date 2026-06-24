@@ -1,5 +1,6 @@
 import type { ParsedResumeData, ResumeSectionId } from "./resume-parse";
 import { sectionTextBlob } from "./resume-parse";
+import { usableKeywordSummary } from "./match-score";
 
 export interface JobMatchKeyword {
   text: string;
@@ -46,7 +47,7 @@ export function fallbackJobMatch(description: string, resumeText: string): JobMa
     score,
     scoreLabel: labelForScore(score),
     keywords,
-    summaryNote: `${matched} of ${keywords.length} key terms from the job description appear in your resume.`,
+    summaryNote: usableKeywordSummary(matched, keywords.length) ?? undefined,
     _fallback: true,
   };
 }

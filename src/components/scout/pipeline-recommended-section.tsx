@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobMeta } from "@/lib/job-meta";
 import type { KanbanCard } from "./workspace-data";
 import {
   DEFAULT_VECTOR_SEARCH_FILTERS,
+  HIREBASE_COMPANY_SIZE_BUCKETS,
   HIREBASE_EXPERIENCE_LEVELS,
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
@@ -13,10 +14,18 @@ import {
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
 import { cachedJobToMeta, normalizeJobUrl } from "@/lib/cached-job";
+import {
+  filtersCacheKey,
+  isCacheFresh,
+  readRecommendedCache,
+  writeRecommendedCache,
+} from "@/lib/recommended-jobs-cache";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+import { isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -27,14 +36,49 @@ type JobsApiResponse = {
   error?: string;
 };
 
-function scoreColor(score: number): string {
-  if (score >= 75) return "#2A6B4A";
-  if (score >= 55) return "#6B5A2A";
-  return "#8A6B4A";
+const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
+
+const COMMON_COUNTRIES = ["United States", "Canada", "United Kingdom", "Germany", "France", "Australia", "India", "Singapore"];
+
+const US_STATES = [
+  "California", "New York", "Texas", "Washington", "Massachusetts", "Illinois", "Colorado", "Georgia", "Florida", "Virginia",
+];
+
+function MatchScoreBadge({ score, label }: { score: number; label: string }) {
+  const style = matchScoreStyle(score);
+  return (
+    <div style={{ textAlign: "center", flexShrink: 0 }}>
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: style.bg,
+          border: `2px solid ${style.accent}`,
+        }}
+      >
+        <span style={{ fontFamily: fontMono, fontSize: 20, fontWeight: 700, color: style.accent, lineHeight: 1 }}>{score}</span>
+      </div>
+      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: style.accent, margin: "6px 0 0", letterSpacing: "0.02em" }}>
+        {label}
+      </p>
+    </div>
+  );
 }
 
 function splitInputList(value: string): string[] {
   return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+}
+
+function loadStoredSemanticQuery(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem(SEMANTIC_QUERY_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function filtersToForm(f: VectorSearchFilters) {
@@ -63,7 +107,9 @@ function filtersToForm(f: VectorSearchFilters) {
   };
 }
 
-function formToFilters(form: ReturnType<typeof filtersToForm>, page: number): VectorSearchFilters {
+type FilterForm = ReturnType<typeof filtersToForm>;
+
+function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
   return {
     ...DEFAULT_VECTOR_SEARCH_FILTERS,
@@ -115,88 +161,111 @@ const inputStyle: React.CSSProperties = {
   background: surface.card,
 };
 
-const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
-
-function loadStoredSemanticQuery(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return localStorage.getItem(SEMANTIC_QUERY_STORAGE_KEY) ?? "";
-  } catch {
-    return "";
-  }
+function FilterSectionHeader({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div style={{ gridColumn: "1 / -1", marginBottom: 4 }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.forest, margin: "0 0 4px" }}>{title}</p>
+      <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: 0, lineHeight: 1.45 }}>{hint}</p>
+    </div>
+  );
 }
 
-function formToRecommendedFilters(form: ReturnType<typeof filtersToForm>): VectorSearchFilters {
-  const f = formToFilters(form, 1);
-  delete f.semanticQuery;
-  return f;
-}
-
-type FilterForm = ReturnType<typeof filtersToForm>;
-
-function JobFiltersGrid({
-  form,
-  setForm,
-  toggleSet,
-  includeCompany = true,
+function DatalistInput({
+  value,
+  onChange,
+  listId,
+  options,
+  placeholder,
+  type = "text",
 }: {
-  form: FilterForm;
-  setForm: React.Dispatch<React.SetStateAction<FilterForm>>;
-  toggleSet: (set: Set<string>, value: string) => Set<string>;
-  includeCompany?: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  listId: string;
+  options: string[];
+  placeholder?: string;
+  type?: React.HTMLInputTypeAttribute;
 }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
-      <FilterField label="Job titles">
-        <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Operations" />
-      </FilterField>
-      <FilterField label="Keywords">
-        <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" />
-      </FilterField>
-      {includeCompany && (
-        <FilterField label="Company">
-          <input style={inputStyle} value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Stripe" />
-        </FilterField>
+    <>
+      <input
+        type={type}
+        style={inputStyle}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        list={options.length ? listId : undefined}
+      />
+      {options.length > 0 && (
+        <datalist id={listId}>
+          {options.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
       )}
-      <FilterField label="City">
-        <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} />
-      </FilterField>
-      <FilterField label="State / region">
-        <input style={inputStyle} value={form.locationRegion} onChange={(e) => setForm((f) => ({ ...f, locationRegion: e.target.value }))} />
-      </FilterField>
-      <FilterField label="Country">
-        <input style={inputStyle} value={form.locationCountry} onChange={(e) => setForm((f) => ({ ...f, locationCountry: e.target.value }))} />
-      </FilterField>
-      <FilterField label="Posted after">
-        <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
-      </FilterField>
-      <div style={{ gridColumn: "1 / -1" }}>
-        <FilterField label="Work arrangement">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {HIREBASE_LOCATION_TYPES.map((t) => (
-              <ChipToggle key={t} label={t} active={form.locationTypes.has(t)} onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-        <FilterField label="Employment type">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {HIREBASE_JOB_TYPES.map((t) => (
-              <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-        <FilterField label="Experience level">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
-              <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, color: color.ink, cursor: "pointer" }}>
-          <input type="checkbox" checked={form.visaSponsored} onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))} />
-          Visa sponsorship only
-        </label>
-      </div>
+    </>
+  );
+}
+
+function MatchFitCallout({ job }: { job: VectorMatchedJob }) {
+  const reasons = job.matchReasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, 3);
+  if (!reasons.length) return null;
+
+  const score = matchScoreStyle(job.matchScore);
+  const matchedSkills = job.matchedSkills?.slice(0, 6) ?? [];
+
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: "10px 12px",
+        background: score.bgSubtle,
+        borderLeft: `2px solid ${score.accent}`,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.label,
+          fontWeight: 700,
+          color: score.accent,
+          margin: "0 0 4px",
+          letterSpacing: "0.03em",
+          textTransform: "uppercase",
+        }}
+      >
+        Why you&apos;re a good fit
+      </p>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
+        <span style={{ fontWeight: 600, color: score.accent }}>{job.matchLabel}</span>
+        {" "}· {job.matchScore}/100 from your profile
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+        {reasons.map((reason) => (
+          <li key={reason} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontFamily: fontSans, fontSize: T.caption, color: color.ink, lineHeight: 1.5 }}>
+            <span aria-hidden style={{ flexShrink: 0, color: score.accent, fontWeight: 700, marginTop: 1 }}>→</span>
+            <span>{reason}</span>
+          </li>
+        ))}
+      </ul>
+      {matchedSkills.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+          {matchedSkills.map((skill) => (
+            <span
+              key={skill}
+              style={{
+                padding: "3px 8px",
+                background: score.bg,
+                fontFamily: fontSans,
+                fontSize: T.label,
+                fontWeight: 500,
+                color: score.accent,
+              }}
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -219,6 +288,157 @@ function ChipToggle({ label, active, onClick }: { label: string; active: boolean
     >
       {label}
     </button>
+  );
+}
+
+function JobFiltersGrid({
+  form,
+  setForm,
+  toggleSet,
+  trackedCompanyNames,
+}: {
+  form: FilterForm;
+  setForm: React.Dispatch<React.SetStateAction<FilterForm>>;
+  toggleSet: (set: Set<string>, value: string) => Set<string>;
+  trackedCompanyNames: string[];
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
+      <FilterSectionHeader
+        title="Type to filter"
+        hint="Free text — matches job title, company, location, and description. Separate multiple job titles or keywords with commas."
+      />
+      <FilterField label="Job titles">
+        <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Operations" />
+      </FilterField>
+      <FilterField label="Keywords">
+        <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" />
+      </FilterField>
+      <FilterField label="Company">
+        <DatalistInput
+          value={form.companyName}
+          onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
+          listId="recommended-company-suggestions"
+          options={trackedCompanyNames}
+          placeholder={trackedCompanyNames.length ? "Pick a tracked company or type any name" : "Stripe"}
+        />
+      </FilterField>
+      <FilterField label="City">
+        <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} placeholder="San Francisco" />
+      </FilterField>
+      <FilterField label="State / region">
+        <DatalistInput
+          value={form.locationRegion}
+          onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
+          listId="recommended-region-suggestions"
+          options={US_STATES}
+          placeholder="California"
+        />
+      </FilterField>
+      <FilterField label="Country">
+        <DatalistInput
+          value={form.locationCountry}
+          onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
+          listId="recommended-country-suggestions"
+          options={COMMON_COUNTRIES}
+          placeholder="United States"
+        />
+      </FilterField>
+      <FilterField label="Posted after">
+        <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
+      </FilterField>
+
+      <FilterSectionHeader
+        title="Select options"
+        hint="Tap to toggle — these use fixed Hirebase categories (work arrangement, job type, seniority, company size)."
+      />
+      <div style={{ gridColumn: "1 / -1" }}>
+        <FilterField label="Work arrangement">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_LOCATION_TYPES.map((t) => (
+              <ChipToggle key={t} label={t} active={form.locationTypes.has(t)} onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <FilterField label="Employment type">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_JOB_TYPES.map((t) => (
+              <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <FilterField label="Experience level">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
+              <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <FilterField label="Company size (employees)">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_COMPANY_SIZE_BUCKETS.map((t) => (
+              <ChipToggle key={t} label={t} active={form.companySizeBuckets.has(t)} onClick={() => setForm((f) => ({ ...f, companySizeBuckets: toggleSet(f.companySizeBuckets, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, color: color.ink, cursor: "pointer" }}>
+          <input type="checkbox" checked={form.visaSponsored} onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))} />
+          Visa sponsorship only
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function RecommendedLoadingSkeleton({ message }: { message: string }) {
+  const barWidths = ["72%", "58%", "84%", "64%"];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <ScoutBox style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: color.forest,
+            animation: "pulse 1.2s ease-in-out infinite",
+            flexShrink: 0,
+          }}
+        />
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>{message}</p>
+      </ScoutBox>
+      {[0, 1, 2].map((card) => (
+        <ScoutBox key={card} padding={18}>
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                background: "#F0EDE8",
+                animation: "pulse 1.5s ease-in-out infinite",
+                animationDelay: `${card * 0.15}s`,
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ flex: 1 }}>
+              {barWidths.map((w, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: i === 0 ? 18 : 12,
+                    width: w,
+                    marginBottom: i === 0 ? 10 : 8,
+                    background: "#F0EDE8",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                    animationDelay: `${card * 0.15 + i * 0.1}s`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </ScoutBox>
+      ))}
+    </div>
   );
 }
 
@@ -285,8 +505,9 @@ function JobResultsList({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {visibleJobs.map((job) => {
         const key = job.hirebaseId ?? job.url ?? `${job.companyName}-${job.title}`;
+        const score = matchScoreStyle(job.matchScore);
         return (
-          <ScoutBox key={key} padding={18}>
+          <ScoutBox key={key} stack padding={18} style={{ borderTop: `2px solid ${score.accent}` }}>
             <div
               role="button"
               tabIndex={0}
@@ -304,23 +525,33 @@ function JobResultsList({
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.title}</p>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
                       {job.companyName}
                       {job.location ? ` · ${job.location}` : ""}
                     </p>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 8px",
+                        border: border.line,
+                        fontFamily: fontSans,
+                        fontSize: T.label,
+                        fontWeight: 600,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: score.accent,
+                        background: score.bgSubtle,
+                      }}
+                    >
+                      Recommended
+                    </span>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontFamily: fontMono, fontSize: 22, fontWeight: 700, color: scoreColor(job.matchScore) }}>
-                      {job.matchScore}
-                    </div>
-                    <div style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{job.matchLabel}</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                    <ScoreExplainerPopover variant="vector-match" align="right" />
+                    <MatchScoreBadge score={job.matchScore} label={job.matchLabel} />
                   </div>
                 </div>
-                <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontFamily: fontSans, fontSize: T.caption, color: color.ink, lineHeight: 1.5 }}>
-                  {job.matchReasons.slice(0, 2).map((r) => (
-                    <li key={r}>{r}</li>
-                  ))}
-                </ul>
+                <MatchFitCallout job={job} />
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>
@@ -362,24 +593,27 @@ export function PipelineRecommendedSection({
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
 }) {
-  const [recommendedForm, setRecommendedForm] = useState(() => filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS));
-  const [showRecommendedFilters, setShowRecommendedFilters] = useState(false);
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadStoredSemanticQuery(),
   }));
+  const [appliedForm, setAppliedForm] = useState<FilterForm>(() => ({
+    ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+    semanticQuery: "",
+  }));
   const [showFilters, setShowFilters] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const [recommendedJobs, setRecommendedJobs] = useState<VectorMatchedJob[]>([]);
-  const [recommendedLoading, setRecommendedLoading] = useState(true);
-  const [recommendedError, setRecommendedError] = useState<string | null>(null);
-
-  const [searchJobs, setSearchJobs] = useState<VectorMatchedJob[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [jobs, setJobs] = useState<VectorMatchedJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [searchScoped, setSearchScoped] = useState(true);
+  const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
+
+  const mountedRef = useRef(false);
+  const fetchGenRef = useRef(0);
 
   const savedUrls = useMemo(() => {
     const set = new Set<string>();
@@ -391,71 +625,127 @@ export function PipelineRecommendedSection({
     return set;
   }, [pipelineCards]);
 
-  const loadRecommended = useCallback(async (filtersForm = recommendedForm) => {
-    setRecommendedLoading(true);
-    setRecommendedError(null);
-    try {
-      const res = await fetch("/api/jobs/recommended", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formToRecommendedFilters(filtersForm)),
-      });
-      const data = (await res.json()) as JobsApiResponse;
-      if (!res.ok) {
-        setRecommendedError(formatApiErrorMessage(data.error, "Could not load recommended jobs."));
-        setRecommendedJobs([]);
-      } else {
-        setRecommendedJobs(data.jobs ?? []);
-      }
-    } catch {
-      setRecommendedError("Network error — try again.");
-      setRecommendedJobs([]);
-    } finally {
-      setRecommendedLoading(false);
-    }
-  }, [recommendedForm]);
+  const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
 
-  const runKeywordSearch = useCallback(async (filtersForm = form) => {
-    const semanticQuery = filtersForm.semanticQuery.trim();
-    if (!semanticQuery) {
-      setSearchError("Enter keywords to search.");
+  const fetchRecommended = useCallback(
+    async (filtersForm: FilterForm, options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
+      const filters = formToFilters(filtersForm, 1);
+      const cacheKey = filtersCacheKey(filters);
+      const forceRefresh = options?.forceRefresh === true;
+      const background = options?.background === true;
+      const gen = ++fetchGenRef.current;
+
+      if (!background) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setRevalidating(true);
+      }
+
+      const semanticQuery = filtersForm.semanticQuery.trim();
+      if (semanticQuery) {
+        try {
+          localStorage.setItem(SEMANTIC_QUERY_STORAGE_KEY, semanticQuery);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      try {
+        const res = await fetch("/api/jobs/recommended", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...filters,
+            preferCache: options?.preferCache ?? !forceRefresh,
+            forceRefresh,
+          }),
+        });
+        const data = (await res.json()) as JobsApiResponse;
+        if (gen !== fetchGenRef.current) return;
+
+        if (!res.ok) {
+          const msg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
+          setError(msg);
+          if (!background) setJobs([]);
+          writeRecommendedCache({
+            jobs: [],
+            filtersKey: cacheKey,
+            fetchedAt: Date.now(),
+            error: msg,
+          });
+        } else {
+          const nextJobs = data.jobs ?? [];
+          setJobs(nextJobs);
+          setError(null);
+          setSearchScoped(data.matchMode !== "semantic_global");
+          writeRecommendedCache({
+            jobs: nextJobs,
+            filtersKey: cacheKey,
+            fetchedAt: Date.now(),
+            matchMode: data.matchMode,
+            error: null,
+          });
+        }
+        setHasLoadedOnce(true);
+      } catch {
+        if (gen !== fetchGenRef.current) return;
+        setError("Network error — try again.");
+        if (!background) setJobs([]);
+        setHasLoadedOnce(true);
+      } finally {
+        if (gen === fetchGenRef.current) {
+          setLoading(false);
+          setRevalidating(false);
+        }
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    fetch("/api/companies")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Array<{ name?: string }>) => {
+        const names = [...new Set((Array.isArray(data) ? data : []).map((c) => c.name?.trim()).filter(Boolean) as string[])].sort();
+        setTrackedCompanyNames(names);
+      })
+      .catch(() => {
+        /* optional suggestions */
+      });
+  }, []);
+
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+
+    const defaultForm: FilterForm = {
+      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+      semanticQuery: "",
+    };
+    const defaultFilters = formToFilters(defaultForm, 1);
+    const cacheKey = filtersCacheKey(defaultFilters);
+    const cached = readRecommendedCache(cacheKey);
+
+    if (cached?.jobs?.length) {
+      setJobs(cached.jobs);
+      setHasLoadedOnce(true);
+      setLoading(false);
+      if (isCacheFresh(cached)) return;
+      void fetchRecommended(defaultForm, { background: true, preferCache: true });
       return;
     }
 
-    setSearchLoading(true);
-    setSearchError(null);
-    try {
-      localStorage.setItem(SEMANTIC_QUERY_STORAGE_KEY, semanticQuery);
-    } catch {
-      /* ignore */
+    if (cached && isCacheFresh(cached)) {
+      setJobs(cached.jobs);
+      setError(cached.error ?? null);
+      setHasLoadedOnce(true);
+      setLoading(false);
+      return;
     }
 
-    try {
-      const res = await fetch("/api/jobs/semantic-search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formToFilters(filtersForm, 1)),
-      });
-      const data = (await res.json()) as JobsApiResponse;
-      if (!res.ok) {
-        setSearchError(formatApiErrorMessage(data.error, "Search failed."));
-        setSearchJobs([]);
-      } else {
-        setSearchJobs(data.jobs ?? []);
-        setSearchScoped(data.matchMode !== "semantic_global");
-      }
-      setHasSearched(true);
-    } catch {
-      setSearchError("Network error — try again.");
-      setSearchJobs([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, [form]);
-
-  useEffect(() => {
-    loadRecommended();
-  }, [loadRecommended]);
+    void fetchRecommended(defaultForm, { preferCache: true });
+  }, [fetchRecommended]);
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
@@ -464,120 +754,131 @@ export function PipelineRecommendedSection({
     return next;
   };
 
+  const applyFilters = (filtersForm = form) => {
+    setAppliedForm(filtersForm);
+    const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
+    const cached = readRecommendedCache(cacheKey);
+    if (cached && isCacheFresh(cached)) {
+      setJobs(cached.jobs);
+      setError(cached.error ?? null);
+      setHasLoadedOnce(true);
+      setLoading(false);
+      return;
+    }
+    void fetchRecommended(filtersForm, {
+      forceRefresh: true,
+      preferCache: false,
+      background: jobs.length > 0,
+    });
+  };
+
+  const handleRefresh = () => {
+    void fetchRecommended(appliedForm, {
+      forceRefresh: true,
+      preferCache: false,
+      background: jobs.length > 0,
+    });
+  };
+
+  const showInitialSkeleton = loading && !jobs.length && !hasLoadedOnce;
+  const showEmptyState = hasLoadedOnce && !loading && !jobs.length;
+
+  const emptyMessage = error
+    ? "Fix the issue above, then refresh."
+    : hasActiveSearch
+      ? "No jobs matched your search — try different keywords or track more companies."
+      : "No roles match these filters — try broadening filters or refresh matching roles on Companies.";
+
   return (
     <div>
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: showRecommendedFilters ? 0 : undefined }}>
-          <div>
-            <ScoutLabel>Recommended for you</ScoutLabel>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Matching roles at your tracked companies — same as Companies → Matching roles. Use filters to narrow the list.
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <ScoutSecondaryBtn onClick={() => setShowRecommendedFilters((v) => !v)}>
-              {showRecommendedFilters ? "Hide filters" : "Filters"}
-            </ScoutSecondaryBtn>
-            <ScoutSecondaryBtn onClick={() => loadRecommended()} disabled={recommendedLoading}>
-              {recommendedLoading ? "Loading…" : "Refresh"}
-            </ScoutSecondaryBtn>
-            <ScoutPrimaryBtn onClick={() => loadRecommended(recommendedForm)} disabled={recommendedLoading}>
-              Apply filters
-            </ScoutPrimaryBtn>
-          </div>
-        </div>
-
-        {showRecommendedFilters && (
-          <JobFiltersGrid form={recommendedForm} setForm={setRecommendedForm} toggleSet={toggleSet} includeCompany />
-        )}
-
-        {recommendedError && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{recommendedError}</p>
-        )}
-      </ScoutBox>
-
-      {recommendedLoading && (
-        <ScoutBox style={{ padding: 40, textAlign: "center", marginBottom: 24 }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>Loading matching roles from your companies…</p>
-        </ScoutBox>
-      )}
-
-      {!recommendedLoading && (
-        <div style={{ marginBottom: 32 }}>
-          <JobResultsList
-            jobs={recommendedJobs}
-            savedUrls={savedUrls}
-            savingKey={savingKey}
-            onOpenJob={onOpenJob}
-            onSaveJob={onSaveJob}
-            setSavingKey={setSavingKey}
-            emptyMessage={
-              recommendedError
-                ? "Fix the issue above, then refresh."
-                : "No roles match these filters — try broadening filters or refresh matching roles on Companies."
-            }
-          />
-        </div>
-      )}
-
-      <ScoutBox padding={20} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
           <div>
-            <ScoutLabel>Search jobs</ScoutLabel>
+            <ScoreExplainerLabel variant="vector-match">
+              <ScoutLabel>Recommended for you</ScoutLabel>
+            </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Keyword search across your tracked companies (not resume-based). Add filters to narrow results.
+              Matching roles at your tracked companies. Search or filter to narrow the list.
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
               {showFilters ? "Hide filters" : "Filters"}
             </ScoutSecondaryBtn>
-            <ScoutPrimaryBtn onClick={() => runKeywordSearch()} disabled={searchLoading}>
-              {searchLoading ? "Searching…" : "Search"}
+            <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating}>
+              {loading || revalidating ? "Loading…" : "Refresh"}
+            </ScoutSecondaryBtn>
+            <ScoutPrimaryBtn onClick={() => applyFilters()} disabled={loading || revalidating}>
+              {loading || revalidating ? "Loading…" : hasActiveSearch ? "Search" : "Apply filters"}
             </ScoutPrimaryBtn>
           </div>
         </div>
 
-        <FilterField label="Search keywords">
-          <textarea
-            style={{ ...inputStyle, minHeight: 72, resize: "vertical", lineHeight: 1.5 }}
+        <FilterField label="Search">
+          <input
+            style={inputStyle}
             value={form.semanticQuery}
             onChange={(e) => setForm((f) => ({ ...f, semanticQuery: e.target.value }))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyFilters();
+              }
+            }}
             placeholder="e.g. remote corporate strategy, B2B SaaS, healthcare"
             maxLength={400}
           />
         </FilterField>
 
         {showFilters && (
-          <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} includeCompany />
+          <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} trackedCompanyNames={trackedCompanyNames} />
         )}
 
-        {searchError && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{searchError}</p>
+        {error && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
         )}
-        {hasSearched && !searchError && searchScoped && (
+        {hasActiveSearch && !error && searchScoped && hasLoadedOnce && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
             Results are limited to your tracked companies.
           </p>
         )}
+        {revalidating && jobs.length > 0 && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
+            Updating recommendations…
+          </p>
+        )}
       </ScoutBox>
 
-      {searchLoading && (
-        <ScoutBox style={{ padding: 40, textAlign: "center" }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>Searching…</p>
-        </ScoutBox>
+      {showInitialSkeleton && (
+        <RecommendedLoadingSkeleton message="Finding matching roles at your companies — give it a second…" />
       )}
 
-      {hasSearched && !searchLoading && (
-        <JobResultsList
-          jobs={searchJobs}
-          savedUrls={savedUrls}
-          savingKey={savingKey}
-          onOpenJob={onOpenJob}
-          onSaveJob={onSaveJob}
-          setSavingKey={setSavingKey}
-          emptyMessage="No jobs matched — try different keywords or track more companies."
-        />
+      {!showInitialSkeleton && (
+        <>
+          {showEmptyState ? (
+            <JobResultsList
+              jobs={[]}
+              savedUrls={savedUrls}
+              savingKey={savingKey}
+              onOpenJob={onOpenJob}
+              onSaveJob={onSaveJob}
+              setSavingKey={setSavingKey}
+              emptyMessage={emptyMessage}
+            />
+          ) : (
+            jobs.length > 0 && (
+              <JobResultsList
+                jobs={jobs}
+                savedUrls={savedUrls}
+                savingKey={savingKey}
+                onOpenJob={onOpenJob}
+                onSaveJob={onSaveJob}
+                setSavingKey={setSavingKey}
+                emptyMessage={emptyMessage}
+              />
+            )
+          )}
+        </>
       )}
     </div>
   );

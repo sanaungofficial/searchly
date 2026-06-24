@@ -11,6 +11,7 @@ import type { DrawerTool } from "./workspace-opportunities";
 import { fontSans, color } from "@/lib/typography";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditCostBadge, CreditsInlineHint, CreditsStatusBar } from "@/components/scout/credits-display";
+import { ScoreExplainerPopover } from "@/components/scout/score-explainer-popover";
 import { notifyCreditsChanged } from "@/lib/credits";
 
 const sans = fontSans;
@@ -410,9 +411,12 @@ export function ChatWidget() {
                     <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
                       {currentJob.role}
                     </p>
-                    <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "2px 0 0" }}>
-                      {currentJob.company}
-                      {currentJob.fit > 0 ? ` · ${currentJob.fit}% match` : ""}
+                    <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "2px 0 0", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                      <span>
+                        {currentJob.company}
+                        {currentJob.fit > 0 ? ` · ${currentJob.fit}% match` : ""}
+                      </span>
+                      {currentJob.fit > 0 && <ScoreExplainerPopover variant="job-match" />}
                     </p>
                   </div>
                 )}

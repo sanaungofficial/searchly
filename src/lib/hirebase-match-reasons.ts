@@ -3,6 +3,7 @@ import type { HirebaseJob } from "@/lib/hirebase";
 import { mapHirebaseJob } from "@/lib/hirebase";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { fallbackJobMatch } from "@/lib/resume-match";
+import { isLowQualityMatchReason, matchScoreLabelFor, usableKeywordSummary } from "@/lib/match-score";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 const MODEL = "claude-haiku-4-5-20251001";
@@ -14,11 +15,7 @@ function getAnthropic() {
 }
 
 function labelForScore(score: number): string {
-  if (score >= 85) return "Excellent";
-  if (score >= 70) return "Strong";
-  if (score >= 55) return "Good";
-  if (score >= 40) return "Fair";
-  return "Stretch";
+  return matchScoreLabelFor(score);
 }
 
 function vectorRankScore(rank: number, total: number): number {
@@ -58,18 +55,25 @@ function heuristicMatch(
 
   const reasons: string[] = [];
   if (matchedSkills.length) {
-    reasons.push(`Your background aligns on ${matchedSkills.slice(0, 4).join(", ")}.`);
-  }
-  if (job.requirements_summary?.trim()) {
-    reasons.push(job.requirements_summary.trim());
-  } else if (fallback.summaryNote) {
-    reasons.push(fallback.summaryNote);
+    reasons.push(
+      `You're a good fit because your background aligns with ${matchedSkills.slice(0, 4).join(", ")}.`,
+    );
   }
   if (job.experience_level) {
-    reasons.push(`Role level: ${job.experience_level}.`);
+    reasons.push(`This is a ${job.experience_level}-level role that matches your career targets.`);
+  }
+  const keywordNote =
+    usableKeywordSummary(
+      fallback.keywords.filter((k) => k.matched).length,
+      fallback.keywords.length,
+    ) ?? (fallback.summaryNote && !isLowQualityMatchReason(fallback.summaryNote) ? fallback.summaryNote : null);
+  if (keywordNote && reasons.length < 2) {
+    reasons.push(keywordNote);
   }
   if (!reasons.length) {
-    reasons.push("Semantic match from your resume profile — review the full posting to confirm fit.");
+    reasons.push(
+      "This role surfaced from your tracked companies and target titles — open the posting to confirm fit.",
+    );
   }
 
   return {
@@ -146,15 +150,17 @@ export async function enrichVectorJobsWithMatchReasons(input: {
   cachedJobs: ReturnType<typeof mapHirebaseJob>[];
   companyNames: string[];
   resumeText: string;
+  /** Skip Claude batch — heuristic scores only (faster for recommended list). */
+  heuristicOnly?: boolean;
 }): Promise<VectorMatchedJob[]> {
-  const { rawJobs, cachedJobs, companyNames, resumeText } = input;
+  const { rawJobs, cachedJobs, companyNames, resumeText, heuristicOnly } = input;
   const pairs = rawJobs.map((job, index) => ({
     job,
     cached: cachedJobs[index] ?? mapHirebaseJob(job),
     rank: index + 1,
   }));
 
-  const claudeRows = await claudeBatchMatchReasons(resumeText, pairs);
+  const claudeRows = heuristicOnly ? new Map<string, BatchMatchRow>() : await claudeBatchMatchReasons(resumeText, pairs);
 
   return pairs.map(({ job, cached, rank }) => {
     const jobId = job._id ?? `rank-${rank}`;
