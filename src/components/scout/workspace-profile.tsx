@@ -1133,21 +1133,38 @@ function ProgramLinks({ programs }: { programs: UpskillProgram[] }) {
   );
 }
 
+function groupSkillGoalsByRole(goals: SkillGoal[], roleOrder: string[]): { role: string; goals: SkillGoal[] }[] {
+  const map = new Map<string, SkillGoal[]>();
+  for (const goal of goals) {
+    const role = goal.role.trim() || "General";
+    const list = map.get(role) ?? [];
+    list.push(goal);
+    map.set(role, list);
+  }
+  const orderedRoles = [
+    ...roleOrder.filter((role) => map.has(role)),
+    ...[...map.keys()].filter((role) => !roleOrder.includes(role)).sort((a, b) => a.localeCompare(b)),
+  ];
+  return orderedRoles.map((role) => ({ role, goals: map.get(role)! }));
+}
+
 function LearningTab({
   progress,
   setProgress,
   skillGoals,
   dreamList,
-  roleAnalyses,
   onGraduate,
+  onAddSkill,
+  onDismissSkill,
   highlightSkill,
 }: {
   progress: UpskillProgressMap;
   setProgress: (p: UpskillProgressMap) => void;
   skillGoals: SkillGoal[];
   dreamList: string[];
-  roleAnalyses: RoleAnalysesMap;
   onGraduate: (skill: string) => Promise<void>;
+  onAddSkill: (skill: string, role: string) => void;
+  onDismissSkill: (skill: string, role: string) => void;
   highlightSkill?: string | null;
 }) {
   const [graduating, setGraduating] = useState<string | null>(null);
@@ -1157,11 +1174,20 @@ function LearningTab({
     try { return JSON.parse(localStorage.getItem(CUSTOM_LEARNING_KEY) || "[]"); } catch { return []; }
   });
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddSkillForm, setShowAddSkillForm] = useState(false);
+  const [newSkillName, setNewSkillName] = useState("");
+  const [newSkillRole, setNewSkillRole] = useState("");
+  const [customSkillRole, setCustomSkillRole] = useState("");
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newPlatform, setNewPlatform] = useState("");
   const [newDuration, setNewDuration] = useState("");
   const isMobile = useIsMobile();
+
+  const skillGroups = groupSkillGoalsByRole(skillGoals, dreamList);
+  const resolvedAddRole = newSkillRole === "__custom__"
+    ? customSkillRole.trim()
+    : newSkillRole.trim() || dreamList[0] || "General";
 
   useEffect(() => {
     if (!highlightSkill) return;
@@ -1192,6 +1218,17 @@ function LearningTab({
     setGraduating(skill);
     await onGraduate(skill);
     setGraduating(null);
+  };
+
+  const addSkillToObtain = () => {
+    const skill = newSkillName.trim();
+    const role = resolvedAddRole || "General";
+    if (!skill) return;
+    onAddSkill(skill, role);
+    setNewSkillName("");
+    setNewSkillRole(dreamList[0] ?? "");
+    setCustomSkillRole("");
+    setShowAddSkillForm(false);
   };
 
   const saveCustomItems = (items: CustomLearningItem[]) => {
@@ -1237,84 +1274,142 @@ function LearningTab({
     ),
   );
 
+  const renderSkillRow = (g: SkillGoal) => {
+    const isHighlighted = highlightSkill?.toLowerCase() === g.skill.toLowerCase();
+    return (
+      <ScoutBox
+        key={`${g.skill}-${g.role}`}
+        padding="12px 14px"
+        style={{
+          borderColor: isHighlighted ? color.forest : "rgba(196,168,106,0.35)",
+          boxShadow: isHighlighted ? "0 0 0 1px rgba(26,58,47,0.25)" : undefined,
+        }}
+      >
+        <div
+          ref={(el) => { skillGoalRefs.current[g.skill.toLowerCase()] = el; }}
+          style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}
+        >
+          <div style={{ flex: 1 }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{g.skill}</p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <ScoutPrimaryBtn
+              onClick={() => handleGraduate(g.skill)}
+              disabled={graduating === g.skill}
+              style={{ minHeight: 44, width: isMobile ? "100%" : undefined, opacity: graduating === g.skill ? 0.6 : 1, flexShrink: 0 }}
+            >
+              {graduating === g.skill ? "Saving…" : "Mark acquired"}
+            </ScoutPrimaryBtn>
+            <button
+              type="button"
+              onClick={() => onDismissSkill(g.skill, g.role)}
+              aria-label={`Remove ${g.skill}`}
+              style={{ background: "none", border: "none", color: color.muted, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "8px 10px", minHeight: 44 }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      </ScoutBox>
+    );
+  };
+
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
 
-      {/* Section A — Target roles context */}
-      {dreamList.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <ScoutLabel>Your target roles</ScoutLabel>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 10px", lineHeight: 1.5 }}>
-            Roles you&apos;re working toward. Skills to obtain below come from gap analysis on Target Roles.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {dreamList.map((role) => {
-              const analysis = roleAnalyses[role];
-              return (
-                <ScoutBox key={role} padding="12px 14px">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{role}</p>
-                    {analysis ? (
-                      <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 13, fontWeight: 600, color: color.forest }}>
-                        {analysis.fitScore}% fit
-                      </span>
-                    ) : (
-                      <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No score yet</span>
-                    )}
-                  </div>
-                </ScoutBox>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Section B — Skills to obtain */}
+      {/* Skills to obtain — grouped by target role */}
       <div style={{ marginBottom: 32 }}>
-        <ScoutLabel>Skills to obtain</ScoutLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 10px", lineHeight: 1.5 }}>
-          From Target Roles when you choose &ldquo;Obtain this skill&rdquo;. Mark acquired once you&apos;ve built the skill.
-        </p>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+          <div>
+            <ScoutLabel>Skills to obtain</ScoutLabel>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0", lineHeight: 1.5 }}>
+              Grouped by the role they support. Add your own or queue from Target Roles.
+            </p>
+          </div>
+          {!showAddSkillForm && (
+            <ScoutSecondaryBtn onClick={() => {
+              setShowAddSkillForm(true);
+              setNewSkillRole(dreamList[0] ?? "__custom__");
+            }}>
+              + Add skill
+            </ScoutSecondaryBtn>
+          )}
+        </div>
+
+        {showAddSkillForm && (
+          <ScoutBox padding={16} style={{ marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginBottom: 4 }}>Skill *</label>
+                <input
+                  value={newSkillName}
+                  onChange={(e) => setNewSkillName(e.target.value)}
+                  placeholder="e.g. Market analysis"
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginBottom: 4 }}>For role</label>
+                <select
+                  value={newSkillRole || dreamList[0] || "__custom__"}
+                  onChange={(e) => setNewSkillRole(e.target.value)}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card }}
+                >
+                  {dreamList.map((role) => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                  <option value="__custom__">Other role…</option>
+                  {!dreamList.length && <option value="General">General</option>}
+                </select>
+              </div>
+              {newSkillRole === "__custom__" && (
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <input
+                    value={customSkillRole}
+                    onChange={(e) => setCustomSkillRole(e.target.value)}
+                    placeholder="Role name"
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <ScoutPrimaryBtn
+                onClick={addSkillToObtain}
+                disabled={!newSkillName.trim() || (newSkillRole === "__custom__" && !customSkillRole.trim())}
+                style={{ opacity: newSkillName.trim() ? 1 : 0.5 }}
+              >
+                Add
+              </ScoutPrimaryBtn>
+              <ScoutSecondaryBtn onClick={() => {
+                setShowAddSkillForm(false);
+                setNewSkillName("");
+                setCustomSkillRole("");
+              }}>
+                Cancel
+              </ScoutSecondaryBtn>
+            </div>
+          </ScoutBox>
+        )}
+
         {skillGoals.length === 0 ? (
           <ScoutBox padding={16}>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.6 }}>
-              No skills queued yet. On Target Roles, open a missing skill and choose &ldquo;Obtain this skill&rdquo;.
+              No skills queued yet. Add one above, or on Target Roles choose &ldquo;Obtain this skill&rdquo; on a gap.
             </p>
           </ScoutBox>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-            {skillGoals.map((g) => {
-              const isHighlighted = highlightSkill?.toLowerCase() === g.skill.toLowerCase();
-              return (
-                <ScoutBox
-                  key={`${g.skill}-${g.role}`}
-                  padding="12px 14px"
-                  style={{
-                    borderColor: isHighlighted ? color.forest : "rgba(196,168,106,0.35)",
-                    boxShadow: isHighlighted ? "0 0 0 1px rgba(26,58,47,0.25)" : undefined,
-                  }}
-                >
-                  <div
-                    ref={(el) => { skillGoalRefs.current[g.skill.toLowerCase()] = el; }}
-                    style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>{g.skill}</p>
-                        <span style={{ padding: "1px 7px", background: surface.inset, border: border.line, fontFamily: fontSans, fontSize: T.caption, color: "#7A6020", fontWeight: 600 }}>for {g.role}</span>
-                      </div>
-                    </div>
-                    <ScoutPrimaryBtn
-                      onClick={() => handleGraduate(g.skill)}
-                      disabled={graduating === g.skill}
-                      style={{ minHeight: 44, width: isMobile ? "100%" : undefined, opacity: graduating === g.skill ? 0.6 : 1, flexShrink: 0 }}
-                    >
-                      {graduating === g.skill ? "Saving…" : "Mark as acquired"}
-                    </ScoutPrimaryBtn>
-                  </div>
-                </ScoutBox>
-              );
-            })}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 10 }}>
+            {skillGroups.map(({ role, goals }) => (
+              <div key={role}>
+                <ScoutDisplayTitle size={16} style={{ marginBottom: 10 }}>
+                  For {role}
+                </ScoutDisplayTitle>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {goals.map(renderSkillRow)}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -1343,15 +1438,20 @@ function LearningTab({
         {skillGoals.length === 0 ? (
           <ScoutBox padding={16}>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-              Programs appear here once you queue skills to obtain from Target Roles.
+              Programs appear here once you add skills to obtain.
             </p>
           </ScoutBox>
         ) : (
           <>
-            {skillGoals.map((g) => (
-              <div key={`programs-${g.skill}`} style={{ marginBottom: 20 }}>
-                <ScoutDisplayTitle size={16} style={{ marginBottom: 8 }}>{g.skill}</ScoutDisplayTitle>
-                <ProgramLinks programs={g.programs.length ? g.programs : findProgramsForSkill(g.skill)} />
+            {skillGroups.map(({ role, goals }) => (
+              <div key={`programs-${role}`} style={{ marginBottom: 24 }}>
+                <ScoutDisplayTitle size={16} style={{ marginBottom: 12 }}>For {role}</ScoutDisplayTitle>
+                {goals.map((g) => (
+                  <div key={`programs-${g.skill}-${g.role}`} style={{ marginBottom: 16 }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px" }}>{g.skill}</p>
+                    <ProgramLinks programs={g.programs.length ? g.programs : findProgramsForSkill(g.skill)} />
+                  </div>
+                ))}
               </div>
             ))}
             {programItems.length > 0 && (
@@ -2362,14 +2462,36 @@ export function WorkspaceProfile() {
     await handleSkillsSave([...currentSkills, skill]);
   };
 
+  const hasSkillGoal = (skill: string, role: string) =>
+    skillGoals.some(
+      (g) => g.skill.toLowerCase() === skill.toLowerCase() && g.role === role,
+    );
+
   const obtainSkill = (skill: string, role: string) => {
-    if (!skillGoals.some((g) => g.skill.toLowerCase() === skill.toLowerCase())) {
+    if (!hasSkillGoal(skill, role)) {
       const next = [...skillGoals, buildSkillGoal(skill, role)];
       setSkillGoals(next);
       void patchProfile({ skillGoals: next });
     }
     setUpskillToast(skill);
     window.setTimeout(() => setUpskillToast(null), 4500);
+  };
+
+  const addSkillGoal = (skill: string, role: string) => {
+    if (hasSkillGoal(skill, role)) return;
+    const next = [...skillGoals, buildSkillGoal(skill, role)];
+    setSkillGoals(next);
+    void patchProfile({ skillGoals: next });
+  };
+
+  const dismissSkillGoal = (skill: string, role: string) => {
+    setSkillGoals((prev) => {
+      const next = prev.filter(
+        (g) => !(g.skill.toLowerCase() === skill.toLowerCase() && g.role === role),
+      );
+      void patchProfile({ skillGoals: next });
+      return next;
+    });
   };
 
   const persistUpskillProgress = (next: UpskillProgressMap) => {
@@ -2816,8 +2938,9 @@ export function WorkspaceProfile() {
             setProgress={persistUpskillProgress}
             skillGoals={skillGoals}
             dreamList={dreamList}
-            roleAnalyses={roleAnalyses}
             onGraduate={graduateSkill}
+            onAddSkill={addSkillGoal}
+            onDismissSkill={dismissSkillGoal}
             highlightSkill={highlightSkill}
           />
         )}
