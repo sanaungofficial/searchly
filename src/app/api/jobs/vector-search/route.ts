@@ -1,8 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { isHirebaseConfigured, fetchHirebaseVectorJobsByResume } from "@/lib/hirebase";
+import { isHirebaseConfigured, fetchHirebaseVectorJobs } from "@/lib/hirebase";
 import { enrichVectorJobsWithMatchReasons } from "@/lib/hirebase-match-reasons";
-import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
+import {
+  buildProfileVSearchQuery,
+  profileTextForMatchReasons,
+} from "@/lib/profile-vsearch-query";
+import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
 
@@ -55,6 +59,12 @@ function parseFilters(body: Record<string, unknown>): VectorSearchFilters {
   };
 }
 
+function appendQueryParts(base: string, parts: string[]): string {
+  const extra = parts.map((p) => p.trim()).filter(Boolean);
+  if (!extra.length) return base;
+  return `${base} ${extra.join(" ")}`.replace(/\s+/g, " ").trim().slice(0, 2000);
+}
+
 export async function POST(request: Request) {
   if (!isHirebaseConfigured()) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
@@ -80,30 +90,54 @@ export async function POST(request: Request) {
   }
 
   const filters = parseFilters(rawBody);
+  const profile = dbUser.profile;
+  const parsedData = mergeParsedWithReadback(
+    normalizeParsedResumeData(profile?.parsedData ?? null),
+    profile?.readbackData,
+  );
 
-  const artifactState = await ensureHirebaseArtifactForUser(dbUser.id);
-  if (!artifactState.artifactId) {
+  const profileInput = {
+    headline: profile?.headline,
+    targetRoles: profile?.targetRoles ?? [],
+    resumeText: profile?.resumeText,
+    parsedData,
+    careerMotivation: profile?.careerMotivation,
+    priorities: profile?.priorities ?? [],
+    employmentStatus: profile?.employmentStatus,
+    jobTimeline: profile?.jobTimeline,
+    targetSalary: profile?.targetSalary,
+  };
+
+  let query = buildProfileVSearchQuery(profileInput);
+  if (!query) {
     return NextResponse.json(
       {
-        error: artifactState.error ?? "Resume is not embedded for vector search. Re-upload your resume from Profile.",
-        needsResume: !artifactState.resumeText,
-        reEmbedded: artifactState.reEmbedded,
+        error: "Add target roles or upload a resume on Profile so we can find matching jobs.",
+        needsProfile: true,
       },
-      { status: artifactState.resumeText ? 422 : 404 }
+      { status: 404 }
     );
   }
 
-  const resumeText = artifactState.resumeText ?? dbUser.profile?.resumeText ?? "";
-  if (!resumeText.trim()) {
-    return NextResponse.json({ error: "No resume text found." }, { status: 404 });
-  }
-
-  const targetRoles = dbUser.profile?.targetRoles ?? [];
+  const targetRoles = profile?.targetRoles ?? [];
   const jobTitles = filters.jobTitles?.length ? filters.jobTitles : targetRoles.slice(0, 3);
+  const queryExtras: string[] = [];
+  if (jobTitles.length) {
+    queryExtras.push(`Focus on titles like ${jobTitles.join(", ")}.`);
+  }
+  if (filters.keywords?.length) {
+    queryExtras.push(`Keywords: ${filters.keywords.join(", ")}.`);
+  }
+  if (filters.locationTypes?.length) {
+    queryExtras.push(`Work arrangement: ${filters.locationTypes.join(", ")}.`);
+  }
+  query = appendQueryParts(query, queryExtras);
+
+  const resumeText = profileTextForMatchReasons(profileInput);
 
   try {
-    const search = await fetchHirebaseVectorJobsByResume({
-      artifactId: artifactState.artifactId,
+    const search = await fetchHirebaseVectorJobs({
+      query,
       ...filters,
       jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
       limit: filters.limit ?? 20,
@@ -123,7 +157,6 @@ export async function POST(request: Request) {
       page: search.page,
       limit: search.limit,
       totalPages: search.totalPages,
-      reEmbedded: artifactState.reEmbedded,
       filtersApplied: {
         ...filters,
         jobTitles: jobTitles.length ? jobTitles : null,

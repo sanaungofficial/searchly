@@ -499,7 +499,7 @@ function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
 }
 
 export type HirebaseVSearchInput = VectorSearchFilters & {
-  artifactId: string;
+  query: string;
 };
 
 type HirebaseVSearchResponse = PaginatedJobs;
@@ -511,8 +511,8 @@ function assignIfPresent(body: Record<string, unknown>, key: string, value: unkn
   body[key] = value;
 }
 
-/** Resume-based semantic job search via `/v2/jobs/vsearch`. */
-export async function fetchHirebaseVectorJobsByResume(
+/** Profile/query-based semantic job search via `/v2/jobs/vsearch` (summary mode — no resume embed). */
+export async function fetchHirebaseVectorJobs(
   input: HirebaseVSearchInput
 ): Promise<{
   jobs: CachedJob[];
@@ -523,8 +523,8 @@ export async function fetchHirebaseVectorJobsByResume(
   limit: number;
   totalPages: number;
 }> {
-  const artifactId = input.artifactId.trim();
-  if (!artifactId) {
+  const query = input.query.trim();
+  if (!query) {
     return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
   }
 
@@ -532,8 +532,8 @@ export async function fetchHirebaseVectorJobsByResume(
   const page = Math.max(1, input.page ?? 1);
 
   const body: Record<string, unknown> = {
-    search_type: "resume",
-    artifact_id: artifactId,
+    search_type: "summary",
+    query,
     limit,
     page,
     accuracy: input.accuracy ?? 0.35,
@@ -541,20 +541,20 @@ export async function fetchHirebaseVectorJobsByResume(
   };
 
   if (input.offset != null) body.offset = input.offset;
-  if (input.minScore != null) body.min_score = input.minScore;
+  if (input.minScore != null) body.score = input.minScore;
   assignIfPresent(body, "company_name", input.companyName?.trim());
   assignIfPresent(body, "company_slug", input.companySlug?.trim());
   assignIfPresent(body, "job_slug", input.jobSlug?.trim());
   assignIfPresent(body, "job_board", input.jobBoard?.trim());
-  assignIfPresent(body, "job_titles", input.jobTitles?.map((t) => t.trim()).filter(Boolean));
-  assignIfPresent(body, "keywords", input.keywords?.map((t) => t.trim()).filter(Boolean));
+  if (input.jobTitles?.length) {
+    assignIfPresent(body, "job_title", input.jobTitles[0]?.trim());
+  }
   assignIfPresent(body, "industries", input.industries?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "subindustries", input.subindustries?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "job_categories", input.jobCategories?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "job_types", input.jobTypes?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
   assignIfPresent(body, "company_types", input.companySizeBuckets?.map((t) => t.trim()).filter(Boolean));
-  assignIfPresent(body, "location_types", input.locationTypes?.map((t) => t.trim()).filter(Boolean));
   if (input.locations?.length) {
     body.locations = input.locations
       .map((loc) => ({

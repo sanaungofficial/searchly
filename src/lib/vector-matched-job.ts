@@ -6,7 +6,7 @@ export type HirebaseLocationFilter = {
   country?: string;
 };
 
-/** All optional filters supported by Hirebase `/v2/jobs/vsearch` (resume mode). */
+/** Optional filters for Hirebase `/v2/jobs/vsearch` summary mode. */
 export type VectorSearchFilters = {
   limit?: number;
   page?: number;

@@ -63,4 +63,4 @@ server.log
 /.zscripts/
 /db/
 /prisma/*.db
-/prisma/*.db-journal
+/prisma/*.db-journal.firecrawl/
