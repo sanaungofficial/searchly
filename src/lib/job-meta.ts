@@ -60,6 +60,42 @@ export function parsedJobToMeta(data: Record<string, unknown>): JobMeta {
   };
 }
 
+/** Plain-text job posting for AI match, cover letter, and fit chat. */
+export function resolveJobDescriptionText(
+  meta: JobMeta | null | undefined,
+  role?: string | null,
+  company?: string | null,
+): string {
+  const full = meta?.description?.trim() ?? "";
+  if (full.length >= 120) return full;
+
+  const parts: string[] = [];
+  if (role?.trim() && company?.trim()) parts.push(`${role.trim()} at ${company.trim()}`);
+  else if (role?.trim()) parts.push(role.trim());
+  if (meta?.jobSummary?.trim()) parts.push(meta.jobSummary.trim());
+  if (meta?.location?.trim()) parts.push(`Location: ${meta.location.trim()}`);
+  if (meta?.salary?.trim()) parts.push(`Salary: ${meta.salary.trim()}`);
+  if (meta?.jobType?.trim()) parts.push(`Type: ${meta.jobType.trim()}`);
+  if (meta?.seniority?.trim() || meta?.experienceLevel?.trim()) {
+    parts.push(`Level: ${meta.seniority?.trim() || meta.experienceLevel?.trim()}`);
+  }
+  if (meta?.responsibilities?.length) {
+    parts.push(`Responsibilities:\n${meta.responsibilities.map((r) => `• ${r}`).join("\n")}`);
+  }
+  if (meta?.requiredQualifications?.length) {
+    parts.push(`Required:\n${meta.requiredQualifications.map((r) => `• ${r}`).join("\n")}`);
+  }
+  if (meta?.preferredQualifications?.length) {
+    parts.push(`Preferred:\n${meta.preferredQualifications.map((r) => `• ${r}`).join("\n")}`);
+  }
+  if (meta?.skills?.length) parts.push(`Skills: ${meta.skills.join(", ")}`);
+  if (meta?.benefits?.length) parts.push(`Benefits: ${meta.benefits.join(", ")}`);
+
+  const built = parts.join("\n\n").trim();
+  if (built.length >= 40) return built;
+  return full;
+}
+
 export const PARSE_JOB_JSON_SHAPE = `{
   "company": "company name",
   "role": "job title",

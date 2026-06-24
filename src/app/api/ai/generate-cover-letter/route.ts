@@ -1,4 +1,5 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
+import { loadJobDescriptionForUser } from "@/lib/job-description-server";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
@@ -27,13 +28,19 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { jobTitle, company, description } = body as {
+  const { jobTitle, company, description, jobId } = body as {
     jobTitle?: string;
     company?: string;
     description?: string;
+    jobId?: string;
   };
 
-  if (!description) {
+  let finalDescription = description?.trim() ?? "";
+  if (!finalDescription && jobId) {
+    finalDescription = (await loadJobDescriptionForUser(jobId, dbUser.id)) ?? "";
+  }
+
+  if (!finalDescription) {
     return NextResponse.json({ error: "No job description provided" }, { status: 400 });
   }
 
@@ -43,7 +50,7 @@ export async function POST(req: NextRequest) {
   const prompt = interpolate(template, {
     jobTitle: jobTitle || "Unknown",
     company: company || "Unknown",
-    description: description.slice(0, 3000),
+    description: finalDescription.slice(0, 3000),
     resumeSlice: resumeText.slice(0, 3000),
     candidateName,
   });

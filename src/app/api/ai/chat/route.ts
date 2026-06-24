@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const { messages, pipeline, focusedJob } = body as {
     messages: { role: "user" | "assistant"; content: string }[];
     pipeline?: { company: string; role: string; stage: string }[];
-    focusedJob?: { company: string; role: string } | null;
+    focusedJob?: { company: string; role: string; description?: string; intent?: string } | null;
   };
 
   const resumeText = dbUser.profile?.resumeText || "";
@@ -45,12 +45,17 @@ export async function POST(request: Request) {
     ? `\nUser's current job pipeline:\n${pipeline.map((j) => `- ${j.role} at ${j.company} (${j.stage})`).join("\n")}`
     : "\nUser has no jobs in their pipeline yet.";
 
+  const jobPostingContext =
+    focusedJob?.description?.trim()
+      ? `\n\nJob posting:\n${focusedJob.description.trim().slice(0, 6000)}`
+      : "";
+
   const focusContext = focusedJob
     ? `\nThe user is currently looking at: ${focusedJob.role} at ${focusedJob.company}.${
-        (focusedJob as { intent?: string }).intent === "fit"
+        focusedJob.intent === "fit"
           ? " They want to understand how well they fit this role — analyze strengths, gaps, and give honest, tactical advice."
           : ""
-      }`
+      }${jobPostingContext}`
     : "";
 
   const resumeContext = resumeText
