@@ -17,6 +17,9 @@ import { CompanyLogo } from "./company-logo";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { CreditsStatusBar } from "./credits-display";
+import { InsiderConnectionPanel } from "./insider-connection-panel";
+import { JobDrawerCompanySection } from "./job-drawer-company-section";
+import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
 import { fontSans, fontDisplay, fontMono, color, type as T, drawerType as DT } from "@/lib/typography";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
@@ -629,6 +632,18 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
     hasStructuredSections,
   } = resolveJobFields(meta);
 
+  const jobWebsite = urlValue || cardUrl;
+  const { data: hirebaseCompany, loading: hirebaseLoading } = useHirebaseCompanyProfile({
+    companyName: card.company,
+    website: guessCompanyWebsite(jobWebsite),
+    enabled: true,
+  });
+
+  const linkedinForCompany =
+    hirebaseCompany?.profile?.linkedin_link?.trim() ||
+    hirebaseCompany?.enrichment?.hirebase?.linkedinLink?.trim() ||
+    companyLinkedinUrl;
+
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
@@ -727,10 +742,16 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
-                    <CompanyLogo name={card.company} website={cardUrl} size={56} />
+                    <CompanyLogo
+                      name={card.company}
+                      website={jobWebsite}
+                      enrichmentWebsiteUrl={hirebaseCompany?.profile?.company_link ?? hirebaseCompany?.enrichment?.websiteUrl}
+                      logoUrl={hirebaseCompany?.profile?.company_logo ?? hirebaseCompany?.enrichment?.hirebase?.logo}
+                      size={56}
+                    />
                     <div>
                       <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
-                        <a href={companyLinkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
+                        <a href={linkedinForCompany} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
                           {card.company}
                         </a>
                         {" · "}{daysLabel(card.days)}
@@ -768,6 +789,8 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                   )}
                 </div>
               )}
+
+              <InsiderConnectionPanel companyName={card.company} />
 
               {responsibilities.length > 0 && (
                 <div style={{ marginBottom: 22 }}>
@@ -890,31 +913,21 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 style={{ marginTop: 28, paddingTop: 24, borderTop: border }}
               >
                 <SectionTitle icon={<IconBuilding />}>Company</SectionTitle>
-                <div style={{ background: cardBg, border, borderRadius: 12, padding: 20 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                    <CompanyLogo name={card.company} website={cardUrl} size={52} />
-                    <div>
-                      <p style={{ fontFamily: serif, fontSize: 24, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{card.company}</p>
-                      {location && <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "6px 0 0" }}>{location}</p>}
-                    </div>
-                  </div>
-                  {companySummary && (
-                    <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: "0 0 16px" }}>{companySummary}</p>
-                  )}
-                  <a
-                    href={companyLinkedinUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontFamily: sans, fontSize: 14, color: mint, fontWeight: 600 }}
-                  >
-                    View on LinkedIn ↗
-                  </a>
-                  <CompanyTrackPanel
-                    companyName={card.company}
-                    jobUrl={urlValue || cardUrl}
-                    hqLocation={location ?? null}
-                  />
-                </div>
+                <JobDrawerCompanySection
+                  companyName={card.company}
+                  location={location}
+                  parsedSummary={companySummary}
+                  jobUrl={jobWebsite}
+                  hirebase={hirebaseCompany}
+                  loading={hirebaseLoading}
+                  trackPanel={
+                    <CompanyTrackPanel
+                      companyName={card.company}
+                      jobUrl={jobWebsite}
+                      hqLocation={location ?? null}
+                    />
+                  }
+                />
               </div>
 
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: border }}>
