@@ -19,6 +19,7 @@ import {
   type KanbanStage,
 } from "./workspace-data";
 import { PlusIcon, UploadIcon } from "./workspace-icons";
+import { ResumeVectorJobsPanel } from "./resume-vector-jobs-panel";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
@@ -27,7 +28,7 @@ import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as 
 
 export type { DrawerTool };
 
-type OppTab = "pipeline" | "companies";
+type OppTab = "pipeline" | "companies" | "matches";
 
 // Props now sourced from WorkspaceContext
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -38,7 +39,12 @@ export function WorkspaceOpportunities() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeSubtab: OppTab = pathname === "/opportunities/companies" ? "companies" : "pipeline";
+  const activeSubtab: OppTab =
+    pathname === "/opportunities/companies"
+      ? "companies"
+      : pathname === "/opportunities/matches"
+        ? "matches"
+        : "pipeline";
   const setSubtab = (t: OppTab) => { router.push(`/opportunities/${t}`); };
   const tab = activeSubtab;
   const setTab = setSubtab;
@@ -263,6 +269,7 @@ export function WorkspaceOpportunities() {
         <div style={{ display: "flex", gap: 0 }}>
           {([
             ["pipeline", "Pipeline"],
+            ["matches", "Matches"],
             ["companies", "Companies"],
           ] as [OppTab, string][]).map(([id, label]) => {
             const active = tab === id;
@@ -290,7 +297,7 @@ export function WorkspaceOpportunities() {
           })}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {tab !== "companies" && <button
+          {tab !== "companies" && tab !== "matches" && <button
             onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
             style={{
               padding: "8px 16px",
@@ -371,6 +378,19 @@ export function WorkspaceOpportunities() {
         }}
       >
         {tab === "companies" && <WorkspaceCompanies onOpenProspectJob={openProspectJob} />}
+        {tab === "matches" && (
+          <ResumeVectorJobsPanel
+            onOpenJob={openProspectJob}
+            onAddToPipeline={async (companyName, job) => {
+              const meta = cachedJobToMeta(job);
+              const created = await addJob(companyName, job.title, job.url ?? undefined, meta);
+              if (created) {
+                setDrawerCardId(created.cardId);
+                setTab("pipeline");
+              }
+            }}
+          />
+        )}
         {tab === "pipeline" && (
           <PipelineTab
             cards={kanbanCards}

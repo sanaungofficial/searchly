@@ -497,6 +497,75 @@ function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
   });
 }
 
+export type HirebaseVSearchInput = {
+  artifactId: string;
+  limit?: number;
+  page?: number;
+  companyName?: string;
+  companySlug?: string;
+  jobTitles?: string[];
+  locationTypes?: string[];
+  accuracy?: number;
+  topK?: number;
+};
+
+type HirebaseVSearchResponse = PaginatedJobs;
+
+/** Resume-based semantic job search via `/v2/jobs/vsearch`. */
+export async function fetchHirebaseVectorJobsByResume(
+  input: HirebaseVSearchInput
+): Promise<{
+  jobs: CachedJob[];
+  rawJobs: HirebaseJob[];
+  companyNames: string[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const artifactId = input.artifactId.trim();
+  if (!artifactId) {
+    return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
+  }
+
+  const limit = Math.max(1, Math.min(input.limit ?? 20, 30));
+  const page = Math.max(1, input.page ?? 1);
+
+  const body: Record<string, unknown> = {
+    search_type: "resume",
+    artifact_id: artifactId,
+    limit,
+    page,
+    accuracy: input.accuracy ?? 0.35,
+    top_k: input.topK ?? limit,
+  };
+
+  if (input.companyName?.trim()) body.company_name = input.companyName.trim();
+  if (input.companySlug?.trim()) body.company_slug = input.companySlug.trim();
+  if (input.jobTitles?.length) body.job_titles = input.jobTitles.map((t) => t.trim()).filter(Boolean);
+  if (input.locationTypes?.length) body.location_types = input.locationTypes;
+
+  const data = await hirebaseFetch<HirebaseVSearchResponse>("/v2/jobs/vsearch", {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  const rawJobs = dedupeHirebaseJobs(data.jobs ?? []);
+  const jobs = rawJobs.map(mapHirebaseJob);
+  const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
+
+  return {
+    jobs,
+    rawJobs,
+    companyNames,
+    totalCount: data.total_count ?? jobs.length,
+    page: data.page ?? page,
+    limit: data.limit ?? limit,
+    totalPages: data.total_pages ?? 1,
+  };
+}
+
 /** Full job record — used when opening watchlist drawer (includes raw description). */
 export async function fetchHirebaseJobById(jobId: string): Promise<CachedJob | null> {
   if (!jobId.trim()) return null;

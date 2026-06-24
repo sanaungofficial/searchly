@@ -57,6 +57,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Profile",
     variables: ["role", "resumeSlice", "declaredSkills"],
   },
+  VECTOR_JOB_MATCH_BATCH: {
+    label: "Vector Job Match (Batch)",
+    description: "Explains why each Hirebase vector-search job fits the candidate resume.",
+    category: "Jobs",
+    variables: ["resumeSlice", "jobBlocks"],
+  },
   READBACK: {
     label: "Profile Readback",
     description: "Generates an honest profile summary: picture, strengths, target roles, honest note.",
@@ -296,6 +302,37 @@ Rules:
 - nextSteps: actionable and specific, not generic career advice like "network more"
 - summary: must be specific to their actual resume, not a generic statement
 - Respond with only valid JSON, no explanation`,
+
+  VECTOR_JOB_MATCH_BATCH: `You are a career coach. Hirebase vector search ranked these jobs against a candidate's resume (rank 1 = strongest semantic match). Explain WHY each job fits this specific person.
+
+RESUME:
+{{resumeSlice}}
+
+JOBS:
+{{jobBlocks}}
+
+For each job, return honest fit analysis grounded in the resume — cite concrete experience, skills, or seniority alignment. Do not invent credentials.
+
+Return JSON only:
+{
+  "matches": [
+    {
+      "jobId": "<exact JOB id from blocks>",
+      "matchScore": <integer 0-100>,
+      "matchLabel": "<Excellent|Strong|Good|Fair|Stretch>",
+      "reasons": ["<specific reason 1>", "<specific reason 2>", "<optional reason 3>"],
+      "matchedSkills": ["<skill already in resume>", "..."],
+      "gapSkills": ["<skill gap if any>", "..."]
+    }
+  ]
+}
+
+Rules:
+- Include every job from the list, same jobId values
+- reasons: 2-3 short bullets, second person ("Your…"), specific to this resume
+- matchedSkills: up to 6 skills/tools from the job that the resume supports
+- gapSkills: up to 3 notable gaps (empty array if strong fit)
+- matchScore should correlate with vector rank but reflect real fit, not rank alone`,
 
   READBACK: `You are analyzing a resume to generate a brief, honest profile summary for a job search tool.
 

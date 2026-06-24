@@ -78,6 +78,7 @@ const NAV_BETA: NavItem[] = [
 
 const OPP_SUBNAV = [
   { label: "Pipeline", path: "/opportunities/pipeline" },
+  { label: "Matches", path: "/opportunities/matches" },
   { label: "Companies", path: "/opportunities/companies" },
 ] as const;
 
