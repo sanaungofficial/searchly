@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { grantFeatureBonus } from "@/lib/feature-credits";
 import { REFERRAL_BONUS_PER_FEATURE, LINKEDIN_SHARE_PRO_DAYS } from "@/lib/plan-config";
+import {
+  ensurePartneroCustomer,
+  getPartneroCustomerStats,
+  partneroEnabled,
+  partneroReferralLink,
+  recordPartneroOnboardingTransaction,
+} from "@/lib/partnero";
 import type { PlanCreditFeature } from "@prisma/client";
 
 const CODE_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -29,8 +36,11 @@ export async function ensureReferralCode(userId: string): Promise<string> {
   throw new Error("Failed to generate referral code");
 }
 
-export async function attachReferrer(refereeId: string, referralCode: string): Promise<boolean> {
-  const referrer = await prisma.user.findUnique({ where: { referralCode }, select: { id: true } });
+export async function attachReferrer(refereeId: string, referralCodeOrId: string): Promise<boolean> {
+  const referrer = await prisma.user.findFirst({
+    where: { OR: [{ referralCode: referralCodeOrId }, { id: referralCodeOrId }] },
+    select: { id: true },
+  });
   if (!referrer || referrer.id === refereeId) return false;
 
   await prisma.user.update({
@@ -80,10 +90,21 @@ export async function completeReferral(refereeId: string): Promise<{ completed: 
   await grantReferralBonuses(referee.referredByUserId!, bonus);
   await grantReferralBonuses(refereeId, bonus);
 
+  if (partneroEnabled()) {
+    await recordPartneroOnboardingTransaction(refereeId).catch((e) => {
+      console.error("[referrals] Partnero onboarding transaction", e);
+    });
+  }
+
   return { completed: true };
 }
 
 export async function getReferralStats(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, name: true },
+  });
+
   const [code, events, linkedInPending, bonusRows] = await Promise.all([
     ensureReferralCode(userId),
     prisma.referralEvent.findMany({
@@ -97,7 +118,25 @@ export async function getReferralStats(userId: string) {
     prisma.featureCreditBonus.findMany({ where: { userId } }),
   ]);
 
-  const invitesCompleted = events.length;
+  let link = referralLink(code);
+  let partneroReferrals = 0;
+  if (partneroEnabled() && user?.email) {
+    const customer = await ensurePartneroCustomer({
+      userId,
+      email: user.email,
+      name: user.name,
+    }).catch(() => null);
+    if (customer) {
+      link = partneroReferralLink(customer, userId);
+    }
+    const poStats = await getPartneroCustomerStats(userId).catch(() => null);
+    partneroReferrals =
+      (poStats?.referrals_count as number | undefined) ??
+      (poStats?.referrals as number | undefined) ??
+      0;
+  }
+
+  const invitesCompleted = Math.max(events.length, partneroReferrals);
   let matchEarned = 0;
   let tailorEarned = 0;
   let insiderEarned = 0;
@@ -111,6 +150,7 @@ export async function getReferralStats(userId: string) {
 
   return {
     code,
+    link,
     invitesCompleted,
     matchCreditsEarned: matchEarned,
     tailorCreditsEarned: tailorEarned,
