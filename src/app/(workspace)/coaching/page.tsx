@@ -1,11 +1,10 @@
-import { redirect } from "next/navigation";
 import { WorkspaceCoaching } from "@/components/scout/workspace-coaching";
-import { isAdmin } from "@/lib/auth";
-import { canAccessBetaFeatures } from "@/lib/beta-features";
+import { BetaFeaturePage } from "@/lib/beta-feature-page";
 
-export default async function CoachingPage() {
-  if (!canAccessBetaFeatures(await isAdmin())) {
-    redirect("/dashboard");
-  }
-  return <WorkspaceCoaching />;
+export default function CoachingPage() {
+  return (
+    <BetaFeaturePage feature="coaching">
+      <WorkspaceCoaching />
+    </BetaFeaturePage>
+  );
 }
