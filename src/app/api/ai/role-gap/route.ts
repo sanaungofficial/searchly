@@ -11,7 +11,7 @@ import {
 import { heuristicRoleGapAnalysis } from "@/lib/role-gap-heuristic";
 import { ensureAssetResumeParsed } from "@/lib/ensure-asset-resume";
 import { getActingUser } from "@/lib/acting-user";
-import { normalizeParsedResumeData } from "@/lib/resume-parse";
+import { normalizeParsedResumeData, parseJsonFromModel } from "@/lib/resume-parse";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
 
   const message = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 600,
+    max_tokens: 1500,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -153,12 +153,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
   }
 
-  try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
-    const parsed = normalizeRoleGapAnalysis(JSON.parse(jsonMatch[0]));
-    if (!parsed) throw new Error("Invalid analysis shape");
-
+  const parsed = normalizeRoleGapAnalysis(parseJsonFromModel(content.text));
+  if (parsed) {
     const analyzedAt = new Date().toISOString();
     const stored: StoredRoleAnalysis = {
       ...parsed,
@@ -174,9 +170,24 @@ export async function GET(request: Request) {
       cached: false,
       stale: false,
     });
-  } catch {
-    return NextResponse.json({ error: "Failed to parse response" }, { status: 500 });
   }
+
+  const heuristic = heuristicRoleGapAnalysis(role, source.skills);
+  const analyzedAt = new Date().toISOString();
+  const stored: StoredRoleAnalysis = {
+    ...heuristic,
+    analyzedAt,
+    resumeFingerprint: fingerprint,
+    resumeAssetId: source.resumeAssetId,
+  };
+  await saveRoleAnalysis(dbUser.id, role, stored);
+  return NextResponse.json({
+    ...stored,
+    cached: false,
+    stale: false,
+    heuristic: true,
+    parseFallback: true,
+  });
 }
 
 export async function DELETE(request: Request) {
