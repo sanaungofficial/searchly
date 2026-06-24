@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { buildJobBoardLinks } from "@/lib/job-board-search";
 import {
   UploadIcon,
   CheckCircleFilled,
@@ -15,7 +16,7 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4 | 5;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 const ONBOARDING_STEP_COUNT = 6;
 
@@ -410,14 +411,29 @@ export function ScreenWelcome({
           }}
         >
           <LinkedInIcon style={{ flexShrink: 0 }} />
+          <span
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 15,
+              fontWeight: 500,
+              color: ONBOARDING_TEXT_SECONDARY,
+              flexShrink: 0,
+              userSelect: "none",
+            }}
+          >
+            linkedin.com/in/
+          </span>
           <input
             type="text"
-            placeholder="linkedin.com/in/your-name"
+            placeholder="your-name"
             value={liInput}
             onChange={onLIChange}
             onKeyDown={onLIKey}
+            autoComplete="off"
+            spellCheck={false}
             style={{
               flex: 1,
+              minWidth: 0,
               border: "none",
               background: "transparent",
               fontFamily: "var(--font-ui)",
@@ -1860,11 +1876,9 @@ interface TransitionProps {
   jobUrl: string;
   onJobUrlChange: (value: string) => void;
   onAnalyze: () => void;
-  onTailorResume: () => void;
-  onWriteCoverLetter: () => void;
-  onAddJob: () => void;
+  onFinish: () => void;
+  onFinishWithJob: () => void;
   onSkip: () => void;
-  onReviewProfile?: () => void;
   loading: boolean;
   loadingPhase?: "parse" | "match" | null;
   error: string | null;
@@ -1873,16 +1887,41 @@ interface TransitionProps {
   match: TransitionJobMatch | null;
 }
 
+function JobBoardShortcutButton({ label, url }: { label: string; url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "10px 16px",
+        background: ONBOARDING_FIELD_BG,
+        border: ONBOARDING_FIELD_BORDER,
+        borderRadius: 8,
+        fontFamily: "var(--font-ui)",
+        fontSize: 14,
+        fontWeight: 600,
+        color: ONBOARDING_TEXT,
+        textDecoration: "none",
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </a>
+  );
+}
+
 export function ScreenTransition({
   targetRoles = [],
   jobUrl,
   onJobUrlChange,
   onAnalyze,
-  onTailorResume,
-  onWriteCoverLetter,
-  onAddJob,
+  onFinish,
+  onFinishWithJob,
   onSkip,
-  onReviewProfile,
   loading,
   loadingPhase = null,
   error,
@@ -1891,6 +1930,8 @@ export function ScreenTransition({
   match,
 }: TransitionProps) {
   const canAnalyze = jobUrl.trim().length > 0 && !loading;
+  const primarySearchRole = targetRoles[0] ?? "";
+  const jobBoardLinks = buildJobBoardLinks(primarySearchRole);
   const scoreColor =
     match && match.score >= 8
       ? "#4A8B6A"
@@ -1979,6 +2020,21 @@ export function ScreenTransition({
         >
           Add your first job
         </p>
+
+        {jobBoardLinks.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.55, marginTop: 0, marginBottom: 10 }}>
+              Need inspiration? Search for{" "}
+              <span style={{ fontWeight: 600, color: ONBOARDING_TEXT }}>{primarySearchRole}</span> on:
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {jobBoardLinks.map((link) => (
+                <JobBoardShortcutButton key={link.id} label={link.label} url={link.url} />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <input
             type="url"
@@ -1988,8 +2044,7 @@ export function ScreenTransition({
             onChange={(e) => onJobUrlChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                if (analysis && match) onTailorResume();
-                else if (analysis) onAddJob();
+                if (analysis) onFinishWithJob();
                 else if (canAnalyze) onAnalyze();
               }
             }}
@@ -2200,77 +2255,110 @@ export function ScreenTransition({
               </p>
             )}
 
-            {match ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {analysis && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                 <button
                   type="button"
                   className="onboarding-cta"
-                  onClick={onTailorResume}
+                  onClick={onFinishWithJob}
                   style={PRIMARY_CTA}
                 >
-                  Tailor my resume →
+                  {match ? "Finish setup — see my resume match →" : "Finish setup with this job →"}
                 </button>
-                <button
-                  type="button"
-                  onClick={onWriteCoverLetter}
-                  style={{
-                    width: "100%",
-                    minHeight: 44,
-                    padding: "11px 16px",
-                    background: "#FFFFFF",
-                    border: "1.5px solid rgba(26,58,47,0.22)",
-                    borderRadius: 6,
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1A3A2F",
-                    cursor: "pointer",
-                  }}
-                >
-                  Write cover letter
-                </button>
-                <button
-                  type="button"
-                  onClick={onAddJob}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 12,
-                    color: "var(--scout-muted)",
-                    cursor: "pointer",
-                    padding: "6px 0",
-                    textAlign: "center",
-                    textDecoration: "underline",
-                    textUnderlineOffset: 3,
-                  }}
-                >
-                  Save to pipeline only
-                </button>
+                {match && (
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.5, margin: 0, textAlign: "center" }}>
+                    We&apos;ll save this job to Pipeline and open your resume with this match score.
+                  </p>
+                )}
               </div>
-            ) : (
-              <button
-                type="button"
-                className="onboarding-cta"
-                onClick={onAddJob}
-                style={PRIMARY_CTA}
-              >
-                Add to my pipeline →
-              </button>
             )}
           </div>
         )}
       </div>
 
       <div className="anim-fade-up" style={ONBOARDING_CARD}>
-        <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
-          I&apos;ll add a job later — take me to my workspace
+        <button
+          type="button"
+          className="onboarding-cta"
+          onClick={onFinish}
+          style={{ ...PRIMARY_CTA, width: "100%" }}
+        >
+          {analysis ? "Finish without saving this job →" : "Finish setup →"}
         </button>
-        {onReviewProfile && (
-          <button type="button" onClick={onReviewProfile} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 8 }}>
-            Review your profile
-          </button>
-        )}
+        <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 12 }}>
+          Skip for now — finish with what I&apos;ve added
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export type SetupStepStatus = "pending" | "active" | "done" | "skipped";
+
+export interface SetupStep {
+  id: string;
+  label: string;
+  status: SetupStepStatus;
+}
+
+export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
+  return (
+    <div className="anim-fade-up onboarding-screen-gap" style={ONBOARDING_CARD}>
+      <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 12, marginTop: 0 }}>
+        Setting things up…
+      </h2>
+      <p style={{ ...ONBOARDING_BODY, margin: "0 0 24px", color: ONBOARDING_TEXT_SECONDARY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)" }}>
+        This usually takes under a minute. Stay on this page while Kimchi gets your desk ready.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {steps.map((step) => {
+          const isDone = step.status === "done";
+          const isActive = step.status === "active";
+          const isSkipped = step.status === "skipped";
+          return (
+            <div
+              key={step.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "14px 16px",
+                borderRadius: 8,
+                border: `1.5px solid ${isDone ? "#1A3A2F" : isActive ? "rgba(26,58,47,0.35)" : "rgba(26,58,47,0.12)"}`,
+                background: isDone ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG,
+              }}
+            >
+              <div
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: isDone ? "#1A3A2F" : "rgba(26,58,47,0.08)",
+                  color: isDone ? "#E8D5A3" : ONBOARDING_TEXT_SECONDARY,
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {isDone ? "✓" : isSkipped ? "—" : isActive ? "…" : ""}
+              </div>
+              <span
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 14,
+                  fontWeight: isActive || isDone ? 600 : 500,
+                  color: isSkipped ? ONBOARDING_TEXT_SECONDARY : ONBOARDING_TEXT,
+                }}
+              >
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -31,6 +31,9 @@ interface ProfileResumeEditorProps {
   assetId: string | null;
   onClose: () => void;
   onUpdated?: () => void;
+  initialJobDescription?: string | null;
+  autoRunMatch?: boolean;
+  onboardingJobLabel?: string | null;
 }
 
 interface AssetResponse {
@@ -79,7 +82,15 @@ function normalizeAnalysis(raw: AnalysisData): { score?: number; headline?: stri
   return { score: raw.score, headline: raw.headline, strengths: raw.strengths, issues };
 }
 
-export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: ProfileResumeEditorProps) {
+export function ProfileResumeEditor({
+  open,
+  assetId,
+  onClose,
+  onUpdated,
+  initialJobDescription,
+  autoRunMatch = false,
+  onboardingJobLabel,
+}: ProfileResumeEditorProps) {
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [reparsing, setReparsing] = useState(false);
@@ -102,6 +113,8 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
   const [parseError, setParseError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingAutoMatch = useRef(false);
+  const autoMatchStarted = useRef(false);
 
   useLayoutEffect(() => {
     setVisible(!!open);
@@ -273,8 +286,25 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
       setMatchError(null);
       setJobDescription("");
       setShareMsg(null);
+      pendingAutoMatch.current = false;
+      autoMatchStarted.current = false;
     }
   }, [open, assetId, loadAsset]);
+
+  useEffect(() => {
+    if (!open || loading || !initialJobDescription?.trim()) return;
+    setJobDescription(initialJobDescription);
+    setMatchPanelOpen(true);
+    if (autoRunMatch) pendingAutoMatch.current = true;
+  }, [open, loading, initialJobDescription, autoRunMatch]);
+
+  useEffect(() => {
+    if (!open || !assetId || !pendingAutoMatch.current || autoMatchStarted.current) return;
+    if (!jobDescription.trim() || matchLoading || loading) return;
+    autoMatchStarted.current = true;
+    pendingAutoMatch.current = false;
+    void runMatchAnalysis();
+  }, [open, assetId, jobDescription, matchLoading, loading, runMatchAnalysis]);
 
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -324,6 +354,14 @@ export function ProfileResumeEditor({ open, assetId, onClose, onUpdated }: Profi
             </button>
           </div>
         </div>
+        {onboardingJobLabel && (
+          <div className="resume-print-hide" style={{ padding: "10px 16px", background: "rgba(26,58,47,0.06)", borderBottom: `1px solid ${JR.border}` }}>
+            <p style={{ fontSize: 13, color: JR.text, margin: 0, lineHeight: 1.5 }}>
+              Welcome — here&apos;s your base resume matched against{" "}
+              <strong>{onboardingJobLabel}</strong>. Improve sections on the left; your job is saved in Pipeline.
+            </p>
+          </div>
+        )}
         {parseError && !loading && !reparsing && (
           <div className="resume-print-hide" style={{ padding: "10px 16px", background: JR.criticalBg, borderBottom: `1px solid ${JR.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <span style={{ fontSize: 13, color: JR.text }}>{parseError}</span>
