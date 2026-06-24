@@ -8,26 +8,76 @@ import {
   TopEchelonSessionExpiredError,
 } from "@/lib/topechelon/errors";
 import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
+import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
 import {
   loadTopEchelonSession,
   recordTopEchelonSyncResult,
   saveTopEchelonSession,
 } from "@/lib/topechelon/session-store";
-import type { TopEchelonSyncSummary } from "@/lib/topechelon/types";
+import type { TopEchelonNetworkJobRaw, TopEchelonSyncSummary } from "@/lib/topechelon/types";
 import { prisma } from "@/lib/prisma";
 
 export type RunTopEchelonSyncOptions = {
-  /** 6-digit email verification code for new-device MFA */
   mfaCode?: string;
-  /** Force password login even if a stored session exists */
   forceLogin?: boolean;
-  /** Saved Big Biller job search UUID (from /jobs/searches/:id/results/network) */
   searchId?: string;
-  /** Only fetch this many jobs (for smoke tests) */
   limit?: number;
-  /** Cap pagination when not using limit */
   maxPages?: number;
+  /** Skip detail fetch (list rows only — missing comments / full description). */
+  listOnly?: boolean;
 };
+
+const DETAIL_CONCURRENCY = 6;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
+
+async function upsertNetworkRecruiter(job: TopEchelonNetworkJobRaw): Promise<string | null> {
+  const mapped = mapTopEchelonNetworkRecruiter(job);
+  if (!mapped) return null;
+
+  const row = await prisma.networkRecruiter.upsert({
+    where: { externalId: mapped.externalId },
+    create: {
+      externalId: mapped.externalId,
+      firstName: mapped.firstName,
+      lastName: mapped.lastName,
+      name: mapped.name,
+      email: mapped.email,
+      phone: mapped.phone,
+      agencyName: mapped.agencyName,
+      raw: mapped.raw,
+    },
+    update: {
+      firstName: mapped.firstName,
+      lastName: mapped.lastName,
+      name: mapped.name,
+      email: mapped.email,
+      phone: mapped.phone,
+      agencyName: mapped.agencyName,
+      raw: mapped.raw,
+      syncedAt: new Date(),
+    },
+  });
+
+  return row.id;
+}
 
 export async function runTopEchelonSync(
   options: RunTopEchelonSyncOptions = {}
@@ -51,20 +101,30 @@ export async function runTopEchelonSync(
   await saveTopEchelonSession(client.getSession());
 
   const searchId = options.searchId ?? getTopEchelonSearchId() ?? undefined;
-  const jobs = await client.fetchAllNetworkJobs({
+  const listJobs = await client.fetchAllNetworkJobs({
     perPage: 50,
     maxPages: options.maxPages ?? (options.limit ? 1 : 40),
     limit: options.limit,
     searchId,
   });
+
+  const jobs = options.listOnly
+    ? listJobs
+    : await mapWithConcurrency(listJobs, DETAIL_CONCURRENCY, async (row) =>
+        client.fetchNetworkJobDetail(String(row.id)).catch(() => row)
+      );
+
   let upserted = 0;
 
   for (const job of jobs) {
     const mapped = mapTopEchelonNetworkJob(job);
+    const { _display: _ignored, ...dbFields } = mapped;
+    const recruiterRecordId = await upsertNetworkRecruiter(job);
+
     await prisma.networkJob.upsert({
-      where: { externalId: mapped.externalId },
-      create: mapped,
-      update: mapped,
+      where: { externalId: dbFields.externalId },
+      create: { ...dbFields, recruiterRecordId },
+      update: { ...dbFields, recruiterRecordId },
     });
     upserted += 1;
   }
@@ -75,7 +135,7 @@ export async function runTopEchelonSync(
   return {
     fetched: jobs.length,
     upserted,
-    pages: Math.ceil(jobs.length / 50) || 0,
+    pages: Math.ceil(listJobs.length / 50) || 0,
     searchId,
     durationMs: Date.now() - started,
   };

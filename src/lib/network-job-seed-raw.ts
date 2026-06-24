@@ -27,6 +27,8 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
       id: 8821,
       first_name: "Mario",
       last_name: "Fidanzi",
+      email: "mario.fidanzi@bu82recruiting.com",
+      phone: "(315) 555-0142",
     },
     agency_detail: {
       name: "BU82 Recruiting",
@@ -57,6 +59,8 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
       id: 44102,
       first_name: "Steve",
       last_name: "Dooling",
+      email: "steve.dooling@nj142search.com",
+      phone: "(916) 555-0198",
     },
     agency_detail: {
       name: "NJ142 Search Partners",
@@ -87,6 +91,8 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
       id: 33019,
       first_name: "Scarlett",
       last_name: "Wells",
+      email: "scarlett.wells@ah98legal.com",
+      phone: "(619) 555-0173",
     },
     agency_detail: {
       name: "AH98 Legal Search",

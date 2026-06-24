@@ -20,6 +20,7 @@ import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { CreditsStatusBar } from "./credits-display";
 import { InsiderConnectionPanel } from "./insider-connection-panel";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
+import { JobDrawerNetworkAdminSection, JobDrawerRecruiterSection } from "./job-drawer-recruiter-section";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
@@ -45,7 +46,7 @@ interface JobDrawerProps {
   detailLoading?: boolean;
 }
 
-type ScrollSection = "overview" | "company";
+type ScrollSection = "overview" | "recruiter" | "company";
 
 const sans = fontSans;
 const mono = fontMono;
@@ -651,6 +652,7 @@ export function JobDrawer({
   const [activeSection, setActiveSection] = useState<ScrollSection>("overview");
   const scrollRef = useRef<HTMLDivElement>(null);
   const companySectionRef = useRef<HTMLDivElement>(null);
+  const recruiterSectionRef = useRef<HTMLDivElement>(null);
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
@@ -668,9 +670,12 @@ export function JobDrawer({
     if (!container) return;
     if (section === "overview") {
       container.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (companySectionRef.current) {
-      const top = companySectionRef.current.offsetTop - 16;
-      container.scrollTo({ top, behavior: "smooth" });
+      return;
+    }
+    const target =
+      section === "recruiter" ? recruiterSectionRef.current : companySectionRef.current;
+    if (target) {
+      container.scrollTo({ top: target.offsetTop - 16, behavior: "smooth" });
     }
   }, []);
 
@@ -686,26 +691,40 @@ export function JobDrawer({
   useEffect(() => {
     const container = scrollRef.current;
     const companyEl = companySectionRef.current;
-    if (!container || !companyEl) return;
+    const recruiterEl = recruiterSectionRef.current;
+    if (!container) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setActiveSection("company");
-        }
-      },
-      { root: container, threshold: 0.25, rootMargin: "-20% 0px -55% 0px" },
-    );
-
-    observer.observe(companyEl);
+    const observers: IntersectionObserver[] = [];
 
     const onScroll = () => {
       if (container.scrollTop < 80) setActiveSection("overview");
     };
     container.addEventListener("scroll", onScroll, { passive: true });
 
+    if (recruiterEl) {
+      const recruiterObserver = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection("recruiter");
+        },
+        { root: container, threshold: 0.25, rootMargin: "-20% 0px -55% 0px" },
+      );
+      recruiterObserver.observe(recruiterEl);
+      observers.push(recruiterObserver);
+    }
+
+    if (companyEl) {
+      const companyObserver = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection("company");
+        },
+        { root: container, threshold: 0.25, rootMargin: "-20% 0px -55% 0px" },
+      );
+      companyObserver.observe(companyEl);
+      observers.push(companyObserver);
+    }
+
     return () => {
-      observer.disconnect();
+      observers.forEach((o) => o.disconnect());
       container.removeEventListener("scroll", onScroll);
     };
   }, [card.id]);
@@ -784,6 +803,12 @@ export function JobDrawer({
   const jobDescription = resolveJobDescriptionText(meta, card.role, card.company);
   const fullDescriptionText = meta?.description?.trim() || jobDescription;
   const hasFullPosting = (meta?.description?.trim().length ?? 0) >= 200;
+  const networkJob = meta?.networkJob ?? null;
+  const scrollSections: ScrollSection[] = networkJob
+    ? ["overview", "recruiter", "company"]
+    : ["overview", "company"];
+  const externalPostUrl = networkJob?.topEchelonUrl ?? urlValue;
+  const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
   const showStructuredExtras =
     !hasFullPosting &&
     (responsibilities.length > 0 ||
@@ -826,7 +851,7 @@ export function JobDrawer({
             ×
           </button>
           <div style={{ display: "flex", gap: 24 }}>
-            {(["overview", "company"] as ScrollSection[]).map((t) => {
+            {scrollSections.map((t) => {
               const active = activeSection === t;
               return (
                 <button
@@ -852,19 +877,19 @@ export function JobDrawer({
             })}
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-            {urlValue && (
+            {externalPostUrl && (
               <a
-                href={urlValue}
+                href={externalPostUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
               >
-                Original job post ↗
+                {networkJob ? "Top Echelon posting ↗" : "Original job post ↗"}
               </a>
             )}
-            {urlValue && (
+            {externalPostUrl && (
               <a
-                href={urlValue}
+                href={externalPostUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -880,7 +905,7 @@ export function JobDrawer({
                   border: lineStrong,
                 }}
               >
-                APPLY NOW
+                {networkJob ? "OPEN IN TE" : "APPLY NOW"}
               </a>
             )}
           </div>
@@ -920,12 +945,14 @@ export function JobDrawer({
                     {expLevel && <MetaRow icon={<IconBriefcase />} label={expLevel} />}
                   </div>
                 </div>
-                <MatchScoreCard fit={card.fit} onRunMatch={dbId ? () => setMatchDrawerOpen(true) : undefined} />
+                <MatchScoreCard fit={card.fit} onRunMatch={canRunMatch ? () => setMatchDrawerOpen(true) : undefined} />
               </div>
             </div>
 
             {/* Main job content — full posting first, then insider, then company */}
             <div style={{ padding: "28px 32px 36px" }}>
+              {networkJob && <JobDrawerNetworkAdminSection networkJob={networkJob} />}
+
               <JobDescriptionPanel
                 text={fullDescriptionText}
                 loading={detailLoading && !hasFullPosting}
@@ -934,6 +961,17 @@ export function JobDrawer({
                 onChange={setDescValue}
                 onBlur={() => patchDescription(descValue)}
               />
+
+              {networkJob?.recruiterNotes && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconBriefcase />}>Recruiter notes</SectionTitle>
+                  <ScoutBox padding={18} style={{ borderLeft: `3px solid ${mint}`, background: cardBg }}>
+                    <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap" }}>
+                      {networkJob.recruiterNotes}
+                    </p>
+                  </ScoutBox>
+                </div>
+              )}
 
               {!hasFullPosting && jobSummary && (
                 <div style={{ marginBottom: 22 }}>
@@ -977,6 +1015,17 @@ export function JobDrawer({
               )}
 
               <InsiderConnectionPanel companyName={card.company} />
+
+              {networkJob && (
+                <div
+                  ref={recruiterSectionRef}
+                  id="job-drawer-recruiter"
+                  style={{ marginTop: 28, paddingTop: 24, borderTop: line }}
+                >
+                  <SectionTitle icon={<IconTarget />}>Recruiter</SectionTitle>
+                  <JobDrawerRecruiterSection networkJob={networkJob} />
+                </div>
+              )}
 
               {showStructuredExtras && responsibilities.length > 0 && (
                 <div style={{ marginBottom: 22 }}>
@@ -1299,7 +1348,10 @@ export function JobDrawer({
           description={jobDescription}
           jobId={dbId ?? undefined}
           onClose={() => setMatchDrawerOpen(false)}
-          onTailorResume={() => { if (dbId) setResumeEditorOpen(true); }}
+          onTailorResume={() => {
+            if (dbId) setResumeEditorOpen(true);
+            else if (onAddToPipeline) void onAddToPipeline();
+          }}
         />
       )}
 
