@@ -9,6 +9,7 @@ import {
   type StoredRoleAnalysis,
 } from "@/lib/role-gap";
 import { getActingUser } from "@/lib/acting-user";
+import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -33,10 +34,46 @@ async function saveRoleAnalysis(
   });
 }
 
+async function resolveResumeSource(
+  userId: string,
+  assetId: string | null,
+  profile: {
+    resumeUrl: string | null;
+    resumeText: string | null;
+    parsedData: unknown;
+  } | null,
+) {
+  if (assetId) {
+    const asset = await prisma.userAsset.findFirst({
+      where: { id: assetId, userId, type: "RESUME" },
+    });
+    if (!asset?.resumeText) {
+      return null;
+    }
+    const parsed = normalizeParsedResumeData(asset.parsedData ?? null);
+    return {
+      resumeText: asset.resumeText,
+      resumeUrl: asset.url,
+      skills: parsed?.skills ?? [],
+      resumeAssetId: asset.id,
+    };
+  }
+
+  if (!profile?.resumeText) return null;
+  const parsed = normalizeParsedResumeData(profile.parsedData ?? null);
+  return {
+    resumeText: profile.resumeText,
+    resumeUrl: profile.resumeUrl,
+    skills: parsed?.skills ?? [],
+    resumeAssetId: null as string | null,
+  };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role")?.trim();
   const force = searchParams.get("force") === "true";
+  const assetId = searchParams.get("assetId")?.trim() || null;
 
   if (!role) return NextResponse.json({ error: "role required" }, { status: 400 });
 
@@ -45,18 +82,21 @@ export async function GET(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const resumeText = profile?.resumeText;
-  if (!resumeText) {
-    return NextResponse.json({ error: "No resume found" }, { status: 404 });
+  const source = await resolveResumeSource(dbUser.id, assetId, profile);
+  if (!source) {
+    return NextResponse.json({ error: "No resume found for this selection" }, { status: 404 });
   }
 
-  const declaredSkills: string[] =
-    (profile?.parsedData as { skills?: string[] } | null)?.skills ?? [];
-  const fingerprint = buildResumeFingerprint(profile?.resumeUrl, declaredSkills);
+  const fingerprint = buildResumeFingerprint(source.resumeAssetId, source.resumeUrl, source.skills);
   const analyses = normalizeRoleAnalysesMap(profile?.roleAnalyses);
   const cached = analyses[role];
 
-  if (!force && cached && !isRoleAnalysisStale(cached, fingerprint)) {
+  if (
+    !force &&
+    cached &&
+    !isRoleAnalysisStale(cached, fingerprint) &&
+    (cached.resumeAssetId ?? null) === source.resumeAssetId
+  ) {
     return NextResponse.json({
       ...cached,
       cached: true,
@@ -79,8 +119,8 @@ export async function GET(request: Request) {
   const template = await getPrompt("ROLE_GAP");
   const prompt = interpolate(template, {
     role,
-    resumeSlice: resumeText.slice(0, 6000),
-    declaredSkills: declaredSkills.length > 0 ? declaredSkills.join(", ") : "none listed",
+    resumeSlice: source.resumeText.slice(0, 6000),
+    declaredSkills: source.skills.length > 0 ? source.skills.join(", ") : "none listed",
   });
 
   const message = await getAnthropic().messages.create({
@@ -105,6 +145,7 @@ export async function GET(request: Request) {
       ...parsed,
       analyzedAt,
       resumeFingerprint: fingerprint,
+      resumeAssetId: source.resumeAssetId,
     };
 
     await saveRoleAnalysis(dbUser.id, role, stored);
@@ -118,10 +159,24 @@ export async function GET(request: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   const { authUser, dbUser } = await getActingUser();
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const { searchParams } = new URL(request.url);
+  const role = searchParams.get("role")?.trim();
+
+  if (role) {
+    const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+    const existing = normalizeRoleAnalysesMap(profile?.roleAnalyses);
+    delete existing[role];
+    await prisma.profile.updateMany({
+      where: { userId: dbUser.id },
+      data: { roleAnalyses: existing as object },
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   await prisma.profile.updateMany({
     where: { userId: dbUser.id },
