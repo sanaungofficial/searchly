@@ -7,6 +7,7 @@ import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useWorkspace } from "@/contexts/workspace-context";
 
 interface MatchData {
   score: number;
@@ -367,7 +368,8 @@ export function ResumeMatchDrawer({
   const [tailoredData, setTailoredData] = useState<TailoredData | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const { isPro, isAdmin, startCheckout } = useSubscription();
+  const { openPricing } = useWorkspace();
+  const { isPro, isAdmin } = useSubscription();
   const proUser = isPro || isAdmin;
   const kwInputRef = useRef<HTMLInputElement>(null);
 
@@ -854,7 +856,7 @@ export function ResumeMatchDrawer({
                       {data.score < 6 && (
                         <GrowthMatchOffer
                           isPro={proUser}
-                          onUpgrade={() => startCheckout()}
+                          onUpgrade={openPricing}
                         />
                       )}
 
@@ -1992,6 +1994,7 @@ export function ResumeMatchDrawer({
         <GrowthUpgradeModal
           trigger="limit_hit"
           onClose={() => setShowUpgrade(false)}
+          onOpenPricing={openPricing}
         />
       )}
     </>,

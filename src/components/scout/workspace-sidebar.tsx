@@ -270,8 +270,9 @@ export function WorkspaceSidebar({
   const showBetaNav = canAccessBetaFeatures(isAdmin);
 
   const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
-  const { loading: subLoading, startCheckout } = useSubscription();
+  const { loading: subLoading } = useSubscription();
   const { credits, showCredits, unlimitedAi } = useCredits();
+  const { openPricing } = useWorkspace();
   const showUpgrade = !subLoading && !unlimitedAi;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
@@ -614,7 +615,7 @@ export function WorkspaceSidebar({
 
         {/* ── Credits (+ upgrade for free users) ── */}
         {showCredits && credits && !isRail && (
-          <CreditsSidebarBlock credits={credits} unlimitedAi={unlimitedAi} onUpgrade={() => startCheckout()} />
+          <CreditsSidebarBlock credits={credits} unlimitedAi={unlimitedAi} onUpgrade={openPricing} />
         )}
         {showCredits && credits && isRail && (
           <div style={{ padding: "0 0 8px", textAlign: "center" }} title={unlimitedAi ? `${credits.used} used this month · unlimited` : `${credits.remaining} credits left`}>

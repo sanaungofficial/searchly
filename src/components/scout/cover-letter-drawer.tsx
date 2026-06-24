@@ -41,7 +41,7 @@ async function streamInto(
 }
 
 export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClose }: CoverLetterDrawerProps) {
-  const { user } = useWorkspace();
+  const { user, openPricing } = useWorkspace();
   const [letter, setLetter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState(false);
@@ -304,7 +304,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
         </div>
 
         <div style={{ padding: "12px 24px 0", flexShrink: 0 }}>
-          <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
+          <CreditsStatusBar onUpgrade={openPricing} />
         </div>
 
         {/* Body: document preview + controls */}
@@ -724,7 +724,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
         </div>
       </div>
       {showUpgrade && (
-        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />
+        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} onOpenPricing={openPricing} />
       )}
     </>,
     document.body,

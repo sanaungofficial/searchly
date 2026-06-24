@@ -6,6 +6,7 @@ import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDo
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { fontSans, fontMono } from "@/lib/typography";
 
 interface ResumeSection {
@@ -48,6 +49,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [fitOpen, setFitOpen] = useState(false);
   const [fitCopied, setFitCopied] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const { openPricing } = useWorkspace();
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -385,7 +387,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           }}
         >
           <div style={{ marginBottom: 16 }}>
-            <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
+            <CreditsStatusBar onUpgrade={openPricing} />
           </div>
           {company && (
             <div style={{ marginBottom: 20 }}>
@@ -1002,7 +1004,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
       {showUpgrade && (
-        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />
+        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} onOpenPricing={openPricing} />
       )}
     </div>
     </div>

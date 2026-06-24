@@ -107,6 +107,25 @@ export function CreditsSidebarBlock({
           <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>Upgrade to Pro</p>
           <p style={{ margin: 0, fontSize: 12, color: "rgba(26,58,47,0.65)", lineHeight: 1.45 }}>Unlimited AI — no credit limits</p>
         </button>
+      ) : onUpgrade ? (
+        <button
+          type="button"
+          onClick={onUpgrade}
+          data-offer="pro"
+          data-trigger="sidebar_credits"
+          style={{
+            display: "block",
+            width: "100%",
+            background: "rgba(232,213,163,0.08)",
+            border: "1px solid rgba(232,213,163,0.15)",
+            borderRadius: 10,
+            padding: "8px 14px",
+            cursor: "pointer",
+            textAlign: "center",
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(232,213,163,0.55)" }}>Upgrade for unlimited →</span>
+        </button>
       ) : (
         <Link
           href="/pricing"

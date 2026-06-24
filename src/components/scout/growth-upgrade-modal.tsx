@@ -34,17 +34,20 @@ const COPY: Record<
 type Props = {
   trigger: GrowthUpgradeTrigger;
   onClose: () => void;
+  /** Opens full pricing modal (interval picker). Falls back to direct checkout. */
+  onOpenPricing?: () => void;
   /** When set, secondary CTA navigates here (e.g. /coaching). */
   secondaryHref?: string;
 };
 
-export function GrowthUpgradeModal({ trigger, onClose, secondaryHref }: Props) {
+export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryHref }: Props) {
   const { startCheckout, loading } = useSubscription();
   const copy = COPY[trigger];
 
   const handlePrimary = async () => {
-    if (trigger === "coaching") {
-      window.location.href = "/pricing";
+    if (onOpenPricing) {
+      onOpenPricing();
+      onClose();
       return;
     }
     await startCheckout();
