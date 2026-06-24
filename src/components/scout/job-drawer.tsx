@@ -807,7 +807,7 @@ export function JobDrawer({
   const scrollSections: ScrollSection[] = networkJob
     ? ["overview", "recruiter", "company"]
     : ["overview", "company"];
-  const externalPostUrl = networkJob?.topEchelonUrl ?? urlValue;
+  const externalPostUrl = networkJob?.internalView === false ? null : (networkJob?.topEchelonUrl ?? urlValue);
   const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
   const showStructuredExtras =
     !hasFullPosting &&

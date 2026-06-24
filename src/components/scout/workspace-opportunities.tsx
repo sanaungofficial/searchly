@@ -25,6 +25,7 @@ import { PipelineNetworkSection } from "./pipeline-network-section";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { buildNetworkProspectCard } from "@/lib/network-job-display";
+import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
@@ -41,7 +42,7 @@ export type PipelineFilter = "all" | "recommended" | KanbanStage;
 interface OpportunitiesProps {}
 
 export function WorkspaceOpportunities() {
-  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool } = useWorkspace();
+  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -296,17 +297,19 @@ export function WorkspaceOpportunities() {
     setAddingNetworkJob(false);
   };
 
+  const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin);
+
   const openNetworkJob = useCallback((job: NetworkJobListing) => {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setNetworkProspectJob(job);
-    setNetworkProspectCard(buildNetworkProspectCard(job, drawerId));
-  }, []);
+    setNetworkProspectCard(buildNetworkProspectCard(job, drawerId, { internalView: networkInternalView }));
+  }, [networkInternalView]);
 
   const addNetworkJobToPipeline = async (job: NetworkJobListing = networkProspectJob!) => {
     if (!job) return;
     setAddingNetworkJob(true);
     try {
-      const card = buildNetworkProspectCard(job, 0);
+      const card = buildNetworkProspectCard(job, 0, { internalView: networkInternalView });
       const meta = card._meta;
       const created = await addJob(
         job.companyName ?? job.recruiter?.agencyName ?? "Confidential employer",
