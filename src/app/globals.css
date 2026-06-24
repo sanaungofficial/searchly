@@ -52,6 +52,10 @@
 
   /* Searchly brand tokens */
   --scout-cream: #F2EDE3;
+  --scout-page: #EDE8DF;
+  --scout-surface: #FFFFFF;
+  --scout-inset: #F5F2EC;
+  --scout-stack-plate: #D4CFC4;
   --scout-ink: #1A1A1A;
   --scout-forest: #1A3A2F;
   --scout-gold: #E8D5A3;
@@ -61,7 +65,7 @@
 
   /* Typography aliases — use in inline styles without JS imports */
   --font-ui: var(--font-source-sans), system-ui, sans-serif;
-  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-display: var(--font-fraunces), var(--font-cormorant), Georgia, serif;
   --font-mono-ui: var(--font-dm-mono), ui-monospace, monospace;
   --type-body: 15px;
   --type-body-sm: 14px;

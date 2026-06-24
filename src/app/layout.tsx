@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Cormorant_Garamond, Source_Sans_3, DM_Mono } from "next/font/google";
+import { Playfair_Display, Cormorant_Garamond, Fraunces, Source_Sans_3, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -16,6 +16,12 @@ const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   style: ["normal", "italic"],
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
   display: "swap",
 });
 
@@ -48,7 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${playfair.variable} ${cormorant.variable} ${sourceSans.variable} ${dmMono.variable} antialiased`}
+        className={`${playfair.variable} ${cormorant.variable} ${fraunces.variable} ${sourceSans.variable} ${dmMono.variable} antialiased`}
         style={{ background: "#F7F5F2", fontFamily: "var(--font-ui)" }}
       >
         {children}
