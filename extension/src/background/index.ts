@@ -1,4 +1,5 @@
 import { saveJob } from "../lib/api";
+import { fetchJobMatch } from "../lib/match";
 import { broadcastAuthState, checkAuth, logout, openLoginTab } from "../lib/auth";
 import type {
   BackgroundMessage,
@@ -8,59 +9,30 @@ import type {
 
 let loginTabId: number | null = null;
 
-async function parseViaInjection(tabId: number): Promise<ParsedJob | null> {
-  try {
-    const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const win = window as unknown as { __kimchiParsePage?: () => unknown };
-        return win.__kimchiParsePage?.() ?? null;
-      },
-    });
-    if (result) return result as ParsedJob;
-  } catch {
-    // content script not present yet
-  }
-
-  try {
-    await chrome.scripting.insertCSS({
-      target: { tabId },
-      files: ["content.css"],
-    });
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["content.js"],
-    });
-
-    await new Promise((r) => setTimeout(r, 300));
-
-    const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        const win = window as unknown as { __kimchiParsePage?: () => unknown };
-        return win.__kimchiParsePage?.() ?? null;
-      },
-    });
-    return (result as ParsedJob | null) ?? null;
-  } catch (err) {
-    console.error("[Kimchi] parseViaInjection failed", err);
-    return null;
-  }
+function isUsableParsedJob(parsed: ParsedJob | null | undefined): parsed is ParsedJob {
+  if (!parsed?.company || !parsed?.role) return false;
+  return !(parsed.company === "Unknown Company" && parsed.role === "Unknown Role");
 }
 
 async function parseTab(tabId: number): Promise<ParsedJob | null> {
-  try {
-    const response = await chrome.tabs.sendMessage(tabId, { type: "PARSE_PAGE" });
-    return response as ParsedJob;
-  } catch {
-    return parseViaInjection(tabId);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      const response = (await chrome.tabs.sendMessage(tabId, {
+        type: "PARSE_PAGE",
+      })) as ParsedJob | null;
+      if (isUsableParsedJob(response)) return response;
+    } catch {
+      // content script may still be loading on LinkedIn SPA
+    }
+    await new Promise((r) => setTimeout(r, 400 + attempt * 200));
   }
+  return null;
 }
 
 async function saveFromTab(tabId: number): Promise<SaveJobResult> {
   const parsed = await parseTab(tabId);
 
-  if (!parsed?.company || !parsed?.role) {
+  if (!isUsableParsedJob(parsed)) {
     return { ok: false, error: "Could not extract company and role from this page." };
   }
 
@@ -125,6 +97,10 @@ chrome.runtime.onMessage.addListener((message: BackgroundMessage, _sender, sendR
       }
       case "PARSE_PAGE": {
         sendResponse({ type: "PARSED_JOB", payload: await parseTab(message.payload.tabId) });
+        return;
+      }
+      case "JOB_MATCH": {
+        sendResponse(await fetchJobMatch(message.payload));
         return;
       }
       default:

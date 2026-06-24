@@ -39,6 +39,11 @@ export function parseTitleHeuristic(raw: string): { role: string; company: strin
 
   const linkedInSuffix = title.replace(/\s*[|\-–—]\s*LinkedIn\s*$/i, "").trim();
 
+  const hiringMatch = linkedInSuffix.match(/^(.+?)\s+hiring\s+(.+?)(?:\s+in\s+.+)?$/i);
+  if (hiringMatch) {
+    return { company: hiringMatch[1].trim(), role: hiringMatch[2].trim() };
+  }
+
   const atMatch = linkedInSuffix.match(/^(.+?)\s+at\s+(.+?)$/i);
   if (atMatch) {
     return { role: atMatch[1].trim(), company: atMatch[2].trim() };

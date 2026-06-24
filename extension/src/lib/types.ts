@@ -43,13 +43,24 @@ export interface AuthState {
   error?: string;
 }
 
+export interface JobMatchResult {
+  score: number;
+  scoreLabel?: string;
+  keywords?: { text: string; matched: boolean }[];
+  summaryNote?: string;
+}
+
 export type BackgroundMessage =
   | { type: "GET_AUTH"; force?: boolean }
   | { type: "OPEN_LOGIN" }
   | { type: "LOGOUT" }
   | { type: "SAVE_JOB"; payload?: { tabId?: number } }
   | { type: "SAVE_PARSED_JOB"; payload: ParsedJob }
-  | { type: "PARSE_PAGE"; payload: { tabId: number } };
+  | { type: "PARSE_PAGE"; payload: { tabId: number } }
+  | {
+      type: "JOB_MATCH";
+      payload: { jobTitle: string; company: string; description: string };
+    };
 
 export type BackgroundResponse =
   | { type: "AUTH_STATE"; payload: AuthState }
