@@ -1,15 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
+import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
-import { fetchRecommendedFromTrackedCompanies } from "@/lib/recommended-jobs-fallback";
-import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
+import { fetchSemanticSearchOnTrackedCompanies } from "@/lib/recommended-jobs-fallback";
+import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
-/** @deprecated Use GET /api/jobs/recommended — kept for older clients. */
+/** Keyword / semantic search — not resume-based. Scoped to tracked companies when available. */
 export async function POST(request: Request) {
   if (!isHirebaseConfigured()) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
@@ -19,6 +20,20 @@ export async function POST(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+
+  let rawBody: Record<string, unknown> = {};
+  try {
+    rawBody = (await request.json()) as Record<string, unknown>;
+  } catch {
+    rawBody = {};
+  }
+
+  const filters = parseVectorSearchFilters(rawBody);
+  const query = trimVSearchQuery(filters.semanticQuery ?? "");
+  if (!query) {
+    return NextResponse.json({ error: "Enter a search phrase to find jobs." }, { status: 400 });
+  }
+
   const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
@@ -38,36 +53,42 @@ export async function POST(request: Request) {
   });
 
   try {
-    const result = await fetchRecommendedFromTrackedCompanies({
+    const result = await fetchSemanticSearchOnTrackedCompanies({
       userId: dbUser.id,
       profileTargetRoles: targetRoles,
-      maxJobs: VECTOR_SEARCH_RESULTS_MAX,
+      query,
+      filters: {
+        ...filters,
+        semanticQuery: query,
+        limit: Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX),
+        page: filters.page ?? 1,
+      },
     });
 
     if (!result.sources.length) {
       return NextResponse.json(
         {
-          error:
-            result.companyCount === 0
-              ? "Track companies on the Companies page to see recommended roles."
-              : "No matching roles yet — refresh matching roles on your tracked companies.",
-          needsCompanies: result.companyCount === 0,
+          error: result.scoped
+            ? "No jobs matched your search at your tracked companies. Try different keywords or track more companies."
+            : "No jobs matched your search. Try a shorter phrase.",
         },
         { status: 404 },
       );
     }
 
     const jobs = await enrichRecommendedSources(result.sources, resumeText);
+
     return NextResponse.json({
       jobs,
       totalCount: jobs.length,
-      page: 1,
+      page: filters.page ?? 1,
       limit: VECTOR_SEARCH_RESULTS_MAX,
       totalPages: 1,
-      matchMode: "company_roles" as const,
+      matchMode: result.scoped ? ("semantic_scoped" as const) : ("semantic_global" as const),
+      filtersApplied: filters,
     });
   } catch (err) {
-    const msg = formatApiErrorMessage(err, "Vector search failed.");
+    const msg = formatApiErrorMessage(err, "Search failed.");
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }

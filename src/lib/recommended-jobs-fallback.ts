@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import type { HirebaseJob } from "@/lib/hirebase";
-import { fetchHirebaseRoleMatchingJobs } from "@/lib/hirebase";
+import { fetchHirebaseMatchingJobs, fetchHirebaseSummarySearch } from "@/lib/hirebase";
 import type { CachedJob } from "@/lib/cached-job";
 import { normalizeJobUrl } from "@/lib/cached-job";
 import { parseJobsCache } from "@/lib/company-jobs-scan";
+import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
 import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
@@ -31,111 +32,198 @@ export function cachedJobToHirebaseJob(job: CachedJob, companyName: string): Hir
   };
 }
 
-/** Same matching roles shown on Companies — from tracked company job caches. */
-export async function loadTrackedCompanyMatchJobs(
-  userId: string,
-  profileTargetRoles: string[],
+function dedupeSources(sources: RecommendedJobSource[], maxJobs: number): RecommendedJobSource[] {
+  const seen = new Set<string>();
+  const out: RecommendedJobSource[] = [];
+  for (const entry of sources) {
+    const key = normalizeJobUrl(entry.cached.url) ?? `${entry.companyName}:${entry.cached.title}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+    if (out.length >= maxJobs) break;
+  }
+  return out;
+}
+
+function jobsFromCache(
+  cache: ReturnType<typeof parseJobsCache>,
+  companyName: string,
+  matchRoles: string[],
   maxJobs: number,
-): Promise<RecommendedJobSource[]> {
+): RecommendedJobSource[] {
+  if (!cache?.jobs?.length) return [];
+  const jobs = cache.match_only
+    ? cache.jobs.slice(0, maxJobs)
+    : filterMatchingJobs(cache.jobs, matchRoles, maxJobs);
+  return jobs.map((job) => ({
+    cached: job,
+    companyName,
+    raw: cachedJobToHirebaseJob(job, companyName),
+  }));
+}
+
+async function liveCompanyMatches(input: {
+  companyName: string;
+  slugHint: string | null;
+  hirebaseSlug: string | null;
+  website: string | null;
+  matchRoles: string[];
+  maxJobs: number;
+}): Promise<RecommendedJobSource[]> {
+  if (!input.matchRoles.length) return [];
+  try {
+    const result = await fetchHirebaseMatchingJobs({
+      companyName: input.companyName,
+      slugHint: input.slugHint,
+      hirebaseSlug: input.hirebaseSlug,
+      website: input.website,
+      jobTitles: input.matchRoles,
+      maxJobs: input.maxJobs,
+    });
+    const matched = filterMatchingJobs(result.jobs, input.matchRoles, input.maxJobs);
+    return matched.map((job) => ({
+      cached: job,
+      companyName: input.companyName,
+      raw: cachedJobToHirebaseJob(job, input.companyName),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Recommended jobs = matching roles at tracked companies only (same path as Companies drawer).
+ * Never uses resume embed. Uses cached scan results, live Hirebase fetch per company if cache empty.
+ */
+export async function fetchRecommendedFromTrackedCompanies(input: {
+  userId: string;
+  profileTargetRoles: string[];
+  maxJobs?: number;
+}): Promise<{
+  sources: RecommendedJobSource[];
+  companyCount: number;
+  trackedWithMatches: number;
+}> {
+  const maxJobs = Math.min(input.maxJobs ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+
   const tracked = await prisma.trackedCompany.findMany({
-    where: { userId },
-    select: { name: true, targetRoles: true, jobsCache: true },
+    where: { userId: input.userId },
+    include: { companyIntel: true },
     orderBy: { updatedAt: "desc" },
   });
 
-  const out: RecommendedJobSource[] = [];
+  if (!tracked.length) {
+    return { sources: [], companyCount: 0, trackedWithMatches: 0 };
+  }
+
+  const perCompanyLimit = Math.max(3, Math.ceil(maxJobs / Math.max(tracked.length, 1)));
+  const collected: RecommendedJobSource[] = [];
 
   for (const company of tracked) {
-    const cache = parseJobsCache(company.jobsCache);
-    if (!cache?.jobs?.length) continue;
+    const matchRoles = buildMatchRoles(input.profileTargetRoles, company.targetRoles);
+    if (!matchRoles.length) continue;
 
-    const matchRoles = buildMatchRoles(profileTargetRoles, company.targetRoles);
-    const matched = filterMatchingJobs(cache.jobs, matchRoles, maxJobs);
-    for (const job of matched) {
-      out.push({
-        cached: job,
-        companyName: company.name,
-        raw: cachedJobToHirebaseJob(job, company.name),
+    const companyName = company.companyIntel?.name ?? company.name;
+    const cache = parseJobsCache(company.jobsCache);
+    let sources = jobsFromCache(cache, companyName, matchRoles, perCompanyLimit);
+
+    if (!sources.length) {
+      const enrichment = company.companyIntel?.enrichmentCache ?? company.enrichmentCache;
+      const hirebaseMeta = getHirebaseMetaFromEnrichment(enrichment);
+      sources = await liveCompanyMatches({
+        companyName,
+        slugHint: company.companyIntel?.slug ?? null,
+        hirebaseSlug: hirebaseMeta?.slug ?? null,
+        website: company.website ?? company.companyIntel?.website ?? null,
+        matchRoles,
+        maxJobs: perCompanyLimit,
       });
+    }
+
+    collected.push(...sources);
+  }
+
+  const sources = dedupeSources(collected, maxJobs);
+  const trackedWithMatches = new Set(sources.map((s) => s.companyName)).size;
+
+  return {
+    sources,
+    companyCount: tracked.length,
+    trackedWithMatches,
+  };
+}
+
+/** Keyword search scoped to tracked companies — not resume-based. */
+export async function fetchSemanticSearchOnTrackedCompanies(input: {
+  userId: string;
+  profileTargetRoles: string[];
+  query: string;
+  filters: VectorSearchFilters;
+}): Promise<{
+  sources: RecommendedJobSource[];
+  scoped: boolean;
+}> {
+  const query = input.query.trim();
+  if (!query) {
+    return { sources: [], scoped: true };
+  }
+
+  const limit = Math.min(input.filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+  const tracked = await prisma.trackedCompany.findMany({
+    where: { userId: input.userId },
+    include: { companyIntel: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (!tracked.length) {
+    const summary = await fetchHirebaseSummarySearch({
+      query,
+      filters: { ...input.filters, limit, page: input.filters.page ?? 1 },
+    });
+    return {
+      sources: summary.jobs.map((cached, index) => ({
+        cached,
+        companyName: summary.companyNames[index] ?? "Unknown company",
+        raw: summary.rawJobs[index] ?? cachedJobToHirebaseJob(cached, summary.companyNames[index] ?? "Unknown company"),
+      })),
+      scoped: false,
+    };
+  }
+
+  const perCompanyLimit = Math.max(3, Math.ceil(limit / Math.max(tracked.length, 1)));
+  const collected: RecommendedJobSource[] = [];
+
+  for (const company of tracked) {
+    const matchRoles = buildMatchRoles(input.profileTargetRoles, company.targetRoles);
+    const searchRoles = matchRoles.length ? matchRoles : [query];
+    const companyName = company.companyIntel?.name ?? company.name;
+    const enrichment = company.companyIntel?.enrichmentCache ?? company.enrichmentCache;
+    const hirebaseMeta = getHirebaseMetaFromEnrichment(enrichment);
+
+    try {
+      const result = await fetchHirebaseMatchingJobs({
+        companyName,
+        slugHint: company.companyIntel?.slug ?? null,
+        hirebaseSlug: hirebaseMeta?.slug ?? null,
+        website: company.website ?? company.companyIntel?.website ?? null,
+        jobTitles: searchRoles,
+        extraKeywords: query.split(/\s+/).filter((w) => w.length >= 3),
+        maxJobs: perCompanyLimit,
+      });
+      for (const job of result.jobs) {
+        collected.push({
+          cached: job,
+          companyName,
+          raw: cachedJobToHirebaseJob(job, companyName),
+        });
+      }
+    } catch {
+      continue;
     }
   }
 
-  const seen = new Set<string>();
-  return out.filter((entry) => {
-    const key = normalizeJobUrl(entry.cached.url) ?? entry.cached.title.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function mergeJobSources(
-  tracked: RecommendedJobSource[],
-  global: RecommendedJobSource[],
-  maxJobs: number,
-): RecommendedJobSource[] {
-  const seen = new Set<string>();
-  const merged: RecommendedJobSource[] = [];
-
-  for (const entry of [...tracked, ...global]) {
-    const key = normalizeJobUrl(entry.cached.url) ?? entry.cached.title.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(entry);
-    if (merged.length >= maxJobs) break;
-  }
-
-  return merged;
-}
-
-/** Role-based Hirebase search — same primitives as Companies matching, not resume embed. */
-export async function fetchRecommendedJobsViaRoleMatch(input: {
-  userId: string;
-  profileTargetRoles: string[];
-  filters: VectorSearchFilters;
-  semanticQuery?: string;
-}): Promise<{
-  sources: RecommendedJobSource[];
-  totalCount: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}> {
-  const limit = Math.min(input.filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
-  const page = Math.max(1, input.filters.page ?? 1);
-  const matchRoles =
-    input.filters.jobTitles?.length
-      ? input.filters.jobTitles.slice(0, 20)
-      : input.profileTargetRoles.slice(0, 20);
-
-  const tracked = await loadTrackedCompanyMatchJobs(input.userId, matchRoles, limit);
-
-  let global: RecommendedJobSource[] = [];
-  if (matchRoles.length) {
-    const search = await fetchHirebaseRoleMatchingJobs({
-      matchRoles,
-      semanticQuery: input.semanticQuery,
-      filters: { ...input.filters, limit, page },
-    });
-    global = search.jobs.map((cached, index) => ({
-      cached,
-      companyName: search.companyNames[index] ?? "Unknown company",
-      raw: search.rawJobs[index] ?? cachedJobToHirebaseJob(cached, search.companyNames[index] ?? "Unknown company"),
-    }));
-  }
-
-  const sources = mergeJobSources(tracked, global, limit);
-
-  if (!sources.length) {
-    return { sources: [], totalCount: 0, page, limit, totalPages: 0 };
-  }
-
-  const totalCount = Math.max(tracked.length + (matchRoles.length ? limit : 0), sources.length);
   return {
-    sources,
-    totalCount,
-    page,
-    limit,
-    totalPages: 1,
+    sources: dedupeSources(collected, limit),
+    scoped: true,
   };
 }

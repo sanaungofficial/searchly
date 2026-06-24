@@ -19,12 +19,12 @@ import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scou
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
-type SearchResponse = {
+type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
   totalCount?: number;
   totalPages?: number;
   page?: number;
-  matchMode?: "resume" | "role_match";
+  matchMode?: string;
   error?: string;
 };
 
@@ -116,7 +116,7 @@ const inputStyle: React.CSSProperties = {
   background: surface.card,
 };
 
-const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_recommended_semantic_query";
+const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
 
 function loadStoredSemanticQuery(): string {
   if (typeof window === "undefined") return "";
@@ -127,15 +127,7 @@ function loadStoredSemanticQuery(): string {
   }
 }
 
-function ChipToggle({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+function ChipToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -185,6 +177,108 @@ export function buildRecommendedProspectCard(
   };
 }
 
+function JobResultsList({
+  jobs,
+  savedUrls,
+  savingKey,
+  onOpenJob,
+  onSaveJob,
+  setSavingKey,
+  emptyMessage,
+}: {
+  jobs: VectorMatchedJob[];
+  savedUrls: Set<string>;
+  savingKey: string | null;
+  onOpenJob: (job: VectorMatchedJob) => void;
+  onSaveJob: (job: VectorMatchedJob) => Promise<void>;
+  setSavingKey: (key: string | null) => void;
+  emptyMessage: string;
+}) {
+  const visibleJobs = jobs.filter((job) => {
+    const norm = normalizeJobUrl(job.url);
+    return !norm || !savedUrls.has(norm);
+  });
+
+  if (!visibleJobs.length) {
+    return (
+      <ScoutBox style={{ padding: 40, textAlign: "center" }}>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>{emptyMessage}</p>
+      </ScoutBox>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {visibleJobs.map((job) => {
+        const key = job.hirebaseId ?? job.url ?? `${job.companyName}-${job.title}`;
+        return (
+          <ScoutBox key={key} padding={18}>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpenJob(job)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpenJob(job);
+                }
+              }}
+              style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
+            >
+              <CompanyLogo name={job.companyName} website={job.url} size={44} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.title}</p>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                      {job.companyName}
+                      {job.location ? ` · ${job.location}` : ""}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontFamily: fontMono, fontSize: 22, fontWeight: 700, color: scoreColor(job.matchScore) }}>
+                      {job.matchScore}
+                    </div>
+                    <div style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{job.matchLabel}</div>
+                  </div>
+                </div>
+                <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontFamily: fontSans, fontSize: T.caption, color: color.ink, lineHeight: 1.5 }}>
+                  {job.matchReasons.slice(0, 2).map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>
+              <ScoutPrimaryBtn
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSavingKey(key);
+                  onSaveJob(job).finally(() => setSavingKey(null));
+                }}
+                disabled={savingKey === key}
+              >
+                {savingKey === key ? "Saving…" : "Save to pipeline"}
+              </ScoutPrimaryBtn>
+              {job.url && (
+                <a
+                  href={job.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
+                >
+                  Open posting ↗
+                </a>
+              )}
+            </div>
+          </ScoutBox>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PipelineRecommendedSection({
   pipelineCards,
   onOpenJob,
@@ -198,16 +292,18 @@ export function PipelineRecommendedSection({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadStoredSemanticQuery(),
   }));
-  const [showFilters, setShowFilters] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<VectorMatchedJob[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [matchMode, setMatchMode] = useState<"resume" | "role_match" | null>(null);
+
+  const [recommendedJobs, setRecommendedJobs] = useState<VectorMatchedJob[]>([]);
+  const [recommendedLoading, setRecommendedLoading] = useState(true);
+  const [recommendedError, setRecommendedError] = useState<string | null>(null);
+
+  const [searchJobs, setSearchJobs] = useState<VectorMatchedJob[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchScoped, setSearchScoped] = useState(true);
 
   const savedUrls = useMemo(() => {
     const set = new Set<string>();
@@ -219,54 +315,67 @@ export function PipelineRecommendedSection({
     return set;
   }, [pipelineCards]);
 
-  const visibleJobs = jobs.filter((job) => {
-    const norm = normalizeJobUrl(job.url);
-    return !norm || !savedUrls.has(norm);
-  });
-
-  const runSearch = useCallback(async (pageNum = 1, filtersForm = form) => {
-    setLoading(true);
-    setError(null);
+  const loadRecommended = useCallback(async () => {
+    setRecommendedLoading(true);
+    setRecommendedError(null);
     try {
-      const semanticQuery = filtersForm.semanticQuery.trim();
-      try {
-        if (semanticQuery) localStorage.setItem(SEMANTIC_QUERY_STORAGE_KEY, semanticQuery);
-        else localStorage.removeItem(SEMANTIC_QUERY_STORAGE_KEY);
-      } catch {
-        /* ignore storage errors */
+      const res = await fetch("/api/jobs/recommended");
+      const data = (await res.json()) as JobsApiResponse;
+      if (!res.ok) {
+        setRecommendedError(formatApiErrorMessage(data.error, "Could not load recommended jobs."));
+        setRecommendedJobs([]);
+      } else {
+        setRecommendedJobs(data.jobs ?? []);
       }
+    } catch {
+      setRecommendedError("Network error — try again.");
+      setRecommendedJobs([]);
+    } finally {
+      setRecommendedLoading(false);
+    }
+  }, []);
 
-      const res = await fetch("/api/jobs/vector-search", {
+  const runKeywordSearch = useCallback(async (filtersForm = form) => {
+    const semanticQuery = filtersForm.semanticQuery.trim();
+    if (!semanticQuery) {
+      setSearchError("Enter keywords to search.");
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      localStorage.setItem(SEMANTIC_QUERY_STORAGE_KEY, semanticQuery);
+    } catch {
+      /* ignore */
+    }
+
+    try {
+      const res = await fetch("/api/jobs/semantic-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formToFilters(filtersForm, pageNum)),
+        body: JSON.stringify(formToFilters(filtersForm, 1)),
       });
-      const data = (await res.json()) as SearchResponse;
+      const data = (await res.json()) as JobsApiResponse;
       if (!res.ok) {
-        setError(formatApiErrorMessage(data.error, "Could not load recommended jobs."));
-        setJobs([]);
-        setTotalCount(0);
+        setSearchError(formatApiErrorMessage(data.error, "Search failed."));
+        setSearchJobs([]);
       } else {
-        setJobs(data.jobs ?? []);
-        setTotalCount(data.totalCount ?? data.jobs?.length ?? 0);
-        setPage(data.page ?? pageNum);
-        setTotalPages(data.totalPages ?? 1);
-        setMatchMode(data.matchMode ?? null);
+        setSearchJobs(data.jobs ?? []);
+        setSearchScoped(data.matchMode !== "semantic_global");
       }
       setHasSearched(true);
     } catch {
-      setError("Network error — try again.");
-      setJobs([]);
+      setSearchError("Network error — try again.");
+      setSearchJobs([]);
     } finally {
-      setLoading(false);
+      setSearchLoading(false);
     }
   }, [form]);
 
   useEffect(() => {
-    runSearch(1);
-    // Initial load only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadRecommended();
+  }, [loadRecommended]);
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
@@ -278,40 +387,72 @@ export function PipelineRecommendedSection({
   return (
     <div>
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div>
             <ScoutLabel>Recommended for you</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles matched to your resume and target roles via Hirebase. When resume embedding is unavailable, we use the same role matching as your tracked companies.
+              Matching roles at your tracked companies — same results as Companies → Matching roles. Does not use resume embed.
+            </p>
+          </div>
+          <ScoutSecondaryBtn onClick={loadRecommended} disabled={recommendedLoading}>
+            {recommendedLoading ? "Loading…" : "Refresh"}
+          </ScoutSecondaryBtn>
+        </div>
+        {recommendedError && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{recommendedError}</p>
+        )}
+      </ScoutBox>
+
+      {recommendedLoading && (
+        <ScoutBox style={{ padding: 40, textAlign: "center", marginBottom: 24 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>Loading matching roles from your companies…</p>
+        </ScoutBox>
+      )}
+
+      {!recommendedLoading && (
+        <div style={{ marginBottom: 32 }}>
+          <JobResultsList
+            jobs={recommendedJobs}
+            savedUrls={savedUrls}
+            savingKey={savingKey}
+            onOpenJob={onOpenJob}
+            onSaveJob={onSaveJob}
+            setSavingKey={setSavingKey}
+            emptyMessage={
+              recommendedError
+                ? "Fix the issue above, then refresh."
+                : "No matching roles yet — track companies and refresh matching roles on the Companies page."
+            }
+          />
+        </div>
+      )}
+
+      <ScoutBox padding={20} style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+          <div>
+            <ScoutLabel>Search jobs</ScoutLabel>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
+              Keyword search across your tracked companies (not resume-based). Add filters to narrow results.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
               {showFilters ? "Hide filters" : "Filters"}
             </ScoutSecondaryBtn>
-            <ScoutPrimaryBtn onClick={() => runSearch(1)} disabled={loading}>
-              {loading ? "Searching…" : "Search"}
+            <ScoutPrimaryBtn onClick={() => runKeywordSearch()} disabled={searchLoading}>
+              {searchLoading ? "Searching…" : "Search"}
             </ScoutPrimaryBtn>
           </div>
         </div>
 
-        {matchMode === "role_match" && !error && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
-            Showing role matches from your target titles and tracked companies (same as Companies → Matching roles).
-          </p>
-        )}
-
-        <FilterField label="Your search focus">
+        <FilterField label="Search keywords">
           <textarea
             style={{ ...inputStyle, minHeight: 72, resize: "vertical", lineHeight: 1.5 }}
             value={form.semanticQuery}
             onChange={(e) => setForm((f) => ({ ...f, semanticQuery: e.target.value }))}
-            placeholder="Optional — e.g. remote corporate strategy roles at Series B startups"
+            placeholder="e.g. remote corporate strategy, B2B SaaS, healthcare"
             maxLength={400}
           />
-          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0", lineHeight: 1.45 }}>
-            Matches are based on your resume. This adds a natural-language filter on top. Up to {VECTOR_SEARCH_RESULTS_MAX} roles per search.
-          </p>
         </FilterField>
 
         {showFilters && (
@@ -322,18 +463,6 @@ export function PipelineRecommendedSection({
             <FilterField label="Keywords">
               <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="Python, B2B SaaS" />
             </FilterField>
-            <FilterField label="Company">
-              <input style={inputStyle} value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Stripe" />
-            </FilterField>
-            <FilterField label="Industries">
-              <input style={inputStyle} value={form.industries} onChange={(e) => setForm((f) => ({ ...f, industries: e.target.value }))} placeholder="Tech, Software & IT Services" />
-            </FilterField>
-            <FilterField label="Job categories">
-              <input style={inputStyle} value={form.jobCategories} onChange={(e) => setForm((f) => ({ ...f, jobCategories: e.target.value }))} placeholder="Engineering Jobs" />
-            </FilterField>
-            <FilterField label="Job board">
-              <input style={inputStyle} value={form.jobBoard} onChange={(e) => setForm((f) => ({ ...f, jobBoard: e.target.value }))} placeholder="Greenhouse" />
-            </FilterField>
             <FilterField label="City">
               <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} />
             </FilterField>
@@ -342,21 +471,6 @@ export function PipelineRecommendedSection({
             </FilterField>
             <FilterField label="Country">
               <input style={inputStyle} value={form.locationCountry} onChange={(e) => setForm((f) => ({ ...f, locationCountry: e.target.value }))} />
-            </FilterField>
-            <FilterField label="Posted after">
-              <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
-            </FilterField>
-            <FilterField label="Salary min (USD)">
-              <input style={inputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} />
-            </FilterField>
-            <FilterField label="Salary max (USD)">
-              <input style={inputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} />
-            </FilterField>
-            <FilterField label="Years exp (min)">
-              <input style={inputStyle} value={form.yearsFrom} onChange={(e) => setForm((f) => ({ ...f, yearsFrom: e.target.value }))} />
-            </FilterField>
-            <FilterField label="Years exp (max)">
-              <input style={inputStyle} value={form.yearsTo} onChange={(e) => setForm((f) => ({ ...f, yearsTo: e.target.value }))} />
             </FilterField>
             <div style={{ gridColumn: "1 / -1" }}>
               <FilterField label="Work arrangement">
@@ -387,111 +501,36 @@ export function PipelineRecommendedSection({
                   ))}
                 </div>
               </FilterField>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, color: color.ink, cursor: "pointer" }}>
-                <input type="checkbox" checked={form.visaSponsored} onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))} />
-                Visa sponsorship only
-              </label>
             </div>
           </div>
         )}
 
-        {error && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
+        {searchError && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{searchError}</p>
+        )}
+        {hasSearched && !searchError && searchScoped && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
+            Results are limited to your tracked companies.
+          </p>
         )}
       </ScoutBox>
 
-      {!hasSearched && loading && (
+      {searchLoading && (
         <ScoutBox style={{ padding: 40, textAlign: "center" }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>Finding roles that match your resume…</p>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>Searching…</p>
         </ScoutBox>
       )}
 
-      {hasSearched && !loading && visibleJobs.length === 0 && !error && (
-        <ScoutBox style={{ padding: 40, textAlign: "center" }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
-            No new recommendations — try adjusting filters or refresh after updating your resume.
-          </p>
-        </ScoutBox>
-      )}
-
-      {visibleJobs.length > 0 && (
-        <>
-          <div style={{ marginBottom: 12 }}>
-            <ScoutLabel>
-              {totalCount > visibleJobs.length ? `${visibleJobs.length} shown · ${totalCount} total matches` : `${visibleJobs.length} recommended`}
-            </ScoutLabel>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {visibleJobs.map((job) => {
-              const key = job.hirebaseId ?? job.url ?? `${job.companyName}-${job.title}`;
-              return (
-                <ScoutBox key={key} padding={18}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onOpenJob(job)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenJob(job); } }}
-                    style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
-                  >
-                    <CompanyLogo name={job.companyName} website={job.url} size={44} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.title}</p>
-                          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-                            {job.companyName}{job.location ? ` · ${job.location}` : ""}
-                          </p>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <div style={{ fontFamily: fontMono, fontSize: 22, fontWeight: 700, color: scoreColor(job.matchScore) }}>{job.matchScore}</div>
-                          <div style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{job.matchLabel}</div>
-                        </div>
-                      </div>
-                      <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontFamily: fontSans, fontSize: T.caption, color: color.ink, lineHeight: 1.5 }}>
-                        {job.matchReasons.slice(0, 2).map((r) => (
-                          <li key={r}>{r}</li>
-                        ))}
-                      </ul>
-                      <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: "8px 0 0" }}>
-                        Click for full details and match breakdown →
-                      </p>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>
-                    <ScoutPrimaryBtn
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSavingKey(key);
-                        onSaveJob(job).finally(() => setSavingKey(null));
-                      }}
-                      disabled={savingKey === key}
-                    >
-                      {savingKey === key ? "Saving…" : "Save to pipeline"}
-                    </ScoutPrimaryBtn>
-                    {job.url && (
-                      <a
-                        href={job.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
-                      >
-                        Open posting ↗
-                      </a>
-                    )}
-                  </div>
-                </ScoutBox>
-              );
-            })}
-          </div>
-          {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 20 }}>
-              <ScoutSecondaryBtn onClick={() => runSearch(page - 1)} disabled={loading || page <= 1}>Previous</ScoutSecondaryBtn>
-              <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, alignSelf: "center" }}>Page {page} / {totalPages}</span>
-              <ScoutSecondaryBtn onClick={() => runSearch(page + 1)} disabled={loading || page >= totalPages}>Next</ScoutSecondaryBtn>
-            </div>
-          )}
-        </>
+      {hasSearched && !searchLoading && (
+        <JobResultsList
+          jobs={searchJobs}
+          savedUrls={savedUrls}
+          savingKey={savingKey}
+          onOpenJob={onOpenJob}
+          onSaveJob={onSaveJob}
+          setSavingKey={setSavingKey}
+          emptyMessage="No jobs matched — try different keywords or track more companies."
+        />
       )}
     </div>
   );

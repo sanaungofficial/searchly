@@ -421,6 +421,7 @@ export async function fetchHirebaseMatchingJobs(input: {
   hirebaseSlug?: string | null;
   website?: string | null;
   jobTitles: string[];
+  extraKeywords?: string[];
   maxJobs?: number;
 }): Promise<{
   jobs: CachedJob[];
@@ -436,6 +437,12 @@ export async function fetchHirebaseMatchingJobs(input: {
   const maxJobs = Math.max(1, Math.min(input.maxJobs ?? 50, 100));
   let slug = input.hirebaseSlug?.trim() || (await resolveHirebaseCompanySlug(input.companyName, input.slugHint));
   const keywords = roleSearchKeywords(titles);
+  if (input.extraKeywords?.length) {
+    for (const kw of input.extraKeywords) {
+      const w = kw.trim().toLowerCase();
+      if (w.length >= 3 && !keywords.includes(w)) keywords.push(w);
+    }
+  }
 
   const baseSort = {
     page: 1,
@@ -572,6 +579,64 @@ export async function fetchHirebaseRoleMatchingJobs(input: {
     })
     .slice(0, limit);
 
+  const jobs = rawJobs.map(mapHirebaseJob);
+  const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
+
+  return {
+    jobs,
+    rawJobs,
+    companyNames,
+    totalCount: data.total_count ?? jobs.length,
+    page: data.page ?? page,
+    limit: data.limit ?? limit,
+    totalPages: data.total_pages ?? 1,
+  };
+}
+
+/** Natural-language job search (summary mode) — no resume artifact. */
+export async function fetchHirebaseSummarySearch(input: {
+  query: string;
+  filters: VectorSearchFilters;
+}): Promise<{
+  jobs: CachedJob[];
+  rawJobs: HirebaseJob[];
+  companyNames: string[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const query = trimVSearchQuery(input.query.trim());
+  if (!query) {
+    return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
+  }
+
+  const limit = Math.max(1, Math.min(input.filters.limit ?? 20, 20));
+  const page = Math.max(1, input.filters.page ?? 1);
+
+  const body: Record<string, unknown> = {
+    search_type: "summary",
+    query,
+    limit,
+    page,
+    accuracy: input.filters.accuracy ?? 0.35,
+    top_k: input.filters.topK ?? limit,
+  };
+
+  if (input.filters.offset != null) body.offset = input.filters.offset;
+  if (input.filters.minScore != null) body.score = input.filters.minScore;
+  if (input.filters.jobTitles?.length) {
+    assignIfPresent(body, "job_title", input.filters.jobTitles[0]?.trim());
+  }
+  assignJobSearchFilters(body, input.filters);
+
+  const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/vsearch", {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  const rawJobs = dedupeHirebaseJobs(data.jobs ?? []).slice(0, limit);
   const jobs = rawJobs.map(mapHirebaseJob);
   const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
 

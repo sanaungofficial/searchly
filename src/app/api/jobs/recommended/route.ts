@@ -9,8 +9,8 @@ import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
-/** @deprecated Use GET /api/jobs/recommended — kept for older clients. */
-export async function POST(request: Request) {
+/** Matching roles at tracked companies — same logic as Companies drawer. No resume embed. */
+export async function GET(request: Request) {
   if (!isHirebaseConfigured()) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
   }
@@ -20,6 +20,7 @@ export async function POST(request: Request) {
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
+
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
@@ -50,14 +51,17 @@ export async function POST(request: Request) {
           error:
             result.companyCount === 0
               ? "Track companies on the Companies page to see recommended roles."
-              : "No matching roles yet — refresh matching roles on your tracked companies.",
+              : "No matching roles yet — open each tracked company and refresh matching roles, or add target roles on Profile.",
           needsCompanies: result.companyCount === 0,
+          needsProfile: targetRoles.length === 0,
+          companyCount: result.companyCount,
         },
         { status: 404 },
       );
     }
 
     const jobs = await enrichRecommendedSources(result.sources, resumeText);
+
     return NextResponse.json({
       jobs,
       totalCount: jobs.length,
@@ -65,9 +69,15 @@ export async function POST(request: Request) {
       limit: VECTOR_SEARCH_RESULTS_MAX,
       totalPages: 1,
       matchMode: "company_roles" as const,
+      companyCount: result.companyCount,
+      trackedWithMatches: result.trackedWithMatches,
     });
   } catch (err) {
-    const msg = formatApiErrorMessage(err, "Vector search failed.");
+    const msg = formatApiErrorMessage(err, "Could not load recommended jobs.");
     return NextResponse.json({ error: msg }, { status: 502 });
   }
+}
+
+export async function POST(request: Request) {
+  return GET(request);
 }
