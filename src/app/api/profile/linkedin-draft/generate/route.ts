@@ -48,6 +48,7 @@ export async function POST() {
   const name = dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You";
   const targetRoles = dbUser.profile?.targetRoles ?? [];
   const sourceAssetId = primary?.id ?? null;
+  const existingDraft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
 
   let draft = null as ReturnType<typeof normalizeLinkedInDraft>;
   let provider: "claude" | "heuristic" = "heuristic";
@@ -89,6 +90,15 @@ export async function POST() {
       generatedAt: new Date().toISOString(),
     };
   }
+
+  draft = {
+    ...draft,
+    profilePhotoUrl:
+      existingDraft?.profilePhotoUrl ??
+      dbUser.avatarUrl ??
+      null,
+    coverPhotoUrl: existingDraft?.coverPhotoUrl ?? null,
+  };
 
   await prisma.profile.upsert({
     where: { userId: dbUser.id },
