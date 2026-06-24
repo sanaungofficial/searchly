@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { border, surface } from "@/lib/typography";
+import { border, surface, displayTitleStyle } from "@/lib/typography";
 
 type ScoutBoxProps = {
   children: ReactNode;
@@ -168,19 +168,7 @@ export function ScoutDisplayTitle({
   style?: CSSProperties;
 }) {
   return (
-    <h2
-      style={{
-        fontFamily: "var(--font-display)",
-        fontSize: size,
-        fontWeight: 500,
-        fontVariationSettings: '"opsz" 72, "WONK" 1',
-        color: "var(--scout-ink)",
-        margin: 0,
-        lineHeight: size >= 34 ? 0.94 : 1.12,
-        letterSpacing: size >= 34 ? "-0.035em" : "-0.015em",
-        ...style,
-      }}
-    >
+    <h2 style={displayTitleStyle(size, style)}>
       {children}
     </h2>
   );

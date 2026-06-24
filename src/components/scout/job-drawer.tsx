@@ -21,7 +21,7 @@ import { CreditsStatusBar } from "./credits-display";
 import { InsiderConnectionPanel } from "./insider-connection-panel";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
-import { fontSans, fontDisplay, fontMono, color, surface, border as B, type as T, drawerType as DT } from "@/lib/typography";
+import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
@@ -39,7 +39,6 @@ interface JobDrawerProps {
 type ScrollSection = "overview" | "company";
 
 const sans = fontSans;
-const serif = fontDisplay;
 const mono = fontMono;
 const line = B.line;
 const lineStrong = B.lineStrong;
@@ -321,7 +320,7 @@ function SectionTitle({ icon, children }: { icon?: React.ReactNode; children: Re
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
       {icon && <span style={{ color: mint, display: "flex" }}>{icon}</span>}
-      <h3 style={{ fontFamily: sans, fontSize: 18, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{children}</h3>
+      <h3 style={displayTitleStyle(18)}>{children}</h3>
     </div>
   );
 }
@@ -484,7 +483,7 @@ function AiToolCard({
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-        <p style={{ fontFamily: sans, fontSize: 16, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{title}</p>
+        <p style={displayTitleStyle(DT.title)}>{title}</p>
         {creditCost ? (
           <span style={{ fontFamily: sans, fontSize: 11, fontWeight: 600, color: "var(--scout-muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
             {creditCost} credit{creditCost !== 1 ? "s" : ""}
@@ -764,7 +763,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                       </p>
                     </div>
                   </div>
-                  <h2 style={{ fontFamily: serif, fontSize: 28, fontWeight: 500, fontVariationSettings: '"opsz" 72, "WONK" 1', color: color.ink, margin: "0 0 16px", lineHeight: 1.2 }}>
+                  <h2 style={displayTitleStyle(28, { margin: "0 0 16px", lineHeight: 1.2 })}>
                     {card.role}
                   </h2>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 24px" }}>
@@ -1060,7 +1059,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
 
             {/* AI tools */}
             <div>
-              <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: "#1A1A1A", margin: "0 0 14px", lineHeight: 1.3 }}>
+              <p style={displayTitleStyle(15, { margin: "0 0 14px", lineHeight: 1.3 })}>
                 Boost your interview chances
               </p>
               <CreditsStatusBar />

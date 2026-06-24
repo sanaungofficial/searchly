@@ -23,6 +23,7 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
   display: "swap",
+  axes: ["SOFT", "WONK", "opsz"],
 });
 
 const sourceSans = Source_Sans_3({
@@ -52,9 +53,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${fraunces.variable} ${cormorant.variable} ${playfair.variable}`}
+      suppressHydrationWarning
+    >
       <body
-        className={`${playfair.variable} ${cormorant.variable} ${fraunces.variable} ${sourceSans.variable} ${dmMono.variable} antialiased`}
+        className={`${sourceSans.variable} ${dmMono.variable} antialiased`}
         style={{ background: "#F7F5F2", fontFamily: "var(--font-ui)" }}
       >
         {children}

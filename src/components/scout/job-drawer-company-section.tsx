@@ -2,11 +2,10 @@
 
 import { CompanyLogo } from "@/components/scout/company-logo";
 import type { HirebaseCompanyProfileResponse } from "@/lib/hirebase-company-profile";
-import { fontSans, fontDisplay, border as B, surface, color } from "@/lib/typography";
+import { fontSans, border as B, surface, color, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox } from "./scout-box";
 
 const sans = fontSans;
-const serif = fontDisplay;
 const line = B.line;
 
 function formatEmployeeRange(min?: number | null, max?: number | null): string | null {
@@ -86,7 +85,7 @@ export function JobDrawerCompanySection({
           size={52}
         />
         <div style={{ minWidth: 0 }}>
-          <p style={{ fontFamily: serif, fontSize: 24, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>{companyName}</p>
+          <p style={displayTitleStyle(24)}>{companyName}</p>
           {location && (
             <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: "6px 0 0" }}>{location}</p>
           )}

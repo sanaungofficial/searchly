@@ -17,7 +17,7 @@ import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
-import { fontSans, fontMono, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
+import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 export type { DrawerTool };
 
@@ -792,10 +792,10 @@ function PipelineTab({
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 20 }}>
-            <span style={{ fontFamily: fontDisplay, fontSize: 48, fontWeight: 600, color: color.ink, lineHeight: 1 }}>
+            <span style={displayTitleStyle(48, { lineHeight: 1 })}>
               {activeCount}
             </span>
-            <span style={{ fontFamily: fontDisplay, fontSize: 22, color: color.muted }}>/ roles</span>
+            <span style={displayTitleStyle(22, { color: color.muted, lineHeight: 1.1 })}>/ roles</span>
           </div>
           {stageCounts.map(({ stage, count }, i) => (
             <PipelineStatBar
@@ -1015,17 +1015,7 @@ function PipelineTab({
                   >
                     <CompanyLogo name={c.company} website={url} size={40} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p
-                        style={{
-                          fontFamily: fontDisplay,
-                          fontSize: T.heading,
-                          fontWeight: 500,
-                          fontVariationSettings: '"opsz" 72, "WONK" 1',
-                          color: color.ink,
-                          margin: "0 0 4px",
-                          lineHeight: 1.15,
-                        }}
-                      >
+                      <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>
                         {c.role}
                       </p>
                       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
