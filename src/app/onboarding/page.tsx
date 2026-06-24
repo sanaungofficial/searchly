@@ -13,7 +13,6 @@ import {
   ScreenTransition,
   ScreenSetup,
   DemoNextButton,
-  ROLE_BUCKETS,
   type Screen,
   type ReadBackData,
   type TransitionJobAnalysis,
@@ -84,8 +83,8 @@ export default function OnboardingPage() {
   const [resumeUploaded, setResumeUploaded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [liInput, setLiInput] = useState("");
-  const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
+  const [readbackRoleSuggestions, setReadbackRoleSuggestions] = useState<string[]>([]);
   const [careerMotivation, setCareerMotivation] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
   const [currentSalary, setCurrentSalary] = useState("");
@@ -185,26 +184,37 @@ export default function OnboardingPage() {
 
   const onSkipProfile = useCallback(() => goTo(2), [goTo]);
 
-  const onToggleBucket = useCallback((id: string) => {
-    const newBuckets = selectedBuckets.includes(id)
-      ? selectedBuckets.filter((b) => b !== id)
-      : [...selectedBuckets, id];
-    setSelectedBuckets(newBuckets);
-    const validTitles = new Set(
-      ROLE_BUCKETS.filter((b) => newBuckets.includes(b.id)).flatMap((b) => b.titles)
-    );
-    setSelectedTitles((prev) => prev.filter((t) => validTitles.has(t)));
-  }, [selectedBuckets]);
+  useEffect(() => {
+    if (screen !== 2 || readbackRoleSuggestions.length > 0) return;
+    fetch("/api/ai/readback")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data?.targetRoles)) {
+          setReadbackRoleSuggestions(
+            data.targetRoles
+              .map((r: { role?: string }) => r.role?.trim())
+              .filter(Boolean) as string[]
+          );
+        }
+      })
+      .catch(() => {});
+  }, [screen, readbackRoleSuggestions.length]);
 
-  const onToggleTitle = useCallback((title: string) => {
+  const onAddTargetRole = useCallback((title: string) => {
     setSelectedTitles((prev) => {
-      if (prev.includes(title)) return prev.filter((t) => t !== title);
-      if (prev.length >= 3) return prev;
+      if (prev.includes(title) || prev.length >= 3) return prev;
       return [...prev, title];
     });
   }, []);
 
-  const onReadBackConfirm = useCallback((_data: ReadBackData | null) => {
+  const onRemoveTargetRole = useCallback((title: string) => {
+    setSelectedTitles((prev) => prev.filter((t) => t !== title));
+  }, []);
+
+  const onReadBackConfirm = useCallback((data: ReadBackData | null) => {
+    if (data?.targetRoles?.length) {
+      setReadbackRoleSuggestions(data.targetRoles.map((r) => r.role).filter(Boolean));
+    }
     goTo(2);
   }, [goTo]);
 
@@ -494,10 +504,10 @@ export default function OnboardingPage() {
           )}
           {screen === 2 && (
             <ScreenTargetRoles
-              selectedBuckets={selectedBuckets}
               selectedTitles={selectedTitles}
-              onToggleBucket={onToggleBucket}
-              onToggleTitle={onToggleTitle}
+              suggestedTitles={readbackRoleSuggestions}
+              onAddTitle={onAddTargetRole}
+              onRemoveTitle={onRemoveTargetRole}
               onContinue={onRolesContinue}
               onSkip={onRolesSkip}
             />
