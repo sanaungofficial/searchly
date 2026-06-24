@@ -69,6 +69,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Profile",
     variables: ["resumeSlice", "linkedinUrl", "headline", "skills", "targetRoles"],
   },
+  LINKEDIN_DRAFT: {
+    label: "LinkedIn Profile Draft",
+    description: "Transforms resume data into a LinkedIn-shaped profile with headline, About, and paragraph experience.",
+    category: "Profile",
+    variables: ["name", "targetRoles", "resumeJson"],
+  },
   RESUME_TAILOR: {
     label: "Resume Tailor",
     description: "Parses and tailors a resume for a specific job. Returns JSON sections.",
@@ -440,6 +446,54 @@ Rules:
 - Include all jobs, education entries, and certifications
 - Extract every skill mentioned; group into skillGroups when the resume uses categories
 - Return ONLY the JSON object, nothing else`,
+
+  LINKEDIN_DRAFT: `You are a LinkedIn profile strategist. Transform the resume below into a LinkedIn profile draft. This is NOT a resume — write for LinkedIn discovery and recruiters.
+
+Candidate name: {{name}}
+Target roles: {{targetRoles}}
+
+Resume data (JSON):
+{{resumeJson}}
+
+Return ONLY valid JSON in this exact shape:
+{
+  "headline": "max 120 chars — keyword-rich, pipe-separated, not just job title",
+  "about": "max 2600 chars — professional voice, strong hook in first 2 lines, themes, soft CTA. Use paragraph breaks (\\n\\n). NOT resume bullets pasted verbatim.",
+  "experience": [
+    {
+      "id": "li_exp_0",
+      "title": "job title",
+      "company": "company",
+      "location": "city or remote or null",
+      "from": "start date string",
+      "to": "end date or Present",
+      "description": "2-4 short paragraphs describing impact — convert resume bullets into LinkedIn prose. Use \\n\\n between paragraphs.",
+      "resumeSourceId": "exp_0 or null"
+    }
+  ],
+  "education": [
+    {
+      "id": "li_edu_0",
+      "school": "institution",
+      "degree": "degree name",
+      "field": "field or null",
+      "from": "start or null",
+      "to": "end or null"
+    }
+  ],
+  "skills": ["up to 50 skills ordered by recruiter relevance for target roles"],
+  "featured": [
+    { "id": "feat_0", "label": "Portfolio", "url": "https://..." }
+  ]
+}
+
+Rules:
+- Include ALL jobs and education from the resume
+- Experience descriptions must be paragraphs, not bullet lists
+- Headline must be ≤120 characters
+- Skills: max 50, most relevant first
+- featured: only include if portfolio/website exists in resume data
+- Return ONLY the JSON object`,
 
   RESUME_ASSET_ANALYSIS: `You are a senior career coach reviewing a resume. Analyze the resume below and return ONLY valid JSON:
 

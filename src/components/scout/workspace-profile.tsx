@@ -17,6 +17,7 @@ interface AISuggestion {
 }
 import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
+import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { CreditsStatusBar } from "./credits-display";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
@@ -1788,7 +1789,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type PageTab = "dreamrole" | "about" | "learning" | "assets" | "preferences";
+type PageTab = "dreamrole" | "about" | "learning" | "assets" | "preferences" | "linkedin";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "skills"];
@@ -1806,6 +1807,7 @@ export function WorkspaceProfile() {
     pathname === "/profile/learning-path" ? "learning" :
     pathname === "/profile/assets" ? "assets" :
     pathname === "/profile/preferences" ? "preferences" :
+    pathname === "/profile/linkedin" ? "linkedin" :
     "about";
   const setPage = (tab: PageTab) => {
     if (tab === "about") router.push("/profile");
@@ -1813,6 +1815,7 @@ export function WorkspaceProfile() {
     else if (tab === "learning") router.push("/profile/learning-path");
     else if (tab === "assets") router.push("/profile/assets");
     else if (tab === "preferences") router.push("/profile/preferences");
+    else if (tab === "linkedin") router.push("/profile/linkedin");
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2052,6 +2055,7 @@ export function WorkspaceProfile() {
 
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
+    { id: "linkedin", label: "LinkedIn" },
     { id: "dreamrole", label: isMobile ? "Roles" : "Target Roles" },
     { id: "learning", label: "Upskilling" },
     { id: "assets", label: "Assets" },
@@ -2300,6 +2304,10 @@ export function WorkspaceProfile() {
             )}
             <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={setEditorAssetId} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
           </>
+        )}
+
+        {page === "linkedin" && (
+          <ProfileLinkedInEditor isMobile={isMobile} />
         )}
         </div>
       </div>
