@@ -322,6 +322,46 @@ model PromptConfig {
   updatedBy      String?
 }
 
+/// Persisted Big Biller session (cookies + token) after a successful MFA login.
+model TopEchelonSession {
+  id           String    @id @default("default")
+  cookies      Json
+  tokenPayload Json?
+  lastSyncAt   DateTime?
+  lastSyncError String?
+  updatedAt    DateTime  @updatedAt
+}
+
+/// Network-shared jobs imported from Top Echelon Big Biller.
+model NetworkJob {
+  id              String    @id @default(cuid())
+  externalId      String    @unique
+  networkId       String?
+  positionTitle   String
+  companyName     String?
+  city            String?
+  state           String?
+  location        String?
+  minimumCompensation Int?
+  maximumCompensation Int?
+  fee             String?
+  feeType         String?
+  jobType         String?
+  remoteOption    String?
+  description     String?
+  networkStatus   String?
+  recruiterName   String?
+  recruiterId     String?
+  sharedAt        DateTime?
+  raw             Json
+  syncedAt        DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([sharedAt])
+  @@index([networkStatus])
+}
+
 enum PlanCreditFeature {
   MATCH
   TAILOR
