@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, Cormorant_Garamond, Fraunces, Source_Sans_3, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { PartneroScript } from "@/components/partnero-script";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -58,6 +59,7 @@ export default function RootLayout({
         style={{ background: "#F7F5F2", fontFamily: "var(--font-ui)" }}
       >
         {children}
+        <PartneroScript />
         <Toaster />
       </body>
     </html>

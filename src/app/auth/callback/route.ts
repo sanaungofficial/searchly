@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
 import { attachReferrer } from "@/lib/referrals";
+import { ensurePartneroCustomer, partneroEnabled } from "@/lib/partnero";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -49,9 +50,37 @@ export async function GET(request: Request) {
     if (!existing) {
       const cookieStore = await cookies();
       const refCode = cookieStore.get("kimchi_ref")?.value;
+      const partneroRef = cookieStore.get("partnero_referral")?.value;
+
+      let referringKey: string | null = partneroRef ?? null;
+      if (!referringKey && refCode) {
+        const referrer = await prisma.user.findFirst({
+          where: { OR: [{ referralCode: refCode }, { id: refCode }] },
+          select: { id: true },
+        });
+        referringKey = referrer?.id ?? null;
+      }
+
+      if (partneroEnabled()) {
+        await ensurePartneroCustomer({
+          userId: created.id,
+          email: user.email,
+          name,
+          referringCustomerKey: referringKey,
+        }).catch((e) => console.error("[auth/callback] Partnero customer", e));
+      }
+
       if (refCode) {
         await attachReferrer(created.id, refCode).catch(() => {});
+      } else if (referringKey) {
+        await attachReferrer(created.id, referringKey).catch(() => {});
       }
+    } else if (partneroEnabled()) {
+      await ensurePartneroCustomer({
+        userId: created.id,
+        email: user.email,
+        name,
+      }).catch((e) => console.error("[auth/callback] Partnero customer sync", e));
     }
     // Send welcome email only on first sign-in
     if (!existing && process.env.RESEND_API_KEY) {

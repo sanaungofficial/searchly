@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getReferralStats, referralLink, completeReferral } from "@/lib/referrals";
+import { getReferralStats, completeReferral } from "@/lib/referrals";
 
 async function getDbUser() {
   const cookieStore = await cookies();
@@ -26,10 +26,7 @@ export async function GET() {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const stats = await getReferralStats(dbUser.id);
-  return NextResponse.json({
-    ...stats,
-    link: referralLink(stats.code),
-  });
+  return NextResponse.json(stats);
 }
 
 export async function POST(req: Request) {
