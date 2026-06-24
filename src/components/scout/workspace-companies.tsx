@@ -555,9 +555,9 @@ function CompanyDrawer({
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <button onClick={handleScan} disabled={scanning || !canScan} style={{ background: scanning || !canScan ? "#f3f4f6" : "#1a1a1a", color: scanning || !canScan ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 14, cursor: scanning || !canScan ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)", fontWeight: 500 }}>
+              <ScoutPrimaryBtn onClick={handleScan} disabled={scanning || !canScan}>
                 {scanning ? "Scanning…" : jobs.length > 0 ? "↻ Refresh matches" : "Find matching roles"}
-              </button>
+              </ScoutPrimaryBtn>
               {company.lastJobsFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Last scanned {timeAgo(company.lastJobsFetchedAt)}</span>}
             </div>
             {scanError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginBottom: 8, lineHeight: 1.4 }}>{scanError}</div>}
