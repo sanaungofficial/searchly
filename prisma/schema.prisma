@@ -104,6 +104,10 @@ model Profile {
   linkedInDraftUpdatedAt     DateTime?
   linkedInDraftSourceAssetId String?
 
+  roleAnalyses    Json?
+  skillGoals      Json?
+  upskillProgress Json?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
+import { normalizeRoleAnalysesMap } from "@/lib/role-gap";
+import { normalizeSkillGoals, normalizeUpskillProgress } from "@/lib/upskill-programs";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 
@@ -31,6 +33,9 @@ export async function GET() {
       careerMotivation: profile?.careerMotivation || null,
       jobTimeline: profile?.jobTimeline || null,
       priorities: profile?.priorities || [],
+      roleAnalyses: normalizeRoleAnalysesMap(profile?.roleAnalyses),
+      skillGoals: normalizeSkillGoals(profile?.skillGoals),
+      upskillProgress: normalizeUpskillProgress(profile?.upskillProgress),
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
         : undefined,
@@ -46,7 +51,7 @@ export async function PATCH(request: Request) {
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution } = body;
+  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress } = body;
 
   if (name !== undefined) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name } });
@@ -64,6 +69,9 @@ export async function PATCH(request: Request) {
   if (careerMotivation !== undefined) profileUpdate.careerMotivation = careerMotivation;
   if (jobTimeline !== undefined) profileUpdate.jobTimeline = jobTimeline;
   if (attribution !== undefined) profileUpdate.attribution = attribution;
+  if (roleAnalyses !== undefined) profileUpdate.roleAnalyses = roleAnalyses;
+  if (skillGoals !== undefined) profileUpdate.skillGoals = skillGoals;
+  if (upskillProgress !== undefined) profileUpdate.upskillProgress = upskillProgress;
 
   if (Object.keys(profileUpdate).length > 0) {
     await prisma.profile.upsert({
