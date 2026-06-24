@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { JobBoardId } from "@/lib/job-board-search";
 import { buildJobBoardLinks } from "@/lib/job-board-search";
 import {
   mergeRoleSuggestions,
@@ -13,6 +14,8 @@ import {
   CheckCircleSmall,
   CheckCircleTiny,
   LinkedInIcon,
+  IndeedIcon,
+  GoogleIcon,
   ArrowRightIcon,
   ArrowRightSmall,
   ClockIcon,
@@ -1056,7 +1059,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
             >
-              Refine this
+              Re-upload resume
             </button>
           </div>
           <button type="button" onClick={onSkip} style={ONBOARDING_SKIP_LINK}>
@@ -1457,11 +1460,13 @@ function TargetRoleAutocomplete({
   suggestedTitles,
   onAddTitle,
   onRemoveTitle,
+  onDropdownOpenChange,
 }: {
   selectedTitles: string[];
   suggestedTitles: string[];
   onAddTitle: (title: string) => void;
   onRemoveTitle: (title: string) => void;
+  onDropdownOpenChange?: (open: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -1482,6 +1487,10 @@ function TargetRoleAutocomplete({
   useEffect(() => {
     setHighlight(0);
   }, [query, dropdownOptions.length]);
+
+  useEffect(() => {
+    onDropdownOpenChange?.(open && dropdownOptions.length > 0);
+  }, [open, dropdownOptions.length, onDropdownOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -1716,6 +1725,7 @@ export function ScreenTargetRoles({
   onSkip,
 }: TargetRolesProps) {
   const canContinue = selectedTitles.length > 0;
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
@@ -1724,13 +1734,28 @@ export function ScreenTargetRoles({
         body="Search and pick up to 3 titles. We'll use these for job search, fit scoring, and your pipeline."
       />
 
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
+      <div
+        className="anim-fade-up"
+        style={{
+          ...ONBOARDING_CARD,
+          animationDelay: "0.2s",
+          position: "relative",
+          zIndex: dropdownOpen ? 30 : undefined,
+        }}
+      >
         <TargetRoleAutocomplete
           selectedTitles={selectedTitles}
           suggestedTitles={suggestedTitles}
           onAddTitle={onAddTitle}
           onRemoveTitle={onRemoveTitle}
+          onDropdownOpenChange={setDropdownOpen}
         />
+
+        {!canContinue && (
+          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 16 }}>
+            Skip for now
+          </button>
+        )}
       </div>
 
       {canContinue && (
@@ -1743,14 +1768,6 @@ export function ScreenTargetRoles({
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Continue →
-          </button>
-        </div>
-      )}
-
-      {!canContinue && (
-        <div className="anim-fade-up" style={ONBOARDING_CARD}>
-          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
-            Skip for now
           </button>
         </div>
       )}
@@ -2121,17 +2138,23 @@ interface TransitionProps {
   match: TransitionJobMatch | null;
 }
 
-function JobBoardShortcutButton({ label, url }: { label: string; url: string }) {
+function matchArticle(label: string): "a" | "an" {
+  return /^[aeiou]/i.test(label.trim()) ? "an" : "a";
+}
+
+function JobBoardShortcutButton({ id, label, url }: { id: JobBoardId; label: string; url: string }) {
+  const Icon = id === "linkedin" ? LinkedInIcon : id === "indeed" ? IndeedIcon : GoogleIcon;
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
+      aria-label={`Search ${label}`}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "10px 16px",
+        gap: 8,
+        padding: "10px 14px",
         background: ONBOARDING_FIELD_BG,
         border: ONBOARDING_FIELD_BORDER,
         borderRadius: 8,
@@ -2143,6 +2166,7 @@ function JobBoardShortcutButton({ label, url }: { label: string; url: string }) 
         cursor: "pointer",
       }}
     >
+      <Icon style={{ flexShrink: 0 }} />
       {label}
     </a>
   );
@@ -2198,7 +2222,7 @@ export function ScreenTransition({
           interviews.
         </h2>
         <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(1rem, 2.5vw, 1.125rem)", maxWidth: 440, margin: 0, color: ONBOARDING_TEXT_SECONDARY }}>
-          Paste a job you&apos;re considering. Kimchi will read the listing and score your fit.
+          Paste one job listing URL. Kimchi reads the posting and scores how well your resume fits.
         </p>
       </div>
 
@@ -2258,12 +2282,13 @@ export function ScreenTransition({
         {jobBoardLinks.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.55, marginTop: 0, marginBottom: 10 }}>
-              Need inspiration? Search for{" "}
-              <span style={{ fontWeight: 600, color: ONBOARDING_TEXT }}>{primarySearchRole}</span> on:
+              Browse openings for{" "}
+              <span style={{ fontWeight: 600, color: ONBOARDING_TEXT }}>{primarySearchRole}</span>
+              , then paste one listing URL below:
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {jobBoardLinks.map((link) => (
-                <JobBoardShortcutButton key={link.id} label={link.label} url={link.url} />
+                <JobBoardShortcutButton key={link.id} id={link.id} label={link.label} url={link.url} />
               ))}
             </div>
           </div>
@@ -2273,7 +2298,7 @@ export function ScreenTransition({
           <input
             type="url"
             autoFocus
-            placeholder="Paste a job listing URL…"
+            placeholder="Paste a job listing URL (not a search page)…"
             value={jobUrl}
             onChange={(e) => onJobUrlChange(e.target.value)}
             onKeyDown={(e) => {
@@ -2308,7 +2333,12 @@ export function ScreenTransition({
                 cursor: canAnalyze ? "pointer" : "not-allowed",
               }}
             >
-              {loading ? "Reading listing…" : "Analyze this job →"}
+              {loading ? "Reading listing…" : "Read listing & score fit →"}
+            </button>
+          )}
+          {!analysis && !loading && (
+            <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 4 }}>
+              Skip — finish without a job →
             </button>
           )}
         </div>
@@ -2354,28 +2384,56 @@ export function ScreenTransition({
               border: ONBOARDING_FIELD_BORDER,
             }}
           >
-            <p
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#1A1A1A",
-                marginBottom: 4,
-              }}
-            >
-              {analysis.company ?? "Company"}
-            </p>
-            <p
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 14,
-                fontWeight: 400,
-                color: "#52493F",
-                marginBottom: 10,
-              }}
-            >
-              {analysis.role ?? "Role"}
-            </p>
+            {(!analysis.company || !analysis.role) && (
+              <p
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  color: "#9A6B2E",
+                  lineHeight: 1.55,
+                  marginTop: 0,
+                  marginBottom: 14,
+                  padding: "10px 12px",
+                  background: "rgba(196,168,106,0.12)",
+                  borderRadius: 8,
+                }}
+              >
+                We couldn&apos;t pull the company or job title from that link. Open one job from the boards above and paste its direct listing URL (e.g. linkedin.com/jobs/view/…).
+              </p>
+            )}
+
+            {(analysis.company || analysis.role) && (
+              <>
+                {analysis.company && (
+                  <p
+                    style={{
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: "#1A1A1A",
+                      marginBottom: 4,
+                      marginTop: 0,
+                    }}
+                  >
+                    {analysis.company}
+                  </p>
+                )}
+                {analysis.role && (
+                  <p
+                    style={{
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 14,
+                      fontWeight: 400,
+                      color: "#52493F",
+                      marginBottom: 10,
+                      marginTop: 0,
+                    }}
+                  >
+                    {analysis.role}
+                  </p>
+                )}
+              </>
+            )}
             {(analysis.location || analysis.salary) && (
               <p
                 style={{
@@ -2390,7 +2448,7 @@ export function ScreenTransition({
               </p>
             )}
 
-            {match && (
+            {match && analysis.role && (
               <div
                 style={{
                   display: "flex",
@@ -2415,8 +2473,8 @@ export function ScreenTransition({
                       lineHeight: 1.35,
                     }}
                   >
-                    Your resume is a{" "}
-                    <span style={{ color: scoreColor }}>{match.scoreLabel}</span> match
+                    You&apos;re {matchArticle(match.scoreLabel)} {match.scoreLabel} match for{" "}
+                    <span style={{ color: scoreColor }}>{analysis.role}</span>
                   </p>
                   {match.score < 6 ? (
                     <p
@@ -2475,6 +2533,20 @@ export function ScreenTransition({
               </div>
             )}
 
+            {match && !analysis.role && (
+              <p
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  color: ONBOARDING_TEXT_SECONDARY,
+                  lineHeight: 1.5,
+                  marginBottom: 14,
+                }}
+              >
+                We found listing text but need a direct job URL before we can show a fit score for a specific role.
+              </p>
+            )}
+
             {matchError && !match && (
               <p
                 style={{
@@ -2491,37 +2563,28 @@ export function ScreenTransition({
 
             {analysis && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-                <button
-                  type="button"
-                  className="onboarding-cta"
-                  onClick={onFinishWithJob}
-                  style={PRIMARY_CTA}
-                >
-                  {match ? "Finish setup — see my resume match →" : "Finish setup with this job →"}
-                </button>
-                {match && (
+                {analysis.role && (
+                  <button
+                    type="button"
+                    className="onboarding-cta"
+                    onClick={onFinishWithJob}
+                    style={PRIMARY_CTA}
+                  >
+                    {match ? "Save job & open my resume →" : "Save job & continue →"}
+                  </button>
+                )}
+                {match && analysis.role && (
                   <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.5, margin: 0, textAlign: "center" }}>
-                    We&apos;ll save this job to Pipeline and open your resume with this match score.
+                    We&apos;ll add this to Pipeline and open your resume with this match score.
                   </p>
                 )}
+                <button type="button" onClick={onFinish} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 4 }}>
+                  {analysis.role ? "Continue without saving this job →" : "Finish setup without this job →"}
+                </button>
               </div>
             )}
           </div>
         )}
-      </div>
-
-      <div className="anim-fade-up" style={ONBOARDING_CARD}>
-        <button
-          type="button"
-          className="onboarding-cta"
-          onClick={onFinish}
-          style={{ ...PRIMARY_CTA, width: "100%" }}
-        >
-          {analysis ? "Finish without saving this job →" : "Finish setup →"}
-        </button>
-        <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 12 }}>
-          Skip for now — finish with what I&apos;ve added
-        </button>
       </div>
     </div>
   );
