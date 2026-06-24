@@ -67,7 +67,7 @@ export function WorkspaceNetwork() {
         <div
           style={{
             background: "#FFFFFF",
-            borderRadius: 10,
+            borderRadius: 0,
             padding: "14px 18px",
             marginBottom: 16,
             border: "1px solid rgba(0,0,0,0.06)",
@@ -103,7 +103,7 @@ export function WorkspaceNetwork() {
             style={{
               width: 44,
               height: 24,
-              borderRadius: 100,
+              borderRadius: 0,
               background: hiveMindOn ? "#4A8B6A" : "rgba(0,0,0,0.12)",
               border: "none",
               cursor: "pointer",
@@ -140,7 +140,7 @@ export function WorkspaceNetwork() {
                   background: active ? "#1A3A2F" : "rgba(0,0,0,0.05)",
                   color: active ? "#E8D5A3" : "#52493F",
                   border: "none",
-                  borderRadius: 100,
+                  borderRadius: 0,
                   fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 500,
@@ -172,7 +172,7 @@ export function WorkspaceNetwork() {
                 key={p.id}
                 style={{
                   background: "#FFFFFF",
-                  borderRadius: 10,
+                  borderRadius: 0,
                   padding: "16px 18px",
                   border: "1px solid rgba(0,0,0,0.06)",
                 }}
@@ -218,7 +218,7 @@ export function WorkspaceNetwork() {
                           padding: "1px 7px",
                           background: `${degreeColor}15`,
                           color: degreeColor,
-                          borderRadius: 100,
+                          borderRadius: 0,
                           fontFamily: "var(--font-ui)",
                           fontSize: 12,
                           fontWeight: 600,
@@ -241,7 +241,7 @@ export function WorkspaceNetwork() {
                     style={{
                       padding: "3px 8px",
                       background: warmthBg,
-                      borderRadius: 100,
+                      borderRadius: 0,
                       display: "flex",
                       alignItems: "center",
                       gap: 4,

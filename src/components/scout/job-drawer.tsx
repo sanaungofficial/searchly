@@ -165,7 +165,7 @@ function CompanyTrackPanel({
               gap: 6,
               padding: "6px 12px",
               background: mintLight,
-              borderRadius: 20,
+              borderRadius: 0,
               marginBottom: 12,
             }}
           >
@@ -212,7 +212,7 @@ function CompanyTrackPanel({
                 background: saving ? "rgba(26,58,47,0.35)" : color.forest,
                 color: "#FFF",
                 border: "none",
-                borderRadius: 10,
+                borderRadius: 0,
                 fontFamily: sans,
                 fontSize: 14,
                 fontWeight: 600,
@@ -231,7 +231,7 @@ function CompanyTrackPanel({
                   background: "#FFF",
                   color: "#1A3A2F",
                   border: "1px solid rgba(0,0,0,0.12)",
-                  borderRadius: 10,
+                  borderRadius: 0,
                   fontFamily: sans,
                   fontSize: 14,
                   fontWeight: 600,
@@ -338,8 +338,8 @@ function MatchBar({ label, pct }: { label: string; pct: number }) {
         <span style={{ fontFamily: sans, fontSize: 13, color: "#5C534A" }}>{label}</span>
         <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 600, color: mint }}>{pct}%</span>
       </div>
-      <div style={{ height: 6, borderRadius: 100, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: mint, borderRadius: 100 }} />
+      <div style={{ height: 6, borderRadius: 0, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: mint, borderRadius: 0 }} />
       </div>
     </div>
   );
@@ -429,7 +429,7 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
         {onRunMatch && (
           <button
             onClick={onRunMatch}
-            style={{ width: "100%", padding: "11px 14px", background: color.forest, color: "#FFF", border: "none", borderRadius: 10, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            style={{ width: "100%", padding: "11px 14px", background: color.forest, color: "#FFF", border: "none", borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
             Analyze match
           </button>
@@ -808,7 +808,7 @@ export function JobDrawer({
                   {tags.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
                       {tags.map((t, i) => (
-                        <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 100, fontFamily: sans, fontSize: 13, fontWeight: 500, color: "#2A4A3A" }}>
+                        <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 0, fontFamily: sans, fontSize: 13, fontWeight: 500, color: "#2A4A3A" }}>
                           {t}
                         </span>
                       ))}
@@ -838,7 +838,7 @@ export function JobDrawer({
                             padding: "6px 13px",
                             background: card.fit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
                             border: card.fit >= 70 ? "1px solid rgba(74,139,106,0.25)" : line,
-                            borderRadius: 100,
+                            borderRadius: 0,
                             fontFamily: sans,
                             fontSize: 13,
                             fontWeight: 500,
@@ -897,7 +897,7 @@ export function JobDrawer({
                   <SectionTitle>Fit analysis</SectionTitle>
                   <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 12 }}>{job.fitSummary}</p>
                   {job.fitWorks.map((w, i) => (
-                    <div key={i} style={{ padding: "10px 12px", background: mintLight, borderRadius: 8, marginBottom: 8, fontSize: 14 }}>✓ {w}</div>
+                    <div key={i} style={{ padding: "10px 12px", background: mintLight, borderRadius: 0, marginBottom: 8, fontSize: 14 }}>✓ {w}</div>
                   ))}
                 </div>
               )}
@@ -993,7 +993,7 @@ export function JobDrawer({
                 <>
                   {existingPipelineCardId != null ? (
                     <>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: 20, marginBottom: 12 }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: 0, marginBottom: 12 }}>
                         <span style={{ fontSize: 12, color: mint }}>✓</span>
                         <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#2A4A3A" }}>Already in your pipeline</span>
                       </div>
@@ -1024,7 +1024,7 @@ export function JobDrawer({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
                 <span style={{
                   padding: "5px 12px",
-                  borderRadius: 100,
+                  borderRadius: 0,
                   background: `${STAGE_COLORS[card.stage]}18`,
                   color: STAGE_COLORS[card.stage],
                   fontFamily: sans,

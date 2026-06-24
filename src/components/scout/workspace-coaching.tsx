@@ -181,7 +181,7 @@ function MyCoachTab({ featured, loading, isPro, onSubscribe }: { featured: Coach
   }
   if (!featured) {
     return (
-      <div style={{ background: "#fff", borderRadius: 10, padding: 24, border: "1px solid rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#fff", borderRadius: 0, padding: 24, border: "1px solid rgba(0,0,0,0.06)" }}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>
           You haven&apos;t been matched with a coach yet. Browse the directory to find one.
         </p>
@@ -194,7 +194,7 @@ function MyCoachTab({ featured, loading, isPro, onSubscribe }: { featured: Coach
       <div
         style={{
           background: "#FFFFFF",
-          borderRadius: 10,
+          borderRadius: 0,
           padding: 24,
           border: "1px solid rgba(0,0,0,0.06)",
           marginBottom: 14,
@@ -236,7 +236,7 @@ function MyCoachTab({ featured, loading, isPro, onSubscribe }: { featured: Coach
         {featured.specialties.length > 0 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
             {featured.specialties.map((s) => (
-              <span key={s} style={{ padding: "5px 12px", background: "rgba(26,58,47,0.06)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F" }}>
+              <span key={s} style={{ padding: "5px 12px", background: "rgba(26,58,47,0.06)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F" }}>
                 {s}
               </span>
             ))}
@@ -261,7 +261,7 @@ function MyCoachTab({ featured, loading, isPro, onSubscribe }: { featured: Coach
         </div>
       </div>
 
-      <div style={{ background: "#FFFFFF", borderRadius: 10, padding: "18px 24px", border: "1px solid rgba(0,0,0,0.06)" }}>
+      <div style={{ background: "#FFFFFF", borderRadius: 0, padding: "18px 24px", border: "1px solid rgba(0,0,0,0.06)" }}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
           Upcoming sessions
         </p>
@@ -348,7 +348,7 @@ function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coa
               key={c.id}
               style={{
                 background: "#FFFFFF",
-                borderRadius: 10,
+                borderRadius: 0,
                 padding: "18px 22px",
                 border: `1px solid ${c.featured ? "rgba(26,58,47,0.25)" : "rgba(0,0,0,0.06)"}`,
                 display: "flex",
@@ -363,7 +363,7 @@ function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coa
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>
                       {c.displayName}{" "}
                       {c.featured && (
-                        <span style={{ marginLeft: 6, padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", fontWeight: 600 }}>
+                        <span style={{ marginLeft: 6, padding: "1px 7px", background: "rgba(196,168,106,0.15)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", fontWeight: 600 }}>
                           Featured
                         </span>
                       )}
@@ -396,7 +396,7 @@ function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coa
                 {c.specialties.length > 0 && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                     {c.specialties.map((s) => (
-                      <span key={s} style={{ padding: "4px 10px", background: "rgba(26,58,47,0.06)", borderRadius: 100, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F" }}>
+                      <span key={s} style={{ padding: "4px 10px", background: "rgba(26,58,47,0.06)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F" }}>
                         {s}
                       </span>
                     ))}

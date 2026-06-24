@@ -142,7 +142,7 @@ export function CreditCostBadge({ cost = 1 }: { cost?: number }) {
         alignItems: "center",
         gap: 4,
         padding: "2px 8px",
-        borderRadius: 100,
+        borderRadius: 0,
         fontFamily: "var(--font-ui)",
         fontSize: 11,
         fontWeight: 600,
@@ -189,7 +189,7 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
         padding: "10px 14px",
         background: bg,
         border: `1px solid ${border}`,
-        borderRadius: 10,
+        borderRadius: 0,
         marginBottom: 12,
       }}
     >
@@ -230,7 +230,7 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
               background: "#1A3A2F",
               color: "#E8D5A3",
               border: "none",
-              borderRadius: 8,
+              borderRadius: 0,
               fontFamily: "var(--font-ui)",
               fontSize: 12,
               fontWeight: 600,

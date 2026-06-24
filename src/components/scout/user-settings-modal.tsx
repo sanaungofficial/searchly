@@ -116,7 +116,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           maxWidth: "calc(100vw - 32px)",
           maxHeight: "80vh",
           background: "#FFFFFF",
-          borderRadius: 14,
+          borderRadius: 0,
           boxShadow: "0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.1)",
           zIndex: 101,
           display: "flex",
@@ -189,7 +189,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   alignItems: "center",
                   gap: 10,
                   padding: "9px 10px",
-                  borderRadius: 8,
+                  borderRadius: 0,
                   border: "none",
                   background: tab === id ? "#1A3A2F" : "transparent",
                   color: tab === id ? "#E8D5A3" : "#52493F",
@@ -227,7 +227,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 alignItems: "center",
                 gap: 10,
                 padding: "9px 10px",
-                borderRadius: 8,
+                borderRadius: 0,
                 border: "none",
                 background: "transparent",
                 color: "#C4574A",
@@ -272,7 +272,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 cursor: "pointer",
                 color: "#8A7F72",
                 padding: 4,
-                borderRadius: 6,
+                borderRadius: 0,
                 display: "flex",
                 alignItems: "center",
                 transition: "color 0.15s",
@@ -361,7 +361,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         disabled={uploading}
                         style={{
                           padding: "8px 16px",
-                          borderRadius: 8,
+                          borderRadius: 0,
                           border: "1px solid #D5CFC8",
                           background: "transparent",
                           color: "#52493F",
@@ -395,7 +395,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   style={{
                     padding: "12px 16px",
                     background: "#F7F5F2",
-                    borderRadius: 8,
+                    borderRadius: 0,
                     fontSize: 14,
                     color: "#8A7F72",
                     lineHeight: 1.5,
@@ -432,7 +432,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     style={{
                       padding: "16px",
                       border: "1px solid #EEE9E2",
-                      borderRadius: 10,
+                      borderRadius: 0,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -458,7 +458,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                               color: "#FFFFFF",
                               background: isAdmin ? "#6B4A8A" : "#1A3A2F",
                               padding: "2px 8px",
-                              borderRadius: 20,
+                              borderRadius: 0,
                               letterSpacing: "0.4px",
                             }}
                           >
@@ -487,7 +487,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         onClick={openPortal}
                         style={{
                           padding: "8px 16px",
-                          borderRadius: 8,
+                          borderRadius: 0,
                           border: "1px solid #D5CFC8",
                           background: "transparent",
                           color: "#52493F",
@@ -506,7 +506,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         onClick={startCheckout}
                         style={{
                           padding: "8px 16px",
-                          borderRadius: 8,
+                          borderRadius: 0,
                           border: "none",
                           background: "#1A3A2F",
                           color: "#E8D5A3",
@@ -531,7 +531,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       padding: "14px 16px",
                       background: "#FDFCFA",
                       border: "1px solid #EEE9E2",
-                      borderRadius: 10,
+                      borderRadius: 0,
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
@@ -585,7 +585,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       padding: "14px 16px",
                       background: "rgba(26,58,47,0.04)",
                       border: "1px solid rgba(26,58,47,0.1)",
-                      borderRadius: 10,
+                      borderRadius: 0,
                     }}
                   >
                     <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3A2F", margin: "0 0 10px" }}>
@@ -614,7 +614,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     padding: "14px 16px",
                     background: "#F7F5F2",
                     border: "1px dashed #D5CFC8",
-                    borderRadius: 10,
+                    borderRadius: 0,
                     textAlign: "center",
                   }}
                 >
@@ -628,7 +628,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     onClick={() => window.location.reload()}
                     style={{
                       padding: "6px 14px",
-                      borderRadius: 6,
+                      borderRadius: 0,
                       border: "1px solid #D5CFC8",
                       background: "white",
                       color: "#52493F",
@@ -655,7 +655,7 @@ function Field({ label, value }: { label: string; value: string }) {
       <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
         {label}
       </p>
-      <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "#F7F5F2", borderRadius: 7, border: "1px solid #EEE9E2" }}>
+      <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "#F7F5F2", borderRadius: 0, border: "1px solid #EEE9E2" }}>
         {value}
       </p>
     </div>

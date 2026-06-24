@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { buildJobBoardLinks } from "@/lib/job-board-search";
 import {
   UploadIcon,
@@ -253,6 +253,102 @@ interface WelcomeProps {
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
+const RESUME_UPLOAD_MESSAGES = [
+  "Uploading your file…",
+  "Extracting text from your resume…",
+  "Organizing your experience…",
+  "Building your profile…",
+  "Almost there…",
+];
+
+function ResumeReadingProgress({ filename }: { filename: string }) {
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    setMessageIndex(0);
+    const id = window.setInterval(() => {
+      setMessageIndex((i) => (i + 1) % RESUME_UPLOAD_MESSAGES.length);
+    }, 2400);
+    return () => window.clearInterval(id);
+  }, [filename]);
+
+  return (
+    <div
+      className="anim-fade-in"
+      role="status"
+      aria-live="polite"
+      aria-label="Reading your resume"
+      style={{
+        padding: "20px 18px",
+        background: ONBOARDING_FIELD_BG,
+        border: ONBOARDING_FIELD_BORDER,
+        borderRadius: 8,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+        <div
+          className="anim-spin"
+          style={{
+            width: 22,
+            height: 22,
+            marginTop: 2,
+            border: "2px solid rgba(26,58,47,0.15)",
+            borderTopColor: "#1A3A2F",
+            borderRadius: "50%",
+            flexShrink: 0,
+          }}
+          aria-hidden
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 14,
+              fontWeight: 600,
+              color: ONBOARDING_TEXT,
+              margin: "0 0 6px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {filename}
+          </p>
+          <p
+            key={messageIndex}
+            className="anim-fade-in"
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#1A3A2F",
+              margin: "0 0 8px",
+              lineHeight: 1.45,
+            }}
+          >
+            {RESUME_UPLOAD_MESSAGES[messageIndex]}
+          </p>
+          <p
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 12,
+              fontWeight: 400,
+              color: ONBOARDING_TEXT_SECONDARY,
+              margin: 0,
+              lineHeight: 1.5,
+            }}
+          >
+            Kimchi is reading your resume — this usually takes 10–20 seconds.
+          </p>
+        </div>
+      </div>
+      <div className="onboarding-upload-progress" aria-hidden>
+        <div className="onboarding-upload-progress__bar" />
+      </div>
+    </div>
+  );
+}
+
 export function ScreenWelcome({
   resumeFilename,
   resumeUploaded,
@@ -328,6 +424,8 @@ export function ScreenWelcome({
               </span>
             </div>
           </div>
+        ) : !resumeUploaded ? (
+          <ResumeReadingProgress filename={resumeFilename} />
         ) : (
           <div
             className="anim-fade-in"
@@ -345,29 +443,23 @@ export function ScreenWelcome({
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A3A2F", flex: 1 }}>
               {resumeFilename}
             </span>
-            {!resumeUploaded ? (
-              <span className="anim-pulse" style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY }}>
-                Reading…
-              </span>
-            ) : (
-              <button
-                onClick={onFileClick}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: ONBOARDING_TEXT_SECONDARY,
-                  cursor: "pointer",
-                  padding: 0,
-                  textDecoration: "underline",
-                  textUnderlineOffset: 2,
-                }}
-              >
-                Change
-              </button>
-            )}
+            <button
+              onClick={onFileClick}
+              style={{
+                background: "none",
+                border: "none",
+                fontFamily: "var(--font-ui)",
+                fontSize: 13,
+                fontWeight: 500,
+                color: ONBOARDING_TEXT_SECONDARY,
+                cursor: "pointer",
+                padding: 0,
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+              }}
+            >
+              Change
+            </button>
           </div>
         )}
         <input
