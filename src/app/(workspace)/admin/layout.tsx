@@ -7,18 +7,34 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!admin) redirect("/");
 
   return (
-    <div className="h-full overflow-auto bg-[#F7F5F2]">
-      <header className="border-b border-stone-200 bg-white/60 backdrop-blur-sm px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-stone-800 tracking-tight" style={{ fontFamily: "var(--font-playfair)" }}>
+    <div style={{ height: "100%", overflow: "auto", background: "var(--scout-page)" }}>
+      <header
+        style={{
+          borderBottom: "1px solid rgba(17,17,17,0.14)",
+          background: "var(--scout-surface)",
+          padding: "16px 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ width: 8, height: 8, background: "#1A3A2F", display: "inline-block", flexShrink: 0 }} />
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 500, color: "#1A3A2F", letterSpacing: "-0.02em" }}>
             Admin
           </span>
-          <span className="text-stone-300">/</span>
           <AdminNav />
         </div>
-        <span className="text-xs text-stone-400 font-mono">super admin</span>
+        <span style={{ fontSize: 11, color: "var(--scout-muted)", fontFamily: "var(--font-mono-ui)", letterSpacing: "0.06em" }}>
+          super admin
+        </span>
       </header>
-      <main className="max-w-6xl mx-auto px-8 py-10">{children}</main>
+      <main style={{ maxWidth: 1120, margin: "0 auto", padding: "32px 32px 48px", width: "100%", boxSizing: "border-box" }}>
+        {children}
+      </main>
     </div>
   );
 }

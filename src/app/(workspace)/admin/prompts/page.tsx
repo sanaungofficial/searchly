@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { CompanyScanSettingsPanel } from "@/components/admin/company-scan-settings-panel";
 import { COMPANY_SCAN_SETTINGS_KEY, COMPANY_SCAN_SETTINGS_SIDEBAR } from "@/lib/company-scan-config";
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type PromptItem = {
   key: string;
@@ -132,25 +134,27 @@ export default function PromptsPage() {
   const categories = Array.from(new Set(sidebarItems.map((i) => i.category)));
 
   if (loading) {
-    return <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading prompts…</p>;
+    return <p style={{ fontSize: T.bodySm, color: color.muted }}>Loading prompts…</p>;
   }
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
-          AI Prompts
-        </h1>
-        <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block" }} />
+          <ScoutLabel>AI configuration</ScoutLabel>
+        </div>
+        <ScoutDisplayTitle size={36} style={{ marginBottom: 8 }}>AI Prompts</ScoutDisplayTitle>
+        <p style={{ fontSize: T.bodySm, color: color.muted, margin: 0 }}>
           Edit AI prompts and company scan automation. Changes take effect immediately (60-second cache).
         </p>
       </div>
 
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-        <div style={{ width: 220, flexShrink: 0, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+        <ScoutBox padding={0} style={{ width: 220, flexShrink: 0, overflow: "hidden" }}>
           {categories.map((cat) => (
             <div key={cat}>
-              <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>
+              <div style={{ padding: "8px 14px", fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: fontMono, background: surface.inset, borderBottom: border.line }}>
                 {cat}
               </div>
               {sidebarItems
@@ -158,6 +162,7 @@ export default function PromptsPage() {
                 .map((item) => (
                   <button
                     key={item.key}
+                    type="button"
                     onClick={() => selectItem(item.key)}
                     style={{
                       display: "block",
@@ -165,12 +170,12 @@ export default function PromptsPage() {
                       textAlign: "left",
                       padding: "9px 14px",
                       border: "none",
-                      borderBottom: "1px solid #f7f4f0",
-                      background: selected === item.key ? "#f0ece6" : "transparent",
+                      borderBottom: border.line,
+                      background: selected === item.key ? surface.inset : surface.card,
                       cursor: "pointer",
-                      fontFamily: "var(--font-ui)",
-                      fontSize: 13,
-                      color: selected === item.key ? "#1a1a1a" : item.kind === "settings" ? "#5a4a3a" : "#3d3530",
+                      fontFamily: fontSans,
+                      fontSize: T.caption,
+                      color: selected === item.key ? color.ink : color.stone,
                       fontStyle: item.kind === "settings" ? "italic" : "normal",
                     }}
                   >
@@ -179,20 +184,20 @@ export default function PromptsPage() {
                 ))}
             </div>
           ))}
-        </div>
+        </ScoutBox>
 
-        <div style={{ flex: 1, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: 20 }}>
+        <ScoutBox style={{ flex: 1 }}>
           {isSettingsView ? (
             <>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
+                <div style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 4 }}>
                   {COMPANY_SCAN_SETTINGS_SIDEBAR.label}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--scout-muted)" }}>{COMPANY_SCAN_SETTINGS_SIDEBAR.description}</div>
+                <div style={{ fontSize: T.caption, color: color.muted }}>{COMPANY_SCAN_SETTINGS_SIDEBAR.description}</div>
               </div>
               <CompanyScanSettingsPanel />
-              <p style={{ marginTop: 20, fontSize: 12, color: "var(--scout-muted)" }}>
-                <Link href="/admin/company-scans" style={{ color: "#1a3a2f" }}>
+              <p style={{ marginTop: 20, fontSize: T.label, color: color.muted }}>
+                <Link href="/admin/company-scans" style={{ color: color.forest }}>
                   View full scan dashboard →
                 </Link>{" "}
                 (intel catalog, stale status, manual run history)
@@ -201,15 +206,15 @@ export default function PromptsPage() {
           ) : current ? (
             <>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>
+                <div style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 4 }}>
                   {current.label}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--scout-muted)" }}>{current.description}</div>
+                <div style={{ fontSize: T.caption, color: color.muted }}>{current.description}</div>
                 {current.key === "COMPANY_JOBS_SCAN" && (
                   <button
                     type="button"
                     onClick={() => selectItem(COMPANY_SCAN_SETTINGS_KEY)}
-                    style={{ marginTop: 10, padding: 0, border: "none", background: "none", fontFamily: "var(--font-ui)", fontSize: 13, color: "#1a3a2f", cursor: "pointer", textDecoration: "underline" }}
+                    style={{ marginTop: 10, padding: 0, border: "none", background: "none", fontFamily: fontSans, fontSize: T.caption, color: color.forest, cursor: "pointer", textDecoration: "underline" }}
                   >
                     Edit scan schedule & automation →
                   </button>
@@ -217,7 +222,7 @@ export default function PromptsPage() {
                 {current.variables.length > 0 && (
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {current.variables.map((v) => (
-                      <span key={v} style={{ fontSize: 12, fontFamily: "var(--font-dm-mono)", background: "#f0ece6", color: "#5a4a3a", padding: "2px 7px", borderRadius: 4 }}>
+                      <span key={v} style={{ fontSize: T.label, fontFamily: fontMono, background: surface.inset, color: color.stone, padding: "2px 7px", border: border.line }}>
                         {`{{${v}}}`}
                       </span>
                     ))}
@@ -227,36 +232,28 @@ export default function PromptsPage() {
               <textarea
                 value={draft}
                 onChange={(e) => { setDraft(e.target.value); setSaveStatus("idle"); }}
-                style={{ width: "100%", minHeight: 400, fontFamily: "var(--font-dm-mono)", fontSize: 13, lineHeight: 1.6, padding: "12px 14px", border: "1px solid #e8e2da", borderRadius: 7, background: "#faf8f5", color: "#1a1a1a", resize: "vertical", outline: "none", boxSizing: "border-box" }}
+                style={{ width: "100%", minHeight: 400, fontFamily: fontMono, fontSize: T.caption, lineHeight: 1.6, padding: "12px 14px", border: border.line, borderRadius: 0, background: surface.inset, color: color.ink, resize: "vertical", outline: "none", boxSizing: "border-box" }}
               />
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#1a3a2f", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
-                >
+                <ScoutPrimaryBtn onClick={handleSave} disabled={saving}>
                   {saving ? "Saving…" : "Save"}
-                </button>
-                <button
-                  onClick={handleReset}
-                  disabled={saving}
-                  style={{ padding: "8px 14px", border: "1px solid #e8e2da", borderRadius: 6, background: "transparent", color: "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: 13, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
-                >
+                </ScoutPrimaryBtn>
+                <ScoutSecondaryBtn onClick={handleReset} disabled={saving}>
                   Reset to default
-                </button>
-                {saveStatus === "saved" && <span style={{ fontSize: 13, color: "#2d7a50" }}>Saved</span>}
-                {saveStatus === "error" && <span style={{ fontSize: 13, color: "#b45309" }}>Error saving</span>}
+                </ScoutSecondaryBtn>
+                {saveStatus === "saved" && <span style={{ fontSize: T.caption, color: color.forest }}>Saved</span>}
+                {saveStatus === "error" && <span style={{ fontSize: T.caption, color: "#b45309" }}>Error saving</span>}
                 {current.updatedAt && (
-                  <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--scout-muted)", fontFamily: "var(--font-dm-mono)" }}>
+                  <span style={{ marginLeft: "auto", fontSize: T.label, color: color.muted, fontFamily: fontMono }}>
                     Last saved {new Date(current.updatedAt).toLocaleDateString()}
                   </span>
                 )}
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Select a prompt to edit.</p>
+            <p style={{ fontSize: T.caption, color: color.muted }}>Select a prompt to edit.</p>
           )}
-        </div>
+        </ScoutBox>
       </div>
     </div>
   );
