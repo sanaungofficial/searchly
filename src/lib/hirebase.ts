@@ -191,11 +191,16 @@ function requirementsFromSummary(summary: string | null | undefined): string[] |
   return [summary.trim()];
 }
 
+function hasFullJobDescription(description: string | null | undefined): boolean {
+  return (description?.trim().length ?? 0) >= 200;
+}
+
 export function mapHirebaseJob(job: HirebaseJob): CachedJob {
   const descriptionSource = job.description_raw ?? job.description;
   const description = descriptionSource ? stripHtml(descriptionSource).slice(0, 16000) : null;
   const skills = mergeSkillLists(job);
   const requirementsSummary = job.requirements_summary?.trim() || null;
+  const fullDescription = hasFullJobDescription(description);
 
   return {
     title: (job.job_title ?? job.title ?? "Untitled role").trim(),
@@ -205,7 +210,9 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
     hirebaseId: job._id ?? null,
     jobSlug: job.job_slug ?? null,
     description,
-    jobSummary: requirementsSummary ?? (description ? description.slice(0, 420) : null),
+    jobSummary: fullDescription
+      ? summaryParagraphFromText(description!)
+      : requirementsSummary ?? (description ? description.slice(0, 420) : null),
     companySummary: job.company_data?.description_summary?.trim() || null,
     jobType: job.job_type ?? null,
     remote: remoteFromLocationType(job.location_type),
@@ -215,7 +222,7 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
     skills: skills.length ? skills : undefined,
     technologies: job.technologies?.length ? job.technologies : undefined,
     benefits: job.benefits?.length ? job.benefits : undefined,
-    requiredQualifications: requirementsFromSummary(requirementsSummary),
+    requiredQualifications: fullDescription ? undefined : requirementsFromSummary(requirementsSummary),
     tags: job.job_categories?.length ? job.job_categories : undefined,
     datePosted: job.date_posted ?? null,
     team: job.team ?? null,
@@ -223,6 +230,12 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
     visaSponsored: job.visa_sponsored ?? null,
     jobBoard: job.job_board ?? null,
   };
+}
+
+function summaryParagraphFromText(text: string): string {
+  const first = text.split(/\n\n+/)[0]?.trim() ?? text.trim();
+  if (first.length <= 420) return first;
+  return first.slice(0, 420).trim() + "…";
 }
 
 export async function resolveHirebaseCompanySlug(

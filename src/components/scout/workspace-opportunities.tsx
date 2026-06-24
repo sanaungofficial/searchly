@@ -95,6 +95,7 @@ export function WorkspaceOpportunities() {
     drawerId: number;
   } | null>(null);
   const [prospectCard, setProspectCard] = useState<(KanbanCard & { _url?: string; _meta?: JobMeta }) | null>(null);
+  const [prospectDetailLoading, setProspectDetailLoading] = useState(false);
   const [addingProspect, setAddingProspect] = useState(false);
 
   /* ── Add job (single URL) — calls real parse-job API ── */
@@ -185,12 +186,14 @@ export function WorkspaceOpportunities() {
     setProspectJob(null);
     setProspectCard(null);
     setAddingProspect(false);
+    setProspectDetailLoading(false);
   };
 
   const openRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setProspectJob({ companyName: job.companyName, job, drawerId });
     setProspectCard(buildRecommendedProspectCard(job, drawerId));
+    setProspectDetailLoading(Boolean(job.hirebaseId));
 
     try {
       const res = await fetch("/api/companies/prospect-job", {
@@ -206,6 +209,8 @@ export function WorkspaceOpportunities() {
       }
     } catch {
       // Drawer still opens with vector match data.
+    } finally {
+      setProspectDetailLoading(false);
     }
   }, []);
 
@@ -222,6 +227,7 @@ export function WorkspaceOpportunities() {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setProspectJob({ companyName, job, drawerId });
     setProspectCard(buildProspectKanbanCard(companyName, job, drawerId));
+    setProspectDetailLoading(Boolean(job.hirebaseId));
 
     try {
       const res = await fetch("/api/companies/prospect-job", {
@@ -236,6 +242,8 @@ export function WorkspaceOpportunities() {
       }
     } catch {
       // Drawer still opens with cached snapshot.
+    } finally {
+      setProspectDetailLoading(false);
     }
   }, []);
 
@@ -451,6 +459,7 @@ export function WorkspaceOpportunities() {
           onCardUpdate={() => {}}
           prospectMode
           elevated
+          detailLoading={prospectDetailLoading}
           onAddToPipeline={existingProspectPipelineCard ? undefined : addProspectToPipeline}
           addingToPipeline={addingProspect}
           existingPipelineCardId={existingProspectPipelineCard?.id ?? null}
