@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import type { NetworkJobListing } from "@/lib/network-job";
-import { daysSince, networkTierLabel, SEED_NETWORK_JOBS } from "@/lib/network-job";
+import {
+  SEED_NETWORK_JOBS,
+  cardAgencyName,
+  cardCompensationLabel,
+  cardDescriptionPreview,
+  cardLocationParts,
+  cardNetworkId,
+  cardRecruiterLabel,
+  cardSharedAt,
+  cardTitle,
+} from "@/lib/network-job";
+import { rawFieldString } from "@/lib/network-job-raw-display";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -13,11 +24,17 @@ interface PipelineNetworkSectionProps {
 }
 
 function NetworkJobCard({ job, onOpen }: { job: NetworkJobListing; onOpen: () => void }) {
-  const company = job.companyName ?? "Confidential employer";
-  const days = daysSince(job.sharedAt);
-  const daysLabel = days === 0 ? "Today" : days === 1 ? "1 day ago" : `${days}d ago`;
-  const tierLabel = networkTierLabel(job.networkTier);
-  const summary = job.description.split("\n").find((l) => l.trim().length > 40)?.trim() ?? job.description.slice(0, 160);
+  const title = cardTitle(job);
+  const agency = cardAgencyName(job);
+  const networkId = cardNetworkId(job);
+  const sharedAt = cardSharedAt(job);
+  const recruiter = cardRecruiterLabel(job);
+  const locationParts = cardLocationParts(job);
+  const compensation = cardCompensationLabel(job);
+  const jobType = rawFieldString(job.raw, "job_type", "jobType");
+  const remoteOption = rawFieldString(job.raw, "remote_option", "remoteOption");
+  const networkStatus = rawFieldString(job.raw, "network_status", "networkStatus");
+  const summary = cardDescriptionPreview(job);
 
   return (
     <ScoutBox
@@ -39,7 +56,7 @@ function NetworkJobCard({ job, onOpen }: { job: NetworkJobListing; onOpen: () =>
         }}
         style={{ display: "flex", alignItems: "flex-start", gap: 16, cursor: "pointer" }}
       >
-        <CompanyLogo name={company} size={44} />
+        <CompanyLogo name={agency ?? title} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
             <span
@@ -57,70 +74,80 @@ function NetworkJobCard({ job, onOpen }: { job: NetworkJobListing; onOpen: () =>
             >
               Recruiter network
             </span>
-            <span
-              style={{
-                padding: "2px 8px",
-                border: border.line,
-                fontFamily: fontSans,
-                fontSize: T.label,
-                fontWeight: 600,
-                color: color.forest,
-              }}
-            >
-              {tierLabel}
-            </span>
-            <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight }}>{job.networkId}</span>
+            {networkStatus && (
+              <span
+                style={{
+                  padding: "2px 8px",
+                  border: border.line,
+                  fontFamily: fontSans,
+                  fontSize: T.label,
+                  fontWeight: 600,
+                  color: color.forest,
+                }}
+              >
+                {networkStatus}
+              </span>
+            )}
+            {networkId && (
+              <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight }}>{networkId}</span>
+            )}
           </div>
 
-          <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.positionTitle}</p>
+          <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{title}</p>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 10px" }}>
-            {company} · Shared {daysLabel}
+            {[agency, sharedAt ? `most_recently_shared_at: ${sharedAt}` : null].filter(Boolean).join(" · ")}
           </p>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-            <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-              {job.location}
-            </span>
-            {job.remoteOption && (
+            {locationParts.map((part) => (
+              <span key={part} style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                {part}
+              </span>
+            ))}
+            {remoteOption && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                {job.remoteOption}
+                {remoteOption}
               </span>
             )}
-            {job.jobType && (
+            {jobType && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                {job.jobType}
+                {jobType}
               </span>
             )}
-            <span
-              style={{
-                padding: "2px 8px",
-                border: "1px solid rgba(26,58,47,0.22)",
-                background: "rgba(26,58,47,0.05)",
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                fontWeight: 600,
-                color: color.forest,
-              }}
-            >
-              {job.salary}
-            </span>
+            {compensation && (
+              <span
+                style={{
+                  padding: "2px 8px",
+                  border: "1px solid rgba(26,58,47,0.22)",
+                  background: "rgba(26,58,47,0.05)",
+                  fontFamily: fontMono,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  color: color.forest,
+                }}
+              >
+                {compensation}
+              </span>
+            )}
           </div>
 
-          <p
-            style={{
-              fontFamily: fontSans,
-              fontSize: T.bodySm,
-              color: color.stone,
-              lineHeight: 1.55,
-              margin: "0 0 12px",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {summary}
-          </p>
+          {summary && (
+            <p
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.bodySm,
+                color: color.stone,
+                lineHeight: 1.55,
+                margin: "0 0 12px",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {summary}
+            </p>
+          )}
 
           <div
             style={{
@@ -132,12 +159,13 @@ function NetworkJobCard({ job, onOpen }: { job: NetworkJobListing; onOpen: () =>
               borderTop: border.line,
             }}
           >
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
-              Posted by <span style={{ fontWeight: 600, color: color.stone }}>{job.recruiterName}</span>
-              {job.recruiterAgency ? ` · ${job.recruiterAgency}` : ""}
-            </p>
+            {recruiter && (
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+                recruiter: <span style={{ fontWeight: 600, color: color.stone }}>{recruiter}</span>
+              </p>
+            )}
             <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, flexShrink: 0 }}>
-              View role →
+              View all fields →
             </span>
           </div>
         </div>
@@ -147,16 +175,14 @@ function NetworkJobCard({ job, onOpen }: { job: NetworkJobListing; onOpen: () =>
 }
 
 export function PipelineNetworkSection({ jobs = SEED_NETWORK_JOBS, onOpenJob }: PipelineNetworkSectionProps) {
-  const [tierFilter, setTierFilter] = useState<"all" | "in-network" | "second-tier">("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const statuses = [...new Set(jobs.map((j) => rawFieldString(j.raw, "network_status", "networkStatus")).filter(Boolean) as string[])];
 
   const filtered =
-    tierFilter === "all" ? jobs : jobs.filter((j) => j.networkTier === tierFilter);
-
-  const tierChips: Array<["all" | "in-network" | "second-tier", string]> = [
-    ["all", "All network roles"],
-    ["in-network", "In-network"],
-    ["second-tier", "Second-tier network"],
-  ];
+    statusFilter === "all"
+      ? jobs
+      : jobs.filter((j) => rawFieldString(j.raw, "network_status", "networkStatus") === statusFilter);
 
   return (
     <div style={{ padding: "32px 36px 48px" }}>
@@ -170,55 +196,43 @@ export function PipelineNetworkSection({ jobs = SEED_NETWORK_JOBS, onOpenJob }: 
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
           These openings come from trusted recruiters in the Second Ladder network — not public job boards.
-          They are shared privately through Top Echelon Big Biller.
+          Click a role to see every Top Echelon field exactly as returned by the API.
         </p>
       </div>
 
-      <ScoutBox stack padding={20} style={{ marginBottom: 24, background: "rgba(196,168,106,0.05)" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <span style={{ fontSize: 22, lineHeight: 1 }}>◆</span>
-          <div>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 6px" }}>
-              Why these look different
-            </p>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
-              Each listing includes recruiter notes, network IDs, and placement context you will not find on LinkedIn or Indeed.
-              {jobs.length <= 5 ? " Showing preview sample roles while the full catalog syncs." : ""}
-            </p>
-          </div>
+      {statuses.length > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+          {["all", ...statuses].map((id) => {
+            const active = statusFilter === id;
+            const count =
+              id === "all" ? jobs.length : jobs.filter((j) => rawFieldString(j.raw, "network_status", "networkStatus") === id).length;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setStatusFilter(id)}
+                style={{
+                  padding: "6px 12px",
+                  color: active ? color.forest : color.muted,
+                  border: active ? border.lineStrong : border.line,
+                  borderRadius: 0,
+                  background: active ? surface.card : "transparent",
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: active ? 600 : 500,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                {id === "all" ? "All roles" : id}
+                <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
+              </button>
+            );
+          })}
         </div>
-      </ScoutBox>
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
-        {tierChips.map(([id, label]) => {
-          const active = tierFilter === id;
-          const count = id === "all" ? jobs.length : jobs.filter((j) => j.networkTier === id).length;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTierFilter(id)}
-              style={{
-                padding: "6px 12px",
-                color: active ? color.forest : color.muted,
-                border: active ? border.lineStrong : border.line,
-                borderRadius: 0,
-                background: active ? surface.card : "transparent",
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                fontWeight: active ? 600 : 500,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              {label}
-              <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {filtered.length === 0 ? (
@@ -228,9 +242,7 @@ export function PipelineNetworkSection({ jobs = SEED_NETWORK_JOBS, onOpenJob }: 
             </p>
           </ScoutBox>
         ) : (
-          filtered.map((job) => (
-            <NetworkJobCard key={job.id} job={job} onOpen={() => onOpenJob(job)} />
-          ))
+          filtered.map((job) => <NetworkJobCard key={job.id} job={job} onOpen={() => onOpenJob(job)} />)
         )}
       </div>
     </div>

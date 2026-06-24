@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { TopEchelonClient, getTopEchelonCredentials } from "@/lib/topechelon/client";
 import { TopEchelonMfaRequiredError, TopEchelonSessionExpiredError } from "@/lib/topechelon/errors";
+import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
 import { loadTopEchelonSession, saveTopEchelonSession } from "@/lib/topechelon/session-store";
 import { NextResponse } from "next/server";
 

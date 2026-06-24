@@ -24,6 +24,7 @@ import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipe
 import { PipelineNetworkSection } from "./pipeline-network-section";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import type { NetworkJobListing } from "@/lib/network-job";
+import { cardCompensationLabel, cardLocationParts } from "@/lib/network-job";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { NetworkJobDrawer } from "./network-job-drawer";
@@ -298,17 +299,27 @@ export function WorkspaceOpportunities() {
     if (!networkJob) return;
     setAddingNetworkJob(true);
     try {
-      const company = networkJob.companyName ?? "Confidential employer";
+      const raw = networkJob.raw;
+      const company =
+        (raw.agency_detail as { name?: string } | undefined)?.name ??
+        (raw.agencyDetail as { name?: string } | undefined)?.name ??
+        "Confidential employer";
+      const role =
+        (typeof raw.position_title === "string" ? raw.position_title : null) ??
+        (typeof raw.positionTitle === "string" ? raw.positionTitle : null) ??
+        "Untitled role";
       const meta = {
-        location: networkJob.location,
-        salary: networkJob.salary,
-        jobType: networkJob.jobType,
-        remote: networkJob.remoteOption?.toLowerCase().includes("remote") ? true : null,
-        description: networkJob.description,
-        jobSummary: `Recruiter network role (${networkJob.networkId}) shared by ${networkJob.recruiterName}.`,
-        tags: ["Recruiter network", networkJob.networkTier === "in-network" ? "In-network" : "Second-tier network"],
+        location: cardLocationParts(networkJob).join(", ") || null,
+        salary: cardCompensationLabel(networkJob),
+        jobType:
+          (typeof raw.job_type === "string" ? raw.job_type : null) ??
+          (typeof raw.jobType === "string" ? raw.jobType : null),
+        description:
+          (typeof raw.description === "string" ? raw.description : null) ??
+          null,
+        tags: ["Recruiter network"],
       };
-      const created = await addJob(company, networkJob.positionTitle, undefined, meta);
+      const created = await addJob(company, role, undefined, meta);
       closeNetworkDrawer();
       if (created) {
         setDrawerCardId(created.cardId);
