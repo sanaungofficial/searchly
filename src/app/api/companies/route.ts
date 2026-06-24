@@ -4,8 +4,36 @@ import { NextResponse, after } from "next/server";
 import type { CompanyIntel, TrackedCompany } from "@prisma/client";
 import { ensureDbUser } from "@/lib/ensure-db-user";
 import { mergeTrackedWithIntel, resolveCompanyIntelFromInput } from "@/lib/company-intel";
-import { getCatalogCompany } from "@/lib/company-catalog";
+import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import { scanTrackedCompanyMatches, trackedCompanyNeedsScan } from "@/lib/company-jobs-scan";
+
+async function findExistingWatchlistCompany(
+  userId: string,
+  input: { intelId?: string | null; catalogSlug?: string | null; name?: string | null }
+) {
+  const slug =
+    input.catalogSlug?.trim() ||
+    (input.name?.trim() ? normalizeCompanySlug(input.name) : null);
+  const catalog = slug ? getCatalogCompany(slug) : undefined;
+  const nameCandidates = [
+    input.name?.trim(),
+    catalog?.name,
+  ].filter(Boolean) as string[];
+
+  const or: Array<Record<string, unknown>> = [];
+  if (input.intelId) or.push({ companyIntelId: input.intelId });
+  if (slug) or.push({ companyIntel: { slug } });
+  for (const candidate of nameCandidates) {
+    or.push({ name: { equals: candidate, mode: "insensitive" } });
+  }
+
+  if (!or.length) return null;
+
+  return prisma.trackedCompany.findFirst({
+    where: { userId, OR: or },
+    select: { id: true, name: true, companyIntelId: true },
+  });
+}
 
 async function loadTrackedCompanies(userId: string): Promise<TrackedCompany[]> {
   return prisma.trackedCompany.findMany({
@@ -60,7 +88,6 @@ export async function POST(request: Request) {
   const body = await request.json();
   const {
     name,
-    companyIntelId,
     catalogSlug,
     website,
     careersUrl,
@@ -73,26 +100,31 @@ export async function POST(request: Request) {
     targetRoles,
   } = body;
 
-  if (!name?.trim() && !companyIntelId && !catalogSlug) {
+  if (!name?.trim() && !catalogSlug) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
   try {
     const intel = await resolveCompanyIntelFromInput({
       name,
-      companyIntelId,
       catalogSlug,
       website,
       careersUrl,
     });
 
-    if (intel) {
-      const existing = await prisma.trackedCompany.findFirst({
-        where: { userId: dbUser.id, companyIntelId: intel.id },
-      });
-      if (existing) {
-        return NextResponse.json({ error: "Already on your watchlist." }, { status: 409 });
-      }
+    const existing = await findExistingWatchlistCompany(dbUser.id, {
+      intelId: intel?.id,
+      catalogSlug,
+      name: intel?.name ?? name,
+    });
+    if (existing) {
+      return NextResponse.json(
+        {
+          error: "Already on your watchlist.",
+          existing: { id: existing.id, name: existing.name },
+        },
+        { status: 409 }
+      );
     }
 
     const catalogEntry = catalogSlug ? getCatalogCompany(catalogSlug) : undefined;
@@ -138,14 +170,15 @@ export async function POST(request: Request) {
 
     try {
       const trimmed = name.trim();
-      const existing = await prisma.trackedCompany.findFirst({
-        where: {
-          userId: dbUser.id,
-          name: { equals: trimmed, mode: "insensitive" },
-        },
-      });
+      const existing = await findExistingWatchlistCompany(dbUser.id, { name: trimmed });
       if (existing) {
-        return NextResponse.json({ error: "Already on your watchlist." }, { status: 409 });
+        return NextResponse.json(
+          {
+            error: "Already on your watchlist.",
+            existing: { id: existing.id, name: existing.name },
+          },
+          { status: 409 }
+        );
       }
 
       const company = await prisma.trackedCompany.create({
