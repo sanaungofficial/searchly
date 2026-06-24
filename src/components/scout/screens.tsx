@@ -23,6 +23,7 @@ import {
   ClockIcon,
 } from "./icons";
 import { KimchiBySecondLadder } from "./scout-box";
+import { ScoreExplainerPopover } from "./score-explainer-popover";
 
 /* ──────────────────────────────────────────────────────────────
    Types
@@ -2968,7 +2969,10 @@ export function ScreenTransition({
                     </p>
                   )}
                 </div>
-                <TransitionScoreGauge score={match.score} />
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                  <ScoreExplainerPopover variant="job-match" align="right" />
+                  <TransitionScoreGauge score={match.score} />
+                </div>
               </div>
             )}
 

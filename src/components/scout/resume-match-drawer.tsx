@@ -8,6 +8,7 @@ import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { ScoreExplainerPopover } from "./score-explainer-popover";
 
 interface MatchData {
   score: number;
@@ -848,7 +849,8 @@ export function ResumeMatchDrawer({
                             </p>
                           )}
                         </div>
-                        <div style={{ flexShrink: 0, marginLeft: 24 }}>
+                        <div style={{ flexShrink: 0, marginLeft: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                          <ScoreExplainerPopover variant="job-match" align="right" />
                           <BigScoreGauge score={data.score} />
                         </div>
                       </div>

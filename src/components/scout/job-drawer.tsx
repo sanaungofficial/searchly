@@ -23,6 +23,7 @@ import { JobDrawerCompanySection } from "./job-drawer-company-section";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
+import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -424,7 +425,9 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
   if (fit <= 0) {
     return (
       <div style={{ background: surface.card, borderRadius: 0, padding: "20px 22px", minWidth: 220, border: line }}>
-        <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>Match score</p>
+        <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>
+          <ScoreExplainerLabel variant="job-match">Match score</ScoreExplainerLabel>
+        </p>
         <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
         {onRunMatch && (
           <button
@@ -452,7 +455,10 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
           </div>
         </div>
         <div>
-          <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 700, color: fitColor, letterSpacing: "0.4px", margin: 0 }}>{label}</p>
+          <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 700, color: fitColor, letterSpacing: "0.4px", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
+            {label}
+            <ScoreExplainerPopover variant="job-match" align="right" />
+          </p>
           <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", margin: "3px 0 0" }}>vs. your profile</p>
         </div>
       </div>
@@ -819,7 +825,9 @@ export function JobDrawer({
 
               {meta?.vectorMatch && meta.vectorMatch.matchReasons.length > 0 && (
                 <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)" }}>
-                  <SectionTitle icon={<IconTarget />}>Why this is a match</SectionTitle>
+                  <SectionTitle icon={<IconTarget />}>
+                    <ScoreExplainerLabel variant="vector-match">Why this is a match</ScoreExplainerLabel>
+                  </SectionTitle>
                   <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px" }}>
                     {meta.vectorMatch.matchLabel} fit ({meta.vectorMatch.matchScore}/100) from your resume profile
                   </p>

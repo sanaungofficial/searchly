@@ -7,6 +7,7 @@ import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono } from "@/lib/typography";
 
 interface ResumeSection {
@@ -415,7 +416,10 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               <div style={{ padding: "14px 16px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 0 }}>
                 {/* Score header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#52493F", textTransform: "uppercase", letterSpacing: 0.5 }}>Keyword Match</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#52493F", textTransform: "uppercase", letterSpacing: 0.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    Keyword Match
+                    <ScoreExplainerPopover variant="keyword-match" />
+                  </span>
                   <span style={{
                     fontSize: 15,
                     fontWeight: 700,

@@ -18,6 +18,7 @@ import {
   type ReportHighlightCategory,
 } from "./profile-resume-analysis-report";
 import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobright-document";
+import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { ResumeMatchPanel } from "./profile-resume-match-panel";
 import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
 import {
@@ -344,6 +345,7 @@ export function ProfileResumeEditor({
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <JobrightScorePill score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} />
+            <ScoreExplainerPopover variant="resume-quality" />
             {saved && <span style={{ fontSize: 13, color: JR.green, display: "flex", alignItems: "center", gap: 4 }}><Check size={13} /> Saved</span>}
             {saving && <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: JR.muted }} />}
             <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>

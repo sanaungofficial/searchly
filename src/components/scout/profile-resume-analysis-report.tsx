@@ -3,6 +3,7 @@
 import { useLayoutEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 import { JR } from "./profile-resume-editor-panels";
+import { ScoreExplainerPopover } from "./score-explainer-popover";
 import type { ReportIssue } from "./profile-resume-editor-panels";
 import type { ResumeSectionId } from "@/lib/resume-parse";
 
@@ -227,7 +228,10 @@ export function ResumeAnalysisReportDrawer({
                   <span style={{ display: "inline-block", padding: "3px 10px", background: "#FEF3C7", color: "#92400E", borderRadius: 0, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
                     {report.gradeLabel}
                   </span>
-                  <p style={{ margin: "6px 0 0", fontSize: 13, color: JR.muted }}>Overall score {report.score}%</p>
+                  <p style={{ margin: "6px 0 0", fontSize: 13, color: JR.muted, display: "flex", alignItems: "center", gap: 6 }}>
+                    Overall score {report.score}%
+                    <ScoreExplainerPopover variant="resume-quality" />
+                  </p>
                 </div>
               </div>
 

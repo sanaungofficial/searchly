@@ -1,7 +1,8 @@
 "use client";
 
-import { JR } from "./profile-resume-editor-panels";
 import type { JobMatchResult } from "@/lib/resume-match";
+import { JR } from "./profile-resume-editor-panels";
+import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 
 export function MatchTag() {
   return (
@@ -36,7 +37,9 @@ export function ResumeMatchPanel(props: {
     <div style={{ width: embedded ? "100%" : 300, flexShrink: embedded ? undefined : 0, borderLeft: embedded ? "none" : `1px solid ${JR.border}`, borderTop: embedded ? `1px solid ${JR.border}` : "none", background: JR.panel, display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: embedded ? 320 : undefined }}>
       <div style={{ padding: "16px 16px 12px", borderBottom: `1px solid ${JR.border}` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: JR.text }}>Match analysis</p>
+          <ScoreExplainerLabel variant="job-match">
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: JR.text }}>Match analysis</p>
+          </ScoreExplainerLabel>
           {onToggle && !embedded && <button type="button" onClick={onToggle} style={{ background: "none", border: "none", fontSize: 11, color: JR.muted, cursor: "pointer" }}>Hide</button>}
         </div>
         <p style={{ margin: 0, fontSize: 12, color: JR.muted }}>Paste job description here to see how well you match the role.</p>
@@ -51,6 +54,9 @@ export function ResumeMatchPanel(props: {
           <>
             {result._fallback && <p style={{ margin: 0, fontSize: 11, color: JR.muted, padding: "8px 10px", background: JR.bg, borderRadius: 0 }}>Keyword-based match on dev — full AI on production.</p>}
             <div style={{ textAlign: "center" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+                <ScoreExplainerPopover variant="job-match" />
+              </div>
               <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: result.score >= 7 ? JR.greenDark : JR.urgent }}>{result.score.toFixed(1)}<span style={{ fontSize: 16, color: JR.muted }}>/10</span></p>
               <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700 }}>{result.scoreLabel}</p>
             </div>

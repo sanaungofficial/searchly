@@ -22,6 +22,7 @@ import {
 } from "@/lib/recommended-jobs-cache";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
@@ -539,7 +540,8 @@ function JobResultsList({
                       {job.location ? ` · ${job.location}` : ""}
                     </p>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                    <ScoreExplainerPopover variant="vector-match" align="right" />
                     <div style={{ fontFamily: fontMono, fontSize: 22, fontWeight: 700, color: scoreColor(job.matchScore) }}>
                       {job.matchScore}
                     </div>
@@ -789,7 +791,9 @@ export function PipelineRecommendedSection({
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
           <div>
-            <ScoutLabel>Recommended for you</ScoutLabel>
+            <ScoreExplainerLabel variant="vector-match">
+              <ScoutLabel>Recommended for you</ScoutLabel>
+            </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               Matching roles at your tracked companies. Search or filter to narrow the list.
             </p>
