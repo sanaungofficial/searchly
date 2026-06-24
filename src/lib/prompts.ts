@@ -87,6 +87,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Profile",
     variables: ["draftJson"],
   },
+  LINKEDIN_SECTION_SUGGEST: {
+    label: "LinkedIn Section Fix",
+    description: "Generates rewrite options for one LinkedIn section.",
+    category: "Profile",
+    variables: ["sectionId", "sectionLabel", "entryLabel", "draftSlice", "targetRoles"],
+  },
   RESUME_TAILOR: {
     label: "Resume Tailor",
     description: "Parses and tailors a resume for a specific job. Returns JSON sections.",
@@ -629,6 +635,36 @@ LinkedIn draft JSON:
 {{draftJson}}
 
 Return ONLY the JSON object.`,
+  LINKEDIN_SECTION_SUGGEST: `You are a LinkedIn profile coach. Suggest concrete rewrites for ONE section of a LinkedIn draft.
+
+Section: {{sectionLabel}}{{entryLabel}}
+Target roles: {{targetRoles}}
+
+Current content:
+{{draftSlice}}
+
+Return ONLY valid JSON:
+{
+  "issues": [
+    {
+      "severity": "Urgent",
+      "title": "short issue title",
+      "issueDetected": "what is weak or missing in one sentence",
+      "whyItMatters": "why recruiters care about this on LinkedIn",
+      "howToImprove": "specific actionable guidance"
+    }
+  ],
+  "suggestions": [
+    { "label": "Option A", "text": "full replacement text the user can apply" },
+    { "label": "Option B", "text": "alternate rewrite" }
+  ]
+}
+
+Rules:
+- issues: 1-3 items specific to this section
+- suggestions: 2-3 complete rewrites the user can paste in (respect LinkedIn length norms)
+- headline ≤120 chars, about can be longer, experience entry is paragraph prose
+- Return ONLY the JSON object`,
   COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
 
 Page URL: {{careersUrl}}

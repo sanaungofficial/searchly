@@ -97,14 +97,14 @@ export function JobDrawerRecruiterSection({
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px 20px" }}>
-        <MetaLine label="TE recruiter ID" value={recruiter.externalId} />
+        {networkJob.internalView && <MetaLine label="TE recruiter ID" value={recruiter.externalId} />}
         {recruiter.email && <MetaLine label="Email" value={recruiter.email} href={`mailto:${recruiter.email}`} />}
         {recruiter.phone && <MetaLine label="Phone" value={recruiter.phone} href={`tel:${recruiter.phone}`} />}
         {recruiter.firstName && <MetaLine label="First name" value={recruiter.firstName} />}
         {recruiter.lastName && <MetaLine label="Last name" value={recruiter.lastName} />}
       </div>
 
-      {networkJob.fee && (
+      {networkJob.internalView && networkJob.fee && (
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: line }}>
           <MetaLine label="Placement fee" value={networkJob.fee} />
         </div>
@@ -118,7 +118,7 @@ export function JobDrawerNetworkAdminSection({
 }: {
   networkJob: NonNullable<JobMeta["networkJob"]>;
 }) {
-  if (!networkJob.adminDetails.length) return null;
+  if (!networkJob.internalView || !networkJob.adminDetails.length) return null;
 
   return (
     <ScoutBox padding={20} style={{ marginBottom: 22, background: "rgba(196,168,106,0.06)", borderTop: `3px solid rgba(196,168,106,0.5)` }}>

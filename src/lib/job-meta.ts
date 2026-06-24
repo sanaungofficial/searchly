@@ -36,6 +36,8 @@ export interface JobMeta {
     recruiterNotes: string | null;
     fee: string | null;
     networkStatus: string | null;
+    /** When false, hide fee, guarantee, TE ids, and admin block in drawer. */
+    internalView?: boolean;
     adminDetails: Array<{ label: string; value: string }>;
     recruiter: {
       id: string;

@@ -46,6 +46,8 @@ export type NetworkJobListing = {
   remoteOption: string | null;
   fee: string | null;
   feeType: string | null;
+  guarantee: string | null;
+  guaranteeLabel: string | null;
   networkStatus: string | null;
   networkStatusLabel: string | null;
   sharedAt: string | null;
@@ -75,6 +77,15 @@ function recruiterToDisplay(r: MappedNetworkRecruiter): NetworkRecruiterDisplay 
     phone: r.phone,
     agencyName: r.agencyName,
   };
+}
+
+function formatGuaranteeLabel(raw: TopEchelonNetworkJobRaw): string | null {
+  const text = raw.guarantee != null ? String(raw.guarantee).trim() : "";
+  const days = raw.guarantee_period ?? raw.guaranteePeriod;
+  if (text && days != null) return `${text} (${days} days)`;
+  if (text) return text;
+  if (days != null) return `${days} days`;
+  return null;
 }
 
 function buildAdminDetails(
@@ -131,6 +142,8 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
   const networkStatusLabel = formatNetworkStatus(mapped.networkStatus);
   const sharedAtIso = mapped.sharedAt?.toISOString() ?? null;
   const shared = formatNetworkSharedDate(sharedAtIso);
+  const guarantee = raw.guarantee != null ? String(raw.guarantee) : null;
+  const guaranteeLabel = formatGuaranteeLabel(raw);
 
   return {
     id: mapped.externalId,
@@ -150,6 +163,8 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
     remoteOption: mapped.remoteOption,
     fee: mapped._display.feeLabel,
     feeType: mapped.feeType,
+    guarantee,
+    guaranteeLabel,
     networkStatus: mapped.networkStatus,
     networkStatusLabel,
     sharedAt: sharedAtIso,
@@ -166,8 +181,10 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
 
 export function buildNetworkProspectCard(
   job: NetworkJobListing,
-  drawerId: number
+  drawerId: number,
+  options?: { internalView?: boolean }
 ): KanbanCard & { _url?: string; _meta?: JobMeta; _networkJobId?: string } {
+  const internalView = options?.internalView ?? false;
   const aiDescription = [job.description, job.recruiterNotes ? `Recruiter notes:\n${job.recruiterNotes}` : null]
     .filter(Boolean)
     .join("\n\n");
@@ -189,9 +206,10 @@ export function buildNetworkProspectCard(
       networkId: job.networkId,
       topEchelonUrl: job.topEchelonUrl,
       recruiterNotes: job.recruiterNotes,
-      fee: job.fee,
-      networkStatus: job.networkStatusLabel ?? job.networkStatus,
-      adminDetails: job.adminDetails,
+      fee: internalView ? job.fee : null,
+      networkStatus: internalView ? (job.networkStatusLabel ?? job.networkStatus) : null,
+      adminDetails: internalView ? job.adminDetails : [],
+      internalView,
       recruiter: job.recruiter,
     },
   };

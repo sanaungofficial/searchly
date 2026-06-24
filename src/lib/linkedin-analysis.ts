@@ -158,12 +158,67 @@ const SECTION_PATTERNS: Record<LinkedInSectionId, RegExp> = {
   skills: /skill|endorse|competenc/i,
 };
 
+export const LINKEDIN_SECTION_IMPACT: Record<
+  LinkedInSectionId,
+  { title: string; issueDetected: string; whyItMatters: string; howToImprove: string }
+> = {
+  headline: {
+    title: "Your headline is the first thing recruiters see",
+    issueDetected: "LinkedIn search results show your photo, name, and headline before anything else.",
+    whyItMatters:
+      "Recruiters decide in seconds whether to click your profile. A keyword-rich headline improves discovery and signals fit for your target roles.",
+    howToImprove:
+      "Use a formula like: Role | Specialty | Impact area. Include 2-3 keywords from roles you want, not just your current title.",
+  },
+  about: {
+    title: "Your About section tells your story",
+    issueDetected: "The first two lines appear before 'see more' — most visitors never expand.",
+    whyItMatters:
+      "Recruiters skim for themes, seniority, and proof of impact. A strong hook keeps them reading and builds credibility.",
+    howToImprove:
+      "Open with a punchy hook (who you help + how), then 2-3 short paragraphs on themes and wins. End with a soft call to connect.",
+  },
+  experience: {
+    title: "Experience should show impact, not duties",
+    issueDetected: "LinkedIn readers expect short paragraphs with outcomes, not pasted resume bullets.",
+    whyItMatters:
+      "Hiring managers look for scope, metrics, and relevance to the role they are filling. Vague bullets get skipped.",
+    howToImprove:
+      "Lead each role with context, then 2-4 paragraphs highlighting measurable results and skills that match your target roles.",
+  },
+  education: {
+    title: "Education supports your level and credibility",
+    issueDetected: "Missing or thin education can raise questions about baseline qualifications.",
+    whyItMatters:
+      "Recruiters use education to validate seniority filters and domain credibility, especially for career pivots.",
+    howToImprove:
+      "Include degree, school, and relevant highlights (honors, thesis, activities) that reinforce your target path.",
+  },
+  skills: {
+    title: "Skills power LinkedIn search",
+    issueDetected: "Profiles with fewer than 5 relevant skills rank lower in recruiter searches.",
+    whyItMatters:
+      "Recruiters filter by skills. Endorsements and skill order affect whether you appear in search results.",
+    howToImprove:
+      "Add 10-20 skills aligned to your target roles. Put the most important ones first.",
+  },
+};
+
 export function getLinkedInSectionFixIssues(
   sectionId: LinkedInSectionId,
   fullReport: ReturnType<typeof linkedInAnalysisToReport>,
   mode: "all" | "impact" = "all",
 ) {
   const pattern = SECTION_PATTERNS[sectionId];
+  const baseline = {
+    id: `${sectionId}-baseline`,
+    severity: "Critical" as const,
+    title: LINKEDIN_SECTION_IMPACT[sectionId].title,
+    issueDetected: LINKEDIN_SECTION_IMPACT[sectionId].issueDetected,
+    whyItMatters: LINKEDIN_SECTION_IMPACT[sectionId].whyItMatters,
+    howToImprove: LINKEDIN_SECTION_IMPACT[sectionId].howToImprove,
+  };
+
   const fromHighlights = fullReport.highlights.flatMap((group) =>
     group.items
       .filter((item) => item.sectionHint === sectionId || pattern.test(`${item.title} ${item.summary}`))
@@ -173,7 +228,7 @@ export function getLinkedInSectionFixIssues(
         title: item.title,
         issueDetected: item.summary,
         whyItMatters: item.whyItMatters,
-        howToImprove: item.whyItMatters,
+        howToImprove: item.summary,
       })),
   );
 
@@ -189,10 +244,12 @@ export function getLinkedInSectionFixIssues(
     }));
 
   const combined = fromHighlights.length ? fromHighlights : fromIssues;
+  const withBaseline = [baseline, ...combined];
+
   if (mode === "impact") {
-    return combined.filter((issue) => issue.severity === "Urgent" || issue.severity === "Critical");
+    return [baseline, ...combined.filter((issue) => issue.severity === "Urgent" || issue.severity === "Critical")];
   }
-  return combined;
+  return withBaseline;
 }
 
 export const LINKEDIN_SECTION_TITLES: Record<LinkedInSectionId, string> = {

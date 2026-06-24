@@ -4,14 +4,15 @@ import {
   buildResumeFingerprint,
   getStoredRoleAnalysis,
   normalizeRoleAnalysesMap,
-  normalizeRoleGapAnalysis,
   setStoredRoleAnalysis,
   type StoredRoleAnalysis,
 } from "@/lib/role-gap";
+import { jobMatchToRoleGap, roleJobDescription } from "@/lib/role-gap-from-match";
 import { heuristicRoleGapAnalysis } from "@/lib/role-gap-heuristic";
 import { ensureAssetResumeParsed } from "@/lib/ensure-asset-resume";
 import { getActingUser } from "@/lib/acting-user";
 import { normalizeParsedResumeData, parseJsonFromModel } from "@/lib/resume-parse";
+import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -45,35 +46,111 @@ async function resolveResumeSource(
     parsedData: unknown;
   } | null,
 ) {
-  if (assetId) {
-    const asset = await ensureAssetResumeParsed(assetId, userId);
-    if (!asset?.resumeText?.trim()) {
-      return { source: null, parseError: "Could not parse this resume file. Try re-uploading or use Reparse in Assets." };
+  try {
+    if (assetId) {
+      const asset = await ensureAssetResumeParsed(assetId, userId);
+      if (!asset?.resumeText?.trim()) {
+        return { source: null, parseError: "Could not parse this resume file. Try re-uploading or use Reparse in Assets." };
+      }
+      const parsed = normalizeParsedResumeData(asset.parsedData ?? null);
+      return {
+        source: {
+          resumeText: asset.resumeText,
+          resumeUrl: asset.url,
+          skills: parsed?.skills ?? [],
+          resumeAssetId: asset.id,
+        },
+        parseError: null as string | null,
+      };
     }
-    const parsed = normalizeParsedResumeData(asset.parsedData ?? null);
+
+    if (!profile?.resumeText?.trim()) {
+      return { source: null, parseError: "No resume found for this selection" };
+    }
+    const parsed = normalizeParsedResumeData(profile.parsedData ?? null);
     return {
       source: {
-        resumeText: asset.resumeText,
-        resumeUrl: asset.url,
+        resumeText: profile.resumeText,
+        resumeUrl: profile.resumeUrl,
         skills: parsed?.skills ?? [],
-        resumeAssetId: asset.id,
+        resumeAssetId: null as string | null,
       },
       parseError: null as string | null,
     };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Resume parse failed";
+    return { source: null, parseError: msg };
+  }
+}
+
+function parseJobMatchFromText(text: string): JobMatchResult | null {
+  const raw = parseJsonFromModel(text);
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const score = typeof obj.score === "number" ? obj.score : null;
+  if (score === null) return null;
+  const keywords = Array.isArray(obj.keywords)
+    ? obj.keywords
+        .map((k) => {
+          if (!k || typeof k !== "object") return null;
+          const row = k as Record<string, unknown>;
+          const textVal = typeof row.text === "string" ? row.text : "";
+          if (!textVal) return null;
+          return { text: textVal, matched: row.matched === true };
+        })
+        .filter((k): k is { text: string; matched: boolean } => k !== null)
+    : [];
+  return {
+    score,
+    scoreLabel: typeof obj.scoreLabel === "string" ? obj.scoreLabel : "Good",
+    keywords,
+    summaryNote: typeof obj.summaryNote === "string" ? obj.summaryNote : undefined,
+  };
+}
+
+async function analyzeRoleViaJobMatch(role: string, resumeText: string): Promise<JobMatchResult> {
+  const description = roleJobDescription(role);
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return fallbackJobMatch(description, resumeText);
   }
 
-  if (!profile?.resumeText?.trim()) {
-    return { source: null, parseError: "No resume found for this selection" };
+  try {
+    const template = await getPrompt("JOB_MATCH");
+    const prompt = interpolate(template, {
+      jobTitle: role,
+      company: "Target role",
+      description: description.slice(0, 4000),
+      resumeSlice: resumeText.slice(0, 4000),
+    });
+
+    const message = await getAnthropic().messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const content = message.content[0];
+    if (content.type !== "text") throw new Error("Unexpected AI response");
+
+    const parsed = parseJobMatchFromText(content.text);
+    if (parsed) return parsed;
+  } catch {
+    /* fall through */
   }
-  const parsed = normalizeParsedResumeData(profile.parsedData ?? null);
+
+  return fallbackJobMatch(description, resumeText);
+}
+
+function storedFromAnalysis(
+  roleGap: ReturnType<typeof jobMatchToRoleGap>,
+  fingerprint: string,
+  resumeAssetId: string | null,
+): StoredRoleAnalysis {
   return {
-    source: {
-      resumeText: profile.resumeText,
-      resumeUrl: profile.resumeUrl,
-      skills: parsed?.skills ?? [],
-      resumeAssetId: null as string | null,
-    },
-    parseError: null as string | null,
+    ...roleGap,
+    analyzedAt: new Date().toISOString(),
+    resumeFingerprint: fingerprint,
+    resumeAssetId,
   };
 }
 
@@ -85,84 +162,34 @@ export async function GET(request: Request) {
 
   if (!role) return NextResponse.json({ error: "role required" }, { status: 400 });
 
-  const { authUser, dbUser } = await getActingUser();
-  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  try {
+    const { authUser, dbUser } = await getActingUser();
+    if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const { source, parseError } = await resolveResumeSource(dbUser.id, assetId, profile);
-  if (!source) {
-    return NextResponse.json({ error: parseError ?? "No resume found for this selection" }, { status: 404 });
-  }
+    const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+    const { source, parseError } = await resolveResumeSource(dbUser.id, assetId, profile);
+    if (!source) {
+      return NextResponse.json({ error: parseError ?? "No resume found for this selection" }, { status: 404 });
+    }
 
-  const fingerprint = buildResumeFingerprint(source.resumeAssetId, source.resumeUrl, source.skills);
-  const analyses = normalizeRoleAnalysesMap(profile?.roleAnalyses);
-  const cached = getStoredRoleAnalysis(analyses, role, source.resumeAssetId);
-  const stale = cached ? cached.resumeFingerprint !== fingerprint : false;
+    const fingerprint = buildResumeFingerprint(source.resumeAssetId, source.resumeUrl, source.skills);
+    const analyses = normalizeRoleAnalysesMap(profile?.roleAnalyses);
+    const cached = getStoredRoleAnalysis(analyses, role, source.resumeAssetId);
+    const stale = cached ? cached.resumeFingerprint !== fingerprint : false;
 
-  if (!force && cached) {
-    return NextResponse.json({
-      ...cached,
-      cached: true,
-      stale,
-      analyzedAt: cached.analyzedAt,
-    });
-  }
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    if (cached) {
+    if (!force && cached) {
       return NextResponse.json({
         ...cached,
         cached: true,
-        stale: true,
+        stale,
         analyzedAt: cached.analyzedAt,
       });
     }
-    const heuristic = heuristicRoleGapAnalysis(role, source.skills);
-    const analyzedAt = new Date().toISOString();
-    const stored: StoredRoleAnalysis = {
-      ...heuristic,
-      analyzedAt,
-      resumeFingerprint: fingerprint,
-      resumeAssetId: source.resumeAssetId,
-    };
-    await saveRoleAnalysis(dbUser.id, role, stored);
-    return NextResponse.json({
-      ...stored,
-      cached: false,
-      stale: false,
-      heuristic: true,
-    });
-  }
 
-  const template = await getPrompt("ROLE_GAP");
-  const prompt = interpolate(template, {
-    role,
-    resumeSlice: source.resumeText.slice(0, 6000),
-    declaredSkills: source.skills.length > 0 ? source.skills.join(", ") : "none listed",
-  });
-
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1500,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const content = message.content[0];
-  if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-  }
-
-  const parsed = normalizeRoleGapAnalysis(parseJsonFromModel(content.text));
-  if (parsed) {
-    const analyzedAt = new Date().toISOString();
-    const stored: StoredRoleAnalysis = {
-      ...parsed,
-      analyzedAt,
-      resumeFingerprint: fingerprint,
-      resumeAssetId: source.resumeAssetId,
-    };
-
+    const jobMatch = await analyzeRoleViaJobMatch(role, source.resumeText);
+    const roleGap = jobMatchToRoleGap(role, jobMatch);
+    const stored = storedFromAnalysis(roleGap, fingerprint, source.resumeAssetId);
     await saveRoleAnalysis(dbUser.id, role, stored);
 
     return NextResponse.json({
@@ -170,24 +197,32 @@ export async function GET(request: Request) {
       cached: false,
       stale: false,
     });
-  }
+  } catch (err) {
+    console.error("[role-gap]", err);
+    try {
+      const { dbUser } = await getActingUser();
+      if (!dbUser) return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
 
-  const heuristic = heuristicRoleGapAnalysis(role, source.skills);
-  const analyzedAt = new Date().toISOString();
-  const stored: StoredRoleAnalysis = {
-    ...heuristic,
-    analyzedAt,
-    resumeFingerprint: fingerprint,
-    resumeAssetId: source.resumeAssetId,
-  };
-  await saveRoleAnalysis(dbUser.id, role, stored);
-  return NextResponse.json({
-    ...stored,
-    cached: false,
-    stale: false,
-    heuristic: true,
-    parseFallback: true,
-  });
+      const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+      const asset = assetId
+        ? await prisma.userAsset.findFirst({ where: { id: assetId, userId: dbUser.id, type: "RESUME" } })
+        : null;
+      const parsed = normalizeParsedResumeData(asset?.parsedData ?? profile?.parsedData ?? null);
+      const skills = parsed?.skills ?? [];
+      const heuristic = heuristicRoleGapAnalysis(role, skills);
+      const fingerprint = buildResumeFingerprint(assetId, asset?.url ?? profile?.resumeUrl ?? null, skills);
+      const stored: StoredRoleAnalysis = {
+        ...heuristic,
+        analyzedAt: new Date().toISOString(),
+        resumeFingerprint: fingerprint,
+        resumeAssetId: assetId,
+      };
+      await saveRoleAnalysis(dbUser.id, role, stored);
+      return NextResponse.json({ ...stored, cached: false, stale: false, heuristic: true });
+    } catch {
+      return NextResponse.json({ error: "Analysis failed — try again in a moment." }, { status: 500 });
+    }
+  }
 }
 
 export async function DELETE(request: Request) {
