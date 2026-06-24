@@ -53,8 +53,8 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
         </span>
       </div>
       {!unlimitedAi && (
-        <div style={{ height: 4, background: "rgba(232,213,163,0.12)", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
-          <div style={{ height: "100%", width: `${100 - pct}%`, background: barColor, borderRadius: 4, transition: "width 0.3s ease" }} />
+        <div style={{ height: 4, background: "rgba(232,213,163,0.12)", overflow: "hidden", marginBottom: 6 }}>
+          <div style={{ height: "100%", width: `${100 - pct}%`, background: barColor, transition: "width 0.3s ease" }} />
         </div>
       )}
       <p style={{ margin: 0, fontSize: 11, color: "rgba(232,213,163,0.35)", lineHeight: 1.45 }}>
@@ -81,7 +81,7 @@ export function CreditsSidebarBlock({
         style={{
           background: exhausted ? "rgba(196,87,74,0.12)" : "rgba(232,213,163,0.06)",
           border: `1px solid ${exhausted ? "rgba(196,87,74,0.25)" : "rgba(232,213,163,0.12)"}`,
-          borderRadius: 10,
+          borderRadius: 0,
           padding: "10px 14px",
         }}
       >
@@ -97,8 +97,8 @@ export function CreditsSidebarBlock({
             display: "block",
             width: "100%",
             background: "#E8D5A3",
-            border: "none",
-            borderRadius: 10,
+            border: "1px solid rgba(17,17,17,0.22)",
+            borderRadius: 0,
             padding: "10px 14px",
             cursor: "pointer",
             textAlign: "left",
@@ -116,7 +116,7 @@ export function CreditsSidebarBlock({
             display: "block",
             background: "rgba(232,213,163,0.08)",
             border: "1px solid rgba(232,213,163,0.15)",
-            borderRadius: 10,
+            borderRadius: 0,
             padding: "8px 14px",
             textDecoration: "none",
             textAlign: "center",

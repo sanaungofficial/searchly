@@ -1,7 +1,7 @@
 // build
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   DashboardIcon,
@@ -20,6 +20,8 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCredits } from "@/hooks/useCredits";
 import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
+import { profileCompletenessPct } from "@/lib/profile-completeness";
+import { border as citeBorder } from "@/lib/typography";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -47,14 +49,177 @@ interface NavItem {
 
 const IS_PROD = process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
 
-const NAV_ITEMS: NavItem[] = [
+const SIDEBAR_FOREST = "#1A3A2F";
+const SIDEBAR_GOLD = "#E8D5A3";
+const SIDEBAR_GOLD_DIM = "rgba(232,213,163,0.48)";
+const SIDEBAR_GOLD_FAINT = "rgba(232,213,163,0.38)";
+const SIDEBAR_LINE = "1px solid rgba(232,213,163,0.14)";
+const SIDEBAR_LINE_ACTIVE = "1px solid rgba(232,213,163,0.35)";
+
+const NAV_SEARCH: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
+];
+
+const NAV_YOU: NavItem[] = [
   { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
   { id: "live", label: "Live", path: "/live", Icon: LiveIcon },
   { id: "coaching", label: "Coaching", path: "/coaching", Icon: CoachingIcon },
   { id: "network", label: "Network", path: "/network", Icon: NetworkIcon },
 ];
+
+const OPP_SUBNAV = [
+  { label: "Pipeline", path: "/opportunities/pipeline" },
+  { label: "Companies", path: "/opportunities/companies" },
+] as const;
+
+function SidebarSectionLabel({ children, isRail }: { children: React.ReactNode; isRail: boolean }) {
+  if (isRail) return null;
+  return (
+    <p
+      style={{
+        fontFamily: "var(--font-ui)",
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        color: "rgba(232,213,163,0.32)",
+        padding: "14px 14px 6px",
+        margin: 0,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function SidebarNavButton({
+  active,
+  onClick,
+  label,
+  Icon,
+  isRail,
+  badge,
+  showIncompleteDot,
+  showLiveDot,
+  indent,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  Icon: NavItem["Icon"];
+  isRail: boolean;
+  badge?: number;
+  showIncompleteDot?: boolean;
+  showLiveDot?: boolean;
+  indent?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={isRail ? label : undefined}
+      style={{
+        padding: isRail ? "10px 0" : indent ? "8px 14px 8px 22px" : "10px 14px",
+        borderRadius: 0,
+        cursor: "pointer",
+        background: active ? "rgba(232,213,163,0.12)" : "transparent",
+        border: SIDEBAR_LINE,
+        borderColor: active ? "rgba(232,213,163,0.35)" : "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: isRail ? "center" : "flex-start",
+        gap: 11,
+        transition: "background 0.15s, border-color 0.15s",
+        textAlign: "left",
+        width: "100%",
+        boxSizing: "border-box",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = "rgba(232,213,163,0.06)";
+          e.currentTarget.style.borderColor = "rgba(232,213,163,0.12)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.borderColor = "transparent";
+        }
+      }}
+    >
+      <span
+        style={{
+          position: "relative",
+          display: "inline-flex",
+          color: active ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT,
+          flexShrink: 0,
+        }}
+      >
+        <Icon />
+        {showLiveDot && (
+          <span
+            style={{
+              position: "absolute",
+              top: -2,
+              right: -2,
+              width: 6,
+              height: 6,
+              background: "#C4574A",
+              border: `1.5px solid ${SIDEBAR_FOREST}`,
+              animation: "pulse 1.5s ease infinite",
+            }}
+          />
+        )}
+        {showIncompleteDot && (
+          <span
+            style={{
+              position: "absolute",
+              top: -2,
+              right: -2,
+              width: 6,
+              height: 6,
+              background: "#C4A86A",
+              border: `1.5px solid ${SIDEBAR_FOREST}`,
+            }}
+          />
+        )}
+      </span>
+      {!isRail && (
+        <>
+          <span
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 15,
+              fontWeight: active ? 600 : 400,
+              color: active ? SIDEBAR_GOLD : SIDEBAR_GOLD_DIM,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {label}
+          </span>
+          {badge !== undefined && badge > 0 && (
+            <span
+              style={{
+                fontFamily: "var(--font-mono-ui)",
+                fontSize: 11,
+                fontWeight: 600,
+                color: SIDEBAR_FOREST,
+                background: SIDEBAR_GOLD,
+                padding: "2px 7px",
+                border: SIDEBAR_LINE_ACTIVE,
+                flexShrink: 0,
+              }}
+            >
+              {badge}
+            </span>
+          )}
+        </>
+      )}
+    </button>
+  );
+}
 
 function initials(name: string | null, email: string) {
   if (name) {
@@ -87,6 +252,8 @@ export function WorkspaceSidebar({
     notifUnreadCount,
     handleSignOut,
     updateAvatarUrl,
+    kanbanCards,
+    authChecked,
   } = useWorkspace();
 
   const user = userProp ?? ctxUser ?? undefined;
@@ -99,7 +266,23 @@ export function WorkspaceSidebar({
   const showUpgrade = !subLoading && !unlimitedAi;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
   const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
+
+  const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
+  const onOpportunities = pathname.startsWith("/opportunities");
+
+  useEffect(() => {
+    if (!authChecked) return;
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && !data.error) {
+          setProfileIncomplete(profileCompletenessPct(data) < 80);
+        }
+      })
+      .catch(() => {});
+  }, [authChecked]);
 
   // On mobile: collapsed = hidden (off-screen). On desktop: collapsed = icon rail.
   const isVisible = isMobile ? !collapsed : true;
@@ -127,6 +310,12 @@ export function WorkspaceSidebar({
     setNotifOpen(false);
   };
 
+  const markAllNotificationsRead = () => {
+    const allRead: Record<number, boolean> = {};
+    NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));
+    setNotifRead(allRead);
+  };
+
   // Chevron icons for the toggle button
   const ChevronLeft = () => (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -148,7 +337,7 @@ export function WorkspaceSidebar({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.45)",
+            background: "rgba(26,24,20,0.55)",
             zIndex: 999,
           }}
         />
@@ -157,7 +346,7 @@ export function WorkspaceSidebar({
       <div
         style={{
           width: sidebarWidth,
-          background: "#1A3A2F",
+          background: SIDEBAR_FOREST,
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
@@ -191,8 +380,8 @@ export function WorkspaceSidebar({
               zIndex: 10,
               width: 16,
               height: 48,
-              borderRadius: "0 8px 8px 0",
-              background: "#1A3A2F",
+              borderRadius: 0,
+              background: SIDEBAR_FOREST,
               border: "1px solid rgba(232,213,163,0.2)",
               borderLeft: "none",
               cursor: "pointer",
@@ -209,7 +398,7 @@ export function WorkspaceSidebar({
               e.currentTarget.style.width = "20px";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#1A3A2F";
+              e.currentTarget.style.background = SIDEBAR_FOREST;
               e.currentTarget.style.color = "rgba(232,213,163,0.6)";
               e.currentTarget.style.width = "16px";
             }}
@@ -244,17 +433,33 @@ export function WorkspaceSidebar({
           )}
 
           {isRail ? (
-            /* Rail header: bell only (edge tab handles expand) */
-            <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: SIDEBAR_LINE,
+                  fontFamily: "var(--font-display)",
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: SIDEBAR_GOLD,
+                }}
+                title="Kimchi"
+              >
+                K
+              </div>
               <button
                 onClick={onToggleNotif}
                 style={{
                   position: "relative",
                   cursor: "pointer",
                   padding: 6,
-                  borderRadius: 6,
+                  borderRadius: 0,
                   background: "none",
-                  border: "none",
+                  border: SIDEBAR_LINE,
                   color: "rgba(232,213,163,0.65)",
                   transition: "background 0.15s",
                 }}
@@ -263,12 +468,11 @@ export function WorkspaceSidebar({
               >
                 <BellIcon />
                 {notifUnreadCount > 0 && (
-                  <div style={{ position: "absolute", top: 3, right: 3, width: 8, height: 8, borderRadius: "50%", background: "#C4574A", border: "1.5px solid #1A3A2F" }} />
+                  <div style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, background: "#C4574A", border: `1.5px solid ${SIDEBAR_FOREST}` }} />
                 )}
               </button>
             </div>
           ) : (
-            /* Full header: brand + bell (+ mobile close) */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "#E8D5A3" }}>
@@ -283,7 +487,7 @@ export function WorkspaceSidebar({
                   <button
                     onClick={onToggle}
                     title="Close menu"
-                    style={{ cursor: "pointer", padding: 6, borderRadius: 6, background: "none", border: "none", color: "rgba(232,213,163,0.65)", lineHeight: 1, transition: "background 0.15s" }}
+                    style={{ cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: SIDEBAR_LINE, color: "rgba(232,213,163,0.65)", lineHeight: 1, transition: "background 0.15s" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                   >
@@ -294,7 +498,7 @@ export function WorkspaceSidebar({
                 )}
                 <button
                   onClick={onToggleNotif}
-                  style={{ position: "relative", cursor: "pointer", padding: 6, borderRadius: 6, background: "none", border: "none", color: "rgba(232,213,163,0.65)", transition: "background 0.15s" }}
+                  style={{ position: "relative", cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: SIDEBAR_LINE, color: "rgba(232,213,163,0.65)", transition: "background 0.15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                 >
@@ -311,119 +515,89 @@ export function WorkspaceSidebar({
         {/* ── Nav items ── */}
         <div style={{ padding: isRail ? "0 8px" : "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
           {isAdmin && (
-            <button
+            <SidebarNavButton
+              active={pathname === "/admin"}
               onClick={() => navigate("/admin")}
-              title={isRail ? "Admin" : undefined}
-              style={{
-                padding: isRail ? "10px 0" : "10px 14px",
-                borderRadius: 7,
-                cursor: "pointer",
-                background: pathname === "/admin" ? "rgba(232,213,163,0.12)" : "transparent",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: isRail ? "center" : "flex-start",
-                gap: 11,
-                border: "none",
-                transition: "background 0.15s",
-                textAlign: "left",
-                width: "100%",
-              }}
-              onMouseEnter={(e) => { if (pathname !== "/admin") e.currentTarget.style.background = "rgba(232,213,163,0.06)"; }}
-              onMouseLeave={(e) => { if (pathname !== "/admin") e.currentTarget.style.background = "transparent"; }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                stroke={pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
-                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-                <rect x="14" y="14" width="7" height="7" rx="1" />
-              </svg>
-              {!isRail && (
-                <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 400, color: pathname === "/admin" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
-                  Admin
-                </span>
+              label="Admin"
+              isRail={isRail}
+              Icon={() => (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                  stroke={pathname === "/admin" ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}
+                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="7" height="7" rx="0" />
+                  <rect x="14" y="3" width="7" height="7" rx="0" />
+                  <rect x="3" y="14" width="7" height="7" rx="0" />
+                  <rect x="14" y="14" width="7" height="7" rx="0" />
+                </svg>
               )}
-            </button>
+            />
           )}
 
           {isStaff && !IS_PROD && (
-            <button
+            <SidebarNavButton
+              active={pathname === "/clients"}
               onClick={() => navigate("/clients")}
-              title={isRail ? "Clients" : undefined}
-              style={{
-                padding: isRail ? "10px 0" : "10px 14px",
-                borderRadius: 7,
-                cursor: "pointer",
-                background: pathname === "/clients" ? "rgba(232,213,163,0.12)" : "transparent",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: isRail ? "center" : "flex-start",
-                gap: 11,
-                border: "none",
-                transition: "background 0.15s",
-                textAlign: "left",
-                width: "100%",
-              }}
-              onMouseEnter={(e) => { if (pathname !== "/clients") e.currentTarget.style.background = "rgba(232,213,163,0.06)"; }}
-              onMouseLeave={(e) => { if (pathname !== "/clients") e.currentTarget.style.background = "transparent"; }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                stroke={pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.38)"}
-                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-              >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              {!isRail && (
-                <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 400, color: pathname === "/clients" ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
-                  Clients
-                </span>
+              label="Clients"
+              isRail={isRail}
+              Icon={() => (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                  stroke={pathname === "/clients" ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}
+                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
               )}
-            </button>
+            />
           )}
 
-          {NAV_ITEMS.map(({ id, label, path, Icon }) => {
-            const active = isActive(path);
-            return (
-              <button
-                key={id}
+          <SidebarSectionLabel isRail={isRail}>Search</SidebarSectionLabel>
+          {NAV_SEARCH.map(({ id, label, path, Icon }) => (
+            <React.Fragment key={id}>
+              <SidebarNavButton
+                active={isActive(path)}
                 onClick={() => navigate(path)}
-                title={isRail ? label : undefined}
-                style={{
-                  padding: isRail ? "10px 0" : "10px 14px",
-                  borderRadius: 7,
-                  cursor: "pointer",
-                  background: active ? "rgba(232,213,163,0.12)" : "transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: isRail ? "center" : "flex-start",
-                  gap: 11,
-                  border: "none",
-                  transition: "background 0.15s",
-                  textAlign: "left",
-                  width: "100%",
-                }}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "rgba(232,213,163,0.06)"; }}
-                onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
-              >
-                <span style={{ position: "relative", display: "inline-flex", color: active ? "#E8D5A3" : "rgba(232,213,163,0.38)", flexShrink: 0 }}>
-                  <Icon />
-                  {id === "live" && hasLiveNow && (
-                    <span style={{ position: "absolute", top: -2, right: -2, width: 6, height: 6, borderRadius: "50%", background: "#C4574A", border: "1.5px solid #1A3A2F", animation: "pulse 1.5s ease infinite" }} />
-                  )}
-                </span>
-                {!isRail && (
-                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 400, color: active ? "#E8D5A3" : "rgba(232,213,163,0.48)" }}>
-                    {label}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                label={label}
+                Icon={Icon}
+                isRail={isRail}
+                badge={id === "opportunities" ? activePipelineCount : undefined}
+              />
+              {id === "opportunities" && onOpportunities && !isRail && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 2 }}>
+                  {OPP_SUBNAV.map(({ label: subLabel, path: subPath }) => (
+                    <SidebarNavButton
+                      key={subPath}
+                      active={pathname === subPath}
+                      onClick={() => navigate(subPath)}
+                      label={subLabel}
+                      Icon={() => (
+                        <span style={{ width: 15, height: 15, display: "inline-block", borderLeft: `2px solid ${pathname === subPath ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}` }} />
+                      )}
+                      isRail={false}
+                      indent
+                    />
+                  ))}
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+
+          <SidebarSectionLabel isRail={isRail}>You</SidebarSectionLabel>
+          {NAV_YOU.map(({ id, label, path, Icon }) => (
+            <SidebarNavButton
+              key={id}
+              active={isActive(path)}
+              onClick={() => navigate(path)}
+              label={label}
+              Icon={Icon}
+              isRail={isRail}
+              showLiveDot={id === "live" && hasLiveNow}
+              showIncompleteDot={id === "profile" && profileIncomplete}
+            />
+          ))}
         </div>
 
         <div style={{ flex: 1 }} />
@@ -450,17 +624,17 @@ export function WorkspaceSidebar({
                 display: "block",
                 width: "100%",
                 background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(232,213,163,0.12)",
-                borderRadius: 10,
+                border: SIDEBAR_LINE,
+                borderRadius: 0,
                 padding: "10px 14px",
                 cursor: "pointer",
                 textAlign: "left",
               }}
             >
-              <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "rgba(232,213,163,0.85)", letterSpacing: "0.2px" }}>
-                Stuck on the search?
+              <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 600, color: "rgba(232,213,163,0.55)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                Need help?
               </p>
-              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.38)", lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "rgba(232,213,163,0.85)" }}>
                 Talk to our team →
               </p>
             </button>
@@ -476,8 +650,8 @@ export function WorkspaceSidebar({
               margin: "0 auto 8px",
               width: 36,
               height: 36,
-              borderRadius: 8,
-              border: "1px solid rgba(232,213,163,0.15)",
+              borderRadius: 0,
+              border: SIDEBAR_LINE,
               background: "rgba(255,255,255,0.04)",
               color: "rgba(232,213,163,0.7)",
               fontSize: 16,
@@ -497,13 +671,15 @@ export function WorkspaceSidebar({
           title={isRail ? (user?.name ?? user?.email ?? "Account") : undefined}
           style={{
             padding: isRail ? "12px 0 18px" : "14px 18px 20px",
-            borderTop: "1px solid rgba(232,213,163,0.08)",
+            borderTop: SIDEBAR_LINE,
+            borderLeft: "none",
+            borderRight: "none",
+            borderBottom: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: isRail ? "center" : "flex-start",
             gap: 10,
             background: "none",
-            border: "none",
             cursor: "pointer",
             width: "100%",
             textAlign: "left",
@@ -561,10 +737,23 @@ export function WorkspaceSidebar({
         {notifOpen && !isRail && (
           <>
             <div onClick={onToggleNotif} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-            <div style={{ position: "absolute", top: 76, right: 18, width: 320, background: "#FFFFFF", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)", zIndex: 50, overflow: "hidden", animation: "fadeIn 0.2s ease both" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "1px solid #EEE9E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>Notifications</p>
-                {notifUnreadCount > 0 && <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--scout-muted)" }}>{notifUnreadCount} unread</span>}
+            <div style={{ position: "absolute", top: 76, right: 18, width: 320, background: "#FFFFFF", border: citeBorder.lineStrong, zIndex: 50, overflow: "hidden", animation: "fadeIn 0.2s ease both", boxShadow: "4px 4px 0 rgba(17,17,17,0.08)" }}>
+              <div style={{ padding: "14px 18px", borderBottom: citeBorder.line, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--scout-muted)", margin: 0 }}>Notifications</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {notifUnreadCount > 0 && (
+                    <>
+                      <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 11, fontWeight: 600, color: "#1A3A2F", background: "#E8D5A3", padding: "2px 7px", border: citeBorder.line }}>{notifUnreadCount}</span>
+                      <button
+                        type="button"
+                        onClick={markAllNotificationsRead}
+                        style={{ background: "none", border: citeBorder.line, padding: "4px 8px", fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600, color: "#1A3A2F", cursor: "pointer" }}
+                      >
+                        Mark read
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               <div style={{ maxHeight: 360, overflowY: "auto" }}>
                 {NOTIFICATIONS.length === 0 ? (
@@ -577,9 +766,9 @@ export function WorkspaceSidebar({
                     <button
                       key={n.id}
                       onClick={() => onNavigateNotif(n.section)}
-                      style={{ width: "100%", textAlign: "left", padding: "12px 18px", background: n.unread ? "rgba(26,58,47,0.03)" : "transparent", border: "none", borderBottom: "1px solid #F5F2EC", cursor: "pointer", display: "flex", gap: 10 }}
+                      style={{ width: "100%", textAlign: "left", padding: "12px 18px", background: n.unread ? "rgba(26,58,47,0.03)" : "transparent", border: "none", borderBottom: citeBorder.line, cursor: "pointer", display: "flex", gap: 10 }}
                     >
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, marginTop: 6, flexShrink: 0, opacity: n.unread ? 1 : 0.3 }} />
+                      <div style={{ width: 6, height: 6, background: dotColor, marginTop: 6, flexShrink: 0, opacity: n.unread ? 1 : 0.3 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", gap: 6, alignItems: "baseline", marginBottom: 2 }}>
                           <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{n.title}</span>
