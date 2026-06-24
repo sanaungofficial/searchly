@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -67,9 +68,7 @@ export default function SignupPage() {
         >
           Kimchi
         </div>
-        <div style={{ fontSize: 14, color: "#6B7280", letterSpacing: "0.06em" }}>
-          by Second Ladder
-        </div>
+        <KimchiBySecondLadder fontSize={14} color="#6B7280" marginTop={0} />
       </div>
 
       <div className="auth-card">

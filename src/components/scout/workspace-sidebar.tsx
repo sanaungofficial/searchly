@@ -21,6 +21,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCredits } from "@/hooks/useCredits";
 import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
+import { KimchiBySecondLadder } from "./scout-box";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
 import { canAccessBetaFeatures } from "@/lib/beta-features";
@@ -489,9 +490,12 @@ export function WorkspaceSidebar({
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "#E8D5A3" }}>
                   Kimchi
                 </div>
-                <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "rgba(232,213,163,0.32)", letterSpacing: "1.1px", textTransform: "uppercase", marginTop: 3 }}>
-                  by Second Ladder
-                </div>
+                <KimchiBySecondLadder
+                  fontSize={12}
+                  color="rgba(232,213,163,0.42)"
+                  brandColor="rgba(232,213,163,0.72)"
+                  marginTop={3}
+                />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                 {isMobile && (

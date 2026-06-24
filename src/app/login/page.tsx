@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 
 function LoginContent() {
   const [email, setEmail] = useState("");
@@ -77,9 +78,7 @@ function LoginContent() {
         >
           Kimchi
         </div>
-        <div style={{ fontSize: 14, color: "#6B7280", letterSpacing: "0.06em" }}>
-          by Second Ladder
-        </div>
+        <KimchiBySecondLadder fontSize={14} color="#6B7280" marginTop={0} />
       </div>
 
       <div className="auth-card">
