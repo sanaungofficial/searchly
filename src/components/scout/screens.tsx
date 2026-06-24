@@ -8,7 +8,7 @@ import {
   normalizeCustomRoleTitle,
   TARGET_ROLE_SUGGESTIONS,
 } from "@/lib/target-roles";
-import { ONBOARDING_COMPANY_PICKS, ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
+import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import {
   UploadIcon,
@@ -28,9 +28,9 @@ import { ScoreExplainerPopover } from "./score-explainer-popover";
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-const ONBOARDING_STEP_COUNT = 7;
+const ONBOARDING_STEP_COUNT = 6;
 
 export interface Job {
   id: number;
@@ -375,8 +375,8 @@ export function ScreenWelcome({
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <OnboardingHeroIntro
-        title="Hello. I'm Kimchi."
-        body="Drop your resume and I'll read it — then I'll tell you what I see about your career."
+        title="Let's get you started."
+        body="First up: upload your resume so Kimchi can read it. Then you'll pick target roles, dream companies, and a few preferences — we'll scan for matching openings as you go."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
@@ -538,7 +538,7 @@ export function ScreenWelcome({
           />
         </div>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 12, marginBottom: 0, lineHeight: 1.55 }}>
-          We&apos;ll save this on your profile. Kimchi&apos;s read comes from your resume, not LinkedIn.
+          We&apos;ll save this and import your public profile (experience, education, skills) when you finish setup.
         </p>
       </div>
 
@@ -1805,16 +1805,6 @@ function suggestionToPick(item: CompanySuggestion): OnboardingCompanyPick {
   };
 }
 
-function catalogToPick(c: (typeof ONBOARDING_COMPANY_PICKS)[number]): OnboardingCompanyPick {
-  return {
-    catalogSlug: c.slug,
-    name: c.name,
-    website: c.website ?? null,
-    careersUrl: c.careersUrl ?? null,
-    type: c.type ?? null,
-  };
-}
-
 function TargetCompanyChip({
   company,
   onRemove,
@@ -1888,7 +1878,6 @@ function TargetCompanyAutocomplete({
   const max = ONBOARDING_MAX_TARGET_COMPANIES;
   const atMax = selectedCompanies.length >= max;
   const selectedSlugs = new Set(selectedCompanies.map((c) => c.catalogSlug));
-  const quickPicks = ONBOARDING_COMPANY_PICKS.filter((c) => !selectedSlugs.has(c.slug));
 
   const dropdownOptions = useMemo(
     () => suggestions.filter((s) => !selectedSlugs.has(s.catalogSlug)),
@@ -1904,7 +1893,7 @@ function TargetCompanyAutocomplete({
   }, [open, dropdownOptions.length, onDropdownOpenChange]);
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() || query.trim().length < 2) {
       setSuggestions([]);
       setOpen(false);
       return;
@@ -1957,53 +1946,6 @@ function TargetCompanyAutocomplete({
         </div>
       )}
 
-      {quickPicks.length > 0 && !atMax && (
-        <div style={{ marginBottom: 14 }}>
-          <p
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 12,
-              fontWeight: 600,
-              color: ONBOARDING_TEXT_SECONDARY,
-              letterSpacing: "0.4px",
-              textTransform: "uppercase",
-              marginBottom: 8,
-              marginTop: 0,
-            }}
-          >
-            Popular picks
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {quickPicks.slice(0, 10).map((c) => (
-              <button
-                key={c.slug}
-                type="button"
-                className="onboarding-chip"
-                onClick={() => pick(catalogToPick(c))}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 12px 8px 8px",
-                  background: ONBOARDING_FIELD_BG,
-                  border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: 8,
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: ONBOARDING_TEXT,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <CompanyLogo name={c.name} website={c.website} careersUrl={c.careersUrl} size={22} borderRadius={5} />
-                {c.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div style={{ position: "relative" }}>
         <label
           htmlFor="target-company-input"
@@ -2028,7 +1970,7 @@ function TargetCompanyAutocomplete({
           type="text"
           value={query}
           disabled={atMax}
-          placeholder={atMax ? "Remove one to add another" : "Search companies — e.g. Stripe, HubSpot…"}
+          placeholder={atMax ? "Remove one to add another" : "Search companies — type at least 2 letters…"}
           autoComplete="off"
           role="combobox"
           aria-expanded={open && dropdownOptions.length > 0}
@@ -2136,7 +2078,7 @@ function TargetCompanyAutocomplete({
 
       {!query && !atMax && (
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
-          Pick up to {max}. We&apos;ll scan each for roles that match your target titles.
+          Search our company database — pick up to {max}. We&apos;ll scan each for roles that match your target titles.
         </p>
       )}
     </div>
