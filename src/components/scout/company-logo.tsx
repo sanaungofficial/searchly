@@ -20,6 +20,7 @@ export function CompanyLogo({
   website,
   careersUrl,
   enrichmentWebsiteUrl,
+  logoUrl,
   size = 32,
   borderRadius,
 }: {
@@ -27,10 +28,13 @@ export function CompanyLogo({
   website?: string | null;
   careersUrl?: string | null;
   enrichmentWebsiteUrl?: string | null;
+  /** Direct logo URL (e.g. Hirebase company_logo) — tried before domain lookup */
+  logoUrl?: string | null;
   size?: number;
   borderRadius?: number;
 }) {
   const [stage, setStage] = useState<"primary" | "fallback" | "initials">("primary");
+  const [directFailed, setDirectFailed] = useState(false);
   const domain = useMemo(
     () => extractCompanyDomain({ name, website, careersUrl, enrichmentWebsiteUrl }),
     [name, website, careersUrl, enrichmentWebsiteUrl]
@@ -42,7 +46,37 @@ export function CompanyLogo({
 
   useEffect(() => {
     setStage("primary");
-  }, [domain]);
+    setDirectFailed(false);
+  }, [domain, logoUrl]);
+
+  if (logoUrl?.trim() && !directFailed) {
+    const br = borderRadius ?? (size <= 30 ? 6 : size <= 40 ? 7 : 10);
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: br,
+          background: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          overflow: "hidden",
+          border: "1px solid rgba(0,0,0,0.06)",
+        }}
+      >
+        <img
+          src={logoUrl.trim()}
+          alt=""
+          width={size - 8}
+          height={size - 8}
+          style={{ objectFit: "contain" }}
+          onError={() => setDirectFailed(true)}
+        />
+      </div>
+    );
+  }
 
   if (domain && urls && stage !== "initials") {
     const src = stage === "primary" ? urls.primary : urls.fallback;

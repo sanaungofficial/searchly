@@ -51,11 +51,12 @@ export async function POST(request: Request) {
   const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
   const structuredPrompt = anthropic ? await getPrompt("RESUME_PARSE") : "";
 
-  const { text: resumeText, parsed: parsedRaw, tokensIn, tokensOut, usedFallback } = await parseResumeFile(
+  const { text: resumeText, parsed: parsedRaw, tokensIn, tokensOut, usedFallback, provider } = await parseResumeFile(
     anthropic,
     bytes,
     ext,
     structuredPrompt,
+    file.name,
   );
 
   if (!resumeText) {
@@ -115,5 +116,6 @@ export async function POST(request: Request) {
     parsedData,
     asset,
     _fallback: usedFallback,
+    _provider: provider,
   });
 }

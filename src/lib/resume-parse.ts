@@ -12,6 +12,7 @@ export interface ParsedWorkEntry {
   company: string;
   title: string;
   description?: string | null;
+  location?: string | null;
   from?: string | null;
   to?: string | null;
   bullets: string[];
@@ -54,6 +55,8 @@ export interface ParsedResumeData {
   skillGroups: ParsedSkillGroup[];
   certifications: ParsedCertificationEntry[];
   sectionOrder?: ResumeSectionId[];
+  /** Hirebase `/v2/resumes/embed` artifact — use with `/v2/jobs/vsearch` search_type resume. */
+  hirebaseArtifactId?: string | null;
 }
 
 function asStringOrNull(value: unknown): string | null {
@@ -191,6 +194,7 @@ function normalizeWorkExperience(raw: unknown): ParsedWorkEntry[] {
         company: company || "Unknown company",
         title: title || "Role",
         description: asStringOrNull(row.description),
+        location: asStringOrNull(row.location),
         from: asStringOrNull(row.from),
         to: asStringOrNull(row.to),
         bullets: asStringArray(row.bullets),
@@ -263,6 +267,7 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
     skillGroups,
     certifications,
     sectionOrder,
+    hirebaseArtifactId: asStringOrNull(obj.hirebaseArtifactId ?? obj.hirebase_artifact_id),
   };
 
   const hasContent =
@@ -511,7 +516,7 @@ export function sectionTextBlob(data: ParsedResumeData, sectionId: ResumeSection
   }
   if (sectionId === "experience") {
     const entries = entryId ? data.workExperience.filter((w) => w.id === entryId) : data.workExperience;
-    return entries.map((w) => `${w.title} ${w.company} ${w.bullets.join(" ")}`).join(" ");
+    return entries.map((w) => `${w.title} ${w.company} ${w.location ?? ""} ${w.bullets.join(" ")}`).join(" ");
   }
   if (sectionId === "education") {
     return data.education.map((e) => `${e.degree} ${e.school}`).join(" ");

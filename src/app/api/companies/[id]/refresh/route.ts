@@ -2,17 +2,13 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { ensureDbUser } from "@/lib/ensure-db-user";
-import { getEffectiveCareersUrl, mergeTrackedWithIntel, syncTrackedFromIntel } from "@/lib/company-intel";
-import { scanCompanyIntel } from "@/lib/company-jobs-scan";
+import { mergeTrackedWithIntel } from "@/lib/company-intel";
+import { scanTrackedCompanyMatches } from "@/lib/company-jobs-scan";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
-  }
-
   const supabase = await createClient();
   const dbUser = await ensureDbUser(supabase);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,22 +20,13 @@ export async function POST(
   });
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const careersUrl = getEffectiveCareersUrl(company, company.companyIntel);
-  if (!careersUrl) {
-    return NextResponse.json({ error: "Add a Careers URL or website to scan for jobs." }, { status: 422 });
-  }
-
-  const intelId = company.companyIntelId;
-  if (!intelId) {
-    return NextResponse.json({ error: "Link this company to shared intel before scanning." }, { status: 422 });
-  }
-
-  const result = await scanCompanyIntel(intelId);
+  const result = await scanTrackedCompanyMatches(id, dbUser.id);
   if (!result.ok) {
-    const status = result.error.includes("not configured") ? 503 : 422;
+    const status =
+      result.error.includes("not configured") ? 503 : result.error.includes("target roles") ? 422 : 422;
     return NextResponse.json({ error: result.error }, { status });
   }
 
-  const synced = await syncTrackedFromIntel(id, result.intel);
-  return NextResponse.json(mergeTrackedWithIntel(synced, result.intel));
+  const merged = mergeTrackedWithIntel(result.company, company.companyIntel);
+  return NextResponse.json(merged);
 }
