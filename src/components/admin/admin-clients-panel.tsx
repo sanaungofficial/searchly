@@ -2,8 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { ScoutBox } from "@/components/scout/scout-box";
-import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
-import { adminSectionLabel } from "@/app/(workspace)/admin/admin-styles";
+import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { formatApiErrorMessage } from "@/lib/api-error-message";
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  textTransform: "uppercase",
+  letterSpacing: "0.8px",
+  color: "var(--scout-muted)",
+  fontFamily: fontMono,
+  margin: "0 0 4px",
+};
 
 type JobStage = "SAVED" | "APPLYING" | "APPLIED" | "SCREENING" | "INTERVIEWING" | "OFFER" | "REJECTED" | "WITHDRAWN";
 
@@ -24,7 +33,7 @@ export type AdminClient = {
   profile: {
     headline: string | null;
     targetRoles: string[];
-    targetSalary: number | null;
+    targetSalary: number | string | null;
     resumeUrl: string | null;
     linkedinUrl: string | null;
   } | null;
@@ -75,22 +84,28 @@ export function AdminClientsPanel({
 }) {
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminClient | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch(apiPath)
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) {
+          throw new Error(formatApiErrorMessage(data?.error ?? data, "Failed to load clients."));
+        }
+        if (!Array.isArray(data)) {
+          throw new Error("Unexpected response from clients API.");
+        }
+        return data as AdminClient[];
       })
       .then((data) => {
         setClients(data);
         setLoading(false);
       })
-      .catch(() => {
-        setError(true);
+      .catch((err) => {
+        setError(formatApiErrorMessage(err, "Failed to load clients."));
         setLoading(false);
       });
   }, [apiPath]);
@@ -104,7 +119,7 @@ export function AdminClientsPanel({
     return <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Loading clients…</p>;
   }
   if (error) {
-    return <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Failed to load clients.</p>;
+    return <p style={{ color: "#C4574A", fontSize: 14 }}>{error}</p>;
   }
 
   if (selected) {
@@ -135,7 +150,7 @@ export function AdminClientsPanel({
 
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}>
           <div>
-            <p style={adminSectionLabel}>Client</p>
+            <p style={sectionLabelStyle}>Client</p>
             <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 6px" }}>{displayName}</h1>
             <p style={{ fontSize: T.caption, color: color.muted, fontFamily: fontMono, margin: 0 }}>{selected.email}</p>
             {selected.profile?.headline && (
@@ -239,7 +254,11 @@ export function AdminClientsPanel({
               {selected.profile.targetSalary && (
                 <div>
                   <p style={{ fontSize: 13, color: "var(--scout-muted)", marginBottom: 4 }}>Target salary</p>
-                  <p style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 500 }}>${selected.profile.targetSalary.toLocaleString()}</p>
+                  <p style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 500 }}>
+                    {typeof selected.profile.targetSalary === "number"
+                      ? `$${selected.profile.targetSalary.toLocaleString()}`
+                      : selected.profile.targetSalary}
+                  </p>
                 </div>
               )}
             </div>
@@ -301,7 +320,7 @@ export function AdminClientsPanel({
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <p style={adminSectionLabel}>Clients</p>
+        <p style={sectionLabelStyle}>Clients</p>
         <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 8px" }}>Manage clients</h1>
         <p style={{ fontSize: 14, color: color.stone, margin: 0, maxWidth: 560 }}>
           View client accounts, check their pipeline, and open their workspace to upload resumes or review job matches.

@@ -2,6 +2,7 @@ import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { roleSearchKeywords } from "@/lib/job-match";
+import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
 
@@ -118,13 +119,7 @@ async function hirebaseFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try {
-      detail = (JSON.parse(body) as { detail?: string }).detail ?? body;
-    } catch {
-      // keep raw body
-    }
-    throw new Error(detail || `Hirebase request failed (${res.status})`);
+    throw new Error(formatHirebaseErrorBody(body, res.status));
   }
 
   return res.json() as Promise<T>;

@@ -16,6 +16,7 @@ import { cachedJobToMeta, normalizeJobUrl } from "@/lib/cached-job";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { formatApiErrorMessage } from "@/lib/api-error-message";
 
 type SearchResponse = {
   jobs?: VectorMatchedJob[];
@@ -215,7 +216,7 @@ export function PipelineRecommendedSection({
       });
       const data = (await res.json()) as SearchResponse;
       if (!res.ok) {
-        setError(data.error ?? "Could not load recommended jobs.");
+        setError(formatApiErrorMessage(data.error, "Could not load recommended jobs."));
         setJobs([]);
         setTotalCount(0);
       } else {

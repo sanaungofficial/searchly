@@ -23,6 +23,7 @@ export async function GET() {
       jobs: {
         select: { id: true, company: true, role: true, stage: true, appliedAt: true, createdAt: true },
         orderBy: { createdAt: "desc" },
+        take: 50,
       },
       _count: { select: { jobs: true, tailoredResumes: true } },
     },

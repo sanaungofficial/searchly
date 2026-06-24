@@ -9,6 +9,7 @@ import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
+import { formatApiErrorMessage } from "@/lib/api-error-message";
 
 function splitCsv(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
@@ -155,7 +156,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Vector search failed.";
+    const msg = formatApiErrorMessage(err, "Vector search failed.");
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }
