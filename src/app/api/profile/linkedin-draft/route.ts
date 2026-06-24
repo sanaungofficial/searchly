@@ -5,26 +5,31 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email! },
+      include: { profile: true },
+    });
+    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const draft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
+    const draft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
 
-  return NextResponse.json({
-    draft,
-    updatedAt: dbUser.profile?.linkedInDraftUpdatedAt?.toISOString() ?? null,
-    sourceAssetId: dbUser.profile?.linkedInDraftSourceAssetId ?? null,
-    linkedinUrl: dbUser.profile?.linkedinUrl ?? null,
-    name: dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
-    avatarUrl: dbUser.avatarUrl ?? null,
-  });
+    return NextResponse.json({
+      draft,
+      updatedAt: dbUser.profile?.linkedInDraftUpdatedAt?.toISOString() ?? null,
+      sourceAssetId: dbUser.profile?.linkedInDraftSourceAssetId ?? null,
+      linkedinUrl: dbUser.profile?.linkedinUrl ?? null,
+      name: dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
+      avatarUrl: dbUser.avatarUrl ?? null,
+    });
+  } catch (err) {
+    console.error("[linkedin-draft GET]", err);
+    return NextResponse.json({ error: "Failed to load LinkedIn draft" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request) {

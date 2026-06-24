@@ -4,36 +4,41 @@ import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email! },
+      include: { profile: true },
+    });
 
-  const parsedData = mergeParsedWithReadback(
-    normalizeParsedResumeData(dbUser?.profile?.parsedData ?? null),
-    dbUser?.profile?.readbackData,
-  );
+    const parsedData = mergeParsedWithReadback(
+      normalizeParsedResumeData(dbUser?.profile?.parsedData ?? null),
+      dbUser?.profile?.readbackData,
+    );
 
-  return NextResponse.json({
-    name: dbUser?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
-    email: user.email,
-    avatarUrl: dbUser?.avatarUrl || null,
-    resumeUrl: dbUser?.profile?.resumeUrl || null,
-    linkedinUrl: dbUser?.profile?.linkedinUrl || null,
-    headline: dbUser?.profile?.headline || null,
-    targetRoles: dbUser?.profile?.targetRoles || [],
-    parsedData,
-    employmentStatus: dbUser?.profile?.employmentStatus || null,
-    currentSalary: dbUser?.profile?.currentSalary || null,
-    targetSalary: dbUser?.profile?.targetSalary || null,
-    careerMotivation: dbUser?.profile?.careerMotivation || null,
-    jobTimeline: dbUser?.profile?.jobTimeline || null,
-    priorities: dbUser?.profile?.priorities || [],
-  });
+    return NextResponse.json({
+      name: dbUser?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
+      email: user.email,
+      avatarUrl: dbUser?.avatarUrl || null,
+      resumeUrl: dbUser?.profile?.resumeUrl || null,
+      linkedinUrl: dbUser?.profile?.linkedinUrl || null,
+      headline: dbUser?.profile?.headline || null,
+      targetRoles: dbUser?.profile?.targetRoles || [],
+      parsedData,
+      employmentStatus: dbUser?.profile?.employmentStatus || null,
+      currentSalary: dbUser?.profile?.currentSalary || null,
+      targetSalary: dbUser?.profile?.targetSalary || null,
+      careerMotivation: dbUser?.profile?.careerMotivation || null,
+      jobTimeline: dbUser?.profile?.jobTimeline || null,
+      priorities: dbUser?.profile?.priorities || [],
+    });
+  } catch (err) {
+    console.error("[profile GET]", err);
+    return NextResponse.json({ error: "Failed to load profile" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request) {
