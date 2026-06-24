@@ -7,6 +7,8 @@ import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
+const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
+
 interface JobsCache {
   jobs: CachedJob[];
   scanned_url: string;
@@ -470,8 +472,8 @@ function CompanyDrawer({
       {/* Backdrop */}
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200, backdropFilter: "blur(1px)" }} />
 
-      {/* Drawer */}
-      <div style={{ position: "fixed", top: 8, right: 8, bottom: 8, width: "min(480px, calc(100vw - 16px))", background: surface.page, border: border.lineStrong, zIndex: 201, boxShadow: "3px 3px 0 rgba(17,17,17,0.06)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Drawer — same width/shell as JobDrawer */}
+      <div style={{ position: "fixed", top: 8, right: 8, bottom: 8, width: DRAWER_WIDTH, maxWidth: "calc(100vw - 16px)", background: surface.inset, border: border.lineStrong, zIndex: 201, boxShadow: "3px 3px 0 rgba(17,17,17,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "20px 24px 16px", borderBottom: border.line, background: surface.card, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
