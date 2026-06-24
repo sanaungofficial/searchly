@@ -139,6 +139,21 @@ export function DashboardIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/* Eye — data sources / transparency */
+export function EyeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" {...props}>
+      <path
+        d="M1.5 7.5C2.8 4.6 5.2 2.5 7.5 2.5s4.7 2.1 6 5c-1.3 2.9-3.7 5-6 5s-4.7-2.1-6-5z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <circle cx="7.5" cy="7.5" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 /* Sparkle — Searchly signature */
 export function SparkleIcon(props: SVGProps<SVGSVGElement>) {
   return (
