@@ -58,13 +58,21 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     setError(null);
     try {
       const res = await fetch("/api/profile/linkedin-draft");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load");
-      setDraft(data.draft ?? null);
-      setName(data.name || "Your Name");
-      setAvatarUrl(data.avatarUrl ?? null);
-      setLinkedinUrl(data.linkedinUrl ?? null);
-      setUpdatedAt(data.updatedAt ?? null);
+      const text = await res.text();
+      let data: Record<string, unknown> = {};
+      if (text) {
+        try {
+          data = JSON.parse(text) as Record<string, unknown>;
+        } catch {
+          throw new Error("Invalid server response");
+        }
+      }
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Failed to load");
+      setDraft((data.draft as LinkedInProfileDraft | null) ?? null);
+      setName(typeof data.name === "string" ? data.name : "Your Name");
+      setAvatarUrl(typeof data.avatarUrl === "string" ? data.avatarUrl : null);
+      setLinkedinUrl(typeof data.linkedinUrl === "string" ? data.linkedinUrl : null);
+      setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {

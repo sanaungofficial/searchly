@@ -1854,11 +1854,19 @@ export function WorkspaceProfile() {
 
   useEffect(() => {
     fetch("/api/profile")
-      .then((r) => r.json())
+      .then(async (r) => {
+        const text = await r.text();
+        if (!text) return { error: "Empty response" };
+        try {
+          return JSON.parse(text) as Record<string, unknown>;
+        } catch {
+          return { error: "Invalid response" };
+        }
+      })
       .then((data) => {
         if (!data.error) {
-          setProfile(data);
-          setDreamList(data.targetRoles || []);
+          setProfile(data as UserProfile);
+          setDreamList((data.targetRoles as string[]) || []);
         }
       })
       .catch(() => {})
