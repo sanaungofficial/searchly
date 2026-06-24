@@ -5,6 +5,7 @@ import type { JobMeta } from "@/lib/job-meta";
 import type { KanbanCard } from "./workspace-data";
 import {
   DEFAULT_VECTOR_SEARCH_FILTERS,
+  HIREBASE_COMPANY_SIZE_BUCKETS,
   HIREBASE_EXPERIENCE_LEVELS,
   HIREBASE_JOB_TYPES,
   HIREBASE_LOCATION_TYPES,
@@ -34,6 +35,12 @@ type JobsApiResponse = {
 };
 
 const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
+
+const COMMON_COUNTRIES = ["United States", "Canada", "United Kingdom", "Germany", "France", "Australia", "India", "Singapore"];
+
+const US_STATES = [
+  "California", "New York", "Texas", "Washington", "Massachusetts", "Illinois", "Colorado", "Georgia", "Florida", "Virginia",
+];
 
 function scoreColor(score: number): string {
   if (score >= 75) return "#2A6B4A";
@@ -134,6 +141,145 @@ const inputStyle: React.CSSProperties = {
   background: surface.card,
 };
 
+function FilterSectionHeader({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div style={{ gridColumn: "1 / -1", marginBottom: 4 }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.forest, margin: "0 0 4px" }}>{title}</p>
+      <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: 0, lineHeight: 1.45 }}>{hint}</p>
+    </div>
+  );
+}
+
+function DatalistInput({
+  value,
+  onChange,
+  listId,
+  options,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  listId: string;
+  options: string[];
+  placeholder?: string;
+  type?: React.HTMLInputTypeAttribute;
+}) {
+  return (
+    <>
+      <input
+        type={type}
+        style={inputStyle}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        list={options.length ? listId : undefined}
+      />
+      {options.length > 0 && (
+        <datalist id={listId}>
+          {options.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
+      )}
+    </>
+  );
+}
+
+function MatchFitCallout({ job }: { job: VectorMatchedJob }) {
+  const reasons = job.matchReasons.filter(Boolean).slice(0, 3);
+  if (!reasons.length) return null;
+
+  const matchedSkills = job.matchedSkills?.slice(0, 6) ?? [];
+
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        padding: "14px 16px",
+        background: "rgba(26,58,47,0.06)",
+        border: "1px solid rgba(26,58,47,0.12)",
+        borderLeft: `3px solid ${color.forest}`,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.label,
+          fontWeight: 700,
+          color: color.forest,
+          margin: "0 0 4px",
+          letterSpacing: "0.03em",
+          textTransform: "uppercase",
+        }}
+      >
+        Why you&apos;re a good fit
+      </p>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
+        <span style={{ fontWeight: 600, color: scoreColor(job.matchScore) }}>{job.matchLabel}</span>
+        {" "}match · {job.matchScore}/100 based on your profile
+      </p>
+      <ul
+        style={{
+          margin: 0,
+          padding: 0,
+          listStyle: "none",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        {reasons.map((reason) => (
+          <li
+            key={reason}
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              color: color.ink,
+              lineHeight: 1.5,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                flexShrink: 0,
+                width: 6,
+                height: 6,
+                marginTop: 7,
+                borderRadius: "50%",
+                background: color.forest,
+              }}
+            />
+            <span>{reason}</span>
+          </li>
+        ))}
+      </ul>
+      {matchedSkills.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+          {matchedSkills.map((skill) => (
+            <span
+              key={skill}
+              style={{
+                padding: "4px 10px",
+                background: "rgba(26,58,47,0.08)",
+                fontFamily: fontSans,
+                fontSize: T.label,
+                fontWeight: 500,
+                color: color.forest,
+              }}
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChipToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
@@ -159,13 +305,19 @@ function JobFiltersGrid({
   form,
   setForm,
   toggleSet,
+  trackedCompanyNames,
 }: {
   form: FilterForm;
   setForm: React.Dispatch<React.SetStateAction<FilterForm>>;
   toggleSet: (set: Set<string>, value: string) => Set<string>;
+  trackedCompanyNames: string[];
 }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
+      <FilterSectionHeader
+        title="Type to filter"
+        hint="Free text — matches job title, company, location, and description. Separate multiple job titles or keywords with commas."
+      />
       <FilterField label="Job titles">
         <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Operations" />
       </FilterField>
@@ -173,20 +325,43 @@ function JobFiltersGrid({
         <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" />
       </FilterField>
       <FilterField label="Company">
-        <input style={inputStyle} value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder="Stripe" />
+        <DatalistInput
+          value={form.companyName}
+          onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
+          listId="recommended-company-suggestions"
+          options={trackedCompanyNames}
+          placeholder={trackedCompanyNames.length ? "Pick a tracked company or type any name" : "Stripe"}
+        />
       </FilterField>
       <FilterField label="City">
-        <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} />
+        <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} placeholder="San Francisco" />
       </FilterField>
       <FilterField label="State / region">
-        <input style={inputStyle} value={form.locationRegion} onChange={(e) => setForm((f) => ({ ...f, locationRegion: e.target.value }))} />
+        <DatalistInput
+          value={form.locationRegion}
+          onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
+          listId="recommended-region-suggestions"
+          options={US_STATES}
+          placeholder="California"
+        />
       </FilterField>
       <FilterField label="Country">
-        <input style={inputStyle} value={form.locationCountry} onChange={(e) => setForm((f) => ({ ...f, locationCountry: e.target.value }))} />
+        <DatalistInput
+          value={form.locationCountry}
+          onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
+          listId="recommended-country-suggestions"
+          options={COMMON_COUNTRIES}
+          placeholder="United States"
+        />
       </FilterField>
       <FilterField label="Posted after">
         <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
       </FilterField>
+
+      <FilterSectionHeader
+        title="Select options"
+        hint="Tap to toggle — these use fixed Hirebase categories (work arrangement, job type, seniority, company size)."
+      />
       <div style={{ gridColumn: "1 / -1" }}>
         <FilterField label="Work arrangement">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -206,6 +381,13 @@ function JobFiltersGrid({
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
               <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
+            ))}
+          </div>
+        </FilterField>
+        <FilterField label="Company size (employees)">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_COMPANY_SIZE_BUCKETS.map((t) => (
+              <ChipToggle key={t} label={t} active={form.companySizeBuckets.has(t)} onClick={() => setForm((f) => ({ ...f, companySizeBuckets: toggleSet(f.companySizeBuckets, t) }))} />
             ))}
           </div>
         </FilterField>
@@ -364,11 +546,7 @@ function JobResultsList({
                     <div style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{job.matchLabel}</div>
                   </div>
                 </div>
-                <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontFamily: fontSans, fontSize: T.caption, color: color.ink, lineHeight: 1.5 }}>
-                  {job.matchReasons.slice(0, 2).map((r) => (
-                    <li key={r}>{r}</li>
-                  ))}
-                </ul>
+                <MatchFitCallout job={job} />
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>
@@ -427,6 +605,7 @@ export function PipelineRecommendedSection({
   const [error, setError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [searchScoped, setSearchScoped] = useState(true);
+  const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
 
   const mountedRef = useRef(false);
   const fetchGenRef = useRef(0);
@@ -518,6 +697,18 @@ export function PipelineRecommendedSection({
     },
     []
   );
+
+  useEffect(() => {
+    fetch("/api/companies")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Array<{ name?: string }>) => {
+        const names = [...new Set((Array.isArray(data) ? data : []).map((c) => c.name?.trim()).filter(Boolean) as string[])].sort();
+        setTrackedCompanyNames(names);
+      })
+      .catch(() => {
+        /* optional suggestions */
+      });
+  }, []);
 
   useEffect(() => {
     if (mountedRef.current) return;
@@ -632,7 +823,9 @@ export function PipelineRecommendedSection({
           />
         </FilterField>
 
-        {showFilters && <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} />}
+        {showFilters && (
+          <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} trackedCompanyNames={trackedCompanyNames} />
+        )}
 
         {error && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>

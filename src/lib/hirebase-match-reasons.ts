@@ -58,18 +58,18 @@ function heuristicMatch(
 
   const reasons: string[] = [];
   if (matchedSkills.length) {
-    reasons.push(`Your background aligns on ${matchedSkills.slice(0, 4).join(", ")}.`);
-  }
-  if (job.requirements_summary?.trim()) {
-    reasons.push(job.requirements_summary.trim());
-  } else if (fallback.summaryNote) {
-    reasons.push(fallback.summaryNote);
+    reasons.push(
+      `You're a good fit because your background aligns with ${matchedSkills.slice(0, 4).join(", ")}.`,
+    );
   }
   if (job.experience_level) {
-    reasons.push(`Role level: ${job.experience_level}.`);
+    reasons.push(`This is a ${job.experience_level}-level role that matches your career targets.`);
+  }
+  if (fallback.summaryNote && reasons.length < 2) {
+    reasons.push(fallback.summaryNote);
   }
   if (!reasons.length) {
-    reasons.push("Semantic match from your resume profile — review the full posting to confirm fit.");
+    reasons.push("Your profile overlaps with this role — open the posting to confirm details.");
   }
 
   return {
