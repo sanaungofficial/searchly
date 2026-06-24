@@ -341,6 +341,27 @@
   animation: spin 0.75s linear infinite;
 }
 
+.onboarding-upload-progress {
+  height: 3px;
+  margin-top: 16px;
+  background: rgba(26, 58, 47, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.onboarding-upload-progress__bar {
+  height: 100%;
+  width: 42%;
+  background: #1A3A2F;
+  border-radius: 2px;
+  animation: onboardingUploadProgress 1.5s ease-in-out infinite;
+}
+
+@keyframes onboardingUploadProgress {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}
+
 .onboarding-cta {
   min-height: 48px;
   box-sizing: border-box;
