@@ -8,6 +8,7 @@ import {
   ScreenWelcome,
   ScreenReadBack,
   ScreenTargetRoles,
+  ScreenTargetCompanies,
   ScreenAboutYouSearch,
   ScreenAboutYouPreferences,
   ScreenTransition,
@@ -19,7 +20,9 @@ import {
   type TransitionJobMatch,
   type SetupStep,
   type SetupStepStatus,
+  type OnboardingCompanyPick,
 } from "@/components/scout/screens";
+import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
 import { normalizeJobListingUrl } from "@/lib/job-listing-url";
@@ -60,6 +63,7 @@ const INITIAL_SETUP_STEPS: SetupStep[] = [
   { id: "profile", label: "Saving your profile", status: "pending" },
   { id: "resume", label: "Building your base resume", status: "pending" },
   { id: "analysis", label: "Running your resume review", status: "pending" },
+  { id: "companies", label: "Scanning your companies for matching roles", status: "pending" },
   { id: "job", label: "Saving your first job", status: "pending" },
   { id: "match", label: "Scoring your fit for this role", status: "pending" },
 ];
@@ -85,6 +89,7 @@ export default function OnboardingPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [liInput, setLiInput] = useState("");
   const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<OnboardingCompanyPick[]>([]);
   const [readbackRoleSuggestions, setReadbackRoleSuggestions] = useState<string[]>([]);
   const [careerMotivation, setCareerMotivation] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
@@ -238,20 +243,36 @@ export default function OnboardingPage() {
 
   const onRolesSkip = useCallback(() => goTo(3), [goTo]);
 
+  const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
+    setSelectedCompanies((prev) => {
+      if (prev.some((c) => c.catalogSlug === company.catalogSlug) || prev.length >= ONBOARDING_MAX_TARGET_COMPANIES) {
+        return prev;
+      }
+      return [...prev, company];
+    });
+  }, []);
+
+  const onRemoveTargetCompany = useCallback((catalogSlug: string) => {
+    setSelectedCompanies((prev) => prev.filter((c) => c.catalogSlug !== catalogSlug));
+  }, []);
+
+  const onCompaniesContinue = useCallback(() => goTo(4), [goTo]);
+  const onCompaniesSkip = useCallback(() => goTo(4), [goTo]);
+
   const onTogglePriority = useCallback((p: string) => {
     setPriorities((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   }, []);
 
-  const goToPreferences = useCallback(() => goTo(4), [goTo]);
+  const goToPreferences = useCallback(() => goTo(5), [goTo]);
 
   const goToTransition = useCallback(() => {
     saveAboutYou(aboutYouFields).catch(() => {});
-    goTo(5);
+    goTo(6);
   }, [aboutYouFields, goTo]);
 
   const skipAboutYouToTransition = useCallback(() => {
     saveAboutYou(aboutYouFields).catch(() => {});
-    goTo(5);
+    goTo(6);
   }, [aboutYouFields, goTo]);
 
   const analyzeFirstJob = useCallback(async () => {
@@ -337,12 +358,13 @@ export default function OnboardingPage() {
 
   const runFinishSetup = useCallback(async (saveJob: boolean) => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
-    goTo(6);
+    goTo(7);
 
     let primaryAssetId: string | undefined;
     let savedJobId: string | null = null;
     const analysisSnapshot = jobAnalysis;
     const matchSnapshot = jobMatch;
+    const companiesSnapshot = selectedCompanies;
 
     try {
       setStepStatus("profile", "active");
@@ -373,6 +395,37 @@ export default function OnboardingPage() {
         setStepStatus("analysis", "done");
       } else {
         setStepStatus("analysis", "skipped");
+      }
+
+      if (companiesSnapshot.length > 0) {
+        setStepStatus("companies", "active");
+        for (const pick of companiesSnapshot) {
+          const res = await fetch("/api/companies", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              catalogSlug: pick.catalogSlug,
+              name: pick.name,
+              website: pick.website,
+              careersUrl: pick.careersUrl,
+              type: pick.type,
+            }),
+          });
+          let trackedId: string | null = null;
+          if (res.ok) {
+            const created = await res.json();
+            trackedId = created.id ?? null;
+          } else if (res.status === 409) {
+            const data = await res.json();
+            trackedId = data.existing?.id ?? null;
+          }
+          if (trackedId) {
+            await fetch(`/api/companies/${trackedId}/refresh`, { method: "POST" }).catch(() => {});
+          }
+        }
+        setStepStatus("companies", "done");
+      } else {
+        setStepStatus("companies", "skipped");
       }
 
       if (saveJob && analysisSnapshot) {
@@ -433,7 +486,13 @@ export default function OnboardingPage() {
         body: JSON.stringify({ action: "complete-onboarding" }),
       }).catch(() => {});
 
-      router.push("/profile/assets?open=primary");
+      const finishDestination = hasMatchJob
+        ? "/profile/assets?open=primary"
+        : companiesSnapshot.length > 0
+          ? "/opportunities/companies"
+          : "/profile/assets?open=primary";
+
+      router.push(finishDestination);
     } catch {
       fetch("/api/referrals", {
         method: "POST",
@@ -441,7 +500,9 @@ export default function OnboardingPage() {
         body: JSON.stringify({ action: "complete-onboarding" }),
       }).catch(() => {});
       writeOnboardingFinishPayload({ primaryAssetId, autoRunMatch: false });
-      router.push("/profile/assets?open=primary");
+      router.push(
+        companiesSnapshot.length > 0 ? "/opportunities/companies" : "/profile/assets?open=primary"
+      );
     }
   }, [
     aboutYouFields,
@@ -451,6 +512,7 @@ export default function OnboardingPage() {
     jobUrl,
     liInput,
     selectedTitles,
+    selectedCompanies,
     setStepStatus,
     router,
   ]);
@@ -470,6 +532,8 @@ export default function OnboardingPage() {
       goTo(4);
     } else if (screen === 4) {
       goTo(5);
+    } else if (screen === 5) {
+      goTo(6);
     }
   };
 
@@ -482,7 +546,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const headerScreen = screen === 6 ? 5 : screen;
+  const headerScreen = screen === 7 ? 6 : screen;
 
   return (
     <div style={{ background: "#F7F5F2" }}>
@@ -533,6 +597,16 @@ export default function OnboardingPage() {
             />
           )}
           {screen === 3 && (
+            <ScreenTargetCompanies
+              selectedCompanies={selectedCompanies}
+              targetRoles={selectedTitles}
+              onAddCompany={onAddTargetCompany}
+              onRemoveCompany={onRemoveTargetCompany}
+              onContinue={onCompaniesContinue}
+              onSkip={onCompaniesSkip}
+            />
+          )}
+          {screen === 4 && (
             <ScreenAboutYouSearch
               careerMotivation={careerMotivation}
               jobTimeline={jobTimeline}
@@ -542,7 +616,7 @@ export default function OnboardingPage() {
               onSkip={skipAboutYouToTransition}
             />
           )}
-          {screen === 4 && (
+          {screen === 5 && (
             <ScreenAboutYouPreferences
               jobTimeline={jobTimeline}
               currentSalary={currentSalary}
@@ -557,7 +631,7 @@ export default function OnboardingPage() {
               onSkip={goToTransition}
             />
           )}
-          {screen === 5 && (
+          {screen === 6 && (
             <ScreenTransition
               targetRoles={selectedTitles}
               jobUrl={jobUrl}
@@ -580,10 +654,10 @@ export default function OnboardingPage() {
               match={jobMatch}
             />
           )}
-          {screen === 6 && <ScreenSetup steps={setupSteps} />}
+          {screen === 7 && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
-      {process.env.NODE_ENV === "development" && screen !== 6 && <DemoNextButton onClick={demoAdvance} />}
+      {process.env.NODE_ENV === "development" && screen !== 7 && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }

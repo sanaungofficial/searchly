@@ -8,6 +8,8 @@ import {
   normalizeCustomRoleTitle,
   TARGET_ROLE_SUGGESTIONS,
 } from "@/lib/target-roles";
+import { ONBOARDING_COMPANY_PICKS, ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
+import { CompanyLogo } from "@/components/scout/company-logo";
 import {
   UploadIcon,
   CheckCircleFilled,
@@ -24,9 +26,9 @@ import {
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-const ONBOARDING_STEP_COUNT = 6;
+const ONBOARDING_STEP_COUNT = 7;
 
 export interface Job {
   id: number;
@@ -1776,7 +1778,455 @@ export function ScreenTargetRoles({
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Screen 3–4 — About You (split for scroll)
+   Screen 3 — Target companies (watchlist)
+   ────────────────────────────────────────────────────────────── */
+export type OnboardingCompanyPick = {
+  catalogSlug: string;
+  name: string;
+  website: string | null;
+  careersUrl: string | null;
+  type: string | null;
+};
+
+type CompanySuggestion = {
+  catalogSlug: string;
+  name: string;
+  website: string | null;
+  careersUrl: string | null;
+  type: string | null;
+};
+
+interface TargetCompaniesProps {
+  selectedCompanies: OnboardingCompanyPick[];
+  targetRoles: string[];
+  onAddCompany: (company: OnboardingCompanyPick) => void;
+  onRemoveCompany: (catalogSlug: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+}
+
+function suggestionToPick(item: CompanySuggestion): OnboardingCompanyPick {
+  return {
+    catalogSlug: item.catalogSlug,
+    name: item.name,
+    website: item.website,
+    careersUrl: item.careersUrl,
+    type: item.type,
+  };
+}
+
+function catalogToPick(c: (typeof ONBOARDING_COMPANY_PICKS)[number]): OnboardingCompanyPick {
+  return {
+    catalogSlug: c.slug,
+    name: c.name,
+    website: c.website ?? null,
+    careersUrl: c.careersUrl ?? null,
+    type: c.type ?? null,
+  };
+}
+
+function TargetCompanyChip({
+  company,
+  onRemove,
+}: {
+  company: OnboardingCompanyPick;
+  onRemove: () => void;
+}) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 10px 6px 6px",
+        background: ONBOARDING_FIELD_BG,
+        border: ONBOARDING_FIELD_BORDER,
+        borderRadius: 8,
+        fontFamily: "var(--font-ui)",
+        fontSize: 13,
+        fontWeight: 500,
+        color: ONBOARDING_TEXT,
+      }}
+    >
+      <CompanyLogo
+        name={company.name}
+        website={company.website}
+        careersUrl={company.careersUrl}
+        size={24}
+        borderRadius={6}
+      />
+      <span>{company.name}</span>
+      <button
+        type="button"
+        aria-label={`Remove ${company.name}`}
+        onClick={onRemove}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          marginLeft: 2,
+          fontSize: 16,
+          lineHeight: 1,
+          color: ONBOARDING_TEXT_SECONDARY,
+          cursor: "pointer",
+        }}
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
+function TargetCompanyAutocomplete({
+  selectedCompanies,
+  onAddCompany,
+  onRemoveCompany,
+  onDropdownOpenChange,
+}: {
+  selectedCompanies: OnboardingCompanyPick[];
+  onAddCompany: (company: OnboardingCompanyPick) => void;
+  onRemoveCompany: (catalogSlug: string) => void;
+  onDropdownOpenChange?: (open: boolean) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const [suggestions, setSuggestions] = useState<CompanySuggestion[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const max = ONBOARDING_MAX_TARGET_COMPANIES;
+  const atMax = selectedCompanies.length >= max;
+  const selectedSlugs = new Set(selectedCompanies.map((c) => c.catalogSlug));
+  const quickPicks = ONBOARDING_COMPANY_PICKS.filter((c) => !selectedSlugs.has(c.slug));
+
+  const dropdownOptions = useMemo(
+    () => suggestions.filter((s) => !selectedSlugs.has(s.catalogSlug)),
+    [suggestions, selectedSlugs]
+  );
+
+  useEffect(() => {
+    setHighlight(0);
+  }, [query, dropdownOptions.length]);
+
+  useEffect(() => {
+    onDropdownOpenChange?.(open && dropdownOptions.length > 0);
+  }, [open, dropdownOptions.length, onDropdownOpenChange]);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/companies/suggest?q=${encodeURIComponent(query.trim())}`);
+        if (res.ok) {
+          const data: CompanySuggestion[] = await res.json();
+          setSuggestions(data);
+          setOpen(data.length > 0);
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  const pick = (item: CompanySuggestion | OnboardingCompanyPick) => {
+    if (atMax || selectedSlugs.has(item.catalogSlug)) return;
+    onAddCompany(suggestionToPick(item));
+    setQuery("");
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div ref={containerRef}>
+      {selectedCompanies.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {selectedCompanies.map((company) => (
+            <TargetCompanyChip
+              key={company.catalogSlug}
+              company={company}
+              onRemove={() => onRemoveCompany(company.catalogSlug)}
+            />
+          ))}
+        </div>
+      )}
+
+      {quickPicks.length > 0 && !atMax && (
+        <div style={{ marginBottom: 14 }}>
+          <p
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 12,
+              fontWeight: 600,
+              color: ONBOARDING_TEXT_SECONDARY,
+              letterSpacing: "0.4px",
+              textTransform: "uppercase",
+              marginBottom: 8,
+              marginTop: 0,
+            }}
+          >
+            Popular picks
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {quickPicks.slice(0, 10).map((c) => (
+              <button
+                key={c.slug}
+                type="button"
+                className="onboarding-chip"
+                onClick={() => pick(catalogToPick(c))}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 12px 8px 8px",
+                  background: ONBOARDING_FIELD_BG,
+                  border: ONBOARDING_FIELD_BORDER,
+                  borderRadius: 8,
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: ONBOARDING_TEXT,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <CompanyLogo name={c.name} website={c.website} careersUrl={c.careersUrl} size={22} borderRadius={5} />
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ position: "relative" }}>
+        <label
+          htmlFor="target-company-input"
+          style={{
+            display: "block",
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontWeight: 600,
+            color: ONBOARDING_LABEL_COLOR,
+            letterSpacing: "0.6px",
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}
+        >
+          {atMax
+            ? `Dream companies · max ${max} selected`
+            : `Dream company · ${selectedCompanies.length}/${max}`}
+        </label>
+        <input
+          id="target-company-input"
+          ref={inputRef}
+          type="text"
+          value={query}
+          disabled={atMax}
+          placeholder={atMax ? "Remove one to add another" : "Search companies — e.g. Stripe, HubSpot…"}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open && dropdownOptions.length > 0}
+          aria-controls="target-company-listbox"
+          aria-autocomplete="list"
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setOpen(true);
+              setHighlight((i) => Math.min(i + 1, Math.max(dropdownOptions.length - 1, 0)));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlight((i) => Math.max(i - 1, 0));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              if (open && dropdownOptions[highlight]) pick(dropdownOptions[highlight]);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            }
+          }}
+          style={{
+            width: "100%",
+            minHeight: 48,
+            padding: "12px 14px",
+            border: ONBOARDING_FIELD_BORDER,
+            borderRadius: 8,
+            background: atMax ? "rgba(247,245,242,0.6)" : ONBOARDING_FIELD_BG,
+            fontFamily: "var(--font-ui)",
+            fontSize: 16,
+            fontWeight: 500,
+            color: ONBOARDING_TEXT,
+            boxSizing: "border-box",
+            outline: "none",
+          }}
+        />
+
+        {open && !atMax && dropdownOptions.length > 0 && (
+          <ul
+            id="target-company-listbox"
+            role="listbox"
+            style={{
+              position: "absolute",
+              zIndex: 20,
+              top: "calc(100% + 6px)",
+              left: 0,
+              right: 0,
+              margin: 0,
+              padding: 6,
+              listStyle: "none",
+              background: "#FFFFFF",
+              border: "1px solid rgba(26,58,47,0.16)",
+              borderRadius: 8,
+              boxShadow: "0 8px 24px rgba(26,58,47,0.12)",
+              maxHeight: 240,
+              overflowY: "auto",
+            }}
+          >
+            {dropdownOptions.map((item, index) => (
+              <li key={item.catalogSlug} role="option" aria-selected={index === highlight}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(item)}
+                  onMouseEnter={() => setHighlight(index)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    textAlign: "left",
+                    padding: "10px 12px",
+                    border: "none",
+                    borderRadius: 6,
+                    background: index === highlight ? "rgba(26,58,47,0.08)" : "transparent",
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: ONBOARDING_TEXT,
+                    cursor: "pointer",
+                  }}
+                >
+                  <CompanyLogo
+                    name={item.name}
+                    website={item.website}
+                    careersUrl={item.careersUrl}
+                    size={28}
+                    borderRadius={6}
+                  />
+                  <span>
+                    {item.name}
+                    {item.type ? (
+                      <span style={{ display: "block", fontSize: 12, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY }}>
+                        {item.type}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {!query && !atMax && (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+          Pick up to {max}. We&apos;ll scan each for roles that match your target titles.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function ScreenTargetCompanies({
+  selectedCompanies,
+  targetRoles,
+  onAddCompany,
+  onRemoveCompany,
+  onContinue,
+  onSkip,
+}: TargetCompaniesProps) {
+  const canContinue = selectedCompanies.length > 0;
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const rolesPreview = targetRoles.slice(0, 2).join(", ");
+
+  return (
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <AboutYouIntro
+        title="Which companies do you want to go after?"
+        body={`Add up to ${ONBOARDING_MAX_TARGET_COMPANIES} dream employers. We'll watch for open roles that fit your target titles and show them on your Companies watchlist.`}
+      />
+
+      {targetRoles.length > 0 && (
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.15s", padding: "16px 18px" }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.55, margin: 0 }}>
+            When we find a match for{" "}
+            <span style={{ fontWeight: 600, color: ONBOARDING_TEXT }}>
+              {rolesPreview}
+              {targetRoles.length > 2 ? ` +${targetRoles.length - 2} more` : ""}
+            </span>
+            , you&apos;ll see it here — no need to refresh job boards every day.
+          </p>
+        </div>
+      )}
+
+      <div
+        className="anim-fade-up"
+        style={{
+          ...ONBOARDING_CARD,
+          animationDelay: "0.2s",
+          position: "relative",
+          zIndex: dropdownOpen ? 30 : undefined,
+        }}
+      >
+        <TargetCompanyAutocomplete
+          selectedCompanies={selectedCompanies}
+          onAddCompany={onAddCompany}
+          onRemoveCompany={onRemoveCompany}
+          onDropdownOpenChange={setDropdownOpen}
+        />
+
+        {!canContinue && (
+          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 16 }}>
+            Skip for now
+          </button>
+        )}
+      </div>
+
+      {canContinue && (
+        <div className="anim-fade-up" style={ONBOARDING_CARD}>
+          <button
+            className="onboarding-cta"
+            onClick={onContinue}
+            style={{ ...PRIMARY_CTA, width: "100%" }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            Continue →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Screen 4–5 — About You (split for scroll)
    ────────────────────────────────────────────────────────────── */
 function aboutYouChipBtn(selected: boolean, onClick: () => void, label: string) {
   return (

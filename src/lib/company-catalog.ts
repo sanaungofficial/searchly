@@ -109,6 +109,27 @@ export const TOP_50_CATALOG: CatalogCompany[] = COMPANY_CATALOG.slice(0, 50);
 
 const CATALOG_BY_SLUG = new Map(COMPANY_CATALOG.map((c) => [c.slug, c]));
 
+/** Max dream companies picked during onboarding. */
+export const ONBOARDING_MAX_TARGET_COMPANIES = 5;
+
+/** Quick-pick chips on onboarding company step. */
+export const ONBOARDING_COMPANY_PICKS: CatalogCompany[] = [
+  "stripe",
+  "google",
+  "hubspot",
+  "salesforce",
+  "microsoft",
+  "oracle",
+  "deloitte",
+  "nike",
+  "spotify",
+  "airbnb",
+  "shopify",
+  "meta",
+]
+  .map((slug) => CATALOG_BY_SLUG.get(slug))
+  .filter((c): c is CatalogCompany => !!c);
+
 export function getCatalogCompany(slug: string): CatalogCompany | undefined {
   return CATALOG_BY_SLUG.get(slug);
 }
