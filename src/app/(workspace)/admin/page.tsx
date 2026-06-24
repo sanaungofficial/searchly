@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { SubscriptionStatus, UserRole } from "@prisma/client";
 import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { UsersTable } from "./users-table";
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "@/components/scout/scout-box";
+import { color, displayTitleStyle, fontMono, type as T } from "@/lib/typography";
+import { adminSectionLabel } from "./admin-styles";
 
 async function getAdminData() {
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -89,16 +92,13 @@ function StatCard({
   accent?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-stone-200 px-6 py-5">
-      <p className="text-xs text-stone-400 uppercase tracking-widest font-mono mb-1">{label}</p>
-      <p
-        className={`text-3xl font-semibold ${accent ?? "text-stone-800"}`}
-        style={{ fontFamily: "var(--font-playfair)" }}
-      >
-        {value}
+    <ScoutBox padding="20px 24px">
+      <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: fontMono, margin: "0 0 8px" }}>
+        {label}
       </p>
-      {sub && <p className="text-xs text-stone-400 mt-1">{sub}</p>}
-    </div>
+      <p style={{ ...displayTitleStyle(32), color: accent ?? color.forest, margin: 0 }}>{value}</p>
+      {sub && <p style={{ fontSize: T.caption, color: color.muted, margin: "6px 0 0" }}>{sub}</p>}
+    </ScoutBox>
   );
 }
 
@@ -112,20 +112,18 @@ export default async function AdminPage() {
   const canEdit = isSuperAdmin(currentAdmin?.email);
 
   return (
-    <div className="space-y-10">
+    <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
       <div>
-        <h1
-          className="text-2xl font-semibold text-stone-800 mb-1"
-          style={{ fontFamily: "var(--font-playfair)" }}
-        >
-          Admin Dashboard
-        </h1>
-        <p className="text-sm text-stone-400">Live data · {data.totalUsers} registered users</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block" }} />
+          <ScoutLabel>Operations</ScoutLabel>
+        </div>
+        <ScoutDisplayTitle size={36} style={{ marginBottom: 8 }}>Admin Dashboard</ScoutDisplayTitle>
+        <p style={{ fontSize: T.bodySm, color: color.muted, margin: 0 }}>Live data · {data.totalUsers} registered users</p>
       </div>
 
-      {/* Growth */}
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Growth</h2>
+        <h2 className={adminSectionLabel}>Growth</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <StatCard label="Total Users" value={data.totalUsers} />
           <StatCard label="New This Week" value={data.newThisWeek} />
@@ -135,7 +133,7 @@ export default async function AdminPage() {
 
       {/* Role breakdown */}
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Roles</h2>
+        <h2 className={adminSectionLabel}>Roles</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             label="Users"
@@ -146,26 +144,26 @@ export default async function AdminPage() {
             label="Coaches"
             value={data.roleCounts.COACH}
             sub={pct(data.roleCounts.COACH, data.totalUsers)}
-            accent="text-blue-700"
+            accent="#2563eb"
           />
           <StatCard
             label="Recruiters"
             value={data.roleCounts.RECRUITER}
             sub={pct(data.roleCounts.RECRUITER, data.totalUsers)}
-            accent="text-purple-700"
+            accent="#7c3aed"
           />
           <StatCard
             label="Admins"
             value={data.roleCounts.ADMIN}
             sub={pct(data.roleCounts.ADMIN, data.totalUsers)}
-            accent="text-amber-700"
+            accent="#b45309"
           />
         </div>
       </section>
 
       {/* Activation */}
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Activation</h2>
+        <h2 className={adminSectionLabel}>Activation</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <StatCard
             label="Added a Job"
@@ -185,35 +183,18 @@ export default async function AdminPage() {
         </div>
       </section>
 
-      {/* Subscriptions */}
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">Subscriptions</h2>
+        <h2 className={adminSectionLabel}>Subscriptions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Active"
-            value={data.subCounts.active}
-            accent="text-emerald-700"
-          />
-          <StatCard
-            label="Trialing"
-            value={data.subCounts.trialing}
-            accent="text-blue-700"
-          />
-          <StatCard
-            label="Past Due"
-            value={data.subCounts.pastDue}
-            accent={data.subCounts.pastDue > 0 ? "text-amber-600" : undefined}
-          />
-          <StatCard
-            label="Canceled"
-            value={data.subCounts.canceled}
-          />
+          <StatCard label="Active" value={data.subCounts.active} accent={color.forest} />
+          <StatCard label="Trialing" value={data.subCounts.trialing} accent="#2563eb" />
+          <StatCard label="Past Due" value={data.subCounts.pastDue} accent={data.subCounts.pastDue > 0 ? "#b45309" : undefined} />
+          <StatCard label="Canceled" value={data.subCounts.canceled} />
         </div>
       </section>
 
-      {/* Users table */}
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-4">All Users</h2>
+        <h2 className={adminSectionLabel}>All Users</h2>
         <UsersTable users={data.users} canEdit={canEdit} />
       </section>
     </div>

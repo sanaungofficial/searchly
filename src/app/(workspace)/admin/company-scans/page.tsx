@@ -121,13 +121,13 @@ export default function CompanyScansAdminPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-stone-800 mb-1" style={{ fontFamily: "var(--font-playfair)" }}>
+        <h1 className="text-2xl font-semibold text-[#1A1A1A] mb-1" style={{ fontFamily: "var(--font-display)" }}>
           Company job scans
         </h1>
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-[var(--scout-muted)]">
           Shared careers scans for the dream-companies watchlist. Hirebase supplies verified company profiles and job
           indexes — start with company data, then run role scans. Edit the prompt and schedule under{" "}
-          <Link href="/admin/prompts" className="text-stone-700 underline">
+          <Link href="/admin/prompts" className="text-[#52493F] underline">
             Admin → Prompts
           </Link>{" "}
           (Companies).
@@ -135,7 +135,7 @@ export default function CompanyScansAdminPage() {
       </div>
 
       {message && (
-        <div className="rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">{message}</div>
+        <div className="rounded-none border border-[rgba(17,17,17,0.14)] bg-[var(--scout-surface)] px-4 py-3 text-sm text-[#52493F]">{message}</div>
       )}
 
       <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -146,18 +146,18 @@ export default function CompanyScansAdminPage() {
           ["Stale (need refresh)", totals.stale],
           ["With cached roles", totals.withJobs],
         ].map(([label, value]) => (
-          <div key={label as string} className="bg-white rounded-xl border border-stone-200 px-5 py-4">
-            <p className="text-xs uppercase tracking-widest text-stone-400 font-mono mb-1">{label}</p>
-            <p className="text-2xl font-semibold text-stone-800">{value}</p>
+          <div key={label as string} className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] px-5 py-4">
+            <p className="text-xs uppercase tracking-widest text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mb-1">{label}</p>
+            <p className="text-2xl font-semibold text-[#1A1A1A]">{value}</p>
           </div>
         ))}
       </section>
 
-      <section className="bg-white rounded-xl border border-stone-200 p-6">
+      <section className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-6">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-sm font-semibold text-stone-800">Hirebase company data (top 50)</h2>
-            <p className="text-xs text-stone-500 mt-1 max-w-2xl leading-relaxed">
+            <h2 className="text-sm font-semibold text-[#1A1A1A]">Hirebase company data (top 50)</h2>
+            <p className="text-xs text-[var(--scout-muted)] mt-1 max-w-2xl leading-relaxed">
               Pulls live company profiles from Hirebase: logo, LinkedIn, ATS/job board, headcount range, industries,
               sub-industries, and indexed open-role counts. Stored on shared CompanyIntel — no AI guesswork for these fields.
             </p>
@@ -166,7 +166,7 @@ export default function CompanyScansAdminPage() {
             type="button"
             onClick={syncHirebaseTop50}
             disabled={syncingHirebase || !data.hirebaseConfigured}
-            className="rounded-lg bg-stone-800 px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-none bg-stone-800 px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {syncingHirebase ? "Syncing 50 companies…" : "Sync top 50 from Hirebase"}
           </button>
@@ -175,10 +175,10 @@ export default function CompanyScansAdminPage() {
           <p className="text-xs text-amber-700 mb-4">Add HIREBASE_API_KEY on Vercel or .env.local to enable sync.</p>
         )}
         {syncResults && (
-          <div className="overflow-x-auto border border-stone-100 rounded-lg max-h-72 overflow-y-auto">
+          <div className="overflow-x-auto border border-[rgba(17,17,17,0.08)] rounded-none max-h-72 overflow-y-auto">
             <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-stone-50">
-                <tr className="text-left text-stone-500 uppercase tracking-wider">
+              <thead className="sticky top-0 bg-[var(--scout-inset)]">
+                <tr className="text-left text-[var(--scout-muted)] uppercase tracking-wider">
                   <th className="px-3 py-2">Company</th>
                   <th className="px-3 py-2">Hirebase slug</th>
                   <th className="px-3 py-2">Job board</th>
@@ -188,13 +188,13 @@ export default function CompanyScansAdminPage() {
               </thead>
               <tbody>
                 {syncResults.map((row) => (
-                  <tr key={row.catalogSlug} className="border-t border-stone-50">
-                    <td className="px-3 py-2 text-stone-800">{row.name}</td>
-                    <td className="px-3 py-2 font-mono text-stone-600">{row.hirebaseSlug ?? "—"}</td>
-                    <td className="px-3 py-2 text-stone-600">{row.jobBoard ?? "—"}</td>
-                    <td className="px-3 py-2 text-stone-600">{row.totalOpenJobs ?? "—"}</td>
+                  <tr key={row.catalogSlug} className="border-t border-[rgba(17,17,17,0.06)]">
+                    <td className="px-3 py-2 text-[#1A1A1A]">{row.name}</td>
+                    <td className="px-3 py-2 font-[family-name:var(--font-mono-ui)] text-[#52493F]">{row.hirebaseSlug ?? "—"}</td>
+                    <td className="px-3 py-2 text-[#52493F]">{row.jobBoard ?? "—"}</td>
+                    <td className="px-3 py-2 text-[#52493F]">{row.totalOpenJobs ?? "—"}</td>
                     <td className="px-3 py-2">
-                      {row.ok ? <span className="text-emerald-700">OK</span> : <span className="text-amber-700">{row.error ?? "Miss"}</span>}
+                      {row.ok ? <span className="text-[#1A3A2F]">OK</span> : <span className="text-amber-700">{row.error ?? "Miss"}</span>}
                     </td>
                   </tr>
                 ))}
@@ -204,30 +204,30 @@ export default function CompanyScansAdminPage() {
         )}
       </section>
 
-      <section className="bg-white rounded-xl border border-stone-200 p-6">
+      <section className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-sm font-semibold text-stone-800">{COMPANY_SCAN_SETTINGS_SIDEBAR.label}</h2>
-            <p className="text-xs text-stone-500 mt-1">Same settings as Admin → Prompts → Companies.</p>
+            <h2 className="text-sm font-semibold text-[#1A1A1A]">{COMPANY_SCAN_SETTINGS_SIDEBAR.label}</h2>
+            <p className="text-xs text-[var(--scout-muted)] mt-1">Same settings as Admin → Prompts → Companies.</p>
           </div>
-          <Link href="/admin/prompts" className="text-sm text-stone-600 underline shrink-0">
+          <Link href="/admin/prompts" className="text-sm text-[#52493F] underline shrink-0">
             Open in Prompts →
           </Link>
         </div>
         <CompanyScanSettingsPanel onSaved={load} />
       </section>
 
-      <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between gap-4">
+      <section className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[rgba(17,17,17,0.08)] flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-stone-800">Shared company intel</h2>
-            <p className="text-xs text-stone-500 mt-1">Click a row to open full profile, Hirebase data, and cached roles.</p>
+            <h2 className="text-sm font-semibold text-[#1A1A1A]">Shared company intel</h2>
+            <p className="text-xs text-[var(--scout-muted)] mt-1">Click a row to open full profile, Hirebase data, and cached roles.</p>
           </div>
           <button
             type="button"
             onClick={backfillWebsites}
             disabled={backfilling}
-            className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-700 disabled:opacity-50"
+            className="rounded-none border border-stone-300 px-3 py-1.5 text-xs font-medium text-[#52493F] disabled:opacity-50"
           >
             {backfilling ? "Backfilling…" : "Backfill catalog websites"}
           </button>
@@ -235,7 +235,7 @@ export default function CompanyScansAdminPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wider text-stone-400 border-b border-stone-100">
+              <tr className="text-left text-xs uppercase tracking-wider text-[var(--scout-muted)] border-b border-[rgba(17,17,17,0.08)]">
                 <th className="px-6 py-3">Company</th>
                 <th className="px-4 py-3">Watchlists</th>
                 <th className="px-4 py-3">Hirebase</th>
@@ -250,32 +250,32 @@ export default function CompanyScansAdminPage() {
               {data.companies.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-stone-50 cursor-pointer hover:bg-stone-50/80 transition-colors"
+                  className="border-b border-[rgba(17,17,17,0.06)] cursor-pointer hover:bg-[var(--scout-inset)]/80 transition-colors"
                   onClick={() => setSelectedIntelId(row.id)}
                 >
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3">
                       <CompanyLogo name={row.name} website={row.website} careersUrl={row.careersUrl} size={28} />
-                      <span className="font-medium text-stone-800">{row.name}</span>
+                      <span className="font-medium text-[#1A1A1A]">{row.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-stone-600">{row.watchlistCount}</td>
-                  <td className="px-4 py-3 text-xs font-mono text-stone-500">
+                  <td className="px-4 py-3 text-[#52493F]">{row.watchlistCount}</td>
+                  <td className="px-4 py-3 text-xs font-[family-name:var(--font-mono-ui)] text-[var(--scout-muted)]">
                     {row.hirebaseSlug ? row.hirebaseSlug : row.hirebaseProfileAt ? "synced" : "—"}
                   </td>
-                  <td className="px-4 py-3 text-stone-600">{row.hirebaseJobBoard ?? "—"}</td>
-                  <td className="px-4 py-3 text-stone-600">
+                  <td className="px-4 py-3 text-[#52493F]">{row.hirebaseJobBoard ?? "—"}</td>
+                  <td className="px-4 py-3 text-[#52493F]">
                     {row.hirebaseOpenJobs != null ? row.hirebaseOpenJobs.toLocaleString() : "—"}
                   </td>
-                  <td className="px-4 py-3 text-stone-600">{row.scannable ? row.jobCount : "—"}</td>
-                  <td className="px-4 py-3 text-stone-500">{formatWhen(row.lastScannedAt)}</td>
+                  <td className="px-4 py-3 text-[#52493F]">{row.scannable ? row.jobCount : "—"}</td>
+                  <td className="px-4 py-3 text-[var(--scout-muted)]">{formatWhen(row.lastScannedAt)}</td>
                   <td className="px-4 py-3">
                     {!row.scannable ? (
-                      <span className="text-stone-400">Not scannable</span>
+                      <span className="text-[var(--scout-muted)]">Not scannable</span>
                     ) : row.stale ? (
                       <span className="text-amber-700">Stale</span>
                     ) : (
-                      <span className="text-emerald-700">Fresh</span>
+                      <span className="text-[#1A3A2F]">Fresh</span>
                     )}
                   </td>
                 </tr>

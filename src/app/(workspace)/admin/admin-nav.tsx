@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 export function AdminNav() {
   const pathname = usePathname();
@@ -10,22 +11,24 @@ export function AdminNav() {
     { label: "Prompts", href: "/admin/prompts" },
     { label: "Company scans", href: "/admin/company-scans" },
   ];
+
   return (
-    <div className="flex items-center gap-1">
-      {tabs.map((tab) => {
+    <div style={{ display: "inline-flex", gap: 0, border: border.line, marginLeft: 8 }}>
+      {tabs.map((tab, i) => {
         const active = tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
         return (
           <Link
             key={tab.href}
             href={tab.href}
             style={{
-              padding: "5px 12px",
-              borderRadius: 6,
-              fontSize: 13,
-              fontFamily: "var(--font-ui)",
-              fontWeight: active ? 600 : 400,
-              color: active ? "#1a3a2f" : "var(--scout-muted)",
-              background: active ? "rgba(26,58,47,0.07)" : "transparent",
+              padding: "6px 14px",
+              border: "none",
+              borderRight: i < tabs.length - 1 ? border.line : undefined,
+              background: active ? color.forest : surface.card,
+              color: active ? color.gold : color.stone,
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              fontWeight: 600,
               textDecoration: "none",
             }}
           >
