@@ -16,6 +16,7 @@ import {
 import { NOTIFICATIONS, LIVE_SESSIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
 import { GrowthDiscoveryModal } from "./growth-discovery-modal";
+import { ReferEarnModal } from "./refer-earn-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCredits } from "@/hooks/useCredits";
@@ -275,6 +276,7 @@ export function WorkspaceSidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [referEarnOpen, setReferEarnOpen] = useState(false);
   const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
 
   const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
@@ -620,6 +622,35 @@ export function WorkspaceSidebar({
           </div>
         )}
 
+        {/* ── Refer & Earn ── */}
+        {!isRail && (
+          <div style={{ padding: "0 14px 12px" }}>
+            <button
+              type="button"
+              onClick={() => setReferEarnOpen(true)}
+              data-offer="referral"
+              data-trigger="sidebar_refer_earn"
+              style={{
+                display: "block",
+                width: "100%",
+                background: "rgba(74,139,106,0.12)",
+                border: "1px solid rgba(74,139,106,0.25)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.2px" }}>
+                🎁 Refer & Earn →
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.45)", lineHeight: 1.5 }}>
+                Invite friends or share on LinkedIn to earn extra rewards!
+              </p>
+            </button>
+          </div>
+        )}
+
         {/* ── Talk to team (above user badge) ── */}
         {!isRail ? (
           <div style={{ padding: "0 14px 12px" }}>
@@ -740,6 +771,10 @@ export function WorkspaceSidebar({
             trigger="sidebar_help"
             onClose={() => setDiscoveryOpen(false)}
           />
+        )}
+
+        {referEarnOpen && (
+          <ReferEarnModal onClose={() => setReferEarnOpen(false)} />
         )}
 
         {notifOpen && !isRail && (

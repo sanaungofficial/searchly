@@ -2,8 +2,10 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { isPro } from "@/lib/stripe";
-import { consumeCredit } from "@/lib/usage";
+import { consumeFeatureCredit, type FeatureCreditStatus } from "@/lib/feature-credits";
+import { hasActiveProTrial } from "@/lib/referrals";
 import { CREDITS_EXHAUSTED_ERROR } from "@/lib/credits";
+import type { PlanCreditFeature } from "@prisma/client";
 
 export async function getAuthedUserForAi() {
   const supabase = await createClient();
@@ -25,41 +27,55 @@ export async function getAuthedUserForAi() {
   return { dbUser, supabase };
 }
 
+export async function hasUnlimitedAiAccess(dbUser: {
+  id: string;
+  role: string;
+  subscription: { status: string; stripeCurrentPeriodEnd: Date } | null;
+}): Promise<boolean> {
+  if (dbUser.role === "ADMIN") return true;
+  if (isPro(dbUser.subscription)) return true;
+  return hasActiveProTrial(dbUser.id);
+}
+
+/** @deprecated use hasUnlimitedAiAccess */
 export function isProOrAdmin(dbUser: {
   role: string;
-  subscription: { status: string } | null;
+  subscription: { status: string; stripeCurrentPeriodEnd: Date } | null;
 }): boolean {
   return isPro(dbUser.subscription) || dbUser.role === "ADMIN";
 }
 
-function creditsErrorBody(used: number, limit: number, remaining: number) {
+function creditsErrorBody(status: FeatureCreditStatus) {
   return {
     error: CREDITS_EXHAUSTED_ERROR,
     code: "CREDITS_EXHAUSTED",
-    used,
-    limit,
-    remaining,
+    feature: status.feature,
+    used: status.used,
+    limit: status.dailyLimit,
+    remaining: status.remaining,
+    bonusRemaining: status.bonusRemaining,
   };
 }
 
-/** Returns a 402 response if the free monthly credit balance is exhausted. */
-export async function requireAiQuota(dbUser: {
-  id: string;
-  role: string;
-  subscription: { status: string } | null;
-}): Promise<NextResponse | null> {
-  const { allowed, used, limit, remaining } = await consumeCredit(
-    dbUser.id,
-    isProOrAdmin(dbUser),
-  );
+/** Returns a 402 response if the daily feature credit balance is exhausted. */
+export async function requireAiQuota(
+  dbUser: {
+    id: string;
+    role: string;
+    subscription: { status: string; stripeCurrentPeriodEnd: Date } | null;
+  },
+  feature: PlanCreditFeature,
+): Promise<NextResponse | null> {
+  const unlimited = await hasUnlimitedAiAccess(dbUser);
+  const { allowed, ...status } = await consumeFeatureCredit(dbUser.id, feature, unlimited);
   if (!allowed) {
-    return NextResponse.json(creditsErrorBody(used, limit, remaining), { status: 402 });
+    return NextResponse.json(creditsErrorBody(status), { status: 402 });
   }
   return null;
 }
 
-export function aiLimitJsonResponse(used: number, limit: number, remaining = 0): Response {
-  return new Response(JSON.stringify(creditsErrorBody(used, limit, remaining)), {
+export function aiLimitJsonResponse(status: FeatureCreditStatus): Response {
+  return new Response(JSON.stringify(creditsErrorBody(status)), {
     status: 402,
     headers: { "Content-Type": "application/json" },
   });

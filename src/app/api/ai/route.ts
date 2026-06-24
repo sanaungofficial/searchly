@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if ("error" in auth) return auth.error;
   const { dbUser } = auth;
 
-  const quotaError = await requireAiQuota(dbUser);
+  const quotaError = await requireAiQuota(dbUser, "SCOUT");
   if (quotaError) return quotaError;
 
   const body = await request.json();

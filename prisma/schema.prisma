@@ -20,6 +20,12 @@ model User {
 
   stripeCustomerId String? @unique
 
+  referralCode         String?   @unique
+  referredByUserId     String?
+  referredBy           User?     @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
+  referrals            User[]    @relation("UserReferrals")
+  onboardingCompletedAt DateTime?
+
   profile          Profile?
   jobs             Job[]
   trackedCompanies TrackedCompany[]
@@ -28,7 +34,15 @@ model User {
   coachProfile     CoachProfile?
   aiUsageLogs      AiUsageLog[]
   monthlyUsage     MonthlyUsage[]
+  dailyFeatureUsage DailyFeatureUsage[]
+  featureCreditBonus FeatureCreditBonus[]
   assets           UserAsset[]
+  referralsSent    ReferralEvent[] @relation("ReferrerEvents")
+  referralReceived ReferralEvent?  @relation("RefereeEvent")
+  linkedInShareSubmissions LinkedInShareSubmission[]
+  proTrialGrants   ProTrialGrant[]
+
+  @@index([referredByUserId])
 }
 
 enum UserRole {
@@ -301,4 +315,82 @@ model PromptConfig {
   defaultContent String
   updatedAt      DateTime @updatedAt
   updatedBy      String?
+}
+
+enum PlanCreditFeature {
+  MATCH
+  TAILOR
+  COVER_LETTER
+  SCOUT
+  INSIDER
+  READBACK
+}
+
+model DailyFeatureUsage {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day       String
+  feature   PlanCreditFeature
+  count     Int               @default(0)
+  updatedAt DateTime          @updatedAt
+
+  @@unique([userId, day, feature])
+  @@index([userId])
+}
+
+model FeatureCreditBonus {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   PlanCreditFeature
+  remaining Int               @default(0)
+  updatedAt DateTime          @updatedAt
+
+  @@unique([userId, feature])
+  @@index([userId])
+}
+
+model ReferralEvent {
+  id          String   @id @default(cuid())
+  referrerId  String
+  referrer    User     @relation("ReferrerEvents", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId   String   @unique
+  referee     User     @relation("RefereeEvent", fields: [refereeId], references: [id], onDelete: Cascade)
+  matchBonus  Int      @default(5)
+  tailorBonus Int      @default(5)
+  insiderBonus Int     @default(5)
+  createdAt   DateTime @default(now())
+
+  @@index([referrerId])
+}
+
+enum LinkedInShareStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LinkedInShareSubmission {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postUrl   String
+  status    LinkedInShareStatus @default(PENDING)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([userId])
+}
+
+model ProTrialGrant {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  source    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }

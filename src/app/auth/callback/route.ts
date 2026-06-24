@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
+import { attachReferrer } from "@/lib/referrals";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -38,11 +40,19 @@ export async function GET(request: Request) {
     const existing = await prisma.user.findUnique({ where: { email: user.email } });
     // If the user already has a custom-uploaded avatar, don't overwrite it with the OAuth one
     const preservedAvatar = existing?.avatarUrl ?? avatarUrl;
-    await prisma.user.upsert({
+    const created = await prisma.user.upsert({
       where: { email: user.email },
       update: { name, avatarUrl: preservedAvatar },
       create: { email: user.email, name, avatarUrl },
     });
+
+    if (!existing) {
+      const cookieStore = await cookies();
+      const refCode = cookieStore.get("kimchi_ref")?.value;
+      if (refCode) {
+        await attachReferrer(created.id, refCode).catch(() => {});
+      }
+    }
     // Send welcome email only on first sign-in
     if (!existing && process.env.RESEND_API_KEY) {
       sendWelcomeEmail(user.email, name).catch(() => {});
