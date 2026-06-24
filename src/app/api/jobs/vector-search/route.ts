@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured, fetchHirebaseVectorJobs } from "@/lib/hirebase";
 import { enrichVectorJobsWithMatchReasons } from "@/lib/hirebase-match-reasons";
+import { fetchRecommendedJobsViaRoleMatch } from "@/lib/recommended-jobs-fallback";
 import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
@@ -82,26 +83,15 @@ export async function POST(request: Request) {
   }
 
   const filters = parseFilters(rawBody);
+  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
+  const jobTitles = filters.jobTitles?.length ? filters.jobTitles.slice(0, 20) : targetRoles.slice(0, 20);
 
   const artifactResult = await ensureHirebaseArtifactForUser(dbUser.id);
-  if (!artifactResult.artifactId) {
-    return NextResponse.json(
-      {
-        error:
-          artifactResult.error ||
-          "Upload a resume on Profile so we can match jobs to your experience.",
-        needsResume: true,
-      },
-      { status: 404 },
-    );
-  }
-
   const parsedData = mergeParsedWithReadback(
     artifactResult.parsed ?? normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
   );
 
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
   const profileInput = {
     headline: profile?.headline,
     targetRoles,
@@ -114,34 +104,94 @@ export async function POST(request: Request) {
     targetSalary: profile?.targetSalary,
   };
 
-  const jobTitles = filters.jobTitles?.length ? filters.jobTitles.slice(0, 20) : targetRoles.slice(0, 20);
   const resumeText = profileTextForMatchReasons(profileInput);
-
   const optionalQuery = filters.semanticQuery ? trimVSearchQuery(filters.semanticQuery) : undefined;
+  const searchLimit = Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+  const searchPage = filters.page ?? 1;
+
+  const baseFilters = {
+    ...filters,
+    jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
+    limit: searchLimit,
+    page: searchPage,
+  };
 
   try {
-    const search = await fetchHirebaseVectorJobs({
-      artifactId: artifactResult.artifactId,
-      query: optionalQuery,
-      ...filters,
-      jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
-      limit: Math.min(filters.limit ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX),
-      page: filters.page ?? 1,
-    });
+    let matchMode: "resume" | "role_match" = "role_match";
+    let searchResult: {
+      rawJobs: Parameters<typeof enrichVectorJobsWithMatchReasons>[0]["rawJobs"];
+      jobs: Parameters<typeof enrichVectorJobsWithMatchReasons>[0]["cachedJobs"];
+      companyNames: string[];
+      totalCount: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    } | null = null;
+
+    if (artifactResult.artifactId) {
+      try {
+        const resumeSearch = await fetchHirebaseVectorJobs({
+          artifactId: artifactResult.artifactId,
+          query: optionalQuery,
+          ...baseFilters,
+        });
+        if (resumeSearch.jobs.length) {
+          matchMode = "resume";
+          searchResult = resumeSearch;
+        }
+      } catch {
+        /* fall through to role-based matching (same path as Companies) */
+      }
+    }
+
+    if (!searchResult) {
+      const roleSearch = await fetchRecommendedJobsViaRoleMatch({
+        userId: dbUser.id,
+        profileTargetRoles: targetRoles,
+        filters: baseFilters,
+        semanticQuery: optionalQuery,
+      });
+
+      if (!roleSearch.sources.length) {
+        const needsSetup = !jobTitles.length;
+        return NextResponse.json(
+          {
+            error: needsSetup
+              ? "Add target roles on Profile or track companies with matching jobs to see recommendations."
+              : artifactResult.error ||
+                "No matching roles found. Try adjusting filters or refresh matching roles on your tracked companies.",
+            needsProfile: needsSetup,
+            needsResume: false,
+          },
+          { status: 404 },
+        );
+      }
+
+      searchResult = {
+        rawJobs: roleSearch.sources.map((s) => s.raw),
+        jobs: roleSearch.sources.map((s) => s.cached),
+        companyNames: roleSearch.sources.map((s) => s.companyName),
+        totalCount: roleSearch.totalCount,
+        page: roleSearch.page,
+        limit: roleSearch.limit,
+        totalPages: roleSearch.totalPages,
+      };
+    }
 
     const jobs = await enrichVectorJobsWithMatchReasons({
-      rawJobs: search.rawJobs,
-      cachedJobs: search.jobs,
-      companyNames: search.companyNames,
+      rawJobs: searchResult.rawJobs,
+      cachedJobs: searchResult.jobs,
+      companyNames: searchResult.companyNames,
       resumeText,
     });
 
     return NextResponse.json({
       jobs,
-      totalCount: search.totalCount,
-      page: search.page,
-      limit: search.limit,
-      totalPages: search.totalPages,
+      totalCount: searchResult.totalCount,
+      page: searchResult.page,
+      limit: searchResult.limit,
+      totalPages: searchResult.totalPages,
+      matchMode,
       filtersApplied: {
         ...filters,
         jobTitles: jobTitles.length ? jobTitles : null,

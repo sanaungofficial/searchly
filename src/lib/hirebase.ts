@@ -1,7 +1,7 @@
 import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
-import { roleSearchKeywords } from "@/lib/job-match";
+import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
 
@@ -481,6 +481,108 @@ export async function fetchHirebaseMatchingJobs(input: {
     hirebaseSlug: slug,
     totalCount: totalCount || jobs.length,
     scannedUrl,
+  };
+}
+
+function assignJobSearchFilters(body: Record<string, unknown>, input: VectorSearchFilters) {
+  assignIfPresent(body, "company_name", input.companyName?.trim());
+  assignIfPresent(body, "company_slug", input.companySlug?.trim());
+  assignIfPresent(body, "job_board", input.jobBoard?.trim());
+  assignIfPresent(body, "industries", input.industries?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "subindustries", input.subindustries?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "job_categories", input.jobCategories?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "job_types", input.jobTypes?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "company_types", input.companySizeBuckets?.map((t) => t.trim()).filter(Boolean));
+  if (input.locations?.length) {
+    body.locations = input.locations
+      .map((loc) => ({
+        city: loc.city?.trim() || undefined,
+        region: loc.region?.trim() || undefined,
+        country: loc.country?.trim() || undefined,
+      }))
+      .filter((loc) => loc.city || loc.region || loc.country);
+  }
+  assignIfPresent(body, "date_posted", input.datePostedFrom?.trim());
+  if (input.visaSponsored === true) body.visa_sponsored = true;
+  if (input.salaryFrom != null) body.salary_from = input.salaryFrom;
+  if (input.salaryTo != null) body.salary_to = input.salaryTo;
+  if (input.yearsFrom != null) body.years_from = input.yearsFrom;
+  if (input.yearsTo != null) body.years_to = input.yearsTo;
+}
+
+/** Global role-based job search — same Hirebase `/v2/jobs/search` path as Companies matching. */
+export async function fetchHirebaseRoleMatchingJobs(input: {
+  matchRoles: string[];
+  semanticQuery?: string;
+  filters: VectorSearchFilters;
+}): Promise<{
+  jobs: CachedJob[];
+  rawJobs: HirebaseJob[];
+  companyNames: string[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const titles = input.matchRoles.map((t) => t.trim()).filter(Boolean);
+  if (!titles.length) {
+    return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
+  }
+
+  const keywords = roleSearchKeywords(titles);
+  if (input.semanticQuery?.trim()) {
+    for (const word of input.semanticQuery.toLowerCase().split(/\s+/)) {
+      const w = word.replace(/[^a-z0-9+#]/g, "");
+      if (w.length >= 3 && !keywords.includes(w)) keywords.push(w);
+    }
+  }
+  if (input.filters.keywords?.length) {
+    for (const kw of input.filters.keywords) {
+      const w = kw.trim().toLowerCase();
+      if (w.length >= 3 && !keywords.includes(w)) keywords.push(w);
+    }
+  }
+
+  const limit = Math.max(1, Math.min(input.filters.limit ?? 20, 20));
+  const page = Math.max(1, input.filters.page ?? 1);
+
+  const body: Record<string, unknown> = {
+    job_titles: titles.slice(0, 20),
+    keywords: keywords.slice(0, 12),
+    page,
+    limit,
+    sort_by: "date_posted",
+    sort_order: "desc",
+  };
+
+  assignJobSearchFilters(body, input.filters);
+
+  const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/search", {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  const rawJobs = dedupeHirebaseJobs(data.jobs ?? [])
+    .filter((job) => {
+      const title = job.job_title ?? job.title ?? "";
+      const department = job.job_categories?.[0] ?? job.team ?? null;
+      return isJobMatch(title, titles, department);
+    })
+    .slice(0, limit);
+
+  const jobs = rawJobs.map(mapHirebaseJob);
+  const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
+
+  return {
+    jobs,
+    rawJobs,
+    companyNames,
+    totalCount: data.total_count ?? jobs.length,
+    page: data.page ?? page,
+    limit: data.limit ?? limit,
+    totalPages: data.total_pages ?? 1,
   };
 }
 
