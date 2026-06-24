@@ -8,7 +8,8 @@ export type ScoreExplainerVariant =
   | "role-gap"
   | "profile-completeness"
   | "upskill-recommendations"
-  | "upskill-progress";
+  | "upskill-progress"
+  | "linkedin-quality";
 
 export type ScoreExplainerContent = {
   title: string;
@@ -185,5 +186,28 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
         body: "Course completion updates this tracker. Target role fit scores refresh when you mark a gap skill as acquired or change your resume.",
       },
     ],
+  },
+  "linkedin-quality": {
+    title: "LinkedIn profile score",
+    subtitle: "How recruiter-ready your Kimchi LinkedIn draft is.",
+    bullets: [
+      {
+        title: "What we analyze",
+        body: "Headline keywords, About hook and story, experience impact in LinkedIn-style paragraphs, education, and skills for search.",
+      },
+      {
+        title: "AI on production",
+        body: "Full analysis runs on production. Dev staging shows a completeness-based estimate when AI is unavailable.",
+      },
+      {
+        title: "Fix & Impact",
+        body: "Use Fix on any section for AI suggestions — same flow as resume review in Assets. Edit inline, then copy into LinkedIn.",
+      },
+      {
+        title: "When to refresh",
+        body: "Regenerate from resume or open View full report → Refresh after major edits.",
+      },
+    ],
+    scaleNote: "Excellent ≥ 90 · Good ≥ 80 · Fair ≥ 70 · Needs work below 60",
   },
 };

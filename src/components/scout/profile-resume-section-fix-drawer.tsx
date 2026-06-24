@@ -80,12 +80,14 @@ export function ResumeSectionFixDrawer({
   entryLabel,
   issues,
   onClose,
+  sectionTitle,
 }: {
   open: boolean;
-  sectionId: ResumeSectionId | null;
+  sectionId: ResumeSectionId | string | null;
   entryLabel?: string;
   issues: SectionFixIssue[];
   onClose: () => void;
+  sectionTitle?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const [activeIssueId, setActiveIssueId] = useState<string>("overall");
@@ -97,7 +99,9 @@ export function ResumeSectionFixDrawer({
 
   if (!open || !sectionId) return null;
 
-  const title = entryLabel ? `${SECTION_TITLES[sectionId]} · ${entryLabel}` : SECTION_TITLES[sectionId];
+  const title = entryLabel
+    ? `${sectionTitle ?? (sectionId && sectionId in SECTION_TITLES ? SECTION_TITLES[sectionId as ResumeSectionId] : sectionId)} · ${entryLabel}`
+    : sectionTitle ?? (sectionId && sectionId in SECTION_TITLES ? SECTION_TITLES[sectionId as ResumeSectionId] : String(sectionId ?? "Section"));
   const urgentCount = issues.filter((i) => i.severity === "Urgent" || i.severity === "Critical").length;
   const activeIssue = activeIssueId === "overall" ? issues[0] : issues.find((i) => i.id === activeIssueId) || issues[0];
 
@@ -106,23 +110,23 @@ export function ResumeSectionFixDrawer({
       <div
         onClick={onClose}
         style={{
-          position: "absolute",
+          position: "fixed",
           inset: 0,
           background: "rgba(17,24,39,0.2)",
-          zIndex: 32,
+          zIndex: 1200,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.25s ease",
         }}
       />
       <div
         style={{
-          position: "absolute",
+          position: "fixed",
           top: 0,
           right: 0,
           bottom: 0,
           width: "min(720px, 88vw)",
           background: JR.panel,
-          zIndex: 33,
+          zIndex: 1201,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-8px 0 32px rgba(0,0,0,0.14)",
