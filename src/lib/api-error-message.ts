@@ -6,6 +6,9 @@ export function formatApiErrorMessage(value: unknown, fallback = "Something went
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
     if (typeof obj.message === "string" && obj.message.trim()) return obj.message.trim();
+    if (typeof obj.msg === "string" && obj.msg.trim()) {
+      return obj.msg.replace(/^Value error,\s*/i, "").trim() || fallback;
+    }
     if (typeof obj.detail === "string" && obj.detail.trim()) return obj.detail.trim();
     if (typeof obj.error === "string" && obj.error.trim()) return obj.error.trim();
     if (Array.isArray(obj.detail)) {

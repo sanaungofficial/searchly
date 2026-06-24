@@ -4,6 +4,7 @@ import { enrichVectorJobsWithMatchReasons } from "@/lib/hirebase-match-reasons";
 import {
   buildProfileVSearchQuery,
   profileTextForMatchReasons,
+  sanitizeHirebaseVSearchQuery,
 } from "@/lib/profile-vsearch-query";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -63,7 +64,7 @@ function parseFilters(body: Record<string, unknown>): VectorSearchFilters {
 function appendQueryParts(base: string, parts: string[]): string {
   const extra = parts.map((p) => p.trim()).filter(Boolean);
   if (!extra.length) return base;
-  return `${base} ${extra.join(" ")}`.replace(/\s+/g, " ").trim().slice(0, 2000);
+  return sanitizeHirebaseVSearchQuery(`${base} ${extra.join(" ")}`.replace(/\s+/g, " ").trim());
 }
 
 export async function POST(request: Request) {
@@ -114,8 +115,9 @@ export async function POST(request: Request) {
 
   const targetRoles = profile?.targetRoles ?? [];
   const jobTitles = filters.jobTitles?.length ? filters.jobTitles : targetRoles.slice(0, 3);
+  const titlesAlreadyInQuery = !filters.jobTitles?.length && targetRoles.length > 0;
   const queryExtras: string[] = [];
-  if (jobTitles.length) {
+  if (jobTitles.length && !titlesAlreadyInQuery) {
     queryExtras.push(`Focus on titles like ${jobTitles.join(", ")}.`);
   }
   if (filters.keywords?.length) {

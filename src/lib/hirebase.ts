@@ -3,6 +3,7 @@ import type { CachedJob } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { roleSearchKeywords } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
+import { sanitizeHirebaseVSearchQuery } from "@/lib/profile-vsearch-query";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
 
@@ -518,7 +519,7 @@ export async function fetchHirebaseVectorJobs(
   limit: number;
   totalPages: number;
 }> {
-  const query = input.query.trim();
+  const query = sanitizeHirebaseVSearchQuery(input.query.trim());
   if (!query) {
     return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
   }

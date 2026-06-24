@@ -4,6 +4,9 @@ import {
   type ParsedResumeData,
 } from "@/lib/resume-parse";
 
+/** Hirebase rejects long queries with chars/tokens that look like injection. */
+export const HIREBASE_VSEARCH_QUERY_MAX = 1200;
+
 export type ProfileVSearchInput = {
   headline?: string | null;
   targetRoles?: string[];
@@ -53,10 +56,12 @@ export function buildProfileVSearchQuery(input: ProfileVSearchInput): string | n
     })
     .filter(Boolean) as string[];
   if (recentRoles.length) {
-    segments.push(`Recent experience includes ${recentRoles.join("; ")}.`);
+    segments.push(`Recent experience includes ${recentRoles.join(", ")}.`);
   }
 
-  const skills = (parsed?.skills ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 24);
+  const skills = disambiguateSkillNames(
+    (parsed?.skills ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 12),
+  );
   if (skills.length) {
     segments.push(`Skills: ${skills.join(", ")}.`);
   }
@@ -89,7 +94,27 @@ export function buildProfileVSearchQuery(input: ProfileVSearchInput): string | n
   }
 
   if (query.length < 20) return null;
-  return query.slice(0, 2000);
+  return sanitizeHirebaseVSearchQuery(query);
+}
+
+function disambiguateSkillNames(skills: string[]): string[] {
+  return skills.map((skill) => (skill.toLowerCase() === "make" ? "Make.com" : skill));
+}
+
+/** Strip characters and tokens Hirebase flags as harmful injection patterns. */
+export function sanitizeHirebaseVSearchQuery(raw: string): string {
+  let query = raw
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+    .replace(/[;|`]/g, ", ")
+    .replace(/\/{2,}/g, " ")
+    .replace(/--+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  query = query.replace(/\bMake\b(?=,|\s*\.|\s*$)/gi, "Make.com");
+  query = query.replace(/,\s*,/g, ", ").replace(/\.\s*\./g, ".");
+
+  return query.slice(0, HIREBASE_VSEARCH_QUERY_MAX);
 }
 
 export function profileTextForMatchReasons(input: ProfileVSearchInput): string {
