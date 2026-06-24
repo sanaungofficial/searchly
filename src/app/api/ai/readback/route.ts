@@ -1,8 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { isPro } from "@/lib/stripe";
-import { consumeCredit } from "@/lib/usage";
-import { CREDITS_EXHAUSTED_ERROR } from "@/lib/credits";
+import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
@@ -39,17 +37,10 @@ export async function GET(request: Request) {
     }
   }
 
-  const { allowed, used, limit, remaining } = await consumeCredit(
-    dbUser?.id ?? user.id,
-    isPro(dbUser?.subscription ?? null) || dbUser?.role === "ADMIN",
-  );
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  if (!allowed) {
-    return NextResponse.json(
-      { error: CREDITS_EXHAUSTED_ERROR, code: "CREDITS_EXHAUSTED", used, limit, remaining },
-      { status: 402 },
-    );
-  }
+  const quotaError = await requireAiQuota(dbUser, "READBACK");
+  if (quotaError) return quotaError;
 
   const resumeText = dbUser?.profile?.resumeText;
   if (!resumeText) {

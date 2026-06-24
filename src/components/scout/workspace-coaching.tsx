@@ -6,6 +6,7 @@ import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout
 import { WorkspacePageShell } from "@/components/scout/workspace-page-shell";
 import { WorkspaceSegmentTabs } from "@/components/scout/workspace-segment-tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type CoachingTab = "mycoach" | "coaches";
@@ -46,6 +47,7 @@ export function WorkspaceCoaching() {
   const [loadingCoaches, setLoadingCoaches] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const { openPricing } = useWorkspace();
 
   useEffect(() => {
     setLoadingCoaches(true);
@@ -77,12 +79,14 @@ export function WorkspaceCoaching() {
       />
 
       {tab === "mycoach" ? (
-        <MyCoachTab featured={coaches.find((c) => c.featured) ?? null} loading={loadingCoaches} isPro={isPro} isMobile={isMobile} onSubscribe={() => setShowUpgrade(true)} />
+        <MyCoachTab featured={coaches.find((c) => c.featured) ?? null} loading={loadingCoaches} isPro={isPro} isMobile={isMobile} onSubscribe={openPricing} />
       ) : (
-        <CoachSearchTab coaches={coaches} loading={loadingCoaches} isPro={isPro} isMobile={isMobile} onSubscribe={() => setShowUpgrade(true)} />
+        <CoachSearchTab coaches={coaches} loading={loadingCoaches} isPro={isPro} isMobile={isMobile} onSubscribe={openPricing} />
       )}
 
-      {showUpgrade && <GrowthUpgradeModal trigger="coaching" onClose={() => setShowUpgrade(false)} />}
+      {showUpgrade && (
+        <GrowthUpgradeModal trigger="coaching" onClose={() => setShowUpgrade(false)} onOpenPricing={openPricing} />
+      )}
     </WorkspacePageShell>
   );
 }

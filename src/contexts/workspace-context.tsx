@@ -45,6 +45,9 @@ interface WorkspaceContextValue {
   notifUnreadCount: number;
   handleSignOut: () => Promise<void>;
   updateAvatarUrl: (url: string) => void;
+  pricingOpen: boolean;
+  openPricing: () => void;
+  closePricing: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -69,6 +72,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [chatView, setChatView] = useState<"tools" | "chat">("tools");
   const [chatPulse, setChatPulse] = useState(false);
   const [fitChatNonce, setFitChatNonce] = useState(0);
+  const [pricingOpen, setPricingOpen] = useState(false);
+
+  const openPricing = useCallback(() => setPricingOpen(true), []);
+  const closePricing = useCallback(() => setPricingOpen(false), []);
 
   const openFitChat = useCallback((jobId: number) => {
     setDrawerCardId(jobId);
@@ -165,6 +172,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         notifUnreadCount,
         handleSignOut,
         updateAvatarUrl,
+        pricingOpen,
+        openPricing,
+        closePricing,
       }}
     >
       {children}

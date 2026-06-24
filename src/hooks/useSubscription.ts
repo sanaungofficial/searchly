@@ -15,7 +15,7 @@ interface SubscriptionState {
 }
 
 export function useSubscription(): SubscriptionState & {
-  startCheckout: () => Promise<void>;
+  startCheckout: (interval?: "weekly" | "monthly" | "quarterly") => Promise<void>;
   openPortal: () => Promise<void>;
   refresh: () => Promise<void>;
 } {
@@ -62,9 +62,13 @@ export function useSubscription(): SubscriptionState & {
     return () => window.removeEventListener(CREDITS_CHANGED_EVENT, onCreditsChanged);
   }, [refresh]);
 
-  async function startCheckout() {
+  async function startCheckout(interval: "weekly" | "monthly" | "quarterly" = "monthly") {
     try {
-      const res = await fetch("/api/stripe/checkout", { method: "POST" });
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interval }),
+      });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;

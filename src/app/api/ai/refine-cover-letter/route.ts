@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if ("error" in auth) return auth.error;
   const { dbUser } = auth;
 
-  const quotaError = await requireAiQuota(dbUser);
+  const quotaError = await requireAiQuota(dbUser, "COVER_LETTER");
   if (quotaError) return quotaError;
 
   const body = await req.json();

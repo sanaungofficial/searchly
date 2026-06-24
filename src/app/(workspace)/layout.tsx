@@ -1,9 +1,11 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { WorkspaceSidebar } from "@/components/scout/workspace-sidebar";
 import { ChatWidget } from "@/components/scout/chat-widget";
+import { PricingModal } from "@/components/scout/pricing-modal";
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const {
@@ -11,10 +13,23 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
     isAdmin,
     userRole,
     authChecked,
+    pricingOpen,
+    openPricing,
+    closePricing,
   } = useWorkspace();
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isMobile, setIsMobile] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("pricing") === "1") {
+      openPricing();
+      router.replace(pathname, { scroll: false });
+    }
+  }, [searchParams, openPricing, router, pathname]);
 
   useEffect(() => {
     const check = () => {
@@ -74,6 +89,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <ChatWidget />
+      {pricingOpen && <PricingModal onClose={closePricing} />}
     </div>
   );
 }

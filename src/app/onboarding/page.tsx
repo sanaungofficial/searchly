@@ -427,8 +427,19 @@ export default function OnboardingPage() {
         autoRunMatch: hasMatchJob,
       });
 
+      fetch("/api/referrals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete-onboarding" }),
+      }).catch(() => {});
+
       router.push("/profile/assets?open=primary");
     } catch {
+      fetch("/api/referrals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete-onboarding" }),
+      }).catch(() => {});
       writeOnboardingFinishPayload({ primaryAssetId, autoRunMatch: false });
       router.push("/profile/assets?open=primary");
     }

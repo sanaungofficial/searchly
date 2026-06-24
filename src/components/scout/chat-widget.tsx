@@ -92,6 +92,7 @@ export function ChatWidget() {
     chatPulse,
     fitChatNonce,
     openFitChat,
+    openPricing,
   } = useWorkspace();
 
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
@@ -539,7 +540,7 @@ export function ChatWidget() {
               </>
             ) : (
               <div style={{ padding: "14px 16px 16px", overflowY: "auto" }}>
-                <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
+                <CreditsStatusBar onUpgrade={openPricing} />
                 <p
                   style={{
                     fontFamily: sans,
@@ -688,6 +689,7 @@ export function ChatWidget() {
         <GrowthUpgradeModal
           trigger="limit_hit"
           onClose={() => setShowUpgrade(false)}
+          onOpenPricing={openPricing}
         />
       )}
     </>

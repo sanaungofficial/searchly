@@ -27,6 +27,7 @@ import { CreditsStatusBar } from "./credits-display";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
@@ -1222,7 +1223,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   );
 }
 
-function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading }: {
+function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading, onOpenPricing }: {
   assets: UserAssetRow[];
   uploading: boolean;
   onUpload: (file: File) => void;
@@ -1231,6 +1232,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
   inputRef: React.RefObject<HTMLInputElement | null>;
   suggestions: AISuggestion[];
   suggestionsLoading: boolean;
+  onOpenPricing: () => void;
 }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -1295,8 +1297,9 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
         </div>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
           {!isMobile && (
-          <a
-            href="/pricing"
+          <button
+            type="button"
+            onClick={onOpenPricing}
             data-offer="pro"
             data-trigger="profile_assets"
             style={{
@@ -1310,11 +1313,10 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
               display: "flex",
               alignItems: "center",
               gap: 5,
-              textDecoration: "none",
             }}
           >
             Upgrade to Pro ›
-          </a>
+          </button>
           )}
           <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { onUpload(f); setShowUploadModal(false); } }} />
           <ScoutPrimaryBtn
@@ -1845,6 +1847,7 @@ export function WorkspaceProfile() {
   const [showChecklist, setShowChecklist] = useState(false);
   const [readbackNudge, setReadbackNudge] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const { openPricing } = useWorkspace();
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -2135,7 +2138,7 @@ export function WorkspaceProfile() {
           )}
           {showReadbackHero && (
             <>
-              <CreditsStatusBar onUpgrade={() => setShowUpgrade(true)} />
+              <CreditsStatusBar onUpgrade={openPricing} />
               <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack />
             </>
           )}
@@ -2368,7 +2371,7 @@ export function WorkspaceProfile() {
                 {resumeUploadError}
               </p>
             )}
-            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={setEditorAssetId} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} />
+            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={setEditorAssetId} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
           </>
         )}
 
@@ -2400,7 +2403,7 @@ export function WorkspaceProfile() {
         }
       />
       {showUpgrade && (
-        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />
+        <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} onOpenPricing={openPricing} />
       )}
     </div>
   );
