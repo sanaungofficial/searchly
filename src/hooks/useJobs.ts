@@ -92,9 +92,13 @@ export function useJobs(fallback: KanbanCard[]) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ company, role, url, notes }),
     });
-    if (!res.ok) return;
+    if (!res.ok) return null;
     const job: DbJob = await res.json();
-    setCards((prev) => [dbJobToKanban(job, prev.length), ...prev]);
+    let cardId = 0;
+    setCards((prev) => {
+      cardId = prev.length;
+      return [dbJobToKanban(job, cardId), ...prev];
+    });
 
     // Auto-run match score in background if we have a description
     const description = meta?.description;
@@ -120,6 +124,8 @@ export function useJobs(fallback: KanbanCard[]) {
         })
         .catch(() => {}); // best-effort, silently ignore
     }
+
+    return { id: job.id, cardId };
   }, []);
 
   const updateStage = useCallback(async (cardId: number, stage: KanbanStage) => {

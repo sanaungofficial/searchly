@@ -1,7 +1,16 @@
 import { hostnameFromUrl } from "@/lib/company-domain";
+import type { CachedJob } from "@/lib/cached-job";
 import { roleSearchKeywords } from "@/lib/job-match";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
+
+type HirebaseCompanyData = {
+  description_summary?: string | null;
+  linkedin_link?: string | null;
+  size_range?: { min?: number; max?: number } | null;
+  industries?: string[];
+  subindustries?: string[];
+};
 
 export type HirebaseJob = {
   _id?: string;
@@ -15,6 +24,23 @@ export type HirebaseJob = {
   company_slug?: string;
   company_link?: string;
   job_board?: string;
+  job_board_link?: string;
+  job_slug?: string;
+  description?: string | null;
+  description_raw?: string | null;
+  job_type?: string | null;
+  experience_level?: string | null;
+  yoe_range?: { min?: number; max?: number } | null;
+  salary_range?: { min?: number; max?: number; currency?: string } | null;
+  requirements_summary?: string | null;
+  skills?: string[];
+  technologies?: string[];
+  benefits?: string[];
+  education_level?: string | null;
+  team?: string | null;
+  date_posted?: string | null;
+  visa_sponsored?: boolean | null;
+  company_data?: HirebaseCompanyData | null;
 };
 
 export type HirebaseCompany = {
@@ -120,17 +146,85 @@ function formatLocation(job: HirebaseJob): string | null {
   return null;
 }
 
-export function mapHirebaseJob(job: HirebaseJob): {
-  title: string;
-  location: string | null;
-  department: string | null;
-  url: string | null;
-} {
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatSalaryRange(range: HirebaseJob["salary_range"]): string | null {
+  if (!range?.min && !range?.max) return null;
+  const currency = range.currency ?? "USD";
+  const fmt = (n: number) =>
+    n >= 1000 ? `$${Math.round(n / 1000)}K` : `${currency} ${n.toLocaleString()}`;
+  if (range.min && range.max) return `${fmt(range.min)}–${fmt(range.max)}`;
+  if (range.min) return `${fmt(range.min)}+`;
+  if (range.max) return `Up to ${fmt(range.max)}`;
+  return null;
+}
+
+function formatYoeRange(range: HirebaseJob["yoe_range"]): string | null {
+  if (!range?.min && !range?.max) return null;
+  if (range.min != null && range.max != null) return `${range.min}–${range.max} years`;
+  if (range.min != null) return `${range.min}+ years`;
+  if (range.max != null) return `Up to ${range.max} years`;
+  return null;
+}
+
+function remoteFromLocationType(locationType: string | undefined): boolean | null {
+  if (!locationType) return null;
+  const lower = locationType.toLowerCase();
+  if (lower.includes("remote")) return true;
+  if (lower.includes("in-person") || lower.includes("on-site") || lower.includes("onsite")) return false;
+  return null;
+}
+
+function mergeSkillLists(job: HirebaseJob): string[] {
+  const merged = [...(job.skills ?? []), ...(job.technologies ?? [])]
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return [...new Set(merged)].slice(0, 32);
+}
+
+function requirementsFromSummary(summary: string | null | undefined): string[] | undefined {
+  if (!summary?.trim()) return undefined;
+  return [summary.trim()];
+}
+
+export function mapHirebaseJob(job: HirebaseJob): CachedJob {
+  const descriptionSource = job.description_raw ?? job.description;
+  const description = descriptionSource ? stripHtml(descriptionSource).slice(0, 16000) : null;
+  const skills = mergeSkillLists(job);
+  const requirementsSummary = job.requirements_summary?.trim() || null;
+
   return {
     title: (job.job_title ?? job.title ?? "Untitled role").trim(),
     location: formatLocation(job),
-    department: job.job_categories?.[0] ?? job.job_board ?? null,
+    department: job.job_categories?.[0] ?? job.team ?? job.job_board ?? null,
     url: job.application_link ?? null,
+    hirebaseId: job._id ?? null,
+    jobSlug: job.job_slug ?? null,
+    description,
+    jobSummary: requirementsSummary ?? (description ? description.slice(0, 420) : null),
+    companySummary: job.company_data?.description_summary?.trim() || null,
+    jobType: job.job_type ?? null,
+    remote: remoteFromLocationType(job.location_type),
+    seniority: job.experience_level ?? null,
+    experienceLevel: formatYoeRange(job.yoe_range),
+    salary: formatSalaryRange(job.salary_range),
+    skills: skills.length ? skills : undefined,
+    technologies: job.technologies?.length ? job.technologies : undefined,
+    benefits: job.benefits?.length ? job.benefits : undefined,
+    requiredQualifications: requirementsFromSummary(requirementsSummary),
+    tags: job.job_categories?.length ? job.job_categories : undefined,
+    datePosted: job.date_posted ?? null,
+    team: job.team ?? null,
+    educationLevel: job.education_level ?? null,
+    visaSponsored: job.visa_sponsored ?? null,
+    jobBoard: job.job_board ?? null,
   };
 }
 
@@ -249,12 +343,7 @@ export async function fetchHirebaseCompanyJobs(input: {
   maxJobs?: number;
   pageSize?: number;
 }): Promise<{
-  jobs: Array<{
-    title: string;
-    location: string | null;
-    department: string | null;
-    url: string | null;
-  }>;
+  jobs: CachedJob[];
   hirebaseSlug: string | null;
   totalCount: number;
   scannedUrl: string;
@@ -337,12 +426,7 @@ export async function fetchHirebaseMatchingJobs(input: {
   jobTitles: string[];
   maxJobs?: number;
 }): Promise<{
-  jobs: Array<{
-    title: string;
-    location: string | null;
-    department: string | null;
-    url: string | null;
-  }>;
+  jobs: CachedJob[];
   hirebaseSlug: string | null;
   totalCount: number;
   scannedUrl: string;
@@ -406,9 +490,23 @@ export async function fetchHirebaseMatchingJobs(input: {
 function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
   const seen = new Set<string>();
   return jobs.filter((job) => {
-    const key = (job.application_link ?? job.job_title ?? job.title ?? "").toLowerCase();
+    const key = (job._id ?? job.application_link ?? job.job_title ?? job.title ?? "").toLowerCase();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+/** Full job record — used when opening watchlist drawer (includes raw description). */
+export async function fetchHirebaseJobById(jobId: string): Promise<CachedJob | null> {
+  if (!jobId.trim()) return null;
+  try {
+    const job = await hirebaseFetch<HirebaseJob>(
+      `/v2/jobs/${encodeURIComponent(jobId.trim())}?return_raw_description=true`
+    );
+    return mapHirebaseJob(job);
+  } catch (err) {
+    if (err instanceof HirebaseNotFoundError) return null;
+    throw err;
+  }
 }

@@ -1,10 +1,16 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { JobMeta } from "@/lib/job-meta";
 import { parsedJobToMeta } from "@/lib/job-meta";
+import {
+  buildProspectKanbanCard,
+  cachedJobToMeta,
+  findPipelineCardByUrl,
+  type CachedJob,
+} from "@/lib/cached-job";
 import {
   KANBAN_STAGES,
   STAGE_LABELS,
@@ -79,6 +85,13 @@ export function WorkspaceOpportunities() {
 
   // Pipeline flat-list filter
   const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>("all");
+  const [prospectJob, setProspectJob] = useState<{
+    companyName: string;
+    job: CachedJob;
+    drawerId: number;
+  } | null>(null);
+  const [prospectCard, setProspectCard] = useState<(KanbanCard & { _url?: string; _meta?: JobMeta }) | null>(null);
+  const [addingProspect, setAddingProspect] = useState(false);
 
   /* ── Add job (single URL) — calls real parse-job API ── */
   const submitAddJob = async () => {
@@ -162,6 +175,65 @@ export function WorkspaceOpportunities() {
   const closeDrawer = () => {
     setDrawerCardId(null);
     setDrawerTool(null);
+  };
+
+  const closeProspectDrawer = () => {
+    setProspectJob(null);
+    setProspectCard(null);
+    setAddingProspect(false);
+  };
+
+  const openProspectJob = useCallback(async (companyName: string, job: CachedJob) => {
+    const drawerId = -Math.abs(Date.now() % 1_000_000);
+    setProspectJob({ companyName, job, drawerId });
+    setProspectCard(buildProspectKanbanCard(companyName, job, drawerId));
+
+    try {
+      const res = await fetch("/api/companies/prospect-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job }),
+      });
+      const data = await res.json().catch(() => ({})) as { job?: CachedJob };
+      if (res.ok && data.job) {
+        setProspectJob((prev) => (prev ? { ...prev, job: data.job! } : null));
+        setProspectCard(buildProspectKanbanCard(companyName, data.job, drawerId));
+      }
+    } catch {
+      // Drawer still opens with cached snapshot.
+    }
+  }, []);
+
+  const existingProspectPipelineCard = prospectJob
+    ? findPipelineCardByUrl(kanbanCards, prospectJob.job.url)
+    : null;
+
+  const addProspectToPipeline = async () => {
+    if (!prospectJob || !prospectCard) return;
+    setAddingProspect(true);
+    try {
+      const meta = cachedJobToMeta(prospectJob.job);
+      const created = await addJob(
+        prospectJob.companyName,
+        prospectJob.job.title,
+        prospectJob.job.url ?? undefined,
+        meta
+      );
+      closeProspectDrawer();
+      if (created) {
+        setDrawerCardId(created.cardId);
+        setTab("pipeline");
+      }
+    } finally {
+      setAddingProspect(false);
+    }
+  };
+
+  const openProspectInPipeline = () => {
+    if (!existingProspectPipelineCard) return;
+    closeProspectDrawer();
+    setDrawerCardId(existingProspectPipelineCard.id);
+    setTab("pipeline");
   };
 
   return (
@@ -298,7 +370,7 @@ export function WorkspaceOpportunities() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {tab === "companies" && <WorkspaceCompanies />}
+        {tab === "companies" && <WorkspaceCompanies onOpenProspectJob={openProspectJob} />}
         {tab === "pipeline" && (
           <PipelineTab
             cards={kanbanCards}
@@ -331,6 +403,22 @@ export function WorkspaceOpportunities() {
           />
         );
       })()}
+
+      {prospectCard && prospectJob && (
+        <JobDrawer
+          card={prospectCard}
+          onClose={closeProspectDrawer}
+          moveCard={() => {}}
+          onDelete={closeProspectDrawer}
+          onCardUpdate={() => {}}
+          prospectMode
+          elevated
+          onAddToPipeline={existingProspectPipelineCard ? undefined : addProspectToPipeline}
+          addingToPipeline={addingProspect}
+          existingPipelineCardId={existingProspectPipelineCard?.id ?? null}
+          onOpenInPipeline={existingProspectPipelineCard ? openProspectInPipeline : undefined}
+        />
+      )}
     </div>
   );
 }

@@ -34,6 +34,12 @@ interface JobDrawerProps {
   onCardUpdate: (fields: Record<string, string | null>) => void;
   tool?: DrawerTool;
   onToolChange?: (t: DrawerTool) => void;
+  prospectMode?: boolean;
+  onAddToPipeline?: () => void | Promise<void>;
+  addingToPipeline?: boolean;
+  existingPipelineCardId?: number | null;
+  onOpenInPipeline?: () => void;
+  elevated?: boolean;
 }
 
 type ScrollSection = "overview" | "company";
@@ -512,7 +518,21 @@ function AiToolCard({
   );
 }
 
-export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, tool = null, onToolChange }: JobDrawerProps) {
+export function JobDrawer({
+  card,
+  onClose,
+  moveCard,
+  onDelete,
+  onCardUpdate,
+  tool = null,
+  onToolChange,
+  prospectMode = false,
+  onAddToPipeline,
+  addingToPipeline = false,
+  existingPipelineCardId = null,
+  onOpenInPipeline,
+  elevated = false,
+}: JobDrawerProps) {
   const { openFitChat } = useWorkspace();
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
@@ -647,10 +667,12 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
     companyLinkedinUrl;
 
   const jobDescription = resolveJobDescriptionText(meta, card.role, card.company);
+  const backdropZ = elevated ? 210 : 60;
+  const drawerZ = elevated ? 211 : 70;
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: backdropZ }} />
       <div
         style={{
           position: "fixed",
@@ -662,7 +684,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
           background: surface.inset,
           borderRadius: 0,
           overflow: "hidden",
-          zIndex: 70,
+          zIndex: drawerZ,
           boxShadow: "3px 3px 0 rgba(17,17,17,0.08)",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",
@@ -967,6 +989,38 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
               <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
                 Pipeline
               </p>
+              {prospectMode && !dbId ? (
+                <>
+                  {existingPipelineCardId != null ? (
+                    <>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: 20, marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, color: mint }}>✓</span>
+                        <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#2A4A3A" }}>Already in your pipeline</span>
+                      </div>
+                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
+                        Track stages, notes, and AI tools from your pipeline view.
+                      </p>
+                      {onOpenInPipeline && (
+                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.forest, color: "#FFF", border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                          Open in pipeline →
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
+                        Save this role to your pipeline to track stages, run match analysis, and generate tailored materials.
+                      </p>
+                      {onAddToPipeline && (
+                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: "#FFF", border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
+                          {addingToPipeline ? "Adding…" : "Add to pipeline"}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
                 <span style={{
                   padding: "5px 12px",
@@ -1027,9 +1081,12 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
                 style={{ width: "100%", padding: "10px 12px", border: line, borderRadius: 0, fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
               />
+                </>
+              )}
             </div>
 
             {/* Notes */}
+            {(!prospectMode || dbId) && (
             <div>
               <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#8A8278", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px" }}>
                 Notes
@@ -1056,6 +1113,7 @@ export function JobDrawer({ card, onClose, moveCard, onDelete, onCardUpdate, too
                 }}
               />
             </div>
+            )}
 
             {/* AI tools */}
             <div>
