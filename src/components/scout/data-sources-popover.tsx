@@ -292,6 +292,20 @@ export function DataSourcesPopover({ align = "right", compact = false }: Props) 
               </li>
             ))}
           </ul>
+
+          <p
+            style={{
+              margin: "14px 0 0",
+              paddingTop: 12,
+              borderTop: border.line,
+              fontFamily: fontSans,
+              fontSize: 10,
+              color: color.mutedLight,
+              lineHeight: 1.55,
+            }}
+          >
+            Also: {EXTENDED_ATS_NAMES.join(", ")}, and 10+ more ATS platforms.
+          </p>
         </div>
       )}
     </div>

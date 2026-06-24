@@ -29,6 +29,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoreExplainerLabel } from "./score-explainer-popover";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -653,7 +654,8 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
-        Add up to 3 roles you&apos;re targeting. Expand any card to see your fit score, what skills you already have, what you&apos;re missing, and your next steps.
+        Add up to 3 roles you&apos;re targeting. Expand any card to see your{" "}
+        <ScoreExplainerLabel variant="role-gap">fit score</ScoreExplainerLabel>, what skills you already have, what you&apos;re missing, and your next steps.
       </p>
 
       {/* Role cards */}
@@ -2157,7 +2159,9 @@ export function WorkspaceProfile() {
                   style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <ScoutLabel>Profile completeness</ScoutLabel>
+                    <ScoreExplainerLabel variant="profile-completeness">
+                      <ScoutLabel>Profile completeness</ScoutLabel>
+                    </ScoreExplainerLabel>
                     <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: pct >= 80 ? color.forest : "#C4A86A" }}>
                       {pct}%{missing.length > 0 ? (showChecklist ? " ▲" : " ▼") : " ✓"}
                     </span>
