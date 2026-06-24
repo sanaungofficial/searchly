@@ -167,7 +167,8 @@ export function WorkspaceOpportunities() {
   return (
     <div
       style={{
-        flex: 1,
+        height: "100%",
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -288,7 +289,15 @@ export function WorkspaceOpportunities() {
       )}
 
       {/* Content area */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         {tab === "companies" && <WorkspaceCompanies />}
         {tab === "pipeline" && (
           <PipelineTab
