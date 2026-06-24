@@ -65,6 +65,15 @@ export function jobMatchesListingFilters(
   if (filters.jobTitles?.length && !matchesList(filters.jobTitles, hay)) return false;
   if (filters.keywords?.length && !matchesList(filters.keywords, hay)) return false;
 
+  if (filters.semanticQuery?.trim()) {
+    const terms = filters.semanticQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 2);
+    if (terms.length && !terms.every((term) => hay.includes(term))) return false;
+  }
+
   if (!matchesLocations(cached, filters.locations)) return false;
   if (filters.locationTypes?.length && !matchesLocationTypes(cached, filters.locationTypes)) return false;
 
@@ -111,6 +120,7 @@ export function applyListingFiltersToSources<T extends { cached: CachedJob; comp
   if (!filters) return sources;
   const hasFilter =
     filters.companyName ||
+    filters.semanticQuery?.trim() ||
     filters.jobTitles?.length ||
     filters.keywords?.length ||
     filters.locations?.length ||

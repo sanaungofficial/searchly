@@ -146,15 +146,17 @@ export async function enrichVectorJobsWithMatchReasons(input: {
   cachedJobs: ReturnType<typeof mapHirebaseJob>[];
   companyNames: string[];
   resumeText: string;
+  /** Skip Claude batch — heuristic scores only (faster for recommended list). */
+  heuristicOnly?: boolean;
 }): Promise<VectorMatchedJob[]> {
-  const { rawJobs, cachedJobs, companyNames, resumeText } = input;
+  const { rawJobs, cachedJobs, companyNames, resumeText, heuristicOnly } = input;
   const pairs = rawJobs.map((job, index) => ({
     job,
     cached: cachedJobs[index] ?? mapHirebaseJob(job),
     rank: index + 1,
   }));
 
-  const claudeRows = await claudeBatchMatchReasons(resumeText, pairs);
+  const claudeRows = heuristicOnly ? new Map<string, BatchMatchRow>() : await claudeBatchMatchReasons(resumeText, pairs);
 
   return pairs.map(({ job, cached, rank }) => {
     const jobId = job._id ?? `rank-${rank}`;

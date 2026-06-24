@@ -2,8 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
-import { fetchRecommendedFromTrackedCompanies } from "@/lib/recommended-jobs-fallback";
-import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
+import {
+  fetchRecommendedFromTrackedCompanies,
+  fetchSemanticSearchOnTrackedCompanies,
+} from "@/lib/recommended-jobs-fallback";
+import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
@@ -11,15 +14,22 @@ import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
-async function parseRecommendedFilters(request: Request): Promise<VectorSearchFilters> {
-  if (request.method === "GET") return {};
+async function parseRecommendedFilters(request: Request): Promise<{
+  filters: VectorSearchFilters;
+  preferCache: boolean;
+  forceRefresh: boolean;
+}> {
+  if (request.method === "GET") {
+    return { filters: {}, preferCache: true, forceRefresh: false };
+  }
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const filters = parseVectorSearchFilters(body);
-    delete filters.semanticQuery;
-    return filters;
+    const preferCache = body.preferCache !== false;
+    const forceRefresh = body.forceRefresh === true;
+    return { filters, preferCache, forceRefresh };
   } catch {
-    return {};
+    return { filters: {}, preferCache: true, forceRefresh: false };
   }
 }
 
@@ -33,7 +43,9 @@ async function handleRecommended(request: Request) {
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
-  const filters = await parseRecommendedFilters(request);
+  const { filters, preferCache, forceRefresh } = await parseRecommendedFilters(request);
+  const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
+  const searchFilters = semanticQuery ? { ...filters, semanticQuery } : filters;
 
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
@@ -53,29 +65,70 @@ async function handleRecommended(request: Request) {
   });
 
   try {
+    let matchMode: "company_roles" | "semantic_scoped" | "semantic_global" = "company_roles";
+    let companyCount = 0;
+    let trackedWithMatches = 0;
+    let needsCompanies = false;
+
+    if (semanticQuery) {
+      const searchResult = await fetchSemanticSearchOnTrackedCompanies({
+        userId: dbUser.id,
+        profileTargetRoles: targetRoles,
+        query: semanticQuery,
+        filters: searchFilters,
+      });
+      matchMode = searchResult.scoped ? "semantic_scoped" : "semantic_global";
+
+      if (!searchResult.sources.length) {
+        return NextResponse.json(
+          {
+            error: searchResult.scoped
+              ? "No jobs matched your search at your tracked companies. Try different keywords or track more companies."
+              : "No jobs matched your search. Try a shorter phrase.",
+          },
+          { status: 404 },
+        );
+      }
+
+      const jobs = await enrichRecommendedSources(searchResult.sources, resumeText, { heuristicOnly: true });
+      return NextResponse.json({
+        jobs,
+        totalCount: jobs.length,
+        page: 1,
+        limit: VECTOR_SEARCH_RESULTS_MAX,
+        totalPages: 1,
+        matchMode,
+        filtersApplied: searchFilters,
+      });
+    }
+
     const result = await fetchRecommendedFromTrackedCompanies({
       userId: dbUser.id,
       profileTargetRoles: targetRoles,
-      filters,
+      filters: searchFilters,
       maxJobs: VECTOR_SEARCH_RESULTS_MAX,
+      preferCache: preferCache && !forceRefresh,
     });
+
+    companyCount = result.companyCount;
+    trackedWithMatches = result.trackedWithMatches;
+    needsCompanies = result.companyCount === 0;
 
     if (!result.sources.length) {
       return NextResponse.json(
         {
-          error:
-            result.companyCount === 0
-              ? "Track companies on the Companies page to see recommended roles."
-              : "No matching roles with these filters — try broadening filters or refresh matching roles on Companies.",
-          needsCompanies: result.companyCount === 0,
+          error: needsCompanies
+            ? "Track companies on the Companies page to see recommended roles."
+            : "No matching roles with these filters — try broadening filters or refresh matching roles on Companies.",
+          needsCompanies,
           needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
-          companyCount: result.companyCount,
+          companyCount,
         },
         { status: 404 },
       );
     }
 
-    const jobs = await enrichRecommendedSources(result.sources, resumeText);
+    const jobs = await enrichRecommendedSources(result.sources, resumeText, { heuristicOnly: true });
 
     return NextResponse.json({
       jobs,
@@ -83,10 +136,10 @@ async function handleRecommended(request: Request) {
       page: 1,
       limit: VECTOR_SEARCH_RESULTS_MAX,
       totalPages: 1,
-      matchMode: "company_roles" as const,
-      companyCount: result.companyCount,
-      trackedWithMatches: result.trackedWithMatches,
-      filtersApplied: filters,
+      matchMode,
+      companyCount,
+      trackedWithMatches,
+      filtersApplied: searchFilters,
     });
   } catch (err) {
     const msg = formatApiErrorMessage(err, "Could not load recommended jobs.");
@@ -94,7 +147,7 @@ async function handleRecommended(request: Request) {
   }
 }
 
-/** Matching roles at tracked companies — same logic as Companies drawer. No resume embed. */
+/** Matching roles at tracked companies — optional keyword search in the same endpoint. */
 export async function GET(request: Request) {
   return handleRecommended(request);
 }
