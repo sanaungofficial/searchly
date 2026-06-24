@@ -421,6 +421,10 @@ export function ResumeMatchDrawer({
           setError(d.error ?? "Monthly AI limit reached");
           return;
         }
+        if (r.status === 503) {
+          setError(d.error === "AI not configured" ? "AI isn't available on this environment — try on production." : (d.error ?? "AI not available"));
+          return;
+        }
         if (d.error) setError(d.error);
         else {
           setData(d);

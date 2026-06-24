@@ -12,6 +12,7 @@ interface CoverLetterDrawerProps {
   jobTitle: string;
   company: string;
   description: string;
+  jobId?: string;
   onClose: () => void;
 }
 
@@ -39,7 +40,7 @@ async function streamInto(
   onChunk(decoder.decode());
 }
 
-export function CoverLetterDrawer({ jobTitle, company, description, onClose }: CoverLetterDrawerProps) {
+export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClose }: CoverLetterDrawerProps) {
   const { user } = useWorkspace();
   const [letter, setLetter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +73,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, onClose }: C
       const res = await fetch("/api/ai/generate-cover-letter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, company, description: desc }),
+        body: JSON.stringify({ jobTitle, company, description: desc, jobId }),
         signal: abortRef.current.signal,
       });
       if (!res.ok) {

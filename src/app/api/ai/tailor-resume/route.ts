@@ -1,4 +1,5 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
+import { loadJobDescriptionForUser } from "@/lib/job-description-server";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -44,16 +45,9 @@ export async function POST(req: NextRequest) {
     workEditMode?: "quick" | "full";
   };
 
-  let finalDescription = description ?? "";
-  if (jobId && !finalDescription) {
-    const job = await prisma.job.findUnique({ where: { id: jobId } });
-    if (job?.description) finalDescription = job.description;
-    if (!finalDescription && job?.notes) {
-      try {
-        const parsed = JSON.parse(job.notes) as { description?: string };
-        if (parsed?.description) finalDescription = parsed.description;
-      } catch { /* ignore */ }
-    }
+  let finalDescription = description?.trim() ?? "";
+  if (!finalDescription && jobId) {
+    finalDescription = (await loadJobDescriptionForUser(jobId, dbUser.id)) ?? "";
   }
 
   if (!finalDescription) {
