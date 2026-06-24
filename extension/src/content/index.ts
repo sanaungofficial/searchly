@@ -11,6 +11,13 @@ import type { ParsedJob, SaveJobResult } from "../lib/types";
 const ATS_HOST_RE =
   /(?:boards|job-boards)\.greenhouse\.io|jobs\.lever\.co|jobs\.ashbyhq\.com|linkedin\.com/i;
 
+const KIMCHI_LOADED_KEY = "__kimchiExtensionLoaded";
+
+function isUsableParsedJob(parsed: ParsedJob | null | undefined): parsed is ParsedJob {
+  if (!parsed?.company || !parsed?.role) return false;
+  return !(parsed.company === "Unknown Company" && parsed.role === "Unknown Role");
+}
+
 function isKnownAtsPage(): boolean {
   return ATS_HOST_RE.test(window.location.hostname);
 }
@@ -56,7 +63,7 @@ async function refreshLinkedInUI(): Promise<void> {
   }
 
   const parsed = await parseCurrentPageAsync();
-  if (!parsed?.company || !parsed?.role) return;
+  if (!isUsableParsedJob(parsed)) return;
 
   if (!linkedInUI) {
     linkedInUI = new JobRightUI(
@@ -104,13 +111,31 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
-if (isLinkedInJobPage()) {
+function bootLinkedInUI(): void {
   observeLinkedInNavigation(scheduleLinkedInRefresh);
   scheduleLinkedInRefresh();
-} else if (isKnownAtsPage()) {
+}
+
+function bootFloatingButton(): void {
   ensureFloatingButton(() => {
     void handleSaveClick();
   });
+}
+
+function initKimchiContent(): void {
+  if (isLinkedInJobPage()) {
+    bootLinkedInUI();
+  } else if (isKnownAtsPage()) {
+    bootFloatingButton();
+  }
+}
+
+const win = window as unknown as Record<string, unknown>;
+if (win[KIMCHI_LOADED_KEY]) {
+  if (isLinkedInJobPage()) scheduleLinkedInRefresh();
+} else {
+  win[KIMCHI_LOADED_KEY] = true;
+  initKimchiContent();
 }
 
 (window as unknown as {

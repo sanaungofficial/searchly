@@ -34,6 +34,9 @@ const ROLE_SELECTORS = [
   "h2.t-24",
   ".top-card-layout__title",
   "h1.top-card-layout__title",
+  ".jobs-search__job-details h1",
+  ".scaffold-layout__detail h1",
+  "[class*='job-details'] h1",
   ".job-card-list__title",
   ".job-card-container__link",
 ];
@@ -47,6 +50,8 @@ const COMPANY_SELECTORS = [
   ".job-details-jobs-unified-top-card__primary-description",
   ".top-card-layout__second-subline a",
   ".top-card-layout__second-subline",
+  ".jobs-search__job-details a[href*='/company/']",
+  ".scaffold-layout__detail a[href*='/company/']",
   ".artdeco-entity-lockup__subtitle",
   ".job-card-container__company-name",
   ".job-card-container__primary-description",
@@ -87,9 +92,71 @@ function linkedInDetailRoot(): ParentNode {
 }
 
 function linkedInActiveCard(): Element | null {
-  return document.querySelector(
-    ".jobs-search-results__list-item--active, .scaffold-layout__list-item--active, .job-card-container--active"
+  return (
+    document.querySelector(
+      ".jobs-search-results__list-item--active, .scaffold-layout__list-item--active, .job-card-container--active, .jobs-search-results-list__list-item--active"
+    ) ??
+    document.querySelector(`[data-job-id="${new URL(window.location.href).searchParams.get("currentJobId") ?? ""}"]`) ??
+    null
   );
+}
+
+function unescapeLinkedInJson(value: string): string {
+  return value
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, code) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/\\n/g, "\n")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\");
+}
+
+function readLinkedInEmbeddedJob(): {
+  role?: string;
+  company?: string;
+  description?: string;
+} | null {
+  const html = document.documentElement.innerHTML;
+  const role =
+    html.match(/"jobPostingTitle"\s*:\s*"((?:\\.|[^"\\])*)"/)?.[1] ??
+    html.match(/"jobPostingTitle"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"\\])*)"/)?.[1];
+  const company =
+    html.match(/"companyName"\s*:\s*"((?:\\.|[^"\\])*)"/)?.[1] ??
+    html.match(/"companyDetails"\s*:\s*\{[^}]*"name"\s*:\s*"((?:\\.|[^"\\])*)"/)?.[1];
+
+  if (!role && !company) return null;
+
+  return {
+    ...(role ? { role: unescapeLinkedInJson(role) } : {}),
+    ...(company ? { company: unescapeLinkedInJson(company) } : {}),
+  };
+}
+
+function readFromActiveListCard(): { role?: string; company?: string } {
+  const card = linkedInActiveCard();
+  if (!card) return {};
+
+  const titleLink = card.querySelector<HTMLAnchorElement>("a[href*='/jobs/view/']");
+  const companyLink = card.querySelector<HTMLAnchorElement>("a[href*='/company/']");
+  const aria = card.getAttribute("aria-label")?.trim() ?? "";
+
+  return {
+    role: firstNonEmpty(text(titleLink), aria.split("\n")[0]?.trim()),
+    company: text(companyLink),
+  };
+}
+
+async function waitForLinkedInJobHeader(timeoutMs = 3500): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const embedded = readLinkedInEmbeddedJob();
+    const card = readFromActiveListCard();
+    const role = firstNonEmpty(
+      queryAllText(ROLE_SELECTORS, linkedInDetailRoot()),
+      card.role,
+      embedded?.role
+    );
+    if (role && role !== "Unknown Role") return;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
 }
 
 function expandLinkedInShowMore(root: ParentNode = document): void {
@@ -116,6 +183,7 @@ export async function prepareLinkedInPage(): Promise<void> {
   if (!/linkedin\.com/i.test(window.location.hostname)) return;
   expandLinkedInShowMore();
   expandLinkedInShowMore(linkedInDetailRoot());
+  await waitForLinkedInJobHeader();
   await waitForLinkedInDescription();
 }
 
@@ -142,17 +210,23 @@ export function parseLinkedInJobs(): ParsedJob | null {
   const url = normalizeLinkedInJobUrl(rawUrl);
   const detailRoot = linkedInDetailRoot();
   const activeCard = linkedInActiveCard();
+  const embedded = readLinkedInEmbeddedJob();
+  const listCard = readFromActiveListCard();
 
   const role = firstNonEmpty(
     queryAllText(ROLE_SELECTORS, detailRoot),
     activeCard ? queryAllText(ROLE_SELECTORS, activeCard) : "",
-    queryAllText(ROLE_SELECTORS)
+    queryAllText(ROLE_SELECTORS),
+    listCard.role,
+    embedded?.role
   );
 
   const company = firstNonEmpty(
     queryAllText(COMPANY_SELECTORS, detailRoot),
     activeCard ? queryAllText(COMPANY_SELECTORS, activeCard) : "",
-    queryAllText(COMPANY_SELECTORS)
+    queryAllText(COMPANY_SELECTORS),
+    listCard.company,
+    embedded?.company
   );
 
   const location = firstNonEmpty(

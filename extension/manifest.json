@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kimchi — Save Jobs",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Save jobs to your Kimchi pipeline from Greenhouse, Lever, Ashby, LinkedIn, and career pages.",
   "permissions": ["storage", "activeTab", "cookies", "scripting"],
   "host_permissions": [

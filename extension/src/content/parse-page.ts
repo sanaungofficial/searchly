@@ -13,6 +13,16 @@ function isUsableJob(result: ParsedJob | null): result is ParsedJob {
 }
 
 function runParsers(): ParsedJob {
+  const onLinkedInJobs =
+    /linkedin\.com/i.test(window.location.hostname) &&
+    /\/jobs\//i.test(window.location.href);
+
+  if (onLinkedInJobs) {
+    const linkedIn = parseLinkedInJobs();
+    if (linkedIn && isUsableJob(linkedIn)) return linkedIn;
+    if (linkedIn) return linkedIn;
+  }
+
   for (const parser of [parseGreenhouse, parseLever, parseAshby, parseLinkedInJobs] as const) {
     const result = parser();
     if (isUsableJob(result)) return result;
