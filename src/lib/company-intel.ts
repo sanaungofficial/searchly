@@ -95,11 +95,6 @@ export async function resolveCompanyIntelFromInput(body: {
   website?: string | null;
   careersUrl?: string | null;
 }): Promise<CompanyIntel | null> {
-  if (body.companyIntelId) {
-    const intel = await prisma.companyIntel.findUnique({ where: { id: body.companyIntelId } });
-    if (intel) return intel;
-  }
-
   const catalog = body.catalogSlug ? getCatalogCompany(body.catalogSlug) : undefined;
   if (catalog) {
     return findOrCreateCompanyIntel({
@@ -108,6 +103,11 @@ export async function resolveCompanyIntelFromInput(body: {
       website: catalog.website,
       careersUrl: catalog.careersUrl,
     });
+  }
+
+  if (body.companyIntelId) {
+    const intel = await prisma.companyIntel.findUnique({ where: { id: body.companyIntelId } });
+    if (intel) return intel;
   }
 
   if (body.name?.trim()) {

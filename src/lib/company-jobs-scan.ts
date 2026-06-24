@@ -15,9 +15,8 @@ import { fetchHirebaseCompanyJobs, fetchHirebaseMatchingJobs, isHirebaseConfigur
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
 import {
   buildMatchRoles,
-  dedupeJobs,
+  filterMatchingJobs,
   hasMatchRoles,
-  isJobMatch,
 } from "@/lib/job-match";
 
 export type CachedJob = {
@@ -78,7 +77,7 @@ function capMatchJobs(settings: CompanyScanSettings): number {
 }
 
 function filterToMatches(jobs: CachedJob[], matchRoles: string[], maxJobs: number): CachedJob[] {
-  return dedupeJobs(jobs.filter((job) => isJobMatch(job.title, matchRoles))).slice(0, maxJobs);
+  return filterMatchingJobs(jobs, matchRoles, maxJobs);
 }
 
 export function canScanTrackedCompanyMatches(input: {
@@ -145,7 +144,31 @@ async function scanMatchesViaHirebase(
       maxJobs,
     });
 
-    const matched = filterToMatches(result.jobs, matchRoles, maxJobs);
+    let matched = filterToMatches(result.jobs, matchRoles, maxJobs);
+
+    // Targeted search can miss titles like "Product Manager II" — fall back to company index + local filter.
+    if (matched.length === 0 && (result.hirebaseSlug || slugHint)) {
+      const fallback = await fetchHirebaseCompanyJobs({
+        companyName,
+        slugHint: result.hirebaseSlug ?? slugHint,
+        website,
+        maxJobs: Math.min(100, maxJobs * 2),
+      });
+      matched = filterToMatches(fallback.jobs, matchRoles, maxJobs);
+      if (matched.length) {
+        return {
+          ok: true,
+          parsed: {
+            jobs: matched,
+            scanned_url: fallback.scannedUrl,
+            source: "hirebase",
+            hirebase_slug: fallback.hirebaseSlug,
+            total_count: fallback.totalCount,
+            match_only: true,
+          },
+        };
+      }
+    }
 
     return {
       ok: true,

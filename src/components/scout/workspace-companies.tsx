@@ -718,7 +718,6 @@ export function WorkspaceCompanies() {
         body: JSON.stringify({
           name: selectedSuggestion?.name ?? newName.trim(),
           catalogSlug: selectedSuggestion?.catalogSlug,
-          companyIntelId: selectedSuggestion?.id ?? undefined,
           website: selectedSuggestion?.website ?? undefined,
           careersUrl: selectedSuggestion?.careersUrl ?? undefined,
         }),
@@ -732,9 +731,18 @@ export function WorkspaceCompanies() {
         setSelectedSuggestion(null);
         setShowAdd(false);
       } else {
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({})) as { error?: string; existing?: { id: string; name: string } };
         if (res.status === 409) {
-          setAddError("Already on your watchlist.");
+          await load();
+          if (data.existing?.name) {
+            setAddError(`${data.existing.name} is already on your watchlist.`);
+            setSelectedId(data.existing.id);
+            setShowAdd(false);
+            setNewName("");
+            setSelectedSuggestion(null);
+          } else {
+            setAddError("Already on your watchlist — refresh if you don't see it.");
+          }
         } else {
           setAddError(data.error ?? "Couldn't add company. Try again.");
         }
