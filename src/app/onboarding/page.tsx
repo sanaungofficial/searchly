@@ -11,21 +11,27 @@ import {
   ScreenAboutYouSearch,
   ScreenAboutYouPreferences,
   ScreenTransition,
+  ScreenSetup,
   DemoNextButton,
   ROLE_BUCKETS,
   type Screen,
   type ReadBackData,
   type TransitionJobAnalysis,
   type TransitionJobMatch,
+  type SetupStep,
+  type SetupStepStatus,
 } from "@/components/scout/screens";
+import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
+import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
 
-function saveLinkedIn(url: string) {
-  if (!url.trim()) return;
-  fetch("/api/profile", {
+function saveLinkedIn(handle: string): Promise<void> {
+  const url = normalizeLinkedInUrl(handle);
+  if (!url) return Promise.resolve();
+  return fetch("/api/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ linkedinUrl: url.trim() }),
-  }).catch(() => {});
+    body: JSON.stringify({ linkedinUrl: url }),
+  }).then(() => {});
 }
 
 function saveAboutYou(fields: {
@@ -35,8 +41,8 @@ function saveAboutYou(fields: {
   targetSalary: string;
   priorities: string[];
   attribution: string;
-}) {
-  fetch("/api/profile", {
+}): Promise<void> {
+  return fetch("/api/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -47,8 +53,16 @@ function saveAboutYou(fields: {
       priorities: fields.priorities,
       attribution: fields.attribution || null,
     }),
-  }).catch(() => {});
+  }).then(() => {});
 }
+
+const INITIAL_SETUP_STEPS: SetupStep[] = [
+  { id: "profile", label: "Saving your profile", status: "pending" },
+  { id: "resume", label: "Building your base resume", status: "pending" },
+  { id: "analysis", label: "Running your resume review", status: "pending" },
+  { id: "job", label: "Saving your first job", status: "pending" },
+  { id: "match", label: "Scoring your fit for this role", status: "pending" },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -86,8 +100,22 @@ export default function OnboardingPage() {
   const [jobMatchError, setJobMatchError] = useState<string | null>(null);
   const [jobAnalysis, setJobAnalysis] = useState<TransitionJobAnalysis | null>(null);
   const [jobMatch, setJobMatch] = useState<TransitionJobMatch | null>(null);
+  const [setupSteps, setSetupSteps] = useState<SetupStep[]>(INITIAL_SETUP_STEPS);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
+
+  const setStepStatus = useCallback((id: string, status: SetupStepStatus) => {
+    setSetupSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  }, []);
+
+  const aboutYouFields = {
+    careerMotivation,
+    jobTimeline,
+    currentSalary,
+    targetSalary,
+    priorities,
+    attribution,
+  };
 
   const processFile = useCallback(async (file: File | undefined | null) => {
     if (!file) return;
@@ -100,7 +128,7 @@ export default function OnboardingPage() {
       const res = await fetch("/api/resume", { method: "POST", body: formData });
       if (res.ok) {
         setResumeUploaded(true);
-        if (liInput.trim()) saveLinkedIn(liInput);
+        if (liInput.trim()) await saveLinkedIn(liInput);
         goTo(1);
       } else {
         setResumeError(true);
@@ -128,16 +156,24 @@ export default function OnboardingPage() {
     const f = e.target.files?.[0];
     if (f) processFile(f);
   };
-  const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => setLiInput(e.target.value);
+
+  const onLIChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.trim();
+    if (/linkedin\.com/i.test(value)) {
+      value = linkedInHandleFromUrl(value);
+    }
+    value = value.replace(/^@/, "").replace(/\//g, "");
+    setLiInput(value);
+  };
 
   const onWelcomeContinue = useCallback(() => {
     if (!resumeUploaded) return;
-    if (liInput.trim()) saveLinkedIn(liInput);
+    if (liInput.trim()) void saveLinkedIn(liInput);
     goTo(1);
   }, [liInput, resumeUploaded, goTo]);
 
   const onLinkedInOnly = useCallback(() => {
-    saveLinkedIn(liInput);
+    void saveLinkedIn(liInput);
     goTo(2);
   }, [liInput, goTo]);
 
@@ -198,14 +234,14 @@ export default function OnboardingPage() {
   const goToPreferences = useCallback(() => goTo(4), [goTo]);
 
   const goToTransition = useCallback(() => {
-    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
+    saveAboutYou(aboutYouFields).catch(() => {});
     goTo(5);
-  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, goTo]);
+  }, [aboutYouFields, goTo]);
 
   const skipAboutYouToTransition = useCallback(() => {
-    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
+    saveAboutYou(aboutYouFields).catch(() => {});
     goTo(5);
-  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, goTo]);
+  }, [aboutYouFields, goTo]);
 
   const analyzeFirstJob = useCallback(async () => {
     const url = jobUrl.trim();
@@ -256,11 +292,11 @@ export default function OnboardingPage() {
       const matchData = await matchRes.json();
       if (!matchRes.ok) {
         if (matchRes.status === 404) {
-          setJobMatchError("Upload a resume to see your match score — you can still add this job to your pipeline.");
+          setJobMatchError("Upload a resume to see your match score — you can still finish setup.");
         } else if (matchRes.status === 503) {
-          setJobMatchError("Fit scoring isn't available here yet — add the job and we'll score it in your workspace.");
+          setJobMatchError("Fit scoring isn't available here yet — we'll open your resume and you can run match in production.");
         } else {
-          setJobMatchError(matchData.error ?? "Couldn't score your fit right now. You can still add this job.");
+          setJobMatchError(matchData.error ?? "Couldn't score your fit right now. You can still finish setup.");
         }
         return;
       }
@@ -280,60 +316,117 @@ export default function OnboardingPage() {
     }
   }, [jobUrl]);
 
-  const saveFirstJob = useCallback(
-    async (tool: "resume" | "cover" | null) => {
-      if (!jobAnalysis) return;
-      const url = jobUrl.trim();
-      const company = jobAnalysis.company ?? "Unknown Company";
-      const role = jobAnalysis.role ?? "Unknown Role";
-      const notes = JSON.stringify({
-        location: jobAnalysis.location,
-        salary: jobAnalysis.salary,
-        description: jobAnalysis.description,
-        requirements: jobAnalysis.requirements,
-      });
-      setJobLoading(true);
-      setJobError(null);
-      try {
+  const runFinishSetup = useCallback(async (saveJob: boolean) => {
+    setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
+    goTo(6);
+
+    let primaryAssetId: string | undefined;
+    let savedJobId: string | null = null;
+    const analysisSnapshot = jobAnalysis;
+    const matchSnapshot = jobMatch;
+
+    try {
+      setStepStatus("profile", "active");
+      await saveAboutYou(aboutYouFields);
+      if (selectedTitles.length) {
+        await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetRoles: selectedTitles }),
+        });
+      }
+      if (liInput.trim()) await saveLinkedIn(liInput);
+      setStepStatus("profile", "done");
+
+      setStepStatus("resume", "active");
+      const assetsRes = await fetch("/api/assets");
+      const assets = await assetsRes.json();
+      const primary = Array.isArray(assets)
+        ? assets.find((a: { type: string; isPrimary: boolean }) => a.type === "RESUME" && a.isPrimary)
+          ?? assets.find((a: { type: string }) => a.type === "RESUME")
+        : undefined;
+      primaryAssetId = primary?.id;
+      setStepStatus("resume", primaryAssetId ? "done" : "skipped");
+
+      if (primaryAssetId) {
+        setStepStatus("analysis", "active");
+        await fetch(`/api/assets/${primaryAssetId}/analysis`).catch(() => {});
+        setStepStatus("analysis", "done");
+      } else {
+        setStepStatus("analysis", "skipped");
+      }
+
+      if (saveJob && analysisSnapshot) {
+        setStepStatus("job", "active");
+        const url = jobUrl.trim();
+        const company = analysisSnapshot.company ?? "Unknown Company";
+        const role = analysisSnapshot.role ?? "Unknown Role";
+        const notes = JSON.stringify({
+          location: analysisSnapshot.location,
+          salary: analysisSnapshot.salary,
+          description: analysisSnapshot.description,
+          requirements: analysisSnapshot.requirements,
+        });
         const res = await fetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ company, role, url, notes }),
         });
         const job = await res.json();
-        if (!res.ok) {
-          setJobError(job.error ?? "Could not save this job.");
-          return;
+        if (res.ok && job.id) {
+          savedJobId = job.id;
+          if (matchSnapshot?.score != null) {
+            await fetch(`/api/jobs/${job.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: matchSnapshot.score }) }),
+            }).catch(() => {});
+          }
+          setStepStatus("job", "done");
+        } else {
+          setStepStatus("job", "skipped");
         }
-
-        if (jobMatch && job.id) {
-          await fetch(`/api/jobs/${job.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: jobMatch.score }) }),
-          }).catch(() => {});
-        }
-
-        const params = new URLSearchParams({ job: job.id });
-        if (tool) params.set("tool", tool);
-        router.push(`/opportunities/pipeline?${params.toString()}`);
-      } catch {
-        setJobError("Network error — please try again.");
-      } finally {
-        setJobLoading(false);
+      } else {
+        setStepStatus("job", "skipped");
       }
-    },
-    [jobAnalysis, jobUrl, jobMatch, router]
-  );
 
-  const skipToWorkspace = useCallback(() => {
-    router.push("/opportunities/pipeline");
-  }, [router]);
+      const hasMatchJob = saveJob && !!analysisSnapshot?.description && !!primaryAssetId;
+      if (hasMatchJob) {
+        setStepStatus("match", "active");
+        await new Promise((r) => setTimeout(r, 400));
+        setStepStatus("match", "done");
+      } else {
+        setStepStatus("match", "skipped");
+      }
 
-  const onReviewProfile = useCallback(() => {
-    saveAboutYou({ careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution });
-    router.push("/profile");
-  }, [careerMotivation, jobTimeline, currentSalary, targetSalary, priorities, attribution, router]);
+      writeOnboardingFinishPayload({
+        primaryAssetId,
+        jobDescription: saveJob ? analysisSnapshot?.description ?? null : null,
+        jobTitle: saveJob ? analysisSnapshot?.role ?? null : null,
+        company: saveJob ? analysisSnapshot?.company ?? null : null,
+        jobId: savedJobId,
+        autoRunMatch: hasMatchJob,
+      });
+
+      router.push("/profile/assets?open=primary");
+    } catch {
+      writeOnboardingFinishPayload({ primaryAssetId, autoRunMatch: false });
+      router.push("/profile/assets?open=primary");
+    }
+  }, [
+    aboutYouFields,
+    goTo,
+    jobAnalysis,
+    jobMatch,
+    jobUrl,
+    liInput,
+    selectedTitles,
+    setStepStatus,
+    router,
+  ]);
+
+  const finishSetup = useCallback(() => runFinishSetup(false), [runFinishSetup]);
+  const finishSetupWithJob = useCallback(() => runFinishSetup(true), [runFinishSetup]);
 
   const demoAdvance = () => {
     if (screen === 0) {
@@ -359,6 +452,8 @@ export default function OnboardingPage() {
     );
   }
 
+  const headerScreen = screen === 6 ? 5 : screen;
+
   return (
     <div style={{ background: "#F7F5F2" }}>
       <input
@@ -369,7 +464,7 @@ export default function OnboardingPage() {
         onChange={onFileChange}
       />
       <div className="onboarding-shell">
-        <ScoutHeader screen={screen} />
+        <ScoutHeader screen={headerScreen} />
         <div className="onboarding-content">
           {screen === 0 && (
             <ScreenWelcome
@@ -444,11 +539,9 @@ export default function OnboardingPage() {
                 if (jobMatchError) setJobMatchError(null);
               }}
               onAnalyze={analyzeFirstJob}
-              onTailorResume={() => saveFirstJob("resume")}
-              onWriteCoverLetter={() => saveFirstJob("cover")}
-              onAddJob={() => saveFirstJob(null)}
-              onSkip={skipToWorkspace}
-              onReviewProfile={onReviewProfile}
+              onFinish={finishSetup}
+              onFinishWithJob={finishSetupWithJob}
+              onSkip={finishSetup}
               loading={jobLoading}
               loadingPhase={jobLoadingPhase}
               error={jobError}
@@ -457,9 +550,10 @@ export default function OnboardingPage() {
               match={jobMatch}
             />
           )}
+          {screen === 6 && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
-      {process.env.NODE_ENV === "development" && <DemoNextButton onClick={demoAdvance} />}
+      {process.env.NODE_ENV === "development" && screen !== 6 && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }
