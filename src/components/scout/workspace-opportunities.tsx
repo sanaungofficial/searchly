@@ -16,7 +16,8 @@ import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
-import { fontSans, fontMono, color, type as T } from "@/lib/typography";
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "./scout-box";
+import { fontSans, fontMono, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
 
 export type { DrawerTool };
 
@@ -170,7 +171,7 @@ export function WorkspaceOpportunities() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: "#F7F5F2",
+        background: surface.page,
         animation: "fadeIn 0.3s ease both",
       }}
     >
@@ -178,7 +179,8 @@ export function WorkspaceOpportunities() {
       <div
         style={{
           padding: "12px 28px",
-          borderBottom: "1px solid rgba(0,0,0,0.07)",
+          borderBottom: border.line,
+          background: surface.card,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -218,14 +220,14 @@ export function WorkspaceOpportunities() {
           {tab !== "companies" && <button
             onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
             style={{
-              padding: "7px 16px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
-              border: "none",
-              borderRadius: 5,
+              padding: "8px 16px",
+              background: color.forest,
+              color: color.gold,
+              border: border.lineStrong,
+              borderRadius: 0,
               fontFamily: fontSans,
               fontSize: T.caption,
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
               letterSpacing: "0.2px",
               display: "inline-flex",
@@ -239,14 +241,14 @@ export function WorkspaceOpportunities() {
             <button
               onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
               style={{
-                padding: "7px 16px",
-                background: showCsvPanel ? "#1A3A2F" : "transparent",
-                color: showCsvPanel ? "#E8D5A3" : "#1A3A2F",
-                border: "1px solid rgba(26,58,47,0.2)",
-                borderRadius: 5,
+                padding: "8px 16px",
+                background: showCsvPanel ? color.forest : surface.card,
+                color: showCsvPanel ? color.gold : color.forest,
+                border: border.lineStrong,
+                borderRadius: 0,
                 fontFamily: fontSans,
                 fontSize: T.caption,
-                fontWeight: 500,
+                fontWeight: 600,
                 cursor: "pointer",
                 letterSpacing: "0.2px",
                 display: "inline-flex",
@@ -371,12 +373,12 @@ function StatusDropdown({
         }}
         style={{
           padding: isSmall ? "4px 10px" : "6px 14px",
-          background: `${stageColor}18`,
-          border: `1px solid ${stageColor}40`,
-          borderRadius: 5,
-          fontFamily: "var(--font-ui)",
-          fontSize: isSmall ? 10 : 11,
-          fontWeight: 500,
+          background: surface.card,
+          border: border.line,
+          borderRadius: 0,
+          fontFamily: fontSans,
+          fontSize: isSmall ? T.label : T.caption,
+          fontWeight: 600,
           color: stageColor,
           cursor: "pointer",
           display: "inline-flex",
@@ -397,10 +399,9 @@ function StatusDropdown({
               top: "100%",
               right: 0,
               marginTop: 4,
-              background: "#FFFFFF",
-              borderRadius: 6,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-              border: "1px solid rgba(0,0,0,0.08)",
+              background: surface.card,
+              border: border.line,
+              boxShadow: "3px 3px 0 rgba(17,17,17,0.06)",
               zIndex: 100,
               minWidth: 150,
               overflow: "hidden",
@@ -456,9 +457,9 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
   return (
     <div
       style={{
-        padding: "14px 28px",
-        background: "rgba(26,58,47,0.04)",
-        borderBottom: "1px solid rgba(0,0,0,0.07)",
+        padding: "16px 28px",
+        background: surface.card,
+        borderBottom: border.line,
         animation: "fadeIn 0.2s ease both",
       }}
     >
@@ -567,9 +568,9 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
   return (
     <div
       style={{
-        padding: "12px 28px",
-        background: "rgba(26,58,47,0.04)",
-        borderBottom: "1px solid rgba(0,0,0,0.07)",
+        padding: "16px 28px",
+        background: surface.card,
+        borderBottom: border.line,
         animation: "fadeIn 0.2s ease both",
       }}
     >
@@ -583,12 +584,12 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
           style={{
             flex: 1,
             padding: "9px 12px",
-            border: "1px solid rgba(26,58,47,0.2)",
-            borderRadius: 6,
-            background: "#FFFFFF",
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            color: "#1A1A1A",
+            border: border.line,
+            borderRadius: 0,
+            background: surface.inset,
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            color: color.ink,
             minWidth: 0,
           }}
         />
@@ -596,12 +597,13 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
           onClick={onSubmit}
           style={{
             padding: "9px 18px",
-            background: "#1A3A2F",
-            color: "#E8D5A3",
-            border: "none",
-            borderRadius: 6,
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
+            background: color.forest,
+            color: color.gold,
+            border: border.lineStrong,
+            borderRadius: 0,
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 600,
             cursor: "pointer",
             flexShrink: 0,
           }}
@@ -636,16 +638,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         </div>
       )}
       {analysis && !loading && (
-        <div
-          style={{
-            maxWidth: 640,
-            background: "#FFFFFF",
-            borderRadius: 8,
-            padding: "14px 16px",
-            border: "1px solid rgba(0,0,0,0.06)",
-            animation: "fadeIn 0.3s ease both",
-          }}
-        >
+        <ScoutBox style={{ maxWidth: 640, animation: "fadeIn 0.3s ease both" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
@@ -680,27 +673,59 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             onClick={onAddToKanban}
             style={{
               padding: "8px 18px",
-              background: "#1A3A2F",
-              color: "#E8D5A3",
-              border: "none",
-              borderRadius: 5,
-              fontFamily: "var(--font-ui)",
-              fontSize: 12,
+              background: color.forest,
+              color: color.gold,
+              border: border.lineStrong,
+              borderRadius: 0,
+              fontFamily: fontSans,
+              fontSize: T.caption,
               fontWeight: 600,
               cursor: "pointer",
             }}
           >
             + Add to My Jobs
           </button>
-        </div>
+        </ScoutBox>
       )}
     </div>
   );
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Pipeline tab — flat list with stage filter + status dropdowns
+   Pipeline tab — Citebound-style list with summary + filter boxes
    ────────────────────────────────────────────────────────────── */
+
+function getFeaturedJobId(cards: KanbanCard[]): number | null {
+  const withNext = cards.find((c) => (c as KanbanCard & { _meta?: JobMeta })._meta?.nextStep);
+  if (withNext) return withNext.id;
+  const interviewing = cards.find((c) => c.stage === "interview");
+  if (interviewing) return interviewing.id;
+  return cards[0]?.id ?? null;
+}
+
+function PipelineStatBar({ label, pct, highlight }: { label: string; pct: number; highlight?: boolean }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <ScoutLabel>{label}</ScoutLabel>
+        <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.stone }}>{pct}%</span>
+      </div>
+      <div style={{ height: 3, background: "rgba(17,17,17,0.08)", position: "relative" }}>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: `${pct}%`,
+            background: highlight ? color.forest : color.ink,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface PipelineTabProps {
   cards: KanbanCard[];
   filter: "all" | KanbanStage;
@@ -720,11 +745,20 @@ function PipelineTab({
   onOpenDrawer,
 }: PipelineTabProps) {
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [wideLayout, setWideLayout] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 960px)");
+    const update = () => setWideLayout(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   const visibleCards = filter === "all" ? cards : cards.filter((c) => c.stage === filter);
   const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer", "closed"];
-  const sortedCards = [...visibleCards].sort((a, b) => {
-    return stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
-  });
+  const sortedCards = [...visibleCards].sort((a, b) => stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage));
+  const featuredId = getFeaturedJobId(sortedCards);
 
   const filterChips: ["all" | KanbanStage, string][] = [
     ["all", "All"],
@@ -735,72 +769,198 @@ function PipelineTab({
     ["closed", "Closed"],
   ];
 
+  const activeCount = cards.filter((c) => c.stage !== "closed").length;
+  const stageCounts = stageOrder
+    .filter((s) => s !== "closed")
+    .map((s) => ({ stage: s, count: cards.filter((c) => c.stage === s).length }));
+  const maxCount = Math.max(1, ...stageCounts.map((s) => s.count));
+
   return (
-    <div style={{ padding: "24px 32px 48px" }}>
-      {/* Filter chips + view toggle */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
-          {filterChips.map(([id, label]) => {
-            const active = filter === id;
-            const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
-            return (
+    <div style={{ padding: "32px 36px 48px" }}>
+      {/* Editorial header */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+          <ScoutLabel>Job search pipeline</ScoutLabel>
+        </div>
+        <ScoutDisplayTitle size={36} style={{ marginBottom: 10 }}>
+          Track every role in one place
+        </ScoutDisplayTitle>
+        <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
+          Add roles from job URLs, track stage and next steps, and open any listing for match tools.
+        </p>
+      </div>
+
+      {/* Summary + filter (desktop sidebar) or summary only + mobile chips */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: wideLayout ? "1fr 220px" : "1fr",
+          gap: 20,
+          marginBottom: 28,
+        }}
+      >
+        <ScoutBox stack padding={22}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 16 }}>
+            <ScoutLabel>Pipeline summary</ScoutLabel>
+            <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
+              {activeCount} active
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 20 }}>
+            <span style={{ fontFamily: fontDisplay, fontSize: 48, fontWeight: 600, color: color.ink, lineHeight: 1 }}>
+              {activeCount}
+            </span>
+            <span style={{ fontFamily: fontDisplay, fontSize: 22, color: color.muted }}>/ roles</span>
+          </div>
+          {stageCounts.map(({ stage, count }, i) => (
+            <PipelineStatBar
+              key={stage}
+              label={STAGE_LABELS[stage]}
+              pct={Math.round((count / maxCount) * 100)}
+              highlight={i === 0 && count > 0}
+            />
+          ))}
+        </ScoutBox>
+
+        {wideLayout && (
+          <ScoutBox padding={0}>
+            <div style={{ padding: "14px 18px", borderBottom: border.line, background: surface.inset }}>
+              <ScoutLabel>Filter</ScoutLabel>
+            </div>
+            {filterChips.map(([id, label], i) => {
+              const active = filter === id;
+              const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilter(id)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "11px 18px",
+                    border: "none",
+                    borderBottom: i < filterChips.length - 1 ? border.line : "none",
+                    fontFamily: fontSans,
+                    fontSize: T.bodySm,
+                    fontWeight: active ? 600 : 500,
+                    color: active ? color.ink : color.muted,
+                    background: active ? surface.inset : surface.card,
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  {label}
+                  <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7, marginLeft: 6 }}>{count}</span>
+                </button>
+              );
+            })}
+          </ScoutBox>
+        )}
+      </div>
+
+      {/* Mobile / narrow filter chips + view toggle */}
+      {!wideLayout && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
+            {filterChips.map(([id, label]) => {
+              const active = filter === id;
+              const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilter(id)}
+                  style={{
+                    padding: "6px 12px",
+                    color: active ? color.forest : color.muted,
+                    border: active ? border.lineStrong : border.line,
+                    borderRadius: 0,
+                    background: active ? surface.card : "transparent",
+                    fontFamily: fontSans,
+                    fontSize: T.caption,
+                    fontWeight: active ? 600 : 500,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  {label}
+                  <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", border: border.line, flexShrink: 0 }}>
+            {(["list", "kanban"] as const).map((mode) => (
               <button
-                key={id}
-                onClick={() => setFilter(id)}
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                title={mode === "list" ? "List view" : "Board view"}
                 style={{
-                  padding: "5px 14px",
-                  color: active ? color.forest : color.muted,
-                  border: active ? `1px solid ${color.forest}` : "1px solid rgba(0,0,0,0.1)",
-                  borderRadius: 100,
-                  background: "transparent",
+                  padding: "6px 10px",
+                  background: viewMode === mode ? color.forest : surface.card,
+                  color: viewMode === mode ? color.gold : color.muted,
+                  border: "none",
+                  borderLeft: mode === "kanban" ? border.line : "none",
                   fontFamily: fontSans,
                   fontSize: T.caption,
-                  fontWeight: active ? 600 : 500,
                   cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
+                  lineHeight: 1,
                 }}
               >
-                {label}
-                <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
+                {mode === "list" ? "☰" : "⊞"}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
-        {/* View toggle */}
-        <div style={{ display: "flex", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
-          {(["list", "kanban"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              title={mode === "list" ? "List view" : "Board view"}
-              style={{
-                padding: "5px 10px",
-                background: viewMode === mode ? "#1A3A2F" : "transparent",
-                color: viewMode === mode ? "#E8D5A3" : "var(--scout-muted)",
-                border: "none",
-                fontFamily: "var(--font-ui)",
-                fontSize: 13,
-                cursor: "pointer",
-                lineHeight: 1,
-              }}
-            >
-              {mode === "list" ? "☰" : "⊞"}
-            </button>
-          ))}
+      )}
+
+      {wideLayout && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <ScoutLabel>Open roles</ScoutLabel>
+          <div style={{ display: "flex", border: border.line }}>
+            {(["list", "kanban"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                title={mode === "list" ? "List view" : "Board view"}
+                style={{
+                  padding: "6px 10px",
+                  background: viewMode === mode ? color.forest : surface.card,
+                  color: viewMode === mode ? color.gold : color.muted,
+                  border: "none",
+                  borderLeft: mode === "kanban" ? border.line : "none",
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  cursor: "pointer",
+                  lineHeight: 1,
+                }}
+              >
+                {mode === "list" ? "List" : "Board"}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Empty state */}
       {cards.length === 0 ? (
-        <div style={{ padding: 80, textAlign: "center", color: color.mutedLight, fontFamily: fontSans, fontSize: T.caption }}>
-          No jobs yet. Click &quot;+ Add job&quot; above to paste a URL, or &quot;Upload CSV&quot; to bulk-add jobs.
-        </div>
+        <ScoutBox style={{ padding: 60, textAlign: "center" }}>
+          <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
+            No jobs yet. Click &quot;Add job&quot; above to paste a URL, or &quot;Upload CSV&quot; to bulk-add jobs.
+          </p>
+        </ScoutBox>
       ) : sortedCards.length === 0 ? (
-        <div style={{ padding: 60, textAlign: "center", color: color.mutedLight, fontFamily: fontSans, fontSize: T.caption }}>
-          No jobs match this filter.
-        </div>
+        <ScoutBox style={{ padding: 48, textAlign: "center" }}>
+          <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
+            No jobs match this filter.
+          </p>
+        </ScoutBox>
       ) : viewMode === "kanban" ? (
         /* ── Kanban board ── */
         <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 20, alignItems: "flex-start" }}>
@@ -821,11 +981,8 @@ function PipelineTab({
                     const nextStepDue = meta?.nextStepDue;
                     const isOverdue = nextStepDue ? new Date(nextStepDue) < new Date() : false;
                     return (
-                      <div
-                        key={c.id}
-                        onClick={() => onOpenDrawer(c.id)}
-                        style={{ background: "#FFFFFF", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(0,0,0,0.06)", borderTop: `2px solid ${stageColor}`, cursor: "pointer", transition: "box-shadow 0.15s" }}
-                      >
+                      <div key={c.id} onClick={() => onOpenDrawer(c.id)} style={{ cursor: "pointer" }}>
+                        <ScoutBox padding="12px 14px" style={{ borderTop: `2px solid ${stageColor}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                           <CompanyLogo name={c.company} website={url} size={28} />
                           <div style={{ minWidth: 0, flex: 1 }}>
@@ -845,6 +1002,7 @@ function PipelineTab({
                             </p>
                           </div>
                         )}
+                        </ScoutBox>
                       </div>
                     );
                   })}
@@ -855,56 +1013,77 @@ function PipelineTab({
         </div>
       ) : (
         /* ── List view ── */
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {sortedCards.map((c) => {
             const meta = (c as KanbanCard & { _meta?: JobMeta })._meta;
             const url = (c as KanbanCard & { _url?: string })._url ?? null;
-            const stageColor = STAGE_COLORS[c.stage];
             const nextStepDue = meta?.nextStepDue;
             const isOverdue = nextStepDue ? new Date(nextStepDue) < new Date() : false;
+            const isFeatured = c.id === featuredId;
             return (
-              <div
-                key={c.id}
-                style={{ background: "#FFFFFF", borderRadius: 10, padding: "16px 20px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", borderLeft: `3px solid ${stageColor}` }}
-              >
+              <ScoutBox key={c.id} stack={isFeatured} padding={18}>
                 <div
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}
-                  onClick={() => onOpenDrawer(c.id)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-                    <CompanyLogo name={c.company} website={url} size={38} />
+                  <div
+                    style={{ display: "flex", alignItems: "start", gap: 16, flex: 1, minWidth: 0, cursor: "pointer" }}
+                    onClick={() => onOpenDrawer(c.id)}
+                  >
+                    <CompanyLogo name={c.company} website={url} size={40} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 2 }}>{c.role}</p>
-                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: meta?.location || meta?.salary ? 6 : 0 }}>
+                      <p
+                        style={{
+                          fontFamily: fontDisplay,
+                          fontSize: T.heading,
+                          fontWeight: 500,
+                          fontVariationSettings: '"opsz" 72, "WONK" 1',
+                          color: color.ink,
+                          margin: "0 0 4px",
+                          lineHeight: 1.15,
+                        }}
+                      >
+                        {c.role}
+                      </p>
+                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
                         {c.company} · {c.days === 0 ? "Today" : `${c.days}d ago`}
                       </p>
-                      {(meta?.location || meta?.salary) && (
-                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                          {meta?.location && (
-                            <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
-                              📍 {meta.location}
-                            </span>
-                          )}
-                          {meta?.salary && (
-                            <span style={{ padding: "2px 8px", background: "rgba(74,139,106,0.08)", borderRadius: 100, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
-                              {meta.salary}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {meta?.nextStep && (
-                        <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px", background: isOverdue ? "rgba(196,87,74,0.07)" : "rgba(26,58,47,0.05)", borderRadius: 5, borderLeft: `2px solid ${isOverdue ? "#C4574A" : "#4A8B6A"}` }}>
-                          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: isOverdue ? "#C4574A" : "#4A8B6A", fontWeight: 500 }}>
-                            {isOverdue ? "⚠ " : "→ "}{meta.nextStep}
-                            {meta.nextStepDue ? ` · ${meta.nextStepDue}` : ""}
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: meta?.nextStep ? 8 : 0 }}>
+                        <span
+                          style={{
+                            padding: "2px 8px",
+                            border: border.line,
+                            fontFamily: fontSans,
+                            fontSize: T.label,
+                            fontWeight: 600,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            color: color.stone,
+                          }}
+                        >
+                          {STAGE_LABELS[c.stage]}
+                        </span>
+                        {meta?.location && (
+                          <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                            {meta.location}
                           </span>
-                        </div>
+                        )}
+                        {meta?.salary && (
+                          <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
+                            {meta.salary}
+                          </span>
+                        )}
+                      </div>
+                      {meta?.nextStep && (
+                        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: isOverdue ? "#C4574A" : color.stone, margin: 0, fontWeight: 500 }}>
+                          {isOverdue ? "⚠ " : "Next · "}{meta.nextStep}
+                          {meta.nextStepDue ? ` · ${meta.nextStepDue}` : ""}
+                        </p>
                       )}
                     </div>
                   </div>
                   <StatusDropdown stage={c.stage} onChange={(s) => { onChangeStage(c.id, s); }} />
                 </div>
-              </div>
+              </ScoutBox>
             );
           })}
         </div>
