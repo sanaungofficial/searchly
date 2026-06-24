@@ -3,6 +3,7 @@ import type { HirebaseJob } from "@/lib/hirebase";
 import { mapHirebaseJob } from "@/lib/hirebase";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { fallbackJobMatch } from "@/lib/resume-match";
+import { isLowQualityMatchReason, matchScoreLabelFor, usableKeywordSummary } from "@/lib/match-score";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 const MODEL = "claude-haiku-4-5-20251001";
@@ -14,11 +15,7 @@ function getAnthropic() {
 }
 
 function labelForScore(score: number): string {
-  if (score >= 85) return "Excellent";
-  if (score >= 70) return "Strong";
-  if (score >= 55) return "Good";
-  if (score >= 40) return "Fair";
-  return "Stretch";
+  return matchScoreLabelFor(score);
 }
 
 function vectorRankScore(rank: number, total: number): number {
@@ -65,11 +62,18 @@ function heuristicMatch(
   if (job.experience_level) {
     reasons.push(`This is a ${job.experience_level}-level role that matches your career targets.`);
   }
-  if (fallback.summaryNote && reasons.length < 2) {
-    reasons.push(fallback.summaryNote);
+  const keywordNote =
+    usableKeywordSummary(
+      fallback.keywords.filter((k) => k.matched).length,
+      fallback.keywords.length,
+    ) ?? (fallback.summaryNote && !isLowQualityMatchReason(fallback.summaryNote) ? fallback.summaryNote : null);
+  if (keywordNote && reasons.length < 2) {
+    reasons.push(keywordNote);
   }
   if (!reasons.length) {
-    reasons.push("Your profile overlaps with this role — open the posting to confirm details.");
+    reasons.push(
+      "This role surfaced from your tracked companies and target titles — open the posting to confirm fit.",
+    );
   }
 
   return {

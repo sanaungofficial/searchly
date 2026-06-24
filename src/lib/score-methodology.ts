@@ -44,23 +44,23 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
     subtitle: "How roles from your tracked companies rank against your profile.",
     bullets: [
       {
-        title: "Semantic search",
-        body: "Your resume is embedded and compared to live openings at companies on your watchlist via vector search.",
+        title: "Where roles come from",
+        body: "Openings at companies on your watchlist — matched to your target titles via Hirebase, same path as Companies → Matching roles.",
       },
       {
-        title: "Blended score",
-        body: "0–100 score combines how highly the role ranks in search with keyword overlap between your resume and the posting.",
+        title: "How the score is calculated",
+        body: "Instant profile-based scoring (no Claude on this list): list rank among matches, keyword overlap with the posting, and skills found in your resume.",
       },
       {
-        title: "AI enrichment",
-        body: "When available, AI adds match reasons, matched skills, and gap skills — not just a rank number.",
+        title: "Why you're a good fit",
+        body: "Bullets highlight aligned skills, seniority, and keyword overlap — not AI-written prose unless you open full match analysis elsewhere.",
       },
       {
-        title: "Fresh listings",
-        body: "Roles come from employer career pages and ATS feeds we scan multiple times per day.",
+        title: "Not resume embed",
+        body: "This view does not call Hirebase resume embed. For deep AI fit analysis on a saved job, use Analyze fit in the job drawer.",
       },
     ],
-    scaleNote: "Excellent ≥ 85 · Strong ≥ 70 · Good ≥ 55 · Fair ≥ 40",
+    scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",
   },
   "resume-quality": {
     title: "Resume quality score",

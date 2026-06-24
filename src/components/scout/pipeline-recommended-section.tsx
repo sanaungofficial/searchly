@@ -25,6 +25,7 @@ import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scou
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+import { isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -43,10 +44,28 @@ const US_STATES = [
   "California", "New York", "Texas", "Washington", "Massachusetts", "Illinois", "Colorado", "Georgia", "Florida", "Virginia",
 ];
 
-function scoreColor(score: number): string {
-  if (score >= 75) return "#2A6B4A";
-  if (score >= 55) return "#6B5A2A";
-  return "#8A6B4A";
+function MatchScoreBadge({ score, label }: { score: number; label: string }) {
+  const style = matchScoreStyle(score);
+  return (
+    <div style={{ textAlign: "center", flexShrink: 0 }}>
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: style.bg,
+          border: `2px solid ${style.accent}`,
+        }}
+      >
+        <span style={{ fontFamily: fontMono, fontSize: 20, fontWeight: 700, color: style.accent, lineHeight: 1 }}>{score}</span>
+      </div>
+      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: style.accent, margin: "6px 0 0", letterSpacing: "0.02em" }}>
+        {label}
+      </p>
+    </div>
+  );
 }
 
 function splitInputList(value: string): string[] {
@@ -188,19 +207,19 @@ function DatalistInput({
 }
 
 function MatchFitCallout({ job }: { job: VectorMatchedJob }) {
-  const reasons = job.matchReasons.filter(Boolean).slice(0, 3);
+  const reasons = job.matchReasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, 3);
   if (!reasons.length) return null;
 
+  const score = matchScoreStyle(job.matchScore);
   const matchedSkills = job.matchedSkills?.slice(0, 6) ?? [];
 
   return (
     <div
       style={{
-        marginTop: 14,
-        padding: "14px 16px",
-        background: "rgba(26,58,47,0.06)",
-        border: "1px solid rgba(26,58,47,0.12)",
-        borderLeft: `3px solid ${color.forest}`,
+        marginTop: 12,
+        padding: "10px 12px",
+        background: score.bgSubtle,
+        borderLeft: `2px solid ${score.accent}`,
       }}
     >
       <p
@@ -208,7 +227,7 @@ function MatchFitCallout({ job }: { job: VectorMatchedJob }) {
           fontFamily: fontSans,
           fontSize: T.label,
           fontWeight: 700,
-          color: color.forest,
+          color: score.accent,
           margin: "0 0 4px",
           letterSpacing: "0.03em",
           textTransform: "uppercase",
@@ -216,60 +235,30 @@ function MatchFitCallout({ job }: { job: VectorMatchedJob }) {
       >
         Why you&apos;re a good fit
       </p>
-      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
-        <span style={{ fontWeight: 600, color: scoreColor(job.matchScore) }}>{job.matchLabel}</span>
-        {" "}match · {job.matchScore}/100 based on your profile
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
+        <span style={{ fontWeight: 600, color: score.accent }}>{job.matchLabel}</span>
+        {" "}· {job.matchScore}/100 from your profile
       </p>
-      <ul
-        style={{
-          margin: 0,
-          padding: 0,
-          listStyle: "none",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
         {reasons.map((reason) => (
-          <li
-            key={reason}
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "flex-start",
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              color: color.ink,
-              lineHeight: 1.5,
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                flexShrink: 0,
-                width: 6,
-                height: 6,
-                marginTop: 7,
-                borderRadius: "50%",
-                background: color.forest,
-              }}
-            />
+          <li key={reason} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontFamily: fontSans, fontSize: T.caption, color: color.ink, lineHeight: 1.5 }}>
+            <span aria-hidden style={{ flexShrink: 0, color: score.accent, fontWeight: 700, marginTop: 1 }}>→</span>
             <span>{reason}</span>
           </li>
         ))}
       </ul>
       {matchedSkills.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
           {matchedSkills.map((skill) => (
             <span
               key={skill}
               style={{
-                padding: "4px 10px",
-                background: "rgba(26,58,47,0.08)",
+                padding: "3px 8px",
+                background: score.bg,
                 fontFamily: fontSans,
                 fontSize: T.label,
                 fontWeight: 500,
-                color: color.forest,
+                color: score.accent,
               }}
             >
               {skill}
@@ -516,8 +505,9 @@ function JobResultsList({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {visibleJobs.map((job) => {
         const key = job.hirebaseId ?? job.url ?? `${job.companyName}-${job.title}`;
+        const score = matchScoreStyle(job.matchScore);
         return (
-          <ScoutBox key={key} padding={18}>
+          <ScoutBox key={key} stack padding={18} style={{ borderTop: `2px solid ${score.accent}` }}>
             <div
               role="button"
               tabIndex={0}
@@ -535,17 +525,30 @@ function JobResultsList({
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.title}</p>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
                       {job.companyName}
                       {job.location ? ` · ${job.location}` : ""}
                     </p>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 8px",
+                        border: border.line,
+                        fontFamily: fontSans,
+                        fontSize: T.label,
+                        fontWeight: 600,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: score.accent,
+                        background: score.bgSubtle,
+                      }}
+                    >
+                      Recommended
+                    </span>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <ScoreExplainerPopover variant="vector-match" align="right" />
-                    <div style={{ fontFamily: fontMono, fontSize: 22, fontWeight: 700, color: scoreColor(job.matchScore) }}>
-                      {job.matchScore}
-                    </div>
-                    <div style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>{job.matchLabel}</div>
+                    <MatchScoreBadge score={job.matchScore} label={job.matchLabel} />
                   </div>
                 </div>
                 <MatchFitCallout job={job} />
