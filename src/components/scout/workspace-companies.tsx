@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
+import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
+import { fontSans, fontDisplay, color, surface, border, type as T } from "@/lib/typography";
 
 interface CachedJob {
   title: string;
@@ -93,8 +95,8 @@ function humanizeApiError(message: string | undefined, status: number): string {
 
 function ErrorBanner({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
   return (
-    <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-      <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#991b1b", lineHeight: 1.45 }}>{message}</div>
+    <div style={{ background: surface.card, border: "1px solid rgba(196,87,74,0.35)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#991b1b", lineHeight: 1.45 }}>{message}</div>
       {onDismiss && (
         <button type="button" onClick={onDismiss} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#991b1b", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
       )}
@@ -192,11 +194,11 @@ function CompanySuggestInput({
         }}
         onFocus={() => !picked && suggestions.length > 0 && setOpen(true)}
         placeholder="Start typing — e.g. Oracle, Comcast, Stripe"
-        style={{ width: "100%", border: picked ? "1px solid #1a3a2f" : "1px solid #e5e7eb", borderRadius: 7, padding: "7px 11px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "var(--font-ui)" }}
+        style={{ width: "100%", border: picked ? border.lineStrong : border.line, borderRadius: 0, padding: "9px 12px", fontSize: T.bodySm, outline: "none", boxSizing: "border-box", fontFamily: fontSans, background: surface.inset }}
         required
       />
       {open && suggestions.length > 0 && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50, maxHeight: 280, overflowY: "auto" }}>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: surface.card, border: border.line, boxShadow: "3px 3px 0 rgba(17,17,17,0.06)", zIndex: 50, maxHeight: 280, overflowY: "auto" }}>
           {suggestions.map((item) => (
             <button
               key={`${item.catalogSlug}-${item.id ?? "catalog"}`}
@@ -336,7 +338,7 @@ function OpenRolesSummary({
 
 function DrawerJobRow({ job, match }: { job: CachedJob; match: boolean }) {
   return (
-    <div style={{ padding: "10px 14px", borderBottom: "1px solid #f0ebe4", display: "flex", alignItems: "flex-start", gap: 10, background: match ? "#f9fffe" : "#fff" }}>
+    <div style={{ padding: "10px 14px", borderBottom: border.line, display: "flex", alignItems: "flex-start", gap: 10, background: match ? surface.inset : surface.card }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         {job.url ? (
           <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1a1a1a", textDecoration: "none", display: "block" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>{job.title}</a>
@@ -360,10 +362,10 @@ function DrawerJobRow({ job, match }: { job: CachedJob; match: boolean }) {
 
 function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>{title}</div>
-      {children}
-    </div>
+    <ScoutBox style={{ marginBottom: 16 }}>
+      <ScoutLabel>{title}</ScoutLabel>
+      <div style={{ marginTop: 12 }}>{children}</div>
+    </ScoutBox>
   );
 }
 
@@ -437,9 +439,9 @@ function CompanyDrawer({
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200, backdropFilter: "blur(1px)" }} />
 
       {/* Drawer */}
-      <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 480, background: "#fff", zIndex: 201, boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      <div style={{ position: "fixed", top: 8, right: 8, bottom: 8, width: "min(480px, calc(100vw - 16px))", background: surface.page, border: border.lineStrong, zIndex: 201, boxShadow: "3px 3px 0 rgba(17,17,17,0.06)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #f0ebe4", flexShrink: 0 }}>
+        <div style={{ padding: "20px 24px 16px", borderBottom: border.line, background: surface.card, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
               <CompanyLogo
@@ -466,15 +468,13 @@ function CompanyDrawer({
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto" }}>
+        <div style={{ flex: 1, minHeight: 0, padding: "20px 24px 32px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
 
           {/* Company Intel */}
           <DrawerSection title="Company Intel">
             {!intel ? (
               <div>
-                <button onClick={handleEnrich} disabled={enriching} style={{ background: enriching ? "#f3f4f6" : "#1a1a1a", color: enriching ? "#9ca3af" : "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 14, cursor: enriching ? "not-allowed" : "pointer", fontFamily: "var(--font-ui)", fontWeight: 500 }}>
-                  {enriching ? "Researching…" : "✦ Enrich with AI"}
-                </button>
+                <ScoutPrimaryBtn onClick={handleEnrich} disabled={enriching}>{enriching ? "Researching…" : "✦ Enrich with AI"}</ScoutPrimaryBtn>
                 {enrichError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
                 <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 6 }}>Pulls company overview, funding, leadership, and recent news from AI.</div>
               </div>
@@ -494,7 +494,7 @@ function CompanyDrawer({
 
                 {/* Funding */}
                 {(intel.fundingStage || intel.totalFunding || (intel.keyInvestors?.length > 0)) && (
-                  <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+                  <div style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "10px 14px", marginBottom: 14 }}>
                     <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Funding</div>
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                       {intel.fundingStage && <div><div style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)" }}>Stage</div><div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-ui)" }}>{intel.fundingStage}</div></div>}
@@ -574,7 +574,7 @@ function CompanyDrawer({
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {matchingJobs.length > 0 && (
                   <div>
-                    <div style={{ border: "1px solid #e8e3dd", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ border: border.line, borderRadius: 0, overflow: "hidden" }}>
                       {matchingJobs.map((job, i) => (
                         <DrawerJobRow key={`m-${i}-${job.title}`} job={job} match />
                       ))}
@@ -790,19 +790,30 @@ export function WorkspaceCompanies() {
 
   const selectedCompany = companies.find((c) => c.id === selectedId) ?? null;
 
-  const thStyle: React.CSSProperties = { fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", padding: "10px 14px", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #e8e3dd", background: "#faf8f5" };
-  const tdStyle: React.CSSProperties = { padding: "12px 14px", verticalAlign: "top", borderBottom: "1px solid #f0ebe4" };
+  const thStyle: React.CSSProperties = { fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "10px 14px", textAlign: "left", whiteSpace: "nowrap", borderBottom: border.line, background: surface.inset };
+  const tdStyle: React.CSSProperties = { padding: "12px 14px", verticalAlign: "top", borderBottom: border.line, background: surface.card };
 
   return (
-    <div style={{ padding: "24px 32px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Tracked Companies</div>
-          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 14, marginTop: 2 }}>{companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist</div>
+    <div style={{ padding: "32px 36px 48px" }}>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+          <ScoutLabel>Dream employers</ScoutLabel>
         </div>
-        <button onClick={() => { setShowAdd((s) => !s); setAddError(null); setSelectedSuggestion(null); if (showAdd) setNewName(""); }} style={{ background: showAdd ? "#f3f4f6" : "#1a1a1a", color: showAdd ? "#1a1a1a" : "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "var(--font-ui)" }}>
-          {showAdd ? "Cancel" : "+ Track company"}
-        </button>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <ScoutDisplayTitle size={36} style={{ marginBottom: 8 }}>Track companies you care about</ScoutDisplayTitle>
+            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: 0, lineHeight: 1.6 }}>
+              {companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist — scan careers pages for matching roles.
+            </p>
+          </div>
+          <ScoutSecondaryBtn
+            active={showAdd}
+            onClick={() => { setShowAdd((s) => !s); setAddError(null); setSelectedSuggestion(null); if (showAdd) setNewName(""); }}
+          >
+            {showAdd ? "Cancel" : "+ Track company"}
+          </ScoutSecondaryBtn>
+        </div>
       </div>
 
       {loadError && <ErrorBanner message={loadError} onDismiss={() => setLoadError(null)} />}
@@ -810,43 +821,46 @@ export function WorkspaceCompanies() {
       {removeError && <ErrorBanner message={removeError} onDismiss={() => setRemoveError(null)} />}
 
       {showAdd && (
-        <form onSubmit={handleAdd} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 20px", marginBottom: 20 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#555", display: "block", marginBottom: 5 }}>Company name *</label>
-              <CompanySuggestInput
-                value={newName}
-                onChange={setNewName}
-                onSelect={setSelectedSuggestion}
-                disabled={saving}
-              />
+        <ScoutBox style={{ marginBottom: 20 }} padding={20}>
+          <form onSubmit={handleAdd}>
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.stone, display: "block", marginBottom: 6 }}>Company name *</label>
+                <CompanySuggestInput
+                  value={newName}
+                  onChange={setNewName}
+                  onSelect={setSelectedSuggestion}
+                  disabled={saving}
+                />
+              </div>
+              <ScoutPrimaryBtn type="submit" disabled={saving || !newName.trim()}>{saving ? "Adding…" : "Add"}</ScoutPrimaryBtn>
             </div>
-            <button type="submit" disabled={saving || !newName.trim()} style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 14, fontWeight: 500, cursor: saving ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.5 : 1, fontFamily: "var(--font-ui)" }}>{saving ? "Adding…" : "Add"}</button>
-          </div>
-          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 10, lineHeight: 1.45 }}>
-            {selectedSuggestion
-              ? `${selectedSuggestion.name} selected — press Add to track${selectedSuggestion.careersUrl ? " and scan open roles" : ""}.`
-              : "Pick from the list or type any company name, then press Add."}
-          </div>
-          {addError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginTop: 8 }}>{addError}</div>}
-        </form>
+            <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginTop: 10, lineHeight: 1.45 }}>
+              {selectedSuggestion
+                ? `${selectedSuggestion.name} selected — press Add to track${selectedSuggestion.careersUrl ? " and scan open roles" : ""}.`
+                : "Pick from the list or type any company name, then press Add."}
+            </div>
+            {addError && <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#dc2626", marginTop: 8 }}>{addError}</div>}
+          </form>
+        </ScoutBox>
       )}
 
       {loading ? (
-        <div style={{ color: "var(--scout-muted)", fontSize: 14, padding: "48px 0", textAlign: "center", fontFamily: "var(--font-ui)" }}>Loading…</div>
+        <ScoutBox style={{ padding: 48, textAlign: "center" }}>
+          <div style={{ color: color.muted, fontSize: T.bodySm, fontFamily: fontSans }}>Loading…</div>
+        </ScoutBox>
       ) : loadError && companies.length === 0 ? (
-        <div style={{ background: "#fff", border: "1.5px dashed #d1d5db", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
-          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 14 }}>Couldn&apos;t load your watchlist.</div>
-          <button type="button" onClick={() => { setLoading(true); load(); }} style={{ marginTop: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1a1a1a", background: "#f3f4f6", border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }}>Retry</button>
-        </div>
+        <ScoutBox style={{ padding: "48px 32px", textAlign: "center", borderStyle: "dashed" }}>
+          <div style={{ fontFamily: fontSans, color: color.muted, fontSize: T.bodySm }}>Couldn&apos;t load your watchlist.</div>
+          <ScoutSecondaryBtn onClick={() => { setLoading(true); load(); }} style={{ marginTop: 12 }}>Retry</ScoutSecondaryBtn>
+        </ScoutBox>
       ) : companies.length === 0 ? (
-        <div style={{ background: "#fff", border: "1.5px dashed #d1d5db", borderRadius: 12, padding: "48px 32px", textAlign: "center" }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🏢</div>
-          <div style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 6 }}>No dream companies yet</div>
-          <div style={{ fontFamily: "var(--font-ui)", color: "var(--scout-muted)", fontSize: 14, lineHeight: 1.5 }}>Track employers you&apos;re watching — add a careers URL to scan open roles without checking every page manually.</div>
-        </div>
+        <ScoutBox style={{ padding: "48px 32px", textAlign: "center", borderStyle: "dashed" }}>
+          <ScoutDisplayTitle size={22} style={{ marginBottom: 8 }}>No dream companies yet</ScoutDisplayTitle>
+          <div style={{ fontFamily: fontSans, color: color.muted, fontSize: T.bodySm, lineHeight: 1.6 }}>Track employers you&apos;re watching — add a careers URL to scan open roles without checking every page manually.</div>
+        </ScoutBox>
       ) : (
-        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e8e3dd" }}>
+        <ScoutBox padding={0} style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
@@ -869,7 +883,7 @@ export function WorkspaceCompanies() {
                   <tr
                     key={c.id}
                     onClick={() => setSelectedId(c.id)}
-                    style={{ background: selectedId === c.id ? "#faf8f5" : "#fff", cursor: "pointer" }}
+                    style={{ background: selectedId === c.id ? surface.inset : surface.card, cursor: "pointer" }}
                   >
                     <td style={rowTd}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -882,7 +896,7 @@ export function WorkspaceCompanies() {
                           borderRadius={7}
                         />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{c.name}</div>
+                          <div style={{ fontFamily: fontDisplay, fontSize: T.body, fontWeight: 500, color: color.ink }}>{c.name}</div>
                           {subtitle && (
                             <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", marginTop: 2 }}>{subtitle}</div>
                           )}
@@ -909,7 +923,7 @@ export function WorkspaceCompanies() {
               })()}
             </tbody>
           </table>
-        </div>
+        </ScoutBox>
       )}
 
       {/* Company detail drawer */}

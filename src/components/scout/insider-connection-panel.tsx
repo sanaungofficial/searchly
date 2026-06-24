@@ -3,13 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
 import type { ParsedResumeData } from "@/lib/resume-parse";
-import { fontSans } from "@/lib/typography";
+import { fontSans, color, surface, border } from "@/lib/typography";
+import { ScoutBox } from "./scout-box";
 
 const sans = fontSans;
+const line = border.line;
 const mint = "#4A8B6A";
-const mintLight = "rgba(74,139,106,0.12)";
-const mintBtn = "#3D7A5C";
-const border = "1px solid rgba(0,0,0,0.08)";
 
 type ConnectionBucket = "beyond" | "previous_company" | "school";
 
@@ -74,9 +73,9 @@ function ConnectionCard({
       style={{
         flex: "1 1 0",
         minWidth: 0,
-        background: "#FFF",
-        border,
-        borderRadius: 12,
+        background: surface.card,
+        border: line,
+        borderRadius: 0,
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
@@ -187,21 +186,13 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
       : "Upload your resume to find people from your school.";
 
   return (
-    <div
-      style={{
-        marginBottom: 22,
-        background: "#FFF",
-        border,
-        borderRadius: 14,
-        padding: "20px 22px",
-      }}
-    >
+    <ScoutBox padding="20px 22px" style={{ marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ color: mint, display: "flex" }}>
+          <span style={{ color: color.forest, display: "flex" }}>
             <IconPeople />
           </span>
-          <h3 style={{ fontFamily: sans, fontSize: 18, fontWeight: 700, color: "#1A1A1A", margin: 0 }}>
+          <h3 style={{ fontFamily: sans, fontSize: 18, fontWeight: 700, color: color.ink, margin: 0 }}>
             Insider Connection @{companyName}
           </h3>
         </div>
@@ -211,12 +202,13 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
             style={{
               flexShrink: 0,
               padding: "5px 10px",
-              borderRadius: 100,
-              background: mintLight,
+              borderRadius: 0,
+              border: line,
+              background: surface.inset,
               fontFamily: sans,
               fontSize: 12,
               fontWeight: 600,
-              color: "#2A4A3A",
+              color: color.forest,
               whiteSpace: "nowrap",
             }}
           >
@@ -266,10 +258,10 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
               minWidth: 0,
               fontFamily: sans,
               fontSize: 14,
-              color: "#1A1A1A",
-              background: "#FAFAFA",
-              border,
-              borderRadius: 10,
+              color: color.ink,
+              background: surface.inset,
+              border: line,
+              borderRadius: 0,
               padding: "12px 14px",
               outline: "none",
             }}
@@ -280,10 +272,10 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
             style={{
               width: 46,
               flexShrink: 0,
-              background: mintBtn,
-              color: "#FFF",
-              border: "none",
-              borderRadius: 10,
+              background: color.forest,
+              color: color.gold,
+              border: line,
+              borderRadius: 0,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -294,9 +286,9 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
           </button>
         </form>
         {lookupMessage && (
-          <p style={{ fontFamily: sans, fontSize: 13, color: "#5C534A", margin: "10px 0 0", lineHeight: 1.5 }}>{lookupMessage}</p>
+          <p style={{ fontFamily: sans, fontSize: 13, color: color.stone, margin: "10px 0 0", lineHeight: 1.5 }}>{lookupMessage}</p>
         )}
       </div>
-    </div>
+    </ScoutBox>
   );
 }
