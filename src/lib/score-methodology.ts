@@ -6,7 +6,9 @@ export type ScoreExplainerVariant =
   | "resume-quality"
   | "keyword-match"
   | "role-gap"
-  | "profile-completeness";
+  | "profile-completeness"
+  | "upskill-recommendations"
+  | "upskill-progress";
 
 export type ScoreExplainerContent = {
   title: string;
@@ -133,6 +135,54 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       {
         title: "Goal",
         body: "80%+ unlocks the best experience for match analysis and recommendations.",
+      },
+    ],
+  },
+  "upskill-recommendations": {
+    title: "Upskilling program recommendations",
+    subtitle: "How Kimchi picks courses and certifications for your skill gaps.",
+    bullets: [
+      {
+        title: "Where gaps come from",
+        body: "AI role-gap analysis on Target Roles compares your resume and declared skills to each role. Choose Obtain this skill on a gap to queue it here.",
+      },
+      {
+        title: "Catalog matching",
+        body: "Each gap is matched against our curated catalog: closesGap tags, course titles, and descriptions. We use fuzzy skill matching (e.g. “SQL” ↔ “Data Analysis”).",
+      },
+      {
+        title: "Search fallbacks",
+        body: "If nothing in the catalog fits, we link to Coursera, LinkedIn Learning, and certification search results for that skill.",
+      },
+      {
+        title: "Recommended paths ranking",
+        body: "Courses that close an active gap sort to the top. Kimchi pick badges flag high-signal options for senior hiring — not paid placement.",
+      },
+      {
+        title: "Mark as acquired",
+        body: "When you finish a skill, mark it acquired — it moves to your profile skills and triggers a fit-score refresh on that target role.",
+      },
+    ],
+  },
+  "upskill-progress": {
+    title: "Learning progress",
+    subtitle: "How your completion percentage is calculated.",
+    bullets: [
+      {
+        title: "What counts",
+        body: "Items marked Completed in Recommended paths plus any custom entries in My learning.",
+      },
+      {
+        title: "The percentage",
+        body: "completed ÷ (catalog courses + your custom items) × 100. In-progress items do not count until marked complete.",
+      },
+      {
+        title: "Self-tracked",
+        body: "Progress is what you record — Kimchi does not verify enrollment or credentials with third-party platforms.",
+      },
+      {
+        title: "Separate from fit score",
+        body: "Course completion updates this tracker. Target role fit scores refresh when you mark a gap skill as acquired or change your resume.",
       },
     ],
   },
