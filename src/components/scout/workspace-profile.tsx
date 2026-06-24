@@ -165,7 +165,7 @@ function SectionHeader({ title, onEdit }: { title: string; onEdit?: () => void }
     <div className="flex items-center justify-between mb-4">
       <h3 style={displayTitleStyle(T.heading)}>{title}</h3>
       {onEdit && (
-        <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-[#E8D5A3]/40 transition-colors" aria-label={`Edit ${title}`}>
+        <button onClick={onEdit} className="p-1.5 rounded-none hover:bg-[#E8D5A3]/40 transition-colors" aria-label={`Edit ${title}`}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9.5 1.5L12.5 4.5L5 12H2V9L9.5 1.5Z" stroke="#52493F" strokeWidth="1.2" strokeLinejoin="round"/>
           </svg>
@@ -186,7 +186,7 @@ function EmptyState({ message, sub }: { message: string; sub?: string }) {
 
 function SkillChip({ label, onRemove }: { label: string; onRemove?: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#E8D5A3]/50 text-xs font-medium text-[#52493F]">
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-none bg-[#E8D5A3]/50 text-xs font-medium text-[#52493F]">
       {label}
       {onRemove && <button onClick={onRemove} className="ml-0.5 text-[var(--scout-muted)] hover:text-[#52493F]">x</button>}
     </span>
@@ -245,21 +245,21 @@ function PersonalTab({ profile, onSave }: {
             <div key={label}>
               <label className="block text-xs text-[var(--scout-muted)] mb-1">{label}</label>
               <input value={val} onChange={(e) => setter(e.target.value)}
-                className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
+                className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
             </div>
           ))}
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving}
-              className="min-h-11 px-4 py-2 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">
+              className="min-h-11 px-4 py-2 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => setEditing(false)} className="min-h-11 px-4 py-2 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
+            <button onClick={() => setEditing(false)} className="min-h-11 px-4 py-2 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-3 pb-3 border-b border-[#E5DDD0]">
-            <div className="w-12 h-12 rounded-full bg-[#1C3A2F] flex items-center justify-center text-[#E8D5A3] text-base font-semibold shrink-0">
+            <div className="w-12 h-12 rounded-none bg-[#1C3A2F] flex items-center justify-center text-[#E8D5A3] text-base font-semibold shrink-0">
               {initials(profile.name)}
             </div>
             <div>
@@ -310,28 +310,28 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
       <SectionHeader title="Education" />
       <div className="space-y-4">
         {list.map((entry) => (
-          <div key={entry.id} className="rounded-xl border border-[#E5DDD0] p-3 space-y-2 relative">
+          <div key={entry.id} className="rounded-none border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div><label className="block text-xs text-[var(--scout-muted)] mb-1">School</label>
-              <input value={entry.school} onChange={(e) => updateEntry(entry.id, "school", e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+              <input value={entry.school} onChange={(e) => updateEntry(entry.id, "school", e.target.value)} className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Degree</label>
-                <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Field</label>
-                <input value={entry.field || ""} onChange={(e) => updateEntry(entry.id, "field", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.field || ""} onChange={(e) => updateEntry(entry.id, "field", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">From (YYYY-MM)</label>
-                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2018-09" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2018-09" className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">To</label>
-                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="2022-05" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="2022-05" className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
           </div>
         ))}
-        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-lg hover:border-[#1C3A2F]/40 transition-colors">+ Add education</button>
+        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-none hover:border-[#1C3A2F]/40 transition-colors">+ Add education</button>
         <div className="flex gap-2 pt-1">
-          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
         </div>
       </div>
     </div>
@@ -347,7 +347,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
           {entries.map((entry, i) => (
             <div key={entry.id} className="flex gap-3">
               <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-full bg-[#E8D5A3] mt-1 shrink-0" />
+                <div className="w-2 h-2 rounded-none bg-[#E8D5A3] mt-1 shrink-0" />
                 {i < entries.length - 1 && <div className="w-px flex-1 bg-[#E5DDD0] mt-1" />}
               </div>
               <div className="pb-4">
@@ -387,28 +387,28 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
       <SectionHeader title="Work Experience" />
       <div className="space-y-4">
         {list.map((entry) => (
-          <div key={entry.id} className="rounded-xl border border-[#E5DDD0] p-3 space-y-2 relative">
+          <div key={entry.id} className="rounded-none border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Company</label>
-                <input value={entry.company} onChange={(e) => updateEntry(entry.id, "company", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.company} onChange={(e) => updateEntry(entry.id, "company", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Title</label>
-                <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">From (YYYY-MM)</label>
-                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2020-01" className="w-full px-3 py-2.5 text-base sm:text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2020-01" className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">To (YYYY-MM or Present)</label>
-                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="Present" className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="Present" className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Bullet points (one per line)</label>
-              <textarea rows={4} value={entry.bullets.join("\n")} onChange={(e) => updateBullets(entry.id, e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-none" /></div>
+              <textarea rows={4} value={entry.bullets.join("\n")} onChange={(e) => updateBullets(entry.id, e.target.value)} className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-none" /></div>
           </div>
         ))}
-        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-lg hover:border-[#1C3A2F]/40 transition-colors">+ Add experience</button>
+        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-none hover:border-[#1C3A2F]/40 transition-colors">+ Add experience</button>
         <div className="flex gap-2 pt-1">
-          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
         </div>
       </div>
     </div>
@@ -424,7 +424,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
           {entries.map((entry, i) => (
             <div key={entry.id} className="flex gap-3">
               <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-full bg-[#1C3A2F] mt-1 shrink-0" />
+                <div className="w-2 h-2 rounded-none bg-[#1C3A2F] mt-1 shrink-0" />
                 {i < entries.length - 1 && <div className="w-px flex-1 bg-[#E5DDD0] mt-1" />}
               </div>
               <div className="pb-5 flex-1">
@@ -441,7 +441,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
                   <ul className="mt-2 space-y-1">
                     {entry.bullets.map((b, bi) => (
                       <li key={bi} className="text-xs text-[#52493F] flex gap-1.5">
-                        <span className="mt-1 w-1 h-1 rounded-full bg-[var(--scout-muted)] shrink-0" />{b}
+                        <span className="mt-1 w-1 h-1 rounded-none bg-[var(--scout-muted)] shrink-0" />{b}
                       </li>
                     ))}
                   </ul>
@@ -494,15 +494,15 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
             <input value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
               placeholder="Add a skill and press Enter"
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
-            <button onClick={addSkill} className="px-3 py-2 text-xs bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90">Add</button>
+              className="flex-1 px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
+            <button onClick={addSkill} className="px-3 py-2 text-xs bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90">Add</button>
           </div>
           <div className="flex flex-wrap gap-2">
             {list.map((s) => <SkillChip key={s} label={s} onRemove={() => setList((p) => p.filter((x) => x !== s))} />)}
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-lg hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-lg">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
           </div>
         </div>
       ) : (
@@ -639,7 +639,7 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
   );
 
   const scoreColor = (score: number) =>
-    score >= 70 ? "#4A8B6A" : score >= 50 ? "#C4A86A" : "var(--scout-muted)";
+    score >= 70 ? "#1A3A2F" : score >= 50 ? "#C4A86A" : "var(--scout-muted)";
 
   const scoreLabel = (score: number) =>
     score >= 70 ? "Strong fit" : score >= 50 ? "Good foundation" : "Gap to close";
@@ -730,10 +730,10 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
                           <div style={{ marginBottom: 20 }}>
                             {haveSkills.length > 0 && (
                               <div style={{ marginBottom: 14 }}>
-                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you have</p>
+                                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you have</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {haveSkills.map((skill) => (
-                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(74,139,106,0.1)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#2D6B4A", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(26,58,47,0.08)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F", display: "inline-flex", alignItems: "center", gap: 5 }}>
                                       <span style={{ fontSize: 14 }}>✓</span> {skill}
                                     </span>
                                   ))}
@@ -779,11 +779,11 @@ function DreamRoleTab({ dreamList, setDreamList, onSave, hasResume, userSkills, 
 
                       {/* Next steps */}
                       <div>
-                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#4A8B6A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 10 }}>Next steps</p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {loaded.nextSteps.map((step, i) => (
                             <div key={i} style={{ display: "flex", gap: 8 }}>
-                              <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, color: "#4A8B6A", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
+                              <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, color: "#1A3A2F", fontWeight: 600, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
                               <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", lineHeight: 1.5 }}>{step}</p>
                             </div>
                           ))}
@@ -977,7 +977,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
               {sorted.map((item) => {
                 const prog = progress[item.id] || "none";
                 const statusLabel = prog === "completed" ? "Completed ✓" : prog === "inprogress" ? "In progress" : "Not started";
-                const statusColor = prog === "completed" ? "#4A8B6A" : prog === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
+                const statusColor = prog === "completed" ? "#1A3A2F" : prog === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
                 const isGapMatch = item.closesGap?.some((s) => gapSkills.has(s.toLowerCase())) ?? false;
                 return (
                   <ScoutBox key={item.id} padding="14px 16px">
@@ -997,8 +997,8 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                             const isSkillGap = gapSkills.has(skill.toLowerCase());
                             return (
                               <span key={skill} className={isSkillGap
-                                ? "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#4A8B6A]/10 text-[#2D6B4A]"
-                                : "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#E8D5A3]/50 text-[#52493F]"
+                                ? "inline-flex items-center px-2.5 py-1 rounded-none text-xs font-medium bg-[#1A3A2F]/10 text-[#1A3A2F]"
+                                : "inline-flex items-center px-2.5 py-1 rounded-none text-xs font-medium bg-[#E8D5A3]/50 text-[#52493F]"
                               }>
                                 {skill}
                               </span>
@@ -1075,7 +1075,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {customItems.map((item) => {
               const statusLabel = item.status === "completed" ? "Completed ✓" : item.status === "inprogress" ? "In progress" : "Not started";
-              const statusColor = item.status === "completed" ? "#4A8B6A" : item.status === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
+              const statusColor = item.status === "completed" ? "#1A3A2F" : item.status === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
               return (
                 <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 0, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 0, background: "#E8E2D8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1096,7 +1096,7 @@ function LearningTab({ progress, setProgress, skillGoals, onGraduate, targetRole
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: isMobile ? "wrap" : undefined }}>
                     <button onClick={() => updateCustomStatus(item.id)}
-                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(74,139,106,0.1)" : "#1A3A2F", color: item.status === "completed" ? "#4A8B6A" : "#E8D5A3", border: "none", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(26,58,47,0.08)" : "#1A3A2F", color: item.status === "completed" ? "#1A3A2F" : "#E8D5A3", border: "none", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
                       {item.status === "completed" ? "Review →" : item.status === "inprogress" ? "Complete →" : "Start →"}
                     </button>
                     <button onClick={() => removeCustomItem(item.id)} style={{ background: "none", border: "none", color: "#C0B8B0", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>×</button>
@@ -1530,7 +1530,7 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
           </div>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
             {data.targetRoles.map((r) => {
-              const c = r.fit === "Strong match" ? "#4A8B6A" : r.fit === "Good fit" ? "#C4A86A" : "var(--scout-muted)";
+              const c = r.fit === "Strong match" ? "#1A3A2F" : r.fit === "Good fit" ? "#C4A86A" : "var(--scout-muted)";
               const bg = r.fit === "Strong match" ? "rgba(74,139,106,0.08)" : r.fit === "Good fit" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.04)";
               return (
                 <span key={r.role} style={{ padding: "4px 10px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: c }}>{r.role} · {r.fit}</span>

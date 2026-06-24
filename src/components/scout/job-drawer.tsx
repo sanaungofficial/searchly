@@ -50,8 +50,8 @@ const line = B.line;
 const lineStrong = B.lineStrong;
 const cardBg = surface.card;
 const pageBg = surface.page;
-const mint = "#4A8B6A";
-const mintLight = "rgba(74,139,106,0.12)";
+const mint = color.forest;
+const mintLight = "rgba(26,58,47,0.08)";
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 const AI_SIDEBAR_WIDTH = 340;
 
@@ -170,7 +170,7 @@ function CompanyTrackPanel({
             }}
           >
             <span style={{ fontSize: 12, color: mint }}>✓</span>
-            <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#2A4A3A" }}>On your watchlist</span>
+            <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: color.forest }}>On your watchlist</span>
           </div>
           <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
             Scan open roles, enrich company intel, and manage notes from Companies.
@@ -181,7 +181,7 @@ function CompanyTrackPanel({
             style={{
               padding: "10px 18px",
               background: color.forest,
-              color: "#FFF",
+              color: color.gold,
               border: "none",
               borderRadius: 0,
               fontFamily: sans,
@@ -210,7 +210,7 @@ function CompanyTrackPanel({
               style={{
                 padding: "10px 18px",
                 background: saving ? "rgba(26,58,47,0.35)" : color.forest,
-                color: "#FFF",
+                color: color.gold,
                 border: "none",
                 borderRadius: 0,
                 fontFamily: sans,
@@ -429,7 +429,7 @@ function MatchScoreCard({ fit, onRunMatch }: { fit: number; onRunMatch?: () => v
         {onRunMatch && (
           <button
             onClick={onRunMatch}
-            style={{ width: "100%", padding: "11px 14px", background: color.forest, color: "#FFF", border: "none", borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            style={{ width: "100%", padding: "11px 14px", background: color.forest, color: color.gold, border: "none", borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
           >
             Analyze match
           </button>
@@ -746,7 +746,7 @@ export function JobDrawer({
                 style={{
                   padding: "10px 20px",
                   background: color.forest,
-                  color: "#FFF",
+                  color: color.gold,
                   borderRadius: 0,
                   fontFamily: sans,
                   fontSize: 14,
@@ -808,7 +808,7 @@ export function JobDrawer({
                   {tags.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
                       {tags.map((t, i) => (
-                        <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 0, fontFamily: sans, fontSize: 13, fontWeight: 500, color: "#2A4A3A" }}>
+                        <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 0, fontFamily: sans, fontSize: 13, fontWeight: 500, color: color.forest }}>
                           {t}
                         </span>
                       ))}
@@ -995,13 +995,13 @@ export function JobDrawer({
                     <>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: 0, marginBottom: 12 }}>
                         <span style={{ fontSize: 12, color: mint }}>✓</span>
-                        <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#2A4A3A" }}>Already in your pipeline</span>
+                        <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: color.forest }}>Already in your pipeline</span>
                       </div>
                       <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
                         Track stages, notes, and AI tools from your pipeline view.
                       </p>
                       {onOpenInPipeline && (
-                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.forest, color: "#FFF", border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                           Open in pipeline →
                         </button>
                       )}
@@ -1012,7 +1012,7 @@ export function JobDrawer({
                         Save this role to your pipeline to track stages, run match analysis, and generate tailored materials.
                       </p>
                       {onAddToPipeline && (
-                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: "#FFF", border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
+                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
                           {addingToPipeline ? "Adding…" : "Add to pipeline"}
                         </button>
                       )}

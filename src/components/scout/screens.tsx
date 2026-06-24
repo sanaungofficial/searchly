@@ -76,7 +76,7 @@ const ONBOARDING_SECTION_PAD = "clamp(16px, 4vw, 24px)";
 
 const ONBOARDING_CARD: React.CSSProperties = {
   background: "#FFFFFF",
-  borderRadius: 12,
+  borderRadius: 0,
   padding: ONBOARDING_SECTION_PAD,
   border: "1px solid rgba(26,58,47,0.14)",
   boxShadow: "0 2px 10px rgba(26,58,47,0.06)",
@@ -93,7 +93,7 @@ const PRIMARY_CTA: React.CSSProperties = {
   background: "#1A3A2F",
   color: "#E8D5A3",
   border: "none",
-  borderRadius: 5,
+  borderRadius: 0,
   fontFamily: "var(--font-ui)",
   fontSize: 14,
   fontWeight: 500,
@@ -190,7 +190,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
           onClick={onScoutClick}
           disabled={!onScoutClick}
           style={{
-            fontFamily: "var(--font-playfair), Georgia, serif",
+            fontFamily: "var(--font-display)",
             fontSize: 19,
             fontWeight: 500,
             color: "#1A1A1A",
@@ -290,7 +290,7 @@ function ResumeReadingProgress({ filename }: { filename: string }) {
         padding: "20px 18px",
         background: ONBOARDING_FIELD_BG,
         border: ONBOARDING_FIELD_BORDER,
-        borderRadius: 8,
+        borderRadius: 0,
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
@@ -410,7 +410,7 @@ export function ScreenWelcome({
             onClick={onFileClick}
             style={{
               border: `2px dashed ${dropBorder}`,
-              borderRadius: 8,
+              borderRadius: 0,
               padding: ONBOARDING_CARD_PAD,
               display: "flex",
               flexDirection: "column",
@@ -444,7 +444,7 @@ export function ScreenWelcome({
               padding: "14px 18px",
               background: ONBOARDING_FIELD_BG,
               border: ONBOARDING_FIELD_BORDER,
-              borderRadius: 8,
+              borderRadius: 0,
             }}
           >
             <CheckCircleFilled />
@@ -507,7 +507,7 @@ export function ScreenWelcome({
             padding: "12px 14px",
             background: ONBOARDING_FIELD_BG,
             border: ONBOARDING_FIELD_BORDER,
-            borderRadius: 8,
+            borderRadius: 0,
           }}
         >
           <LinkedInIcon style={{ flexShrink: 0 }} />
@@ -628,7 +628,7 @@ export function ScreenLinkedIn({
           gap: 8,
           padding: "7px 14px 7px 10px",
           background: "rgba(26,58,47,0.08)",
-          borderRadius: 100,
+          borderRadius: 0,
           width: "fit-content",
         }}
       >
@@ -807,7 +807,7 @@ interface ReadBackProps {
 }
 
 function fitColor(fit: string): string {
-  if (fit === "Strong match") return "#4A8B6A";
+  if (fit === "Strong match") return "#1A3A2F";
   if (fit === "Good fit") return "#A89462";
   return "#8A7A6A";
 }
@@ -839,11 +839,11 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                 Reading your resume...
               </p>
               {[180, 220, 140].map((w, i) => (
-                <div key={i} style={{ height: 14, width: w, borderRadius: 6, background: "#F0EDE8", animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.2}s` }} />
+                <div key={i} style={{ height: 14, width: w, borderRadius: 0, background: "#F0EDE8", animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.2}s` }} />
               ))}
               <div style={{ height: 1, background: "#EEE9E2", margin: "10px 0" }} />
               {[160, 200, 140].map((w, i) => (
-                <div key={i} style={{ height: 14, width: w, borderRadius: 6, background: "#F0EDE8", animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.2 + 0.3}s` }} />
+                <div key={i} style={{ height: 14, width: w, borderRadius: 0, background: "#F0EDE8", animation: "pulse 1.5s ease-in-out infinite", animationDelay: `${i * 0.2 + 0.3}s` }} />
               ))}
             </div>
           )}
@@ -912,7 +912,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                       padding: "8px 14px",
                       background: ONBOARDING_FIELD_BG,
                       border: ONBOARDING_FIELD_BORDER,
-                      borderRadius: 8,
+                      borderRadius: 0,
                       fontFamily: "var(--font-ui)",
                       fontSize: 13,
                       fontWeight: 500,
@@ -930,7 +930,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                   marginBottom: 24,
                   padding: "14px 16px",
                   background: ONBOARDING_FIELD_BG,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   border: ONBOARDING_FIELD_BORDER,
                   borderLeft: "3px solid #1A3A2F",
                 }}
@@ -981,7 +981,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
               </div>
 
               {/* One honest note */}
-              <div style={{ padding: "14px 16px", background: ONBOARDING_FIELD_BG, borderRadius: 8, border: ONBOARDING_FIELD_BORDER }}>
+              <div style={{ padding: "14px 16px", background: ONBOARDING_FIELD_BG, borderRadius: 0, border: ONBOARDING_FIELD_BORDER }}>
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
@@ -1048,7 +1048,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
                 background: ONBOARDING_FIELD_BG,
                 color: ONBOARDING_TEXT,
                 border: ONBOARDING_FIELD_BORDER,
-                borderRadius: 8,
+                borderRadius: 0,
                 fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 500,
@@ -1205,7 +1205,7 @@ export function ScreenTargetJobs({
               justifyContent: "space-between",
               padding: "16px 20px",
               background: "#FFFFFF",
-              borderRadius: 8,
+              borderRadius: 0,
               boxShadow: "0 1px 3px rgba(0,0,0,0.05), 0 3px 10px rgba(0,0,0,0.04)",
             }}
           >
@@ -1214,7 +1214,7 @@ export function ScreenTargetJobs({
                 style={{
                   width: 38,
                   height: 38,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   background: "#F0EDE6",
                   display: "flex",
                   alignItems: "center",
@@ -1305,7 +1305,7 @@ export function ScreenTargetJobs({
               background: "#1A3A2F",
               color: "#E8D5A3",
               border: "none",
-              borderRadius: 5,
+              borderRadius: 0,
               fontFamily: "var(--font-ui)",
               fontSize: 15,
               fontWeight: 500,
@@ -1424,7 +1424,7 @@ function TargetRoleChip({
         padding: "8px 12px",
         background: "rgba(26,58,47,0.12)",
         border: "1.5px solid #1A3A2F",
-        borderRadius: 8,
+        borderRadius: 0,
         fontFamily: "var(--font-ui)",
         fontSize: 14,
         fontWeight: 600,
@@ -1554,7 +1554,7 @@ function TargetRoleAutocomplete({
                   padding: "8px 14px",
                   background: ONBOARDING_FIELD_BG,
                   border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 500,
@@ -1624,7 +1624,7 @@ function TargetRoleAutocomplete({
             minHeight: 48,
             padding: "12px 14px",
             border: ONBOARDING_FIELD_BORDER,
-            borderRadius: 8,
+            borderRadius: 0,
             background: atMax ? "rgba(247,245,242,0.6)" : ONBOARDING_FIELD_BG,
             fontFamily: "var(--font-ui)",
             fontSize: 16,
@@ -1650,7 +1650,7 @@ function TargetRoleAutocomplete({
               listStyle: "none",
               background: "#FFFFFF",
               border: "1px solid rgba(26,58,47,0.16)",
-              borderRadius: 8,
+              borderRadius: 0,
               boxShadow: "0 8px 24px rgba(26,58,47,0.12)",
               maxHeight: 240,
               overflowY: "auto",
@@ -1668,7 +1668,7 @@ function TargetRoleAutocomplete({
                     textAlign: "left",
                     padding: "10px 12px",
                     border: "none",
-                    borderRadius: 6,
+                    borderRadius: 0,
                     background: index === highlight ? "rgba(26,58,47,0.08)" : "transparent",
                     fontFamily: "var(--font-ui)",
                     fontSize: 14,
@@ -1789,7 +1789,7 @@ function aboutYouChipBtn(selected: boolean, onClick: () => void, label: string) 
         background: selected ? "rgba(26,58,47,0.12)" : ONBOARDING_FIELD_BG,
         color: selected ? "#1A3A2F" : ONBOARDING_TEXT,
         border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-        borderRadius: 8,
+        borderRadius: 0,
         fontFamily: "var(--font-ui)",
         fontSize: 14,
         fontWeight: selected ? 600 : 500,
@@ -1931,7 +1931,7 @@ export function ScreenAboutYouSearch({
                   background: selected ? "#1A3A2F" : ONBOARDING_FIELD_BG,
                   color: selected ? "#E8D5A3" : ONBOARDING_TEXT,
                   border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   fontFamily: "var(--font-ui)",
                   fontSize: 15,
                   fontWeight: selected ? 600 : 500,
@@ -1992,7 +1992,7 @@ export function ScreenAboutYouPreferences({
     minHeight: 48,
     padding: "11px 36px 11px 14px",
     border: ONBOARDING_FIELD_BORDER,
-    borderRadius: 8,
+    borderRadius: 0,
     background: ONBOARDING_FIELD_BG,
     fontFamily: "var(--font-ui)",
     fontSize: 16,
@@ -2078,7 +2078,7 @@ export interface TransitionJobMatch {
 
 function TransitionScoreGauge({ score }: { score: number }) {
   const color =
-    score >= 8 ? "#4A8B6A" : score >= 6 ? "#C4A86A" : score >= 4 ? "#C4574A" : "#9B3A2A";
+    score >= 8 ? "#1A3A2F" : score >= 6 ? "#C4A86A" : score >= 4 ? "#C4574A" : "#9B3A2A";
   const pct = Math.min(score / 10, 1);
   const r = 22;
   const circ = 2 * Math.PI * r;
@@ -2157,7 +2157,7 @@ function JobBoardShortcutButton({ id, label, url }: { id: JobBoardId; label: str
         padding: "10px 14px",
         background: ONBOARDING_FIELD_BG,
         border: ONBOARDING_FIELD_BORDER,
-        borderRadius: 8,
+        borderRadius: 0,
         fontFamily: "var(--font-ui)",
         fontSize: 14,
         fontWeight: 600,
@@ -2192,7 +2192,7 @@ export function ScreenTransition({
   const jobBoardLinks = buildJobBoardLinks(primarySearchRole);
   const scoreColor =
     match && match.score >= 8
-      ? "#4A8B6A"
+      ? "#1A3A2F"
       : match && match.score >= 6
       ? "#C4A86A"
       : match && match.score >= 4
@@ -2250,7 +2250,7 @@ export function ScreenTransition({
                   padding: "8px 14px",
                   background: ONBOARDING_FIELD_BG,
                   border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   fontFamily: "var(--font-ui)",
                   fontSize: 14,
                   fontWeight: 500,
@@ -2312,7 +2312,7 @@ export function ScreenTransition({
               minHeight: 48,
               padding: "12px 14px",
               border: ONBOARDING_FIELD_BORDER,
-              borderRadius: 8,
+              borderRadius: 0,
               background: ONBOARDING_FIELD_BG,
               fontFamily: "var(--font-ui)",
               fontSize: 16,
@@ -2380,7 +2380,7 @@ export function ScreenTransition({
               marginTop: 16,
               padding: "16px 18px",
               background: ONBOARDING_FIELD_BG,
-              borderRadius: 8,
+              borderRadius: 0,
               border: ONBOARDING_FIELD_BORDER,
             }}
           >
@@ -2395,7 +2395,7 @@ export function ScreenTransition({
                   marginBottom: 14,
                   padding: "10px 12px",
                   background: "rgba(196,168,106,0.12)",
-                  borderRadius: 8,
+                  borderRadius: 0,
                 }}
               >
                 We couldn&apos;t pull the company or job title from that link. Open one job from the boards above and paste its direct listing URL (e.g. linkedin.com/jobs/view/…).
@@ -2458,7 +2458,7 @@ export function ScreenTransition({
                   padding: "14px 16px",
                   marginBottom: 14,
                   background: "#FAF7F2",
-                  borderRadius: 8,
+                  borderRadius: 0,
                   border: "1px solid rgba(0,0,0,0.05)",
                 }}
               >
@@ -2620,7 +2620,7 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
                 alignItems: "center",
                 gap: 12,
                 padding: "14px 16px",
-                borderRadius: 8,
+                borderRadius: 0,
                 border: `1.5px solid ${isDone ? "#1A3A2F" : isActive ? "rgba(26,58,47,0.35)" : "rgba(26,58,47,0.12)"}`,
                 background: isDone ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG,
               }}
@@ -2677,7 +2677,7 @@ export function DemoNextButton({ onClick }: { onClick: () => void }) {
           background: hover ? "#1A3A2F" : "rgba(26,58,47,0.9)",
           color: "rgba(232,213,163,0.88)",
           border: "none",
-          borderRadius: 6,
+          borderRadius: 0,
           fontFamily: "var(--font-ui)",
           fontSize: 12,
           fontWeight: 500,

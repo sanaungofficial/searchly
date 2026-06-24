@@ -24,7 +24,7 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
   const exhausted = !unlimitedAi && isCreditsExhausted(credits);
   const low = !unlimitedAi && isCreditsLow(credits);
   const pct = credits.limit > 0 ? Math.min(100, (credits.used / credits.limit) * 100) : 0;
-  const barColor = exhausted ? "#C4574A" : low ? "#C4A86A" : "#4A8B6A";
+  const barColor = exhausted ? "#C4574A" : low ? "#C4A86A" : "#1A3A2F";
 
   if (compact) {
     return (
@@ -223,7 +223,7 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
                 style={{
                   height: "100%",
                   width: `${100 - Math.min(100, pct)}%`,
-                  background: showExhausted ? "#C4574A" : showLow ? "#C4A86A" : "#4A8B6A",
+                  background: showExhausted ? "#C4574A" : showLow ? "#C4A86A" : "#1A3A2F",
                   borderRadius: 4,
                   transition: "width 0.3s ease",
                 }}
