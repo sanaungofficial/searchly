@@ -24,6 +24,7 @@ type SearchResponse = {
   totalCount?: number;
   totalPages?: number;
   page?: number;
+  matchMode?: "resume" | "role_match";
   error?: string;
 };
 
@@ -206,6 +207,7 @@ export function PipelineRecommendedSection({
   const [totalPages, setTotalPages] = useState(1);
   const [hasSearched, setHasSearched] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [matchMode, setMatchMode] = useState<"resume" | "role_match" | null>(null);
 
   const savedUrls = useMemo(() => {
     const set = new Set<string>();
@@ -249,6 +251,7 @@ export function PipelineRecommendedSection({
         setTotalCount(data.totalCount ?? data.jobs?.length ?? 0);
         setPage(data.page ?? pageNum);
         setTotalPages(data.totalPages ?? 1);
+        setMatchMode(data.matchMode ?? null);
       }
       setHasSearched(true);
     } catch {
@@ -279,7 +282,7 @@ export function PipelineRecommendedSection({
           <div>
             <ScoutLabel>Recommended for you</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles matched to your uploaded resume via Hirebase. Add optional focus words below to narrow results, then save any role to move it into Saved.
+              Roles matched to your resume and target roles via Hirebase. When resume embedding is unavailable, we use the same role matching as your tracked companies.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -291,6 +294,12 @@ export function PipelineRecommendedSection({
             </ScoutPrimaryBtn>
           </div>
         </div>
+
+        {matchMode === "role_match" && !error && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
+            Showing role matches from your target titles and tracked companies (same as Companies → Matching roles).
+          </p>
+        )}
 
         <FilterField label="Your search focus">
           <textarea
