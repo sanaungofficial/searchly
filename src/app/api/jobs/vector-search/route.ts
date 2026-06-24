@@ -6,6 +6,55 @@ import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
 
+function splitCsv(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v).trim()).filter(Boolean);
+  }
+  if (typeof value === "string" && value.trim()) {
+    return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+  }
+  return undefined;
+}
+
+function num(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function parseFilters(body: Record<string, unknown>): VectorSearchFilters {
+  return {
+    limit: num(body.limit),
+    page: num(body.page),
+    offset: num(body.offset),
+    accuracy: num(body.accuracy),
+    topK: num(body.topK),
+    minScore: num(body.minScore),
+    companyName: typeof body.companyName === "string" ? body.companyName : undefined,
+    companySlug: typeof body.companySlug === "string" ? body.companySlug : undefined,
+    jobSlug: typeof body.jobSlug === "string" ? body.jobSlug : undefined,
+    jobBoard: typeof body.jobBoard === "string" ? body.jobBoard : undefined,
+    jobTitles: splitCsv(body.jobTitles),
+    keywords: splitCsv(body.keywords),
+    industries: splitCsv(body.industries),
+    subindustries: splitCsv(body.subindustries),
+    jobCategories: splitCsv(body.jobCategories),
+    jobTypes: splitCsv(body.jobTypes),
+    experienceLevels: splitCsv(body.experienceLevels),
+    companySizeBuckets: splitCsv(body.companySizeBuckets),
+    locationTypes: splitCsv(body.locationTypes),
+    locations: Array.isArray(body.locations)
+      ? (body.locations as Array<{ city?: string; region?: string; country?: string }>)
+      : undefined,
+    datePostedFrom: typeof body.datePostedFrom === "string" ? body.datePostedFrom : undefined,
+    visaSponsored: body.visaSponsored === true,
+    salaryFrom: num(body.salaryFrom),
+    salaryTo: num(body.salaryTo),
+    yearsFrom: num(body.yearsFrom),
+    yearsTo: num(body.yearsTo),
+  };
+}
+
 export async function POST(request: Request) {
   if (!isHirebaseConfigured()) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
@@ -23,12 +72,14 @@ export async function POST(request: Request) {
   });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  let body: VectorSearchFilters = {};
+  let rawBody: Record<string, unknown> = {};
   try {
-    body = (await request.json()) as VectorSearchFilters;
+    rawBody = (await request.json()) as Record<string, unknown>;
   } catch {
-    body = {};
+    rawBody = {};
   }
+
+  const filters = parseFilters(rawBody);
 
   const artifactState = await ensureHirebaseArtifactForUser(dbUser.id);
   if (!artifactState.artifactId) {
@@ -48,18 +99,15 @@ export async function POST(request: Request) {
   }
 
   const targetRoles = dbUser.profile?.targetRoles ?? [];
-  const jobTitles = body.jobTitles?.length ? body.jobTitles : targetRoles.slice(0, 3);
+  const jobTitles = filters.jobTitles?.length ? filters.jobTitles : targetRoles.slice(0, 3);
 
   try {
     const search = await fetchHirebaseVectorJobsByResume({
       artifactId: artifactState.artifactId,
-      limit: body.limit ?? 20,
-      page: body.page ?? 1,
-      companyName: body.companyName,
-      companySlug: body.companySlug,
-      jobTitles: jobTitles.length ? jobTitles : undefined,
-      locationTypes: body.locationTypes,
-      accuracy: body.accuracy,
+      ...filters,
+      jobTitles: jobTitles.length ? jobTitles : filters.jobTitles,
+      limit: filters.limit ?? 20,
+      page: filters.page ?? 1,
     });
 
     const jobs = await enrichVectorJobsWithMatchReasons({
@@ -76,9 +124,9 @@ export async function POST(request: Request) {
       limit: search.limit,
       totalPages: search.totalPages,
       reEmbedded: artifactState.reEmbedded,
-      filters: {
+      filtersApplied: {
+        ...filters,
         jobTitles: jobTitles.length ? jobTitles : null,
-        companyName: body.companyName ?? null,
       },
     });
   } catch (err) {

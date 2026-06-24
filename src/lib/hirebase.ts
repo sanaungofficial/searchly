@@ -1,5 +1,6 @@
 import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
+import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { roleSearchKeywords } from "@/lib/job-match";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
@@ -497,19 +498,18 @@ function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
   });
 }
 
-export type HirebaseVSearchInput = {
+export type HirebaseVSearchInput = VectorSearchFilters & {
   artifactId: string;
-  limit?: number;
-  page?: number;
-  companyName?: string;
-  companySlug?: string;
-  jobTitles?: string[];
-  locationTypes?: string[];
-  accuracy?: number;
-  topK?: number;
 };
 
 type HirebaseVSearchResponse = PaginatedJobs;
+
+function assignIfPresent(body: Record<string, unknown>, key: string, value: unknown) {
+  if (value === undefined || value === null) return;
+  if (typeof value === "string" && !value.trim()) return;
+  if (Array.isArray(value) && value.length === 0) return;
+  body[key] = value;
+}
 
 /** Resume-based semantic job search via `/v2/jobs/vsearch`. */
 export async function fetchHirebaseVectorJobsByResume(
@@ -540,10 +540,36 @@ export async function fetchHirebaseVectorJobsByResume(
     top_k: input.topK ?? limit,
   };
 
-  if (input.companyName?.trim()) body.company_name = input.companyName.trim();
-  if (input.companySlug?.trim()) body.company_slug = input.companySlug.trim();
-  if (input.jobTitles?.length) body.job_titles = input.jobTitles.map((t) => t.trim()).filter(Boolean);
-  if (input.locationTypes?.length) body.location_types = input.locationTypes;
+  if (input.offset != null) body.offset = input.offset;
+  if (input.minScore != null) body.min_score = input.minScore;
+  assignIfPresent(body, "company_name", input.companyName?.trim());
+  assignIfPresent(body, "company_slug", input.companySlug?.trim());
+  assignIfPresent(body, "job_slug", input.jobSlug?.trim());
+  assignIfPresent(body, "job_board", input.jobBoard?.trim());
+  assignIfPresent(body, "job_titles", input.jobTitles?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "keywords", input.keywords?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "industries", input.industries?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "subindustries", input.subindustries?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "job_categories", input.jobCategories?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "job_types", input.jobTypes?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "experience", input.experienceLevels?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "company_types", input.companySizeBuckets?.map((t) => t.trim()).filter(Boolean));
+  assignIfPresent(body, "location_types", input.locationTypes?.map((t) => t.trim()).filter(Boolean));
+  if (input.locations?.length) {
+    body.locations = input.locations
+      .map((loc) => ({
+        city: loc.city?.trim() || undefined,
+        region: loc.region?.trim() || undefined,
+        country: loc.country?.trim() || undefined,
+      }))
+      .filter((loc) => loc.city || loc.region || loc.country);
+  }
+  assignIfPresent(body, "date_posted", input.datePostedFrom?.trim());
+  if (input.visaSponsored === true) body.visa_sponsored = true;
+  if (input.salaryFrom != null) body.salary_from = input.salaryFrom;
+  if (input.salaryTo != null) body.salary_to = input.salaryTo;
+  if (input.yearsFrom != null) body.years_from = input.yearsFrom;
+  if (input.yearsTo != null) body.years_to = input.yearsTo;
 
   const data = await hirebaseFetch<HirebaseVSearchResponse>("/v2/jobs/vsearch", {
     method: "POST",

@@ -817,6 +817,30 @@ export function JobDrawer({
                 </div>
               )}
 
+              {meta?.vectorMatch && meta.vectorMatch.matchReasons.length > 0 && (
+                <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)" }}>
+                  <SectionTitle icon={<IconTarget />}>Why this is a match</SectionTitle>
+                  <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px" }}>
+                    {meta.vectorMatch.matchLabel} fit ({meta.vectorMatch.matchScore}/100) from your resume profile
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55 }}>
+                    {meta.vectorMatch.matchReasons.map((reason) => (
+                      <li key={reason} style={{ marginBottom: 6 }}>{reason}</li>
+                    ))}
+                  </ul>
+                  {(meta.vectorMatch.matchedSkills?.length || meta.vectorMatch.gapSkills?.length) ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+                      {meta.vectorMatch.matchedSkills?.map((skill) => (
+                        <span key={`m-${skill}`} style={{ padding: "4px 10px", background: mintLight, fontFamily: sans, fontSize: 12, color: "#2A4A3A" }}>{skill}</span>
+                      ))}
+                      {meta.vectorMatch.gapSkills?.map((skill) => (
+                        <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
               <InsiderConnectionPanel companyName={card.company} />
 
               {responsibilities.length > 0 && (

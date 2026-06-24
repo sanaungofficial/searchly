@@ -19,7 +19,8 @@ import {
   type KanbanStage,
 } from "./workspace-data";
 import { PlusIcon, UploadIcon } from "./workspace-icons";
-import { ResumeVectorJobsPanel } from "./resume-vector-jobs-panel";
+import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipeline-recommended-section";
+import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { CompanyLogo } from "./company-logo";
@@ -28,7 +29,8 @@ import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as 
 
 export type { DrawerTool };
 
-type OppTab = "pipeline" | "companies" | "matches";
+type OppTab = "pipeline" | "companies";
+export type PipelineFilter = "all" | "recommended" | KanbanStage;
 
 // Props now sourced from WorkspaceContext
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -39,12 +41,7 @@ export function WorkspaceOpportunities() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeSubtab: OppTab =
-    pathname === "/opportunities/companies"
-      ? "companies"
-      : pathname === "/opportunities/matches"
-        ? "matches"
-        : "pipeline";
+  const activeSubtab: OppTab = pathname === "/opportunities/companies" ? "companies" : "pipeline";
   const setSubtab = (t: OppTab) => { router.push(`/opportunities/${t}`); };
   const tab = activeSubtab;
   const setTab = setSubtab;
@@ -90,7 +87,7 @@ export function WorkspaceOpportunities() {
   const csvInputRef = useRef<HTMLInputElement>(null);
 
   // Pipeline flat-list filter
-  const [pipelineFilter, setPipelineFilter] = useState<"all" | KanbanStage>("all");
+  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>("all");
   const [prospectJob, setProspectJob] = useState<{
     companyName: string;
     job: CachedJob;
@@ -189,6 +186,37 @@ export function WorkspaceOpportunities() {
     setAddingProspect(false);
   };
 
+  const openRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
+    const drawerId = -Math.abs(Date.now() % 1_000_000);
+    setProspectJob({ companyName: job.companyName, job, drawerId });
+    setProspectCard(buildRecommendedProspectCard(job, drawerId));
+
+    try {
+      const res = await fetch("/api/companies/prospect-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job }),
+      });
+      const data = await res.json().catch(() => ({})) as { job?: typeof job };
+      if (res.ok && data.job) {
+        const enriched = { ...job, ...data.job, companyName: job.companyName, matchScore: job.matchScore, matchLabel: job.matchLabel, matchReasons: job.matchReasons, matchedSkills: job.matchedSkills, gapSkills: job.gapSkills, vectorRank: job.vectorRank };
+        setProspectJob((prev) => (prev ? { ...prev, job: enriched } : null));
+        setProspectCard(buildRecommendedProspectCard(enriched, drawerId));
+      }
+    } catch {
+      // Drawer still opens with vector match data.
+    }
+  }, []);
+
+  const saveRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
+    const meta = buildRecommendedProspectCard(job, 0)._meta;
+    const created = await addJob(job.companyName, job.title, job.url ?? undefined, meta);
+    if (created) {
+      setPipelineFilter("saved");
+      setDrawerCardId(created.cardId);
+    }
+  }, [addJob]);
+
   const openProspectJob = useCallback(async (companyName: string, job: CachedJob) => {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setProspectJob({ companyName, job, drawerId });
@@ -218,7 +246,7 @@ export function WorkspaceOpportunities() {
     if (!prospectJob || !prospectCard) return;
     setAddingProspect(true);
     try {
-      const meta = cachedJobToMeta(prospectJob.job);
+      const meta = (prospectCard as KanbanCard & { _meta?: JobMeta })._meta ?? cachedJobToMeta(prospectJob.job);
       const created = await addJob(
         prospectJob.companyName,
         prospectJob.job.title,
@@ -269,7 +297,6 @@ export function WorkspaceOpportunities() {
         <div style={{ display: "flex", gap: 0 }}>
           {([
             ["pipeline", "Pipeline"],
-            ["matches", "Matches"],
             ["companies", "Companies"],
           ] as [OppTab, string][]).map(([id, label]) => {
             const active = tab === id;
@@ -297,7 +324,7 @@ export function WorkspaceOpportunities() {
           })}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {tab !== "companies" && tab !== "matches" && <button
+          {tab !== "companies" && <button
             onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
             style={{
               padding: "8px 16px",
@@ -378,19 +405,6 @@ export function WorkspaceOpportunities() {
         }}
       >
         {tab === "companies" && <WorkspaceCompanies onOpenProspectJob={openProspectJob} />}
-        {tab === "matches" && (
-          <ResumeVectorJobsPanel
-            onOpenJob={openProspectJob}
-            onAddToPipeline={async (companyName, job) => {
-              const meta = cachedJobToMeta(job);
-              const created = await addJob(companyName, job.title, job.url ?? undefined, meta);
-              if (created) {
-                setDrawerCardId(created.cardId);
-                setTab("pipeline");
-              }
-            }}
-          />
-        )}
         {tab === "pipeline" && (
           <PipelineTab
             cards={kanbanCards}
@@ -398,6 +412,8 @@ export function WorkspaceOpportunities() {
             setFilter={setPipelineFilter}
             onChangeStage={changeStage}
             onOpenDrawer={openDrawer}
+            onOpenRecommended={openRecommendedJob}
+            onSaveRecommended={saveRecommendedJob}
             drawerCard={drawerCardId !== null ? kanbanCards.find((c) => c.id === drawerCardId) || null : null}
             closeDrawer={closeDrawer}
             moveCard={moveCard}
@@ -820,10 +836,12 @@ function PipelineStatBar({ label, pct, highlight }: { label: string; pct: number
 
 interface PipelineTabProps {
   cards: KanbanCard[];
-  filter: "all" | KanbanStage;
-  setFilter: (f: "all" | KanbanStage) => void;
+  filter: PipelineFilter;
+  setFilter: (f: PipelineFilter) => void;
   onChangeStage: (id: number, stage: KanbanStage) => void;
   onOpenDrawer: (id: number) => void;
+  onOpenRecommended: (job: VectorMatchedJob) => void;
+  onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
   drawerCard: KanbanCard | null;
   closeDrawer: () => void;
   moveCard: (id: number, stage: KanbanStage) => void;
@@ -835,6 +853,8 @@ function PipelineTab({
   setFilter,
   onChangeStage,
   onOpenDrawer,
+  onOpenRecommended,
+  onSaveRecommended,
 }: PipelineTabProps) {
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [wideLayout, setWideLayout] = useState(false);
@@ -847,13 +867,14 @@ function PipelineTab({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const visibleCards = filter === "all" ? cards : cards.filter((c) => c.stage === filter);
+  const visibleCards = filter === "all" || filter === "recommended" ? cards : cards.filter((c) => c.stage === filter);
   const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer", "closed"];
   const sortedCards = [...visibleCards].sort((a, b) => stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage));
   const featuredId = getFeaturedJobId(sortedCards);
 
-  const filterChips: ["all" | KanbanStage, string][] = [
+  const filterChips: [PipelineFilter, string][] = [
     ["all", "All"],
+    ["recommended", "Recommended"],
     ["saved", "Saved"],
     ["applied", "Applied"],
     ["interview", "Interviewing"],
@@ -922,7 +943,7 @@ function PipelineTab({
             </div>
             {filterChips.map(([id, label], i) => {
               const active = filter === id;
-              const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
+              const count = id === "all" ? cards.length : id === "recommended" ? null : cards.filter((c) => c.stage === id).length;
               return (
                 <button
                   key={id}
@@ -944,7 +965,9 @@ function PipelineTab({
                   }}
                 >
                   {label}
-                  <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7, marginLeft: 6 }}>{count}</span>
+                  {count != null && (
+                    <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7, marginLeft: 6 }}>{count}</span>
+                  )}
                 </button>
               );
             })}
@@ -953,12 +976,12 @@ function PipelineTab({
       </div>
 
       {/* Mobile / narrow filter chips + view toggle */}
-      {!wideLayout && (
+      {!wideLayout && filter !== "recommended" && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
             {filterChips.map(([id, label]) => {
               const active = filter === id;
-              const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
+              const count = id === "all" ? cards.length : id === "recommended" ? null : cards.filter((c) => c.stage === id).length;
               return (
                 <button
                   key={id}
@@ -980,7 +1003,9 @@ function PipelineTab({
                   }}
                 >
                   {label}
-                  <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
+                  {count != null && (
+                    <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7 }}>{count}</span>
+                  )}
                 </button>
               );
             })}
@@ -1011,7 +1036,7 @@ function PipelineTab({
         </div>
       )}
 
-      {wideLayout && (
+      {wideLayout && filter !== "recommended" && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <ScoutLabel>Open roles</ScoutLabel>
           <div style={{ display: "flex", border: border.line }}>
@@ -1040,8 +1065,13 @@ function PipelineTab({
         </div>
       )}
 
-      {/* Empty state */}
-      {cards.length === 0 ? (
+      {filter === "recommended" ? (
+        <PipelineRecommendedSection
+          pipelineCards={cards}
+          onOpenJob={onOpenRecommended}
+          onSaveJob={onSaveRecommended}
+        />
+      ) : cards.length === 0 ? (
         <ScoutBox style={{ padding: 60, textAlign: "center" }}>
           <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
             No jobs yet. Click &quot;Add job&quot; above to paste a URL, or &quot;Upload CSV&quot; to bulk-add jobs.

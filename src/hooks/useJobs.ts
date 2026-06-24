@@ -102,7 +102,19 @@ export function useJobs(fallback: KanbanCard[]) {
 
     // Auto-run match score in background if we have a description
     const description = meta?.description;
-    if (description && job.id) {
+    const vectorFit = meta?.vectorMatch?.matchScore;
+    if (vectorFit != null && job.id) {
+      const fit = Math.min(100, Math.round(vectorFit));
+      fetch(`/api/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: fit / 10, source: "hirebase_vector" }) }),
+      });
+      setCards((prev) => prev.map((c) => {
+        const card = c as KanbanCard & { _dbId?: string };
+        return card._dbId === job.id ? { ...c, fit } : c;
+      }));
+    } else if (description && job.id) {
       fetch("/api/ai/job-match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

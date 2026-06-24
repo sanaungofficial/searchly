@@ -19,6 +19,15 @@ export interface JobMeta {
   tags?: string[];
   nextStep?: string | null;
   nextStepDue?: string | null;
+  /** Hirebase vector search match explanation (recommended jobs). */
+  vectorMatch?: {
+    matchScore: number;
+    matchLabel: string;
+    matchReasons: string[];
+    matchedSkills?: string[];
+    gapSkills?: string[];
+    vectorRank?: number;
+  };
 }
 
 function str(v: unknown): string | null {
