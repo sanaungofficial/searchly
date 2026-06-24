@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { border, color, fontSans, surface, displayTitleStyle } from "@/lib/typography";
 
 export default function PasscodePage() {
   const router = useRouter();
@@ -27,44 +29,52 @@ export default function PasscodePage() {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#F2EDE3",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "var(--font-ui), sans-serif",
-    }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: surface.page,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: fontSans,
+        padding: "32px 16px",
+        boxSizing: "border-box",
+      }}
+    >
       <div style={{ marginBottom: 32, textAlign: "center" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.15em", color: "#1A3A2F", marginBottom: 4 }}>
-          KIMCHI
+        <div style={{ ...displayTitleStyle(22), color: color.forest, marginBottom: 4 }}>Kimchi</div>
+        <div style={{ fontSize: 12, color: color.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          by Second Ladder
         </div>
-        <div style={{ fontSize: 12, color: "#6B7280", letterSpacing: "0.08em" }}>BY SECOND LADDER</div>
       </div>
 
-      <div style={{
-        background: "#fff",
-        borderRadius: 16,
-        padding: "40px 48px",
-        boxShadow: "0 2px 24px rgba(0,0,0,0.07)",
-        textAlign: "center",
-        width: 320,
-        animation: shaking ? "shake 0.4s ease" : undefined,
-      }}>
-        <div style={{ fontSize: 18, fontWeight: 600, color: "#1A3A2F", marginBottom: 8 }}>
-          Enter passcode
-        </div>
-        <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 28 }}>
+      <div
+        style={{
+          background: surface.card,
+          border: border.lineStrong,
+          padding: "40px 32px",
+          textAlign: "center",
+          width: "100%",
+          maxWidth: 320,
+          animation: shaking ? "shake 0.4s ease" : undefined,
+          boxSizing: "border-box",
+        }}
+      >
+        <h1 style={{ ...displayTitleStyle(20), marginBottom: 8 }}>Enter passcode</h1>
+        <p style={{ fontSize: 13, color: color.muted, marginBottom: 28, lineHeight: 1.5 }}>
           This is an early preview. Enter your code to continue.
-        </div>
+        </p>
 
         <input
           type="password"
           inputMode="numeric"
           maxLength={4}
           value={code}
-          onChange={e => { setCode(e.target.value); setError(false); }}
+          onChange={(e) => {
+            setCode(e.target.value);
+            setError(false);
+          }}
           onKeyDown={onKey}
           autoFocus
           placeholder="••••"
@@ -74,39 +84,26 @@ export default function PasscodePage() {
             fontSize: 28,
             letterSpacing: "0.3em",
             padding: "12px 16px",
-            border: `2px solid ${error ? "#EF4444" : "#E5E7EB"}`,
-            borderRadius: 10,
+            border: error ? "1px solid #C4574A" : border.lineStrong,
+            borderRadius: 0,
             outline: "none",
-            color: "#1A3A2F",
-            background: "#FAFAFA",
+            color: color.ink,
+            background: surface.inset,
             boxSizing: "border-box",
             marginBottom: 8,
+            fontFamily: fontSans,
           }}
         />
 
         {error && (
-          <div style={{ fontSize: 12, color: "#EF4444", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: "#C4574A", marginBottom: 12 }}>
             Incorrect passcode. Try again.
           </div>
         )}
 
-        <button
-          onClick={submit}
-          style={{
-            marginTop: 12,
-            width: "100%",
-            padding: "12px",
-            background: "#1A3A2F",
-            color: "#fff",
-            border: "none",
-            borderRadius: 10,
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
+        <ScoutPrimaryBtn onClick={submit} style={{ marginTop: 12, width: "100%", minHeight: 44 }}>
           Continue →
-        </button>
+        </ScoutPrimaryBtn>
       </div>
 
       <style>{`

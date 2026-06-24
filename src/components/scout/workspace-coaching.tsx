@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { WorkspacePageShell } from "@/components/scout/workspace-page-shell";
+import { WorkspaceSegmentTabs } from "@/components/scout/workspace-segment-tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type CoachingTab = "mycoach" | "coaches";
 
@@ -35,6 +40,7 @@ function initials(name: string) {
 }
 
 export function WorkspaceCoaching() {
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState<CoachingTab>("mycoach");
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [loadingCoaches, setLoadingCoaches] = useState(false);
@@ -55,91 +61,29 @@ export function WorkspaceCoaching() {
   }, []);
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "#F7F5F2",
-        animation: "fadeIn 0.3s ease both",
-      }}
+    <WorkspacePageShell
+      isMobile={isMobile}
+      label="1:1 coaching"
+      title="Talk to someone who's done it."
     >
-      <div style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 14,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1.1px",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          1:1 coaching
-        </p>
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 32,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
-            letterSpacing: "-0.3px",
-            marginBottom: 24,
-          }}
-        >
-          Talk to someone who&apos;s done it.
-        </h1>
+      <WorkspaceSegmentTabs
+        isMobile={isMobile}
+        tabs={[
+          { id: "mycoach", label: "My Coach" },
+          { id: "coaches", label: "Find a Coach" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
-        {/* Tab bar */}
-        <div
-          style={{
-            display: "inline-flex",
-            gap: 3,
-            background: "rgba(0,0,0,0.05)",
-            padding: 3,
-            borderRadius: 7,
-            marginBottom: 24,
-          }}
-        >
-          {([
-            ["mycoach", "My Coach"],
-            ["coaches", "Find a Coach"],
-          ] as [CoachingTab, string][]).map(([id, label]) => {
-            const active = tab === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                style={{
-                  padding: "7px 18px",
-                  border: "none",
-                  borderRadius: 5,
-                  background: active ? "#FFFFFF" : "transparent",
-                  color: active ? "#1A1A1A" : "var(--scout-muted)",
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {tab === "mycoach" ? (
-          <MyCoachTab featured={coaches.find((c) => c.featured) ?? null} loading={loadingCoaches} isPro={isPro} onSubscribe={() => setShowUpgrade(true)} />
-        ) : (
-          <CoachSearchTab coaches={coaches} loading={loadingCoaches} isPro={isPro} onSubscribe={() => setShowUpgrade(true)} />
-        )}
-      </div>
+      {tab === "mycoach" ? (
+        <MyCoachTab featured={coaches.find((c) => c.featured) ?? null} loading={loadingCoaches} isPro={isPro} isMobile={isMobile} onSubscribe={() => setShowUpgrade(true)} />
+      ) : (
+        <CoachSearchTab coaches={coaches} loading={loadingCoaches} isPro={isPro} isMobile={isMobile} onSubscribe={() => setShowUpgrade(true)} />
+      )}
 
       {showUpgrade && <GrowthUpgradeModal trigger="coaching" onClose={() => setShowUpgrade(false)} />}
-    </div>
+    </WorkspacePageShell>
   );
 }
 
@@ -175,31 +119,23 @@ function CoachAvatar({ coach, size }: { coach: Coach; size: number }) {
   );
 }
 
-function MyCoachTab({ featured, loading, isPro, onSubscribe }: { featured: Coach | null; loading: boolean; isPro: boolean; onSubscribe: () => void }) {
+function MyCoachTab({ featured, loading, isPro, isMobile, onSubscribe }: { featured: Coach | null; loading: boolean; isPro: boolean; isMobile: boolean; onSubscribe: () => void }) {
   if (loading) {
-    return <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Loading…</p>;
+    return <p style={{ color: color.muted, fontSize: T.bodySm, fontFamily: fontSans }}>Loading…</p>;
   }
   if (!featured) {
     return (
-      <div style={{ background: "#fff", borderRadius: 0, padding: 24, border: "1px solid rgba(0,0,0,0.06)" }}>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>
+      <ScoutBox padding={isMobile ? 20 : 24}>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
           You haven&apos;t been matched with a coach yet. Browse the directory to find one.
         </p>
-      </div>
+      </ScoutBox>
     );
   }
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      <div
-        style={{
-          background: "#FFFFFF",
-          borderRadius: 0,
-          padding: 24,
-          border: "1px solid rgba(0,0,0,0.06)",
-          marginBottom: 14,
-        }}
-      >
+      <ScoutBox padding={isMobile ? 20 : 24} style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
           <CoachAvatar coach={featured} size={60} />
           <div style={{ flex: 1 }}>
@@ -243,37 +179,52 @@ function MyCoachTab({ featured, loading, isPro, onSubscribe }: { featured: Coach
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8 }}>
-          {isPro
-            ? <button style={{ padding: "11px 22px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Book a session →</button>
-            : <button onClick={onSubscribe} style={{ padding: "11px 22px", background: "#F2EDE3", color: "var(--scout-muted)", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 6, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>🔒 Subscribe to book</button>
-          }
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {isPro ? (
+            <ScoutPrimaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Book a session →</ScoutPrimaryBtn>
+          ) : (
+            <ScoutSecondaryBtn onClick={onSubscribe} style={{ minHeight: isMobile ? 44 : undefined }}>
+              Subscribe to book
+            </ScoutSecondaryBtn>
+          )}
           {featured.linkedinUrl && (
             <a
               href={featured.linkedinUrl}
               target="_blank"
               rel="noreferrer"
-              style={{ padding: "11px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 6, fontFamily: "var(--font-ui)", fontSize: 14, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center" }}
+              style={{
+                padding: "8px 16px",
+                background: surface.card,
+                color: color.forest,
+                border: border.lineStrong,
+                fontFamily: fontSans,
+                fontSize: T.bodySm,
+                fontWeight: 600,
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: isMobile ? 44 : undefined,
+              }}
             >
               LinkedIn ↗
             </a>
           )}
         </div>
-      </div>
+      </ScoutBox>
 
-      <div style={{ background: "#FFFFFF", borderRadius: 0, padding: "18px 24px", border: "1px solid rgba(0,0,0,0.06)" }}>
+      <ScoutBox padding={isMobile ? "16px 20px" : "18px 24px"}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 }}>
           Upcoming sessions
         </p>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
           No upcoming sessions scheduled. Book one to start your prep.
         </p>
-      </div>
+      </ScoutBox>
     </div>
   );
 }
 
-function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coach[]; loading: boolean; isPro: boolean; onSubscribe: () => void }) {
+function CoachSearchTab({ coaches, loading, isPro, isMobile, onSubscribe }: { coaches: Coach[]; loading: boolean; isPro: boolean; isMobile: boolean; onSubscribe: () => void }) {
   const [filter, setFilter] = useState("");
   const [selectedFirm, setSelectedFirm] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
@@ -295,31 +246,34 @@ function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coa
     return matchText && matchFirm && matchSpecialty;
   });
 
+  const fieldStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: isMobile ? "100%" : 220,
+    padding: isMobile ? "12px 14px" : "10px 14px",
+    minHeight: isMobile ? 44 : undefined,
+    border: border.line,
+    borderRadius: 0,
+    background: surface.inset,
+    fontFamily: fontSans,
+    fontSize: isMobile ? 16 : T.bodySm,
+    color: color.ink,
+    boxSizing: "border-box",
+  };
+
   return (
     <div style={{ paddingBottom: 40 }}>
-      {/* Search + filters */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <input
           type="text"
           placeholder="Search by name, firm, specialty, or location…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: 220,
-            padding: "10px 14px",
-            border: "1px solid rgba(0,0,0,0.1)",
-            borderRadius: 6,
-            background: "#FFFFFF",
-            fontFamily: "var(--font-ui)",
-            fontSize: 14,
-            color: "#1A1A1A",
-          }}
+          style={fieldStyle}
         />
         <select
           value={selectedFirm}
           onChange={(e) => setSelectedFirm(e.target.value)}
-          style={{ padding: "10px 12px", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, background: "#FFFFFF", fontFamily: "var(--font-ui)", fontSize: 14, color: selectedFirm ? "#1A1A1A" : "var(--scout-muted)", cursor: "pointer" }}
+          style={{ ...fieldStyle, flex: isMobile ? "1 1 100%" : "0 1 auto", minWidth: isMobile ? "100%" : 140, cursor: "pointer" }}
         >
           <option value="">All firms</option>
           {allFirms.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -327,7 +281,7 @@ function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coa
         <select
           value={selectedSpecialty}
           onChange={(e) => setSelectedSpecialty(e.target.value)}
-          style={{ padding: "10px 12px", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, background: "#FFFFFF", fontFamily: "var(--font-ui)", fontSize: 14, color: selectedSpecialty ? "#1A1A1A" : "var(--scout-muted)", cursor: "pointer" }}
+          style={{ ...fieldStyle, flex: isMobile ? "1 1 100%" : "0 1 auto", minWidth: isMobile ? "100%" : 160, cursor: "pointer" }}
         >
           <option value="">All specialties</option>
           {allSpecialties.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -344,13 +298,11 @@ function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coa
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filtered.map((c) => (
-            <div
+            <ScoutBox
               key={c.id}
+              padding={isMobile ? "16px 18px" : "18px 22px"}
               style={{
-                background: "#FFFFFF",
-                borderRadius: 0,
-                padding: "18px 22px",
-                border: `1px solid ${c.featured ? "rgba(26,58,47,0.25)" : "rgba(0,0,0,0.06)"}`,
+                border: c.featured ? border.lineStrong : border.line,
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 16,
@@ -413,23 +365,24 @@ function CoachSearchTab({ coaches, loading, isPro, onSubscribe }: { coaches: Coa
                   ))}
                   {(c.linkedinUrl || c.lelandUrl) && <span style={{ color: "#d4cfc9", fontSize: 14 }}>·</span>}
                   {c.lelandUrl && (
-                    <a href={c.lelandUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: "#4A8B6A", textDecoration: "none", fontFamily: "var(--font-ui)" }}>
+                    <a href={c.lelandUrl} target="_blank" rel="noreferrer" style={{ fontSize: T.bodySm, color: color.forest, textDecoration: "none", fontFamily: fontSans, fontWeight: 600 }}>
                       Leland ↗
                     </a>
                   )}
                   {c.linkedinUrl && (
-                    <a href={c.linkedinUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: "#4A8B6A", textDecoration: "none", fontFamily: "var(--font-ui)" }}>
+                    <a href={c.linkedinUrl} target="_blank" rel="noreferrer" style={{ fontSize: T.bodySm, color: color.forest, textDecoration: "none", fontFamily: fontSans, fontWeight: 600 }}>
                       LinkedIn ↗
                     </a>
                   )}
                   <span style={{ flex: 1 }} />
-                  {isPro
-                    ? <button style={{ padding: "8px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 6, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Book →</button>
-                    : <button onClick={onSubscribe} style={{ padding: "8px 16px", background: "#F2EDE3", color: "var(--scout-muted)", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 6, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>🔒 Book</button>
-                  }
+                  {isPro ? (
+                    <ScoutPrimaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Book →</ScoutPrimaryBtn>
+                  ) : (
+                    <ScoutSecondaryBtn onClick={onSubscribe} style={{ minHeight: isMobile ? 44 : undefined }}>Subscribe to book</ScoutSecondaryBtn>
+                  )}
                 </div>
               </div>
-            </div>
+            </ScoutBox>
           ))}
 
           {filtered.length === 0 && (

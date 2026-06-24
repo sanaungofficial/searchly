@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { LIVE_SESSIONS } from "./workspace-data";
+import { ScoutBox, ScoutPrimaryBtn } from "./scout-box";
+import { WorkspacePageShell } from "./workspace-page-shell";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { border, color, fontSans, type as T } from "@/lib/typography";
 
 type LiveFilter = "all" | "live" | "week";
 
 export function WorkspaceLive() {
+  const isMobile = useIsMobile();
   const [filter, setFilter] = useState<LiveFilter>("all");
 
   const filters: [LiveFilter, string][] = [
@@ -25,50 +30,17 @@ export function WorkspaceLive() {
   })();
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "#F7F5F2",
-        animation: "fadeIn 0.3s ease both",
-      }}
+    <WorkspacePageShell
+      isMobile={isMobile}
+      label="Live with Second Ladder"
+      title="Real sessions, real coaches."
     >
-      <div style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1.1px",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          Live with Second Ladder
-        </p>
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 32,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
-            letterSpacing: "-0.3px",
-            marginBottom: 24,
-          }}
-        >
-          Real sessions, real coaches.
-        </h1>
-
         {/* Featured weekly session */}
         <div
           style={{
             background: weekly.bgColor,
-            borderRadius: 0,
-            padding: 24,
+            border: border.lineStrong,
+            padding: isMobile ? 20 : 24,
             marginBottom: 20,
             color: weekly.accentColor,
           }}
@@ -188,21 +160,16 @@ export function WorkspaceLive() {
               </p>
             </div>
           </div>
-          <button
+          <ScoutPrimaryBtn
             style={{
-              padding: "11px 22px",
               background: weekly.accentColor,
               color: weekly.bgColor,
-              border: "none",
-              borderRadius: 6,
-              fontFamily: "var(--font-ui)",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
+              border: border.lineStrong,
+              minHeight: isMobile ? 44 : undefined,
             }}
           >
             Reserve seat →
-          </button>
+          </ScoutPrimaryBtn>
         </div>
 
         {/* Filter chips */}
@@ -243,15 +210,7 @@ export function WorkspaceLive() {
           }}
         >
           {visible.map((s) => (
-            <div
-              key={s.id}
-              style={{
-                background: "#FFFFFF",
-                borderRadius: 0,
-                overflow: "hidden",
-                border: "1px solid rgba(0,0,0,0.06)",
-              }}
-            >
+            <ScoutBox key={s.id} padding={0} style={{ overflow: "hidden" }}>
               <div style={{ background: s.bgColor, padding: "16px 18px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <span
@@ -333,27 +292,22 @@ export function WorkspaceLive() {
                   >
                     {s.isLive ? `${s.registered} watching` : `${s.registered} registered`}
                   </span>
-                  <button
+                  <ScoutPrimaryBtn
                     style={{
                       padding: "6px 14px",
-                      background: s.isLive ? "#C4574A" : "#1A3A2F",
-                      color: "#FFFFFF",
-                      border: "none",
-                      borderRadius: 5,
-                      fontFamily: "var(--font-ui)",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
+                      background: s.isLive ? "#C4574A" : color.forest,
+                      color: s.isLive ? "#FFFFFF" : color.gold,
+                      minHeight: isMobile ? 40 : undefined,
+                      fontSize: T.bodySm,
                     }}
                   >
                     {s.isLive ? "Join now →" : "Reserve →"}
-                  </button>
+                  </ScoutPrimaryBtn>
                 </div>
               </div>
-            </div>
+            </ScoutBox>
           ))}
         </div>
-      </div>
-    </div>
+    </WorkspacePageShell>
   );
 }

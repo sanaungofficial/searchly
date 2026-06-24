@@ -223,9 +223,9 @@
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background: #FFFDF9;
-  border: 1px solid #E5DDD0;
-  border-radius: 16px;
+  background: var(--scout-surface);
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: 0;
   padding: 40px 36px;
   box-sizing: border-box;
 }
@@ -238,9 +238,9 @@
   gap: 10px;
   min-height: 48px;
   padding: 12px 20px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   box-sizing: border-box;
@@ -250,11 +250,11 @@
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
-  border: 1px solid #E5DDD0;
-  border-radius: 10px;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: 0;
   font-size: 16px;
-  color: #1C3A2F;
-  background: #F9F6F1;
+  color: #1A3A2F;
+  background: var(--scout-inset);
   margin-bottom: 12px;
   outline: none;
   font-family: inherit;

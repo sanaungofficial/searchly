@@ -177,9 +177,9 @@ function LoginContent() {
                 disabled={loading}
                 className="auth-btn"
                 style={{
-                  background: loading ? "#9CA3AF" : "#C9A84C",
-                  color: "#1C3A2F",
-                  border: "none",
+                  background: loading ? "rgba(26,58,47,0.35)" : "#1A3A2F",
+                  color: loading ? "#E8D5A3" : "#E8D5A3",
+                  border: "1px solid rgba(17,17,17,0.22)",
                   fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                   transition: "opacity 0.15s",

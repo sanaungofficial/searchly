@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { MY_CONTACTS, DISCOVERED_MEMBERS, type NetworkPerson } from "./workspace-data";
+import { ScoutBox, ScoutPrimaryBtn } from "./scout-box";
+import { WorkspacePageShell } from "./workspace-page-shell";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Filter = "all" | "hivemind" | "first" | "second";
 
 export function WorkspaceNetwork() {
+  const isMobile = useIsMobile();
   const [filter, setFilter] = useState<Filter>("all");
   const [hiveMindOn, setHiveMindOn] = useState(false);
 
@@ -25,55 +30,17 @@ export function WorkspaceNetwork() {
   ];
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "#F7F5F2",
-        animation: "fadeIn 0.3s ease both",
-      }}
-    >
-      <div style={{ padding: "20px 32px 0", overflowY: "auto", flex: 1 }}>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 12,
-            fontWeight: 500,
-            color: "var(--scout-muted)",
-            letterSpacing: "1.1px",
-            textTransform: "uppercase",
-            marginBottom: 8,
-          }}
-        >
-          Your network
-        </p>
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 32,
-            fontWeight: 500,
-            fontStyle: "italic",
-            color: "#1A1A1A",
-            letterSpacing: "-0.3px",
-            marginBottom: 24,
-          }}
-        >
-          Who can open the door.
-        </h1>
-
+    <WorkspacePageShell isMobile={isMobile} label="Your network" title="Who can open the door.">
         {/* Hive Mind toggle */}
-        <div
+        <ScoutBox
+          padding={isMobile ? "14px 16px" : "14px 18px"}
           style={{
-            background: "#FFFFFF",
-            borderRadius: 0,
-            padding: "14px 18px",
             marginBottom: 16,
-            border: "1px solid rgba(0,0,0,0.06)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 12,
+            flexWrap: isMobile ? "wrap" : "nowrap",
           }}
         >
           <div>
@@ -104,7 +71,7 @@ export function WorkspaceNetwork() {
               width: 44,
               height: 24,
               borderRadius: 0,
-              background: hiveMindOn ? "#4A8B6A" : "rgba(0,0,0,0.12)",
+              background: hiveMindOn ? color.forest : surface.inset,
               border: "none",
               cursor: "pointer",
               position: "relative",
@@ -125,7 +92,7 @@ export function WorkspaceNetwork() {
               }}
             />
           </button>
-        </div>
+        </ScoutBox>
 
         {/* Filter chips */}
         <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
@@ -154,29 +121,21 @@ export function WorkspaceNetwork() {
         </div>
 
         {/* People grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12, paddingBottom: 40 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(340px, 1fr))", gap: 12, paddingBottom: 40 }}>
           {filtered.map((p) => {
-            const degreeColor = p.degree === "1st" ? "#4A8B6A" : p.degree === "2nd" ? "#C4A86A" : "var(--scout-muted)";
+            const degreeColor = p.degree === "1st" ? color.forest : p.degree === "2nd" ? "#C4A86A" : color.muted;
             const degreeLabel = p.degree === "platform" ? "Platform" : `${p.degree} degree`;
-            const warmthDot = p.warmth === "hot" ? "#4A8B6A" : p.warmth === "warm" ? "#C4A86A" : "var(--scout-muted)";
+            const warmthDot = p.warmth === "hot" ? color.forest : p.warmth === "warm" ? "#C4A86A" : color.muted;
             const warmthBg =
               p.warmth === "hot"
-                ? "rgba(74,139,106,0.07)"
+                ? "rgba(26,58,47,0.07)"
                 : p.warmth === "warm"
-                ? "rgba(196,168,106,0.07)"
-                : "rgba(0,0,0,0.04)";
-            const hmSuccessColor = p.hmSuccessRate >= 90 ? "#4A8B6A" : p.hmSuccessRate >= 80 ? "#C4A86A" : "var(--scout-muted)";
+                  ? "rgba(196,168,106,0.07)"
+                  : surface.inset;
+            const hmSuccessColor = p.hmSuccessRate >= 90 ? color.forest : p.hmSuccessRate >= 80 ? "#C4A86A" : color.muted;
 
             return (
-              <div
-                key={p.id}
-                style={{
-                  background: "#FFFFFF",
-                  borderRadius: 0,
-                  padding: "16px 18px",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                }}
-              >
+              <ScoutBox key={p.id} padding={isMobile ? "14px 16px" : "16px 18px"}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
                   <div
                     style={{
@@ -287,8 +246,8 @@ export function WorkspaceNetwork() {
                   <div
                     style={{
                       padding: "10px 12px",
-                      background: "rgba(74,139,106,0.05)",
-                      borderRadius: 6,
+                      background: "rgba(26,58,47,0.05)",
+                      border: border.line,
                       marginBottom: 10,
                     }}
                   >
@@ -302,10 +261,10 @@ export function WorkspaceNetwork() {
                     >
                       <span
                         style={{
-                          fontFamily: "var(--font-ui)",
-                          fontSize: 12,
+                          fontFamily: fontSans,
+                          fontSize: T.label,
                           fontWeight: 600,
-                          color: "#4A8B6A",
+                          color: color.forest,
                           textTransform: "uppercase",
                           letterSpacing: "1px",
                         }}
@@ -313,13 +272,7 @@ export function WorkspaceNetwork() {
                         Hive Mind
                       </span>
                       {p.hmVerified && (
-                        <span
-                          style={{
-                            fontFamily: "var(--font-ui)",
-                            fontSize: 12,
-                            color: "#4A8B6A",
-                          }}
-                        >
+                        <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest }}>
                           ✓ Verified
                         </span>
                       )}
@@ -376,47 +329,28 @@ export function WorkspaceNetwork() {
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button
-                    style={{
-                      padding: "7px 14px",
-                      background: "#1A3A2F",
-                      color: "#E8D5A3",
-                      border: "none",
-                      borderRadius: 5,
-                      fontFamily: "var(--font-ui)",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      flex: 1,
-                    }}
-                  >
+                <div style={{ display: "flex", gap: 6, flexWrap: isMobile ? "wrap" : "nowrap" }}>
+                  <ScoutPrimaryBtn style={{ flex: 1, minHeight: isMobile ? 44 : undefined, fontSize: T.bodySm }}>
                     {p.degree === "1st" ? "Reach out" : "Request intro"}
-                  </button>
+                  </ScoutPrimaryBtn>
                   {p.hiveMind && (
-                    <button
+                    <ScoutPrimaryBtn
                       style={{
-                        padding: "7px 14px",
-                        background: "#4A8B6A",
-                        color: "#FFFFFF",
-                        border: "none",
-                        borderRadius: 5,
-                        fontFamily: "var(--font-ui)",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: "pointer",
                         flex: 1,
+                        minHeight: isMobile ? 44 : undefined,
+                        fontSize: T.bodySm,
+                        background: color.forest,
+                        color: color.gold,
                       }}
                     >
                       Request referral
-                    </button>
+                    </ScoutPrimaryBtn>
                   )}
                 </div>
-              </div>
+              </ScoutBox>
             );
           })}
         </div>
-      </div>
-    </div>
+    </WorkspacePageShell>
   );
 }
