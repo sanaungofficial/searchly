@@ -24,12 +24,21 @@ function NetworkJobCard({ job, onOpen }: { job: NetworkJobListing; onOpen: () =>
       stack
       padding={18}
       style={{
-        cursor: "pointer",
         borderTop: "3px solid rgba(196,168,106,0.55)",
       }}
-      onClick={onOpen}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        style={{ display: "flex", alignItems: "flex-start", gap: 16, cursor: "pointer" }}
+      >
         <CompanyLogo name={company} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
