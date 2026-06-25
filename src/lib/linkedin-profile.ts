@@ -15,12 +15,23 @@ export interface LinkedInExperienceEntry {
   title: string;
   company: string;
   companyRef?: LinkedInOrgRef | null;
+  employmentType?: string | null;
   location?: string | null;
   from?: string | null;
   to?: string | null;
   description: string;
   resumeSourceId?: string | null;
 }
+
+export const LINKEDIN_EMPLOYMENT_TYPES = [
+  "Full-time",
+  "Part-time",
+  "Contract",
+  "Temporary",
+  "Internship",
+  "Freelance",
+  "Self-employed",
+] as const;
 
 export interface LinkedInEducationEntry {
   id: string;
@@ -150,6 +161,8 @@ export function buildLinkedInDraftHeuristic(input: {
     id: w.id || `li_exp_${index}`,
     title: w.title,
     company: w.company,
+    companyRef: null,
+    employmentType: "Full-time",
     location: w.location ?? null,
     from: w.from ?? null,
     to: w.to ?? null,
@@ -204,11 +217,18 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
           const description = asString(row.description);
           if (!title && !company && !description) return null;
           const companyRef = normalizeOrgRef(row.companyRef);
+          const employmentTypeRaw = asStringOrNull(row.employmentType);
+          const employmentType =
+            employmentTypeRaw &&
+            (LINKEDIN_EMPLOYMENT_TYPES as readonly string[]).includes(employmentTypeRaw)
+              ? employmentTypeRaw
+              : employmentTypeRaw;
           return {
             id: asString(row.id) || `li_exp_${index}`,
             title: title || "Role",
             company: companyRef?.name || company || "Company",
             companyRef,
+            employmentType: employmentType ?? null,
             location: asStringOrNull(row.location),
             from: asStringOrNull(row.from),
             to: asStringOrNull(row.to),

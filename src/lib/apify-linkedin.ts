@@ -135,10 +135,13 @@ export function mapApifyProfileToLinkedInDraft(raw: ApifyLinkedInProfile): Linke
   return {
     headline: raw.headline?.trim() || parsed.summary?.slice(0, 120) || "",
     about: raw.summary?.trim() || "",
+    location: raw.locationName?.trim() || null,
     experience: parsed.workExperience.map((w) => ({
       id: w.id,
       title: w.title,
       company: w.company,
+      companyRef: null,
+      employmentType: "Full-time",
       location: w.location ?? null,
       from: w.from ?? null,
       to: w.to ?? null,
