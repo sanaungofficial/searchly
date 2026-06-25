@@ -6,6 +6,7 @@ import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondar
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 
@@ -332,6 +333,103 @@ function OpenRolesSummary({
   );
 }
 
+function MobileCompanyCard({
+  company,
+  selected,
+  scanning,
+  userTargetRoles,
+  onOpen,
+  onRemove,
+  onPriorityChange,
+  isLast,
+}: {
+  company: TrackedCompany;
+  selected: boolean;
+  scanning: boolean;
+  userTargetRoles: string[];
+  onOpen: () => void;
+  onRemove: () => void;
+  onPriorityChange: (value: string) => void;
+  isLast: boolean;
+}) {
+  const subtitle = companySubtitle(company);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      style={{
+        padding: "14px 16px",
+        borderBottom: isLast ? "none" : border.line,
+        background: selected ? surface.inset : surface.card,
+        cursor: "pointer",
+      }}
+    >
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <CompanyLogo
+          name={company.name}
+          website={company.website}
+          careersUrl={company.careersUrl}
+          enrichmentWebsiteUrl={enrichmentWebsite(company)}
+          size={36}
+          borderRadius={0}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={displayTitleStyle(T.body, { lineHeight: 1.2 })}>{company.name}</div>
+          {subtitle && (
+            <div style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, marginTop: 2 }}>{subtitle}</div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px 12px",
+              marginTop: 10,
+              alignItems: "center",
+            }}
+          >
+            <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+              <PriorityBadge value={company.priority ?? ""} onChange={onPriorityChange} />
+            </div>
+            <OpenRolesSummary company={company} userTargetRoles={userTargetRoles} scanning={scanning} />
+            <span style={{ fontFamily: fontSans, fontSize: 13, color: company.lastJobsFetchedAt ? color.ink : color.muted }}>
+              {scanning ? "Scanning…" : company.lastJobsFetchedAt ? timeAgo(company.lastJobsFetchedAt) : "Not scanned"}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          title="Remove company"
+          aria-label={`Remove ${company.name}`}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#ccc",
+            fontSize: 18,
+            cursor: "pointer",
+            padding: "4px 6px",
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DrawerJobRow({
   job,
   match,
@@ -418,6 +516,7 @@ function CompanyDrawer({
   onRefreshed,
   onRemove,
   onOpenJob,
+  isMobile = false,
 }: {
   company: TrackedCompany;
   userTargetRoles: string[];
@@ -426,6 +525,7 @@ function CompanyDrawer({
   onRefreshed: (updated: TrackedCompany) => void;
   onRemove: (id: string) => void;
   onOpenJob?: (job: CachedJob) => void;
+  isMobile?: boolean;
 }) {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -470,20 +570,38 @@ function CompanyDrawer({
   return (
     <>
       {/* Backdrop */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200, backdropFilter: "blur(1px)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200, backdropFilter: isMobile ? "none" : "blur(1px)" }} />
 
-      {/* Drawer — same width/shell as JobDrawer */}
-      <div style={{ position: "fixed", top: 8, right: 8, bottom: 8, width: DRAWER_WIDTH, maxWidth: "calc(100vw - 16px)", background: surface.inset, border: border.lineStrong, zIndex: 201, boxShadow: "3px 3px 0 rgba(17,17,17,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Drawer — full screen on mobile, wide panel on desktop (matches JobDrawer) */}
+      <div
+        style={{
+          position: "fixed",
+          top: isMobile ? 0 : 8,
+          right: isMobile ? 0 : 8,
+          bottom: isMobile ? 0 : 8,
+          left: isMobile ? 0 : undefined,
+          width: isMobile ? "100%" : DRAWER_WIDTH,
+          maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
+          background: surface.inset,
+          border: isMobile ? "none" : border.lineStrong,
+          zIndex: 201,
+          boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxSizing: "border-box",
+        }}
+      >
         {/* Header */}
-        <div style={{ padding: "20px 24px 16px", borderBottom: border.line, background: surface.card, flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ padding: isMobile ? "14px 16px 12px" : "20px 24px 16px", borderBottom: border.line, background: surface.card, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 0 : 12, gap: 12, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
               <CompanyLogo
                 name={company.name}
                 website={company.website}
                 careersUrl={company.careersUrl}
                 enrichmentWebsiteUrl={enrichmentWebsite(company)}
-                size={40}
+                size={isMobile ? 36 : 40}
                 borderRadius={0}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -502,7 +620,7 @@ function CompanyDrawer({
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, minHeight: 0, padding: "20px 24px 32px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ flex: 1, minHeight: 0, padding: isMobile ? "16px 16px 24px" : "20px 24px 32px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
 
           {/* Company Intel */}
           <DrawerSection title="Company Intel">
@@ -693,6 +811,7 @@ export function WorkspaceCompanies({
 }: {
   onOpenProspectJob?: (companyName: string, job: CachedJob) => void;
 }) {
+  const isMobile = useIsMobile();
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -843,24 +962,27 @@ export function WorkspaceCompanies({
 
   const thStyle: React.CSSProperties = { fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "10px 14px", textAlign: "left", whiteSpace: "nowrap", borderBottom: border.line, background: surface.inset };
   const tdStyle: React.CSSProperties = { padding: "12px 14px", verticalAlign: "top", borderBottom: border.line, background: surface.card };
+  const contentPad = isMobile ? "24px 16px 40px 56px" : "32px 36px 48px";
+  const sortedCompanies = sortCompanies(companies);
 
   return (
-    <div style={{ padding: "32px 36px 48px" }}>
+    <div style={{ padding: contentPad, boxSizing: "border-box", width: "100%", overflowX: "hidden" }}>
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
           <ScoutLabel>Dream employers</ScoutLabel>
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <ScoutDisplayTitle size={36} style={{ marginBottom: 8 }}>Track companies you care about</ScoutDisplayTitle>
-            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: 0, lineHeight: 1.6 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>Track companies you care about</ScoutDisplayTitle>
+            <p style={{ fontFamily: fontSans, fontSize: isMobile ? T.bodySm : T.body, color: color.muted, margin: 0, lineHeight: 1.6 }}>
               {companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist — scan careers pages for matching roles.
             </p>
           </div>
           <ScoutSecondaryBtn
             active={showAdd}
             onClick={() => { setShowAdd((s) => !s); setAddError(null); setSelectedSuggestion(null); if (showAdd) setNewName(""); }}
+            style={{ minHeight: isMobile ? 44 : undefined, width: isMobile ? "100%" : undefined }}
           >
             {showAdd ? "Cancel" : "+ Track company"}
           </ScoutSecondaryBtn>
@@ -874,8 +996,8 @@ export function WorkspaceCompanies({
       {showAdd && (
         <ScoutBox style={{ marginBottom: 20 }} padding={20}>
           <form onSubmit={handleAdd}>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: isMobile ? "stretch" : "flex-end", flexDirection: isMobile ? "column" : "row" }}>
+              <div style={{ flex: 1, width: isMobile ? "100%" : undefined }}>
                 <label style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.stone, display: "block", marginBottom: 6 }}>Company name *</label>
                 <CompanySuggestInput
                   value={newName}
@@ -884,7 +1006,7 @@ export function WorkspaceCompanies({
                   disabled={saving}
                 />
               </div>
-              <ScoutPrimaryBtn type="submit" disabled={saving || !newName.trim()}>{saving ? "Adding…" : "Add"}</ScoutPrimaryBtn>
+              <ScoutPrimaryBtn type="submit" disabled={saving || !newName.trim()} style={{ minHeight: isMobile ? 44 : undefined, width: isMobile ? "100%" : undefined }}>{saving ? "Adding…" : "Add"}</ScoutPrimaryBtn>
             </div>
             <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginTop: 10, lineHeight: 1.45 }}>
               {selectedSuggestion
@@ -911,6 +1033,26 @@ export function WorkspaceCompanies({
           <div style={{ fontFamily: fontSans, color: color.muted, fontSize: T.bodySm, lineHeight: 1.6 }}>Track employers you&apos;re watching — add a careers URL to scan open roles without checking every page manually.</div>
         </ScoutBox>
       ) : (
+        isMobile ? (
+          <ScoutBox padding={0}>
+            {sortedCompanies.map((c, i) => {
+              const scanning = pendingScanIds.includes(c.id);
+              return (
+                <MobileCompanyCard
+                  key={c.id}
+                  company={c}
+                  selected={selectedId === c.id}
+                  scanning={scanning}
+                  userTargetRoles={userTargetRoles}
+                  onOpen={() => setSelectedId(c.id)}
+                  onRemove={() => handleRemove(c.id)}
+                  onPriorityChange={(v) => patchField(c.id, "priority", v)}
+                  isLast={i === sortedCompanies.length - 1}
+                />
+              );
+            })}
+          </ScoutBox>
+        ) : (
         <ScoutBox padding={0} style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -923,10 +1065,8 @@ export function WorkspaceCompanies({
               </tr>
             </thead>
             <tbody>
-              {(() => {
-                const sorted = sortCompanies(companies);
-                return sorted.map((c, i) => {
-                const isLast = i === sorted.length - 1;
+              {sortedCompanies.map((c, i) => {
+                const isLast = i === sortedCompanies.length - 1;
                 const rowTd: React.CSSProperties = { ...tdStyle, borderBottom: isLast ? "none" : tdStyle.borderBottom };
                 const scanning = pendingScanIds.includes(c.id);
                 const subtitle = companySubtitle(c);
@@ -970,11 +1110,11 @@ export function WorkspaceCompanies({
                     </td>
                   </tr>
                 );
-              });
-              })()}
+              })}
             </tbody>
           </table>
         </ScoutBox>
+        )
       )}
 
       {/* Company detail drawer */}
@@ -982,6 +1122,7 @@ export function WorkspaceCompanies({
         <CompanyDrawer
           company={selectedCompany}
           userTargetRoles={userTargetRoles}
+          isMobile={isMobile}
           onClose={() => setSelectedId(null)}
           onPatch={patchField}
           onRefreshed={handleRefreshed}
