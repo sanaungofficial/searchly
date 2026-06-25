@@ -51,6 +51,24 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Jobs",
     variables: ["jobTitle", "company", "description", "resumeSlice"],
   },
+  COACH_MATCH_EXPLAIN: {
+    label: "Coach Match Explanation",
+    description: "Explains why a specific career coach fits a job seeker's profile.",
+    category: "Coaching",
+    variables: [
+      "resumeSlice",
+      "targetRoles",
+      "priorities",
+      "careerMotivation",
+      "strategyIntakeNotes",
+      "coachName",
+      "coachHeadline",
+      "coachBio",
+      "coachSpecialties",
+      "coachIndustries",
+      "coachFirms",
+    ],
+  },
   ROLE_GAP: {
     label: "Role Gap Analysis",
     description: "Analyzes gaps between candidate's resume and a target role.",
@@ -323,6 +341,40 @@ Analyze the match and return a JSON object with this exact shape:
 }
 
 Return ONLY the JSON object, no markdown.`,
+
+  COACH_MATCH_EXPLAIN: `You are a career coach matching advisor. Explain why this coach is a good fit for this job seeker.
+
+JOB SEEKER PROFILE:
+Target roles: {{targetRoles}}
+Priorities: {{priorities}}
+Career motivation: {{careerMotivation}}
+Strategy notes: {{strategyIntakeNotes}}
+
+Resume / profile:
+{{resumeSlice}}
+
+COACH:
+Name: {{coachName}}
+Headline: {{coachHeadline}}
+Bio: {{coachBio}}
+Specialties: {{coachSpecialties}}
+Industries: {{coachIndustries}}
+Firms: {{coachFirms}}
+
+Analyze the fit and return JSON only:
+{
+  "score": <number 0-10, one decimal place>,
+  "scoreLabel": <"Poor" | "Fair" | "Good" | "Strong" | "Excellent">,
+  "matchReasons": ["<specific reason 1>", "<specific reason 2>"],
+  "matchedTags": ["<matching specialty/industry/firm>", "..."],
+  "gapTags": ["<optional gap>", "..."]
+}
+
+Rules:
+- matchReasons: 2-4 bullets, second person ("Your…"), specific to this profile and coach
+- matchedTags: up to 6 tags from coach specialties/industries/firms that align with the seeker
+- gapTags: up to 3 notable gaps (empty array if strong fit)
+- Be honest — do not invent credentials for either party`,
 
   ROLE_GAP: `You are a career coach analyzing a resume against a specific target role.
 
