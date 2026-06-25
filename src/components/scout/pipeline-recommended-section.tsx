@@ -34,6 +34,10 @@ import {
   readRecommendedCache,
   writeRecommendedCache,
 } from "@/lib/recommended-jobs-cache";
+import {
+  loadScopedSemanticQuery,
+  saveScopedSemanticQuery,
+} from "@/lib/client-session";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
@@ -64,8 +68,6 @@ type JobsApiResponse = {
   filtersApplied?: VectorSearchFilters;
   effectiveFilters?: VectorSearchFilters;
 };
-
-const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
 
 function ActiveFiltersBar({
   labels,
@@ -121,15 +123,6 @@ function ActiveFiltersBar({
 
 function splitInputList(value: string): string[] {
   return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
-}
-
-function loadStoredSemanticQuery(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return localStorage.getItem(SEMANTIC_QUERY_STORAGE_KEY) ?? "";
-  } catch {
-    return "";
-  }
 }
 
 function filtersToForm(f: VectorSearchFilters) {
@@ -601,7 +594,7 @@ export function PipelineRecommendedSection({
   const isMobile = useIsMobile();
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
-    semanticQuery: loadStoredSemanticQuery(),
+    semanticQuery: loadScopedSemanticQuery(),
   }));
   const [appliedForm, setAppliedForm] = useState<FilterForm>(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
@@ -646,13 +639,7 @@ export function PipelineRecommendedSection({
       }
 
       const semanticQuery = filtersForm.semanticQuery.trim();
-      if (semanticQuery) {
-        try {
-          localStorage.setItem(SEMANTIC_QUERY_STORAGE_KEY, semanticQuery);
-        } catch {
-          /* ignore */
-        }
-      }
+      saveScopedSemanticQuery(semanticQuery);
 
       try {
         const res = await fetch("/api/jobs/recommended", {
@@ -731,7 +718,7 @@ export function PipelineRecommendedSection({
         }
         const base = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
         defaultFormRef.current = base;
-        setForm((prev) => ({ ...base, semanticQuery: prev.semanticQuery || loadStoredSemanticQuery() }));
+        setForm({ ...base, semanticQuery: loadScopedSemanticQuery() });
         setProfileSuggestedLabels(data.labels ?? describeActiveFilters(data.filters));
         setDefaultsLoaded(true);
       })
@@ -763,11 +750,18 @@ export function PipelineRecommendedSection({
 
   useEffect(() => {
     mountedRef.current = false;
+    setDefaultsLoaded(false);
+    defaultFormRef.current = null;
     setJobs([]);
     setHasLoadedOnce(false);
     setLoading(true);
     setError(null);
     setNotice(null);
+    setActiveFilterLabels([]);
+    setProfileSuggestedLabels([]);
+    const empty = filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS);
+    setForm({ ...empty, semanticQuery: loadScopedSemanticQuery() });
+    setAppliedForm({ ...empty, semanticQuery: "" });
   }, [actingUserId]);
 
   useEffect(() => {
@@ -868,6 +862,7 @@ export function PipelineRecommendedSection({
     };
     setForm({ ...reset, semanticQuery: "" });
     setAppliedForm(reset);
+    saveScopedSemanticQuery("");
     setShowFilters(true);
     void fetchRecommended(reset, { forceRefresh: true, preferCache: false });
   };

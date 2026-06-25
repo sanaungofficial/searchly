@@ -4,9 +4,11 @@ import { logAiUsage } from "@/lib/ai-cost";
 import { anthropicErrorResponse } from "@/lib/anthropic-errors";
 import { fillStrategyPrompt } from "@/lib/career-strategy-context";
 import {
+  archiveStrategyVersion,
   buildStrategySnapshot,
   diffStrategySnapshot,
   normalizeStrategyDocument,
+  normalizeStrategyHistory,
   parseStrategyFromAi,
   salvagePartialStrategyJson,
   type StrategySourceSnapshot,
@@ -62,6 +64,7 @@ function strategyReadResponse(
     document: hasDocument ? normalizeStrategyDocument(profile.strategyData) : null,
     hasDocument,
     isPartial: !!storedSnapshot?.isPartialGeneration,
+    history: normalizeStrategyHistory(profile.strategyHistory),
     intakeNotes: profile.strategyIntakeNotes ?? "",
     updatedAt: profile.strategyUpdatedAt?.toISOString() ?? null,
     profileChanges,
@@ -85,6 +88,7 @@ export async function GET(request: Request) {
         profileChanges: [],
         isStale: false,
         isPartial: false,
+        history: [],
       });
     }
 
@@ -153,6 +157,11 @@ export async function POST(request: Request) {
     try {
       const { document, isPartial } = parseStrategyFromAi(content.text);
       const now = new Date();
+      const history = archiveStrategyVersion({
+        currentDocument: profile.strategyData,
+        currentUpdatedAt: profile.strategyUpdatedAt,
+        existingHistory: profile.strategyHistory,
+      });
       const snapshot: StrategySourceSnapshot = {
         ...buildStrategySnapshot({
           profile: {
@@ -169,6 +178,7 @@ export async function POST(request: Request) {
         strategyData: document,
         strategyUpdatedAt: now,
         strategySourceSnapshot: snapshot,
+        strategyHistory: history,
         positioningStatement:
           profile.positioningStatement ||
           document.positioningStrategy.positioningStatement ||
@@ -182,6 +192,7 @@ export async function POST(request: Request) {
             strategyData: document,
             strategyUpdatedAt: now,
             strategySourceSnapshot: snapshot,
+            strategyHistory: history,
           },
           trackedCompanies,
         ),
@@ -196,6 +207,11 @@ export async function POST(request: Request) {
       const salvaged = salvagePartialStrategyJson(content.text);
       if (salvaged) {
         const now = new Date();
+        const history = archiveStrategyVersion({
+          currentDocument: profile.strategyData,
+          currentUpdatedAt: profile.strategyUpdatedAt,
+          existingHistory: profile.strategyHistory,
+        });
         const snapshot: StrategySourceSnapshot = {
           ...buildStrategySnapshot({
             profile: {
@@ -212,6 +228,7 @@ export async function POST(request: Request) {
           strategyData: salvaged,
           strategyUpdatedAt: now,
           strategySourceSnapshot: snapshot,
+          strategyHistory: history,
           positioningStatement:
             profile.positioningStatement ||
             salvaged.positioningStrategy.positioningStatement ||
@@ -225,6 +242,7 @@ export async function POST(request: Request) {
               strategyData: salvaged,
               strategyUpdatedAt: now,
               strategySourceSnapshot: snapshot,
+              strategyHistory: history,
             },
             trackedCompanies,
           ),

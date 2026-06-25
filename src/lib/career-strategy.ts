@@ -94,6 +94,49 @@ export type StrategySourceSnapshot = {
   isPartialGeneration?: boolean;
 };
 
+export type StrategyVersion = {
+  id: string;
+  savedAt: string;
+  document: CareerStrategyDocument;
+  label?: string;
+};
+
+const MAX_STRATEGY_HISTORY = 15;
+
+export function normalizeStrategyHistory(raw: unknown): StrategyVersion[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const v = item as Partial<StrategyVersion>;
+      if (!v.id || !v.savedAt || !v.document) return null;
+      return {
+        id: String(v.id),
+        savedAt: String(v.savedAt),
+        document: normalizeStrategyDocument(v.document),
+        label: v.label ? String(v.label) : undefined,
+      };
+    })
+    .filter((v): v is StrategyVersion => v != null);
+}
+
+export function archiveStrategyVersion(input: {
+  currentDocument: unknown;
+  currentUpdatedAt: Date | null;
+  existingHistory: unknown;
+}): StrategyVersion[] {
+  if (!input.currentDocument || !input.currentUpdatedAt) {
+    return normalizeStrategyHistory(input.existingHistory);
+  }
+  const history = normalizeStrategyHistory(input.existingHistory);
+  const entry: StrategyVersion = {
+    id: crypto.randomUUID(),
+    savedAt: input.currentUpdatedAt.toISOString(),
+    document: normalizeStrategyDocument(input.currentDocument),
+  };
+  return [entry, ...history.filter((h) => h.savedAt !== entry.savedAt)].slice(0, MAX_STRATEGY_HISTORY);
+}
+
 export type StrategyProfileFields = {
   targetRoles?: string[];
   targetSalary?: string | null;

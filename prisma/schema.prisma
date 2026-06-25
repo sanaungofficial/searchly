@@ -124,6 +124,7 @@ model Profile {
   strategyUpdatedAt        DateTime?
   strategySourceSnapshot   Json?
   strategyIntakeNotes      String?  @db.Text
+  strategyHistory          Json?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

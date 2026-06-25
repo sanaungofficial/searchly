@@ -8,12 +8,14 @@ import {
   normalizeStrategyDocument,
   type IntakeParseResult,
   type StrategyProfileFields,
+  type StrategyVersion,
 } from "@/lib/career-strategy";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import { StrategyFormattedView } from "./strategy-formatted-view";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, T } from "@/lib/typography";
 
@@ -130,6 +132,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
   const [error, setError] = useState<string | null>(null);
   const [companies, setCompanies] = useState<TrackedCompanyRow[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [history, setHistory] = useState<StrategyVersion[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<"current" | string>("current");
 
   const loadStrategy = useCallback(async () => {
     setLoading(true);
@@ -148,6 +152,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         setIsStale(!!data.isStale);
         setIsPartial(!!data.isPartial);
         setPartialWarning(null);
+        setHistory((data.history as StrategyVersion[]) ?? []);
+        if (data.document) setSelectedVersionId("current");
       }
     } catch (e) {
       setError(formatApiErrorMessage(e, "Failed to load strategy"));
@@ -203,6 +209,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       setIsStale(false);
       setIsPartial(!!data.isPartial);
       if (data.warning) setPartialWarning(String(data.warning));
+      setHistory((data.history as StrategyVersion[]) ?? []);
+      setSelectedVersionId("current");
       notifyCreditsChanged();
     } catch (e) {
       setError(formatApiErrorMessage(e, "Generation failed"));
@@ -296,8 +304,24 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     }
   }
 
-  function handleDownloadPdf() {
-    const keyParams = [
+  const hasDocument = !!(updatedAt && document.executiveSummary);
+
+  const viewingDocument: CareerStrategyDocument | null =
+    selectedVersionId === "current"
+      ? hasDocument
+        ? document
+        : null
+      : history.find((h) => h.id === selectedVersionId)?.document ?? null;
+
+  const viewingUpdatedAt =
+    selectedVersionId === "current"
+      ? updatedAt
+      : history.find((h) => h.id === selectedVersionId)?.savedAt ?? null;
+
+  const hasViewableDocument = !!(viewingDocument && viewingDocument.executiveSummary?.trim());
+
+  function buildKeyParameters() {
+    return [
       { label: "Current Location", value: profile.parsedData?.location ?? "—" },
       { label: "Target Market", value: profile.targetMarket ?? "—" },
       { label: "Target Base Salary", value: profile.targetSalary ?? "—" },
@@ -309,26 +333,30 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       { label: "Work Authorization", value: profile.workAuthorization ?? "—" },
       { label: "Search Duration", value: profile.searchDuration ?? "—" },
     ];
+  }
+
+  function handleDownloadPdf(forDocument?: CareerStrategyDocument, forUpdatedAt?: string | null) {
+    const doc = forDocument ?? viewingDocument;
+    const at = forUpdatedAt ?? (selectedVersionId === "current" ? updatedAt : history.find((h) => h.id === selectedVersionId)?.savedAt ?? updatedAt);
+    if (!doc) return;
 
     openStrategyPdf({
       candidateName: profile.name,
       headline: profile.headline,
-      preparedAt: updatedAt
-        ? new Date(updatedAt).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+      preparedAt: at
+        ? new Date(at).toLocaleDateString(undefined, { month: "long", year: "numeric" })
         : new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" }),
       targetPlacementWindow: timelineLabel(profile.jobTimeline),
-      keyParameters: keyParams,
+      keyParameters: buildKeyParameters(),
       trackedCompanies: companies.map((c) => ({
         name: c.name,
         priority: c.priority,
         notes: c.notes ?? c.candidateEdge,
       })),
       targetRoles: profile.targetRoles,
-      document,
+      document: doc,
     });
   }
-
-  const hasDocument = !!(updatedAt && document.executiveSummary);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -393,6 +421,11 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         {generating && (
           <div style={{ marginTop: 16 }}>
             <KimchiProcessLoader preset="careerStrategy" variant="inline" />
+            {hasDocument && (
+              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
+                Your previous strategy stays visible below while the new version generates.
+              </p>
+            )}
           </div>
         )}
         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
@@ -481,25 +514,51 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
 
       {/* Strategy document */}
       <ScoutBox padding={isMobile ? 16 : 22}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
           <div>
             <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.forest, margin: 0 }}>
               Career Strategy document
             </p>
-            {updatedAt && (
+            {viewingUpdatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "4px 0 0" }}>
-                Last updated {new Date(updatedAt).toLocaleString()}
+                {selectedVersionId === "current" ? "Current version · " : "Previous version · "}
+                {new Date(viewingUpdatedAt).toLocaleString()}
               </p>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {hasDocument && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {(hasDocument || history.length > 0) && (
+              <select
+                value={selectedVersionId}
+                onChange={(e) => {
+                  setSelectedVersionId(e.target.value);
+                  setEditMode(false);
+                }}
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: 13,
+                  padding: "6px 10px",
+                  border: border.line,
+                  background: surface.inset,
+                  color: color.forest,
+                }}
+              >
+                {hasDocument && (
+                  <option value="current">
+                    Current{updatedAt ? ` (${new Date(updatedAt).toLocaleDateString()})` : ""}
+                  </option>
+                )}
+                {history.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.label ?? "Previous"} ({new Date(h.savedAt).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+            )}
+            {hasViewableDocument && selectedVersionId === "current" && (
               <>
                 <ScoutSecondaryBtn onClick={() => setEditMode(!editMode)}>
                   {editMode ? "Preview" : "Edit"}
-                </ScoutSecondaryBtn>
-                <ScoutSecondaryBtn onClick={handleDownloadPdf} disabled={!hasDocument}>
-                  Download PDF
                 </ScoutSecondaryBtn>
                 {editMode && (
                   <ScoutPrimaryBtn onClick={handleSaveDocument} disabled={saving}>
@@ -508,22 +567,63 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
                 )}
               </>
             )}
+            {hasViewableDocument && (
+              <ScoutSecondaryBtn onClick={() => handleDownloadPdf()} disabled={!hasViewableDocument}>
+                Download PDF
+              </ScoutSecondaryBtn>
+            )}
           </div>
         </div>
 
+        {generating && hasViewableDocument && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: "10px 12px",
+              background: "rgba(26, 58, 47, 0.06)",
+              border: border.line,
+              fontFamily: fontSans,
+              fontSize: 13,
+              color: color.forest,
+            }}
+          >
+            Generating a new version… showing {selectedVersionId === "current" ? "current" : "selected"} document below.
+          </div>
+        )}
+
         {loading ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading…</p>
-        ) : generating ? (
-          <KimchiProcessLoader preset="careerStrategy" variant="centered" />
-        ) : !hasDocument ? (
+        ) : !hasViewableDocument && !generating ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
             No strategy yet. Paste intake notes and click Generate strategy.
           </p>
-        ) : editMode ? (
+        ) : !hasViewableDocument && generating ? (
+          <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
+            First strategy generating…
+          </p>
+        ) : editMode && selectedVersionId === "current" ? (
           <StrategyEditor document={document} onChange={setDocument} />
-        ) : (
-          <StrategyViewer document={document} />
-        )}
+        ) : viewingDocument ? (
+          <StrategyFormattedView
+            candidateName={profile.name}
+            headline={profile.headline}
+            preparedAt={
+              viewingUpdatedAt
+                ? new Date(viewingUpdatedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
+                : new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
+            }
+            targetPlacementWindow={timelineLabel(profile.jobTimeline)}
+            keyParameters={buildKeyParameters()}
+            trackedCompanies={companies.map((c) => ({
+              name: c.name,
+              priority: c.priority,
+              notes: c.notes ?? c.candidateEdge,
+            }))}
+            targetRoles={profile.targetRoles}
+            document={viewingDocument}
+            isMobile={isMobile}
+          />
+        ) : null}
       </ScoutBox>
 
       {showApplyModal && parseResult && (
@@ -535,49 +635,6 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       )}
 
       {showUpgrade && <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} />}
-    </div>
-  );
-}
-
-function StrategyViewer({ document: d }: { document: CareerStrategyDocument }) {
-  return (
-    <div style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, lineHeight: 1.6 }}>
-      <Section title="Executive Summary" body={d.executiveSummary} />
-      <Section title="Overall Readiness" body={`${d.placementReadiness.overallReadiness}\n\n${d.placementReadiness.overallAssessment}`} />
-      {d.placementReadiness.categories.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.05em", color: color.muted }}>Readiness Assessment</h4>
-          {d.placementReadiness.categories.map((c) => (
-            <p key={c.category} style={{ margin: "0 0 8px" }}>
-              <strong>{c.category}</strong> ({c.score}) — {c.assessment}
-            </p>
-          ))}
-        </div>
-      )}
-      <Section title="Positioning Directive" body={d.positioningStrategy.coreDirective} />
-      {d.positioningStrategy.positioningStatement && (
-        <blockquote style={{ borderLeft: `3px solid ${color.forest}`, paddingLeft: 16, margin: "12px 0", fontStyle: "italic" }}>
-          {d.positioningStrategy.positioningStatement}
-        </blockquote>
-      )}
-      {d.positioningStrategy.angles.map((a) => (
-        <div key={a.title} style={{ marginBottom: 12 }}>
-          <strong>{a.title}</strong> <span style={{ color: color.muted }}>({a.whenToUse})</span>
-          <p style={{ margin: "4px 0 0" }}>{a.description}</p>
-        </div>
-      ))}
-      <Section title="Search Execution" body={d.searchExecutionStrategy.intro} />
-      <Section title="Path Forward" body={`${d.pathForward.summary}\n\n${d.pathForward.closing}`} />
-    </div>
-  );
-}
-
-function Section({ title, body }: { title: string; body: string }) {
-  if (!body?.trim()) return null;
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.05em", color: color.muted }}>{title}</h4>
-      <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{body}</p>
     </div>
   );
 }

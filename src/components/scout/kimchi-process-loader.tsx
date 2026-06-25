@@ -78,8 +78,8 @@ export const KIMCHI_LOADER_PRESETS = {
   careerStrategy: {
     emoji: "📊",
     title: "Building your career strategy…",
-    hint: "This is a full strategy document — it can take 30–90 seconds.",
-    durationSec: 75,
+    hint: "Full documents often take 1–2 minutes. The progress bar may pause near the end — still working.",
+    durationSec: 110,
   },
 } as const;
 
