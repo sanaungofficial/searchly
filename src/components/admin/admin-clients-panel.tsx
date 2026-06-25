@@ -84,6 +84,7 @@ function CreateClientModal({
   const [name, setName] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [sendInvite, setSendInvite] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,10 +102,6 @@ function CreateClientModal({
       setError("Email is required.");
       return;
     }
-    if (!resumeFile && !linkedinUrl.trim()) {
-      setError("Upload a resume or paste a LinkedIn URL.");
-      return;
-    }
 
     setLoading(true);
     setError(null);
@@ -114,6 +111,7 @@ function CreateClientModal({
       if (name.trim()) formData.set("name", name.trim());
       if (linkedinUrl.trim()) formData.set("linkedinUrl", linkedinUrl.trim());
       if (resumeFile) formData.set("resume", resumeFile);
+      if (sendInvite) formData.set("sendInvite", "true");
 
       const res = await fetch("/api/admin/clients", { method: "POST", body: formData });
       const data = await res.json().catch(() => ({}));
@@ -184,7 +182,7 @@ function CreateClientModal({
           </div>
 
           <p style={{ fontSize: T.bodySm, color: color.stone, margin: "0 0 20px", lineHeight: 1.55 }}>
-            Creates the account, sends a sign-in invite, and parses their resume or LinkedIn profile so you can manage them right away.
+            Creates a client account you can manage right away. Resume, LinkedIn, and sign-in invite are all optional — add what you have now and fill in the rest later via View as client.
           </p>
 
           <form onSubmit={(e) => void handleSubmit(e)} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -216,7 +214,7 @@ function CreateClientModal({
             </div>
             <div>
               <label style={{ display: "block", fontSize: T.caption, color: color.muted, fontFamily: fontMono, marginBottom: 6 }}>
-                Resume (PDF, DOCX, or TXT)
+                Resume (optional — PDF, DOCX, or TXT)
               </label>
               <input
                 type="file"
@@ -227,7 +225,7 @@ function CreateClientModal({
             </div>
             <div>
               <label style={{ display: "block", fontSize: T.caption, color: color.muted, fontFamily: fontMono, marginBottom: 6 }}>
-                LinkedIn profile URL
+                LinkedIn profile URL (optional)
               </label>
               <input
                 type="url"
@@ -237,8 +235,32 @@ function CreateClientModal({
                 style={fieldStyle}
               />
             </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                fontSize: T.bodySm,
+                color: color.stone,
+                lineHeight: 1.45,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={sendInvite}
+                onChange={(e) => setSendInvite(e.target.checked)}
+                style={{ marginTop: 3 }}
+              />
+              <span>
+                Send sign-in invite email
+                <span style={{ display: "block", fontSize: T.caption, color: color.muted, marginTop: 4 }}>
+                  Optional. Unchecked creates the account only — you can invite them later or manage via View as client.
+                </span>
+              </span>
+            </label>
             <p style={{ fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>
-              Provide at least one of resume or LinkedIn. Resume parse uses AI on production; LinkedIn import needs Apify configured.
+              Resume parse uses AI on production. LinkedIn import needs Apify configured.
             </p>
             {error && <p style={{ fontSize: T.bodySm, color: "#C4574A", margin: 0 }}>{error}</p>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
@@ -536,7 +558,7 @@ export function AdminClientsPanel({
           <p style={sectionLabelStyle}>Clients</p>
           <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 8px" }}>Manage clients</h1>
           <p style={{ fontSize: 14, color: color.stone, margin: 0, maxWidth: 560 }}>
-            Add client accounts with a resume or LinkedIn profile, then open their workspace to manage jobs and assets.
+            Create client accounts with optional resume, LinkedIn, or sign-in invite — then open their workspace to finish setup.
           </p>
         </div>
         <button
@@ -701,8 +723,8 @@ export function AdminClientsPanel({
             setSelected(client);
             setCreateNotice(
               meta.warnings.length > 0
-                ? `Client created. ${meta.warnings.join(" ")}`
-                : "Client created and profile imported.",
+                ? meta.warnings.join(" ")
+                : "Client account created.",
             );
           }}
         />

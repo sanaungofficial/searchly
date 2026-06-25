@@ -28,6 +28,8 @@ export type ProvisionClientInput = {
   name?: string | null;
   resumeFile?: File | null;
   linkedinUrl?: string | null;
+  /** Send Supabase magic-link invite email (default false) */
+  sendInvite?: boolean;
   /** When true, mark onboarding complete after resume/LinkedIn setup */
   markOnboardingComplete?: boolean;
 };
@@ -40,7 +42,7 @@ export type ProvisionClientResult = {
   warnings: string[];
 };
 
-async function ensureAuthUser(email: string, name: string | null): Promise<{ authUserId: string; invited: boolean }> {
+async function inviteAuthUser(email: string, name: string | null): Promise<{ authUserId: string; invited: boolean }> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: name ?? "" },
@@ -72,16 +74,16 @@ async function upsertClientUser(email: string, name: string | null): Promise<Use
 
 async function uploadResumeForClient(input: {
   dbUser: User;
-  authUserId: string;
+  storageUserId: string;
   file: File;
 }): Promise<void> {
-  const { dbUser, authUserId, file } = input;
+  const { dbUser, storageUserId, file } = input;
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   if (!["pdf", "docx", "txt"].includes(ext)) {
     throw new Error("Upload a PDF, DOCX, or TXT resume");
   }
 
-  const path = `${authUserId}/resume-${Date.now()}.${ext}`;
+  const path = `${storageUserId}/resume-${Date.now()}.${ext}`;
   const bytes = Buffer.from(await file.arrayBuffer());
   const admin = getSupabaseAdmin();
 
@@ -219,14 +221,30 @@ export async function provisionClient(input: ProvisionClientInput): Promise<Prov
 
   if (!email) throw new Error("Email is required");
 
-  const { authUserId, invited } = await ensureAuthUser(email, name);
   let user = await upsertClientUser(email, name);
+  let invited = false;
+  let authUserId: string | null = null;
+
+  if (input.sendInvite) {
+    const authResult = await inviteAuthUser(email, name);
+    authUserId = authResult.authUserId;
+    invited = authResult.invited;
+    if (invited) {
+      warnings.push(`Sign-in invite sent to ${email}.`);
+    } else {
+      warnings.push("Auth account already existed — no new invite sent.");
+    }
+  } else {
+    authUserId = await findSupabaseAuthUserIdByEmail(email);
+  }
+
+  const storageUserId = authUserId ?? user.id;
 
   let resumeUploaded = false;
   let linkedinImported = false;
 
   if (input.resumeFile) {
-    await uploadResumeForClient({ dbUser: user, authUserId, file: input.resumeFile });
+    await uploadResumeForClient({ dbUser: user, storageUserId, file: input.resumeFile });
     resumeUploaded = true;
     user = (await prisma.user.findUnique({ where: { id: user.id } })) ?? user;
   }
@@ -252,12 +270,6 @@ export async function provisionClient(input: ProvisionClientInput): Promise<Prov
       where: { id: user.id },
       data: { onboardingCompletedAt: new Date() },
     });
-  }
-
-  if (invited) {
-    warnings.push("Invite email sent — client can sign in with the magic link.");
-  } else {
-    warnings.push("Account already existed in auth — no new invite sent.");
   }
 
   return { user, invited, resumeUploaded, linkedinImported, warnings };

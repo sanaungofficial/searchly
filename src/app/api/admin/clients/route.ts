@@ -16,15 +16,14 @@ export async function POST(req: Request) {
   const linkedinUrl = typeof linkedinRaw === "string" && linkedinRaw.trim() ? linkedinRaw.trim() : null;
   const resumeFile = formData.get("resume");
   const file = resumeFile instanceof File && resumeFile.size > 0 ? resumeFile : null;
+  const sendInviteRaw = formData.get("sendInvite");
+  const sendInvite =
+    sendInviteRaw === "true" ||
+    sendInviteRaw === "1" ||
+    sendInviteRaw === "on";
 
   if (!email) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
-  }
-  if (!file && !linkedinUrl) {
-    return NextResponse.json(
-      { error: "Upload a resume or paste a LinkedIn profile URL to set up the account." },
-      { status: 400 },
-    );
   }
 
   try {
@@ -33,7 +32,7 @@ export async function POST(req: Request) {
       name,
       resumeFile: file,
       linkedinUrl,
-      markOnboardingComplete: true,
+      sendInvite,
     });
 
     const client = await fetchAdminClientById(result.user.id);
