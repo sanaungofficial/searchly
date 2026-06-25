@@ -52,6 +52,7 @@ interface AISuggestion {
 import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
+import { CareerStrategyPanel } from "./career-strategy-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
@@ -129,6 +130,13 @@ interface UserProfile {
   skillGoals?: SkillGoalRecord[];
   upskillProgress?: UpskillProgressMap;
   targetRoleSettings?: TargetRoleSettingsMap;
+  targetMarket?: string | null;
+  relocationOpenness?: string | null;
+  workAuthorization?: string | null;
+  securityClearance?: string | null;
+  searchDuration?: string | null;
+  positioningStatement?: string | null;
+  strategyIntakeNotes?: string | null;
 }
 
 type RoleAnalysisView = {
@@ -2128,6 +2136,15 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
 
 // ─── Career Preferences Panel ─────────────────────────────────────────────────
 
+function PrefChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>{label}</p>
+      <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{value}</span>
+    </div>
+  );
+}
+
 const PREF_EMPLOYMENT = [
   { value: "employed", label: "Employed — not actively looking" },
   { value: "open", label: "Employed — open to opportunities" },
@@ -2162,7 +2179,10 @@ const PREF_PRIORITIES = [
   "Open to relocating internationally",
 ];
 
-type CareerPrefPatch = Partial<Pick<UserProfile, "careerMotivation" | "jobTimeline" | "currentSalary" | "targetSalary" | "priorities" | "employmentStatus">>;
+type CareerPrefPatch = Partial<Pick<UserProfile,
+  "careerMotivation" | "jobTimeline" | "currentSalary" | "targetSalary" | "priorities" | "employmentStatus"
+  | "targetMarket" | "relocationOpenness" | "workAuthorization" | "securityClearance" | "searchDuration" | "positioningStatement"
+>>;
 
 function CareerPreferencesPanel({ profile, onSave }: {
   profile: UserProfile;
@@ -2176,6 +2196,12 @@ function CareerPreferencesPanel({ profile, onSave }: {
   const [targetSalary, setTargetSalary] = useState(profile.targetSalary || "");
   const [motivation, setMotivation] = useState(profile.careerMotivation || "");
   const [priorities, setPriorities] = useState<string[]>(profile.priorities || []);
+  const [targetMarket, setTargetMarket] = useState(profile.targetMarket || "");
+  const [relocationOpenness, setRelocationOpenness] = useState(profile.relocationOpenness || "");
+  const [workAuthorization, setWorkAuthorization] = useState(profile.workAuthorization || "");
+  const [securityClearance, setSecurityClearance] = useState(profile.securityClearance || "");
+  const [searchDuration, setSearchDuration] = useState(profile.searchDuration || "");
+  const [positioningStatement, setPositioningStatement] = useState(profile.positioningStatement || "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -2185,6 +2211,12 @@ function CareerPreferencesPanel({ profile, onSave }: {
     setTargetSalary(profile.targetSalary || "");
     setMotivation(profile.careerMotivation || "");
     setPriorities(profile.priorities || []);
+    setTargetMarket(profile.targetMarket || "");
+    setRelocationOpenness(profile.relocationOpenness || "");
+    setWorkAuthorization(profile.workAuthorization || "");
+    setSecurityClearance(profile.securityClearance || "");
+    setSearchDuration(profile.searchDuration || "");
+    setPositioningStatement(profile.positioningStatement || "");
   }, [profile]);
 
   const handleSave = async () => {
@@ -2196,6 +2228,12 @@ function CareerPreferencesPanel({ profile, onSave }: {
       targetSalary: targetSalary || null,
       careerMotivation: motivation || null,
       priorities,
+      targetMarket: targetMarket || null,
+      relocationOpenness: relocationOpenness || null,
+      workAuthorization: workAuthorization || null,
+      securityClearance: securityClearance || null,
+      searchDuration: searchDuration || null,
+      positioningStatement: positioningStatement || null,
     });
     setSaving(false);
     setEditing(false);
@@ -2208,12 +2246,18 @@ function CareerPreferencesPanel({ profile, onSave }: {
     setTargetSalary(profile.targetSalary || "");
     setMotivation(profile.careerMotivation || "");
     setPriorities(profile.priorities || []);
+    setTargetMarket(profile.targetMarket || "");
+    setRelocationOpenness(profile.relocationOpenness || "");
+    setWorkAuthorization(profile.workAuthorization || "");
+    setSecurityClearance(profile.securityClearance || "");
+    setSearchDuration(profile.searchDuration || "");
+    setPositioningStatement(profile.positioningStatement || "");
     setEditing(false);
   };
 
   const statusLabel = PREF_EMPLOYMENT.find(e => e.value === profile.employmentStatus)?.label;
   const timelineLabel = PREF_JOB_TIMELINES.find(t => t.value === profile.jobTimeline)?.label;
-  const hasAnyData = profile.employmentStatus || profile.jobTimeline || profile.currentSalary || profile.targetSalary || profile.careerMotivation || (profile.priorities || []).length > 0;
+  const hasAnyData = profile.employmentStatus || profile.jobTimeline || profile.currentSalary || profile.targetSalary || profile.careerMotivation || (profile.priorities || []).length > 0 || profile.targetMarket || profile.relocationOpenness || profile.workAuthorization || profile.securityClearance || profile.searchDuration || profile.positioningStatement;
 
   const inputStyle: React.CSSProperties = { width: "100%", padding: isMobile ? "12px 10px" : "8px 10px", fontSize: isMobile ? 16 : 13, borderRadius: 0, border: border.line, background: surface.inset, color: color.forest, fontFamily: fontSans, outline: "none", boxSizing: "border-box" };
 
@@ -2285,6 +2329,28 @@ function CareerPreferencesPanel({ profile, onSave }: {
             </div>
           </div>
 
+          <div>
+            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Search strategy details</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {([
+                ["Target market (geo)", targetMarket, setTargetMarket, "e.g. Greater Philadelphia / Southern NJ"],
+                ["Relocation", relocationOpenness, setRelocationOpenness, "e.g. Open depending on role"],
+                ["Work authorization", workAuthorization, setWorkAuthorization, "e.g. U.S. Citizen"],
+                ["Security clearance", securityClearance, setSecurityClearance, "e.g. Secret (verify status)"],
+                ["Search duration", searchDuration, setSearchDuration, "e.g. 6+ months actively searching"],
+              ] as [string, string, (v: string) => void, string][]).map(([label, val, setter, placeholder]) => (
+                <div key={label}>
+                  <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 4 }}>{label}</p>
+                  <input value={val} onChange={(e) => setter(e.target.value)} placeholder={placeholder} style={inputStyle} />
+                </div>
+              ))}
+              <div>
+                <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 4 }}>Positioning statement</p>
+                <textarea value={positioningStatement} onChange={(e) => setPositioningStatement(e.target.value)} placeholder="First-person positioning narrative…" style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: "flex", gap: 8, paddingTop: 2 }}>
             <ScoutPrimaryBtn onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.5 : 1 }}>
               {saving ? "Saving…" : "Save"}
@@ -2350,6 +2416,21 @@ function CareerPreferencesPanel({ profile, onSave }: {
               </div>
             </div>
           )}
+          {(profile.targetMarket || profile.relocationOpenness || profile.workAuthorization || profile.securityClearance || profile.searchDuration) && (
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
+              {profile.targetMarket && <PrefChip label="Target market" value={profile.targetMarket} />}
+              {profile.relocationOpenness && <PrefChip label="Relocation" value={profile.relocationOpenness} />}
+              {profile.workAuthorization && <PrefChip label="Work auth" value={profile.workAuthorization} />}
+              {profile.securityClearance && <PrefChip label="Clearance" value={profile.securityClearance} />}
+              {profile.searchDuration && <PrefChip label="Search duration" value={profile.searchDuration} />}
+            </div>
+          )}
+          {profile.positioningStatement && (
+            <div>
+              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Positioning</p>
+              <p style={{ fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)", margin: 0, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{profile.positioningStatement}</p>
+            </div>
+          )}
         </div>
       )}
     </ScoutBox>
@@ -2358,7 +2439,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type PageTab = "dreamrole" | "about" | "learning" | "assets" | "preferences" | "linkedin";
+type PageTab = "dreamrole" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "experience", "education", "skills"];
@@ -2407,6 +2488,7 @@ export function WorkspaceProfile() {
     else if (tab === "assets") router.push("/profile/assets");
     else if (tab === "preferences") router.push("/profile/preferences");
     else if (tab === "linkedin") router.push("/profile/linkedin");
+    else if (tab === "strategy") router.push("/profile/career-strategy");
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2786,6 +2868,7 @@ export function WorkspaceProfile() {
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
     { id: "dreamrole", label: isMobile ? "Roles" : "Target Roles" },
+    { id: "strategy", label: isMobile ? "Strategy" : "Career Strategy" },
     { id: "learning", label: "Upskilling" },
     { id: "assets", label: "Assets" },
     { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
@@ -3066,6 +3149,22 @@ export function WorkspaceProfile() {
         {page === "preferences" && profile && (
           <div style={{ paddingBottom: 40, paddingTop: 8 }}>
             <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
+          </div>
+        )}
+
+        {page === "strategy" && !profile && !loading && (
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
+        )}
+        {page === "strategy" && profile && (
+          <div style={{ paddingBottom: 40, paddingTop: 8 }}>
+            <CareerStrategyPanel
+              profile={profile}
+              isMobile={isMobile}
+              onPatchProfile={async (patch) => {
+                await patchProfile(patch);
+                setProfile((p) => (p ? { ...p, ...patch } as UserProfile : p));
+              }}
+            />
           </div>
         )}
 

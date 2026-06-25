@@ -113,6 +113,18 @@ model Profile {
   upskillProgress Json?
   targetRoleSettings Json?
 
+  targetMarket           String?
+  relocationOpenness     String?
+  workAuthorization      String?
+  securityClearance      String?
+  searchDuration         String?
+  positioningStatement   String?  @db.Text
+
+  strategyData             Json?
+  strategyUpdatedAt        DateTime?
+  strategySourceSnapshot   Json?
+  strategyIntakeNotes      String?  @db.Text
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -398,6 +410,7 @@ enum PlanCreditFeature {
   SCOUT
   INSIDER
   READBACK
+  STRATEGY
 }
 
 model DailyFeatureUsage {
