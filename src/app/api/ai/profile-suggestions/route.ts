@@ -93,14 +93,18 @@ export async function GET(request: Request) {
     const suggestions = JSON.parse(jsonMatch[0]);
 
     if (profile) {
-      const now = new Date();
-      await prisma.profile.update({
-        where: { id: profile.id },
-        data: {
-          profileSuggestionsData: suggestions,
-          profileSuggestionsUpdatedAt: now,
-        },
-      });
+      try {
+        const now = new Date();
+        await prisma.profile.update({
+          where: { id: profile.id },
+          data: {
+            profileSuggestionsData: suggestions,
+            profileSuggestionsUpdatedAt: now,
+          },
+        });
+      } catch (err) {
+        console.warn("[profile-suggestions] cache persist failed:", err);
+      }
     }
 
     return NextResponse.json({ suggestions });
