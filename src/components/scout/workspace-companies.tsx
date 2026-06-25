@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
+import { CompanySumbleIntelPanel } from "@/components/scout/company-sumble-intel-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
@@ -1066,6 +1067,14 @@ function CompanyDrawer({
             />
           </DrawerSection>
 
+          <DrawerSection title="Sumble intelligence">
+            <CompanySumbleIntelPanel
+              trackedId={company.id}
+              companyName={company.name}
+              website={company.website ?? enrichmentWebsite(intel)}
+            />
+          </DrawerSection>
+
           {/* Notes */}
           <DrawerSection title="Notes">
             <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px" }}>
@@ -1451,10 +1460,18 @@ export function WorkspaceCompanies({
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
-              <CompanyHirebaseIntelPanel
-                companyName={intelName || intelSlug}
-                slugHint={intelSlug}
-              />
+              <DrawerSection title="Hirebase analytics">
+                <CompanyHirebaseIntelPanel
+                  companyName={intelName || intelSlug}
+                  slugHint={intelSlug}
+                />
+              </DrawerSection>
+              <DrawerSection title="Sumble intelligence">
+                <CompanySumbleIntelPanel
+                  companyName={intelName || intelSlug}
+                  website={intelSlug.includes(".") ? intelSlug : undefined}
+                />
+              </DrawerSection>
             </div>
           </div>
         </>

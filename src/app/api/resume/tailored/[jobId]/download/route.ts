@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
+import { buildPlainTextResumePdf } from "@/lib/resume-pdf";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const supabase = await createClient();
@@ -75,6 +76,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `attachment; filename="tailored-resume.docx"`,
+      },
+    });
+  }
+
+  if (format === "pdf") {
+    const plainText = sections
+      .map((section) => {
+        if (section.type === "header") return section.content;
+        return `${section.title}\n${section.content}`;
+      })
+      .join("\n\n");
+    const { buffer, filename } = await buildPlainTextResumePdf(plainText, "tailored-resume.pdf");
+    return new NextResponse(buffer as unknown as BodyInit, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   }

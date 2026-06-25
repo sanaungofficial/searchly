@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         headline: scraped.headline?.trim() || profile?.headline || null,
         summary: mergedParsed.summary ?? profile?.summary ?? null,
         parsedData: mergedParsed as unknown as Prisma.InputJsonValue,
-        resumeText: profile?.resumeText?.trim() ? profile.resumeText : resumeText,
+        resumeText: resumeText || profile?.resumeText || null,
         linkedInDraft: linkedInDraft as unknown as Prisma.InputJsonValue,
         linkedInDraftUpdatedAt: new Date(),
       },
@@ -70,6 +70,20 @@ export async function POST(request: Request) {
         priorities: [],
       },
     });
+
+    const primaryAsset = await prisma.userAsset.findFirst({
+      where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (primaryAsset) {
+      await prisma.userAsset.update({
+        where: { id: primaryAsset.id },
+        data: {
+          parsedData: mergedParsed as unknown as Prisma.InputJsonValue,
+          resumeText: resumeText || primaryAsset.resumeText,
+        },
+      });
+    }
 
     return NextResponse.json({
       ok: true,

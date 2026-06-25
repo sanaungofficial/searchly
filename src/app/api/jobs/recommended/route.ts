@@ -2,7 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
-import { fetchRecommendedViaResumeVSearch } from "@/lib/recommended-jobs-fallback";
+import {
+  fetchRecommendedFromTrackedCompanies,
+  fetchRecommendedViaResumeVSearch,
+} from "@/lib/recommended-jobs-fallback";
 import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
@@ -31,6 +34,45 @@ async function parseRecommendedFilters(request: Request): Promise<{
   }
 }
 
+async function respondWithTrackedFallback(input: {
+  dbUserId: string;
+  targetRoles: string[];
+  filters: VectorSearchFilters;
+  resumeText: string;
+  preferCache: boolean;
+  artifactReEmbedded?: boolean;
+}) {
+  const result = await fetchRecommendedFromTrackedCompanies({
+    userId: input.dbUserId,
+    profileTargetRoles: input.targetRoles,
+    filters: input.filters,
+    maxJobs: VECTOR_SEARCH_RESULTS_MAX,
+    preferCache: input.preferCache,
+  });
+
+  if (!result.sources.length) {
+    return null;
+  }
+
+  const jobs = await enrichRecommendedSources(result.sources, input.resumeText, {
+    heuristicOnly: !process.env.ANTHROPIC_API_KEY,
+  });
+
+  return NextResponse.json({
+    jobs,
+    totalCount: jobs.length,
+    page: 1,
+    limit: VECTOR_SEARCH_RESULTS_MAX,
+    totalPages: 1,
+    matchMode: "tracked" as const,
+    companyCount: result.companyCount,
+    trackedWithMatches: result.trackedWithMatches,
+    filtersApplied: input.filters,
+    artifactReEmbedded: input.artifactReEmbedded,
+    resumeVSearch: false,
+  });
+}
+
 async function handleRecommended(request: Request) {
   if (!isHirebaseConfigured()) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
@@ -41,7 +83,7 @@ async function handleRecommended(request: Request) {
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
-  const { filters } = await parseRecommendedFilters(request);
+  const { filters, preferCache } = await parseRecommendedFilters(request);
   const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
   const searchFilters = semanticQuery ? { ...filters, semanticQuery } : filters;
 
@@ -62,14 +104,50 @@ async function handleRecommended(request: Request) {
     targetSalary: typeof profile?.targetSalary === "number" ? profile.targetSalary : null,
   });
 
+  const primaryAsset = await prisma.userAsset.findFirst({
+    where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
+  });
+  const hasResumeFile = !!(primaryAsset?.url || profile?.resumeUrl);
+
   const artifact = await ensureHirebaseArtifactForUser(dbUser.id);
   if (!artifact.artifactId) {
+    if (hasResumeFile || artifact.embedFailed) {
+      const fallback = await respondWithTrackedFallback({
+        dbUserId: dbUser.id,
+        targetRoles,
+        filters: searchFilters,
+        resumeText,
+        preferCache,
+        artifactReEmbedded: artifact.reEmbedded,
+      });
+      if (fallback) return fallback;
+    }
+
+    if (!hasResumeFile) {
+      return NextResponse.json(
+        {
+          error: "Upload a resume from Profile → Assets to see personalized recommendations.",
+          needsResume: true,
+          needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
+        },
+        { status: 404 },
+      );
+    }
+
+    const fallback = await respondWithTrackedFallback({
+      dbUserId: dbUser.id,
+      targetRoles,
+      filters: searchFilters,
+      resumeText,
+      preferCache,
+      artifactReEmbedded: artifact.reEmbedded,
+    });
+    if (fallback) return fallback;
+
     return NextResponse.json(
       {
-        error:
-          artifact.error ??
-          "Upload a resume first — we need a Hirebase embed artifact to match jobs to your background.",
-        needsResume: true,
+        error: "No roles found at your tracked companies — try tracking more companies or broadening filters.",
+        needsResume: false,
         needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
       },
       { status: 404 },
@@ -89,6 +167,16 @@ async function handleRecommended(request: Request) {
     const needsCompanies = result.companyCount === 0;
 
     if (!result.sources.length) {
+      const fallback = await respondWithTrackedFallback({
+        dbUserId: dbUser.id,
+        targetRoles,
+        filters: searchFilters,
+        resumeText,
+        preferCache,
+        artifactReEmbedded: artifact.reEmbedded,
+      });
+      if (fallback) return fallback;
+
       return NextResponse.json(
         {
           error: needsCompanies
@@ -124,6 +212,16 @@ async function handleRecommended(request: Request) {
       resumeVSearch: true,
     });
   } catch (err) {
+    const fallback = await respondWithTrackedFallback({
+      dbUserId: dbUser.id,
+      targetRoles,
+      filters: searchFilters,
+      resumeText,
+      preferCache,
+      artifactReEmbedded: artifact.reEmbedded,
+    });
+    if (fallback) return fallback;
+
     const msg = formatApiErrorMessage(err, "Could not load recommended jobs.");
     return NextResponse.json({ error: msg }, { status: 502 });
   }

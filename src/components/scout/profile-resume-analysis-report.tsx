@@ -125,6 +125,18 @@ function groupIssuesIntoHighlights(issues: ReportIssue[]): ReportHighlightCatego
       issueCount: 1,
       summary: issue.detail,
       whyItMatters: issue.detail,
+      sectionHint:
+        category === "Relevance"
+          ? /skill|keyword/.test(lower)
+            ? "skills"
+            : "summary"
+          : category === "Impact & Achievements"
+            ? "experience"
+            : /education|degree/.test(lower)
+              ? "education"
+              : /certif/.test(lower)
+                ? "certifications"
+                : undefined,
     });
   }
 
@@ -140,6 +152,7 @@ export function ResumeAnalysisReportDrawer({
   loading,
   error,
   onBeginImprovements,
+  onFixHighlight,
   onRefresh,
   aiUnavailable,
 }: {
@@ -149,6 +162,7 @@ export function ResumeAnalysisReportDrawer({
   loading: boolean;
   error?: string;
   onBeginImprovements: () => void;
+  onFixHighlight?: (item: ReportHighlightItem) => void;
   onRefresh: () => void;
   aiUnavailable?: boolean;
 }) {
@@ -291,6 +305,7 @@ export function ResumeAnalysisReportDrawer({
                         <p style={{ margin: "0 0 10px", fontSize: 12, color: JR.muted, lineHeight: 1.5 }}>{item.whyItMatters}</p>
                         <button
                           type="button"
+                          onClick={() => onFixHighlight?.(item)}
                           style={{
                             padding: "6px 12px",
                             background: JR.panel,
@@ -298,7 +313,7 @@ export function ResumeAnalysisReportDrawer({
                             borderRadius: 0,
                             fontSize: 12,
                             color: JR.text,
-                            cursor: "pointer",
+                            cursor: onFixHighlight ? "pointer" : "default",
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 4,

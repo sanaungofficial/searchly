@@ -791,12 +791,18 @@ export function PipelineRecommendedSection({
         if (gen !== fetchGenRef.current) return;
 
         if (!res.ok) {
-          const msg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
-          setError(
-            data.needsResume
-              ? `${msg} Upload or re-upload your resume from Profile → Assets.`
-              : msg,
-          );
+          const rawMsg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
+          const isEmbedNoise =
+            /embed|artifact|hirebase|permission|forbidden|403|vector/i.test(rawMsg);
+          const msg =
+            data.needsResume && !isEmbedNoise
+              ? `${rawMsg} Upload or re-upload your resume from Profile → Assets.`
+              : data.needsResume
+                ? "Upload a resume from Profile → Assets to see personalized recommendations."
+                : isEmbedNoise
+                  ? null
+                  : rawMsg;
+          setError(msg);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],

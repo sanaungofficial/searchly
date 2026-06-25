@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { buildResumeDocx } from "@/lib/resume-docx";
+import { buildResumePdf } from "@/lib/resume-pdf";
 import { emptyParsedResumeData, normalizeParsedResumeData } from "@/lib/resume-parse";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -32,10 +33,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   if (format === "pdf") {
-    return NextResponse.json({
-      error: "Use Preview → Print to PDF in the editor for now",
-      hint: "Open the resume editor and use Print / Save as PDF",
-    }, { status: 400 });
+    const { buffer, filename } = await buildResumePdf(parsed, `${asset.name || "resume"}.pdf`);
+    return new NextResponse(buffer as unknown as BodyInit, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
   }
 
   return NextResponse.json({ error: "Unsupported format" }, { status: 400 });
