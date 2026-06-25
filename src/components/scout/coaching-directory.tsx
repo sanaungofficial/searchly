@@ -112,7 +112,7 @@ function FeaturedCarousel({
   if (!coaches.length) return null;
 
   return (
-    <div style={{ marginBottom: 28 }}>
+    <div style={{ marginTop: 8, marginBottom: 8 }}>
       <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 14px", color: color.ink }}>
         Get started with an expert
       </p>
@@ -136,7 +136,6 @@ function FeaturedCarousel({
                   {c.spotlightBadge && <div style={{ marginBottom: 6 }}><SpotlightBadge badge={c.spotlightBadge} /></div>}
                   <CoachStarRating rating={c.avgRating} count={c.reviewCount} />
                 </div>
-                {(c.matchScore ?? 0) > 0 && <MatchScoreBadge score={c.matchScore!} label={c.matchLabel ?? ""} />}
               </div>
               {c.headline && (
                 <p style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, lineHeight: 1.5, margin: "0 0 10px" }}>
@@ -577,8 +576,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
         )}
       </ScoutBox>
 
-      <FeaturedCarousel coaches={spotlightCoaches} isMobile={isMobile} isPro={isPro} onSubscribe={onSubscribe} onOpenCoach={onOpenCoach} />
-
       {loading ? (
         <ScoutBox style={{ padding: 48, textAlign: "center" }}>
           <p style={{ color: color.mutedLight, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>Loading coaches…</p>
@@ -590,7 +587,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
           </p>
         </ScoutBox>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>
           {filteredCoaches.map((c) => (
             <DirectoryRow
               key={c.id}
@@ -605,6 +602,8 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
           ))}
         </div>
       )}
+
+      <FeaturedCarousel coaches={spotlightCoaches} isMobile={isMobile} isPro={isPro} onSubscribe={onSubscribe} onOpenCoach={onOpenCoach} />
     </div>
   );
 }
