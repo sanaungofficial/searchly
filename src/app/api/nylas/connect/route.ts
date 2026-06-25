@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { CoachStatus, UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
 import {
+  attachNylasOAuthCookie,
   createNylasAuthUrl,
   getNylasConfig,
   isNylasConfigured,
@@ -77,7 +78,9 @@ export async function GET(req: NextRequest) {
       loginHint: ctx.profile.email ?? ctx.dbUser.email,
       appUrl,
     });
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    attachNylasOAuthCookie(response, { coachProfileId: ctx.profile.id, ts: Date.now() });
+    return response;
   } catch (err) {
     console.error("[nylas/connect]", err);
     const message = err instanceof Error ? err.message : "Nylas connect failed";

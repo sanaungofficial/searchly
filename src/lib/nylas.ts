@@ -1,6 +1,18 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import type { NextRequest, NextResponse } from "next/server";
 
 const DEFAULT_API_URI = "https://api.us.nylas.com";
+
+export const NYLAS_OAUTH_COOKIE = "nylas_oauth_state";
+
+/** Calendar scopes needed for Nylas Scheduler (read/write events). */
+export const NYLAS_CALENDAR_SCOPES = {
+  google: [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.events",
+  ],
+  microsoft: ["Calendars.ReadWrite", "offline_access"],
+} as const;
 
 export type NylasConfig = {
   apiKey: string;
@@ -135,6 +147,7 @@ export async function createNylasAuthUrl(params: {
     access_type: "offline",
     provider: params.provider,
     state: params.state,
+    scope: [...NYLAS_CALENDAR_SCOPES[params.provider]],
     ...(params.loginHint ? { login_hint: params.loginHint } : {}),
   };
 
@@ -171,6 +184,7 @@ export async function exchangeNylasCode(code: string, appUrl?: string): Promise<
       code,
       redirect_uri: nylasRedirectUri(cfg.appUrl),
       grant_type: "authorization_code",
+      code_verifier: "nylas",
     },
   });
 
@@ -235,7 +249,9 @@ export function signNylasState(payload: { coachProfileId: string; ts: number }):
   return `${body}.${sig}`;
 }
 
-export function verifyNylasState(state: string): { coachProfileId: string; ts: number } | null {
+export type NylasOAuthState = { coachProfileId: string; ts: number };
+
+export function verifyNylasState(state: string): NylasOAuthState | null {
   const cfg = getNylasConfig();
   if (!cfg) return null;
 
@@ -260,6 +276,77 @@ export function verifyNylasState(state: string): { coachProfileId: string; ts: n
   } catch {
     return null;
   }
+}
+
+function nylasOAuthCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 60 * 60,
+  };
+}
+
+/** Persist OAuth state in a cookie so callback still works if Nylas drops the state param. */
+export function attachNylasOAuthCookie(
+  response: NextResponse,
+  payload: NylasOAuthState,
+): NextResponse {
+  response.cookies.set(NYLAS_OAUTH_COOKIE, signNylasState(payload), nylasOAuthCookieOptions());
+  return response;
+}
+
+export function readNylasOAuthCookie(req: NextRequest): NylasOAuthState | null {
+  const raw = req.cookies.get(NYLAS_OAUTH_COOKIE)?.value;
+  if (!raw) return null;
+  return verifyNylasState(raw);
+}
+
+export function clearNylasOAuthCookie(response: NextResponse): NextResponse {
+  response.cookies.set(NYLAS_OAUTH_COOKIE, "", { ...nylasOAuthCookieOptions(), maxAge: 0 });
+  return response;
+}
+
+export function resolveNylasOAuthState(
+  req: NextRequest,
+  stateFromQuery: string | null,
+): NylasOAuthState | null {
+  return verifyNylasState(stateFromQuery ?? "") ?? readNylasOAuthCookie(req);
+}
+
+export function mapNylasOAuthError(params: {
+  error?: string | null;
+  errorReason?: string | null;
+  errorDescription?: string | null;
+}): { reason: string; detail?: string } {
+  const error = params.error?.trim();
+  const errorReason = params.errorReason?.trim();
+  const errorDescription = params.errorDescription?.trim();
+
+  if (error === "access_denied") {
+    return {
+      reason: "denied",
+      detail: errorDescription ?? "Google or Outlook access was denied.",
+    };
+  }
+
+  if (errorReason === "origin_not_allowed" || error?.includes("redirect")) {
+    return { reason: "redirect", detail: errorDescription };
+  }
+
+  if (errorReason === "provider_not_configured") {
+    return {
+      reason: "provider",
+      detail: "Google is not enabled in Nylas Hosted Authentication → Identity providers.",
+    };
+  }
+
+  if (error) {
+    return { reason: "auth", detail: errorDescription ?? errorReason ?? error };
+  }
+
+  return { reason: "auth" };
 }
 
 export function verifyNylasWebhookSignature(rawBody: string, signature: string | null): boolean {
