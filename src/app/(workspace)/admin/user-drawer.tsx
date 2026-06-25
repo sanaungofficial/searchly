@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 
 export type DrawerUser = {
@@ -84,7 +84,6 @@ export function UserDrawer({
   onClose: () => void;
   onRoleUpdate: (id: string, role: UserRole) => void;
 }) {
-  const router = useRouter();
   const [role, setRole] = useState<UserRole>(user.role);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -130,10 +129,11 @@ export function UserDrawer({
         body: JSON.stringify({ userId: user.id }),
       });
       if (!res.ok) throw new Error("Failed");
+      const body = await res.json().catch(() => ({})) as { user?: { id?: string } };
       onClose();
-      router.push("/profile");
-      router.refresh();
-      window.location.reload();
+      clearClientSessionCaches();
+      if (body.user?.id) setActingUserScope(body.user.id);
+      window.location.href = "/profile";
     } catch {
       setImpersonating(false);
     }

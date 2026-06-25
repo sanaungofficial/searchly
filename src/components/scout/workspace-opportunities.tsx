@@ -52,7 +52,7 @@ type OppTab = "pipeline" | "network" | "companies";
 interface OpportunitiesProps {}
 
 export function WorkspaceOpportunities() {
-  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole } = useWorkspace();
+  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId } = useWorkspace();
   const isMobile = useIsMobile();
   const router = useRouter();
   const pathname = usePathname();
@@ -589,6 +589,7 @@ export function WorkspaceOpportunities() {
             onOpenDrawer={openDrawer}
             onOpenRecommended={openRecommendedJob}
             onSaveRecommended={saveRecommendedJob}
+            actingUserId={actingUserId}
           />
         )}
       </div>
@@ -948,6 +949,7 @@ interface PipelineTabProps {
   onOpenDrawer: (id: number) => void;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
+  actingUserId?: string | null;
 }
 
 function PipelineTab({
@@ -958,6 +960,7 @@ function PipelineTab({
   onOpenDrawer,
   onOpenRecommended,
   onSaveRecommended,
+  actingUserId,
 }: PipelineTabProps) {
   const isMobile = useIsMobile();
   const [wideLayout, setWideLayout] = useState(false);
@@ -1077,6 +1080,7 @@ function PipelineTab({
         onOpenPipeline={onOpenDrawer}
         onSaveJob={onSaveRecommended}
         onChangeStage={onChangeStage}
+        actingUserId={actingUserId}
       />
     </div>
   );

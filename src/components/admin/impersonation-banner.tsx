@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 import { useState } from "react";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
@@ -11,7 +11,6 @@ export type ImpersonationState = {
 };
 
 export function ImpersonationBanner({ state }: { state: ImpersonationState }) {
-  const router = useRouter();
   const [exiting, setExiting] = useState(false);
 
   if (!state.active) return null;
@@ -22,9 +21,9 @@ export function ImpersonationBanner({ state }: { state: ImpersonationState }) {
     setExiting(true);
     try {
       await fetch("/api/admin/impersonate", { method: "DELETE" });
-      router.push("/admin/clients");
-      router.refresh();
-      window.location.reload();
+      clearClientSessionCaches();
+      setActingUserScope(null);
+      window.location.href = "/admin/clients";
     } catch {
       setExiting(false);
     }
