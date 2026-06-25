@@ -83,6 +83,10 @@ export type SumblePersonRow = {
   person_id?: number | null;
   sumble_url?: string | null;
   attributes?: SumblePersonAttributes | null;
+  related_people?: {
+    managers?: SumbleRelatedPersonRow[];
+    direct_reports?: SumbleRelatedPersonRow[];
+  } | null;
 };
 
 export type SumbleTeamAttributes = {
@@ -870,6 +874,42 @@ export async function fetchSumblePersonByLinkedIn(input: {
   return {
     person,
     email: person?.attributes?.email ?? null,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+/** Inferred managers and direct reports for one person (list mode only). */
+export async function fetchSumblePersonRelatedNetwork(input: {
+  personId: number;
+}): Promise<{
+  sourcePerson: SumblePersonRow | null;
+  managers: SumbleRelatedPersonRow[];
+  directReports: SumbleRelatedPersonRow[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/people", {
+    method: "POST",
+    body: JSON.stringify({
+      people: [{ person_id: input.personId }],
+      select: {
+        attributes: ["name", "job_title", "job_level", "job_function", "linkedin_url"],
+        related_people: {
+          direction: ["managers", "direct_reports"],
+          attributes: ["name", "linkedin_url", "job_title", "job_level", "job_function", "confidence"],
+        },
+      },
+    }),
+  });
+
+  const person = (data.people?.[0] ?? null) as SumblePersonRow | null;
+  const related = person?.related_people;
+
+  return {
+    sourcePerson: person,
+    managers: related?.managers ?? [],
+    directReports: related?.direct_reports ?? [],
     creditsUsed: data.credits_used ?? 0,
     creditsRemaining: data.credits_remaining ?? null,
   };

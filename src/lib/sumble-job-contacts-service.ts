@@ -8,6 +8,7 @@ import {
   fetchSumbleJobRelatedPeople,
   fetchSumbleOrganizationMatch,
   fetchSumblePeopleAtOrganization,
+  fetchSumblePersonRelatedNetwork,
   fetchSumbleTeamsForJobFunction,
   isSumbleConfigured,
   lookupSumbleJobFunctionTerms,
@@ -36,7 +37,7 @@ export type InsiderConnectionPerson = {
   linkedinUrl: string | null;
   sumbleUrl: string | null;
   confidenceScore: number | null;
-  bucket: "hiring" | "team" | "org" | "alumni";
+  bucket: "hiring" | "team" | "org" | "alumni" | "manager" | "peer";
 };
 
 export type JobHiringTeam = {
@@ -423,5 +424,106 @@ export async function getJobInsiderConnectionsBundle(input: {
     };
     setInsightsCached(cacheKey, bundle, ERROR_TTL_MS);
     return bundle;
+  }
+}
+
+export type PersonNetworkExpandBundle = {
+  configured: boolean;
+  sourcePersonId: number;
+  sourcePersonName: string | null;
+  managers: InsiderConnectionPerson[];
+  peers: InsiderConnectionPerson[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+  generatedAt: string;
+  serverCached: boolean;
+  requiresLoad?: boolean;
+  estimatedCredits?: number;
+  error?: string;
+};
+
+export async function getPersonNetworkExpandBundle(input: {
+  personId: number;
+  allowFetch?: boolean;
+  forceRefresh?: boolean;
+}): Promise<PersonNetworkExpandBundle> {
+  const configured = isSumbleConfigured();
+  const creditsRemaining = getSumbleCreditsRemaining();
+  const estimatedCredits = SUMBLE_ESTIMATED_COSTS.personNetworkExpand;
+
+  const empty: PersonNetworkExpandBundle = {
+    configured,
+    sourcePersonId: input.personId,
+    sourcePersonName: null,
+    managers: [],
+    peers: [],
+    creditsUsed: 0,
+    creditsRemaining,
+    generatedAt: new Date().toISOString(),
+    serverCached: false,
+    requiresLoad: configured ? true : undefined,
+    estimatedCredits: configured ? estimatedCredits : undefined,
+  };
+
+  if (!configured) {
+    return { ...empty, requiresLoad: undefined, error: "Sumble is not configured." };
+  }
+
+  if (!Number.isFinite(input.personId) || input.personId <= 0) {
+    return { ...empty, requiresLoad: undefined, error: "Valid personId is required." };
+  }
+
+  const cacheKey = insightsCacheKey("sumble-person-network", { personId: input.personId });
+
+  if (!input.forceRefresh) {
+    const hit = getInsightsCached<PersonNetworkExpandBundle>(cacheKey);
+    if (hit) return { ...hit, serverCached: true, requiresLoad: false };
+  }
+
+  if (!input.allowFetch) {
+    return empty;
+  }
+
+  try {
+    assertSumbleCreditsAvailable(estimatedCredits);
+    const result = await fetchSumblePersonRelatedNetwork({ personId: input.personId });
+
+    const managers = result.managers
+      .map((p) => mapRelatedPerson(p, "manager"))
+      .filter(Boolean) as InsiderConnectionPerson[];
+
+    const peers = result.directReports
+      .map((p) => mapRelatedPerson(p, "peer"))
+      .filter(Boolean) as InsiderConnectionPerson[];
+
+    const bundle: PersonNetworkExpandBundle = {
+      configured: true,
+      sourcePersonId: input.personId,
+      sourcePersonName: result.sourcePerson?.attributes?.name?.trim() ?? null,
+      managers: dedupePeople(managers),
+      peers: dedupePeople(peers),
+      creditsUsed: result.creditsUsed,
+      creditsRemaining: result.creditsRemaining,
+      generatedAt: new Date().toISOString(),
+      serverCached: false,
+      requiresLoad: false,
+      estimatedCredits,
+    };
+
+    setInsightsCached(cacheKey, bundle, TTL_MS);
+    return bundle;
+  } catch (err) {
+    const message =
+      err instanceof SumbleInsufficientCreditsError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Network expand failed.";
+    return {
+      ...empty,
+      error: message,
+      creditsRemaining:
+        err instanceof SumbleInsufficientCreditsError ? err.creditsRemaining : creditsRemaining,
+    };
   }
 }

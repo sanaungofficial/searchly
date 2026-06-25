@@ -75,6 +75,14 @@ export const SUMBLE_MCP_TOOLS: SumbleMcpTool[] = [
     kimchiStatus: "live",
   },
   {
+    name: "person_network_expand",
+    endpoint: "POST /v6/people related_people (managers + direct_reports)",
+    method: "POST",
+    description: "Expand one hiring-team contact to inferred managers and teammates for networking.",
+    creditNotes: "~10 credits per person (cached 24h). 1 base + 1 per related person returned.",
+    kimchiStatus: "live",
+  },
+  {
     name: "title_lookup",
     endpoint: "POST /v6/jobs/title-lookup",
     method: "POST",

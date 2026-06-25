@@ -6,6 +6,7 @@ import type {
   JobHiringTeam,
   JobInsiderConnectionsBundle,
   InsiderConnectionPerson,
+  PersonNetworkExpandBundle,
 } from "@/lib/sumble-job-contacts-service";
 import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
 import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
@@ -34,7 +35,65 @@ function IconSearch() {
   );
 }
 
+function CompactPersonLink({ person }: { person: InsiderConnectionPerson }) {
+  const linkStyle = {
+    fontFamily: sans,
+    fontSize: 13,
+    fontWeight: 600,
+    color: color.forest,
+    textDecoration: "none" as const,
+  };
+  if (person.linkedinUrl) {
+    return (
+      <a href={person.linkedinUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+        {person.name} ↗
+      </a>
+    );
+  }
+  if (person.sumbleUrl) {
+    return (
+      <a href={person.sumbleUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+        {person.name} ↗
+      </a>
+    );
+  }
+  return <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>{person.name}</span>;
+}
+
 function PersonRow({ person }: { person: InsiderConnectionPerson }) {
+  const [expandLoading, setExpandLoading] = useState(false);
+  const [expandData, setExpandData] = useState<PersonNetworkExpandBundle | null>(null);
+  const [expandOpen, setExpandOpen] = useState(false);
+  const [expandError, setExpandError] = useState<string | null>(null);
+
+  const canExpand = person.personId != null;
+
+  async function handleExpandNetwork() {
+    if (!person.personId) return;
+
+    if (expandData && !expandLoading) {
+      setExpandOpen((open) => !open);
+      return;
+    }
+
+    setExpandLoading(true);
+    setExpandError(null);
+    setExpandOpen(true);
+    try {
+      const res = await fetch(`/api/people/sumble-network?personId=${person.personId}&load=1`);
+      const body = (await res.json()) as PersonNetworkExpandBundle;
+      setExpandData(body);
+      if (body.error && !body.managers.length && !body.peers.length) {
+        setExpandError(body.error);
+      }
+    } catch {
+      setExpandError("Network error loading related contacts.");
+      setExpandOpen(false);
+    } finally {
+      setExpandLoading(false);
+    }
+  }
+
   return (
     <li style={{ padding: "8px 0", borderBottom: line }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 8 }}>
@@ -67,12 +126,86 @@ function PersonRow({ person }: { person: InsiderConnectionPerson }) {
             {Math.round(person.confidenceScore * 100)}% match
           </span>
         )}
+        {canExpand && (
+          <button
+            type="button"
+            onClick={() => void handleExpandNetwork()}
+            disabled={expandLoading}
+            style={{
+              fontFamily: sans,
+              fontSize: 11,
+              fontWeight: 600,
+              color: color.forest,
+              background: "rgba(74,139,106,0.1)",
+              border: `1px solid rgba(74,139,106,0.35)`,
+              padding: "2px 8px",
+              cursor: expandLoading ? "wait" : "pointer",
+              marginLeft: "auto",
+            }}
+          >
+            {expandLoading ? "Loading…" : expandOpen ? "Hide network" : `Expand network · ~${SUMBLE_ESTIMATED_COSTS.personNetworkExpand}c`}
+          </button>
+        )}
       </div>
       {person.jobTitle && (
         <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
           {person.jobTitle}
           {person.jobFunction ? ` · ${person.jobFunction}` : ""}
         </p>
+      )}
+      {expandOpen && expandData && (expandData.managers.length > 0 || expandData.peers.length > 0) && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "10px 12px",
+            background: surface.inset,
+            border: line,
+          }}
+        >
+          {expandData.managers.length > 0 && (
+            <div style={{ marginBottom: expandData.peers.length ? 10 : 0 }}>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#2A4A3A", margin: "0 0 6px" }}>
+                Likely managers
+              </p>
+              <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                {expandData.managers.map((p) => (
+                  <li key={`mgr-${p.personId}-${p.name}`} style={{ marginBottom: 4 }}>
+                    <CompactPersonLink person={p} />
+                    {p.jobTitle && (
+                      <span style={{ fontFamily: sans, fontSize: 12, color: color.muted }}> · {p.jobTitle}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {expandData.peers.length > 0 && (
+            <div>
+              <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#2A4A3A", margin: "0 0 6px" }}>
+                Teammates & similar roles
+              </p>
+              <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                {expandData.peers.map((p) => (
+                  <li key={`peer-${p.personId}-${p.name}`} style={{ marginBottom: 4 }}>
+                    <CompactPersonLink person={p} />
+                    {p.jobTitle && (
+                      <span style={{ fontFamily: sans, fontSize: 12, color: color.muted }}> · {p.jobTitle}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {expandData.creditsUsed ? (
+            <p style={{ fontFamily: fontMono, fontSize: 11, color: color.mutedLight, margin: "8px 0 0" }}>
+              Used {expandData.creditsUsed} credits
+              {expandData.creditsRemaining != null ? ` · ${expandData.creditsRemaining.toLocaleString()} left` : ""}
+            </p>
+          ) : null}
+        </div>
+      )}
+      {expandError && (
+        <p style={{ fontFamily: sans, fontSize: 12, color: color.muted, margin: "6px 0 0" }}>{expandError}</p>
       )}
     </li>
   );
@@ -330,7 +463,7 @@ export function InsiderConnectionPanel({
       </div>
 
       <p style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", lineHeight: 1.6, margin: "0 0 18px" }}>
-        Found via Sumble from the job posting and org teams. Use LinkedIn links for outreach — email lookup below (~10 credits each).
+        Found via Sumble from the job posting and org teams. Expand any contact to load their likely managers and teammates (~10 credits each, cached 24h). Use LinkedIn for outreach — email lookup below (~10 credits each).
       </p>
 
       {error && (
