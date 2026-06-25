@@ -3,6 +3,7 @@
 import type { JobMatchResult } from "@/lib/resume-match";
 import { JR } from "./profile-resume-editor-panels";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 
 export function MatchTag() {
   return (
@@ -49,6 +50,7 @@ export function ResumeMatchPanel(props: {
         <button type="button" onClick={onRunMatch} disabled={loading || !jobDescription.trim()} style={{ width: "100%", padding: "10px 14px", background: loading || !jobDescription.trim() ? JR.bg : JR.green, color: loading || !jobDescription.trim() ? JR.muted : "#FFF", border: "none", borderRadius: 0, fontSize: 13, fontWeight: 700, cursor: loading || !jobDescription.trim() ? "not-allowed" : "pointer" }}>
           {loading ? "Analyzing match…" : "Run match analysis"}
         </button>
+        {loading && <KimchiProcessLoader preset="jobMatch" variant="inline" />}
         {error && <p style={{ margin: 0, fontSize: 12, color: JR.urgent }}>{error}</p>}
         {result && (
           <>

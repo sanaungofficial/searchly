@@ -5,8 +5,9 @@ import { hasResumeBodyContent } from "@/lib/resume-parse";
 export function mergeParsedResumeData(
   existing: ParsedResumeData | null,
   incoming: ParsedResumeData,
+  options?: { preferIncoming?: boolean },
 ): ParsedResumeData {
-  if (!existing) return incoming;
+  if (options?.preferIncoming || !existing) return incoming;
   if (!hasResumeBodyContent(existing)) {
     return {
       ...incoming,
@@ -44,5 +45,25 @@ export function mergeParsedResumeData(
     skillGroups: existing.skillGroups.length ? existing.skillGroups : incoming.skillGroups,
     certifications: existing.certifications.length ? existing.certifications : incoming.certifications,
     hirebaseArtifactId: existing.hirebaseArtifactId ?? incoming.hirebaseArtifactId ?? null,
+  };
+}
+
+/** LinkedIn import should refresh profile sections from scraped data. */
+export function mergeLinkedInImportParsed(
+  existing: ParsedResumeData | null,
+  incoming: ParsedResumeData,
+): ParsedResumeData {
+  if (!existing) return incoming;
+  return {
+    ...existing,
+    name: incoming.name?.trim() || existing.name || null,
+    location: incoming.location?.trim() || existing.location || null,
+    linkedinUrl: incoming.linkedinUrl?.trim() || existing.linkedinUrl || null,
+    summary: incoming.summary?.trim() || existing.summary || null,
+    workExperience: incoming.workExperience.length ? incoming.workExperience : existing.workExperience,
+    education: incoming.education.length ? incoming.education : existing.education,
+    skills: incoming.skills.length ? incoming.skills : incoming.skills,
+    skillGroups: incoming.skillGroups.length ? incoming.skillGroups : existing.skillGroups,
+    certifications: incoming.certifications.length ? incoming.certifications : existing.certifications,
   };
 }

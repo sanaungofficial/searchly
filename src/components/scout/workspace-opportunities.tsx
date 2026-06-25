@@ -38,6 +38,7 @@ import {
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import type { StageFilter } from "@/lib/role-listings";
 
@@ -834,9 +835,8 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         </button>
       </div>
       {loading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest }}>Kimchi is analyzing this listing…</p>
+        <div style={{ marginTop: 12 }}>
+          <KimchiProcessLoader preset="jobParse" variant="inline" />
         </div>
       )}
       {error && !loading && (

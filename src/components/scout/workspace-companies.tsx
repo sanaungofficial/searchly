@@ -1121,6 +1121,56 @@ function CompanyDrawer({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
+function SumbleWatchlistSyncButton({ companiesCount }: { companiesCount: number }) {
+  const isMobile = useIsMobile();
+  const [syncing, setSyncing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleSync() {
+    if (companiesCount === 0) {
+      setMessage("Add companies to your watchlist first.");
+      return;
+    }
+    setSyncing(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/sumble/watchlist-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ load: true }),
+      });
+      const body = await res.json();
+      if (body.listUrl && body.organizationsAdded != null) {
+        setMessage(`Synced ${body.organizationsAdded} orgs to Sumble list.`);
+      } else {
+        setMessage(body.error ?? "Sync failed.");
+      }
+    } catch {
+      setMessage("Network error during sync.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "stretch" : "flex-end", gap: 4 }}>
+      <ScoutSecondaryBtn
+        onClick={() => void handleSync()}
+        disabled={syncing || companiesCount === 0}
+        style={{ minHeight: 44 }}
+        title="Creates or updates a Kimchi Watchlist in Sumble (~5 credits)"
+      >
+        {syncing ? "Syncing…" : "Sync to Sumble list"}
+      </ScoutSecondaryBtn>
+      {message && (
+        <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, maxWidth: 220, textAlign: "right" }}>
+          {message}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function WorkspaceCompanies({
   onOpenProspectJob,
   selectedCompanyId = null,
@@ -1316,6 +1366,7 @@ export function WorkspaceCompanies({
           >
             {showAdd ? "Cancel" : "+ Track company"}
           </ScoutSecondaryBtn>
+          <SumbleWatchlistSyncButton companiesCount={companies.length} />
         </div>
       </div>
 

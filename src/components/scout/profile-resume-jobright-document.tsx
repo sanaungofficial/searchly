@@ -314,7 +314,6 @@ export function JobrightResumeDocument({
                       <input style={{ ...fieldStyle, fontStyle: "italic", marginTop: 4 }} value={w.company} placeholder="Company" onChange={(e) => patch({ workExperience: data.workExperience.map((row) => (row.id === w.id ? { ...row, company: e.target.value } : row)) })} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                      <SectionActions onFix={() => onFixSection("experience", w.company || w.title)} onImpact={() => onImpactSection?.("experience", w.company || w.title)} />
                       {entryMatches?.[w.id] && <MatchTag />}
                       <span style={{ fontSize: 10, color: JR.muted }}>{formatDateRange(w.from, w.to)}</span>
                     </div>

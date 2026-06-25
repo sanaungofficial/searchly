@@ -195,7 +195,11 @@ export async function scrapeLinkedInProfile(linkedinUrl: string): Promise<ApifyL
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ urls: [normalized] }),
+      body: JSON.stringify({
+        urls: [normalized],
+        profileUrls: [normalized],
+        startUrls: [{ url: normalized }],
+      }),
       signal: AbortSignal.timeout((timeoutSec + 15) * 1000),
     }
   );
@@ -206,10 +210,75 @@ export async function scrapeLinkedInProfile(linkedinUrl: string): Promise<ApifyL
   }
 
   const items = (await res.json()) as ApifyLinkedInProfile[];
-  const profile = items?.[0];
-  if (!profile?.publicIdentifier && !profile?.firstName) {
+  const raw = items?.[0];
+  if (!raw) {
+    throw new Error("LinkedIn profile could not be loaded — check the URL is public.");
+  }
+  const profile = normalizeApifyProfile(raw);
+  if (!profile.publicIdentifier && !profile.firstName) {
     throw new Error("LinkedIn profile could not be loaded — check the URL is public.");
   }
 
   return profile;
+}
+
+function asApifyPositions(raw: ApifyLinkedInProfile & Record<string, unknown>): ApifyPosition[] {
+  if (Array.isArray(raw.positions) && raw.positions.length) return raw.positions;
+  const experience = raw.experience;
+  if (!Array.isArray(experience)) return [];
+  return experience.map((row) => {
+    if (!row || typeof row !== "object") return {};
+    const e = row as Record<string, unknown>;
+    return {
+      companyName: typeof e.companyName === "string" ? e.companyName : typeof e.company === "string" ? e.company : undefined,
+      title: typeof e.title === "string" ? e.title : typeof e.position === "string" ? e.position : undefined,
+      description: typeof e.description === "string" ? e.description : undefined,
+      locationName: typeof e.locationName === "string" ? e.locationName : typeof e.location === "string" ? e.location : undefined,
+      startYear: typeof e.startYear === "number" ? e.startYear : undefined,
+      endYear: typeof e.endYear === "number" ? e.endYear : undefined,
+      current: e.current === true,
+    } satisfies ApifyPosition;
+  });
+}
+
+function asApifyEducations(raw: ApifyLinkedInProfile & Record<string, unknown>): ApifyEducation[] {
+  if (Array.isArray(raw.educations) && raw.educations.length) return raw.educations;
+  const education = raw.education;
+  if (!Array.isArray(education)) return [];
+  return education.map((row) => {
+    if (!row || typeof row !== "object") return {};
+    const e = row as Record<string, unknown>;
+    return {
+      schoolName: typeof e.schoolName === "string" ? e.schoolName : typeof e.school === "string" ? e.school : undefined,
+      degreeName: typeof e.degreeName === "string" ? e.degreeName : typeof e.degree === "string" ? e.degree : undefined,
+      fieldOfStudy: typeof e.fieldOfStudy === "string" ? e.fieldOfStudy : undefined,
+    } satisfies ApifyEducation;
+  });
+}
+
+function normalizeApifyProfile(raw: ApifyLinkedInProfile): ApifyLinkedInProfile {
+  const ext = raw as ApifyLinkedInProfile & Record<string, unknown>;
+  let firstName = raw.firstName;
+  let lastName = raw.lastName;
+  if (!firstName && typeof ext.fullName === "string") {
+    const parts = ext.fullName.trim().split(/\s+/);
+    firstName = parts[0];
+    lastName = parts.slice(1).join(" ") || undefined;
+  }
+  return {
+    ...raw,
+    firstName,
+    lastName,
+    headline: raw.headline ?? (typeof ext.headline === "string" ? ext.headline : undefined),
+    summary: raw.summary ?? (typeof ext.about === "string" ? ext.about : undefined),
+    locationName: raw.locationName ?? (typeof ext.location === "string" ? ext.location : undefined),
+    picture: raw.picture ?? (typeof ext.profilePicture === "string" ? ext.profilePicture : undefined),
+    positions: asApifyPositions(ext),
+    educations: asApifyEducations(ext),
+    skills: Array.isArray(raw.skills)
+      ? raw.skills
+      : Array.isArray(ext.skills)
+        ? ext.skills.map((s) => (typeof s === "string" ? { skillName: s } : (s as ApifySkill)))
+        : [],
+  };
 }

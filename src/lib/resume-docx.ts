@@ -135,3 +135,13 @@ function bodyParagraph(text: string) {
     spacing: { after: 120 },
   });
 }
+
+export async function buildPlainTextDocx(
+  text: string,
+  filename = "resume.docx",
+): Promise<{ buffer: Buffer; filename: string }> {
+  const children = text.split(/\n/).map((line) => bodyParagraph(line || " "));
+  const doc = new Document({ sections: [{ children }] });
+  const buffer = await Packer.toBuffer(doc);
+  return { buffer, filename };
+}

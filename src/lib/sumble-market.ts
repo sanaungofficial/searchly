@@ -6,15 +6,18 @@ import type {
 } from "@/lib/hirebase-insights";
 import { buildMarketHeadline } from "@/lib/hirebase-insights";
 import {
-  fetchSumbleJobsSearch,
-  fetchSumbleTopHiringOrganizations,
-  type SumbleJobRow,
-} from "@/lib/sumble";
+  assertSumbleCreditsAvailable,
+  SUMBLE_ESTIMATED_COSTS,
+} from "@/lib/sumble-credits";
+import { fetchSumbleJobsSearch, type SumbleJobRow } from "@/lib/sumble";
 
 export type SumbleMarketFilters = {
   jobFunctionTerms: string[];
   daysAgo: number;
 };
+
+/** Small job sample — one Sumble call, no parallel org search. */
+export const MARKET_JOB_SAMPLE_LIMIT = 25;
 
 function cutoffDate(daysAgo: number): Date {
   const d = new Date();
@@ -76,7 +79,6 @@ function aggregateJobsToInsights(input: {
   jobs: SumbleJobRow[];
   corpusTotal: number;
   daysAgo: number;
-  topOrgs?: Array<{ name: string; domain: string | null; jobPostCount: number }>;
 }): HirebaseInsightsResponse {
   const inWindow = jobsInWindow(input.jobs, input.daysAgo);
   const sampleSize = inWindow.length;
@@ -125,7 +127,7 @@ function aggregateJobsToInsights(input: {
     }
   }
 
-  const topCompaniesFromJobs: InsightsTopCompany[] = [...companyCounts.values()]
+  const top_companies: InsightsTopCompany[] = [...companyCounts.values()]
     .sort((a, b) => b.count - a.count)
     .slice(0, 25)
     .map((co) => ({
@@ -135,21 +137,6 @@ function aggregateJobsToInsights(input: {
       count: co.count,
       percent: sampleSize ? Math.round((co.count / sampleSize) * 1000) / 10 : undefined,
     }));
-
-  const topCompaniesFromOrgs: InsightsTopCompany[] = (input.topOrgs ?? []).map((org) => ({
-    company_name: org.name,
-    company_slug: slugifyCompany(org.name, org.domain),
-    company_logo: null,
-    count: org.jobPostCount,
-    percent: corpusInWindow
-      ? Math.round((org.jobPostCount / corpusInWindow) * 1000) / 10
-      : undefined,
-  }));
-
-  const top_companies =
-    topCompaniesFromOrgs.length > 0
-      ? topCompaniesFromOrgs
-      : topCompaniesFromJobs;
 
   const top_technologies = countByKey(technologies);
   const top_skills = countByKey(projects.length ? projects : technologies);
@@ -198,13 +185,12 @@ function aggregateJobsToInsights(input: {
 type MarketCorpusCache = {
   jobs: SumbleJobRow[];
   total: number;
-  topOrgs: Array<{ name: string; domain: string | null; jobPostCount: number }>;
   creditsUsed: number;
   creditsRemaining: number | null;
 };
 
 const corpusCache = new Map<string, { data: MarketCorpusCache; expiresAt: number }>();
-const CORPUS_TTL_MS = 6 * 60 * 60 * 1000;
+const CORPUS_TTL_MS = 24 * 60 * 60 * 1000;
 
 function corpusCacheKey(terms: string[]): string {
   return terms.join("|");
@@ -220,18 +206,19 @@ async function loadMarketCorpus(
     if (hit && Date.now() < hit.expiresAt) return hit.data;
   }
 
+  assertSumbleCreditsAvailable(SUMBLE_ESTIMATED_COSTS.marketSample);
+
   const primaryTerm = jobFunctionTerms[0] ?? "Product Management";
-  const [jobsResult, orgsResult] = await Promise.all([
-    fetchSumbleJobsSearch({ jobFunctionTerm: primaryTerm, limit: 100 }),
-    fetchSumbleTopHiringOrganizations({ jobFunctionTerm: primaryTerm, limit: 20 }),
-  ]);
+  const jobsResult = await fetchSumbleJobsSearch({
+    jobFunctionTerm: primaryTerm,
+    limit: MARKET_JOB_SAMPLE_LIMIT,
+  });
 
   const data: MarketCorpusCache = {
     jobs: jobsResult.jobs,
     total: jobsResult.total,
-    topOrgs: orgsResult.organizations,
-    creditsUsed: jobsResult.creditsUsed + orgsResult.creditsUsed,
-    creditsRemaining: orgsResult.creditsRemaining ?? jobsResult.creditsRemaining,
+    creditsUsed: jobsResult.creditsUsed,
+    creditsRemaining: jobsResult.creditsRemaining,
   };
 
   corpusCache.set(key, { data, expiresAt: Date.now() + CORPUS_TTL_MS });
@@ -256,7 +243,6 @@ export async function buildSumbleMarketWindows(input: {
       jobs: corpus.jobs,
       corpusTotal: corpus.total,
       daysAgo: days,
-      topOrgs: corpus.topOrgs,
     });
   }
 
@@ -280,7 +266,6 @@ export async function fetchSumbleMarketInsights(
     jobs: corpus.jobs,
     corpusTotal: corpus.total,
     daysAgo: filters.daysAgo,
-    topOrgs: corpus.topOrgs,
   });
 
   return {

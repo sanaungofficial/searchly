@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
+import { getTopEchelonCredentials } from "@/lib/topechelon/client";
 import {
   runTopEchelonSync,
   TopEchelonMfaRequiredError,
@@ -26,6 +27,18 @@ export async function POST(request: Request) {
     /* empty body ok for refresh-token sync */
   }
 
+  if (!getTopEchelonCredentials()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "NOT_CONFIGURED",
+        error: "Top Echelon credentials are not set on this deployment.",
+        hint: "Add TOPECHELON_EMAIL and TOPECHELON_PASSWORD in Vercel environment variables for Preview, then redeploy dev.",
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const summary = await runTopEchelonSync({
       mfaCode: body.mfaCode?.trim() || undefined,
@@ -41,7 +54,7 @@ export async function POST(request: Request) {
           ok: false,
           code: err.code,
           error: err.message,
-          hint: "Check your email for a 6-digit code and POST again with { \"mfaCode\": \"123456\" }.",
+          hint: "Check your Top Echelon inbox (and spam) for a 6-digit code, paste it in the admin panel, and sync again.",
         },
         { status: 428 }
       );

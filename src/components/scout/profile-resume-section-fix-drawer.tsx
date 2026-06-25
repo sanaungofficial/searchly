@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronRight, HelpCircle, ThumbsDown, ThumbsUp } from "lucide-react";
 import { JR } from "./profile-resume-editor-panels";
 import type { ResumeSectionId } from "@/lib/resume-parse";
@@ -99,13 +100,18 @@ export function ResumeSectionFixDrawer({
 }) {
   const [visible, setVisible] = useState(false);
   const [activeIssueId, setActiveIssueId] = useState<string>("overall");
+  const [mounted, setMounted] = useState(false);
+
+  useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
 
   useLayoutEffect(() => {
     setVisible(open);
     if (open) setActiveIssueId("overall");
   }, [open, sectionId]);
 
-  if (!open || !sectionId) return null;
+  if (!open || !sectionId || !mounted) return null;
 
   const title = entryLabel
     ? `${sectionTitle ?? (sectionId && sectionId in SECTION_TITLES ? SECTION_TITLES[sectionId as ResumeSectionId] : sectionId)} · ${entryLabel}`
@@ -113,7 +119,7 @@ export function ResumeSectionFixDrawer({
   const urgentCount = issues.filter((i) => i.severity === "Urgent" || i.severity === "Critical").length;
   const activeIssue = activeIssueId === "overall" ? issues[0] : issues.find((i) => i.id === activeIssueId) || issues[0];
 
-  return (
+  return createPortal(
     <>
       <div
         onClick={onClose}
@@ -121,7 +127,7 @@ export function ResumeSectionFixDrawer({
           position: "fixed",
           inset: 0,
           background: "rgba(17,24,39,0.2)",
-          zIndex: 1200,
+          zIndex: 1500,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.25s ease",
         }}
@@ -134,7 +140,7 @@ export function ResumeSectionFixDrawer({
           bottom: 0,
           width: "min(720px, 88vw)",
           background: JR.panel,
-          zIndex: 1201,
+          zIndex: 1501,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-8px 0 32px rgba(0,0,0,0.14)",
@@ -287,6 +293,7 @@ export function ResumeSectionFixDrawer({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

@@ -31,19 +31,28 @@ export class TopEchelonSessionExpiredError extends Error {
 export function parseTopEchelonAuthError(body: string): TopEchelonMfaRequiredError | TopEchelonAuthError {
   let message = body;
   try {
-    const parsed = JSON.parse(body) as { error?: string; grant_type?: string };
-    message = parsed.error ?? parsed.grant_type ?? body;
+    const parsed = JSON.parse(body) as { error?: string; grant_type?: string; message?: string };
+    message = parsed.error ?? parsed.message ?? parsed.grant_type ?? body;
   } catch {
     /* use raw body */
   }
 
-  if (
+  const lower = message.toLowerCase();
+  const looksLikeMfa =
+    lower.includes("verification code") ||
+    lower.includes("authentication code") ||
+    lower.includes("new device") ||
+    lower.includes("verify your") ||
+    lower.includes("mfa") ||
+    lower.includes("two-factor") ||
+    lower.includes("2fa") ||
     message === "Invalid verification code" ||
-    message === "Invalid Authentication Code"
-  ) {
+    message === "Invalid Authentication Code";
+
+  if (looksLikeMfa) {
     return new TopEchelonMfaRequiredError(
-      "Enter the 6-digit code from your email to finish Top Echelon login.",
-      "new_device"
+      "Enter the 6-digit code from your Top Echelon email to finish login.",
+      lower.includes("new device") ? "new_device" : "mfa"
     );
   }
 

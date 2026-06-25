@@ -13,6 +13,7 @@ import {
 } from "@/components/scout/market-analytics-ui";
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
+import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { fontSans, color, type as T } from "@/lib/typography";
 import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
 
@@ -94,9 +95,7 @@ export function CompanyHirebaseIntelPanel({
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
           <IntelRefreshButton onClick={() => void load(true)} disabled={loading} />
         </div>
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
-          Loading Hirebase analytics…
-        </p>
+        <KimchiProcessLoader preset="marketIntel" title="Loading Hirebase analytics…" variant="inline" />
       </ScoutBox>
     );
   }

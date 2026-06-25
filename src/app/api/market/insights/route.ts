@@ -30,15 +30,17 @@ export async function GET(request: Request) {
   const primaryDays = parseDays(searchParams.get("days"), 30);
   const compareWindows = parseWindows(searchParams);
   const forceRefresh = searchParams.get("refresh") === "1";
+  const allowFetch = searchParams.get("load") === "1" || forceRefresh;
 
   const bundle = await getMarketInsightsBundle({
     userId: dbUser.id,
     primaryDays,
     compareWindows,
     forceRefresh,
+    allowFetch,
   });
 
-  if (bundle.error && !Object.keys(bundle.windows).length) {
+  if (bundle.error && !Object.keys(bundle.windows).length && !bundle.requiresLoad) {
     return NextResponse.json(bundle, { status: bundle.configured ? 502 : 503 });
   }
 

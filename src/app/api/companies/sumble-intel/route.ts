@@ -13,7 +13,9 @@ export async function GET(request: Request) {
   const nameParam = searchParams.get("name");
   const domainParam = searchParams.get("domain");
   const forceRefresh = searchParams.get("refresh") === "1";
-  const includePeople = searchParams.get("people") !== "0";
+  const allowFetch = searchParams.get("load") === "1" || forceRefresh;
+  const includePeople = searchParams.get("people") === "1";
+  const includeTeams = searchParams.get("teams") === "1";
 
   let companyName = nameParam?.trim() || "";
   let website: string | null = domainParam?.trim() || null;
@@ -42,10 +44,12 @@ export async function GET(request: Request) {
     website,
     careersUrl,
     includePeople,
+    includeTeams,
     forceRefresh,
+    allowFetch,
   });
 
-  if (bundle.error && !bundle.organization) {
+  if (bundle.error && !bundle.organization && !bundle.requiresLoad) {
     return NextResponse.json(bundle, { status: bundle.configured ? 502 : 503 });
   }
 

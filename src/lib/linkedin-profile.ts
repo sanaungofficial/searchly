@@ -205,7 +205,6 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
 
   const headline = asString(obj.headline);
   const about = asString(obj.about);
-  if (!headline && !about) return null;
 
   const experience = Array.isArray(obj.experience)
     ? obj.experience
@@ -281,8 +280,17 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
   const draftLocation = asStringOrNull(obj.location);
   const legacyLocation = experience[0]?.location ?? null;
 
+  const hasContent =
+    headline ||
+    about ||
+    experience.length > 0 ||
+    education.length > 0 ||
+    skills.length > 0 ||
+    featured.length > 0;
+  if (!hasContent) return null;
+
   return {
-    headline: clamp(headline, HEADLINE_MAX),
+    headline: clamp(headline || "Professional", HEADLINE_MAX),
     about: clamp(about, ABOUT_MAX),
     location: draftLocation ?? legacyLocation,
     experience,

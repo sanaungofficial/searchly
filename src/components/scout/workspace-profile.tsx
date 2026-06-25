@@ -59,6 +59,7 @@ import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -2048,7 +2049,7 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
         </div>
       </div>
       {loading ? (
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing your profile…</p>
+        <KimchiProcessLoader preset="profileAnalysis" variant="inline" />
       ) : data ? (
         <>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
