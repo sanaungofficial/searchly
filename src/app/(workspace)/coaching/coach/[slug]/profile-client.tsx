@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CoachProfileView } from "@/components/scout/coach-profile-view";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useWorkspace } from "@/contexts/workspace-context";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export function CoachProfileClient({ slug }: { slug: string }) {
-  const isMobile = useIsMobile();
-  const [isPro, setIsPro] = useState(false);
-  const { openPricing } = useWorkspace();
+  const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/subscription")
-      .then((r) => r.json())
-      .then((d) => { if (d.isPro) setIsPro(true); })
-      .catch(() => {});
-  }, []);
+    router.replace(`/coaching?coach=${encodeURIComponent(slug)}`);
+  }, [router, slug]);
 
-  return <CoachProfileView slug={slug} isMobile={isMobile} isPro={isPro} onSubscribe={openPricing} />;
+  return null;
 }

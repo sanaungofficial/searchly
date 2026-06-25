@@ -43,8 +43,8 @@ export function WorkspacePageShell({
       {isMobile && (
         <WorkspaceMobileTopBar center={<ScoutLabel>{barTitle}</ScoutLabel>} />
       )}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ padding: pad, maxWidth, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", background: surface.page }}>
+        <div style={{ padding: isMobile ? "16px 16px 48px" : "20px 32px 56px", maxWidth, margin: "0 auto", width: "100%", boxSizing: "border-box", minHeight: "100%" }}>
           <div style={{ marginBottom: isMobile ? 20 : 24 }}>
             {!isMobile && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>

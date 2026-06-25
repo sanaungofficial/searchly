@@ -24,6 +24,22 @@ export type CoachListItem = {
   followerCount: number;
   calLink?: string | null;
   linkedinUrl?: string | null;
+  createdAt?: string;
+  matchScore?: number;
+  matchLabel?: string;
+  matchReasons?: string[];
+  matchedSkills?: string[];
+  spotlightBadge?: CoachSpotlightBadge | null;
+  isFollowing?: boolean;
+};
+
+export type CoachSpotlightBadge = "featured" | "new" | "top-rated" | "rising";
+
+export type CoachMatchFields = {
+  matchScore: number;
+  matchLabel: string;
+  matchReasons: string[];
+  matchedSkills: string[];
 };
 
 export type CoachReviewItem = {
@@ -70,7 +86,7 @@ export type CoachDirectoryFilters = {
   rateMin?: number;
   rateMax?: number;
   featuredOnly?: boolean;
-  sort?: "default" | "price-low" | "price-high" | "rating" | "newest";
+  sort?: "default" | "price-low" | "price-high" | "rating" | "newest" | "match";
 };
 
 export type CoachFeaturedPreset = "popular" | "professional" | "budget";

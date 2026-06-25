@@ -1,14 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
-import {
-  filterCoaches,
-  filterProfessionalCoaches,
-  featuredPresetFilters,
-  parseCoachDirectoryFilters,
-  sortCoaches,
-} from "@/lib/coach-directory";
-import { slugToCategory } from "@/lib/coach-categories";
+import { getAuthenticatedDbUser } from "@/lib/coach-api";
+import { enrichCoachesWithMatch } from "@/lib/coach-match";
+import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
+import { findResumeAssetForUser } from "@/lib/resume-artifact";
+import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 
 const coachListSelect = {
   id: true,
@@ -16,6 +13,7 @@ const coachListSelect = {
   displayName: true,
   headline: true,
   bio: true,
+  aboutMe: true,
   currentRole: true,
   currentCompany: true,
   location: true,
@@ -29,15 +27,53 @@ const coachListSelect = {
   category: true,
   featured: true,
   isProfessionalCoach: true,
+  calLink: true,
+  linkedinUrl: true,
   createdAt: true,
   _count: { select: { reviews: true, followers: true } },
   reviews: { select: { rating: true } },
 } as const;
 
-async function enrichCoaches(
-  coaches: Awaited<ReturnType<typeof prisma.coachProfile.findMany<{ select: typeof coachListSelect }>>>,
-) {
-  return coaches.map((c) => {
+export async function GET(req: NextRequest) {
+  const me = await getAuthenticatedDbUser();
+
+  const coaches = await prisma.coachProfile.findMany({
+    where: { status: CoachStatus.ACTIVE },
+    select: coachListSelect,
+  });
+
+  let profileText = "";
+  let targetRoles: string[] = [];
+
+  if (me) {
+    const profile = await prisma.profile.findUnique({ where: { userId: me.id } });
+    targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
+    const parsedData = mergeParsedWithReadback(
+      normalizeParsedResumeData(profile?.parsedData ?? null),
+      profile?.readbackData,
+    );
+    profileText =
+      profileTextForMatchReasons({
+        headline: profile?.headline,
+        targetRoles,
+        resumeText: profile?.resumeText,
+        parsedData,
+        careerMotivation: profile?.careerMotivation,
+        priorities: profile?.priorities ?? [],
+        employmentStatus: profile?.employmentStatus,
+        jobTimeline: profile?.jobTimeline,
+        targetSalary: profile?.targetSalary
+          ? Number.parseFloat(profile.targetSalary.replace(/[^0-9.]/g, "")) || null
+          : null,
+      }) || "";
+
+    if (!profileText.trim()) {
+      const resumeAsset = await findResumeAssetForUser(me.id);
+      if (resumeAsset?.resumeText) profileText = resumeAsset.resumeText;
+    }
+  }
+
+  const base = coaches.map((c) => {
     const avgRating =
       c.reviews.length > 0
         ? Math.round((c.reviews.reduce((s, r) => s + r.rating, 0) / c.reviews.length) * 10) / 10
@@ -48,6 +84,7 @@ async function enrichCoaches(
       displayName: c.displayName,
       headline: c.headline,
       bio: c.bio,
+      aboutMe: c.aboutMe,
       currentRole: c.currentRole,
       currentCompany: c.currentCompany,
       location: c.location,
@@ -61,48 +98,19 @@ async function enrichCoaches(
       category: c.category,
       featured: c.featured,
       isProfessionalCoach: c.isProfessionalCoach,
-      createdAt: c.createdAt,
+      calLink: c.calLink,
+      linkedinUrl: c.linkedinUrl,
+      createdAt: c.createdAt.toISOString(),
       avgRating,
       reviewCount: c._count.reviews,
       followerCount: c._count.followers,
     };
   });
-}
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const filters = parseCoachDirectoryFilters(searchParams);
-  const preset = searchParams.get("preset");
-  const categorySlug = searchParams.get("categorySlug");
+  const withMatch = enrichCoachesWithMatch(base, profileText, targetRoles);
 
-  if (categorySlug && !filters.category) {
-    const cat = slugToCategory(categorySlug);
-    if (cat) filters.category = cat;
-  }
-
-  if (preset === "professional") {
-    /* applied after fetch */
-  } else if (preset === "budget") {
-    Object.assign(filters, featuredPresetFilters("budget"));
-  } else if (preset === "popular") {
-    Object.assign(filters, featuredPresetFilters("popular"));
-  }
-
-  const coaches = await prisma.coachProfile.findMany({
-    where: { status: CoachStatus.ACTIVE },
-    select: coachListSelect,
+  return NextResponse.json({
+    coaches: withMatch,
+    scored: Boolean(profileText.trim()),
   });
-
-  let enriched = await enrichCoaches(coaches);
-
-  if (preset === "professional") {
-    enriched = filterProfessionalCoaches(enriched);
-  }
-
-  enriched = filterCoaches(enriched, filters);
-  enriched = sortCoaches(enriched, filters.sort);
-
-  const payload = enriched.map(({ createdAt: _c, ...rest }) => rest);
-
-  return NextResponse.json(payload);
 }
