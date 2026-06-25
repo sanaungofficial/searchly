@@ -1,14 +1,14 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AdminClientsPanel } from "@/components/admin/admin-clients-panel";
-import { CoachProfileTab } from "@/components/scout/coach-profile-tab";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 
 function DashboardClientsInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const { userRole } = useWorkspace();
@@ -17,6 +17,12 @@ function DashboardClientsInner() {
 
   const tab = searchParams.get("tab");
   const pad = isMobile ? "16px" : "28px";
+
+  useEffect(() => {
+    if (tab === "profile") {
+      router.replace("/dashboard/expert-profile");
+    }
+  }, [tab, router]);
 
   async function viewAsClient(userId: string) {
     setStarting(userId);
@@ -38,10 +44,8 @@ function DashboardClientsInner() {
 
   if (tab === "profile") {
     return (
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ padding: `0 ${pad} 32px` }}>
-          <CoachProfileTab />
-        </div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Loading…</p>
       </div>
     );
   }
