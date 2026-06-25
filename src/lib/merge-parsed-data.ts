@@ -62,7 +62,7 @@ export function mergeLinkedInImportParsed(
     summary: incoming.summary?.trim() || existing.summary || null,
     workExperience: incoming.workExperience.length ? incoming.workExperience : existing.workExperience,
     education: incoming.education.length ? incoming.education : existing.education,
-    skills: incoming.skills.length ? incoming.skills : incoming.skills,
+    skills: incoming.skills.length ? incoming.skills : existing.skills,
     skillGroups: incoming.skillGroups.length ? incoming.skillGroups : existing.skillGroups,
     certifications: incoming.certifications.length ? incoming.certifications : existing.certifications,
   };

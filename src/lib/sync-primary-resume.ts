@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
+import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { Prisma } from "@prisma/client";
 
 export async function syncPrimaryResumeToProfile(userId: string) {
@@ -29,6 +30,12 @@ export async function syncPrimaryResumeToProfile(userId: string) {
       priorities: [],
     },
   });
+
+  try {
+    await refreshLinkedInDraftFromAbout(userId);
+  } catch (err) {
+    console.error("[syncPrimaryResumeToProfile linkedin sync]", err);
+  }
 }
 
 export function parsedDataSummary(parsed: ParsedResumeData | null): string | null {

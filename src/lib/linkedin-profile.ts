@@ -68,7 +68,7 @@ export function newLinkedInEntryId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function normalizeOrgRef(raw: unknown): LinkedInOrgRef | null {
+export function normalizeOrgRef(raw: unknown): LinkedInOrgRef | null {
   if (!raw || typeof raw !== "object") return null;
   const row = raw as Record<string, unknown>;
   const name = asString(row.name);
@@ -105,7 +105,7 @@ function clamp(text: string, max: number): string {
   return `${text.slice(0, max - 1).trim()}…`;
 }
 
-function bulletsToParagraphs(bullets: string[]): string {
+export function bulletsToParagraphs(bullets: string[]): string {
   if (!bullets.length) return "";
   return bullets
     .map((b) => b.replace(/^[•\-\*–—]\s*/, "").trim())

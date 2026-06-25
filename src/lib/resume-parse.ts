@@ -1,3 +1,5 @@
+import { normalizeOrgRef, type LinkedInOrgRef } from "@/lib/linkedin-profile";
+
 export interface ParsedEducationEntry {
   id: string;
   school: string;
@@ -5,6 +7,7 @@ export interface ParsedEducationEntry {
   field?: string | null;
   from?: string | null;
   to?: string | null;
+  schoolRef?: LinkedInOrgRef | null;
 }
 
 export interface ParsedWorkEntry {
@@ -16,6 +19,7 @@ export interface ParsedWorkEntry {
   from?: string | null;
   to?: string | null;
   bullets: string[];
+  companyRef?: LinkedInOrgRef | null;
 }
 
 export interface ParsedSkillGroup {
@@ -115,6 +119,7 @@ function normalizeEducation(raw: unknown): ParsedEducationEntry[] {
         field: asStringOrNull(row.field),
         from: asStringOrNull(row.from),
         to: asStringOrNull(row.to),
+        schoolRef: normalizeOrgRef(row.schoolRef),
       };
     })
     .filter((entry): entry is ParsedEducationEntry => entry !== null);
@@ -198,6 +203,7 @@ function normalizeWorkExperience(raw: unknown): ParsedWorkEntry[] {
         from: asStringOrNull(row.from),
         to: asStringOrNull(row.to),
         bullets: asStringArray(row.bullets),
+        companyRef: normalizeOrgRef(row.companyRef),
       };
     })
     .filter((entry): entry is ParsedWorkEntry => entry !== null);

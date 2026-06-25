@@ -12,6 +12,7 @@ import {
   scrapeLinkedInProfile,
 } from "@/lib/apify-linkedin";
 import { normalizeLinkedInDraft } from "@/lib/linkedin-profile";
+import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { Prisma } from "@prisma/client";
 
 export async function POST(request: Request) {
@@ -85,6 +86,8 @@ export async function POST(request: Request) {
       });
     }
 
+    const refreshedDraft = await refreshLinkedInDraftFromAbout(dbUser.id);
+
     return NextResponse.json({
       ok: true,
       linkedinUrl,
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
       experienceCount: mergedParsed.workExperience.length,
       educationCount: mergedParsed.education.length,
       skillsCount: mergedParsed.skills.length,
-      draft: normalizeLinkedInDraft(linkedInDraft),
+      draft: refreshedDraft ?? normalizeLinkedInDraft(linkedInDraft),
     });
   } catch (err) {
     console.error("[linkedin-import]", err);

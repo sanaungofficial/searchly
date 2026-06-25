@@ -1,7 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeLinkedInDraft, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
-import { Prisma } from "@prisma/client";
+import {
+  buildEffectiveLinkedInDraftForUser,
+  syncAboutFromLinkedInDraft,
+} from "@/lib/profile-linkedin-persist";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -16,7 +19,16 @@ export async function GET() {
     });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const draft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
+    const targetRoles = (dbUser.profile?.targetRoles as string[] | null) ?? [];
+    const draft = buildEffectiveLinkedInDraftForUser({
+      name: dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
+      targetRoles,
+      headline: dbUser.profile?.headline,
+      summary: dbUser.profile?.summary,
+      parsedData: dbUser.profile?.parsedData,
+      storedDraft: dbUser.profile?.linkedInDraft,
+      sourceAssetId: dbUser.profile?.linkedInDraftSourceAssetId,
+    });
 
     return NextResponse.json({
       draft,
@@ -25,6 +37,7 @@ export async function GET() {
       linkedinUrl: dbUser.profile?.linkedinUrl ?? null,
       name: dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You",
       avatarUrl: dbUser.avatarUrl ?? null,
+      syncedFromAbout: true,
     });
   } catch (err) {
     console.error("[linkedin-draft GET]", err);
@@ -46,20 +59,7 @@ export async function PATCH(request: Request) {
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  await prisma.profile.upsert({
-    where: { userId: dbUser.id },
-    update: {
-      linkedInDraft: draft as unknown as Prisma.InputJsonValue,
-      linkedInDraftUpdatedAt: new Date(),
-    },
-    create: {
-      userId: dbUser.id,
-      targetRoles: [],
-      priorities: [],
-      linkedInDraft: draft as unknown as Prisma.InputJsonValue,
-      linkedInDraftUpdatedAt: new Date(),
-    },
-  });
+  await syncAboutFromLinkedInDraft(dbUser.id, draft);
 
-  return NextResponse.json({ ok: true, draft });
+  return NextResponse.json({ ok: true, draft, syncedToAbout: true });
 }

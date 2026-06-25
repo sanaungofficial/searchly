@@ -732,7 +732,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         <div style={{ minWidth: 0, flex: "1 1 220px" }}>
           <ScoutDisplayTitle size={stackLayout ? 22 : 26}>LinkedIn profile preview</ScoutDisplayTitle>
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "6px 0 0", lineHeight: 1.5 }}>
-            Edit inline like LinkedIn — tap any field. Use Fix for AI suggestions, then copy sections into LinkedIn.
+            Pulled from your About profile — edit here for a LinkedIn-ready view, or refine in About as the source of truth. Changes sync back to About automatically.
             {updatedAt && <span> Last saved {new Date(updatedAt).toLocaleDateString()}.</span>}
           </p>
         </div>
@@ -762,7 +762,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             {importing ? "Importing…" : "Import from LinkedIn"}
           </ScoutSecondaryBtn>
           <ScoutPrimaryBtn onClick={() => void generate()} disabled={generating} style={{ padding: "10px 18px" }}>
-            {generating ? "Generating…" : draft ? "Regenerate from resume" : "Generate from resume"}
+            {generating ? "Refreshing…" : draft ? "Refresh from About" : "Build from About"}
           </ScoutPrimaryBtn>
           <a href={liUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, padding: "10px 18px", borderRadius: 0, border: border.lineStrong, background: surface.card, color: color.forest, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
             Open LinkedIn →
@@ -804,10 +804,10 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         <ScoutBox padding={stackLayout ? 24 : 40} style={{ textAlign: "center" }}>
           <p style={{ fontFamily: fontSans, fontSize: 15, color: color.ink, marginBottom: 8 }}>No LinkedIn preview yet</p>
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginBottom: 20, maxWidth: 420, margin: "0 auto 20px" }}>
-            Kimchi will transform your resume into a LinkedIn-style profile with paragraphs, headline, and skills.
+            Add experience, education, and a summary in About — Kimchi builds a trimmed LinkedIn preview from that data.
           </p>
           <ScoutPrimaryBtn onClick={() => void generate()} style={{ padding: "12px 24px", fontSize: 14 }}>
-            Generate LinkedIn preview
+            Build from About
           </ScoutPrimaryBtn>
         </ScoutBox>
       )}
