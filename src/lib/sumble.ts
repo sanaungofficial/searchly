@@ -102,6 +102,31 @@ export type SumbleDashboardSignal = SumbleSignal & {
   trackedId: string | null;
 };
 
+export type SumbleJobOrganization = {
+  organization_id?: number;
+  name?: string | null;
+  domain?: string | null;
+  sumble_url?: string | null;
+};
+
+export type SumbleJobAttributes = {
+  title?: string | null;
+  location?: string | null;
+  posted_date?: string | null;
+  organization?: SumbleJobOrganization | null;
+  technologies?: Array<{ name: string; slug?: string; used?: boolean }>;
+  teams?: Array<{ name: string; slug?: string }>;
+  job_functions?: Array<{ name: string; slug?: string }>;
+  job_levels?: Array<{ name: string }>;
+  projects?: Array<{ name: string; slug?: string; goal?: string | null }>;
+};
+
+export type SumbleJobRow = {
+  job_id?: number | null;
+  sumble_url?: string | null;
+  attributes?: SumbleJobAttributes | null;
+};
+
 type SumbleEnvelope<T> = {
   id?: string;
   credits_used?: number;
@@ -109,6 +134,7 @@ type SumbleEnvelope<T> = {
   organizations?: SumbleOrganizationRow[];
   signals?: SumbleSignal[];
   people?: SumblePersonRow[];
+  jobs?: SumbleJobRow[];
   matched_count?: number | null;
   total?: number;
   teams?: SumbleTeamRow[];
@@ -425,6 +451,120 @@ export async function fetchSumbleTeamsAtOrganization(input: {
     creditsRemaining: data.credits_remaining ?? null,
     sourceDataUrl: (data as { source_data_url?: string | null }).source_data_url ?? null,
   };
+}
+
+function escapeSumbleQueryTerm(term: string): string {
+  return term.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function jobFunctionQuery(term: string): string {
+  return `job_function EQ '${escapeSumbleQueryTerm(term)}'`;
+}
+
+export async function fetchSumbleJobsSearch(input: {
+  jobFunctionTerm: string;
+  limit?: number;
+}): Promise<{
+  jobs: SumbleJobRow[];
+  total: number;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const limit = Math.max(1, Math.min(input.limit ?? 100, 200));
+  const term = input.jobFunctionTerm.trim() || "Product Management";
+
+  const attempts = [jobFunctionQuery(term)];
+
+  let lastError: Error | null = null;
+  for (const query of attempts) {
+    try {
+      const data = await sumbleFetch<SumbleEnvelope<unknown>>("/jobs", {
+        method: "POST",
+        body: JSON.stringify({
+          filter: { query: { query } },
+          limit,
+          select: {
+            attributes: [
+              "title",
+              "location",
+              "posted_date",
+              "organization",
+              "technologies",
+              "job_levels",
+              "projects",
+            ],
+          },
+        }),
+      });
+
+      return {
+        jobs: data.jobs ?? [],
+        total: data.total ?? data.jobs?.length ?? 0,
+        creditsUsed: data.credits_used ?? 0,
+        creditsRemaining: data.credits_remaining ?? null,
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw lastError ?? new Error("Sumble job search failed.");
+}
+
+export async function fetchSumbleTopHiringOrganizations(input: {
+  jobFunctionTerm: string;
+  limit?: number;
+}): Promise<{
+  organizations: Array<{ name: string; domain: string | null; jobPostCount: number }>;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const limit = Math.max(1, Math.min(input.limit ?? 20, 50));
+  const term = input.jobFunctionTerm.trim() || "Product Management";
+
+  try {
+    const data = await sumbleFetch<SumbleEnvelope<unknown>>("/organizations", {
+      method: "POST",
+      body: JSON.stringify({
+        filter: { query: { query: jobFunctionQuery(term) } },
+        limit,
+        order_by_column: "jobs_count",
+        order_by_direction: "DESC",
+        select: {
+          attributes: ["name", "url", "jobs_count", "employee_count"],
+          entities: [
+            {
+              type: "job_function",
+              term,
+              metrics: ["job_post_count"],
+            },
+          ],
+        },
+      }),
+    });
+
+    const organizations = (data.organizations ?? [])
+      .map((row) => {
+        const attrs = row.attributes;
+        const entity = row.entities?.find((e) => e.type === "job_function" && e.term === term);
+        const count = entity?.job_post_count ?? attrs?.jobs_count ?? 0;
+        if (!attrs?.name?.trim() || !count) return null;
+        return {
+          name: attrs.name.trim(),
+          domain: attrs.url ?? null,
+          jobPostCount: count,
+        };
+      })
+      .filter(Boolean) as Array<{ name: string; domain: string | null; jobPostCount: number }>;
+
+    return {
+      organizations,
+      creditsUsed: data.credits_used ?? 0,
+      creditsRemaining: data.credits_remaining ?? null,
+    };
+  } catch {
+    return { organizations: [], creditsUsed: 0, creditsRemaining: null };
+  }
 }
 
 export function formatSumbleFunding(amount: number | null | undefined): string | null {

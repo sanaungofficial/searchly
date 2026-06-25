@@ -538,7 +538,7 @@ export function WorkspaceDashboard() {
               Your job search at a glance
             </ScoutDisplayTitle>
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
-              Pipeline counts, recent activity, and live market intelligence from Hirebase.
+              Pipeline counts, recent activity, and live market intelligence from Sumble.
             </p>
           </div>
 

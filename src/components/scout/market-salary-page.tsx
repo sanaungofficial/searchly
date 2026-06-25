@@ -39,7 +39,7 @@ export function MarketSalaryPage() {
         <InsightsEmpty message={error} configured={data?.configured} />
       )}
 
-      {insight && <SalaryDeepDive insight={insight} />}
+      {insight && <SalaryDeepDive insight={insight} dataSource={data?.dataSource} />}
     </MarketShell>
   );
 }

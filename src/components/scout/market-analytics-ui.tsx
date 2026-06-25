@@ -66,8 +66,10 @@ export function InsightsMetaRow({
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 16 }}>
       <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
         {payload.roleLabel}
+        {payload.dataSource === "sumble" ? " · Sumble" : ""}
         {updated ? ` · Updated ${updated}` : ""}
         {payload.serverCached ? " · cached" : ""}
+        {payload.creditsRemaining != null ? ` · ${payload.creditsRemaining.toLocaleString()} credits left` : ""}
       </span>
       {onRefresh && (
         <ScoutSecondaryBtn onClick={onRefresh} disabled={loading} style={{ minHeight: 36, padding: "6px 12px" }}>
@@ -92,7 +94,7 @@ export function InsightsEmpty({
       </p>
       {!configured && (
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: 0 }}>
-          Hirebase insights require HIREBASE_API_KEY on the server (set on Vercel preview + prod).
+          Market insights require SUMBLE_API_KEY on the server (set on Vercel preview + prod).
         </p>
       )}
       {configured && (
@@ -233,7 +235,13 @@ export function SplitBars({
   );
 }
 
-export function SalaryDeepDive({ insight }: { insight: HirebaseInsightsResponse }) {
+export function SalaryDeepDive({
+  insight,
+  dataSource,
+}: {
+  insight: HirebaseInsightsResponse;
+  dataSource?: "sumble" | "none";
+}) {
   const s = insight.salary;
   const currency = s?.currency ?? insight.headline?.salary_currency ?? "USD";
   if (!s?.p50 && !insight.headline?.median_salary) {
@@ -241,8 +249,11 @@ export function SalaryDeepDive({ insight }: { insight: HirebaseInsightsResponse 
       <ScoutBox padding="20px 22px">
         <ScoutLabel>Salary</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 0" }}>
-          Not enough salary disclosures in this cohort.
-          {insight.headline?.pct_disclosing_salary != null &&
+          {dataSource === "sumble"
+            ? "Sumble job listings do not include salary bands yet. Use Overview, Skills, or Companies for demand signals."
+            : "Not enough salary disclosures in this cohort."}
+          {dataSource !== "sumble" &&
+            insight.headline?.pct_disclosing_salary != null &&
             ` Only ${Math.round(insight.headline.pct_disclosing_salary)}% of listings disclose pay.`}
         </p>
       </ScoutBox>
