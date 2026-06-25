@@ -401,6 +401,104 @@ function resolveJobFields(meta: JobMeta | null) {
   };
 }
 
+function formatDatePosted(value: string | null | undefined): string | null {
+  if (!value?.trim()) return null;
+  const parsed = new Date(value.trim());
+  if (Number.isNaN(parsed.getTime())) return value.trim();
+  return parsed.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
+function JobDrawerMatchSection({ meta }: { meta: JobMeta }) {
+  const match = meta.vectorMatch;
+  if (!match || match.matchScore <= 0) return null;
+
+  return (
+    <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)" }}>
+      <SectionTitle icon={<IconTarget />}>
+        <ScoreExplainerLabel variant="vector-match">Why this is a match</ScoreExplainerLabel>
+      </SectionTitle>
+      <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px" }}>
+        {match.matchLabel} fit ({match.matchScore}/100) from your resume profile
+      </p>
+      {match.matchReasons.length > 0 ? (
+        <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55 }}>
+          {match.matchReasons.map((reason) => (
+            <li key={reason} style={{ marginBottom: 6 }}>{reason}</li>
+          ))}
+        </ul>
+      ) : (
+        <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55, margin: 0 }}>
+          Matched to your profile based on role, skills, and experience. Run Analyze fit for a deeper breakdown.
+        </p>
+      )}
+      {(match.matchedSkills?.length || match.gapSkills?.length) ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+          {match.matchedSkills?.map((skill) => (
+            <span key={`m-${skill}`} style={{ padding: "4px 10px", background: mintLight, fontFamily: sans, fontSize: 12, color: "#2A4A3A" }}>{skill}</span>
+          ))}
+          {match.gapSkills?.map((skill) => (
+            <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value == null || value === "") return null;
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, color: "#8A8278", margin: "0 0 2px", letterSpacing: "0.04em", textTransform: "uppercase" }}>{label}</p>
+      <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", margin: 0, lineHeight: 1.5 }}>{value}</p>
+    </div>
+  );
+}
+
+function JobDrawerDetailsSection({ meta }: { meta: JobMeta | null }) {
+  if (!meta) return null;
+
+  const posted = formatDatePosted(meta.datePosted);
+  const visa =
+    meta.visaSponsored === true ? "Visa sponsorship available" : meta.visaSponsored === false ? "No visa sponsorship listed" : null;
+  const industries = [...new Set([...(meta.industries ?? []), ...(meta.subindustries ?? [])])];
+
+  const hasDetails = Boolean(
+    posted ||
+    meta.department?.trim() ||
+    meta.team?.trim() ||
+    meta.educationLevel?.trim() ||
+    visa ||
+    meta.jobBoard?.trim() ||
+    industries.length,
+  );
+  if (!hasDetails) return null;
+
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <SectionTitle icon={<IconBriefcase />}>Role details</SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "4px 20px" }}>
+        <DetailRow label="Posted" value={posted} />
+        <DetailRow label="Department" value={meta.department?.trim()} />
+        <DetailRow label="Team" value={meta.team?.trim()} />
+        <DetailRow label="Education" value={meta.educationLevel?.trim()} />
+        <DetailRow label="Visa sponsorship" value={visa} />
+        <DetailRow label="Source" value={meta.jobBoard?.trim() ? `via ${meta.jobBoard.trim()}` : null} />
+      </div>
+      {industries.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, color: "#8A8278", margin: "0 0 8px", letterSpacing: "0.04em", textTransform: "uppercase" }}>Industries</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {industries.map((tag) => (
+              <span key={tag} style={{ padding: "4px 10px", background: surface.inset, border: line, fontFamily: sans, fontSize: 12, color: "#5C534A" }}>{tag}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JobDescriptionPanel({
   text,
   loading,
@@ -800,7 +898,7 @@ export function JobDrawer({
     companyName: card.company,
     website: companyWebsite,
     slugHint: meta?.companySlug ?? null,
-    enabled: !hasStoredCompanyIntel,
+    enabled: prospectMode || !hasStoredCompanyIntel,
   });
 
   const linkedinForCompany =
@@ -958,33 +1056,11 @@ export function JobDrawer({
 
             {/* Main job content — match first, then posting, recruiter, company */}
             <div style={{ padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
-              {meta?.vectorMatch && meta.vectorMatch.matchReasons.length > 0 && (
-                <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)" }}>
-                  <SectionTitle icon={<IconTarget />}>
-                    <ScoreExplainerLabel variant="vector-match">Why this is a match</ScoreExplainerLabel>
-                  </SectionTitle>
-                  <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px" }}>
-                    {meta.vectorMatch.matchLabel} fit ({meta.vectorMatch.matchScore}/100) from your resume profile
-                  </p>
-                  <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55 }}>
-                    {meta.vectorMatch.matchReasons.map((reason) => (
-                      <li key={reason} style={{ marginBottom: 6 }}>{reason}</li>
-                    ))}
-                  </ul>
-                  {(meta.vectorMatch.matchedSkills?.length || meta.vectorMatch.gapSkills?.length) ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
-                      {meta.vectorMatch.matchedSkills?.map((skill) => (
-                        <span key={`m-${skill}`} style={{ padding: "4px 10px", background: mintLight, fontFamily: sans, fontSize: 12, color: "#2A4A3A" }}>{skill}</span>
-                      ))}
-                      {meta.vectorMatch.gapSkills?.map((skill) => (
-                        <span key={`g-${skill}`} style={{ padding: "4px 10px", background: "rgba(196,168,106,0.15)", fontFamily: sans, fontSize: 12, color: "#6B5A2A" }}>Gap: {skill}</span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              )}
-
               {networkJob && <JobDrawerNetworkAdminSection networkJob={networkJob} />}
+
+              {meta?.vectorMatch && meta.vectorMatch.matchScore > 0 && (
+                <JobDrawerMatchSection meta={meta} />
+              )}
 
               {(!showParsedSections || (detailLoading && !hasFullPosting)) && (
                 <JobDescriptionPanel
@@ -1056,6 +1132,8 @@ export function JobDrawer({
                   <BulletList items={benefits} />
                 </div>
               )}
+
+              <JobDrawerDetailsSection meta={meta} />
 
               {networkJob?.recruiterNotes && networkJob.internalView && (
                 <div style={{ marginBottom: 22 }}>

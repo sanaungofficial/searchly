@@ -17,6 +17,15 @@ export interface JobMeta {
   benefits?: string[];
   requirements?: string[];
   tags?: string[];
+  /** Extra Hirebase job fields (recommended / prospect jobs). */
+  datePosted?: string | null;
+  department?: string | null;
+  team?: string | null;
+  educationLevel?: string | null;
+  visaSponsored?: boolean | null;
+  jobBoard?: string | null;
+  industries?: string[];
+  subindustries?: string[];
   nextStep?: string | null;
   nextStepDue?: string | null;
   /** Hirebase vector search match explanation (recommended jobs). */
