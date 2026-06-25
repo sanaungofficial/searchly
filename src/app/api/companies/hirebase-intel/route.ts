@@ -35,10 +35,12 @@ export async function GET(request: Request) {
   const primaryDays = parseDays(searchParams.get("days"), 30);
   const compareWindows = parseWindows(searchParams);
   const forceRefresh = searchParams.get("refresh") === "1";
+  const roleFilter = searchParams.get("roleFilter") === "all" ? "all" : "matched";
 
   let companyName = nameParam?.trim() || "";
   let slugHint = slugParam?.trim() || null;
   let website: string | null = null;
+  let companyTargetRoles: string | null = null;
 
   if (trackedId) {
     const tracked = await prisma.trackedCompany.findFirst({
@@ -50,6 +52,7 @@ export async function GET(request: Request) {
     }
     companyName = tracked.companyIntel?.name ?? tracked.name;
     website = tracked.website ?? tracked.companyIntel?.website ?? null;
+    companyTargetRoles = tracked.targetRoles ?? null;
     slugHint =
       slugHint ??
       slugFromEnrichment(tracked.companyIntel?.enrichmentCache) ??
@@ -65,6 +68,8 @@ export async function GET(request: Request) {
     companyName,
     slugHint,
     website,
+    companyTargetRoles,
+    roleFilter,
     primaryDays,
     compareWindows,
     forceRefresh,

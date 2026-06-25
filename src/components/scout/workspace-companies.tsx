@@ -1061,11 +1061,11 @@ function CompanyDrawer({
             )}
           </DrawerSection>
 
-          <DrawerSection title="Hirebase analytics">
+          <DrawerSection title="Company insights · Hirebase">
             <CompanyHirebaseIntelPanel
               trackedId={company.id}
               companyName={company.name}
-              slugHint={hirebaseSlugFromEnrichment(intel)}
+              slugHint={hirebaseSlugFromEnrichment(intel) ?? hirebaseMeta(company)?.slug ?? null}
             />
           </DrawerSection>
 
@@ -1524,7 +1524,7 @@ export function WorkspaceCompanies({
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
-              <DrawerSection title="Hirebase analytics">
+              <DrawerSection title="Company insights · Hirebase">
                 <CompanyHirebaseIntelPanel
                   companyName={intelName || intelSlug}
                   slugHint={intelSlug}

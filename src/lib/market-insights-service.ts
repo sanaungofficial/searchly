@@ -13,6 +13,7 @@ import {
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { resolveHirebaseCompanySlug } from "@/lib/hirebase";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
+import { buildMatchRoles } from "@/lib/job-match";
 import { isSumbleConfigured, sumbleJobFunctionTerm, lookupSumbleJobFunctionTerms } from "@/lib/sumble";
 import { buildSumbleMarketHeadline, buildSumbleMarketWindows, MARKET_JOB_SAMPLE_LIMIT } from "@/lib/sumble-market";
 import { getSumbleCreditsRemaining, SumbleInsufficientCreditsError } from "@/lib/sumble-credits";
@@ -44,6 +45,7 @@ export type CompanyIntelBundle = {
   companyName: string;
   companySlug: string;
   targetRoles: string[];
+  roleFilter: "matched" | "all";
   windows: Record<string, HirebaseInsightsResponse>;
   primaryDays: number;
   generatedAt: string | null;
@@ -217,28 +219,40 @@ export async function getCompanyIntelBundle(input: {
   companyName: string;
   slugHint?: string | null;
   website?: string | null;
+  companyTargetRoles?: string | null;
+  roleFilter?: "matched" | "all";
   primaryDays?: number;
   compareWindows?: number[];
   forceRefresh?: boolean;
 }): Promise<CompanyIntelBundle> {
   const configured = isHirebaseConfigured();
-  const targetRoles = await loadTargetRoles(input.userId);
-  const titles = defaultTitles(targetRoles);
+  const profileRoles = await loadTargetRoles(input.userId);
+  const matchedRoles = buildMatchRoles(profileRoles, input.companyTargetRoles ?? null);
+  const roleFilter = input.roleFilter ?? "matched";
+  const titles =
+    roleFilter === "all"
+      ? []
+      : defaultTitles(matchedRoles.length ? matchedRoles : ["Product Manager"]);
   const primaryDays = input.primaryDays ?? 30;
   const compareWindows = input.compareWindows ?? [7, 30, 90];
   const windowsToFetch = [...new Set([primaryDays, ...compareWindows])].sort((a, b) => a - b);
 
+  const emptyBase = {
+    companyName: input.companyName,
+    companySlug: "",
+    targetRoles: titles,
+    roleFilter,
+    windows: {} as Record<string, HirebaseInsightsResponse>,
+    primaryDays,
+    generatedAt: null as string | null,
+    hirebaseCached: false,
+    serverCached: false,
+  };
+
   if (!configured) {
     return {
       configured: false,
-      companyName: input.companyName,
-      companySlug: "",
-      targetRoles: titles,
-      windows: {},
-      primaryDays,
-      generatedAt: null,
-      hirebaseCached: false,
-      serverCached: false,
+      ...emptyBase,
       error: "Hirebase is not configured on this environment.",
     };
   }
@@ -250,15 +264,8 @@ export async function getCompanyIntelBundle(input: {
   if (!slug) {
     return {
       configured: true,
-      companyName: input.companyName,
-      companySlug: "",
-      targetRoles: titles,
-      windows: {},
-      primaryDays,
-      generatedAt: null,
-      hirebaseCached: false,
-      serverCached: false,
-      error: `No Hirebase profile found for "${input.companyName}".`,
+      ...emptyBase,
+      error: `No Hirebase profile found for "${input.companyName}". Add a website or enrich the company to resolve a slug.`,
     };
   }
 
@@ -273,7 +280,7 @@ export async function getCompanyIntelBundle(input: {
           job_titles: titles.length ? titles : undefined,
           days_ago: days,
         };
-        const key = insightsCacheKey("company", { slug, ...filters });
+        const key = insightsCacheKey("company", { slug, roleFilter, ...filters });
         if (!input.forceRefresh) {
           const hit = getInsightsCached<HirebaseInsightsResponse>(key);
           if (hit) {
@@ -296,6 +303,7 @@ export async function getCompanyIntelBundle(input: {
       companyName: input.companyName,
       companySlug: slug,
       targetRoles: titles,
+      roleFilter,
       windows,
       primaryDays,
       generatedAt: primary?.generated_at ?? null,
@@ -308,6 +316,7 @@ export async function getCompanyIntelBundle(input: {
       companyName: input.companyName,
       companySlug: slug,
       targetRoles: titles,
+      roleFilter,
       windows: {},
       primaryDays,
       generatedAt: null,
