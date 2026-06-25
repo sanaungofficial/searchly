@@ -321,7 +321,7 @@ export function InsiderConnectionPanel({
 
   const load = useCallback(
     async (options?: { fetch?: boolean; refresh?: boolean }) => {
-      const fetch = options?.fetch ?? false;
+      const shouldFetch = options?.fetch ?? false;
       const refresh = options?.refresh ?? false;
       setLoading(true);
       setError(null);
@@ -331,7 +331,7 @@ export function InsiderConnectionPanel({
           title: jobTitle ?? "",
         });
         if (website?.trim()) params.set("website", website.trim());
-        if (fetch) params.set("load", "1");
+        if (shouldFetch) params.set("load", "1");
         if (refresh) params.set("refresh", "1");
         const res = await fetch(`/api/jobs/insider-connections?${params}`);
         const body = (await res.json()) as JobInsiderConnectionsBundle;
