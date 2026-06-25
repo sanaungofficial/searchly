@@ -9,5 +9,5 @@ export async function enrichCachedJobFromHirebase(job: CachedJob): Promise<Cache
 
   const detail = await fetchHirebaseJobById(job.hirebaseId.trim());
   if (!detail) return job;
-  return mergeCachedJobs(job, detail);
+  return mergeCachedJobs(job, detail.job);
 }

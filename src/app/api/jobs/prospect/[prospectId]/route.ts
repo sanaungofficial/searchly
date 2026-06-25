@@ -21,8 +21,8 @@ export async function GET(
       job: {
         title: "Saved job link",
         url: decoded.url,
-        companyName: null,
       },
+      companyName: null,
     });
   }
 
@@ -31,9 +31,9 @@ export async function GET(
   }
 
   try {
-    const job = await fetchHirebaseJobById(decoded.hirebaseId);
-    if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
-    return NextResponse.json({ job });
+    const result = await fetchHirebaseJobById(decoded.hirebaseId);
+    if (!result) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    return NextResponse.json({ job: result.job, companyName: result.companyName });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to load job";
     return NextResponse.json({ error: msg }, { status: 502 });

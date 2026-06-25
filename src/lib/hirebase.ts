@@ -852,14 +852,19 @@ export async function fetchHirebaseVectorJobs(
   };
 }
 
-/** Full job record — used when opening watchlist drawer (includes raw description). */
-export async function fetchHirebaseJobById(jobId: string): Promise<CachedJob | null> {
+/** Full job record — used when opening a recommended or watchlist posting. */
+export async function fetchHirebaseJobById(
+  jobId: string,
+): Promise<{ job: CachedJob; companyName: string } | null> {
   if (!jobId.trim()) return null;
   try {
-    const job = await hirebaseFetch<HirebaseJob>(
-      `/v2/jobs/${encodeURIComponent(jobId.trim())}?return_raw_description=true`
+    const raw = await hirebaseFetch<HirebaseJob>(
+      `/v2/jobs/${encodeURIComponent(jobId.trim())}?return_raw_description=true`,
     );
-    return mapHirebaseJob(job);
+    return {
+      job: mapHirebaseJob(raw),
+      companyName: raw.company_name?.trim() || "Unknown company",
+    };
   } catch (err) {
     if (err instanceof HirebaseNotFoundError) return null;
     throw err;
