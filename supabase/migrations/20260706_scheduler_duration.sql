@@ -1,0 +1,1 @@
+ALTER TABLE "CoachProfile" ADD COLUMN IF NOT EXISTS "schedulerDurationMinutes" INTEGER NOT NULL DEFAULT 30;

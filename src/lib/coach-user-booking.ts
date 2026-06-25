@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export type UserCoachBookingView = {
   bookingId: string;
+  nylasBookingRef: string | null;
   startAt: string;
   endAt: string;
   status: CoachBookingStatus;
@@ -69,6 +70,7 @@ export async function findActiveCoachBookingForEmail(
 
   return {
     bookingId: booking.id,
+    nylasBookingRef: booking.nylasBookingRef,
     startAt: booking.startAt.toISOString(),
     endAt: booking.endAt.toISOString(),
     status: booking.status,

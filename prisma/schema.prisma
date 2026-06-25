@@ -239,6 +239,7 @@ model CoachProfile {
   nylasGrantId          String?  @unique
   nylasSchedulerConfigId String? @unique
   nylasSchedulerSlug    String?
+  schedulerDurationMinutes Int   @default(30)
   clientSpecializations String[] @default([])
   experienceLevel       String?
   clientTier            String?

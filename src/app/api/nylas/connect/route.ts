@@ -41,7 +41,7 @@ async function getCoachProfileForUser() {
         userId: dbUser.id,
         email: dbUser.email,
         displayName: dbUser.name?.trim() || dbUser.email.split("@")[0],
-        status: CoachStatus.PENDING,
+        status: dbUser.role === UserRole.ADMIN ? CoachStatus.ACTIVE : CoachStatus.PENDING,
       },
     });
     profile = await prisma.coachProfile.update({
