@@ -108,23 +108,31 @@ async function handleRecommended(request: Request) {
   }
 
   if (!forceRefresh && defaultFeed) {
-    const cached = await readRecommendedSnapshot(dbUser.id, snapshotDate);
-    if (cached?.jobs.length) {
-      return snapshotResponse(cached, { filtersApplied: searchFilters });
+    try {
+      const cached = await readRecommendedSnapshot(dbUser.id, snapshotDate);
+      if (cached?.jobs.length) {
+        return snapshotResponse(cached, { filtersApplied: searchFilters });
+      }
+    } catch (err) {
+      console.warn("[recommended] snapshot read failed, falling back to live:", err);
     }
   }
 
   if (forceRefresh && defaultFeed) {
-    const gate = await canManualRefresh(dbUser.id);
-    if (!gate.allowed) {
-      const minutes = Math.ceil((gate.retryAfterMs ?? 0) / 60_000);
-      return NextResponse.json(
-        {
-          error: `Manual refresh is rate-limited — try again in about ${minutes} minutes, or wait for the daily refresh.`,
-          retryAfterMs: gate.retryAfterMs,
-        },
-        { status: 429 },
-      );
+    try {
+      const gate = await canManualRefresh(dbUser.id);
+      if (!gate.allowed) {
+        const minutes = Math.ceil((gate.retryAfterMs ?? 0) / 60_000);
+        return NextResponse.json(
+          {
+            error: `Manual refresh is rate-limited — try again in about ${minutes} minutes, or wait for the daily refresh.`,
+            retryAfterMs: gate.retryAfterMs,
+          },
+          { status: 429 },
+        );
+      }
+    } catch (err) {
+      console.warn("[recommended] manual refresh gate failed:", err);
     }
   }
 
@@ -148,13 +156,17 @@ async function handleRecommended(request: Request) {
     }
 
     if (defaultFeed) {
-      await persistRecommendedSnapshot({
-        userId: dbUser.id,
-        snapshotDate,
-        payload: result,
-        manualRefresh: forceRefresh,
-      });
-      if (forceRefresh) await recordManualRefresh(dbUser.id);
+      try {
+        await persistRecommendedSnapshot({
+          userId: dbUser.id,
+          snapshotDate,
+          payload: result,
+          manualRefresh: forceRefresh,
+        });
+        if (forceRefresh) await recordManualRefresh(dbUser.id);
+      } catch (err) {
+        console.warn("[recommended] snapshot persist failed:", err);
+      }
     }
 
     return NextResponse.json({

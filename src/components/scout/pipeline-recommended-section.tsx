@@ -847,9 +847,9 @@ export function PipelineRecommendedSection({
           });
         }
         setHasLoadedOnce(true);
-      } catch {
+      } catch (err) {
         if (gen !== fetchGenRef.current) return;
-        setError("Network error — try again.");
+        setError(formatApiErrorMessage(err, "Could not load recommended jobs — try Refresh."));
         if (!background) setJobs([]);
         setHasLoadedOnce(true);
       } finally {
