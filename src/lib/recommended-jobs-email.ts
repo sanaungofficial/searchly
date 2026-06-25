@@ -55,7 +55,7 @@ export async function sendRecommendedJobsDigestEmail(input: {
                       <td style="padding:40px;">
                         <p style="margin:0 0 12px;font-size:24px;font-weight:500;color:#1C3A2F;font-family:Georgia,serif;">Hi ${escapeHtml(firstName)},</p>
                         <p style="margin:0 0 24px;font-size:15px;color:#52493F;line-height:1.7;">
-                          We found ${input.totalNew} new recommended ${input.totalNew === 1 ? "role" : "roles"} scoring 80+ against your profile.
+                          We found ${input.totalNew} new recommended ${input.totalNew === 1 ? "role" : "roles"} for your profile.
                         </p>
                         <table width="100%" cellpadding="0" cellspacing="0">${jobRows}</table>
                         ${more}

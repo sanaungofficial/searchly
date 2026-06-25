@@ -109,10 +109,13 @@ export async function generateRecommendedJobsForUser(
   const semanticQuery = trimVSearchQuery(requestFilters.semanticQuery ?? "");
 
   const { targetRoles, resumeText, profilePrefs, parsedData, profile } = await loadUserContext(input.userId);
-  const mergedFilters = mergeProfileAndRequestFilters(profilePrefs, {
-    ...requestFilters,
-    semanticQuery: semanticQuery || undefined,
-  });
+  const defaultFeed = isDefaultRecommendedFilters(requestFilters);
+  const mergedFilters = defaultFeed
+    ? { ...requestFilters, semanticQuery: semanticQuery || undefined }
+    : mergeProfileAndRequestFilters(profilePrefs, {
+        ...requestFilters,
+        semanticQuery: semanticQuery || undefined,
+      });
 
   const artifact = await ensureHirebaseArtifactForUser(input.userId);
   const preferCache = input.preferCache !== false;
@@ -263,5 +266,3 @@ export async function userEligibleForRecommendedSnapshot(userId: string): Promis
     parsedData: ctx.parsedData,
   });
 }
-
-export { isDefaultRecommendedFilters };
