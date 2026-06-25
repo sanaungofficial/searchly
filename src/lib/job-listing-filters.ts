@@ -100,9 +100,20 @@ export function jobMatchesListingFilters(
     if (!board.includes(filters.jobBoard.trim().toLowerCase())) return false;
   }
 
-  if (filters.industries?.length && cached.tags?.length) {
-    const tags = cached.tags.join(" ").toLowerCase();
-    if (!matchesList(filters.industries, tags)) return false;
+  if (filters.industries?.length) {
+    const industryHay = [
+      ...(cached.industries ?? []),
+      ...(cached.subindustries ?? []),
+      ...(cached.tags ?? []),
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (!matchesList(filters.industries, industryHay || hay)) return false;
+  }
+
+  if (filters.subindustries?.length) {
+    const subHay = [...(cached.subindustries ?? []), ...(cached.industries ?? [])].join(" ").toLowerCase();
+    if (!matchesList(filters.subindustries, subHay || hay)) return false;
   }
 
   if (filters.jobCategories?.length) {

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { HirebaseJob } from "@/lib/hirebase";
-import { fetchHirebaseMatchingJobs, fetchHirebaseSummarySearch } from "@/lib/hirebase";
+import { fetchHirebaseMatchingJobs, fetchHirebaseSummarySearch, fetchHirebaseVectorJobs, mapHirebaseJob } from "@/lib/hirebase";
 import type { CachedJob } from "@/lib/cached-job";
 import { normalizeJobUrl } from "@/lib/cached-job";
 import { parseJobsCache } from "@/lib/company-jobs-scan";
@@ -255,5 +255,136 @@ export async function fetchSemanticSearchOnTrackedCompanies(input: {
   return {
     sources: applyListingFiltersToSources(dedupeSources(collected, limit), input.filters),
     scoped: true,
+  };
+}
+
+function normalizeCompanyKey(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
+}
+
+type TrackedCompanyRow = Awaited<ReturnType<typeof prisma.trackedCompany.findMany>>[number] & {
+  companyIntel?: { name?: string; slug?: string | null; enrichmentCache?: unknown } | null;
+};
+
+function buildTrackedCompanyIndex(companies: TrackedCompanyRow[]) {
+  const names = new Set<string>();
+  const slugs = new Set<string>();
+  for (const company of companies) {
+    const name = company.companyIntel?.name ?? company.name;
+    if (name?.trim()) names.add(normalizeCompanyKey(name));
+    const enrichment = company.companyIntel?.enrichmentCache ?? company.enrichmentCache;
+    const hirebaseMeta = getHirebaseMetaFromEnrichment(enrichment);
+    const slug = (hirebaseMeta?.slug ?? company.companyIntel?.slug)?.trim().toLowerCase();
+    if (slug) slugs.add(slug);
+  }
+  return { names, slugs };
+}
+
+function jobMatchesTrackedCompany(job: HirebaseJob, index: ReturnType<typeof buildTrackedCompanyIndex>): boolean {
+  const jobSlug = job.company_slug?.trim().toLowerCase();
+  if (jobSlug && index.slugs.has(jobSlug)) return true;
+
+  const jobName = job.company_name?.trim();
+  if (!jobName) return false;
+  const key = normalizeCompanyKey(jobName);
+  if (index.names.has(key)) return true;
+
+  for (const tracked of index.names) {
+    if (key.includes(tracked) || tracked.includes(key)) return true;
+  }
+  return false;
+}
+
+function buildVSearchFilters(
+  profileTargetRoles: string[],
+  filters?: VectorSearchFilters,
+  semanticQuery?: string,
+): { merged: VectorSearchFilters; query?: string } {
+  const jobTitles = filters?.jobTitles?.length
+    ? filters.jobTitles
+    : profileTargetRoles.length
+      ? profileTargetRoles
+      : undefined;
+
+  const { semanticQuery: _omit, ...rest } = filters ?? {};
+
+  return {
+    merged: {
+      ...rest,
+      jobTitles,
+    },
+    query: semanticQuery?.trim() || undefined,
+  };
+}
+
+/**
+ * Recommended jobs via Hirebase resume vector search (`POST /v2/jobs/vsearch`, search_type=resume).
+ * Requires a resume embed artifact from `/v2/resumes/embed` on upload.
+ */
+export async function fetchRecommendedViaResumeVSearch(input: {
+  userId: string;
+  artifactId: string;
+  profileTargetRoles: string[];
+  filters?: VectorSearchFilters;
+  semanticQuery?: string;
+  maxJobs?: number;
+}): Promise<{
+  sources: RecommendedJobSource[];
+  companyCount: number;
+  trackedWithMatches: number;
+}> {
+  const maxJobs = Math.min(input.maxJobs ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+
+  let tracked = await prisma.trackedCompany.findMany({
+    where: { userId: input.userId },
+    include: { companyIntel: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (input.filters?.companyName?.trim()) {
+    const q = input.filters.companyName.trim().toLowerCase();
+    tracked = tracked.filter((c) => (c.companyIntel?.name ?? c.name).toLowerCase().includes(q));
+  }
+
+  if (!tracked.length) {
+    return { sources: [], companyCount: 0, trackedWithMatches: 0 };
+  }
+
+  const trackedIndex = buildTrackedCompanyIndex(tracked);
+  const { merged: vsearchFilters, query } = buildVSearchFilters(
+    input.profileTargetRoles,
+    input.filters,
+    input.semanticQuery,
+  );
+
+  const vsearch = await fetchHirebaseVectorJobs({
+    artifactId: input.artifactId,
+    ...vsearchFilters,
+    query,
+    limit: maxJobs,
+    fetchLimit: Math.min(100, maxJobs * 4),
+    page: input.filters?.page ?? 1,
+    accuracy: input.filters?.accuracy,
+    topK: input.filters?.topK,
+    minScore: input.filters?.minScore,
+  });
+
+  const sources: RecommendedJobSource[] = [];
+  for (let i = 0; i < vsearch.rawJobs.length; i++) {
+    const raw = vsearch.rawJobs[i];
+    if (!jobMatchesTrackedCompany(raw, trackedIndex)) continue;
+    const cached = vsearch.jobs[i] ?? mapHirebaseJob(raw);
+    const companyName = raw.company_name?.trim() || vsearch.companyNames[i] || "Unknown company";
+    sources.push({ cached, companyName, raw });
+    if (sources.length >= maxJobs) break;
+  }
+
+  const filtered = applyListingFiltersToSources(sources, input.filters);
+  const trackedWithMatches = new Set(filtered.map((s) => s.companyName)).size;
+
+  return {
+    sources: filtered,
+    companyCount: tracked.length,
+    trackedWithMatches,
   };
 }

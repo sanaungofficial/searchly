@@ -40,6 +40,7 @@ type JobsApiResponse = {
   totalPages?: number;
   page?: number;
   matchMode?: string;
+  needsResume?: boolean;
   error?: string;
 };
 
@@ -791,7 +792,11 @@ export function PipelineRecommendedSection({
 
         if (!res.ok) {
           const msg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
-          setError(msg);
+          setError(
+            data.needsResume
+              ? `${msg} Upload or re-upload your resume from Profile → Assets.`
+              : msg,
+          );
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -803,7 +808,7 @@ export function PipelineRecommendedSection({
           const nextJobs = data.jobs ?? [];
           setJobs(nextJobs);
           setError(null);
-          setSearchScoped(data.matchMode !== "semantic_global");
+          setSearchScoped(data.matchMode === "resume" || data.matchMode === "semantic_scoped");
           writeRecommendedCache({
             jobs: nextJobs,
             filtersKey: cacheKey,
@@ -934,7 +939,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Matching roles at tracked companies plus jobs in your pipeline. Search and filter across everything.
+              Roles matched to your resume at tracked companies, plus jobs already in your pipeline. Search and filters refine Hirebase resume vector search.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -975,7 +980,7 @@ export function PipelineRecommendedSection({
         )}
         {hasActiveSearch && !error && searchScoped && hasLoadedOnce && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            Results are limited to your tracked companies.
+            Resume matches are scoped to your tracked companies{hasActiveSearch ? " — search text adds optional focus to the vector query" : ""}.
           </p>
         )}
         {revalidating && jobs.length > 0 && (
