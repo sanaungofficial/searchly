@@ -6,9 +6,15 @@ import {
   PIPELINE_RECOMMENDATION_PRIORITIES,
   type RecommendationPreferencesState,
 } from "@/lib/recommendation-preferences";
+import {
+  formatProfileLocation,
+  locationFieldsFromProfileString,
+  HIREBASE_FILTER_COUNTRIES,
+  HIREBASE_FILTER_US_STATES,
+} from "@/lib/recommended-filter-utils";
+import { parseProfileLocationString } from "@/lib/profile-location";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 type ProfilePayload = {
   parsedData?: { location?: string | null } | null;
@@ -48,18 +54,56 @@ function ChipToggle({ label, active, onClick }: { label: string; active: boolean
   );
 }
 
+function DatalistInput({
+  value,
+  onChange,
+  listId,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  listId: string;
+  options: readonly string[];
+  placeholder?: string;
+}) {
+  return (
+    <>
+      <input
+        style={inputStyle}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        list={options.length ? listId : undefined}
+      />
+      {options.length > 0 && (
+        <datalist id={listId}>
+          {options.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
+      )}
+    </>
+  );
+}
+
+function locationToDisplay(city: string, region: string, country: string): string {
+  const parsed = parseProfileLocationString(formatProfileLocation({ city, region, country }));
+  return parsed ? formatProfileLocation(parsed) : [city, region, country].filter(Boolean).join(", ");
+}
+
 export function PipelinePreferencesPanel({
   actingUserId,
   onLoaded,
   onApplied,
 }: {
   actingUserId?: string | null;
-  /** Called once when profile prefs are loaded (pre-fill, no refresh). */
   onLoaded?: (prefs: RecommendationPreferencesState) => void;
   onApplied: (prefs: RecommendationPreferencesState) => void;
 }) {
-  const isMobile = useIsMobile();
-  const [location, setLocation] = useState("");
+  const [locationCity, setLocationCity] = useState("");
+  const [locationRegion, setLocationRegion] = useState("");
+  const [locationCountry, setLocationCountry] = useState("");
   const [priorities, setPriorities] = useState<string[]>([]);
   const [baseline, setBaseline] = useState<RecommendationPreferencesState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,11 +121,14 @@ export function PipelinePreferencesPanel({
         setError(data.error ?? "Could not load profile.");
         return;
       }
+      const fields = locationFieldsFromProfileString(data.parsedData?.location);
       const next: RecommendationPreferencesState = {
-        location: data.parsedData?.location?.trim() ?? "",
+        location: fields.display,
         priorities: Array.isArray(data.priorities) ? data.priorities : [],
       };
-      setLocation(next.location);
+      setLocationCity(fields.city);
+      setLocationRegion(fields.region);
+      setLocationCountry(fields.country || "United States");
       setPriorities(next.priorities);
       setBaseline(next);
       onLoaded?.(next);
@@ -90,15 +137,17 @@ export function PipelinePreferencesPanel({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onLoaded]);
 
   useEffect(() => {
     void loadProfile();
-  }, [loadProfile, actingUserId, onLoaded]);
+  }, [loadProfile, actingUserId]);
+
+  const displayLocation = locationToDisplay(locationCity, locationRegion, locationCountry);
 
   const dirty =
     baseline != null &&
-    (location.trim() !== baseline.location.trim() ||
+    (displayLocation.trim() !== baseline.location.trim() ||
       JSON.stringify([...priorities].sort()) !== JSON.stringify([...baseline.priorities].sort()));
 
   const handleApply = async () => {
@@ -115,18 +164,16 @@ export function PipelinePreferencesPanel({
         return;
       }
 
+      const location = displayLocation.trim() || null;
       const parsedData = {
         ...(profile.parsedData && typeof profile.parsedData === "object" ? profile.parsedData : {}),
-        location: location.trim() || null,
+        location,
       };
 
       const patchRes = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          parsedData,
-          priorities,
-        }),
+        body: JSON.stringify({ parsedData, priorities }),
       });
       if (!patchRes.ok) {
         const err = (await patchRes.json().catch(() => ({}))) as { error?: string };
@@ -135,7 +182,7 @@ export function PipelinePreferencesPanel({
       }
 
       const applied: RecommendationPreferencesState = {
-        location: location.trim(),
+        location: location ?? "",
         priorities: [...priorities],
       };
       setBaseline(applied);
@@ -153,22 +200,46 @@ export function PipelinePreferencesPanel({
     <ScoutBox stack padding={22} style={{ height: "100%" }}>
       <ScoutLabel>Match preferences</ScoutLabel>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 14px", lineHeight: 1.5 }}>
-        Used for recommended roles — remote, local area, and relocation scope.
+        Remote/relocation scope for recommendations. Use Filters below for Hirebase search fields.
       </p>
 
       {loading ? (
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: 0 }}>Loading…</p>
       ) : (
         <>
-          <label style={{ display: "block", marginBottom: 14 }}>
+          <label style={{ display: "block", marginBottom: 8 }}>
             <span style={{ display: "block", fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, marginBottom: 4 }}>
-              Your location
+              City
             </span>
             <input
               style={inputStyle}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Baltimore, MD"
+              value={locationCity}
+              onChange={(e) => setLocationCity(e.target.value)}
+              placeholder="Baltimore"
+            />
+          </label>
+          <label style={{ display: "block", marginBottom: 8 }}>
+            <span style={{ display: "block", fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, marginBottom: 4 }}>
+              State / region
+            </span>
+            <DatalistInput
+              value={locationRegion}
+              onChange={setLocationRegion}
+              listId="match-pref-region"
+              options={HIREBASE_FILTER_US_STATES}
+              placeholder="Maryland"
+            />
+          </label>
+          <label style={{ display: "block", marginBottom: 14 }}>
+            <span style={{ display: "block", fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, marginBottom: 4 }}>
+              Country
+            </span>
+            <DatalistInput
+              value={locationCountry}
+              onChange={setLocationCountry}
+              listId="match-pref-country"
+              options={HIREBASE_FILTER_COUNTRIES}
+              placeholder="United States"
             />
           </label>
 
@@ -188,9 +259,9 @@ export function PipelinePreferencesPanel({
             ))}
           </div>
 
-          {!location.trim() && (
+          {!displayLocation.trim() && (
             <p style={{ fontFamily: fontSans, fontSize: T.label, color: "#9A6B2E", margin: "0 0 12px", lineHeight: 1.45 }}>
-              Add your city to filter out international on-site roles.
+              Add city and state to filter out international on-site roles.
             </p>
           )}
 
@@ -211,7 +282,10 @@ export function PipelinePreferencesPanel({
               <ScoutSecondaryBtn
                 onClick={() => {
                   if (!baseline) return;
-                  setLocation(baseline.location);
+                  const fields = locationFieldsFromProfileString(baseline.location);
+                  setLocationCity(fields.city);
+                  setLocationRegion(fields.region);
+                  setLocationCountry(fields.country || "United States");
                   setPriorities(baseline.priorities);
                 }}
               >

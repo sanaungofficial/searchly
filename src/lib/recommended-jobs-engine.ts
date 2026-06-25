@@ -9,7 +9,6 @@ import {
 } from "@/lib/profile-preference-filters";
 import {
   filterSourcesByLocationPreference,
-  profileLocationToHirebaseFilters,
 } from "@/lib/profile-location";
 import {
   buildProfileVSearchQuery,
@@ -47,6 +46,7 @@ export type GenerateRecommendedInput = {
 export type GenerateRecommendedResult = RecommendedJobSnapshotPayload & {
   artifactReEmbedded?: boolean;
   resumeVSearch?: boolean;
+  effectiveFilters?: VectorSearchFilters;
 };
 
 async function loadUserContext(userId: string) {
@@ -126,12 +126,10 @@ export async function generateRecommendedJobsForUser(
     priorities,
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
-  const locationFilters = profileLocationToHirebaseFilters({ profileLocation, priorities });
   const mergedFilters = defaultFeed
     ? {
         ...requestFilters,
         semanticQuery: semanticQuery || undefined,
-        locations: requestFilters.locations?.length ? requestFilters.locations : locationFilters,
       }
     : mergeProfileAndRequestFilters(profilePrefs, {
         ...requestFilters,
@@ -250,12 +248,14 @@ export async function generateRecommendedJobsForUser(
 
   if (!sources.length) return null;
 
-  const beforeLocation = sources.length;
-  sources = filterSourcesByLocationPreference(sources, { profileLocation, priorities });
-  if (beforeLocation > 0 && !sources.length) {
-    notice =
-      notice ??
-      "No roles matched your location preferences — update Profile → About (location) or Preferences (relocation).";
+  if (defaultFeed) {
+    const beforeLocation = sources.length;
+    sources = filterSourcesByLocationPreference(sources, { profileLocation, priorities });
+    if (beforeLocation > 0 && !sources.length) {
+      notice =
+        notice ??
+        "No roles matched your location preferences — broaden location under Filters or enable relocation in Match preferences.";
+    }
   }
 
   if (!sources.length) return null;
@@ -270,6 +270,7 @@ export async function generateRecommendedJobsForUser(
     notice,
     artifactReEmbedded: artifact.reEmbedded,
     resumeVSearch,
+    effectiveFilters: mergedFilters,
   };
 }
 
