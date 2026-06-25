@@ -11,6 +11,7 @@ import {
 } from "@/lib/career-strategy";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
+import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, T } from "@/lib/typography";
@@ -119,19 +120,19 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     setError(null);
     try {
       const res = await fetch("/api/ai/career-strategy");
-      const data = await res.json();
+      const data = await readResponseJson(res);
       if (data.error && res.status !== 404) {
-        if (res.status !== 404) setError(data.error);
+        setError(formatApiErrorMessage(data.error));
       } else {
         if (data.document) setDocument(normalizeStrategyDocument(data.document));
         else setDocument(EMPTY_STRATEGY);
-        if (data.intakeNotes) setIntakeNotes(data.intakeNotes);
-        if (data.updatedAt) setUpdatedAt(data.updatedAt);
-        setProfileChanges(data.profileChanges ?? []);
+        if (data.intakeNotes) setIntakeNotes(String(data.intakeNotes));
+        if (data.updatedAt) setUpdatedAt(String(data.updatedAt));
+        setProfileChanges((data.profileChanges as string[]) ?? []);
         setIsStale(!!data.isStale);
       }
-    } catch {
-      setError("Failed to load strategy");
+    } catch (e) {
+      setError(formatApiErrorMessage(e, "Failed to load strategy"));
     } finally {
       setLoading(false);
     }
@@ -160,20 +161,20 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         await onPatchProfile({ strategyIntakeNotes: intakeNotes.trim() });
       }
       const res = await fetch("/api/ai/career-strategy", { method: "POST" });
-      const data = await res.json();
+      const data = await readResponseJson(res);
       if (res.status === 402) {
         notifyCreditsChanged();
         setShowUpgrade(true);
         return;
       }
-      if (!res.ok) throw new Error(data.error || "Generation failed");
+      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Generation failed"));
       setDocument(normalizeStrategyDocument(data.document));
-      setUpdatedAt(data.updatedAt ?? null);
+      setUpdatedAt(data.updatedAt ? String(data.updatedAt) : null);
       setProfileChanges([]);
       setIsStale(false);
       notifyCreditsChanged();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Generation failed");
+      setError(formatApiErrorMessage(e, "Generation failed"));
     } finally {
       setGenerating(false);
     }
@@ -211,18 +212,18 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: intakeNotes }),
       });
-      const data = await res.json();
+      const data = await readResponseJson(res);
       if (res.status === 402) {
         notifyCreditsChanged();
         setShowUpgrade(true);
         return;
       }
-      if (!res.ok) throw new Error(data.error || "Parse failed");
-      setParseResult(data);
+      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Parse failed"));
+      setParseResult(data as IntakeParseResult);
       setShowApplyModal(true);
       notifyCreditsChanged();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Parse failed");
+      setError(formatApiErrorMessage(e, "Parse failed"));
     } finally {
       setParsing(false);
     }
