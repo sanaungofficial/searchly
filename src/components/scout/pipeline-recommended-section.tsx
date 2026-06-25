@@ -30,7 +30,6 @@ import {
 import type { KanbanCard } from "./workspace-data";
 import {
   filtersCacheKey,
-  isCacheFresh,
   readRecommendedCache,
   writeRecommendedCache,
 } from "@/lib/recommended-jobs-cache";
@@ -152,6 +151,21 @@ function filtersToForm(f: VectorSearchFilters) {
 }
 
 type FilterForm = ReturnType<typeof filtersToForm>;
+
+function defaultFeedForm(): FilterForm {
+  return {
+    ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+    semanticQuery: "",
+  };
+}
+
+function defaultFeedCacheKey(): string {
+  return filtersCacheKey(formToFilters(defaultFeedForm(), 1));
+}
+
+function readDefaultFeedCache(): RecommendedCacheEntry | null {
+  return readRecommendedCache(defaultFeedCacheKey());
+}
 
 function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
   const locationParts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
@@ -603,13 +617,13 @@ export function PipelineRecommendedSection({
   const [showFilters, setShowFilters] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const [jobs, setJobs] = useState<VectorMatchedJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState<VectorMatchedJob[]>(() => readDefaultFeedCache()?.jobs ?? []);
+  const [loading, setLoading] = useState(() => !readDefaultFeedCache());
   const [revalidating, setRevalidating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => readDefaultFeedCache()?.error ?? null);
   const [notice, setNotice] = useState<string | null>(null);
   const [snapshotMeta, setSnapshotMeta] = useState<{ fromSnapshot: boolean; generatedAt?: string } | null>(null);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(() => Boolean(readDefaultFeedCache()));
   const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
   const [activeFilterLabels, setActiveFilterLabels] = useState<string[]>([]);
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
@@ -752,10 +766,11 @@ export function PipelineRecommendedSection({
     mountedRef.current = false;
     setDefaultsLoaded(false);
     defaultFormRef.current = null;
-    setJobs([]);
-    setHasLoadedOnce(false);
-    setLoading(true);
-    setError(null);
+    const cached = readDefaultFeedCache();
+    setJobs(cached?.jobs ?? []);
+    setHasLoadedOnce(Boolean(cached));
+    setLoading(!cached);
+    setError(cached?.error ?? null);
     setNotice(null);
     setActiveFilterLabels([]);
     setProfileSuggestedLabels([]);
@@ -768,25 +783,11 @@ export function PipelineRecommendedSection({
     if (mountedRef.current || !defaultsLoaded) return;
     mountedRef.current = true;
 
-    // Default daily feed: no custom filters sent to the API (profile location is post-filter only).
-    const feedForm: FilterForm = {
-      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
-      semanticQuery: "",
-    };
-    const feedFilters = formToFilters(feedForm, 1);
-    const cacheKey = filtersCacheKey(feedFilters);
+    const feedForm = defaultFeedForm();
+    const cacheKey = defaultFeedCacheKey();
     const cached = readRecommendedCache(cacheKey);
 
-    if (cached?.jobs?.length) {
-      setJobs(cached.jobs);
-      setHasLoadedOnce(true);
-      setLoading(false);
-      if (isCacheFresh(cached)) return;
-      void fetchRecommended(feedForm, { background: true, preferCache: true });
-      return;
-    }
-
-    if (cached && isCacheFresh(cached)) {
+    if (cached) {
       setJobs(cached.jobs);
       setError(cached.error ?? null);
       setHasLoadedOnce(true);
@@ -821,18 +822,14 @@ export function PipelineRecommendedSection({
     setAppliedForm(filtersForm);
     const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
     const cached = readRecommendedCache(cacheKey);
-    if (cached && isCacheFresh(cached)) {
+    if (cached) {
       setJobs(cached.jobs);
       setError(cached.error ?? null);
       setHasLoadedOnce(true);
       setLoading(false);
       return;
     }
-    void fetchRecommended(filtersForm, {
-      forceRefresh: true,
-      preferCache: false,
-      background: jobs.length > 0,
-    });
+    void fetchRecommended(filtersForm, { preferCache: true });
   };
 
   const handleRefresh = () => {
@@ -856,15 +853,20 @@ export function PipelineRecommendedSection({
   }, [pipelineCards]);
 
   const clearSearchFilters = () => {
-    const reset: FilterForm = defaultFormRef.current ?? {
-      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
-      semanticQuery: "",
-    };
+    const reset: FilterForm = defaultFormRef.current ?? defaultFeedForm();
     setForm({ ...reset, semanticQuery: "" });
     setAppliedForm(reset);
     saveScopedSemanticQuery("");
     setShowFilters(true);
-    void fetchRecommended(reset, { forceRefresh: true, preferCache: false });
+    const cached = readRecommendedCache(defaultFeedCacheKey());
+    if (cached) {
+      setJobs(cached.jobs);
+      setError(cached.error ?? null);
+      setHasLoadedOnce(true);
+      setLoading(false);
+      return;
+    }
+    void fetchRecommended(reset, { preferCache: true });
   };
 
   const recommendedListings = useMemo(

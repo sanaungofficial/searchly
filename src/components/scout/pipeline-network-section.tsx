@@ -19,6 +19,10 @@ import {
   loadScopedNetworkSearch,
   saveScopedNetworkSearch,
 } from "@/lib/client-session";
+import {
+  readNetworkJobsCache,
+  writeNetworkJobsCache,
+} from "@/lib/network-jobs-cache";
 import { CompanyLogo } from "./company-logo";
 import { MatchFitCallout, MatchScoreBadge } from "./match-score-ui";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
@@ -413,10 +417,10 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
   const isMobile = useIsMobile();
   const internalView = canViewNetworkJobInternal(userRole, isAdmin);
 
-  const [jobs, setJobs] = useState<NetworkMatchedJob[]>(() => seedAsMatched(SEED_NETWORK_JOBS));
-  const [loading, setLoading] = useState(true);
-  const [needsProfile, setNeedsProfile] = useState(false);
-  const [profileHint, setProfileHint] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<NetworkMatchedJob[]>(() => readNetworkJobsCache()?.jobs ?? seedAsMatched(SEED_NETWORK_JOBS));
+  const [loading, setLoading] = useState(() => !readNetworkJobsCache());
+  const [needsProfile, setNeedsProfile] = useState(() => readNetworkJobsCache()?.needsProfile ?? false);
+  const [profileHint, setProfileHint] = useState<string | null>(() => readNetworkJobsCache()?.hint ?? null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [form, setForm] = useState<NetworkJobFilterForm>(() => ({
     ...createEmptyNetworkJobFilterForm(),
@@ -427,7 +431,18 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const profileFormRef = useRef<NetworkJobFilterForm | null>(null);
 
-  const loadJobs = useCallback(async () => {
+  const loadJobs = useCallback(async (options?: { force?: boolean }) => {
+    if (!options?.force) {
+      const cached = readNetworkJobsCache();
+      if (cached) {
+        setJobs(cached.jobs);
+        setNeedsProfile(Boolean(cached.needsProfile));
+        setProfileHint(cached.hint ?? null);
+        setLoading(false);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/network-jobs/match");
@@ -440,6 +455,12 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
         setJobs(data.jobs);
         setNeedsProfile(Boolean(data.needsProfile));
         setProfileHint(data.hint ?? null);
+        writeNetworkJobsCache({
+          jobs: data.jobs,
+          fetchedAt: Date.now(),
+          needsProfile: data.needsProfile,
+          hint: data.hint ?? null,
+        });
       }
     } catch {
       setJobs(seedAsMatched(SEED_NETWORK_JOBS));
@@ -454,7 +475,15 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
     setAppliedForm(createEmptyNetworkJobFilterForm());
     setProfileSuggestedLabels([]);
     profileFormRef.current = null;
-    void loadJobs();
+    const cached = readNetworkJobsCache();
+    if (cached) {
+      setJobs(cached.jobs);
+      setNeedsProfile(Boolean(cached.needsProfile));
+      setProfileHint(cached.hint ?? null);
+      setLoading(false);
+    } else {
+      void loadJobs();
+    }
 
     void fetch("/api/profile")
       .then((res) => (res.ok ? res.json() : null))
@@ -530,6 +559,9 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <ScoutSecondaryBtn onClick={() => void loadJobs({ force: true })} disabled={loading}>
+              {loading ? "Loading…" : "Refresh"}
+            </ScoutSecondaryBtn>
             <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
               {showFilters ? "Hide filters" : "Filters"}
             </ScoutSecondaryBtn>
