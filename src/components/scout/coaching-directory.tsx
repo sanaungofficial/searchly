@@ -252,14 +252,17 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const setFilter = (key: string, value: string) => setFilters({ [key]: value });
 
   const clearFilters = () => {
-    setFilters({
-      firm: "",
-      specialty: "",
-      specialization: "",
-      rateMin: "",
-      rateMax: "",
-      professional: "",
-    });
+    setSearchInput("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("q");
+    params.delete("firm");
+    params.delete("specialty");
+    params.delete("specialization");
+    params.delete("rateMin");
+    params.delete("rateMax");
+    params.delete("professional");
+    const base = category ? `/coaching/c/${categoryToSlug(category)}` : "/coaching";
+    router.replace(base, { scroll: false });
   };
 
   const toggleProfessionalFilter = (checked: boolean) => {

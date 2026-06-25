@@ -1,9 +1,9 @@
 import { BetaComingSoon } from "@/components/scout/beta-coming-soon";
-import { canAccessBetaFeatures, type BetaFeatureId } from "@/lib/beta-features";
+import { canAccessBetaFeature, type BetaFeatureId } from "@/lib/beta-features";
 import { isAdmin } from "@/lib/auth";
 import type { ReactNode } from "react";
 
-/** Prod non-admins get coming soon; dev and prod admins get the real page. */
+/** Prod non-admins get coming soon for gated beta features; coaching is live for everyone. */
 export async function BetaFeaturePage({
   feature,
   children,
@@ -11,7 +11,7 @@ export async function BetaFeaturePage({
   feature: BetaFeatureId;
   children: ReactNode;
 }) {
-  if (!canAccessBetaFeatures(await isAdmin())) {
+  if (!canAccessBetaFeature(feature, await isAdmin())) {
     return <BetaComingSoon feature={feature} />;
   }
   return children;
