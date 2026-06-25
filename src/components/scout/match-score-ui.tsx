@@ -1,8 +1,8 @@
 "use client";
 
-import { coachMatchTierExplanation, isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
+import { coachMatchTierExplanation, isLowQualityMatchReason, matchScoreStyle, matchScoreTier } from "@/lib/match-score";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "@/components/scout/score-explainer-popover";
-import { fontSans, fontMono, color, type as T } from "@/lib/typography";
+import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
 
 export type MatchScoreDisplayJob = {
   matchScore: number;
@@ -61,6 +61,104 @@ export function CoachMatchScoreCluster({
     <div style={{ display: "flex", flexDirection: "column", alignItems: align === "right" ? "flex-end" : "flex-start", gap: 4, flexShrink: 0 }}>
       <ScoreExplainerPopover variant="coach-match" align={align} />
       <MatchScoreBadge score={score} label={label} />
+    </div>
+  );
+}
+
+function coachFitAssessmentSummary(score: number, label: string): string {
+  const tier = matchScoreTier(score);
+  if (tier === "poor") {
+    return `${label} · ${score}/100 — explore whether this coach still aligns with your goals`;
+  }
+  if (tier === "fair") {
+    return `${label} · ${score}/100 — partial overlap with your goals and profile`;
+  }
+  return `${label} · ${score}/100 — based on your goals and profile`;
+}
+
+/** Coaching directory fit block — honest label (not always "good fit"). */
+export function CoachFitAssessment({
+  job,
+  compact = false,
+}: {
+  job: MatchScoreDisplayJob;
+  compact?: boolean;
+}) {
+  const reasons = job.matchReasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, 3);
+  if (!reasons.length || job.matchScore <= 0) return null;
+
+  const tier = matchScoreTier(job.matchScore);
+  const isStretch = tier === "poor" || tier === "fair";
+  const score = matchScoreStyle(job.matchScore);
+  const matchedSkills = job.matchedSkills?.slice(0, 5) ?? [];
+
+  const bg = isStretch ? "rgba(17,17,17,0.04)" : score.bgSubtle;
+  const accent = isStretch ? color.muted : score.accent;
+  const borderColor = isStretch ? border.line : score.accent;
+
+  return (
+    <div
+      style={{
+        marginTop: compact ? 10 : 12,
+        padding: compact ? "10px 12px" : "12px 14px",
+        background: bg,
+        borderLeft: `3px solid ${borderColor}`,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.label,
+          fontWeight: 700,
+          color: accent,
+          margin: "0 0 4px",
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+        }}
+      >
+        Fit assessment
+      </p>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px", lineHeight: 1.45 }}>
+        {coachFitAssessmentSummary(job.matchScore, job.matchLabel)}
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+        {reasons.map((reason) => (
+          <li
+            key={reason}
+            style={{
+              display: "flex",
+              gap: 6,
+              alignItems: "flex-start",
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              color: color.ink,
+              lineHeight: 1.45,
+            }}
+          >
+            <span aria-hidden style={{ flexShrink: 0, color: accent, fontWeight: 700 }}>·</span>
+            <span>{reason}</span>
+          </li>
+        ))}
+      </ul>
+      {matchedSkills.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {matchedSkills.map((skill) => (
+            <span
+              key={skill}
+              style={{
+                padding: "2px 8px",
+                background: isStretch ? surface.inset : score.bg,
+                fontFamily: fontSans,
+                fontSize: T.label,
+                fontWeight: 500,
+                color: accent,
+              }}
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -170,7 +268,7 @@ export function CoachMatchSection({ job }: { job: MatchScoreDisplayJob }) {
           textTransform: "uppercase",
         }}
       >
-        <ScoreExplainerLabel variant="coach-match">Why this coach matches you</ScoreExplainerLabel>
+        <ScoreExplainerLabel variant="coach-match">Fit assessment</ScoreExplainerLabel>
       </p>
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         {tierLine}

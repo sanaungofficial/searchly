@@ -42,6 +42,7 @@ export function parseCoachDirectoryFilters(searchParams: URLSearchParams): Coach
     rateMin: rateMin ? Number(rateMin) : undefined,
     rateMax: rateMax ? Number(rateMax) : undefined,
     featuredOnly: searchParams.get("featured") === "1",
+    professionalOnly: searchParams.get("professional") === "1",
     sort:
       sort === "price-low" || sort === "price-high" || sort === "rating" || sort === "newest" || sort === "match"
         ? sort
@@ -72,7 +73,9 @@ export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDi
     list = list.filter((c) => c.featured);
   }
   if (filters.firm) {
-    list = list.filter((c) => c.firms.includes(filters.firm!));
+    list = list.filter(
+      (c) => c.firms.includes(filters.firm!) || c.currentCompany === filters.firm,
+    );
   }
   if (filters.specialty) {
     list = list.filter((c) => c.specialties.includes(filters.specialty!));
@@ -99,7 +102,10 @@ export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDi
     );
   }
 
-  // Professional preset: filter after fetch when preset=professional
+  if (filters.professionalOnly) {
+    list = filterProfessionalCoaches(list);
+  }
+
   return list;
 }
 
