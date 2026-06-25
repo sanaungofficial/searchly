@@ -139,6 +139,17 @@ export function DashboardIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Market / analytics — bar chart */
+export function MarketIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" {...props}>
+      <rect x="2" y="8" width="2.5" height="5" fill="currentColor" opacity="0.5" />
+      <rect x="6.25" y="5" width="2.5" height="8" fill="currentColor" opacity="0.75" />
+      <rect x="10.5" y="2" width="2.5" height="11" fill="currentColor" />
+    </svg>
+  );
+}
+
 /* Eye — data sources / transparency */
 export function EyeIcon(props: SVGProps<SVGSVGElement>) {
   return (
