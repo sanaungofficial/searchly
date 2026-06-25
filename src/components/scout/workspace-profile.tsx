@@ -3000,7 +3000,6 @@ export function WorkspaceProfile() {
           <div style={{ paddingBottom: 40 }}>
             {showReadback && (
               <div style={{ marginBottom: isMobile ? 16 : 20 }}>
-                <CreditsStatusBar onUpgrade={openPricing} />
                 <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded />
               </div>
             )}
