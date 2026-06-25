@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -64,6 +64,11 @@ import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondar
 import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import {
+  ResumeAnalyzingModal,
+  ResumeUploadSuccessModal,
+  useResumeUploadFlow,
+} from "./resume-upload-flow";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -109,6 +114,19 @@ interface UserAssetRow {
   isPrimary: boolean;
   createdAt: string;
   updatedAt: string;
+  targetJobTitle?: string | null;
+  parseStatus?: "running" | "complete" | "failed" | null;
+  parseError?: string | null;
+}
+
+function resumeAnalysisBadge(asset: UserAssetRow): { label: string; bg: string; border: string; color: string } {
+  if (asset.parseStatus === "running") {
+    return { label: "Analyzing…", bg: "#FFF8E8", border: "#E8D5A3", color: "#A08030" };
+  }
+  if (asset.parseStatus === "failed") {
+    return { label: "Analysis failed", bg: "#FFF0F0", border: "#E8B4B4", color: "#A04040" };
+  }
+  return { label: "Analysis Complete", bg: "#F0FFF8", border: "#A8DFC0", color: "#1A7A4A" };
 }
 
 interface UserProfile {
@@ -1969,10 +1987,20 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                       ★ Primary
                     </span>
                   )}
-                  <span style={{ padding: "2px 8px", background: surface.inset, border: border.line, fontSize: T.caption, fontWeight: 500, color: color.forest }}>
-                    Analysis complete
-                  </span>
+                  {(() => {
+                    const badge = resumeAnalysisBadge(r);
+                    return (
+                      <span style={{ padding: "2px 8px", background: badge.bg, border: `1px solid ${badge.border}`, fontSize: T.caption, fontWeight: 500, color: badge.color }}>
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
                 </div>
+                {r.targetJobTitle && (
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px" }}>
+                    Target: {r.targetJobTitle}
+                  </p>
+                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
                     Modified {timeAgo(r.updatedAt)}
@@ -2045,15 +2073,20 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                         ★ Primary
                       </span>
                     )}
-                    <span style={{ padding: "2px 8px", background: surface.inset, border: border.line, fontSize: T.caption, fontWeight: 500, color: color.forest }}>
-                      Analysis complete
-                    </span>
+                    {(() => {
+                      const badge = resumeAnalysisBadge(r);
+                      return (
+                        <span style={{ padding: "2px 8px", background: badge.bg, border: `1px solid ${badge.border}`, fontSize: T.caption, fontWeight: 500, color: badge.color }}>
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
 
-              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#C0B8B0" }}>
-                —
+              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: r.targetJobTitle ? color.ink : "#C0B8B0" }}>
+                {r.targetJobTitle || "—"}
               </span>
 
               <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
@@ -2805,39 +2838,6 @@ export function WorkspaceProfile() {
     });
   };
 
-  const handleResumeUpload = async (file: File) => {
-    setResumeUploading(true);
-    setResumeUploadError(null);
-    const form = new FormData();
-    form.append("file", file);
-    try {
-      const res = await fetch("/api/resume", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) {
-        setResumeUploadError(data.error || "Upload failed. Please try again.");
-        return;
-      }
-      if (data.url) {
-        const profileRes = await fetch("/api/profile");
-        const profileData = await profileRes.json();
-        if (!profileData.error) {
-          setProfile(profileData);
-          setRoleAnalyses(normalizeRoleAnalysesMap(profileData.roleAnalyses));
-        } else {
-          setProfile((p) => p ? { ...p, resumeUrl: data.url } : p);
-        }
-        refreshAssets();
-        if (data.asset?.id) openResumeEditor(data.asset.id);
-        setReadbackNudge(true);
-        setTimeout(() => setReadbackNudge(false), 8000);
-      }
-    } catch {
-      setResumeUploadError("Upload failed. Please try again.");
-    } finally {
-      setResumeUploading(false);
-    }
-  };
-
   const handleAssetDelete = async (id: string) => {
     setAssets((prev) => prev.filter((a) => a.id !== id));
     try {
@@ -2851,6 +2851,58 @@ export function WorkspaceProfile() {
       }
     } catch {
       refreshAssets();
+    }
+  };
+
+  const refreshProfileAfterResume = useCallback(() => {
+    refreshAssets();
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.error) {
+          setProfile(data);
+          setRoleAnalyses(normalizeRoleAnalysesMap(data.roleAnalyses));
+        }
+      })
+      .catch(() => {});
+    setReadbackNudge(true);
+    setTimeout(() => setReadbackNudge(false), 8000);
+  }, []);
+
+  const uploadFlow = useResumeUploadFlow({
+    onComplete: refreshProfileAfterResume,
+    onFailed: (message) => {
+      setResumeUploadError(message);
+      refreshAssets();
+    },
+    onCancel: handleAssetDelete,
+  });
+
+  const handleResumeUpload = async (file: File) => {
+    setResumeUploading(true);
+    setResumeUploadError(null);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await fetch("/api/resume", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setResumeUploadError(data.error || "Upload failed. Please try again.");
+        return;
+      }
+      if (res.status === 202 && data.asset?.id) {
+        refreshAssets();
+        uploadFlow.startJob(data.asset.id, data.defaultName || data.asset.name || file.name.replace(/\.[^/.]+$/, ""));
+        return;
+      }
+      if (data.url) {
+        refreshProfileAfterResume();
+        if (data.asset?.id) openResumeEditor(data.asset.id);
+      }
+    } catch {
+      setResumeUploadError("Upload failed. Please try again.");
+    } finally {
+      setResumeUploading(false);
     }
   };
 
@@ -3037,6 +3089,12 @@ export function WorkspaceProfile() {
           ))}
         </div>
 
+        {resumeUploadError && (
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 12 }}>
+            {resumeUploadError}
+          </p>
+        )}
+
         {/* Sub-tabs — mobile About only; desktop uses side nav */}
         {page === "about" && isMobile && (
           <div style={{ display: "flex", gap: 6, marginBottom: 24, flexWrap: "wrap" }}>
@@ -3195,14 +3253,7 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
         )}
         {page === "assets" && profile && (
-          <>
-            {resumeUploadError && (
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 12 }}>
-                {resumeUploadError}
-              </p>
-            )}
-            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
-          </>
+          <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
         )}
 
         {page === "linkedin" && (
@@ -3231,6 +3282,25 @@ export function WorkspaceProfile() {
       />
       {showUpgrade && (
         <GrowthUpgradeModal trigger="limit_hit" onClose={() => setShowUpgrade(false)} onOpenPricing={openPricing} />
+      )}
+      {uploadFlow.showAnalyzingModal && (
+        <ResumeAnalyzingModal
+          isMobile={isMobile}
+          onContinueBrowsing={uploadFlow.continueBrowsing}
+          onCancel={() => void uploadFlow.cancelUpload()}
+        />
+      )}
+      {uploadFlow.showSuccessModal && uploadFlow.job && (
+        <ResumeUploadSuccessModal
+          defaultName={uploadFlow.job.defaultName}
+          saving={uploadFlow.savingMeta}
+          isMobile={isMobile}
+          onSave={(name, targetJobTitle) => void uploadFlow.finishSuccess(name, targetJobTitle)}
+          onViewResume={() => {
+            const assetId = uploadFlow.viewResume();
+            if (assetId) openResumeEditor(assetId);
+          }}
+        />
       )}
     </div>
   );

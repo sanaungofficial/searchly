@@ -1,20 +1,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { logAiUsage } from "@/lib/ai-usage";
-import { getPrompt } from "@/lib/prompts";
-import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
-import { shouldReplaceNameWithResumeName } from "@/lib/resume-parse";
-import { PARSE_MODEL, parseResumeFile } from "@/lib/resume-extract";
+import { extractRawResumeText } from "@/lib/resume-extract";
+import { runResumeAssetParse, isResumeParseRunning } from "@/lib/resume-asset-parse";
 import { getActingUser } from "@/lib/acting-user";
-import Anthropic from "@anthropic-ai/sdk";
-import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -35,6 +26,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Upload a PDF, DOCX, or TXT resume" }, { status: 400 });
   }
 
+  const runningAsset = await prisma.userAsset.findFirst({
+    where: { userId: actingUser.id, type: "RESUME", parseStatus: "running" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (
+    runningAsset &&
+    isResumeParseRunning(
+      runningAsset.parseStatus as "running" | "complete" | "failed" | null,
+      runningAsset.parseStartedAt,
+    )
+  ) {
+    return NextResponse.json(
+      {
+        status: "running",
+        asset: runningAsset,
+        defaultName: runningAsset.name,
+        message: "A resume is already being analyzed.",
+      },
+      { status: 202 },
+    );
+  }
+
   const path = `${user.id}/resume-${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
@@ -53,38 +66,15 @@ export async function POST(request: Request) {
 
   const publicUrl = signedData.signedUrl;
   const bytes = Buffer.from(await file.arrayBuffer());
-  const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
-  const structuredPrompt = anthropic ? await getPrompt("RESUME_PARSE") : "";
+  const rawText = await extractRawResumeText(bytes, ext);
 
-  const { text: resumeText, parsed: parsedRaw, tokensIn, tokensOut, usedFallback, provider } = await parseResumeFile(
-    anthropic,
-    bytes,
-    ext,
-    structuredPrompt,
-    file.name,
-    actingUser.id,
-  );
-
-  if (!resumeText) {
+  if (!rawText.trim()) {
     return NextResponse.json({ error: "Could not read text from this file. Try PDF, DOCX, or TXT." }, { status: 422 });
   }
 
   const dbUser = actingUser;
-
-  if (tokensIn > 0) {
-    logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
-  }
-
-  const parsedData = parsedRaw;
-
-  const extractedName = parsedData?.name;
-  const metadataName = dbUser.name ?? undefined;
-  if (
-    extractedName &&
-    shouldReplaceNameWithResumeName(dbUser.name, dbUser.email, metadataName)
-  ) {
-    await prisma.user.update({ where: { id: dbUser.id }, data: { name: extractedName } });
-  }
+  const defaultName = file.name.replace(/\.[^/.]+$/, "") || "Resume";
+  const startedAt = new Date();
 
   await prisma.userAsset.updateMany({
     where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
@@ -95,22 +85,31 @@ export async function POST(request: Request) {
     data: {
       userId: dbUser.id,
       type: "RESUME",
-      name: file.name.replace(/\.[^/.]+$/, "") || "Resume",
+      name: defaultName,
       url: publicUrl,
       isPrimary: true,
-      resumeText,
-      parsedData: (parsedData ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+      resumeText: rawText,
+      parseStatus: "running",
+      parseStartedAt: startedAt,
     },
   });
 
-  await syncPrimaryResumeToProfile(dbUser.id);
+  const assetId = asset.id;
+  const userId = dbUser.id;
 
-  return NextResponse.json({
-    url: publicUrl,
-    parsed: !!parsedData,
-    parsedData,
-    asset,
-    _fallback: usedFallback,
-    _provider: provider,
+  after(async () => {
+    await runResumeAssetParse(assetId, userId).catch((err) => {
+      console.error("[resume POST after]", err);
+    });
   });
+
+  return NextResponse.json(
+    {
+      status: "running",
+      asset,
+      defaultName,
+      url: publicUrl,
+    },
+    { status: 202 },
+  );
 }
