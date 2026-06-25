@@ -117,7 +117,9 @@ export function WorkspaceOpportunities() {
   }, []);
 
   const loadedProspectRef = useRef<string | null>(null);
+  const pendingProspectNavRef = useRef<string | null>(null);
   const loadedNetworkJobRef = useRef<string | null>(null);
+  const pendingNetworkNavRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (loc.jobId) {
@@ -137,10 +139,14 @@ export function WorkspaceOpportunities() {
 
   useEffect(() => {
     if (!loc.prospectId) {
+      if (pendingProspectNavRef.current) return;
       loadedProspectRef.current = null;
       setProspectJob(null);
       setProspectCard(null);
       return;
+    }
+    if (loc.prospectId === pendingProspectNavRef.current) {
+      pendingProspectNavRef.current = null;
     }
     if (loadedProspectRef.current === loc.prospectId) return;
     loadedProspectRef.current = loc.prospectId;
@@ -258,7 +264,9 @@ export function WorkspaceOpportunities() {
   };
 
   const closeProspectDrawer = () => {
-    loadedProspectRef.current = null;
+    pendingProspectNavRef.current = null;
+    if (loc.prospectId) loadedProspectRef.current = loc.prospectId;
+    else loadedProspectRef.current = null;
     setProspectJob(null);
     setProspectCard(null);
     setAddingProspect(false);
@@ -268,6 +276,7 @@ export function WorkspaceOpportunities() {
 
   const openRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
     const prospectId = prospectPathId(job);
+    pendingProspectNavRef.current = prospectId;
     loadedProspectRef.current = prospectId;
     router.push(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
@@ -336,6 +345,7 @@ export function WorkspaceOpportunities() {
 
   const openProspectJob = useCallback(async (companyName: string, job: CachedJob) => {
     const prospectId = prospectPathId(job);
+    pendingProspectNavRef.current = prospectId;
     loadedProspectRef.current = prospectId;
     router.push(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
@@ -400,7 +410,9 @@ export function WorkspaceOpportunities() {
   };
 
   const closeNetworkDrawer = () => {
-    loadedNetworkJobRef.current = null;
+    pendingNetworkNavRef.current = null;
+    if (loc.networkJobId) loadedNetworkJobRef.current = loc.networkJobId;
+    else loadedNetworkJobRef.current = null;
     setNetworkProspectJob(null);
     setNetworkProspectCard(null);
     setAddingNetworkJob(false);
@@ -410,6 +422,7 @@ export function WorkspaceOpportunities() {
   const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin);
 
   const openNetworkJob = useCallback((job: NetworkJobListing) => {
+    pendingNetworkNavRef.current = job.id;
     loadedNetworkJobRef.current = job.id;
     router.push(networkJobUrl(job.id));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
@@ -419,10 +432,14 @@ export function WorkspaceOpportunities() {
 
   useEffect(() => {
     if (!loc.networkJobId) {
+      if (pendingNetworkNavRef.current) return;
       loadedNetworkJobRef.current = null;
       setNetworkProspectJob(null);
       setNetworkProspectCard(null);
       return;
+    }
+    if (loc.networkJobId === pendingNetworkNavRef.current) {
+      pendingNetworkNavRef.current = null;
     }
     if (loadedNetworkJobRef.current === loc.networkJobId) return;
     loadedNetworkJobRef.current = loc.networkJobId;
