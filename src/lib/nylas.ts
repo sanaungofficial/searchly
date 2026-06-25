@@ -32,6 +32,20 @@ export function nylasWebhookUrl(appUrl: string): string {
   return `${appUrl.replace(/\/$/, "")}/api/webhooks/nylas`;
 }
 
+/** Where coach/admin land after Nylas OAuth (profile + calendar sync). */
+export function nylasProfileReturnUrl(
+  appUrl: string,
+  role: "ADMIN" | "COACH" | string,
+  params?: Record<string, string>,
+): string {
+  const base = appUrl.replace(/\/$/, "");
+  const path = role === "ADMIN" ? `${base}/admin/profile` : `${base}/clients?tab=profile`;
+  if (!params || Object.keys(params).length === 0) return path;
+
+  const qs = new URLSearchParams(params).toString();
+  return role === "ADMIN" ? `${path}?${qs}` : `${path}&${qs}`;
+}
+
 export function isNylasConfigured(): boolean {
   return getNylasConfig() !== null;
 }
