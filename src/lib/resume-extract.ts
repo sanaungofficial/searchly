@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { isHirebaseResumeConfigured, parseResumeWithHirebase } from "@/lib/hirebase-resume";
 import {
   fallbackParseResumeFromText,
+  isLikelyBrokenWorkExperience,
   normalizeParsedResumeData,
   parseJsonFromModel,
   type ParsedResumeData,
@@ -88,8 +89,8 @@ export async function parseResumeText(
   try {
     const msg = await anthropic.messages.create({
       model: PARSE_MODEL,
-      max_tokens: 4096,
-      messages: [{ role: "user", content: `${structuredPrompt}\n\nResume text:\n${rawText.slice(0, 12000)}` }],
+      max_tokens: 8192,
+      messages: [{ role: "user", content: `${structuredPrompt}\n\nResume text:\n${rawText.slice(0, 24000)}` }],
     });
     let parsed: ParsedResumeData | null = null;
     if (msg.content[0]?.type === "text") {
@@ -114,7 +115,7 @@ export async function parseResumePdf(
     const [textMsg, structuredMsg] = await Promise.all([
       anthropic.messages.create({
         model: PARSE_MODEL,
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{
           role: "user",
           content: [
@@ -125,7 +126,7 @@ export async function parseResumePdf(
       }),
       anthropic.messages.create({
         model: PARSE_MODEL,
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{
           role: "user",
           content: [
@@ -214,7 +215,7 @@ export async function parseResumeFile(
   if (hirebaseEnabled) {
     try {
       const hirebase = await parseResumeWithHirebase({ bytes, ext, filename });
-      if (hirebase?.parsed) {
+      if (hirebase?.parsed && !isLikelyBrokenWorkExperience(hirebase.parsed.workExperience)) {
         return {
           text: rawText || hirebase.resumeText,
           parsed: hirebase.parsed,
@@ -224,6 +225,9 @@ export async function parseResumeFile(
           provider: "hirebase",
           hirebaseArtifactId: hirebase.artifactId,
         };
+      }
+      if (hirebase?.parsed) {
+        console.warn("[resume-parse] Hirebase structure looks broken, falling back to Claude/heuristic");
       }
       hirebaseFailed = true;
     } catch (err) {

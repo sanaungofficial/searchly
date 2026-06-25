@@ -185,9 +185,104 @@ function normalizeSectionOrder(raw: unknown): ResumeSectionId[] {
   return ordered.length ? [...ordered, ...missing] : [...DEFAULT_SECTION_ORDER];
 }
 
+function isPlaceholderCompany(company: string | null | undefined): boolean {
+  if (!company?.trim()) return true;
+  const normalized = company.trim().toLowerCase();
+  return normalized === "unknown company" || normalized === "company";
+}
+
+/** True when an entry looks like a bullet that was split into its own job row. */
+function looksLikeOrphanBullet(entry: ParsedWorkEntry): boolean {
+  if (entry.bullets.length > 0) return false;
+  if (entry.from?.trim() || entry.to?.trim()) return false;
+  const title = entry.title.trim();
+  if (title.length < 24) return false;
+  if (title.includes("|")) return false;
+  if (/\b(19|20)\d{2}\s*[–—-]\s*(Present|(19|20)\d{4})\b/i.test(title)) return false;
+  return isPlaceholderCompany(entry.company);
+}
+
+const MONTH_YEAR =
+  "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\s+\\d{4}|\\d{4}";
+const DATE_RANGE_RE = new RegExp(
+  `\\b(${MONTH_YEAR})\\s*[–—-]\\s*((${MONTH_YEAR})|Present)\\b`,
+  "i",
+);
+
+/** Split "Company | Title  2025 – Present" into structured fields. */
+export function parseJobHeaderLine(line: string): {
+  company: string;
+  title: string;
+  from: string | null;
+  to: string | null;
+} {
+  const trimmed = line.trim();
+  const dateMatch = trimmed.match(DATE_RANGE_RE);
+  let from: string | null = dateMatch?.[1] ?? null;
+  let to: string | null = dateMatch?.[3] ?? dateMatch?.[2] ?? null;
+  if (to && /^present$/i.test(to)) to = "Present";
+
+  let headerPart = trimmed;
+  if (dateMatch?.index != null) {
+    headerPart = trimmed.slice(0, dateMatch.index).trim().replace(/[\s|–—-]+$/g, "");
+  }
+
+  if (headerPart.includes("|")) {
+    const parts = headerPart.split("|").map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      return { company: parts[0], title: parts.slice(1).join(" | "), from, to };
+    }
+  }
+
+  const emDash = headerPart.match(/^(.+?)\s*[—–]\s*(.+?)(?:\s*\(|$)/);
+  if (emDash) {
+    return { company: emDash[1].trim(), title: emDash[2].trim(), from, to };
+  }
+
+  return { company: "", title: headerPart, from, to };
+}
+
+/** Merge bullet-only rows into the previous job; split combined header lines. */
+export function coalesceWorkExperience(entries: ParsedWorkEntry[]): ParsedWorkEntry[] {
+  const merged: ParsedWorkEntry[] = [];
+
+  for (const entry of entries) {
+    if (looksLikeOrphanBullet(entry) && merged.length > 0) {
+      const prev = merged[merged.length - 1];
+      prev.bullets = [...prev.bullets, entry.title.trim()];
+      continue;
+    }
+
+    let next = { ...entry };
+    if (next.title.includes("|") && isPlaceholderCompany(next.company)) {
+      const parsed = parseJobHeaderLine(next.title);
+      if (parsed.company) {
+        next = {
+          ...next,
+          company: parsed.company,
+          title: parsed.title || next.title,
+          from: next.from || parsed.from,
+          to: next.to || parsed.to,
+        };
+      }
+    }
+
+    merged.push(next);
+  }
+
+  return merged;
+}
+
+/** Detect parses where most experience rows are mis-split bullet lines. */
+export function isLikelyBrokenWorkExperience(entries: ParsedWorkEntry[]): boolean {
+  if (entries.length < 4) return false;
+  const orphans = entries.filter(looksLikeOrphanBullet);
+  return orphans.length >= Math.max(3, Math.ceil(entries.length * 0.35));
+}
+
 function normalizeWorkExperience(raw: unknown): ParsedWorkEntry[] {
   if (!Array.isArray(raw)) return [];
-  return raw
+  const normalized = raw
     .map((entry, index) => {
       if (!entry || typeof entry !== "object") return null;
       const row = entry as Record<string, unknown>;
@@ -207,6 +302,8 @@ function normalizeWorkExperience(raw: unknown): ParsedWorkEntry[] {
       };
     })
     .filter((entry): entry is ParsedWorkEntry => entry !== null);
+
+  return coalesceWorkExperience(normalized);
 }
 
 export function parseJsonFromModel(text: string): unknown | null {
@@ -406,41 +503,87 @@ function splitResumeSections(text: string): Partial<Record<ResumeSectionId, stri
   return out;
 }
 
+function isJobHeaderLine(line: string): boolean {
+  if (/^earlier experience/i.test(line)) return false;
+  if (line.includes("|") && line.length < 180) return true;
+  if (/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s*[–—-]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}|\d{4}|Present)\b/i.test(line)) {
+    return !/^(Led|Managed|Drove|Owned|Directed|Spearheaded|Architected|Established|Improved|Delivered|Oversaw|Built|Designed|Developed|Implemented|Introduced|Administered|Hired|Simplified|Inherited|Recruited|Migrated)\b/i.test(line);
+  }
+  if (/\b(19|20)\d{2}\s*[–—-]\s*(Present|(19|20)\d{4})\b/i.test(line) && line.length < 200) {
+    return !/^(Led|Managed|Drove|Owned|Directed|Spearheaded|Architected|Established|Improved|Delivered|Oversaw|Built|Designed|Developed|Implemented|Introduced|Administered|Hired|Simplified|Inherited|Recruited|Migrated)\b/i.test(line);
+  }
+  return false;
+}
+
 function parseExperienceBlock(block: string): ParsedWorkEntry[] {
-  const chunks = block.split(/\n(?=\S)/).map((c) => c.trim()).filter(Boolean);
+  const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
   const entries: ParsedWorkEntry[] = [];
-  let chunkIndex = 0;
+  let current: ParsedWorkEntry | null = null;
+  let index = 0;
 
-  for (const chunk of chunks) {
-    const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (!lines.length) continue;
+  const pushCurrent = () => {
+    if (current && (current.title.trim() || current.company.trim())) {
+      entries.push(current);
+    }
+    current = null;
+  };
 
-    const dateLine = lines.find((l) => /\b(19|20)\d{2}\b/.test(l) && l.length < 40);
-    const bulletLines = lines.filter((l) => /^[•\-\*–—]/.test(l) || /^\d+\.\s/.test(l));
-    const contentLines = lines.filter((l) => l !== dateLine && !bulletLines.includes(l));
+  for (const line of lines) {
+    if (/^earlier experience/i.test(line)) continue;
 
-    if (contentLines.length >= 1) {
-      entries.push({
-        id: `exp_${chunkIndex++}`,
-        title: contentLines[0] || "Role",
-        company: contentLines[1] || "",
-        from: dateLine?.match(/\b(19|20)\d{2}\b/)?.[0] || null,
-        to: dateLine?.includes("Present") ? "Present" : null,
-        bullets: bulletLines.map((b) => b.replace(/^[•\-\*–—]\s*/, "").replace(/^\d+\.\s*/, "")),
-      });
+    const isBullet = /^[•\-\*–—]/.test(line) || /^\d+\.\s/.test(line);
+    const bulletText = line.replace(/^[•\-\*–—]\s*/, "").replace(/^\d+\.\s*/, "");
+
+    if (!isBullet && isJobHeaderLine(line)) {
+      pushCurrent();
+      const parsed = parseJobHeaderLine(line);
+      const inlineBullet = line.match(/:\s+(.+)$/);
+      current = {
+        id: `exp_${index++}`,
+        company: parsed.company,
+        title: parsed.title.replace(/:\s+.+$/, "").trim(),
+        from: parsed.from,
+        to: parsed.to,
+        bullets: inlineBullet?.[1] ? [inlineBullet[1].trim()] : [],
+      };
+      continue;
+    }
+
+    if (current) {
+      current.bullets.push(isBullet ? bulletText : line);
+      continue;
+    }
+
+    if (!isBullet) {
+      const parsed = parseJobHeaderLine(line);
+      current = {
+        id: `exp_${index++}`,
+        company: parsed.company,
+        title: parsed.title,
+        from: parsed.from,
+        to: parsed.to,
+        bullets: [],
+      };
     }
   }
+
+  pushCurrent();
 
   if (!entries.length && block.trim()) {
     entries.push({
       id: "exp_0",
       title: "Experience",
       company: "",
-      bullets: block.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 12),
+      bullets: block.split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 12),
     });
   }
 
-  return entries;
+  return coalesceWorkExperience(
+    entries.map((entry) => ({
+      ...entry,
+      company: entry.company || "Unknown company",
+    })),
+  );
 }
 
 function parseEducationBlock(block: string): ParsedEducationEntry[] {
@@ -478,11 +621,28 @@ export function fallbackParseResumeFromText(rawText: string): ParsedResumeData {
 
   data.email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
   data.phone = text.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)?.[0] ?? null;
-  data.linkedinUrl = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s)]+/i)?.[0] ?? null;
+  const linkedinMatch = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,]+/i)?.[0] ?? null;
+  data.linkedinUrl = linkedinMatch
+    ? (linkedinMatch.startsWith("http") ? linkedinMatch : `https://${linkedinMatch}`)
+    : null;
 
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const headerLine = lines.find((l) => !l.includes("@") && !/^https?:\/\//i.test(l) && l.length < 80);
+  const headerLine = lines.find(
+    (line) =>
+      !line.includes("@") &&
+      !/^https?:\/\//i.test(line) &&
+      !/^(professional summary|core competencies|technical skills|professional experience|education|earlier experience)/i.test(line) &&
+      line.length < 80,
+  );
   if (headerLine) data.name = headerLine;
+
+  const contactLine = lines.find((line) => line.includes("@") || /linkedin\.com/i.test(line));
+  if (contactLine) {
+    const locationMatch = contactLine.match(
+      /([A-Z][A-Za-z .'-]+,\s*[A-Z]{2})(?:\s*\(|(?:\s*\|\s*|\s+)(?:\+?1|\(?\d{3}\)|\d{3}[-.\s]\d{3}|[a-z0-9._%+-]+@))/,
+    );
+    if (locationMatch) data.location = locationMatch[1].trim();
+  }
 
   const sections = splitResumeSections(text);
 

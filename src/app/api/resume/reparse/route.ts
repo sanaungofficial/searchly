@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt } from "@/lib/prompts";
 import {
+  isLikelyBrokenWorkExperience,
   mergeParsedWithReadback,
   normalizeParsedResumeData,
   shouldReplaceNameWithResumeName,
@@ -38,7 +39,8 @@ export async function POST() {
   const hasStructure =
     (existing?.education.length ?? 0) > 0 ||
     (existing?.workExperience.length ?? 0) > 0;
-  if (hasStructure) {
+  const structureLooksBroken = isLikelyBrokenWorkExperience(existing?.workExperience ?? []);
+  if (hasStructure && !structureLooksBroken) {
     const parsedData = mergeParsedWithReadback(existing, dbUser.profile.readbackData);
     return NextResponse.json({ parsedData, skipped: true });
   }

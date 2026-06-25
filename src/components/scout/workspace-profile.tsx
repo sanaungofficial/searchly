@@ -330,7 +330,7 @@ function PersonalTab({ profile, onSave }: {
   const [phone, setPhone] = useState(profile.parsedData?.phone || "");
   const [location, setLocation] = useState(profile.parsedData?.location || "");
   const [website, setWebsite] = useState(profile.parsedData?.website || "");
-  const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl || "");
+  const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl || profile.parsedData?.linkedinUrl || "");
   const [summary, setSummary] = useState(profile.parsedData?.summary || profile.summary || "");
   const [saving, setSaving] = useState(false);
 
@@ -339,7 +339,7 @@ function PersonalTab({ profile, onSave }: {
     setPhone(profile.parsedData?.phone || "");
     setLocation(profile.parsedData?.location || "");
     setWebsite(profile.parsedData?.website || "");
-    setLinkedinUrl(profile.linkedinUrl || "");
+    setLinkedinUrl(profile.linkedinUrl || profile.parsedData?.linkedinUrl || "");
     setSummary(profile.parsedData?.summary || profile.summary || "");
   }, [
     profile.name,
@@ -348,6 +348,7 @@ function PersonalTab({ profile, onSave }: {
     profile.parsedData?.phone,
     profile.parsedData?.location,
     profile.parsedData?.website,
+    profile.parsedData?.linkedinUrl,
     profile.parsedData?.summary,
   ]);
 

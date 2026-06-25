@@ -747,6 +747,9 @@ Return ONLY the JSON array, no other text.`,
 Rules:
 - IDs must be unique strings like edu_0, exp_0, sg_0, cert_0 etc.
 - workExperience should be ordered newest first
+- Each job is ONE object: company, title, dates, and ALL bullet points for that role go in the "bullets" array
+- NEVER create a separate workExperience entry for an individual bullet or achievement line
+- If a line is a responsibility under a role, it belongs in that role's bullets array — not as its own job
 - Include all jobs, education entries, and certifications
 - Extract every skill mentioned; group into skillGroups when the resume uses categories
 - Return ONLY the JSON object, nothing else`,
