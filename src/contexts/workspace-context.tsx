@@ -11,6 +11,23 @@ import { setActingUserScope, getActingUserScope } from "@/lib/client-session";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
+export type CoachPrepTarget = {
+  id: string;
+  slug?: string;
+  displayName: string;
+  headline?: string | null;
+  category?: string | null;
+  specialties?: string[];
+  firms?: string[];
+  schools?: string[];
+  aboutMe?: string | null;
+  bio?: string | null;
+  whyCoach?: string | null;
+  matchScore?: number;
+  matchLabel?: string;
+  matchReasons?: string[];
+};
+
 interface WorkspaceUser {
   name: string | null;
   email: string;
@@ -34,14 +51,17 @@ interface WorkspaceContextValue {
   setDrawerTool: (t: DrawerTool) => void;
   chatOpen: boolean;
   setChatOpen: (open: boolean) => void;
-  chatView: "tools" | "chat" | "coach";
-  setChatView: (view: "tools" | "chat" | "coach") => void;
+  chatView: "tools" | "chat" | "coach" | "coach-prep";
+  setChatView: (view: "tools" | "chat" | "coach" | "coach-prep") => void;
   chatPulse: boolean;
   fitChatNonce: number;
   fitChatJob: KanbanCard | null;
   openFitChat: (job: KanbanCard) => void;
   coachChatNonce: number;
   openProfileCoach: () => void;
+  coachPrepCoach: CoachPrepTarget | null;
+  coachPrepNonce: number;
+  openCoachPrepChat: (coach: CoachPrepTarget) => void;
   notifOpen: boolean;
   setNotifOpen: React.Dispatch<React.SetStateAction<boolean>>;
   notifRead: Record<number, boolean>;
@@ -80,6 +100,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [fitChatNonce, setFitChatNonce] = useState(0);
   const [fitChatJob, setFitChatJob] = useState<KanbanCard | null>(null);
   const [coachChatNonce, setCoachChatNonce] = useState(0);
+  const [coachPrepCoach, setCoachPrepCoach] = useState<CoachPrepTarget | null>(null);
+  const [coachPrepNonce, setCoachPrepNonce] = useState(0);
   const [pricingOpen, setPricingOpen] = useState(false);
   const [impersonation, setImpersonation] = useState<ImpersonationState>({ active: false });
   const [actingUserId, setActingUserId] = useState<string | null>(() => {
@@ -106,6 +128,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setChatView("coach");
     setChatOpen(true);
     setCoachChatNonce((n) => n + 1);
+  }, []);
+
+  const openCoachPrepChat = useCallback((coach: CoachPrepTarget) => {
+    setCoachPrepCoach(coach);
+    setChatView("coach-prep");
+    setChatOpen(true);
+    setChatPulse(true);
+    setCoachPrepNonce((n) => n + 1);
+    window.setTimeout(() => setChatPulse(false), 2400);
   }, []);
 
   const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage, removeJob } =
@@ -209,6 +240,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         openFitChat,
         coachChatNonce,
         openProfileCoach,
+        coachPrepCoach,
+        coachPrepNonce,
+        openCoachPrepChat,
         notifOpen,
         setNotifOpen,
         notifRead,

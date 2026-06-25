@@ -51,6 +51,30 @@ export function usableKeywordSummary(matched: number, total: number): string | n
   return `Your resume covers ${matched} of ${total} relevant terms from this posting (${pct}%).`;
 }
 
+/** Coach directory: profile ↔ coach keyword overlap (not a job posting). */
+export function coachProfileKeywordSummary(matched: number, total: number): string | null {
+  if (total < 3 || matched <= 0) return null;
+  const pct = Math.round((matched / total) * 100);
+  if (pct < 20) return null;
+  return `Your profile shares ${matched} of ${total} focus areas with this coach (${pct}% overlap).`;
+}
+
+export function coachMatchTierExplanation(score: number, label: string): string {
+  const tier = matchScoreTier(score);
+  switch (tier) {
+    case "excellent":
+      return `${label} (${score}/100) — strong alignment with your goals, background, and target roles.`;
+    case "strong":
+      return `${label} (${score}/100) — clear overlap with your experience and what you're working toward.`;
+    case "good":
+      return `${label} (${score}/100) — meaningful overlap; worth exploring in an intro call.`;
+    case "fair":
+      return `${label} (${score}/100) — partial overlap; coach may still help on adjacent goals.`;
+    case "poor":
+      return `${label} (${score}/100) — different primary focus from your profile, but may still offer useful perspective.`;
+  }
+}
+
 export function isLowQualityMatchReason(reason: string): boolean {
   if (/0 of 0 key terms/i.test(reason)) return true;
   const m = reason.match(/(\d+) of (\d+) key terms from the job description/i);

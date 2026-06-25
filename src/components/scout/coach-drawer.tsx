@@ -2,14 +2,21 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { MatchFitCallout, MatchScoreBadge } from "@/components/scout/match-score-ui";
+import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
+import { CoachMatchSection, MatchScoreBadge } from "@/components/scout/match-score-ui";
 import { NylasSchedulerEmbed } from "@/components/scout/nylas-scheduler-embed";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachListItem, CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
 import { border, color, displayTitleStyle, fontSans, surface, type as T } from "@/lib/typography";
 
-const DRAWER_WIDTH = "min(920px, calc(100vw - 16px))";
+const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
+const SIDEBAR_WIDTH = 340;
+const line = border.line;
+const lineStrong = border.lineStrong;
+const cardBg = surface.card;
 
 type Props = {
   slug: string;
@@ -31,6 +38,52 @@ function DimensionBar({ label, value }: { label: string; value: number }) {
       <div style={{ height: 6, background: "rgba(26,58,47,0.08)" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: color.forest }} />
       </div>
+    </div>
+  );
+}
+
+function CoachAiToolCard({
+  title,
+  subtitle,
+  buttonLabel,
+  creditCost,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  buttonLabel: string;
+  creditCost?: number;
+  onClick: () => void;
+}) {
+  return (
+    <div style={{ background: cardBg, border: line, borderRadius: 0, padding: "18px 20px", marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+        <p style={displayTitleStyle(T.title)}>{title}</p>
+        {creditCost ? (
+          <span style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: color.muted, whiteSpace: "nowrap", flexShrink: 0 }}>
+            {creditCost} credit{creditCost !== 1 ? "s" : ""}
+          </span>
+        ) : null}
+      </div>
+      <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, lineHeight: 1.5, margin: "0 0 14px" }}>{subtitle}</p>
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          width: "100%",
+          padding: "12px 16px",
+          background: color.forest,
+          color: color.gold,
+          border: lineStrong,
+          borderRadius: 0,
+          fontFamily: fontSans,
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        {buttonLabel}
+      </button>
     </div>
   );
 }
@@ -131,6 +184,7 @@ function ReviewCard({ review }: { review: CoachReviewItem }) {
 
 export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange }: Props) {
   const isMobile = useIsMobile();
+  const { openCoachPrepChat } = useWorkspace();
   const [visible, setVisible] = useState(false);
   const [coach, setCoach] = useState<CoachProfileDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -182,6 +236,26 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   const nylasConfigId = coach?.nylasSchedulerConfigId;
   const canBookInApp = Boolean(isPro && nylasConfigId && coach?.hasNylasBooking);
 
+  const openPrepChat = () => {
+    if (!coach) return;
+    openCoachPrepChat({
+      id: coach.id,
+      slug: coach.slug ?? slug,
+      displayName: coach.displayName,
+      headline: coach.headline,
+      category: coach.category,
+      specialties: coach.specialties,
+      firms: coach.firms,
+      schools: coach.schools,
+      aboutMe: coach.aboutMe,
+      bio: coach.bio,
+      whyCoach: coach.whyCoach,
+      matchScore: matchScore > 0 ? matchScore : undefined,
+      matchLabel: matchLabel || undefined,
+      matchReasons: matchReasons.length ? matchReasons : undefined,
+    });
+  };
+
   return (
     <>
       <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
@@ -204,49 +278,60 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
           flexDirection: "column",
         }}
       >
-        <div style={{ padding: isMobile ? "12px 16px" : "14px 24px", background: surface.card, borderBottom: border.line, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <div style={{ padding: isMobile ? "12px 16px" : "14px 28px", background: cardBg, borderBottom: line, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <button type="button" onClick={close} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: color.mutedLight, padding: 0, lineHeight: 1 }}>×</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ ...displayTitleStyle(18), margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</p>
             {coach?.headline && <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{coach.headline}</p>}
           </div>
-          {matchScore > 0 && <MatchScoreBadge score={matchScore} label={matchLabel} />}
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-          {loading && !coach ? (
-            <p style={{ padding: 24, fontFamily: fontSans, color: color.muted }}>Loading coach…</p>
-          ) : !coach ? (
-            <p style={{ padding: 24, fontFamily: fontSans, color: color.muted }}>Coach not found.</p>
-          ) : (
-            <div style={{ display: "flex", gap: 0, flexDirection: isMobile ? "column" : "row", alignItems: "stretch" }}>
-              <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24 }}>
-                {matchScore > 0 && (
-                  <MatchFitCallout job={{ matchScore, matchLabel, matchReasons, matchedSkills }} />
-                )}
-
-                <ScoutBox padding={20} style={{ marginTop: 16, marginBottom: 16 }}>
-                  <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                    <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={72} />
-                    <div style={{ flex: 1 }}>
-                      {coach.headline && <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, lineHeight: 1.35, margin: "0 0 10px" }}>{coach.headline}</p>}
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {coach.featured && <Badge label="Featured" tone="gold" />}
-                        {coach.isProfessionalCoach && <Badge label="Pro coach" tone="forest" />}
+        <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: 0, overflow: isMobile ? "auto" : "hidden" }}>
+          <div style={{ flex: isMobile ? "none" : 1, minWidth: 0, overflowY: isMobile ? "visible" : "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
+            {loading && !coach ? (
+              <p style={{ padding: 24, fontFamily: fontSans, color: color.muted }}>Loading coach…</p>
+            ) : !coach ? (
+              <p style={{ padding: 24, fontFamily: fontSans, color: color.muted }}>Coach not found.</p>
+            ) : (
+              <>
+                <div style={{ padding: isMobile ? "20px 16px 18px" : "28px 32px 24px", background: cardBg, borderBottom: line }}>
+                  <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24, alignItems: isMobile ? "stretch" : "flex-start" }}>
+                    <div style={{ display: "flex", gap: 14, flex: 1, minWidth: 0 }}>
+                      <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 56 : 72} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h2 style={displayTitleStyle(isMobile ? 22 : 26, { margin: "0 0 10px", lineHeight: 1.2 })}>{coach.displayName}</h2>
+                        {coach.headline && (
+                          <p style={{ fontFamily: fontSans, fontSize: 15, color: color.stone, lineHeight: 1.45, margin: "0 0 12px" }}>{coach.headline}</p>
+                        )}
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {coach.featured && <Badge label="Featured" tone="gold" />}
+                          {coach.isProfessionalCoach && <Badge label="Pro coach" tone="forest" />}
+                          {coach.firms.slice(0, 3).map((f) => (
+                            <span key={f} style={{ padding: "4px 10px", border: line, fontFamily: fontSans, fontSize: 12, fontWeight: 500, color: color.forest }}>{f}</span>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                    {matchScore > 0 && <MatchScoreBadge score={matchScore} label={matchLabel} />}
                   </div>
-                  {coach.firms.length > 0 && (
-                    <div style={{ marginTop: 14 }}>
-                      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted, margin: "0 0 8px" }}>Experience at</p>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {coach.firms.map((f) => (
-                          <span key={f} style={{ padding: "5px 12px", border: border.line, fontFamily: fontSans, fontSize: 13, fontWeight: 500, color: color.forest }}>{f}</span>
-                        ))}
-                      </div>
-                    </div>
+                </div>
+
+                <div style={{ padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
+                  {matchScore > 0 && (
+                    <CoachMatchSection
+                      job={{ matchScore, matchLabel, matchReasons, matchedSkills }}
+                    />
                   )}
-                </ScoutBox>
+
+                  {isMobile && (
+                    <CoachAiToolCard
+                      creditCost={1}
+                      title="Prepare for your session"
+                      subtitle="Get questions to ask, session goals, and background on this coach before you meet."
+                      buttonLabel="Prep with Scout"
+                      onClick={openPrepChat}
+                    />
+                  )}
 
                 <ScoutBox padding={20} style={{ marginBottom: 16 }}>
                   <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>Hourly coaching</h3>
@@ -319,10 +404,27 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                     coach.reviews.map((r) => <ReviewCard key={r.id} review={r} />)
                   )}
                 </ScoutBox>
-              </div>
+                </div>
+              </>
+            )}
+          </div>
 
-              <aside style={{ width: isMobile ? "100%" : 280, flexShrink: 0, padding: isMobile ? 16 : 24, paddingLeft: isMobile ? 16 : 0, borderLeft: isMobile ? "none" : border.line, background: isMobile ? surface.inset : "transparent" }}>
-                <ScoutBox padding={20}>
+          {!loading && coach && (
+            <aside
+              style={{
+                width: isMobile ? "100%" : SIDEBAR_WIDTH,
+                flexShrink: 0,
+                overflowY: isMobile ? "visible" : "auto",
+                borderLeft: isMobile ? "none" : line,
+                borderTop: isMobile ? line : "none",
+                background: isMobile ? surface.inset : cardBg,
+                padding: isMobile ? 16 : "24px 20px 32px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 0,
+              }}
+            >
+              <ScoutBox padding={20} style={{ marginBottom: isMobile ? 16 : 24 }}>
                   <div style={{ textAlign: "center", marginBottom: 16 }}>
                     <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={80} />
                     <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
@@ -367,8 +469,21 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                     Write a review
                   </button>
                 </ScoutBox>
-              </aside>
-            </div>
+
+              {!isMobile && (
+                <div>
+                  <p style={displayTitleStyle(15, { margin: "0 0 14px", lineHeight: 1.3 })}>Before your session</p>
+                  <CreditsStatusBar />
+                  <CoachAiToolCard
+                    creditCost={1}
+                    title="Prepare for your session"
+                    subtitle="Questions to ask, what to share about your goals, and how this coach's background fits you."
+                    buttonLabel="Prep with Scout"
+                    onClick={openPrepChat}
+                  />
+                </div>
+              )}
+            </aside>
           )}
         </div>
       </div>

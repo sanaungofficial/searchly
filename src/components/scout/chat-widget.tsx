@@ -27,9 +27,22 @@ const FIT_SUGGESTIONS = [
   "What should I highlight in an interview?",
 ];
 
+const COACH_PREP_SUGGESTIONS = [
+  "What should I ask about their background?",
+  "How should I open the session?",
+  "What goals should I set for this call?",
+  "Is this coach a good fit for me?",
+];
+
 function fitWelcomeMessage(job: KanbanCard): string {
   const fitNote = job.fit > 0 ? ` Your resume match score is ${job.fit}%.` : "";
   return `Let's analyze your fit for ${job.role} at ${job.company}.${fitNote} I can walk through your strengths, gaps, and tactics to stand out — pick a suggestion below or ask me anything.`;
+}
+
+function coachPrepWelcomeMessage(coachName: string, matchScore?: number, matchLabel?: string): string {
+  const matchNote =
+    matchScore && matchScore > 0 ? ` Profile match: ${matchLabel ?? "Match"} (${matchScore}/100).` : "";
+  return `Let's prepare for your session with ${coachName}.${matchNote} I can help with questions to ask, what to share about your goals, and how to use the time well — pick a suggestion or ask anything.`;
 }
 
 function ChatMessageBody({
@@ -99,6 +112,9 @@ export function ChatWidget() {
     openPricing,
     coachChatNonce,
     openProfileCoach,
+    coachPrepCoach,
+    coachPrepNonce,
+    openCoachPrepChat,
   } = useWorkspace();
 
   const isMobile = useIsMobile();
@@ -106,8 +122,10 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [coachMessages, setCoachMessages] = useState<ChatMessage[]>([]);
+  const [coachPrepMessages, setCoachPrepMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [coachStreaming, setCoachStreaming] = useState(false);
+  const [coachPrepStreaming, setCoachPrepStreaming] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [chatJobId, setChatJobId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -145,6 +163,21 @@ export function ChatWidget() {
     }
   }, [coachChatNonce, chatOpen, chatView, resetCoachChat]);
 
+  const resetCoachPrepChat = useCallback((coach: NonNullable<typeof coachPrepCoach>) => {
+    setCoachPrepMessages([
+      {
+        role: "assistant",
+        content: coachPrepWelcomeMessage(coach.displayName, coach.matchScore, coach.matchLabel),
+      },
+    ]);
+    setInput("");
+  }, []);
+
+  useEffect(() => {
+    if (!chatOpen || chatView !== "coach-prep" || !coachPrepCoach) return;
+    resetCoachPrepChat(coachPrepCoach);
+  }, [coachPrepNonce, chatOpen, chatView, coachPrepCoach, resetCoachPrepChat]);
+
   const resetFitChat = useCallback((job: KanbanCard) => {
     setChatJobId(job.id);
     setMessages([{ role: "assistant", content: fitWelcomeMessage(job) }]);
@@ -161,10 +194,10 @@ export function ChatWidget() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, chatOpen]);
+  }, [messages, coachPrepMessages, chatOpen]);
 
   useEffect(() => {
-    if (chatOpen && chatView === "chat") {
+    if (chatOpen && (chatView === "chat" || chatView === "coach-prep")) {
       window.setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [chatOpen, chatView]);
@@ -257,6 +290,67 @@ export function ChatWidget() {
     }
   };
 
+  const sendCoachPrepMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || coachPrepStreaming || !coachPrepCoach) return;
+
+    const nextMessages: ChatMessage[] = [...coachPrepMessages, { role: "user", content: trimmed }];
+    setCoachPrepMessages([...nextMessages, { role: "assistant", content: "" }]);
+    setInput("");
+    setCoachPrepStreaming(true);
+
+    try {
+      const res = await fetch("/api/ai/coach-prep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages, coach: coachPrepCoach }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 402) {
+          notifyCreditsChanged();
+          setShowUpgrade(true);
+          setCoachPrepMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+        const err = res.status === 503 ? "AI is not available right now." : "Something went wrong. Try again.";
+        setCoachPrepMessages((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: err };
+          return copy;
+        });
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No stream");
+
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        const snapshot = accumulated;
+        setCoachPrepMessages((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: snapshot };
+          return copy;
+        });
+      }
+      notifyCreditsChanged();
+    } catch {
+      setCoachPrepMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout. Check your connection and try again." };
+        return copy;
+      });
+    } finally {
+      setCoachPrepStreaming(false);
+    }
+  };
+
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || streaming || !currentJob) return;
@@ -340,10 +434,10 @@ export function ChatWidget() {
     }
   };
 
-  const panelWidth = isMobile ? "calc(100vw - 24px)" : chatView === "chat" || chatView === "coach" ? 380 : 320;
+  const panelWidth = isMobile ? "calc(100vw - 24px)" : chatView === "chat" || chatView === "coach" || chatView === "coach-prep" ? 380 : 320;
   const panelHeight = isMobile
     ? "min(70vh, calc(100vh - env(safe-area-inset-bottom) - 96px))"
-    : chatView === "chat" || chatView === "coach"
+    : chatView === "chat" || chatView === "coach" || chatView === "coach-prep"
       ? "min(640px, calc(100vh - 120px))"
       : undefined;
 
@@ -428,12 +522,18 @@ export function ChatWidget() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14, color: "#E8D5A3" }}>✦</span>
                 <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#E8D5A3" }}>
-                  {chatView === "chat" ? "Scout" : chatView === "coach" ? "Profile Coach" : "AI Tools"}
+                  {chatView === "chat"
+                    ? "Scout"
+                    : chatView === "coach"
+                      ? "Profile Coach"
+                      : chatView === "coach-prep"
+                        ? "Session prep"
+                        : "AI Tools"}
                 </span>
-                {(chatView === "chat" || chatView === "coach") && <CreditCostBadge />}
+                {(chatView === "chat" || chatView === "coach" || chatView === "coach-prep") && <CreditCostBadge />}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {(chatView === "chat" || chatView === "coach") && (
+                {(chatView === "chat" || chatView === "coach" || chatView === "coach-prep") && (
                   <button
                     onClick={() => setChatView("tools")}
                     style={{
@@ -495,7 +595,144 @@ export function ChatWidget() {
               </div>
             </div>
 
-            {chatView === "coach" ? (
+            {chatView === "coach-prep" ? (
+              <>
+                {coachPrepCoach && (
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      borderBottom: "1px solid rgba(0,0,0,0.06)",
+                      background: "rgba(26,58,47,0.03)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+                      Prepare to meet {coachPrepCoach.displayName}
+                    </p>
+                    {coachPrepCoach.headline && (
+                      <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "2px 0 0" }}>
+                        {coachPrepCoach.headline}
+                        {coachPrepCoach.matchScore && coachPrepCoach.matchScore > 0
+                          ? ` · ${coachPrepCoach.matchLabel ?? "Match"} ${coachPrepCoach.matchScore}/100`
+                          : ""}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 8px" }}>
+                  {coachPrepMessages.map((m, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        marginBottom: 10,
+                        display: "flex",
+                        justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <div
+                        style={{
+                          maxWidth: "88%",
+                          padding: "10px 12px",
+                          borderRadius: 0,
+                          background: m.role === "user" ? "#1A3A2F" : "rgba(26,58,47,0.06)",
+                          color: m.role === "user" ? "#FFFDF9" : "#1A1A1A",
+                          fontFamily: sans,
+                          fontSize: 14,
+                          lineHeight: 1.55,
+                        }}
+                      >
+                        <ChatMessageBody
+                          role={m.role}
+                          content={m.content}
+                          streaming={coachPrepStreaming && i === coachPrepMessages.length - 1}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+                {coachPrepCoach && coachPrepMessages.length <= 1 && !coachPrepStreaming && (
+                  <div style={{ padding: "0 14px 10px", display: "flex", flexWrap: "wrap", gap: 6, flexShrink: 0 }}>
+                    {COACH_PREP_SUGGESTIONS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => sendCoachPrepMessage(s)}
+                        style={{
+                          padding: "6px 10px",
+                          background: "#FFF",
+                          border: "1px solid rgba(0,0,0,0.1)",
+                          borderRadius: 0,
+                          fontFamily: sans,
+                          fontSize: 13,
+                          color: "#1A3A2F",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
+                  {!coachPrepCoach ? (
+                    <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0, textAlign: "center" }}>
+                      Open a coach profile to prep for your session.
+                    </p>
+                  ) : (
+                    <>
+                      <CreditsInlineHint />
+                      <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                        <textarea
+                          ref={inputRef}
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              sendCoachPrepMessage(input);
+                            }
+                          }}
+                          placeholder="Ask how to prepare for this coach…"
+                          rows={2}
+                          disabled={coachPrepStreaming}
+                          style={{
+                            flex: 1,
+                            resize: "none",
+                            border: "1px solid rgba(0,0,0,0.12)",
+                            borderRadius: 0,
+                            padding: "8px 10px",
+                            fontFamily: sans,
+                            fontSize: 14,
+                            outline: "none",
+                            lineHeight: 1.45,
+                          }}
+                        />
+                        <button
+                          onClick={() => sendCoachPrepMessage(input)}
+                          disabled={coachPrepStreaming || !input.trim()}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 0,
+                            background: input.trim() && !coachPrepStreaming ? "#1A3A2F" : "rgba(0,0,0,0.08)",
+                            border: "none",
+                            cursor: input.trim() && !coachPrepStreaming ? "pointer" : "default",
+                            color: input.trim() && !coachPrepStreaming ? "#E8D5A3" : "var(--scout-muted)",
+                            fontSize: 16,
+                            flexShrink: 0,
+                          }}
+                          aria-label="Send"
+                        >
+                          ↑
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : chatView === "coach" ? (
               <>
                 <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 8px" }}>
                   {coachMessages.map((m, i) => (
