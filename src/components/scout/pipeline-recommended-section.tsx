@@ -43,6 +43,10 @@ type JobsApiResponse = {
   page?: number;
   matchMode?: string;
   needsResume?: boolean;
+  needsCompanies?: boolean;
+  needsProfile?: boolean;
+  notice?: string;
+  hint?: string;
   error?: string;
 };
 
@@ -736,6 +740,7 @@ export function PipelineRecommendedSection({
   const [loading, setLoading] = useState(true);
   const [revalidating, setRevalidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [searchScoped, setSearchScoped] = useState(true);
   const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
@@ -756,6 +761,7 @@ export function PipelineRecommendedSection({
       if (!background) {
         setLoading(true);
         setError(null);
+        setNotice(null);
       } else {
         setRevalidating(true);
       }
@@ -786,15 +792,9 @@ export function PipelineRecommendedSection({
           const rawMsg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
           const isEmbedNoise =
             /embed|artifact|hirebase|permission|forbidden|403|vector/i.test(rawMsg);
-          const msg =
-            data.needsResume && !isEmbedNoise
-              ? `${rawMsg} Upload or re-upload your resume from Profile → Assets.`
-              : data.needsResume
-                ? "Upload a resume from Profile → Assets to see personalized recommendations."
-                : isEmbedNoise
-                  ? null
-                  : rawMsg;
+          const msg = isEmbedNoise ? null : data.hint ? `${rawMsg} ${data.hint}` : rawMsg;
           setError(msg);
+          setNotice(null);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -806,7 +806,12 @@ export function PipelineRecommendedSection({
           const nextJobs = data.jobs ?? [];
           setJobs(nextJobs);
           setError(null);
-          setSearchScoped(data.matchMode === "resume" || data.matchMode === "semantic_scoped");
+          setNotice(data.notice?.trim() || null);
+          setSearchScoped(
+            data.matchMode === "resume" ||
+              data.matchMode === "semantic_scoped" ||
+              data.matchMode === "tracked",
+          );
           writeRecommendedCache({
             jobs: nextJobs,
             filtersKey: cacheKey,
@@ -921,12 +926,16 @@ export function PipelineRecommendedSection({
   );
 
   const emptyMessage = error
-    ? "Fix the issue above, then refresh."
+    ? pipelineCards.length
+      ? "No new recommended roles — your pipeline jobs are shown below."
+      : "Fix the issue above, then refresh."
     : hasActiveSearch
       ? "No roles matched your search — try different keywords or track more companies."
       : stageFilter !== "all"
         ? `No roles in ${STAGE_LABELS[stageFilter]} match these filters.`
-        : "No roles match these filters — try broadening filters, add jobs from URLs, or refresh on Companies.";
+        : jobs.length === 0 && pipelineCards.length > 0
+          ? "No new recommendations right now — your pipeline jobs are shown below."
+          : "No roles match these filters — try broadening filters, add jobs from URLs, or refresh on Companies.";
 
   return (
     <div>
@@ -975,6 +984,11 @@ export function PipelineRecommendedSection({
 
         {error && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
+        )}
+        {notice && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
+            {notice}
+          </p>
         )}
         {hasActiveSearch && !error && searchScoped && hasLoadedOnce && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
