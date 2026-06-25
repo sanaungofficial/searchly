@@ -15,12 +15,12 @@ import {
 import { cachedJobToMeta } from "@/lib/cached-job";
 import {
   filterRoleListings,
-  mergeRoleListings,
   roleListingToVectorMatchedJob,
+  vectorJobToRoleListing,
   type RoleListing,
-  type StageFilter,
 } from "@/lib/role-listings";
-import { STAGE_COLORS, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
+import { normalizeJobUrl } from "@/lib/cached-job";
+import type { KanbanCard } from "./workspace-data";
 import {
   filtersCacheKey,
   isCacheFresh,
@@ -479,102 +479,22 @@ export function buildRecommendedProspectCard(
   };
 }
 
-function StageDropdown({
-  stage,
-  onChange,
-}: {
-  stage: KanbanStage;
-  onChange: (s: KanbanStage) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const stageColor = STAGE_COLORS[stage];
-  return (
-    <div style={{ position: "relative", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        style={{
-          padding: "6px 14px",
-          background: surface.card,
-          border: border.line,
-          borderRadius: 0,
-          fontFamily: fontSans,
-          fontSize: T.caption,
-          fontWeight: 600,
-          color: stageColor,
-          cursor: "pointer",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: stageColor, flexShrink: 0 }} />
-        {STAGE_LABELS[stage]} ▾
-      </button>
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              right: 0,
-              marginTop: 4,
-              background: surface.card,
-              border: border.line,
-              boxShadow: "3px 3px 0 rgba(17,17,17,0.06)",
-              zIndex: 100,
-              minWidth: 150,
-            }}
-          >
-            {(["saved", "applied", "interview", "offer", "closed"] as KanbanStage[]).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  onChange(s);
-                  setOpen(false);
-                }}
-                style={{
-                  width: "100%",
-                  padding: "8px 14px",
-                  background: s === stage ? `${STAGE_COLORS[s]}10` : "transparent",
-                  border: "none",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: s === stage ? 600 : 500,
-                  color: s === stage ? STAGE_COLORS[s] : color.ink,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                {STAGE_LABELS[s]}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
+function recommendedDedupeKey(job: VectorMatchedJob): string {
+  return normalizeJobUrl(job.url) ?? `${job.companyName.trim()}:${job.title.trim()}`.toLowerCase();
 }
 
-function UnifiedRoleResultsList({
+function RecommendedResultsList({
   listings,
   savingKey,
   onOpenRecommended,
-  onOpenPipeline,
   onSaveJob,
-  onChangeStage,
   setSavingKey,
   emptyMessage,
 }: {
   listings: RoleListing[];
   savingKey: string | null;
   onOpenRecommended: (job: VectorMatchedJob) => void;
-  onOpenPipeline: (cardId: number) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  onChangeStage: (cardId: number, stage: KanbanStage) => void;
   setSavingKey: (key: string | null) => void;
   emptyMessage: string;
 }) {
@@ -589,29 +509,19 @@ function UnifiedRoleResultsList({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {listings.map((row) => {
-        const inPipeline = row.pipelineCardId != null;
-        const matchJob = row.matchScore != null && row.matchScore > 0 ? roleListingToVectorMatchedJob(row) : null;
-        const score = matchScoreStyle(row.matchScore ?? 0);
-        const borderColor = inPipeline && row.stage ? STAGE_COLORS[row.stage] : score.accent;
-
-        const handleOpen = () => {
-          if (inPipeline && row.pipelineCardId != null) {
-            onOpenPipeline(row.pipelineCardId);
-          } else {
-            onOpenRecommended(roleListingToVectorMatchedJob(row));
-          }
-        };
+        const matchJob = roleListingToVectorMatchedJob(row);
+        const score = matchScoreStyle(matchJob.matchScore);
 
         return (
-          <ScoutBox key={row.dedupeKey} stack padding={18} style={{ borderTop: `2px solid ${borderColor}` }}>
+          <ScoutBox key={row.dedupeKey} stack padding={18} style={{ borderTop: `2px solid ${score.accent}` }}>
             <div
               role="button"
               tabIndex={0}
-              onClick={handleOpen}
+              onClick={() => onOpenRecommended(matchJob)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  handleOpen();
+                  onOpenRecommended(matchJob);
                 }
               }}
               style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
@@ -624,95 +534,66 @@ function UnifiedRoleResultsList({
                     <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
                       {row.companyName}
                       {row.location ? ` · ${row.location}` : ""}
-                      {inPipeline && row.days != null ? ` · ${row.days === 0 ? "Today" : `${row.days}d ago`}` : ""}
                     </p>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {inPipeline && row.stage ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "2px 8px",
+                          border: border.line,
+                          fontFamily: fontSans,
+                          fontSize: T.label,
+                          fontWeight: 600,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: score.accent,
+                          background: score.bgSubtle,
+                        }}
+                      >
+                        Recommended
+                      </span>
+                      {row.isTrackedCompany && (
                         <span
                           style={{
                             display: "inline-block",
                             padding: "2px 8px",
-                            border: border.line,
+                            border: border.lineStrong,
                             fontFamily: fontSans,
                             fontSize: T.label,
                             fontWeight: 600,
                             letterSpacing: "0.06em",
                             textTransform: "uppercase",
-                            color: STAGE_COLORS[row.stage],
-                            background: `${STAGE_COLORS[row.stage]}14`,
+                            color: color.forest,
+                            background: "rgba(26,58,47,0.08)",
                           }}
                         >
-                          {STAGE_LABELS[row.stage]}
+                          Watchlist
                         </span>
-                      ) : (
-                        <>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 8px",
-                              border: border.line,
-                              fontFamily: fontSans,
-                              fontSize: T.label,
-                              fontWeight: 600,
-                              letterSpacing: "0.06em",
-                              textTransform: "uppercase",
-                              color: score.accent,
-                              background: score.bgSubtle,
-                            }}
-                          >
-                            Recommended
-                          </span>
-                          {row.isTrackedCompany && (
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "2px 8px",
-                                border: border.lineStrong,
-                                fontFamily: fontSans,
-                                fontSize: T.label,
-                                fontWeight: 600,
-                                letterSpacing: "0.06em",
-                                textTransform: "uppercase",
-                                color: color.forest,
-                                background: "rgba(26,58,47,0.08)",
-                              }}
-                            >
-                              Watchlist
-                            </span>
-                          )}
-                        </>
                       )}
                     </div>
                   </div>
-                  {matchJob && matchJob.matchScore > 0 && (
+                  {matchJob.matchScore > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                       <ScoreExplainerPopover variant="vector-match" align="right" />
                       <MatchScoreBadge score={matchJob.matchScore} label={matchJob.matchLabel} />
                     </div>
                   )}
                 </div>
-                {matchJob && matchJob.matchScore > 0 && <MatchFitCallout job={matchJob} />}
+                {matchJob.matchScore > 0 && <MatchFitCallout job={matchJob} />}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap", alignItems: "center" }}>
-              {inPipeline && row.pipelineCardId != null && row.stage ? (
-                <StageDropdown
-                  stage={row.stage}
-                  onChange={(s) => onChangeStage(row.pipelineCardId!, s)}
-                />
-              ) : (
-                <ScoutPrimaryBtn
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const saveKey = row.dedupeKey;
-                    setSavingKey(saveKey);
-                    onSaveJob(roleListingToVectorMatchedJob(row)).finally(() => setSavingKey(null));
-                  }}
-                  disabled={savingKey === row.dedupeKey}
-                >
-                  {savingKey === row.dedupeKey ? "Saving…" : "Save to pipeline"}
-                </ScoutPrimaryBtn>
-              )}
+              <ScoutPrimaryBtn
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const saveKey = row.dedupeKey;
+                  setSavingKey(saveKey);
+                  onSaveJob(matchJob).finally(() => setSavingKey(null));
+                }}
+                disabled={savingKey === row.dedupeKey}
+              >
+                {savingKey === row.dedupeKey ? "Saving…" : "Save to pipeline"}
+              </ScoutPrimaryBtn>
               {row.url && (
                 <a
                   href={row.url}
@@ -734,21 +615,14 @@ function UnifiedRoleResultsList({
 
 export function PipelineRecommendedSection({
   pipelineCards,
-  stageFilter,
-  onStageFilterChange,
   onOpenJob,
-  onOpenPipeline,
   onSaveJob,
-  onChangeStage,
   actingUserId,
 }: {
+  /** Used only to hide roles already saved to the pipeline. */
   pipelineCards: KanbanCard[];
-  stageFilter: StageFilter;
-  onStageFilterChange: (filter: StageFilter) => void;
   onOpenJob: (job: VectorMatchedJob) => void;
-  onOpenPipeline: (cardId: number) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  onChangeStage: (cardId: number, stage: KanbanStage) => void;
   actingUserId?: string | null;
 }) {
   const isMobile = useIsMobile();
@@ -948,29 +822,38 @@ export function PipelineRecommendedSection({
     });
   };
 
-  const showInitialSkeleton = loading && !hasLoadedOnce && !jobs.length && !pipelineCards.length;
+  const showInitialSkeleton = loading && !hasLoadedOnce && !jobs.length;
 
-  const mergedListings = useMemo(
-    () => mergeRoleListings(jobs, pipelineCards),
-    [jobs, pipelineCards],
+  const savedKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const card of pipelineCards) {
+      const ext = card as KanbanCard & { _url?: string };
+      const key = normalizeJobUrl(ext._url) ?? `${card.company.trim()}:${card.role.trim()}`.toLowerCase();
+      keys.add(key);
+    }
+    return keys;
+  }, [pipelineCards]);
+
+  const recommendedListings = useMemo(
+    () =>
+      jobs
+        .filter((job) => !savedKeys.has(recommendedDedupeKey(job)))
+        .map((job) => vectorJobToRoleListing(job)),
+    [jobs, savedKeys],
   );
 
   const filteredListings = useMemo(
-    () => filterRoleListings(mergedListings, formToFilters(appliedForm, 1), stageFilter),
-    [mergedListings, appliedForm, stageFilter],
+    () => filterRoleListings(recommendedListings, formToFilters(appliedForm, 1), "all"),
+    [recommendedListings, appliedForm],
   );
 
   const emptyMessage = error
-    ? pipelineCards.length
-      ? "No new recommended roles — your pipeline jobs are shown below."
-      : "Fix the issue above, then refresh."
+    ? "Fix the issue above, then refresh."
     : hasActiveSearch
       ? "No roles matched your search — try different keywords or broaden filters."
-      : stageFilter !== "all"
-        ? `No roles in ${STAGE_LABELS[stageFilter]} match these filters.`
-        : jobs.length === 0 && pipelineCards.length > 0
-          ? "No new recommendations right now — your pipeline jobs are shown below."
-          : "No roles match these filters — try broadening filters, add jobs from URLs, or refresh on Companies.";
+      : recommendedListings.length === 0 && jobs.length > 0
+        ? "You have saved all current recommendations — check back after the daily refresh."
+        : "No recommendations right now — add target roles or a resume under Profile, then refresh.";
 
   return (
     <div>
@@ -981,7 +864,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles matched to your profile from Hirebase — watchlist employers rank first. Refreshed daily; use Refresh for a live pull (rate-limited).
+              Fresh roles matched to your profile from Hirebase — remote and local to your area. Save any role to track it in your pipeline.
             </p>
             {snapshotMeta?.generatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
@@ -1041,36 +924,6 @@ export function PipelineRecommendedSection({
             Updating recommendations…
           </p>
         )}
-
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 16, paddingTop: 14, borderTop: border.line }}>
-          <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, alignSelf: "center", marginRight: 4 }}>
-            Stage
-          </span>
-          {(
-            [
-              ["all", "All roles"],
-              ["saved", STAGE_LABELS.saved],
-              ["applied", STAGE_LABELS.applied],
-              ["interview", STAGE_LABELS.interview],
-              ["offer", STAGE_LABELS.offer],
-              ["closed", STAGE_LABELS.closed],
-            ] as [StageFilter, string][]
-          ).map(([id, label]) => {
-            const active = stageFilter === id;
-            const count =
-              id === "all"
-                ? mergedListings.length
-                : pipelineCards.filter((c) => c.stage === id).length;
-            return (
-              <ChipToggle
-                key={id}
-                label={count > 0 ? `${label} (${count})` : label}
-                active={active}
-                onClick={() => onStageFilterChange(id)}
-              />
-            );
-          })}
-        </div>
       </ScoutBox>
 
       {showInitialSkeleton && (
@@ -1078,13 +931,11 @@ export function PipelineRecommendedSection({
       )}
 
       {!showInitialSkeleton && (
-        <UnifiedRoleResultsList
+        <RecommendedResultsList
           listings={filteredListings}
           savingKey={savingKey}
           onOpenRecommended={onOpenJob}
-          onOpenPipeline={onOpenPipeline}
           onSaveJob={onSaveJob}
-          onChangeStage={onChangeStage}
           setSavingKey={setSavingKey}
           emptyMessage={emptyMessage}
         />

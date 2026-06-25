@@ -42,7 +42,6 @@ import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
-import type { StageFilter } from "@/lib/role-listings";
 
 export type { DrawerTool };
 
@@ -84,7 +83,7 @@ export function WorkspaceOpportunities() {
     setProspectDetailLoading(true);
     try {
       const res = await fetch(`/api/jobs/prospect/${encodeURIComponent(prospectId)}`);
-      const data = await res.json().catch(() => ({})) as { job?: CachedJob; companyName?: string };
+      const data = (await res.json().catch(() => ({}))) as { job?: CachedJob; companyName?: string };
       if (!res.ok || !data.job) return;
       const companyName = data.companyName ?? "Company";
       const job = data.job;
@@ -132,7 +131,6 @@ export function WorkspaceOpportunities() {
   const [csvProgress, setCsvProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [prospectJob, setProspectJob] = useState<{
     companyName: string;
     job: CachedJob;
@@ -253,17 +251,49 @@ export function WorkspaceOpportunities() {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setProspectJob({ companyName: job.companyName, job, drawerId });
     setProspectCard(buildRecommendedProspectCard(job, drawerId));
-    setProspectDetailLoading(Boolean(job.hirebaseId));
+    setProspectDetailLoading(true);
 
     try {
+      const hirebaseId = job.hirebaseId?.trim();
+      if (hirebaseId) {
+        const res = await fetch(`/api/jobs/prospect/${encodeURIComponent(hirebaseId)}`);
+        const data = (await res.json().catch(() => ({}))) as { job?: CachedJob; companyName?: string };
+        if (res.ok && data.job) {
+          const enriched: VectorMatchedJob = {
+            ...job,
+            ...data.job,
+            companyName: data.companyName ?? job.companyName,
+            matchScore: job.matchScore,
+            matchLabel: job.matchLabel,
+            matchReasons: job.matchReasons,
+            matchedSkills: job.matchedSkills,
+            gapSkills: job.gapSkills,
+            vectorRank: job.vectorRank,
+          };
+          setProspectJob((prev) => (prev ? { ...prev, companyName: enriched.companyName, job: enriched } : null));
+          setProspectCard(buildRecommendedProspectCard(enriched, drawerId));
+          return;
+        }
+      }
+
       const res = await fetch("/api/companies/prospect-job", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job }),
       });
-      const data = await res.json().catch(() => ({})) as { job?: typeof job };
+      const data = (await res.json().catch(() => ({}))) as { job?: CachedJob };
       if (res.ok && data.job) {
-        const enriched = { ...job, ...data.job, companyName: job.companyName, matchScore: job.matchScore, matchLabel: job.matchLabel, matchReasons: job.matchReasons, matchedSkills: job.matchedSkills, gapSkills: job.gapSkills, vectorRank: job.vectorRank };
+        const enriched: VectorMatchedJob = {
+          ...job,
+          ...data.job,
+          companyName: job.companyName,
+          matchScore: job.matchScore,
+          matchLabel: job.matchLabel,
+          matchReasons: job.matchReasons,
+          matchedSkills: job.matchedSkills,
+          gapSkills: job.gapSkills,
+          vectorRank: job.vectorRank,
+        };
         setProspectJob((prev) => (prev ? { ...prev, job: enriched } : null));
         setProspectCard(buildRecommendedProspectCard(enriched, drawerId));
       }
@@ -682,10 +712,6 @@ export function WorkspaceOpportunities() {
         {tab === "pipeline" && (
           <PipelineTab
             cards={kanbanCards}
-            stageFilter={stageFilter}
-            setStageFilter={setStageFilter}
-            onChangeStage={changeStage}
-            onOpenDrawer={openDrawer}
             onOpenRecommended={openRecommendedJob}
             onSaveRecommended={saveRecommendedJob}
             actingUserId={actingUserId}
@@ -1042,10 +1068,6 @@ function PipelineStatBar({ label, pct, highlight }: { label: string; pct: number
 
 interface PipelineTabProps {
   cards: KanbanCard[];
-  stageFilter: StageFilter;
-  setStageFilter: (f: StageFilter) => void;
-  onChangeStage: (id: number, stage: KanbanStage) => void;
-  onOpenDrawer: (id: number) => void;
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
   actingUserId?: string | null;
@@ -1053,10 +1075,6 @@ interface PipelineTabProps {
 
 function PipelineTab({
   cards,
-  stageFilter,
-  setStageFilter,
-  onChangeStage,
-  onOpenDrawer,
   onOpenRecommended,
   onSaveRecommended,
   actingUserId,
@@ -1079,15 +1097,6 @@ function PipelineTab({
     .map((s) => ({ stage: s, count: cards.filter((c) => c.stage === s).length }));
   const maxCount = Math.max(1, ...stageCounts.map((s) => s.count));
 
-  const stageFilterChips: [StageFilter, string][] = [
-    ["all", "All roles"],
-    ["saved", STAGE_LABELS.saved],
-    ["applied", STAGE_LABELS.applied],
-    ["interview", STAGE_LABELS.interview],
-    ["offer", STAGE_LABELS.offer],
-    ["closed", STAGE_LABELS.closed],
-  ];
-
   return (
     <div style={{ padding: isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
       <div style={{ marginBottom: 28 }}>
@@ -1096,33 +1105,20 @@ function PipelineTab({
           <ScoutLabel>Recommended roles</ScoutLabel>
         </div>
         <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 10 }}>
-          Every role in one place
+          Discover your next role
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Discover matching roles at tracked companies, search everything you have, and track Saved through Offer in one list.
+          Personalized matches from Hirebase — save any role to add it to your pipeline ({activeCount} active).
         </p>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: wideLayout ? "1fr 220px" : "1fr",
-          gap: 20,
-          marginBottom: 28,
-        }}
-      >
-        <ScoutBox stack padding={22}>
+      {wideLayout && activeCount > 0 && (
+        <ScoutBox stack padding={22} style={{ marginBottom: 28, maxWidth: 420 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 16 }}>
-            <ScoutLabel>Pipeline summary</ScoutLabel>
+            <ScoutLabel>Your pipeline</ScoutLabel>
             <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
               {activeCount} active
             </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 20 }}>
-            <span style={displayTitleStyle(48, { lineHeight: 1 })}>
-              {activeCount}
-            </span>
-            <span style={displayTitleStyle(22, { color: color.muted, lineHeight: 1.1 })}>/ in pipeline</span>
           </div>
           {stageCounts.map(({ stage, count }, i) => (
             <PipelineStatBar
@@ -1133,52 +1129,12 @@ function PipelineTab({
             />
           ))}
         </ScoutBox>
-
-        {wideLayout && (
-          <ScoutBox padding={0}>
-            <div style={{ padding: "14px 18px", borderBottom: border.line, background: surface.inset }}>
-              <ScoutLabel>Pipeline stage</ScoutLabel>
-            </div>
-            {stageFilterChips.map(([id, label], i) => {
-              const active = stageFilter === id;
-              const count = id === "all" ? cards.length : cards.filter((c) => c.stage === id).length;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setStageFilter(id)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    padding: "11px 18px",
-                    border: "none",
-                    borderBottom: i < stageFilterChips.length - 1 ? border.line : "none",
-                    fontFamily: fontSans,
-                    fontSize: T.bodySm,
-                    fontWeight: active ? 600 : 500,
-                    color: active ? color.ink : color.muted,
-                    background: active ? surface.inset : surface.card,
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  {label}
-                  <span style={{ fontFamily: fontMono, fontSize: T.label, opacity: 0.7, marginLeft: 6 }}>{count}</span>
-                </button>
-              );
-            })}
-          </ScoutBox>
-        )}
-      </div>
+      )}
 
       <PipelineRecommendedSection
         pipelineCards={cards}
-        stageFilter={stageFilter}
-        onStageFilterChange={setStageFilter}
         onOpenJob={onOpenRecommended}
-        onOpenPipeline={onOpenDrawer}
         onSaveJob={onSaveRecommended}
-        onChangeStage={onChangeStage}
         actingUserId={actingUserId}
       />
     </div>

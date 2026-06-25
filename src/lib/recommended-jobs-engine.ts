@@ -8,6 +8,10 @@ import {
   profilePreferencesToFilters,
 } from "@/lib/profile-preference-filters";
 import {
+  filterSourcesByLocationPreference,
+  profileLocationToHirebaseFilters,
+} from "@/lib/profile-location";
+import {
   buildProfileVSearchQuery,
   profileTextForMatchReasons,
   trimVSearchQuery,
@@ -65,14 +69,18 @@ async function loadUserContext(userId: string) {
     targetSalary: profile?.targetSalary ? Number.parseFloat(profile.targetSalary.replace(/[^0-9.]/g, "")) || null : null,
   });
 
+  const profileLocation = parsedData.location ?? null;
+  const priorities = profile?.priorities ?? [];
+
   const profilePrefs = profilePreferencesToFilters({
-    priorities: profile?.priorities ?? [],
+    priorities,
     targetSalary: profile?.targetSalary,
     employmentStatus: profile?.employmentStatus,
     jobTimeline: profile?.jobTimeline,
+    profileLocation,
   });
 
-  return { profile, targetRoles, parsedData, resumeText, profilePrefs };
+  return { profile, targetRoles, parsedData, resumeText, profilePrefs, profileLocation, priorities };
 }
 
 async function enrichAndRank(
@@ -108,10 +116,23 @@ export async function generateRecommendedJobsForUser(
   const requestFilters = input.filters ?? {};
   const semanticQuery = trimVSearchQuery(requestFilters.semanticQuery ?? "");
 
-  const { targetRoles, resumeText, profilePrefs, parsedData, profile } = await loadUserContext(input.userId);
+  const {
+    targetRoles,
+    resumeText,
+    profilePrefs,
+    parsedData,
+    profile,
+    profileLocation,
+    priorities,
+  } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
+  const locationFilters = profileLocationToHirebaseFilters({ profileLocation, priorities });
   const mergedFilters = defaultFeed
-    ? { ...requestFilters, semanticQuery: semanticQuery || undefined }
+    ? {
+        ...requestFilters,
+        semanticQuery: semanticQuery || undefined,
+        locations: requestFilters.locations?.length ? requestFilters.locations : locationFilters,
+      }
     : mergeProfileAndRequestFilters(profilePrefs, {
         ...requestFilters,
         semanticQuery: semanticQuery || undefined,
@@ -225,6 +246,16 @@ export async function generateRecommendedJobsForUser(
     sources = roles.sources;
     matchMode = "profile_roles";
     notice = notice ?? "Showing roles that match your target titles.";
+  }
+
+  if (!sources.length) return null;
+
+  const beforeLocation = sources.length;
+  sources = filterSourcesByLocationPreference(sources, { profileLocation, priorities });
+  if (beforeLocation > 0 && !sources.length) {
+    notice =
+      notice ??
+      "No roles matched your location preferences — update Profile → About (location) or Preferences (relocation).";
   }
 
   if (!sources.length) return null;

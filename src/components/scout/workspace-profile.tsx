@@ -2158,6 +2158,8 @@ const PREF_PRIORITIES = [
   "Fast growth",
   "Strong team culture",
   "Specific location",
+  "Open to relocating within my country",
+  "Open to relocating internationally",
 ];
 
 type CareerPrefPatch = Partial<Pick<UserProfile, "careerMotivation" | "jobTimeline" | "currentSalary" | "targetSalary" | "priorities" | "employmentStatus">>;

@@ -1,3 +1,4 @@
+import { profileLocationToHirebaseFilters } from "@/lib/profile-location";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 
 function parseSalaryNumber(raw: string | null | undefined): number | undefined {
@@ -22,9 +23,16 @@ export function profilePreferencesToFilters(profile: {
   targetSalary?: string | null;
   employmentStatus?: string | null;
   jobTimeline?: string | null;
+  profileLocation?: string | null;
 }): VectorSearchFilters {
   const out: VectorSearchFilters = {};
   const priorities = (profile.priorities ?? []).map((p) => p.toLowerCase());
+
+  const locations = profileLocationToHirebaseFilters({
+    profileLocation: profile.profileLocation,
+    priorities: profile.priorities ?? [],
+  });
+  if (locations.length) out.locations = locations;
 
   const locationTypes: string[] = [];
   if (priorities.some((p) => p.includes("remote"))) locationTypes.push("Remote");
@@ -78,6 +86,7 @@ export function mergeProfileAndRequestFilters(
     salaryFrom: requestFilters.salaryFrom ?? profilePrefs.salaryFrom,
     salaryTo: requestFilters.salaryTo ?? profilePrefs.salaryTo,
     datePostedFrom: requestFilters.datePostedFrom ?? profilePrefs.datePostedFrom,
+    locations: requestFilters.locations?.length ? requestFilters.locations : profilePrefs.locations,
     jobTitles: requestFilters.jobTitles?.length
       ? requestFilters.jobTitles
       : profilePrefs.jobTitles,
