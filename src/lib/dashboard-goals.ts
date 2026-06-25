@@ -5,8 +5,25 @@ export type DashboardGoal = {
   category: DashboardGoalCategory;
   value: string;
   label: string;
+  /** Month target as YYYY-MM */
+  targetDate?: string | null;
   createdAt: string;
 };
+
+const TARGET_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+export function normalizeGoalTargetMonth(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim().slice(0, 7);
+  return TARGET_MONTH_RE.test(trimmed) ? trimmed : null;
+}
+
+export function formatGoalTargetDate(targetDate: string | null | undefined): string | null {
+  const month = normalizeGoalTargetMonth(targetDate ?? null);
+  if (!month) return null;
+  const [y, m] = month.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
 
 export type DashboardGoalOption = {
   value: string;
@@ -82,11 +99,13 @@ export function normalizeDashboardGoals(raw: unknown): DashboardGoal[] {
     const value = typeof row.value === "string" ? row.value : "";
     const option = findDashboardGoalOption(value);
     if (!option) continue;
+    const targetDate = normalizeGoalTargetMonth(row.targetDate);
     out.push({
       id: typeof row.id === "string" ? row.id : crypto.randomUUID(),
       category: option.category,
       value: option.value,
       label: option.label,
+      ...(targetDate ? { targetDate } : {}),
       createdAt: typeof row.createdAt === "string" ? row.createdAt : new Date().toISOString(),
     });
     if (out.length >= DASHBOARD_GOAL_MAX) break;

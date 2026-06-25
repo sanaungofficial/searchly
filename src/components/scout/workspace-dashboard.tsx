@@ -6,11 +6,10 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { JobMeta } from "@/hooks/useJobs";
 import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
-import { DashboardGoalsSection } from "@/components/scout/dashboard-goals-section";
-import { DashboardEventsSection } from "@/components/scout/dashboard-events-section";
+import { DashboardHomeTop } from "@/components/scout/dashboard-home-top";
 import { type KanbanCard } from "./workspace-data";
 import { PlusIcon } from "./workspace-icons";
-import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -457,23 +456,9 @@ export function WorkspaceDashboard() {
       >
         <div style={{ padding: contentPad, width: "100%", boxSizing: "border-box" }}>
 
-          <div style={{ marginBottom: isMobile ? 20 : 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-              <ScoutLabel>Overview</ScoutLabel>
-            </div>
-            <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 10 }}>
-              Your workspace at a glance
-            </ScoutDisplayTitle>
-            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-              Set goals, book time with our team, and track your pipeline — all in one place.
-            </p>
-          </div>
+          <DashboardHomeTop isMobile={isMobile} />
 
-          <DashboardGoalsSection isMobile={isMobile} />
-          <DashboardEventsSection isMobile={isMobile} />
-
-          <div style={{ marginBottom: isMobile ? 24 : 32 }}>
+          <div style={{ borderTop: border.line, paddingTop: isMobile ? 24 : 32, marginBottom: isMobile ? 24 : 32 }}>
             <ScoutLabel>Your pipeline</ScoutLabel>
 
             {total === 0 ? (
