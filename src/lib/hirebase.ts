@@ -663,7 +663,8 @@ export async function fetchHirebaseSummarySearch(input: {
     return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
   }
 
-  const limit = Math.max(1, Math.min(input.filters.limit ?? 20, 20));
+  const requestedLimit = input.filters.limit ?? VECTOR_SEARCH_RESULTS_MAX;
+  const limit = Math.max(1, Math.min(requestedLimit, requestedLimit > VECTOR_SEARCH_RESULTS_MAX ? 100 : VECTOR_SEARCH_RESULTS_MAX));
   const page = Math.max(1, input.filters.page ?? 1);
 
   const body: Record<string, unknown> = {
@@ -751,7 +752,9 @@ export async function fetchHirebaseVectorJobs(
   const optionalQuery = input.query?.trim() ? trimVSearchQuery(input.query.trim()) : undefined;
 
   const page = Math.max(1, input.page ?? 1);
-  const responseLimit = Math.max(1, Math.min(input.limit ?? 20, VECTOR_SEARCH_RESULTS_MAX));
+  const requestedLimit = input.limit ?? VECTOR_SEARCH_RESULTS_MAX;
+  const responseCap = requestedLimit > VECTOR_SEARCH_RESULTS_MAX ? 100 : VECTOR_SEARCH_RESULTS_MAX;
+  const responseLimit = Math.max(1, Math.min(requestedLimit, responseCap));
   const fetchLimit = Math.max(
     responseLimit,
     Math.min(input.fetchLimit ?? responseLimit, 100),

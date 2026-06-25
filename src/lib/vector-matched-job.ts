@@ -56,6 +56,9 @@ export type VectorMatchedJob = CachedJob & {
   matchReasons: string[];
   matchedSkills: string[];
   gapSkills: string[];
+  /** 1 = watchlist · 2 = strong fit · 3 = related */
+  rankTier?: 1 | 2 | 3;
+  isTrackedCompany?: boolean;
 };
 
 export const HIREBASE_LOCATION_TYPES = ["Remote", "Hybrid", "In-Person"] as const;

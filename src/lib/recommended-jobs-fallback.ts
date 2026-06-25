@@ -15,6 +15,7 @@ import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
 import { applyListingFiltersToSources, jobMatchesListingFilters } from "@/lib/job-listing-filters";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
+import { RECOMMENDED_FETCH_POOL } from "@/lib/recommended-jobs-config";
 
 export type RecommendedJobSource = {
   cached: CachedJob;
@@ -128,7 +129,7 @@ export async function fetchRecommendedFromTrackedCompanies(input: {
   companyCount: number;
   trackedWithMatches: number;
 }> {
-  const maxJobs = Math.min(input.maxJobs ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+  const maxJobs = Math.min(input.maxJobs ?? RECOMMENDED_FETCH_POOL, RECOMMENDED_FETCH_POOL);
   const filters = input.filters;
   const roleBase = filters?.jobTitles?.length
     ? filters.jobTitles.slice(0, 20)
@@ -272,7 +273,7 @@ type TrackedCompanyRow = Awaited<ReturnType<typeof prisma.trackedCompany.findMan
   companyIntel?: { name?: string; slug?: string | null; enrichmentCache?: unknown } | null;
 };
 
-function buildTrackedCompanyIndex(companies: TrackedCompanyRow[]) {
+export function buildTrackedCompanyIndex(companies: TrackedCompanyRow[]) {
   const names = new Set<string>();
   const slugs = new Set<string>();
   for (const company of companies) {
@@ -286,7 +287,7 @@ function buildTrackedCompanyIndex(companies: TrackedCompanyRow[]) {
   return { names, slugs };
 }
 
-function jobMatchesTrackedCompany(job: HirebaseJob, index: ReturnType<typeof buildTrackedCompanyIndex>): boolean {
+export function jobMatchesTrackedCompany(job: HirebaseJob, index: ReturnType<typeof buildTrackedCompanyIndex>): boolean {
   const jobSlug = job.company_slug?.trim().toLowerCase();
   if (jobSlug && index.slugs.has(jobSlug)) return true;
 
@@ -299,6 +300,27 @@ function jobMatchesTrackedCompany(job: HirebaseJob, index: ReturnType<typeof bui
     if (key.includes(tracked) || tracked.includes(key)) return true;
   }
   return false;
+}
+
+export function companyNameMatchesTracked(
+  companyName: string,
+  index: ReturnType<typeof buildTrackedCompanyIndex>,
+): boolean {
+  const key = normalizeCompanyKey(companyName);
+  if (index.names.has(key)) return true;
+  for (const tracked of index.names) {
+    if (key.includes(tracked) || tracked.includes(key)) return true;
+  }
+  return false;
+}
+
+export async function loadTrackedCompanyIndex(userId: string) {
+  const tracked = await prisma.trackedCompany.findMany({
+    where: { userId },
+    include: { companyIntel: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  return { tracked, index: buildTrackedCompanyIndex(tracked) };
 }
 
 function buildVSearchFilters(
@@ -333,7 +355,7 @@ export async function fetchRecommendedFromProfileRoles(input: {
   semanticQuery?: string;
   maxJobs?: number;
 }): Promise<{ sources: RecommendedJobSource[] }> {
-  const maxJobs = Math.min(input.maxJobs ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+  const maxJobs = Math.min(input.maxJobs ?? RECOMMENDED_FETCH_POOL, RECOMMENDED_FETCH_POOL);
   const filters = input.filters;
   const roleBase = filters?.jobTitles?.length
     ? filters.jobTitles.slice(0, 20)
@@ -379,7 +401,7 @@ export async function fetchRecommendedFromProfileRoles(input: {
 
 /**
  * Recommended jobs via Hirebase resume vector search (`POST /v2/jobs/vsearch`, search_type=resume).
- * Requires a resume embed artifact from `/v2/resumes/embed` on upload.
+ * Global results — watchlist companies get a ranking boost downstream, not a hard filter.
  */
 export async function fetchRecommendedViaResumeVSearch(input: {
   userId: string;
@@ -393,24 +415,10 @@ export async function fetchRecommendedViaResumeVSearch(input: {
   companyCount: number;
   trackedWithMatches: number;
 }> {
-  const maxJobs = Math.min(input.maxJobs ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+  const maxJobs = Math.min(input.maxJobs ?? RECOMMENDED_FETCH_POOL, RECOMMENDED_FETCH_POOL);
 
-  let tracked = await prisma.trackedCompany.findMany({
-    where: { userId: input.userId },
-    include: { companyIntel: true },
-    orderBy: { updatedAt: "desc" },
-  });
+  const { tracked, index: trackedIndex } = await loadTrackedCompanyIndex(input.userId);
 
-  if (input.filters?.companyName?.trim()) {
-    const q = input.filters.companyName.trim().toLowerCase();
-    tracked = tracked.filter((c) => (c.companyIntel?.name ?? c.name).toLowerCase().includes(q));
-  }
-
-  if (!tracked.length) {
-    return { sources: [], companyCount: 0, trackedWithMatches: 0 };
-  }
-
-  const trackedIndex = buildTrackedCompanyIndex(tracked);
   const { merged: vsearchFilters, query } = buildVSearchFilters(
     input.profileTargetRoles,
     input.filters,
@@ -422,7 +430,7 @@ export async function fetchRecommendedViaResumeVSearch(input: {
     ...vsearchFilters,
     query,
     limit: maxJobs,
-    fetchLimit: Math.min(100, maxJobs * 4),
+    fetchLimit: Math.min(100, maxJobs),
     page: input.filters?.page ?? 1,
     accuracy: input.filters?.accuracy,
     topK: input.filters?.topK,
@@ -432,7 +440,6 @@ export async function fetchRecommendedViaResumeVSearch(input: {
   const sources: RecommendedJobSource[] = [];
   for (let i = 0; i < vsearch.rawJobs.length; i++) {
     const raw = vsearch.rawJobs[i];
-    if (!jobMatchesTrackedCompany(raw, trackedIndex)) continue;
     const cached = vsearch.jobs[i] ?? mapHirebaseJob(raw);
     const companyName = raw.company_name?.trim() || vsearch.companyNames[i] || "Unknown company";
     sources.push({ cached, companyName, raw });
@@ -440,7 +447,51 @@ export async function fetchRecommendedViaResumeVSearch(input: {
   }
 
   const filtered = applyListingFiltersToSources(sources, input.filters);
-  const trackedWithMatches = new Set(filtered.map((s) => s.companyName)).size;
+  const trackedWithMatches = filtered.filter((s) => jobMatchesTrackedCompany(s.raw, trackedIndex)).length;
+
+  return {
+    sources: filtered,
+    companyCount: tracked.length,
+    trackedWithMatches,
+  };
+}
+
+/**
+ * Profile-based semantic search when no resume artifact (`search_type=summary`).
+ */
+export async function fetchRecommendedViaProfileSummary(input: {
+  userId: string;
+  query: string;
+  profileTargetRoles: string[];
+  filters?: VectorSearchFilters;
+  maxJobs?: number;
+}): Promise<{
+  sources: RecommendedJobSource[];
+  companyCount: number;
+  trackedWithMatches: number;
+}> {
+  const maxJobs = Math.min(input.maxJobs ?? RECOMMENDED_FETCH_POOL, RECOMMENDED_FETCH_POOL);
+  const { tracked, index: trackedIndex } = await loadTrackedCompanyIndex(input.userId);
+
+  const { merged: vsearchFilters } = buildVSearchFilters(input.profileTargetRoles, input.filters);
+
+  const summary = await fetchHirebaseSummarySearch({
+    query: input.query,
+    filters: {
+      ...vsearchFilters,
+      limit: maxJobs,
+      page: input.filters?.page ?? 1,
+    },
+  });
+
+  const sources: RecommendedJobSource[] = summary.rawJobs.map((raw, i) => ({
+    cached: summary.jobs[i] ?? mapHirebaseJob(raw),
+    companyName: summary.companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company",
+    raw,
+  }));
+
+  const filtered = applyListingFiltersToSources(sources, input.filters);
+  const trackedWithMatches = filtered.filter((s) => jobMatchesTrackedCompany(s.raw, trackedIndex)).length;
 
   return {
     sources: filtered,

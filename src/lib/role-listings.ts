@@ -23,6 +23,8 @@ export type RoleListing = {
   matchedSkills?: string[];
   gapSkills?: string[];
   vectorRank?: number;
+  rankTier?: 1 | 2 | 3;
+  isTrackedCompany?: boolean;
   fit?: number;
   days?: number;
 };
@@ -97,6 +99,8 @@ export function vectorJobToRoleListing(job: VectorMatchedJob): RoleListing {
     matchedSkills: job.matchedSkills,
     gapSkills: job.gapSkills,
     vectorRank: job.vectorRank,
+    rankTier: job.rankTier,
+    isTrackedCompany: job.isTrackedCompany,
   };
 }
 
@@ -143,6 +147,9 @@ export function mergeRoleListings(
       const sd = stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage);
       if (sd !== 0) return sd;
     }
+    const tierA = a.rankTier ?? 3;
+    const tierB = b.rankTier ?? 3;
+    if (tierA !== tierB) return tierA - tierB;
     const scoreA = a.matchScore ?? 0;
     const scoreB = b.matchScore ?? 0;
     if (scoreA !== scoreB) return scoreB - scoreA;

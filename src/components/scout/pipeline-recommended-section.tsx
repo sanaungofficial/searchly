@@ -48,6 +48,11 @@ type JobsApiResponse = {
   notice?: string;
   hint?: string;
   error?: string;
+  fromSnapshot?: boolean;
+  generatedAt?: string;
+  snapshotDate?: string;
+  scoreFloor?: number;
+  retryAfterMs?: number;
 };
 
 const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
@@ -640,22 +645,42 @@ function UnifiedRoleResultsList({
                           {STAGE_LABELS[row.stage]}
                         </span>
                       ) : (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "2px 8px",
-                            border: border.line,
-                            fontFamily: fontSans,
-                            fontSize: T.label,
-                            fontWeight: 600,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            color: score.accent,
-                            background: score.bgSubtle,
-                          }}
-                        >
-                          Recommended
-                        </span>
+                        <>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "2px 8px",
+                              border: border.line,
+                              fontFamily: fontSans,
+                              fontSize: T.label,
+                              fontWeight: 600,
+                              letterSpacing: "0.06em",
+                              textTransform: "uppercase",
+                              color: score.accent,
+                              background: score.bgSubtle,
+                            }}
+                          >
+                            Recommended
+                          </span>
+                          {row.isTrackedCompany && (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                border: border.lineStrong,
+                                fontFamily: fontSans,
+                                fontSize: T.label,
+                                fontWeight: 600,
+                                letterSpacing: "0.06em",
+                                textTransform: "uppercase",
+                                color: color.forest,
+                                background: "rgba(26,58,47,0.08)",
+                              }}
+                            >
+                              Watchlist
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -741,8 +766,8 @@ export function PipelineRecommendedSection({
   const [revalidating, setRevalidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [snapshotMeta, setSnapshotMeta] = useState<{ fromSnapshot: boolean; generatedAt?: string } | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [searchScoped, setSearchScoped] = useState(true);
   const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
 
   const mountedRef = useRef(false);
@@ -807,11 +832,10 @@ export function PipelineRecommendedSection({
           setJobs(nextJobs);
           setError(null);
           setNotice(data.notice?.trim() || null);
-          setSearchScoped(
-            data.matchMode === "resume" ||
-              data.matchMode === "semantic_scoped" ||
-              data.matchMode === "tracked",
-          );
+          setSnapshotMeta({
+            fromSnapshot: data.fromSnapshot === true,
+            generatedAt: data.generatedAt,
+          });
           writeRecommendedCache({
             jobs: nextJobs,
             filtersKey: cacheKey,
@@ -930,7 +954,7 @@ export function PipelineRecommendedSection({
       ? "No new recommended roles — your pipeline jobs are shown below."
       : "Fix the issue above, then refresh."
     : hasActiveSearch
-      ? "No roles matched your search — try different keywords or track more companies."
+      ? "No roles matched your search — try different keywords or broaden filters."
       : stageFilter !== "all"
         ? `No roles in ${STAGE_LABELS[stageFilter]} match these filters.`
         : jobs.length === 0 && pipelineCards.length > 0
@@ -946,8 +970,14 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles matched to your resume at tracked companies, plus jobs already in your pipeline. Search and filters refine Hirebase resume vector search.
+              Personalized roles scored 80+ against your profile — watchlist employers rank first. Refreshed daily; use Refresh for a live pull (rate-limited).
             </p>
+            {snapshotMeta?.generatedAt && (
+              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
+                {snapshotMeta.fromSnapshot ? "Daily snapshot" : "Live results"} · updated{" "}
+                {new Date(snapshotMeta.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+              </p>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
@@ -990,9 +1020,9 @@ export function PipelineRecommendedSection({
             {notice}
           </p>
         )}
-        {hasActiveSearch && !error && searchScoped && hasLoadedOnce && (
+        {hasActiveSearch && !error && hasLoadedOnce && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            Resume matches are scoped to your tracked companies{hasActiveSearch ? " — search text adds optional focus to the vector query" : ""}.
+            Custom filters run a live Hirebase search — results may differ from your daily snapshot.
           </p>
         )}
         {revalidating && jobs.length > 0 && (
