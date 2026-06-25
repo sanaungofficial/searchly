@@ -16,15 +16,7 @@ import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
 import { windowInsight } from "@/hooks/useMarketInsights";
 import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
 import { formatInsightsSalary } from "@/lib/hirebase-insights";
-import type { DashboardSumbleSignalsBundle } from "@/lib/sumble-intel-service";
-
-function formatSignalDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  } catch {
-    return iso;
-  }
-}
+import { DashboardSumbleSignalsPanel } from "@/components/scout/dashboard-sumble-signals-panel";
 
 const STAT_LABEL: React.CSSProperties = {
   fontFamily: fontSans,
@@ -199,11 +191,6 @@ export function WorkspaceDashboard() {
   const [signalsError, setSignalsError] = useState<string | null>(null);
   const [marketRequiresLoad, setMarketRequiresLoad] = useState(true);
 
-  const [watchlistSignals, setWatchlistSignals] = useState<DashboardSumbleSignalsBundle | null>(null);
-  const [watchlistLoading, setWatchlistLoading] = useState(false);
-  const [watchlistError, setWatchlistError] = useState<string | null>(null);
-  const [watchlistRequiresLoad, setWatchlistRequiresLoad] = useState(true);
-
   const loadMarketSignals = useCallback(async (options?: { refresh?: boolean; fetch?: boolean }) => {
     const refresh = options?.refresh ?? false;
     const shouldFetch = options?.fetch ?? refresh;
@@ -231,37 +218,9 @@ export function WorkspaceDashboard() {
     }
   }, []);
 
-  const loadWatchlistSignals = useCallback(async (options?: { refresh?: boolean; fetch?: boolean }) => {
-    const refresh = options?.refresh ?? false;
-    const shouldFetch = options?.fetch ?? refresh;
-    setWatchlistLoading(true);
-    setWatchlistError(null);
-    try {
-      const params = new URLSearchParams();
-      if (shouldFetch) params.set("load", "1");
-      if (refresh) params.set("refresh", "1");
-      const res = await fetch(`/api/dashboard/sumble-signals?${params}`);
-      const body = (await res.json()) as DashboardSumbleSignalsBundle;
-      setWatchlistSignals(body);
-      setWatchlistRequiresLoad(body.requiresLoad ?? !body.signals?.length);
-      if (!res.ok && !body.signals?.length && !body.requiresLoad) {
-        setWatchlistError(body.error ?? "Company signals unavailable.");
-      } else if (body.error) {
-        setWatchlistError(body.error);
-      } else {
-        setWatchlistError(null);
-      }
-    } catch {
-      setWatchlistError("Could not load company signals.");
-    } finally {
-      setWatchlistLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     void loadMarketSignals({ fetch: false });
-    void loadWatchlistSignals({ fetch: false });
-  }, [loadMarketSignals, loadWatchlistSignals]);
+  }, [loadMarketSignals]);
 
   const marketInsight = windowInsight(signalsData, 30);
 
@@ -345,10 +304,6 @@ export function WorkspaceDashboard() {
 
   const refreshMarketSignals = () => {
     void loadMarketSignals({ fetch: true, refresh: true });
-  };
-
-  const refreshWatchlistSignals = () => {
-    void loadWatchlistSignals({ fetch: true, refresh: true });
   };
 
   const openAddPanel = () => setShowAddPanel(true);
@@ -813,152 +768,7 @@ export function WorkspaceDashboard() {
             )}
           </div>
 
-          <div style={{ marginBottom: 28 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: isMobile ? "flex-start" : "center",
-                justifyContent: "space-between",
-                marginBottom: 10,
-                gap: 12,
-                flexDirection: isMobile ? "column" : "row",
-              }}
-            >
-              <ScoutLabel>Company signals · Sumble</ScoutLabel>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Link
-                  href="/opportunities/companies"
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    fontWeight: 600,
-                    color: color.forest,
-                    textDecoration: "none",
-                    padding: isMobile ? "10px 14px" : "6px 12px",
-                    border: border.line,
-                    minHeight: isMobile ? 44 : undefined,
-                    display: "inline-flex",
-                    alignItems: "center",
-                  }}
-                >
-                  Companies →
-                </Link>
-                <button
-                  onClick={() =>
-                    watchlistRequiresLoad
-                      ? void loadWatchlistSignals({ fetch: true })
-                      : refreshWatchlistSignals()
-                  }
-                  disabled={watchlistLoading}
-                  style={{
-                    background: "none",
-                    border: border.line,
-                    cursor: watchlistLoading ? "wait" : "pointer",
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    fontWeight: 600,
-                    color: color.forest,
-                    padding: isMobile ? "10px 14px" : "6px 12px",
-                    minHeight: isMobile ? 44 : undefined,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <RefreshIcon /> {watchlistRequiresLoad ? "Load" : "Refresh"}
-                </button>
-              </div>
-            </div>
-
-            {watchlistRequiresLoad && !watchlistSignals?.signals?.length && !watchlistLoading && !watchlistError && (
-              <SumbleLoadPrompt
-                title="Watchlist signals"
-                description="Scan up to 3 tracked companies for recent Sumble signals. Does not run automatically."
-                estimatedCredits={watchlistSignals?.estimatedCredits ?? 12}
-                creditsRemaining={watchlistSignals?.creditsRemaining}
-                loading={watchlistLoading}
-                onLoad={() => void loadWatchlistSignals({ fetch: true })}
-                loadLabel="Load watchlist signals"
-              />
-            )}
-
-            {watchlistLoading && !watchlistSignals?.signals?.length && !watchlistRequiresLoad && (
-              <ScoutBox padding="14px 18px">
-                <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
-                  Loading signals from your watchlist…
-                </p>
-              </ScoutBox>
-            )}
-
-            {watchlistError && !watchlistSignals?.signals?.length && (
-              <ScoutBox padding="14px 18px">
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-                  {watchlistError}
-                </p>
-              </ScoutBox>
-            )}
-
-            {watchlistSignals?.signals?.length ? (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
-                {watchlistSignals.signals.map((signal, i) => (
-                  <ScoutBox key={`${signal.trackedId}-${signal.date}-${i}`} padding="16px 18px">
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <Link
-                        href={`/opportunities/companies/${signal.trackedId}`}
-                        style={{
-                          fontFamily: fontSans,
-                          fontSize: T.caption,
-                          fontWeight: 700,
-                          color: color.forest,
-                          textDecoration: "none",
-                        }}
-                      >
-                        {signal.companyName}
-                      </Link>
-                      <span
-                        style={{
-                          padding: "2px 8px",
-                          background: surface.inset,
-                          border: border.line,
-                          fontFamily: fontMono,
-                          fontSize: T.caption,
-                          color: color.muted,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {signal.display_type}
-                      </span>
-                      <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-                        {formatSignalDate(signal.date)}
-                      </span>
-                    </div>
-                    <p style={displayTitleStyle(isMobile ? 17 : 18, { margin: "0 0 6px", lineHeight: 1.35 })}>
-                      {signal.title}
-                    </p>
-                    {signal.subtitle && (
-                      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-                        {signal.subtitle}
-                      </p>
-                    )}
-                  </ScoutBox>
-                ))}
-                {watchlistSignals.generatedAt && (
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
-                    {watchlistSignals.companiesScanned} companies scanned
-                    {watchlistSignals.serverCached ? " · cached" : ""}
-                    {" · "}
-                    Updated {new Date(watchlistSignals.generatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                  </p>
-                )}
-              </div>
-            ) : null}
-          </div>
+          <DashboardSumbleSignalsPanel isMobile={isMobile} />
 
           {marketInsight && signalsData && (
             <div
