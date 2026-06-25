@@ -53,13 +53,21 @@ export async function POST(request: Request) {
   const body = (await request.json()) as CoachPrepBody;
   const { messages, coach } = body;
 
+  if (!coach?.displayName?.trim()) {
+    return new Response(JSON.stringify({ error: "Coach context is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const profile = dbUser.profile;
   const resumeText = profile?.resumeText || "";
   const targetRoles = (profile?.targetRoles ?? []).join(", ") || "Not specified";
-  const priorities = profile?.priorities?.trim() || "Not specified";
+  const priorities = (profile?.priorities ?? []).join(", ") || "Not specified";
   const careerMotivation = profile?.careerMotivation?.trim() || "Not specified";
-  const candidateName = dbUser.name?.trim() || profile?.name?.trim() || "Candidate";
+  const candidateName = dbUser.name?.trim() || "Candidate";
 
+  try {
   const coachContext = [
     `Name: ${coach.displayName}`,
     coach.headline ? `Headline: ${coach.headline}` : null,
@@ -118,4 +126,12 @@ export async function POST(request: Request) {
   });
 
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  } catch (err) {
+    console.error("[coach-prep]", err);
+    const message = err instanceof Error ? err.message : "Coach prep failed";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

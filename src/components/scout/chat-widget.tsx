@@ -313,7 +313,17 @@ export function ChatWidget() {
           setCoachPrepMessages((prev) => prev.slice(0, -1));
           return;
         }
-        const err = res.status === 503 ? "AI is not available right now." : "Something went wrong. Try again.";
+        const err =
+          res.status === 503
+            ? "AI is not available right now."
+            : await (async () => {
+                try {
+                  const data = await res.clone().json();
+                  return typeof data?.error === "string" ? data.error : "Something went wrong. Try again.";
+                } catch {
+                  return "Something went wrong. Try again.";
+                }
+              })();
         setCoachPrepMessages((prev) => {
           const copy = [...prev];
           copy[copy.length - 1] = { role: "assistant", content: err };
@@ -396,7 +406,17 @@ export function ChatWidget() {
           setMessages((prev) => prev.slice(0, -1));
           return;
         }
-        const err = res.status === 503 ? "AI is not available right now." : "Something went wrong. Try again.";
+        const err =
+          res.status === 503
+            ? "AI is not available right now."
+            : await (async () => {
+                try {
+                  const data = await res.clone().json();
+                  return typeof data?.error === "string" ? data.error : "Something went wrong. Try again.";
+                } catch {
+                  return "Something went wrong. Try again.";
+                }
+              })();
         setMessages((prev) => {
           const copy = [...prev];
           copy[copy.length - 1] = { role: "assistant", content: err };
