@@ -24,6 +24,7 @@ import { KimchiBySecondLadder } from "./scout-box";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
 import { isProductionEnv, shouldShowBetaNav, BETA_FEATURES } from "@/lib/beta-features";
+import { isStaffPortalRole } from "@/lib/staff-portal";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -270,7 +271,7 @@ export function WorkspaceSidebar({
   const userRole = userRoleProp ?? ctxUserRole;
   const showCommunityNav = shouldShowBetaNav(isAdmin);
 
-  const isStaff = userRole === "COACH" || userRole === "ADMIN";
+  const isStaff = isStaffPortalRole(userRole);
   const { loading: subLoading } = useSubscription();
   const { credits, showCredits, unlimitedAi } = useCredits();
   const { openPricing } = useWorkspace();
@@ -581,26 +582,6 @@ export function WorkspaceSidebar({
             />
           )}
 
-          {isStaff && userRole !== "COACH" && (
-            <SidebarNavButton
-              active={pathname === "/clients" || pathname.startsWith("/dashboard/clients")}
-              onClick={() => navigate("/clients")}
-              label="Clients"
-              isRail={isRail}
-              Icon={() => (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke={pathname === "/clients" ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}
-                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              )}
-            />
-          )}
-
           <SidebarSectionLabel isRail={isRail}>Search</SidebarSectionLabel>
           {NAV_SEARCH.map(({ id, label, path, Icon }) => (
             <React.Fragment key={id}>
@@ -645,7 +626,7 @@ export function WorkspaceSidebar({
           {showCommunityNav && (
             <>
               <SidebarSectionLabel isRail={isRail}>Community</SidebarSectionLabel>
-              {NAV_COMMUNITY.filter(({ id }) => !(userRole === "COACH" && id === "live")).map(({ id, label, path, Icon }) => (
+              {NAV_COMMUNITY.filter(({ id }) => !(isStaff && id === "live")).map(({ id, label, path, Icon }) => (
                 <SidebarNavButton
                   key={id}
                   active={isActive(path)}

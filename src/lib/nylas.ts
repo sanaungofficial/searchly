@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import type { NextRequest, NextResponse } from "next/server";
+import { isStaffPortalRole } from "@/lib/staff-portal";
 
 const DEFAULT_API_URI = "https://api.us.nylas.com";
 
@@ -74,11 +75,13 @@ export function nylasProfileReturnUrl(
   params?: Record<string, string>,
 ): string {
   const base = appUrl.replace(/\/$/, "");
-  const path = role === "ADMIN" ? `${base}/admin/profile` : `${base}/dashboard/clients?tab=profile`;
+  const path = isStaffPortalRole(role)
+    ? `${base}/dashboard/clients?tab=profile`
+    : `${base}/admin/profile`;
   if (!params || Object.keys(params).length === 0) return path;
 
   const qs = new URLSearchParams(params).toString();
-  return role === "ADMIN" ? `${path}?${qs}` : `${path}&${qs}`;
+  return isStaffPortalRole(role) ? `${path}&${qs}` : `${path}?${qs}`;
 }
 
 export function isNylasConfigured(): boolean {
