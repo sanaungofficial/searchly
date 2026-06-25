@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { hostnameFromUrl } from "@/lib/company-domain";
 import { formatSumbleFunding, formatSumbleGrowth } from "@/lib/sumble";
-import type { CompanySumbleIntelBundle } from "@/lib/sumble-intel-service";
+import type { CompanySumbleIntelBundle, CompanySumbleBriefBundle } from "@/lib/sumble-intel-service";
+import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
 import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
 import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
 import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
@@ -72,6 +73,103 @@ function PanelHeader({
       </div>
       <IntelRefreshButton onClick={onRefresh} disabled={loading} />
     </div>
+  );
+}
+
+function SumbleBriefSection({
+  trackedId,
+  companyName,
+  domainHint,
+  compact,
+}: {
+  trackedId?: string;
+  companyName: string;
+  domainHint: string | null;
+  compact?: boolean;
+}) {
+  const [briefData, setBriefData] = useState<CompanySumbleBriefBundle | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefError, setBriefError] = useState<string | null>(null);
+  const [briefRequiresLoad, setBriefRequiresLoad] = useState(true);
+
+  const loadBrief = useCallback(
+    async (fetch = false) => {
+      setBriefLoading(true);
+      setBriefError(null);
+      try {
+        const params = new URLSearchParams({ name: companyName });
+        if (trackedId) params.set("trackedId", trackedId);
+        if (domainHint) params.set("domain", domainHint);
+        if (fetch) params.set("load", "1");
+        const res = await fetch(`/api/companies/sumble-brief?${params}`);
+        const body = (await res.json()) as CompanySumbleBriefBundle;
+        setBriefData(body);
+        setBriefRequiresLoad(body.requiresLoad ?? !body.brief);
+        if (body.error && !body.brief) setBriefError(body.error);
+      } catch {
+        setBriefError("Could not load intelligence brief.");
+      } finally {
+        setBriefLoading(false);
+      }
+    },
+    [trackedId, companyName, domainHint]
+  );
+
+  useEffect(() => {
+    setBriefData(null);
+    setBriefRequiresLoad(true);
+    void loadBrief(false);
+  }, [loadBrief]);
+
+  if (briefRequiresLoad && !briefData?.brief) {
+    return (
+      <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+        <ScoutLabel>Account intelligence brief</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 12px", lineHeight: 1.5 }}>
+          AI-generated account angle from Sumble (~{SUMBLE_ESTIMATED_COSTS.intelligenceBrief} credits). May take a moment to generate.
+        </p>
+        <ScoutSecondaryBtn onClick={() => void loadBrief(true)} disabled={briefLoading} style={{ minHeight: 40 }}>
+          {briefLoading ? "Loading…" : "Load account brief"}
+        </ScoutSecondaryBtn>
+      </ScoutBox>
+    );
+  }
+
+  if (!briefData?.brief) {
+    if (briefError) {
+      return (
+        <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+          <ScoutLabel>Account intelligence brief</ScoutLabel>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0" }}>{briefError}</p>
+        </ScoutBox>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+        <ScoutLabel>{briefData.brief.title}</ScoutLabel>
+        {briefData.brief.sumble_url && (
+          <a href={briefData.brief.sumble_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "none" }}>
+            View on Sumble ↗
+          </a>
+        )}
+      </div>
+      <div
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.bodySm,
+          color: color.stone,
+          marginTop: 10,
+          lineHeight: 1.6,
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {briefData.brief.body}
+      </div>
+    </ScoutBox>
   );
 }
 
@@ -448,6 +546,13 @@ export function CompanySumbleIntelPanel({
           </ScoutSecondaryBtn>
         </ScoutBox>
       )}
+
+      <SumbleBriefSection
+        trackedId={trackedId}
+        companyName={companyName}
+        domainHint={domainHint}
+        compact={compact}
+      />
 
       {data.signals.length === 0 &&
         data.people.length === 0 &&

@@ -1014,7 +1014,11 @@ export function JobDrawer({
                 </div>
               )}
 
-              <InsiderConnectionPanel companyName={card.company} />
+              <InsiderConnectionPanel
+                companyName={card.company}
+                jobTitle={card.role}
+                website={guessCompanyWebsite(jobWebsite)}
+              />
 
               {networkJob && (
                 <div

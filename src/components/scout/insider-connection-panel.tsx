@@ -1,40 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
 import type { ParsedResumeData } from "@/lib/resume-parse";
+import type { JobInsiderConnectionsBundle, InsiderConnectionPerson } from "@/lib/sumble-job-contacts-service";
+import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
+import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
 import { fontSans, color, surface, border, displayTitleStyle } from "@/lib/typography";
-import { ScoutBox } from "./scout-box";
+import { ScoutBox, ScoutSecondaryBtn } from "./scout-box";
 
 const sans = fontSans;
 const line = border.line;
 const mint = "#1A3A2F";
-
-type ConnectionBucket = "beyond" | "previous_company" | "school";
-
-const BUCKET_META: Record<
-  ConnectionBucket,
-  { label: string; headerBg: string; headerColor: string; accent: string }
-> = {
-  beyond: {
-    label: "Beyond Your Network",
-    headerBg: "rgba(74,139,106,0.14)",
-    headerColor: "#2A4A3A",
-    accent: mint,
-  },
-  previous_company: {
-    label: "From Your Previous Company",
-    headerBg: "rgba(91,127,166,0.14)",
-    headerColor: "#2A3A4A",
-    accent: "#5B7FA6",
-  },
-  school: {
-    label: "From Your School",
-    headerBg: "rgba(139,92,166,0.14)",
-    headerColor: "#3A2A4A",
-    accent: "#8B5CA6",
-  },
-};
 
 function IconPeople() {
   return (
@@ -55,19 +32,53 @@ function IconSearch() {
   );
 }
 
-function ConnectionCard({
-  bucket,
-  emptyTitle,
-  emptyHint,
-  footerHint,
-}: {
-  bucket: ConnectionBucket;
-  emptyTitle: string;
-  emptyHint: string;
-  footerHint?: string;
-}) {
-  const meta = BUCKET_META[bucket];
+function PersonRow({ person }: { person: InsiderConnectionPerson }) {
+  return (
+    <li style={{ padding: "8px 0", borderBottom: line }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 8 }}>
+        {person.linkedinUrl ? (
+          <a
+            href={person.linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
+          >
+            {person.name} ↗
+          </a>
+        ) : person.sumbleUrl ? (
+          <a
+            href={person.sumbleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
+          >
+            {person.name} ↗
+          </a>
+        ) : (
+          <span style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>{person.name}</span>
+        )}
+        {person.jobLevel && (
+          <span style={{ fontFamily: sans, fontSize: 12, color: color.muted }}>{person.jobLevel}</span>
+        )}
+      </div>
+      {person.jobTitle && (
+        <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
+          {person.jobTitle}
+        </p>
+      )}
+    </li>
+  );
+}
 
+function PeopleList({
+  title,
+  people,
+  emptyHint,
+}: {
+  title: string;
+  people: InsiderConnectionPerson[];
+  emptyHint: string;
+}) {
   return (
     <div
       style={{
@@ -75,57 +86,58 @@ function ConnectionCard({
         minWidth: 0,
         background: surface.card,
         border: line,
-        borderRadius: 0,
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      <div
-        style={{
-          padding: "10px 14px",
-          background: meta.headerBg,
-          fontFamily: sans,
-          fontSize: 13,
-          fontWeight: 700,
-          color: meta.headerColor,
-        }}
-      >
-        {meta.label}
+      <div style={{ padding: "10px 14px", background: "rgba(74,139,106,0.14)", fontFamily: sans, fontSize: 13, fontWeight: 700, color: "#2A4A3A" }}>
+        {title}
       </div>
-      <div style={{ padding: "16px 14px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: "0 0 6px", lineHeight: 1.4 }}>
-          {emptyTitle}
-        </p>
-        <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", margin: 0, lineHeight: 1.5 }}>{emptyHint}</p>
-        {footerHint && (
-          <p style={{ fontFamily: sans, fontSize: 12, color: meta.accent, margin: "10px 0 0", fontWeight: 600 }}>{footerHint}</p>
+      <div style={{ padding: "12px 14px", flex: 1 }}>
+        {people.length ? (
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>{people.map((p) => <PersonRow key={`${p.personId}-${p.name}`} person={p} />)}</ul>
+        ) : (
+          <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", margin: 0, lineHeight: 1.5 }}>{emptyHint}</p>
         )}
       </div>
     </div>
   );
 }
 
-export function InsiderConnectionPanel({ companyName }: { companyName: string }) {
+export function InsiderConnectionPanel({
+  companyName,
+  jobTitle,
+  website,
+}: {
+  companyName: string;
+  jobTitle?: string;
+  website?: string | null;
+}) {
   const { isPro, isAdmin, startCheckout, loading: subLoading } = useSubscription();
+  const [data, setData] = useState<JobInsiderConnectionsBundle | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [requiresLoad, setRequiresLoad] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
+  const [revealedEmail, setRevealedEmail] = useState<string | null>(null);
+
   const [resumeContext, setResumeContext] = useState<ParsedResumeData | null>(null);
-  const [resumeLoaded, setResumeLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/profile", { signal: AbortSignal.timeout(15000) });
-        const data = await res.json().catch(() => null);
-        if (!cancelled && res.ok && data?.parsedData) {
-          setResumeContext(data.parsedData as ParsedResumeData);
+        const body = await res.json().catch(() => null);
+        if (!cancelled && res.ok && body?.parsedData) {
+          setResumeContext(body.parsedData as ParsedResumeData);
         }
       } catch {
-        // optional context only
-      } finally {
-        if (!cancelled) setResumeLoaded(true);
+        // optional
       }
     })();
     return () => {
@@ -143,17 +155,49 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
     return [...new Set(names)].slice(0, 2);
   }, [resumeContext]);
 
-  const hasResume = !!(
-    resumeContext?.workExperience?.length || resumeContext?.education?.length
+  const load = useCallback(
+    async (options?: { fetch?: boolean; refresh?: boolean }) => {
+      const fetch = options?.fetch ?? false;
+      const refresh = options?.refresh ?? false;
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          company: companyName,
+          title: jobTitle ?? "",
+        });
+        if (website?.trim()) params.set("website", website.trim());
+        if (fetch) params.set("load", "1");
+        if (refresh) params.set("refresh", "1");
+        const res = await fetch(`/api/jobs/insider-connections?${params}`);
+        const body = (await res.json()) as JobInsiderConnectionsBundle;
+        setData(body);
+        setRequiresLoad(body.requiresLoad ?? !body.hiringManagers.length);
+        if (body.error && !body.hiringManagers.length && !body.orgPeople.length && !body.requiresLoad) {
+          setError(body.error);
+        } else {
+          setError(body.error ?? null);
+        }
+      } catch {
+        setError("Network error loading contacts.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [companyName, jobTitle, website]
   );
 
-  const emailCreditsLabel = isPro || isAdmin
-    ? "Unlimited email reveals on Pro"
-    : "Email reveals — upgrade to Pro";
+  useEffect(() => {
+    setData(null);
+    setRequiresLoad(true);
+    setError(null);
+    void load({ fetch: false });
+  }, [load]);
 
-  function handleFindEmail(e: React.FormEvent) {
+  async function handleFindEmail(e: React.FormEvent) {
     e.preventDefault();
     setLookupMessage(null);
+    setRevealedEmail(null);
     const url = linkedinUrl.trim();
     if (!url) {
       setLookupMessage("Paste a LinkedIn profile URL to look up a work email.");
@@ -164,83 +208,119 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
       return;
     }
     if (!isPro && !isAdmin) {
-      setLookupMessage("Work email lookup is a Pro feature. Upgrade to unlock reveals when contact data goes live.");
+      setLookupMessage("Work email lookup is a Pro feature.");
       startCheckout();
       return;
     }
-    setLookupMessage(
-      "Email lookup is coming soon — we will reveal work emails here once the Hirebase contact API is connected. No charge until then.",
+
+    setEmailLoading(true);
+    try {
+      const res = await fetch("/api/people/sumble-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: url, load: true }),
+      });
+      const body = (await res.json()) as { email?: string; error?: string; person?: { attributes?: { name?: string } } };
+      if (body.email) {
+        setRevealedEmail(body.email);
+        setLookupMessage(body.person?.attributes?.name ? `Found email for ${body.person.attributes.name}.` : "Email found.");
+      } else {
+        setLookupMessage(body.error ?? "No work email found for this profile.");
+      }
+    } catch {
+      setLookupMessage("Network error — try again.");
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  const emailCreditsLabel = isPro || isAdmin
+    ? `Email reveal · ~${SUMBLE_ESTIMATED_COSTS.emailReveal} Sumble credits`
+    : "Email reveals — Pro feature";
+
+  if (requiresLoad && !data?.hiringManagers.length && !data?.orgPeople.length) {
+    return (
+      <ScoutBox padding="20px 22px" style={{ marginBottom: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <span style={{ color: color.forest, display: "flex" }}><IconPeople /></span>
+          <h3 style={displayTitleStyle(18)}>Insider Connection @{companyName}</h3>
+        </div>
+        <SumbleLoadPrompt
+          title="Hiring contacts"
+          description={`Load likely hiring managers and key people at ${companyName} for "${jobTitle || "this role"}". Nothing loads automatically.`}
+          estimatedCredits={data?.estimatedCredits ?? SUMBLE_ESTIMATED_COSTS.jobContacts}
+          creditsRemaining={data?.creditsRemaining}
+          loading={loading}
+          onLoad={() => void load({ fetch: true })}
+          loadLabel="Load contacts"
+        />
+      </ScoutBox>
     );
   }
 
-  const previousHint = previousEmployers.length
-    ? `We'll match people at ${companyName} who previously worked at ${previousEmployers.join(" or ")}.`
-    : hasResume
-      ? "Add work history to your resume to surface alumni at this company."
-      : "Upload your resume to find people from your past employers.";
-
-  const schoolHint = schools.length
-    ? `We'll match people at ${companyName} from ${schools.join(" or ")}.`
-    : hasResume
-      ? "Add education to your resume to surface classmates at this company."
-      : "Upload your resume to find people from your school.";
+  const hiring = data?.hiringManagers ?? [];
+  const orgPeople = data?.orgPeople ?? [];
 
   return (
     <ScoutBox padding="20px 22px" style={{ marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ color: color.forest, display: "flex" }}>
-            <IconPeople />
-          </span>
-          <h3 style={displayTitleStyle(18)}>
-            Insider Connection @{companyName}
-          </h3>
+          <span style={{ color: color.forest, display: "flex" }}><IconPeople /></span>
+          <h3 style={displayTitleStyle(18)}>Insider Connection @{companyName}</h3>
         </div>
-        {!subLoading && (
-          <span
-            title="Work email reveals cost per lookup — included on Pro"
-            style={{
-              flexShrink: 0,
-              padding: "5px 10px",
-              borderRadius: 0,
-              border: line,
-              background: surface.inset,
-              fontFamily: sans,
-              fontSize: 12,
-              fontWeight: 600,
-              color: color.forest,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {emailCreditsLabel}
-          </span>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          {!subLoading && (
+            <span style={{ padding: "5px 10px", border: line, background: surface.inset, fontFamily: sans, fontSize: 12, fontWeight: 600, color: color.forest }}>
+              {emailCreditsLabel}
+            </span>
+          )}
+          <ScoutSecondaryBtn onClick={() => void load({ fetch: true, refresh: true })} disabled={loading} style={{ minHeight: 36, padding: "6px 10px" }}>
+            {loading ? "…" : "Refresh"}
+          </ScoutSecondaryBtn>
+        </div>
       </div>
 
       <p style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", lineHeight: 1.6, margin: "0 0 18px" }}>
-        Discover valuable connections within the company who might provide insights and potential referrals.{" "}
-        <strong style={{ fontWeight: 600 }}>Get 3× more responses when you reach out via email instead of LinkedIn.</strong>
+        Likely hiring managers and people at this company from Sumble.{" "}
+        <strong style={{ fontWeight: 600 }}>Reach out via email for higher response rates.</strong>
       </p>
 
+      {error && (
+        <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "0 0 14px" }}>{error}</p>
+      )}
+
       <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
-        <ConnectionCard
-          bucket="beyond"
-          emptyTitle="Connections coming soon"
-          emptyHint={`People at ${companyName} outside your direct network will appear here once contact discovery is enabled.`}
+        <PeopleList
+          title="Likely hiring managers"
+          people={hiring}
+          emptyHint={jobTitle ? `No related people found for "${jobTitle}" yet.` : "Add a job title to improve matching."}
         />
-        <ConnectionCard
-          bucket="previous_company"
-          emptyTitle={resumeLoaded && !hasResume ? "Add your resume" : "No matches yet"}
-          emptyHint={previousHint}
-          footerHint={previousEmployers.length ? `Previously @${previousEmployers[0]}` : undefined}
+        <PeopleList
+          title="Key people at company"
+          people={orgPeople}
+          emptyHint="No people matched for your target roles yet."
         />
-        <ConnectionCard
-          bucket="school"
-          emptyTitle={schools.length ? "No school matches yet" : "Find more connections"}
-          emptyHint={schoolHint}
-          footerHint={schools.length ? schools[0] : undefined}
+        <PeopleList
+          title={previousEmployers.length ? "Alumni connections" : "Your network"}
+          people={[]}
+          emptyHint={
+            previousEmployers.length
+              ? `Alumni from ${previousEmployers.join(" / ")} — use email lookup below for specific LinkedIn profiles.`
+              : schools.length
+                ? `Classmates from ${schools.join(" / ")} — use email lookup for specific profiles.`
+                : "Upload your resume to personalize connection hints."
+          }
         />
       </div>
+
+      {data?.sumbleJobUrl && (
+        <p style={{ fontFamily: sans, fontSize: 12, color: color.muted, margin: "0 0 14px" }}>
+          <a href={data.sumbleJobUrl} target="_blank" rel="noopener noreferrer" style={{ color: color.forest }}>
+            View matched job on Sumble ↗
+          </a>
+          {data.creditsRemaining != null ? ` · ${data.creditsRemaining.toLocaleString()} credits left` : ""}
+        </p>
+      )}
 
       <div>
         <p style={displayTitleStyle(15, { margin: "0 0 10px" })}>Find Any Email</p>
@@ -252,7 +332,7 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
               setLinkedinUrl(e.target.value);
               if (lookupMessage) setLookupMessage(null);
             }}
-            placeholder="Paste any LinkedIn profile URL (e.g., https://www.linkedin.com/in/xxxxx/) to find work emails instantly."
+            placeholder="Paste LinkedIn profile URL to reveal work email (~10 credits)"
             style={{
               flex: 1,
               minWidth: 0,
@@ -269,6 +349,7 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
           <button
             type="submit"
             aria-label="Find email"
+            disabled={emailLoading}
             style={{
               width: 46,
               flexShrink: 0,
@@ -276,15 +357,21 @@ export function InsiderConnectionPanel({ companyName }: { companyName: string })
               color: color.gold,
               border: line,
               borderRadius: 0,
-              cursor: "pointer",
+              cursor: emailLoading ? "wait" : "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              opacity: emailLoading ? 0.7 : 1,
             }}
           >
             <IconSearch />
           </button>
         </form>
+        {revealedEmail && (
+          <p style={{ fontFamily: sans, fontSize: 14, color: color.forest, fontWeight: 600, margin: "10px 0 0" }}>
+            {revealedEmail}
+          </p>
+        )}
         {lookupMessage && (
           <p style={{ fontFamily: sans, fontSize: 13, color: color.stone, margin: "10px 0 0", lineHeight: 1.5 }}>{lookupMessage}</p>
         )}

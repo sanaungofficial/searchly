@@ -71,6 +71,7 @@ export type SumbleSignal = {
 
 export type SumblePersonAttributes = {
   name?: string | null;
+  email?: string | null;
   linkedin_url?: string | null;
   job_title?: string | null;
   job_function?: string | null;
@@ -122,10 +123,51 @@ export type SumbleJobAttributes = {
   projects?: Array<{ name: string; slug?: string; goal?: string | null }>;
 };
 
+export type SumbleRelatedPersonRow = {
+  person_id?: number;
+  sumble_url?: string | null;
+  attributes?: SumblePersonAttributes | null;
+  confidence?: { score?: number } | null;
+};
+
 export type SumbleJobRow = {
   job_id?: number | null;
   sumble_url?: string | null;
   attributes?: SumbleJobAttributes | null;
+  related_people?: SumbleRelatedPersonRow[] | null;
+};
+
+export type SumbleIntelligenceBrief = {
+  organization_id: number;
+  organization_slug: string;
+  title: string;
+  body: string;
+  sumble_url: string;
+};
+
+export type SumbleTitleLookupResult = {
+  input: string;
+  job_function: string | null;
+  job_level: string | null;
+};
+
+export type SumbleTechnologyHit = {
+  slug: string;
+  name: string;
+  count: number;
+};
+
+export type SumbleProjectLookupResult = {
+  input: string;
+  project: { name: string; slug: string; goal?: string | null } | null;
+};
+
+export type SumbleOrganizationListSummary = {
+  id: number;
+  name: string;
+  url: string;
+  organizations_count: number;
+  include_in_signals?: boolean;
 };
 
 type SumbleEnvelope<T> = {
@@ -182,6 +224,56 @@ async function sumbleFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const data = (await res.json()) as T & { credits_remaining?: number | null };
   recordSumbleCreditsRemaining(data.credits_remaining);
   return data;
+}
+
+type SumbleFetchResult<T> = {
+  status: number;
+  data: T;
+  retryAfterSec: number | null;
+};
+
+async function sumbleFetchWithStatus<T>(
+  path: string,
+  init?: RequestInit
+): Promise<SumbleFetchResult<T>> {
+  const res = await fetch(`${SUMBLE_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getApiKey()}`,
+      ...(init?.headers ?? {}),
+    },
+    signal: init?.signal ?? AbortSignal.timeout(45000),
+  });
+
+  if (res.status === 404) {
+    throw new SumbleNotFoundError(path);
+  }
+
+  const retryAfterHeader = res.headers.get("Retry-After");
+  const retryAfterSec = retryAfterHeader ? parseInt(retryAfterHeader, 10) : null;
+
+  if (res.status === 202) {
+    const data = (await res.json().catch(() => ({}))) as T;
+    return { status: 202, data, retryAfterSec };
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let message = `Sumble request failed (${res.status})`;
+    if (body.trim()) {
+      try {
+        message = formatApiErrorMessage(JSON.parse(body), message);
+      } catch {
+        message = body.trim();
+      }
+    }
+    throw new Error(message);
+  }
+
+  const data = (await res.json()) as T & { credits_remaining?: number | null };
+  recordSumbleCreditsRemaining(data.credits_remaining);
+  return { status: res.status, data, retryAfterSec };
 }
 
 export class SumbleNotFoundError extends Error {
@@ -584,4 +676,395 @@ export function formatSumbleGrowth(value: number | null | undefined): string | n
   if (pct > 0) return `+${pct}% YoY`;
   if (pct < 0) return `${pct}% YoY`;
   return "Flat YoY";
+}
+
+function escapeTitleForQuery(title: string): string {
+  return title.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+/** Resolve job function terms via Sumble title-lookup (cached by caller). Falls back to heuristic. */
+export async function lookupSumbleJobFunctionTerms(titles: string[]): Promise<{
+  terms: string[];
+  results: SumbleTitleLookupResult[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const unique = [...new Set(titles.map((t) => t.trim()).filter(Boolean))].slice(0, 5);
+  if (!unique.length) {
+    return { terms: ["Product Management"], results: [], creditsUsed: 0, creditsRemaining: null };
+  }
+
+  const data = await sumbleFetch<{
+    credits_used?: number;
+    credits_remaining?: number | null;
+    results?: Array<{
+      input?: string;
+      job_function?: { name?: string } | null;
+      job_level?: { name?: string } | null;
+    }>;
+  }>("/jobs/title-lookup", {
+    method: "POST",
+    body: JSON.stringify({ titles: unique }),
+  });
+
+  const results: SumbleTitleLookupResult[] = (data.results ?? []).map((row) => ({
+    input: row.input ?? "",
+    job_function: row.job_function?.name ?? null,
+    job_level: row.job_level?.name ?? null,
+  }));
+
+  const fromLookup = results
+    .map((r) => r.job_function?.trim())
+    .filter(Boolean) as string[];
+  const fallback = unique.map(sumbleJobFunctionTerm);
+  const terms = [...new Set([...fromLookup, ...fallback])].slice(0, 3);
+
+  return {
+    terms,
+    results,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function fetchSumbleJobRelatedPeople(input: {
+  organizationId: number;
+  jobTitle: string;
+  relatedPeopleLimit?: number;
+}): Promise<{
+  job: SumbleJobRow | null;
+  relatedPeople: SumbleRelatedPersonRow[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const title = input.jobTitle.trim();
+  const relatedLimit = Math.max(1, Math.min(input.relatedPeopleLimit ?? 5, 8));
+  const titleClause = title
+    ? ` AND title CONTAINS '${escapeTitleForQuery(title.slice(0, 80))}'`
+    : "";
+  const query = `organization_id EQ ${input.organizationId}${titleClause}`;
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/jobs", {
+    method: "POST",
+    body: JSON.stringify({
+      filter: { organization_ids: [input.organizationId], query: { query } },
+      limit: 1,
+      select: {
+        attributes: ["title", "organization", "job_functions"],
+        related_people: {
+          attributes: ["name", "linkedin_url", "job_title", "job_level", "job_function"],
+          limit: relatedLimit,
+        },
+      },
+    }),
+  });
+
+  const job = data.jobs?.[0] ?? null;
+  return {
+    job,
+    relatedPeople: job?.related_people ?? [],
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function fetchSumblePersonByLinkedIn(input: {
+  linkedinUrl: string;
+  revealEmail?: boolean;
+}): Promise<{
+  person: SumblePersonRow | null;
+  email: string | null;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const attributes = ["name", "linkedin_url", "job_title", "job_level", "job_function", "current_employer"];
+  if (input.revealEmail) attributes.push("email");
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/people", {
+    method: "POST",
+    body: JSON.stringify({
+      people: [{ linkedin_url: input.linkedinUrl.trim() }],
+      select: { attributes },
+    }),
+  });
+
+  const person = data.people?.[0] ?? null;
+  return {
+    person,
+    email: person?.attributes?.email ?? null,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function fetchSumbleIntelligenceBrief(organizationId: number): Promise<{
+  brief: SumbleIntelligenceBrief | null;
+  pending: boolean;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+  message?: string;
+}> {
+  const maxAttempts = 4;
+  let creditsUsed = 0;
+  let creditsRemaining: number | null = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const result = await sumbleFetchWithStatus<
+      SumbleIntelligenceBrief & {
+        credits_used?: number;
+        credits_remaining?: number | null;
+        status?: string;
+        message?: string;
+      }
+    >(`/organizations/${organizationId}/intelligence-brief`, { method: "GET" });
+
+    if (result.status === 202) {
+      const waitSec = result.retryAfterSec ?? 3;
+      await new Promise((r) => setTimeout(r, waitSec * 1000));
+      continue;
+    }
+
+    creditsUsed += result.data.credits_used ?? 0;
+    creditsRemaining = result.data.credits_remaining ?? creditsRemaining;
+
+    return {
+      brief: {
+        organization_id: result.data.organization_id,
+        organization_slug: result.data.organization_slug,
+        title: result.data.title,
+        body: result.data.body,
+        sumble_url: result.data.sumble_url,
+      },
+      pending: false,
+      creditsUsed,
+      creditsRemaining,
+    };
+  }
+
+  return {
+    brief: null,
+    pending: true,
+    creditsUsed,
+    creditsRemaining,
+    message: "Intelligence brief is still generating. Try again in a minute.",
+  };
+}
+
+export async function fetchSumbleSignalsSearch(input: {
+  jobFunctionTerms?: string[];
+  organizationIds?: number[];
+  limit?: number;
+}): Promise<{
+  signals: SumbleSignal[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const limit = Math.max(1, Math.min(input.limit ?? 8, 12));
+  const filter: Record<string, unknown> = {};
+  if (input.organizationIds?.length) {
+    filter.organization_ids = input.organizationIds.slice(0, 10);
+  }
+  if (input.jobFunctionTerms?.length) {
+    filter.job_functions = input.jobFunctionTerms.slice(0, 3);
+  }
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/signals", {
+    method: "POST",
+    body: JSON.stringify({ filter, limit }),
+  });
+
+  return {
+    signals: (data.signals ?? []).slice(0, limit),
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function fetchSumbleGrowingEmployers(input: {
+  jobFunctionTerm: string;
+  limit?: number;
+}): Promise<{
+  organizations: Array<{
+    name: string;
+    domain: string | null;
+    jobPostCount: number;
+    growth1y: number | null;
+    sumbleUrl: string | null;
+  }>;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const limit = Math.max(1, Math.min(input.limit ?? 12, 20));
+  const term = input.jobFunctionTerm.trim() || "Product Management";
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/organizations", {
+    method: "POST",
+    body: JSON.stringify({
+      filter: { query: { query: jobFunctionQuery(term) } },
+      limit: Math.min(limit * 2, 30),
+      order_by_column: "jobs_count",
+      order_by_direction: "DESC",
+      select: {
+        attributes: ["name", "url", "jobs_count", "sumble_url"],
+        entities: [
+          {
+            type: "job_function",
+            term,
+            metrics: ["job_post_count", "job_post_count_growth_1y"],
+          },
+        ],
+      },
+    }),
+  });
+
+  const organizations = (data.organizations ?? [])
+    .map((row) => {
+      const attrs = row.attributes;
+      const entity = row.entities?.find((e) => e.type === "job_function" && e.term === term);
+      const count = entity?.job_post_count ?? attrs?.jobs_count ?? 0;
+      const growth = entity?.job_post_count_growth_1y ?? null;
+      if (!attrs?.name?.trim() || growth == null) return null;
+      return {
+        name: attrs.name.trim(),
+        domain: attrs.url ?? null,
+        jobPostCount: count,
+        growth1y: growth,
+        sumbleUrl: attrs.sumble_url ?? null,
+      };
+    })
+    .filter(Boolean) as Array<{
+      name: string;
+      domain: string | null;
+      jobPostCount: number;
+      growth1y: number | null;
+      sumbleUrl: string | null;
+    }>;
+
+  organizations.sort((a, b) => (b.growth1y ?? 0) - (a.growth1y ?? 0));
+
+  return {
+    organizations: organizations.slice(0, limit),
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function fetchSumbleProjectsFromJobs(input: {
+  jobFunctionTerm: string;
+  limit?: number;
+}): Promise<{
+  projects: Array<{ name: string; slug: string; goal: string | null; jobCount: number }>;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const limit = Math.max(1, Math.min(input.limit ?? 15, 25));
+  const term = input.jobFunctionTerm.trim() || "Product Management";
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/jobs", {
+    method: "POST",
+    body: JSON.stringify({
+      filter: { query: { query: jobFunctionQuery(term) } },
+      limit,
+      select: { attributes: ["title", "projects"] },
+    }),
+  });
+
+  const counts = new Map<string, { name: string; slug: string; goal: string | null; jobCount: number }>();
+  for (const job of data.jobs ?? []) {
+    for (const project of job.attributes?.projects ?? []) {
+      const key = project.slug || project.name;
+      if (!key) continue;
+      const existing = counts.get(key);
+      if (existing) {
+        existing.jobCount += 1;
+      } else {
+        counts.set(key, {
+          name: project.name,
+          slug: project.slug,
+          goal: project.goal ?? null,
+          jobCount: 1,
+        });
+      }
+    }
+  }
+
+  const projects = [...counts.values()].sort((a, b) => b.jobCount - a.jobCount).slice(0, 12);
+
+  return {
+    projects,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function fetchSumbleTechnologiesFind(query: string): Promise<{
+  technologies: SumbleTechnologyHit[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const data = await sumbleFetch<{
+    credits_used?: number;
+    credits_remaining?: number | null;
+    technologies?: SumbleTechnologyHit[];
+    total_count?: number;
+  }>("/technologies/find", {
+    method: "POST",
+    body: JSON.stringify({ query: query.trim() }),
+  });
+
+  return {
+    technologies: data.technologies ?? [],
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function listSumbleOrganizationLists(): Promise<{
+  lists: SumbleOrganizationListSummary[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const data = await sumbleFetch<{
+    credits_used?: number;
+    credits_remaining?: number | null;
+    organization_lists?: SumbleOrganizationListSummary[];
+  }>("/organization-lists", { method: "GET" });
+
+  return {
+    lists: data.organization_lists ?? [],
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export async function createSumbleOrganizationList(name: string): Promise<{
+  id: number;
+  name: string;
+  url: string;
+}> {
+  const data = await sumbleFetch<{ id: number; name: string; url: string }>("/organization-lists", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return data;
+}
+
+export async function addOrganizationsToSumbleList(input: {
+  listId: number;
+  organizationIds: number[];
+}): Promise<{
+  added: number[];
+  failedIds: number[];
+}> {
+  const data = await sumbleFetch<{ added?: number[]; failed_ids?: number[] }>(
+    `/organization-lists/${input.listId}/organizations`,
+    {
+      method: "POST",
+      body: JSON.stringify({ organization_ids: input.organizationIds.slice(0, 20) }),
+    }
+  );
+  return {
+    added: data.added ?? [],
+    failedIds: data.failed_ids ?? [],
+  };
 }
