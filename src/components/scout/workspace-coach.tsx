@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ScoutBox } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
@@ -58,6 +59,9 @@ type CoachProfile = {
   hourlyRate: number | null;
   category: string | null;
   calLink: string | null;
+  nylasGrantId?: string | null;
+  nylasSchedulerConfigId?: string | null;
+  nylasSchedulerSlug?: string | null;
 };
 
 const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
@@ -148,6 +152,11 @@ function MyProfileTab() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<Partial<CoachProfile>>({});
+  const [nylasStatus, setNylasStatus] = useState<{
+    configured: boolean;
+    connected: boolean;
+    configurationId: string | null;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/coach/profile")
@@ -158,6 +167,11 @@ function MyProfileTab() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    fetch("/api/nylas/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setNylasStatus(d); })
+      .catch(() => {});
   }, []);
 
   function field(key: keyof CoachProfile) {
@@ -244,6 +258,38 @@ function MyProfileTab() {
         </div>
       </div>
 
+      {/* Calendar booking (Nylas) */}
+      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
+        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 8 }}>Calendar booking</p>
+        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.6, margin: "0 0 16px" }}>
+          Connect Google or Outlook so seekers can book sessions inside Kimchi. Your external Cal.com link still works as a fallback.
+        </p>
+        {nylasStatus?.connected ? (
+          <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
+            Calendar connected — in-app booking is enabled.
+          </p>
+        ) : nylasStatus?.configured === false ? (
+          <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0 }}>
+            Nylas is not configured on this environment yet.
+          </p>
+        ) : (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a
+              href="/api/nylas/connect?provider=google"
+              style={{ padding: "10px 18px", background: color.forest, color: color.gold, textDecoration: "none", fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}
+            >
+              Connect Google Calendar
+            </a>
+            <a
+              href="/api/nylas/connect?provider=microsoft"
+              style={{ padding: "10px 18px", border: "1px solid rgba(26,58,47,0.2)", color: color.forest, textDecoration: "none", fontFamily: fontSans, fontSize: 14, fontWeight: 600, background: "#fff" }}
+            >
+              Connect Outlook
+            </a>
+          </div>
+        )}
+      </div>
+
       {/* Links */}
       <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
         <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>Links</p>
@@ -301,6 +347,7 @@ function MyProfileTab() {
 }
 
 export function WorkspaceCoach() {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<CoachTab>("clients");
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -309,6 +356,11 @@ export function WorkspaceCoach() {
   const [search, setSearch] = useState("");
   const [onboardingPhase, setOnboardingPhase] = useState<string | null>(null);
   const [vouchCount, setVouchCount] = useState(0);
+
+  useEffect(() => {
+    const urlTab = searchParams.get("tab");
+    if (urlTab === "profile") setTab("profile");
+  }, [searchParams]);
 
   useEffect(() => {
     fetch("/api/coach/onboarding-status")

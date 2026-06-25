@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WorkspaceCoach } from "@/components/scout/workspace-coach";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -43,5 +43,13 @@ export function CoachClientsPage() {
     );
   }
 
-  return <WorkspaceCoach />;
+  return (
+    <Suspense fallback={
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "var(--scout-muted)", fontSize: 14 }}>Loading…</p>
+      </div>
+    }>
+      <WorkspaceCoach />
+    </Suspense>
+  );
 }

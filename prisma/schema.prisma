@@ -233,6 +233,9 @@ model CoachProfile {
 
   slug                  String?  @unique
   calLink               String?
+  nylasGrantId          String?  @unique
+  nylasSchedulerConfigId String? @unique
+  nylasSchedulerSlug    String?
   clientSpecializations String[] @default([])
   experienceLevel       String?
   clientTier            String?
@@ -244,9 +247,42 @@ model CoachProfile {
   vouches        CoachVouch[]
   reviews        CoachReview[]
   followers      CoachFollow[]
+  bookings       CoachBooking[]
 
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+}
+
+enum CoachBookingStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+  RESCHEDULED
+}
+
+model CoachBooking {
+  id              String             @id @default(cuid())
+  coachProfileId  String
+  coachProfile    CoachProfile       @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+
+  nylasBookingId  String?            @unique
+  nylasBookingRef String?            @unique
+  nylasConfigId   String?
+  nylasEventId    String?
+  guestName       String?
+  guestEmail      String?
+  title           String?
+  location        String?
+  startAt         DateTime
+  endAt           DateTime
+  status          CoachBookingStatus @default(CONFIRMED)
+  rawPayload      Json?
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([coachProfileId])
+  @@index([startAt])
 }
 
 model CoachVouch {

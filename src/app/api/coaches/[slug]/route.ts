@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
 import { getAuthenticatedDbUser } from "@/lib/coach-api";
 import { computeReviewAggregates } from "@/lib/coach-directory";
+import { isNylasConfigured } from "@/lib/nylas";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -27,6 +28,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       photoUrl: true,
       linkedinUrl: true,
       calLink: true,
+      nylasSchedulerConfigId: true,
       firms: true,
       schools: true,
       specialties: true,
@@ -92,6 +94,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     photoUrl: coach.photoUrl,
     linkedinUrl: coach.linkedinUrl,
     calLink: coach.calLink,
+    nylasSchedulerConfigId: coach.nylasSchedulerConfigId,
+    hasNylasBooking: Boolean(coach.nylasSchedulerConfigId && isNylasConfigured()),
     firms: coach.firms,
     schools: coach.schools,
     specialties: coach.specialties,
