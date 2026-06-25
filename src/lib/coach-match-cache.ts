@@ -1,7 +1,7 @@
 import type { CoachListItem } from "@/lib/coach-types";
 import { getActingUserScope } from "@/lib/client-session";
 
-const CACHE_PREFIX = "kimchi_coach_match_v1";
+const CACHE_PREFIX = "kimchi_coach_match_v2";
 
 export type CoachMatchCacheEntry = {
   coaches: CoachListItem[];

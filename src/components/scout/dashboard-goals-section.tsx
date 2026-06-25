@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { clearCoachMatchCache } from "@/lib/coach-match-cache";
 import {
   DASHBOARD_GOAL_MAX,
   DASHBOARD_GOAL_OPTIONS,
@@ -77,7 +78,10 @@ export function DashboardGoalsSection({ isMobile }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dashboardGoals: next }),
       });
-      if (res.ok) setGoals(next);
+      if (res.ok) {
+        setGoals(next);
+        clearCoachMatchCache();
+      }
     } finally {
       setSaving(false);
     }
