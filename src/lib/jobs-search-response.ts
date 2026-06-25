@@ -13,7 +13,7 @@ export async function enrichRecommendedSources(
     cachedJobs: sources.map((s) => s.cached),
     companyNames: sources.map((s) => s.companyName),
     resumeText,
-    heuristicOnly: options?.heuristicOnly,
+    heuristicOnly: options?.heuristicOnly !== false,
   });
 }
 

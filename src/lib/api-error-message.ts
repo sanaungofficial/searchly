@@ -11,6 +11,12 @@ export function formatApiErrorMessage(value: unknown, fallback = "Something went
     }
     if (typeof obj.detail === "string" && obj.detail.trim()) return obj.detail.trim();
     if (typeof obj.error === "string" && obj.error.trim()) return obj.error.trim();
+    if (obj.error && typeof obj.error === "object") {
+      const nested = obj.error as Record<string, unknown>;
+      if (typeof nested.message === "string" && nested.message.trim()) {
+        return nested.message.trim();
+      }
+    }
     if (Array.isArray(obj.detail)) {
       const parts = obj.detail.map((item) => formatApiErrorMessage(item, "")).filter(Boolean);
       if (parts.length) return parts.join("; ");
