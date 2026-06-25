@@ -180,8 +180,8 @@ export function TopEchelonSyncPanel() {
       setLastSummary(data.summary ?? null);
       setMessage(
         data.summary?.fullCatalog
-          ? `Full catalog sync: ${data.summary?.upserted ?? 0} jobs upserted (${data.summary?.pages ?? 0} pages). Check Opportunities → Network.`
-          : `Synced ${data.summary?.upserted ?? 0} network jobs. Check Opportunities → Network.`
+          ? `Full catalog sync: ${data.summary?.upserted ?? 0} jobs upserted (${data.summary?.pages ?? 0} pages). Check Opportunities → In-Network Roles.`
+          : `Synced ${data.summary?.upserted ?? 0} network jobs. Check Opportunities → In-Network Roles.`
       );
       setMfaCode("");
       await loadStatus();

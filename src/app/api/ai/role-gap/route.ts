@@ -47,7 +47,7 @@ async function resolveResumeSource(
     if (assetId) {
       const asset = await ensureAssetResumeParsed(assetId, userId);
       if (!asset?.resumeText?.trim()) {
-        return { source: null, parseError: "Could not parse this resume file. Try re-uploading or use Reparse in Assets." };
+        return { source: null, parseError: "Could not parse this resume file. Try re-uploading or use Reparse in Resumes." };
       }
       const parsed = normalizeParsedResumeData(asset.parsedData ?? null);
       return {

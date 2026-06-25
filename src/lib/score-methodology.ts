@@ -164,7 +164,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
     ],
   },
   "upskill-recommendations": {
-    title: "Upskilling program recommendations",
+    title: "Upskill program recommendations",
     subtitle: "How Kimchi picks courses and certifications for your skill gaps.",
     bullets: [
       {
@@ -225,7 +225,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "Fix & Impact",
-        body: "Use Fix on any section for AI suggestions — same flow as resume review in Assets. Edit inline, then copy into LinkedIn.",
+        body: "Use Fix on any section for AI suggestions — same flow as resume review in Resumes. Edit inline, then copy into LinkedIn.",
       },
       {
         title: "When to refresh",

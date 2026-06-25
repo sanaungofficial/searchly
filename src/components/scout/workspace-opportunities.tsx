@@ -480,7 +480,7 @@ export function WorkspaceOpportunities() {
               >
                 {([
                   ["pipeline", "Open Roles"],
-                  ["network", "Network"],
+                  ["network", "In-Network Roles"],
                   ["companies", "Companies"],
                 ] as [OppTab, string][]).map(([id, label]) => {
                   const active = tab === id;
@@ -585,7 +585,7 @@ export function WorkspaceOpportunities() {
           <div style={{ display: "flex", gap: 0 }}>
             {([
               ["pipeline", "Open Roles"],
-              ["network", "Network"],
+              ["network", "In-Network Roles"],
               ["companies", "Companies"],
             ] as [OppTab, string][]).map(([id, label]) => {
               const active = tab === id;

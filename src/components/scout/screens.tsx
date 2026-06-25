@@ -823,7 +823,7 @@ export function ScreenReadBack({ onConfirm, onRefine, onSkip }: ReadBackProps) {
           {!loading && (error || !data) && (
             <>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.6, marginBottom: 16, marginTop: 0 }}>
-                We couldn&apos;t generate your read right now — that happens sometimes. You can keep going and add a job; upload a resume anytime from Profile → Assets for the full read.
+                We couldn&apos;t generate your read right now — that happens sometimes. You can keep going and add a job; upload a resume anytime from Profile → Resumes for the full read.
               </p>
               <button
                 type="button"

@@ -101,7 +101,7 @@ async function handleRecommended(request: Request) {
         error: "Add target roles in your profile or upload a resume to see recommendations.",
         needsResume: true,
         needsProfile: true,
-        hint: "Set target roles under Profile → About, or upload a resume under Profile → Assets.",
+        hint: "Set target roles under Profile → About, or upload a resume under Profile → Resumes.",
       },
       { status: 404 },
     );
