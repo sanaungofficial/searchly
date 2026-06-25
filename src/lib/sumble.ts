@@ -1,6 +1,6 @@
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { hostnameFromUrl } from "@/lib/company-domain";
-import { recordSumbleCreditsRemaining } from "@/lib/sumble-credits";
+import { recordSumbleCreditsRemaining, getSumbleCreditsRemaining } from "@/lib/sumble-credits";
 
 const SUMBLE_BASE = "https://api.sumble.com/v6";
 
@@ -1014,6 +1014,186 @@ export async function fetchSumbleTechnologiesFind(query: string): Promise<{
 
   return {
     technologies: data.technologies ?? [],
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export type SumbleTechnologyLookupResult = {
+  input: string;
+  technology: {
+    id: number;
+    slug: string;
+    name: string;
+    categories?: Array<{ slug: string; name: string; name_short?: string }>;
+  } | null;
+};
+
+export async function fetchSumbleTechnologiesLookup(skills: string[]): Promise<{
+  results: SumbleTechnologyLookupResult[];
+  matchedCount: number;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const technologies = skills.map((s) => s.trim()).filter(Boolean).slice(0, 100);
+  if (!technologies.length) {
+    return { results: [], matchedCount: 0, creditsUsed: 0, creditsRemaining: getSumbleCreditsRemaining() };
+  }
+
+  const data = await sumbleFetch<{
+    credits_used?: number;
+    credits_remaining?: number | null;
+    matched_count?: number;
+    results?: SumbleTechnologyLookupResult[];
+  }>("/technologies/lookup", {
+    method: "POST",
+    body: JSON.stringify({ technologies }),
+  });
+
+  return {
+    results: data.results ?? [],
+    matchedCount: data.matched_count ?? 0,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export function buildTechnologyOrQuery(slugs: string[]): string {
+  const terms = slugs.map((s) => s.trim()).filter(Boolean);
+  if (!terms.length) throw new Error("At least one technology slug is required.");
+  if (terms.length === 1) return `technology EQ '${escapeSumbleQueryTerm(terms[0])}'`;
+  return `(${terms.map((slug) => `technology EQ '${escapeSumbleQueryTerm(slug)}'`).join(" OR ")})`;
+}
+
+export type SumbleTechStackOrganization = {
+  organizationId: number | null;
+  name: string;
+  domain: string | null;
+  industry: string | null;
+  employeeCount: number | null;
+  headquartersCountry: string | null;
+  jobsCount: number | null;
+  sumbleUrl: string | null;
+  matchingJobPosts: number;
+  matchingPeople: number;
+};
+
+export async function fetchSumbleOrganizationsByTechnologies(input: {
+  technologySlugs: string[];
+  limit?: number;
+}): Promise<{
+  organizations: SumbleTechStackOrganization[];
+  total: number;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const slugs = [...new Set(input.technologySlugs.map((s) => s.trim()).filter(Boolean))].slice(0, 20);
+  if (!slugs.length) throw new Error("At least one technology slug is required.");
+
+  const limit = Math.max(1, Math.min(input.limit ?? 10, 20));
+  const entitySlugs = slugs.slice(0, 8);
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/organizations", {
+    method: "POST",
+    body: JSON.stringify({
+      filter: { query: { query: buildTechnologyOrQuery(slugs) } },
+      limit,
+      order_by_column: "jobs_count",
+      order_by_direction: "DESC",
+      select: {
+        attributes: ["employee_count", "industry", "headquarters_country", "jobs_count", "sumble_url"],
+        entities: entitySlugs.map((slug) => ({
+          type: "technology",
+          term: slug,
+          metrics: ["job_post_count", "people_count"],
+        })),
+      },
+    }),
+  });
+
+  const organizations = (data.organizations ?? [])
+    .map((row) => {
+      const attrs = row.attributes;
+      if (!attrs?.name?.trim()) return null;
+      const techEntities = (row.entities ?? []).filter((e) => e.type === "technology");
+      const matchingJobPosts = techEntities.reduce((sum, e) => sum + (e.job_post_count ?? 0), 0);
+      const matchingPeople = techEntities.reduce((sum, e) => sum + (e.people_count ?? 0), 0);
+      return {
+        organizationId: attrs.id ?? null,
+        name: attrs.name.trim(),
+        domain: attrs.url ?? null,
+        industry: attrs.industry ?? null,
+        employeeCount: attrs.employee_count ?? null,
+        headquartersCountry: attrs.headquarters_country ?? null,
+        jobsCount: attrs.jobs_count ?? null,
+        sumbleUrl: attrs.sumble_url ?? null,
+        matchingJobPosts,
+        matchingPeople,
+      };
+    })
+    .filter(Boolean) as SumbleTechStackOrganization[];
+
+  return {
+    organizations,
+    total: data.total ?? organizations.length,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+  };
+}
+
+export type SumbleOrganizationTechMatch = {
+  slug: string;
+  name: string;
+  jobPostCount: number;
+  peopleCount: number;
+  used: boolean;
+};
+
+export async function fetchSumbleOrganizationTechnologyEnrich(input: {
+  organizationId: number;
+  technologySlugs: string[];
+}): Promise<{
+  organizationName: string | null;
+  technologies: SumbleOrganizationTechMatch[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const slugs = [...new Set(input.technologySlugs.map((s) => s.trim()).filter(Boolean))].slice(0, 20);
+  if (!slugs.length) throw new Error("At least one technology slug is required.");
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/organizations", {
+    method: "POST",
+    body: JSON.stringify({
+      organizations: [{ id: input.organizationId }],
+      select: {
+        attributes: ["name"],
+        entities: slugs.map((slug) => ({
+          type: "technology",
+          term: slug,
+          metrics: ["job_post_count", "people_count"],
+        })),
+      },
+    }),
+  });
+
+  const row = data.organizations?.[0];
+  const attrs = row?.attributes;
+  const technologies = slugs.map((slug) => {
+    const entity = row?.entities?.find((e) => e.type === "technology" && e.term === slug);
+    const jobPostCount = entity?.job_post_count ?? 0;
+    const peopleCount = entity?.people_count ?? 0;
+    return {
+      slug,
+      name: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      jobPostCount,
+      peopleCount,
+      used: jobPostCount > 0 || peopleCount > 0,
+    };
+  });
+
+  return {
+    organizationName: attrs?.name ?? null,
+    technologies,
     creditsUsed: data.credits_used ?? 0,
     creditsRemaining: data.credits_remaining ?? null,
   };

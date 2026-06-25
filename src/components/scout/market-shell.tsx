@@ -8,7 +8,6 @@ import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 
 const MARKET_SUBNAV = [
   { label: "Overview", path: "/market" },
-  { label: "Salary", path: "/market/salary" },
   { label: "Skills", path: "/market/skills" },
   { label: "Companies", path: "/market/companies" },
   { label: "Signals", path: "/market/signals" },

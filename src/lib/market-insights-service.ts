@@ -1,18 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import type { HirebaseInsightsResponse } from "@/lib/hirebase-insights";
 import {
-  fetchHirebaseCompanyInsights,
-  type MarketInsightsFilters,
-} from "@/lib/hirebase-insights";
-import {
   getInsightsCached,
   insightsCacheKey,
   INSIGHTS_CACHE_TTL_MS,
   setInsightsCached,
 } from "@/lib/insights-cache";
-import { isHirebaseConfigured } from "@/lib/hirebase";
-import { resolveHirebaseCompanySlug } from "@/lib/hirebase";
-import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
 import { isSumbleConfigured, sumbleJobFunctionTerm, lookupSumbleJobFunctionTerms } from "@/lib/sumble";
 import { buildSumbleMarketHeadline, buildSumbleMarketWindows, MARKET_JOB_SAMPLE_LIMIT } from "@/lib/sumble-market";
 import { getSumbleCreditsRemaining, SumbleInsufficientCreditsError } from "@/lib/sumble-credits";
@@ -36,19 +29,6 @@ export type MarketInsightsBundle = {
   /** True when no cached data — client must pass load=1 to fetch from Sumble */
   requiresLoad?: boolean;
   estimatedCredits?: number;
-  error?: string;
-};
-
-export type CompanyIntelBundle = {
-  configured: boolean;
-  companyName: string;
-  companySlug: string;
-  targetRoles: string[];
-  windows: Record<string, HirebaseInsightsResponse>;
-  primaryDays: number;
-  generatedAt: string | null;
-  hirebaseCached: boolean;
-  serverCached: boolean;
   error?: string;
 };
 
@@ -197,128 +177,4 @@ export async function getMarketInsightsBundle(input: {
           : creditsRemaining,
     };
   }
-}
-
-async function resolveSlugForCompany(input: {
-  companyName: string;
-  slugHint?: string | null;
-  website?: string | null;
-}): Promise<string | null> {
-  if (input.slugHint?.trim()) return input.slugHint.trim();
-  try {
-    return await resolveHirebaseCompanySlug(input.companyName, input.slugHint);
-  } catch {
-    return null;
-  }
-}
-
-export async function getCompanyIntelBundle(input: {
-  userId: string;
-  companyName: string;
-  slugHint?: string | null;
-  website?: string | null;
-  primaryDays?: number;
-  compareWindows?: number[];
-  forceRefresh?: boolean;
-}): Promise<CompanyIntelBundle> {
-  const configured = isHirebaseConfigured();
-  const targetRoles = await loadTargetRoles(input.userId);
-  const titles = defaultTitles(targetRoles);
-  const primaryDays = input.primaryDays ?? 30;
-  const compareWindows = input.compareWindows ?? [7, 30, 90];
-  const windowsToFetch = [...new Set([primaryDays, ...compareWindows])].sort((a, b) => a - b);
-
-  if (!configured) {
-    return {
-      configured: false,
-      companyName: input.companyName,
-      companySlug: "",
-      targetRoles: titles,
-      windows: {},
-      primaryDays,
-      generatedAt: null,
-      hirebaseCached: false,
-      serverCached: false,
-      error: "Hirebase is not configured on this environment.",
-    };
-  }
-
-  const slug =
-    (await resolveSlugForCompany(input)) ??
-    (input.slugHint?.trim() || null);
-
-  if (!slug) {
-    return {
-      configured: true,
-      companyName: input.companyName,
-      companySlug: "",
-      targetRoles: titles,
-      windows: {},
-      primaryDays,
-      generatedAt: null,
-      hirebaseCached: false,
-      serverCached: false,
-      error: `No Hirebase profile found for "${input.companyName}".`,
-    };
-  }
-
-  try {
-    const windows: Record<string, HirebaseInsightsResponse> = {};
-    let anyServerCached = true;
-    let hirebaseCached = false;
-
-    await Promise.all(
-      windowsToFetch.map(async (days) => {
-        const filters: MarketInsightsFilters = {
-          job_titles: titles.length ? titles : undefined,
-          days_ago: days,
-        };
-        const key = insightsCacheKey("company", { slug, ...filters });
-        if (!input.forceRefresh) {
-          const hit = getInsightsCached<HirebaseInsightsResponse>(key);
-          if (hit) {
-            windows[String(days)] = hit;
-            return;
-          }
-        }
-        const data = await fetchHirebaseCompanyInsights(slug, filters);
-        setInsightsCached(key, data, INSIGHTS_CACHE_TTL_MS);
-        windows[String(days)] = data;
-        anyServerCached = false;
-        if (data.cached) hirebaseCached = true;
-      })
-    );
-
-    const primary = windows[String(primaryDays)] ?? windows[String(windowsToFetch[0])];
-
-    return {
-      configured: true,
-      companyName: input.companyName,
-      companySlug: slug,
-      targetRoles: titles,
-      windows,
-      primaryDays,
-      generatedAt: primary?.generated_at ?? null,
-      hirebaseCached,
-      serverCached: anyServerCached,
-    };
-  } catch (err) {
-    return {
-      configured: true,
-      companyName: input.companyName,
-      companySlug: slug,
-      targetRoles: titles,
-      windows: {},
-      primaryDays,
-      generatedAt: null,
-      hirebaseCached: false,
-      serverCached: false,
-      error: err instanceof Error ? err.message : "Failed to load company insights.",
-    };
-  }
-}
-
-/** Resolve Hirebase slug from tracked company enrichment when available. */
-export function slugFromEnrichment(raw: unknown): string | null {
-  return getHirebaseMetaFromEnrichment(raw)?.slug ?? null;
 }

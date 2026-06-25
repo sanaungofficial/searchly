@@ -1,5 +1,5 @@
-import { MarketSalaryPage } from "@/components/scout/market-salary-page";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <MarketSalaryPage />;
+export default function MarketSalaryPage() {
+  redirect("/market/signals");
 }

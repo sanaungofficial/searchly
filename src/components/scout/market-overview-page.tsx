@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMarketInsights, windowInsight } from "@/hooks/useMarketInsights";
+import { windowInsight } from "@/hooks/useMarketInsights";
+import { useSharedMarketInsights } from "@/contexts/market-insights-context";
 import { MarketShell } from "@/components/scout/market-shell";
 import {
   InsightsEmpty,
@@ -17,24 +17,23 @@ import {
 } from "@/components/scout/market-analytics-ui";
 import { ScoutBox, ScoutDisplayTitle } from "@/components/scout/scout-box";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
-import { displayTitleStyle, fontSans, color, type as T } from "@/lib/typography";
+import { fontSans, color, type as T } from "@/lib/typography";
 
 export function MarketOverviewPage() {
-  const [days, setDays] = useState(30);
   const isMobile = useIsMobile();
-  const { data, loading, error, refresh, load, requiresLoad } = useMarketInsights(days, "7,30,90,180");
-  const insight = windowInsight(data, days);
+  const { data, loading, error, refresh, load, requiresLoad, primaryDays, setPrimaryDays } = useSharedMarketInsights();
+  const insight = windowInsight(data, primaryDays);
 
   return (
     <MarketShell
       title="Market overview"
-      subtitle="Hiring analytics for your target roles — load on demand to conserve Sumble credits."
-      toolbar={<WindowPicker value={days} onChange={setDays} isMobile={isMobile} />}
+      subtitle="One shared market load powers Overview, Skills, and Companies — load once, browse all tabs."
+      toolbar={<WindowPicker value={primaryDays} onChange={setPrimaryDays} isMobile={isMobile} />}
     >
       {requiresLoad && !insight && !error && (
         <SumbleLoadPrompt
           title="Market overview"
-          description="Pull a small job sample from Sumble for your target roles. Nothing loads automatically."
+          description="Pull a small job sample from Sumble for your target roles. Cached for 24h across all Market tabs."
           estimatedCredits={data?.estimatedCredits ?? 25}
           creditsRemaining={data?.creditsRemaining}
           loading={loading}
@@ -44,9 +43,7 @@ export function MarketOverviewPage() {
 
       {!requiresLoad && <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />}
 
-      {loading && !insight && (
-        <KimchiProcessLoader preset="marketIntel" variant="inline" />
-      )}
+      {loading && !insight && <KimchiProcessLoader preset="marketIntel" variant="inline" />}
 
       {!loading && error && !insight && (
         <InsightsEmpty message={error} configured={data?.configured} />

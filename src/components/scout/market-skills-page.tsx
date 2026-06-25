@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMarketInsights, windowInsight } from "@/hooks/useMarketInsights";
+import { windowInsight } from "@/hooks/useMarketInsights";
+import { useSharedMarketInsights } from "@/contexts/market-insights-context";
 import { MarketShell } from "@/components/scout/market-shell";
 import {
   InsightsEmpty,
@@ -16,21 +16,20 @@ import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 
 export function MarketSkillsPage() {
-  const [days, setDays] = useState(30);
   const isMobile = useIsMobile();
-  const { data, loading, error, refresh, load, requiresLoad } = useMarketInsights(days, "7,30,90,180");
-  const insight = windowInsight(data, days);
+  const { data, loading, error, refresh, load, requiresLoad, primaryDays, setPrimaryDays } = useSharedMarketInsights();
+  const insight = windowInsight(data, primaryDays);
 
   return (
     <MarketShell
       title="Skills & stack"
-      subtitle="Technologies and skills employers ask for — load on demand to conserve Sumble credits."
-      toolbar={<WindowPicker value={days} onChange={setDays} isMobile={isMobile} />}
+      subtitle="Uses the same market load as Overview — no extra credits when you switch tabs."
+      toolbar={<WindowPicker value={primaryDays} onChange={setPrimaryDays} isMobile={isMobile} />}
     >
       {requiresLoad && !insight && !error && (
         <SumbleLoadPrompt
           title="Skills & stack"
-          description="Pull a small job sample to see technologies and projects in demand for your roles."
+          description="Load market data from Overview or here — one load covers all Market tabs for 24 hours."
           estimatedCredits={data?.estimatedCredits ?? 25}
           creditsRemaining={data?.creditsRemaining}
           loading={loading}

@@ -57,7 +57,16 @@ export interface ParsedResumeData {
   sectionOrder?: ResumeSectionId[];
   /** Hirebase `/v2/resumes/embed` artifact — use with `/v2/jobs/vsearch` search_type resume. */
   hirebaseArtifactId?: string | null;
+  /** Canonical Sumble technology slugs resolved from skills (via POST /technologies/lookup). */
+  sumbleTechnologies?: SumbleResolvedTechnology[];
+  sumbleTechnologiesResolvedAt?: string | null;
 }
+
+export type SumbleResolvedTechnology = {
+  input: string;
+  slug: string;
+  name: string;
+};
 
 function asStringOrNull(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -97,6 +106,21 @@ function mergeSkills(...groups: unknown[]): string[] {
     }
   }
   return merged;
+}
+
+function normalizeSumbleTechnologies(raw: unknown): SumbleResolvedTechnology[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const row = entry as Record<string, unknown>;
+      const input = asStringOrNull(row.input);
+      const slug = asStringOrNull(row.slug);
+      const name = asStringOrNull(row.name);
+      if (!input || !slug || !name) return null;
+      return { input, slug, name };
+    })
+    .filter((entry): entry is SumbleResolvedTechnology => entry !== null);
 }
 
 function normalizeEducation(raw: unknown): ParsedEducationEntry[] {
@@ -252,6 +276,7 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
   const skillGroups = normalizeSkillGroups(obj.skillGroups ?? obj.skill_groups, skills);
   const certifications = normalizeCertifications(obj.certifications);
   const sectionOrder = normalizeSectionOrder(obj.sectionOrder);
+  const sumbleTechnologies = normalizeSumbleTechnologies(obj.sumbleTechnologies);
 
   const normalized: ParsedResumeData = {
     name: asStringOrNull(obj.name),
@@ -268,6 +293,8 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
     certifications,
     sectionOrder,
     hirebaseArtifactId: asStringOrNull(obj.hirebaseArtifactId ?? obj.hirebase_artifact_id),
+    sumbleTechnologies: sumbleTechnologies.length ? sumbleTechnologies : undefined,
+    sumbleTechnologiesResolvedAt: asStringOrNull(obj.sumbleTechnologiesResolvedAt),
   };
 
   const hasContent =

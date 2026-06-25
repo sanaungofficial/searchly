@@ -19,6 +19,9 @@ export const SUMBLE_ESTIMATED_COSTS = {
   growingEmployers: 15,
   orgListSync: 5,
   titleLookup: 1,
+  techLookup: 1,
+  orgByTechStack: 5,
+  orgTechEnrich: 5,
 } as const;
 
 export function recordSumbleCreditsRemaining(remaining: number | null | undefined): void {
