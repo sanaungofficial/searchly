@@ -800,16 +800,13 @@ export function PipelineRecommendedSection({
 
   useEffect(() => {
     if (preferencesRefreshKey <= 0) return;
+    // Preferences saved — update filter form from profile location only; user clicks Refresh for live Hirebase.
     const defaultForm: FilterForm = {
       ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
       semanticQuery: appliedForm.semanticQuery,
     };
-    void fetchRecommended(defaultForm, {
-      forceRefresh: true,
-      preferCache: false,
-      background: jobs.length > 0,
-    });
-  }, [preferencesRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps -- refresh only on key bump
+    setAppliedForm(defaultForm);
+  }, [preferencesRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
@@ -821,15 +818,26 @@ export function PipelineRecommendedSection({
   const applyFilters = (filtersForm = form) => {
     setAppliedForm(filtersForm);
     const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
-    const cached = readRecommendedCache(cacheKey);
-    if (cached) {
-      setJobs(cached.jobs);
-      setError(cached.error ?? null);
-      setHasLoadedOnce(true);
-      setLoading(false);
+    const isDefaultFeed =
+      cacheKey === defaultFeedCacheKey() && !filtersForm.semanticQuery.trim();
+
+    if (isDefaultFeed) {
+      const cached = readRecommendedCache(cacheKey);
+      if (cached) {
+        setJobs(cached.jobs);
+        setError(cached.error ?? null);
+        setHasLoadedOnce(true);
+        setLoading(false);
+        return;
+      }
+      void fetchRecommended(filtersForm, { preferCache: true });
       return;
     }
-    void fetchRecommended(filtersForm, { preferCache: true });
+
+    void fetchRecommended(filtersForm, {
+      preferCache: false,
+      background: jobs.length > 0,
+    });
   };
 
   const handleRefresh = () => {

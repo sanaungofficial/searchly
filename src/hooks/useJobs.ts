@@ -36,6 +36,7 @@ interface DbJob {
   notes: string | null;
   userNotes: string | null;
   companyLinkedinUrl: string | null;
+  coverLetter?: string | null;
   fitAnalysis: string | null;
   createdAt: string;
 }
@@ -65,8 +66,10 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
     _url: job.url ?? undefined,
     _userNotes: job.userNotes ?? undefined,
     _companyLinkedinUrl: job.companyLinkedinUrl ?? undefined,
+    _coverLetter: job.coverLetter ?? undefined,
+    _fitAnalysis: job.fitAnalysis ?? undefined,
     _meta,
-  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _meta?: JobMeta };
+  } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta };
 }
 
 export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
@@ -101,8 +104,7 @@ export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
       return [dbJobToKanban(job, cardId), ...prev];
     });
 
-    // Auto-run match score in background if we have a description
-    const description = meta?.description;
+    // Persist vector fit from recommendations without calling Anthropic.
     const vectorFit = meta?.vectorMatch?.matchScore;
     if (vectorFit != null && job.id) {
       const fit = Math.min(100, Math.round(vectorFit));
@@ -115,27 +117,6 @@ export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
         const card = c as KanbanCard & { _dbId?: string };
         return card._dbId === job.id ? { ...c, fit } : c;
       }));
-    } else if (description && job.id) {
-      fetch("/api/ai/job-match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle: role, company, description }),
-      })
-        .then((r) => r.json())
-        .then((matchData: { score?: number }) => {
-          if (!matchData.score) return;
-          const fit = Math.min(100, Math.round(matchData.score * 10));
-          fetch(`/api/jobs/${job.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: matchData.score }) }),
-          });
-          setCards((prev) => prev.map((c) => {
-            const card = c as KanbanCard & { _dbId?: string };
-            return card._dbId === job.id ? { ...c, fit } : c;
-          }));
-        })
-        .catch(() => {}); // best-effort, silently ignore
     }
 
     return { id: job.id, cardId };

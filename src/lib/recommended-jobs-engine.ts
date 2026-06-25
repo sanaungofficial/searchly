@@ -205,22 +205,13 @@ export async function generateRecommendedJobsForUser(
   }
 
   if (!sources.length) {
-    let tracked = await fetchRecommendedFromTrackedCompanies({
+    const tracked = await fetchRecommendedFromTrackedCompanies({
       userId: input.userId,
       profileTargetRoles: targetRoles,
       filters: mergedFilters,
       maxJobs: maxJobs * 2,
       preferCache,
     });
-    if (!tracked.sources.length && preferCache) {
-      tracked = await fetchRecommendedFromTrackedCompanies({
-        userId: input.userId,
-        profileTargetRoles: targetRoles,
-        filters: mergedFilters,
-        maxJobs: RECOMMENDED_FETCH_POOL,
-        preferCache: false,
-      });
-    }
     if (tracked.sources.length) {
       sources = tracked.sources;
       companyCount = tracked.companyCount;
