@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
 import { CompanySumbleIntelPanel } from "@/components/scout/company-sumble-intel-panel";
+import { CompanySumbleBriefPanel } from "@/components/scout/company-sumble-brief-panel";
+import { getSumbleBriefFromEnrichment, mergeSumbleBriefIntoEnrichment } from "@/lib/sumble-brief-cache";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
@@ -1073,6 +1075,17 @@ function CompanyDrawer({
               companyName={company.name}
               website={company.website ?? enrichmentWebsite(intel)}
             />
+            <CompanySumbleBriefPanel
+              companyId={company.id}
+              companyName={company.name}
+              initialBrief={getSumbleBriefFromEnrichment(company.enrichmentCache)}
+              onBriefUpdated={(brief) => {
+                onRefreshed({
+                  ...company,
+                  enrichmentCache: mergeSumbleBriefIntoEnrichment(company.enrichmentCache, brief) as EnrichmentCache,
+                });
+              }}
+            />
           </DrawerSection>
 
           {/* Notes */}
@@ -1158,7 +1171,7 @@ function SumbleWatchlistSyncButton({ companiesCount }: { companiesCount: number 
         onClick={() => void handleSync()}
         disabled={syncing || companiesCount === 0}
         style={{ minHeight: 44 }}
-        title="Creates or updates a Kimchi Watchlist in Sumble (~5 credits)"
+        title="Creates or updates a Kimchi Watchlist in Sumble"
       >
         {syncing ? "Syncing…" : "Sync to Sumble list"}
       </ScoutSecondaryBtn>
