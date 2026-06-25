@@ -30,6 +30,7 @@ export default function AdminClientsPage() {
       apiPath="/api/admin/clients"
       onViewAsClient={viewAsClient}
       startingUserId={starting}
+      detailMode="drawer"
     />
   );
 }

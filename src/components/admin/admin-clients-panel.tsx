@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ScoutBox } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { ClientDetailBody, ClientDrawer } from "@/components/scout/client-drawer";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
@@ -309,10 +310,16 @@ export function AdminClientsPanel({
   apiPath,
   onViewAsClient,
   startingUserId,
+  detailMode = "drawer",
+  embedded = false,
+  canAddClient = true,
 }: {
   apiPath: string;
-  onViewAsClient: (userId: string) => void;
+  onViewAsClient?: (userId: string) => void;
   startingUserId?: string | null;
+  detailMode?: "page" | "drawer";
+  embedded?: boolean;
+  canAddClient?: boolean;
 }) {
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -356,9 +363,7 @@ export function AdminClientsPanel({
     return <p style={{ color: "#C4574A", fontSize: 14 }}>{error}</p>;
   }
 
-  if (selected) {
-    const activeJobs = selected.jobs.filter((j) => activeStage(j.stage));
-    const appliedJobs = selected.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
+  if (selected && detailMode === "page") {
     const displayName = selected.name ?? selected.email.split("@")[0];
 
     return (
@@ -382,204 +387,58 @@ export function AdminClientsPanel({
           ← All clients
         </button>
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <p style={sectionLabelStyle}>Client</p>
-            <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 6px" }}>{displayName}</h1>
-            <p style={{ fontSize: T.caption, color: color.muted, fontFamily: fontMono, margin: 0 }}>{selected.email}</p>
-            {selected.profile?.headline && (
-              <p style={{ fontSize: T.bodySm, color: color.stone, margin: "8px 0 0" }}>{selected.profile.headline}</p>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              onClick={() => onViewAsClient(selected.id)}
-              disabled={startingUserId === selected.id}
-              style={{
-                padding: "10px 18px",
-                background: color.forest,
-                color: color.gold,
-                border: "none",
-                borderRadius: 0,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: startingUserId === selected.id ? "default" : "pointer",
-                fontFamily: fontSans,
-                opacity: startingUserId === selected.id ? 0.7 : 1,
-              }}
-            >
-              {startingUserId === selected.id ? "Opening…" : "View as client"}
-            </button>
-            {selected.profile?.linkedinUrl && (
-              <a
-                href={selected.profile.linkedinUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  fontSize: T.caption,
-                  fontFamily: fontMono,
-                  padding: "10px 14px",
-                  borderRadius: 0,
-                  border: border.line,
-                  color: color.forest,
-                  textDecoration: "none",
-                  background: surface.card,
-                }}
-              >
-                LinkedIn ↗
-              </a>
-            )}
-            {selected.profile?.resumeUrl && (
-              <a
-                href={selected.profile.resumeUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  fontSize: T.caption,
-                  fontFamily: fontMono,
-                  padding: "10px 14px",
-                  borderRadius: 0,
-                  border: border.line,
-                  color: color.forest,
-                  textDecoration: "none",
-                  background: surface.card,
-                }}
-              >
-                Resume ↗
-              </a>
-            )}
-          </div>
+        <div style={{ marginBottom: 28 }}>
+          <p style={sectionLabelStyle}>Client</p>
+          <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 6px" }}>{displayName}</h1>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
-          {[
-            { label: "Total jobs", value: selected._count.jobs },
-            { label: "Active pipeline", value: activeJobs.length },
-            { label: "Applied / in process", value: appliedJobs.length },
-            { label: "Tailored resumes", value: selected._count.tailoredResumes },
-          ].map(({ label, value }) => (
-            <ScoutBox key={label} padding="14px 18px">
-              <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 6, marginTop: 0 }}>
-                {label}
-              </p>
-              <p style={{ ...displayTitleStyle(24), margin: 0 }}>{value}</p>
-            </ScoutBox>
-          ))}
-        </div>
-
-        {selected.profile && (selected.profile.targetRoles.length > 0 || selected.profile.targetSalary) && (
-          <div style={{ background: "#fff", border: border.line, padding: "16px 20px", marginBottom: 20 }}>
-            <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 10 }}>
-              Targets
-            </p>
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              {selected.profile.targetRoles.length > 0 && (
-                <div>
-                  <p style={{ fontSize: 13, color: "var(--scout-muted)", marginBottom: 4 }}>Roles</p>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {selected.profile.targetRoles.map((r) => (
-                      <span key={r} style={{ fontSize: 13, background: "rgba(26,58,47,0.06)", color: "#1a3a2f", padding: "2px 8px" }}>
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {selected.profile.targetSalary && (
-                <div>
-                  <p style={{ fontSize: 13, color: "var(--scout-muted)", marginBottom: 4 }}>Target salary</p>
-                  <p style={{ fontSize: 14, color: "#1a1a1a", fontWeight: 500 }}>
-                    {typeof selected.profile.targetSalary === "number"
-                      ? `$${selected.profile.targetSalary.toLocaleString()}`
-                      : selected.profile.targetSalary}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div style={{ background: "#fff", border: border.line, overflow: "hidden" }}>
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid #f0ece6" }}>
-            <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono }}>
-              Job pipeline ({selected.jobs.length})
-            </p>
-          </div>
-          {selected.jobs.length === 0 ? (
-            <p style={{ padding: "24px 20px", color: "var(--scout-muted)", fontSize: 14 }}>No jobs tracked yet.</p>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid #f0ece6" }}>
-                  {["Company", "Role", "Stage", "Added"].map((h, i) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: "9px 20px",
-                        textAlign: i === 3 ? "right" : "left",
-                        fontSize: 12,
-                        color: "var(--scout-muted)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.8px",
-                        fontFamily: fontMono,
-                        fontWeight: 400,
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {selected.jobs.map((j) => (
-                  <tr key={j.id} style={{ borderBottom: "1px solid #faf8f5" }}>
-                    <td style={{ padding: "9px 20px", fontWeight: 500, color: "#1a1a1a" }}>{j.company}</td>
-                    <td style={{ padding: "9px 20px", color: "#52493f" }}>{j.role}</td>
-                    <td style={{ padding: "9px 20px" }}>
-                      <StageBadge stage={j.stage} />
-                    </td>
-                    <td style={{ padding: "9px 20px", textAlign: "right", fontSize: 13, color: "var(--scout-muted)", fontFamily: fontMono }}>
-                      {formatDate(j.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <ClientDetailBody
+          client={selected}
+          onViewAsClient={onViewAsClient}
+          startingUserId={startingUserId}
+          showViewAsClient={!!onViewAsClient}
+        />
       </div>
     );
   }
 
-  return (
-    <div>
-      <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <p style={sectionLabelStyle}>Clients</p>
-          <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 8px" }}>Manage clients</h1>
-          <p style={{ fontSize: 14, color: color.stone, margin: 0, maxWidth: 560 }}>
-            Create client accounts with optional resume, LinkedIn, or sign-in invite — then open their workspace to finish setup.
-          </p>
-        </div>
-        <button
-          type="button"
+  const listHeader = embedded ? (
+    <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+        {clients.length} client{clients.length === 1 ? "" : "s"}
+      </p>
+      {canAddClient && (
+        <ScoutPrimaryBtn
           onClick={() => { setShowCreate(true); setCreateNotice(null); }}
-          style={{
-            padding: "10px 18px",
-            background: color.forest,
-            color: color.gold,
-            border: "none",
-            borderRadius: 0,
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: fontSans,
-            whiteSpace: "nowrap",
-          }}
+          style={{ minHeight: 40 }}
         >
           + Add client
-        </button>
+        </ScoutPrimaryBtn>
+      )}
+    </div>
+  ) : (
+    <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      <div>
+        <p style={sectionLabelStyle}>Clients</p>
+        <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 8px" }}>Manage clients</h1>
+        <p style={{ fontSize: 14, color: color.stone, margin: 0, maxWidth: 560 }}>
+          Create client accounts with optional resume, LinkedIn, or sign-in invite — then open their workspace to finish setup.
+        </p>
       </div>
+      {canAddClient && (
+        <ScoutPrimaryBtn
+          onClick={() => { setShowCreate(true); setCreateNotice(null); }}
+          style={{ minHeight: 40 }}
+        >
+          + Add client
+        </ScoutPrimaryBtn>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      {listHeader}
 
       {createNotice && (
         <div style={{ background: "rgba(26,58,47,0.06)", border: border.line, padding: "12px 16px", marginBottom: 20, fontSize: T.bodySm, color: color.stone, lineHeight: 1.5 }}>
@@ -633,17 +492,25 @@ export function AdminClientsPanel({
           return (
             <div
               key={client.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelected(client)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelected(client);
+                }
+              }}
               style={{
-                background: "#fff",
+                background: surface.card,
                 border: `1px solid ${hasOffer ? "rgba(5,150,105,0.3)" : inInterview ? "rgba(124,58,237,0.2)" : "rgba(26,58,47,0.08)"}`,
                 padding: "16px 20px",
+                cursor: "pointer",
+                textAlign: "left",
               }}
             >
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-                <button
-                  onClick={() => setSelected(client)}
-                  style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0, flex: 1, minWidth: 0 }}
-                >
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                     <p style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 14, margin: 0 }}>{displayName}</p>
                     {hasOffer && (
@@ -661,7 +528,7 @@ export function AdminClientsPanel({
                   {client.profile?.headline && (
                     <p style={{ fontSize: 13, color: "#52493f", marginTop: 4, marginBottom: 0 }}>{client.profile.headline}</p>
                   )}
-                </button>
+                </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                   <div style={{ textAlign: "right" }}>
@@ -672,25 +539,30 @@ export function AdminClientsPanel({
                     <p style={{ fontSize: 20, fontWeight: 600, color: color.ink, fontFamily: fontSans, margin: 0 }}>{activeJobs.length}</p>
                     <p style={{ fontSize: 12, color: "var(--scout-muted)", margin: 0 }}>active</p>
                   </div>
-                  <button
-                    onClick={() => onViewAsClient(client.id)}
-                    disabled={startingUserId === client.id}
-                    style={{
-                      padding: "8px 14px",
-                      background: color.forest,
-                      color: color.gold,
-                      border: "none",
-                      borderRadius: 0,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: startingUserId === client.id ? "default" : "pointer",
-                      fontFamily: fontSans,
-                      whiteSpace: "nowrap",
-                      opacity: startingUserId === client.id ? 0.7 : 1,
-                    }}
-                  >
-                    {startingUserId === client.id ? "Opening…" : "View as client"}
-                  </button>
+                  {onViewAsClient && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewAsClient(client.id);
+                      }}
+                      disabled={startingUserId === client.id}
+                      style={{
+                        padding: "8px 14px",
+                        background: color.forest,
+                        color: color.gold,
+                        border: "none",
+                        borderRadius: 0,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: startingUserId === client.id ? "default" : "pointer",
+                        fontFamily: fontSans,
+                        whiteSpace: "nowrap",
+                        opacity: startingUserId === client.id ? 0.7 : 1,
+                      }}
+                    >
+                      {startingUserId === client.id ? "Opening…" : "View as client"}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -715,7 +587,7 @@ export function AdminClientsPanel({
         )}
       </div>
 
-      {showCreate && (
+      {showCreate && canAddClient && (
         <CreateClientModal
           onClose={() => setShowCreate(false)}
           onCreated={(client, meta) => {
@@ -727,6 +599,16 @@ export function AdminClientsPanel({
                 : "Client account created.",
             );
           }}
+        />
+      )}
+
+      {selected && detailMode === "drawer" && (
+        <ClientDrawer
+          client={selected}
+          onClose={() => setSelected(null)}
+          onViewAsClient={onViewAsClient}
+          startingUserId={startingUserId}
+          showViewAsClient={!!onViewAsClient}
         />
       )}
     </div>
