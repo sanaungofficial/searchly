@@ -51,12 +51,6 @@ export const KIMCHI_LOADER_PRESETS = {
     hint: "This usually takes a few seconds.",
     durationSec: 8,
   },
-  marketIntel: {
-    emoji: "📈",
-    title: "Pulling market intelligence…",
-    hint: "Fresh data can take about 10 seconds.",
-    durationSec: 12,
-  },
   onboardingBackground: {
     emoji: "👋",
     title: "Analyzing your background…",

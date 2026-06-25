@@ -11,9 +11,6 @@ import { PlusIcon } from "./workspace-icons";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
-import { DashboardMarketTrendsPanel } from "@/components/scout/dashboard-market-trends-panel";
-import { DashboardSumbleSignalsPanel } from "@/components/scout/dashboard-sumble-signals-panel";
-
 const STAT_LABEL: React.CSSProperties = {
   fontFamily: fontSans,
   fontSize: T.label,
@@ -452,7 +449,7 @@ export function WorkspaceDashboard() {
               Your job search at a glance
             </ScoutDisplayTitle>
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
-              Pipeline counts, recent activity, and on-demand market intelligence from Sumble.
+              Pipeline counts and recent activity across your saved roles.
             </p>
           </div>
 
@@ -540,10 +537,6 @@ export function WorkspaceDashboard() {
               </>
             )}
           </div>
-
-          <DashboardMarketTrendsPanel isMobile={isMobile} />
-
-          <DashboardSumbleSignalsPanel isMobile={isMobile} />
 
         </div>
       </div>

@@ -18,7 +18,6 @@ import { CompanyLogo } from "./company-logo";
 import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { CreditsStatusBar } from "./credits-display";
-import { InsiderConnectionPanel } from "./insider-connection-panel";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
 import { JobDrawerNetworkAdminSection, JobDrawerRecruiterSection } from "./job-drawer-recruiter-section";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
@@ -1020,12 +1019,6 @@ export function JobDrawer({
                   ) : null}
                 </div>
               )}
-
-              <InsiderConnectionPanel
-                companyName={card.company}
-                jobTitle={card.role}
-                website={guessCompanyWebsite(jobWebsite)}
-              />
 
               {networkJob && (
                 <div
