@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
+import { getHirebaseProfileFromEnrichment } from "@/lib/hirebase-company-sync";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
@@ -279,24 +280,51 @@ function InlineInput({ value, placeholder, onBlur, mono, bold }: { value: string
 function PriorityBadge({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
-    function handler(e: MouseEvent) { if (btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false); }
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [open]);
+
   const priorityColors = value === "HIGH" ? { bg: "#fef2f2", text: "#dc2626" } : value === "MEDIUM" ? { bg: "#fffbeb", text: "#d97706" } : value === "LOW" ? { bg: "rgba(26,58,47,0.08)", text: color.forest } : { bg: surface.inset, text: color.muted };
-  function handleOpen() {
-    if (btnRef.current) { const r = btnRef.current.getBoundingClientRect(); setCoords({ top: r.bottom + 4, left: r.left }); }
+  function handleOpen(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setCoords({ top: r.bottom + 4, left: r.left });
+    }
     setOpen((o) => !o);
   }
   return (
-    <div style={{ position: "relative", display: "inline-block" }}>
-      <button ref={btnRef} onClick={handleOpen} style={{ background: priorityColors.bg, color: priorityColors.text, border: "none", borderRadius: 0, padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
+    <div ref={containerRef} style={{ position: "relative", display: "inline-block" }} onClick={(e) => e.stopPropagation()}>
+      <button ref={btnRef} type="button" onClick={handleOpen} style={{ background: priorityColors.bg, color: priorityColors.text, border: "none", borderRadius: 0, padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
       {open && (
-        <div style={{ position: "fixed", top: coords.top, left: coords.left, background: surface.card, border: border.line, borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}>
+        <div
+          style={{ position: "fixed", top: coords.top, left: coords.left, background: surface.card, border: border.line, borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           {["HIGH", "MEDIUM", "LOW", ""].map((opt) => (
-            <button key={opt || "none"} onClick={() => { onChange(opt); setOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: value === opt ? surface.inset : "transparent", border: "none", cursor: "pointer", fontSize: 14, fontWeight: opt ? 600 : 400, color: opt === "HIGH" ? "#dc2626" : opt === "MEDIUM" ? "#d97706" : opt === "LOW" ? color.forest : color.muted }}>{opt || "None"}</button>
+            <button
+              key={opt || "none"}
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(opt);
+                setOpen(false);
+              }}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", background: value === opt ? surface.inset : "transparent", border: "none", cursor: "pointer", fontSize: 14, fontWeight: opt ? 600 : 400, color: opt === "HIGH" ? "#dc2626" : opt === "MEDIUM" ? "#d97706" : opt === "LOW" ? color.forest : color.muted }}
+            >
+              {opt || "None"}
+            </button>
           ))}
         </div>
       )}
@@ -962,6 +990,15 @@ function CompanyDrawer({
               companyName={company.name}
               website={company.website ?? enrichmentWebsite(company)}
               slugHint={hirebaseSlugHint(company, intel)}
+              trackedId={company.id}
+              initialProfile={getHirebaseProfileFromEnrichment(company.enrichmentCache)}
+              onEnrichmentSaved={(enrichment) => {
+                onRefreshed({
+                  ...company,
+                  enrichmentCache: enrichment as EnrichmentCache,
+                  enrichmentFetchedAt: new Date().toISOString(),
+                });
+              }}
             />
           </DrawerSection>
 
@@ -1167,16 +1204,16 @@ export function WorkspaceCompanies({
   }
 
   async function patchField(id: string, field: Field, value: string) {
-    const trimmed = value.trim();
     const existing = companies.find((c) => c.id === id);
     if (!existing) return;
     const previousValue = existing[field];
+    const nextValue = field === "priority" ? (value || null) : (value.trim() || null);
 
-    setCompanies((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: trimmed || null } : c)));
+    setCompanies((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: nextValue } : c)));
     setSaveError(null);
 
     try {
-      const res = await fetch(`/api/companies/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: trimmed || null }) });
+      const res = await fetch(`/api/companies/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: nextValue }) });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setCompanies((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: previousValue } : c)));
@@ -1306,7 +1343,7 @@ export function WorkspaceCompanies({
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: "22%" }}>Company</th>
+                <th style={{ ...thStyle, width: "22%", borderLeft: "3px solid transparent" }}>Company</th>
                 <th style={{ ...thStyle, width: "14%" }}>Website</th>
                 <th style={{ ...thStyle, width: "14%" }}>Careers</th>
                 <th style={{ ...thStyle, width: "12%" }}>Matches</th>
