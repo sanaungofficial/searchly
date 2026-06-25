@@ -1,4 +1,10 @@
 import {
+  fieldKeys,
+  mergeNetworkJobExport,
+  NETWORK_JOB_SUBRESOURCE_PATHS,
+  recruiterIdFromJob,
+} from "@/lib/topechelon/job-export";
+import {
   parseTopEchelonAuthError,
   TopEchelonAuthError,
   TopEchelonMfaRequiredError,
@@ -147,10 +153,11 @@ export class TopEchelonClient {
 
   async fetchNetworkJobsFromSearch(
     searchId: string,
-    options?: { perPage?: number; maxPages?: number; limit?: number }
+    options?: { perPage?: number; maxPages?: number; limit?: number; fullCatalog?: boolean }
   ): Promise<TopEchelonNetworkJobRaw[]> {
     const perPage = options?.perPage ?? 50;
-    const maxPages = options?.maxPages ?? 40;
+    const defaultMaxPages = options?.fullCatalog ? 120 : 40;
+    const maxPages = options?.maxPages ?? defaultMaxPages;
     const limit = options?.limit;
     const jobs: TopEchelonNetworkJobRaw[] = [];
     let totalPages = maxPages;
@@ -176,8 +183,12 @@ export class TopEchelonClient {
     maxPages?: number;
     limit?: number;
     searchId?: string;
+    fullCatalog?: boolean;
+    allStatuses?: boolean;
   }): Promise<TopEchelonNetworkJobRaw[]> {
-    const searchId = options?.searchId ?? (await this.createNetworkJobSearch());
+    const searchId =
+      options?.searchId ??
+      (await this.createNetworkJobSearch({ allStatuses: options?.allStatuses ?? options?.fullCatalog }));
     return this.fetchNetworkJobsFromSearch(String(searchId), options);
   }
 
@@ -190,23 +201,92 @@ export class TopEchelonClient {
     return (res.network_job ?? res) as TopEchelonNetworkJobRaw;
   }
 
-  /** List summaries then hydrate each with the detail endpoint. */
+  async fetchOptionalJson<T>(path: string, query?: Record<string, string>): Promise<T | null> {
+    return this.request<T>("GET", path, undefined, query, { notFoundOk: true });
+  }
+
+  private async fetchFirstOptionalJson<T>(paths: string[]): Promise<T | null> {
+    for (const path of paths) {
+      const payload = await this.fetchOptionalJson<T>(path);
+      if (payload && typeof payload === "object" && Object.keys(payload as object).length > 0) {
+        return payload;
+      }
+    }
+    return null;
+  }
+
+  /** List row + detail + best-effort sub-resources (agency, submissions, shares, recruiter). */
+  async fetchNetworkJobFullExport(listSummary: TopEchelonNetworkJobRaw): Promise<TopEchelonJobFullExport> {
+    const jobId = String(listSummary.id);
+    let detail: TopEchelonNetworkJobRaw;
+    try {
+      detail = await this.fetchNetworkJobDetail(jobId);
+    } catch {
+      detail = listSummary;
+    }
+
+    const [agencyDetails, submissionSummary, shares] = await Promise.all([
+      this.fetchFirstOptionalJson<unknown>(NETWORK_JOB_SUBRESOURCE_PATHS.agencyDetails(jobId)),
+      this.fetchFirstOptionalJson<unknown>(NETWORK_JOB_SUBRESOURCE_PATHS.submissionSummary(jobId)),
+      this.fetchFirstOptionalJson<unknown>(NETWORK_JOB_SUBRESOURCE_PATHS.shares(jobId)),
+    ]);
+
+    const recruiterId = recruiterIdFromJob(detail) ?? recruiterIdFromJob(listSummary);
+    const recruiterDetails = recruiterId
+      ? await this.fetchFirstOptionalJson<unknown>(NETWORK_JOB_SUBRESOURCE_PATHS.recruiterDetails(recruiterId))
+      : null;
+
+    const exportBundle: TopEchelonJobFullExport = {
+      listSummary,
+      detail,
+      agencyDetails,
+      submissionSummary,
+      shares,
+      recruiterDetails,
+      fieldKeys: {
+        listSummary: fieldKeys(listSummary) ?? [],
+        detail: fieldKeys(detail) ?? [],
+        agencyDetails: fieldKeys(agencyDetails),
+        submissionSummary: fieldKeys(submissionSummary),
+        shares: fieldKeys(shares),
+        recruiterDetails: fieldKeys(recruiterDetails),
+      },
+    };
+
+    return exportBundle;
+  }
+
+  /** Merged TE payload ready for DB upsert (detail + sub-resources + stable list id). */
+  async fetchNetworkJobMerged(listSummary: TopEchelonNetworkJobRaw): Promise<TopEchelonNetworkJobRaw> {
+    const exportBundle = await this.fetchNetworkJobFullExport(listSummary);
+    return mergeNetworkJobExport(listSummary, exportBundle);
+  }
+
+  /** List summaries then hydrate each with the full export (detail + sub-resources). */
   async fetchNetworkJobsWithDetails(limit: number): Promise<TopEchelonNetworkJobRaw[]> {
     const searchId = await this.createNetworkJobSearch();
     const { jobs } = await this.fetchNetworkJobsPage(String(searchId), {
       page: 1,
       perPage: Math.min(limit, 50),
     });
-    const ids = jobs.slice(0, limit).map((j) => String(j.id));
-    return Promise.all(ids.map((id) => this.fetchNetworkJobDetail(id)));
+    return Promise.all(jobs.slice(0, limit).map((row) => this.fetchNetworkJobMerged(row)));
   }
 
-  private async createNetworkJobSearch(): Promise<number | string> {
-    const attempts: Record<string, unknown>[] = [
-      { job_search: { params: { network_status: "active" } } },
-      { params: { network_status: "active" } },
-      { network_status: "active" },
-    ];
+  private async createNetworkJobSearch(options?: { allStatuses?: boolean }): Promise<number | string> {
+    const attempts: Record<string, unknown>[] = options?.allStatuses
+      ? [
+          { job_search: { params: {} } },
+          { params: {} },
+          {},
+          { job_search: { params: { network_status: "active" } } },
+          { params: { network_status: "active" } },
+          { network_status: "active" },
+        ]
+      : [
+          { job_search: { params: { network_status: "active" } } },
+          { params: { network_status: "active" } },
+          { network_status: "active" },
+        ];
 
     let lastError: unknown;
     for (const body of attempts) {
@@ -230,7 +310,8 @@ export class TopEchelonClient {
     method: string,
     path: string,
     body?: Record<string, unknown>,
-    query?: Record<string, string>
+    query?: Record<string, string>,
+    options?: { notFoundOk?: boolean }
   ): Promise<T> {
     const url = new URL(`${getApiBase()}${path}`);
     if (query) {
@@ -266,11 +347,17 @@ export class TopEchelonClient {
 
     const text = await res.text();
     if (!res.ok) {
+      if (options?.notFoundOk && (res.status === 404 || res.status === 410)) {
+        return null as T;
+      }
       if (res.status === 401 && path.includes("/auth/token")) {
         throw parseTopEchelonAuthError(text);
       }
       if (res.status === 401) {
         throw new TopEchelonSessionExpiredError(text || "Unauthorized");
+      }
+      if (options?.notFoundOk && res.status >= 400 && res.status < 500) {
+        return null as T;
       }
       throw new TopEchelonAuthError(text || `Top Echelon API ${res.status}`);
     }

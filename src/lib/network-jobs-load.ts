@@ -41,7 +41,6 @@ export async function loadNetworkJobListings(): Promise<{
     const rows = await prisma.networkJob.findMany({
       include: { recruiterRecord: true },
       orderBy: { sharedAt: "desc" },
-      take: 200,
     });
 
     if (rows.length > 0) {

@@ -7,7 +7,8 @@ import {
   TopEchelonMfaRequiredError,
   TopEchelonSessionExpiredError,
 } from "@/lib/topechelon/errors";
-import { mapTopEchelonNetworkJob, toNetworkJobDbRecord } from "@/lib/topechelon/map-network-job";
+import { countSubresourceHits, mergeNetworkJobExport } from "@/lib/topechelon/job-export";
+import { toNetworkJobDbRecord } from "@/lib/topechelon/map-network-job";
 import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
 import {
   loadTopEchelonSession,
@@ -21,13 +22,18 @@ export type RunTopEchelonSyncOptions = {
   mfaCode?: string;
   forceLogin?: boolean;
   searchId?: string;
+  /** Cap jobs fetched (admin smoke tests). Omit for full catalog. */
   limit?: number;
   maxPages?: number;
-  /** Skip detail fetch (list rows only — missing comments / full description). */
+  /** Paginate through the entire TE catalog (~1,700 roles). Default when no limit. */
+  fullCatalog?: boolean;
+  /** Include on-hold / inactive roles, not just active. Default true when fullCatalog. */
+  allStatuses?: boolean;
+  /** Skip detail + sub-resource fetch (list rows only — missing comments / full description). */
   listOnly?: boolean;
 };
 
-const DETAIL_CONCURRENCY = 6;
+const DETAIL_CONCURRENCY = 4;
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -85,8 +91,6 @@ async function upsertNetworkJob(
 ): Promise<void> {
   const data = { ...dbFields, recruiterRecordId };
 
-  // TE list rows use numeric ids; detail payloads can differ. Prefer an existing row
-  // keyed by networkId (e.g. OH229-2755929) so re-syncs update instead of inserting twice.
   if (dbFields.networkId) {
     const existing = await prisma.networkJob.findFirst({
       where: { networkId: dbFields.networkId },
@@ -112,6 +116,9 @@ export async function runTopEchelonSync(
   options: RunTopEchelonSyncOptions = {}
 ): Promise<TopEchelonSyncSummary> {
   const started = Date.now();
+  const fullCatalog = options.fullCatalog ?? (!options.limit && !options.listOnly);
+  const allStatuses = options.allStatuses ?? fullCatalog;
+
   let client: TopEchelonClient;
   const stored = options.forceLogin ? null : await loadTopEchelonSession();
 
@@ -132,21 +139,34 @@ export async function runTopEchelonSync(
   const searchId = options.searchId ?? getTopEchelonSearchId() ?? undefined;
   const listJobs = await client.fetchAllNetworkJobs({
     perPage: 50,
-    maxPages: options.maxPages ?? (options.limit ? 1 : 40),
+    maxPages: options.maxPages ?? (options.limit ? 1 : fullCatalog ? 120 : 40),
     limit: options.limit,
     searchId,
+    fullCatalog,
+    allStatuses,
   });
+
+  let detailErrors = 0;
+  let subresourceHits = 0;
 
   const jobs = options.listOnly
     ? listJobs
     : await mapWithConcurrency(listJobs, DETAIL_CONCURRENCY, async (row) => {
-        const detail = await client.fetchNetworkJobDetail(String(row.id)).catch(() => row);
-        return {
-          ...detail,
-          id: row.id,
-          network_id: detail.network_id ?? detail.networkId ?? row.network_id ?? row.networkId,
-          networkId: detail.networkId ?? detail.network_id ?? row.networkId ?? row.network_id,
-        };
+        try {
+          const exportBundle = await client.fetchNetworkJobFullExport(row);
+          subresourceHits += countSubresourceHits(exportBundle);
+          if (exportBundle.detail === exportBundle.listSummary) {
+            detailErrors += 1;
+          }
+          return mergeNetworkJobExport(row, exportBundle);
+        } catch {
+          detailErrors += 1;
+          return {
+            ...row,
+            network_id: row.network_id ?? row.networkId,
+            networkId: row.networkId ?? row.network_id,
+          } as TopEchelonNetworkJobRaw;
+        }
       });
 
   let upserted = 0;
@@ -166,6 +186,10 @@ export async function runTopEchelonSync(
     fetched: jobs.length,
     upserted,
     pages: Math.ceil(listJobs.length / 50) || 0,
+    totalCount: null,
+    detailErrors,
+    subresourceHits,
+    fullCatalog,
     searchId,
     durationMs: Date.now() - started,
   };

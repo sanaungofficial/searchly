@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getTopEchelonCredentials } from "@/lib/topechelon/client";
 import {
@@ -6,14 +7,16 @@ import {
   TopEchelonSessionExpiredError,
 } from "@/lib/topechelon/sync";
 import { recordTopEchelonSyncResult } from "@/lib/topechelon/session-store";
-import { NextResponse } from "next/server";
+
+export const maxDuration = 300;
 
 type SyncBody = {
   mfaCode?: string;
   forceLogin?: boolean;
   searchId?: string;
-  /** Smoke test: only import N jobs */
   limit?: number;
+  fullCatalog?: boolean;
+  listOnly?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -44,7 +47,9 @@ export async function POST(request: Request) {
       mfaCode: body.mfaCode?.trim() || undefined,
       forceLogin: body.forceLogin,
       searchId: body.searchId?.trim() || undefined,
-      limit: typeof body.limit === "number" && body.limit > 0 ? body.limit : undefined,
+      limit: body.fullCatalog ? undefined : typeof body.limit === "number" && body.limit > 0 ? body.limit : undefined,
+      fullCatalog: body.fullCatalog === true,
+      listOnly: body.listOnly === true,
     });
     return NextResponse.json({ ok: true, summary });
   } catch (err) {

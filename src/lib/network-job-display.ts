@@ -132,6 +132,11 @@ function buildAdminDetails(
   push("Compensation (min)", mapped.minimumCompensation);
   push("Compensation (max)", mapped.maximumCompensation);
 
+  const kimchi = raw._kimchiExport;
+  if (kimchi?.submissionSummary) push("Submission summary", kimchi.submissionSummary);
+  if (kimchi?.shares) push("Network shares", kimchi.shares);
+  if (kimchi?.fetchedAt) push("Last TE export", kimchi.fetchedAt);
+
   return rows;
 }
 
