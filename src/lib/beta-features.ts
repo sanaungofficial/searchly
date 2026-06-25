@@ -40,12 +40,29 @@ export function isProductionEnv(): boolean {
   return appUrl.includes("app.kimchi.so");
 }
 
-/** Dev/preview: everyone. Production: admins only. */
+/** Dev/preview: everyone. Production: coaching is live; live/network admins only. */
+export function canAccessBetaFeature(feature: BetaFeatureId, isAdmin: boolean): boolean {
+  if (!isProductionEnv()) return true;
+  if (feature === "coaching") return true;
+  return isAdmin;
+}
+
+/** Dev/preview: everyone. Production: admins only (legacy — prefer per-feature). */
 export function canAccessBetaFeatures(isAdmin: boolean): boolean {
   return !isProductionEnv() || isAdmin;
 }
 
-/** Whether Live / Coaching / Network appear in the sidebar. */
+/** Whether the Community nav group should appear in the sidebar. */
+export function shouldShowCommunityNav(isAdmin: boolean): boolean {
+  if (!isProductionEnv()) return true;
+  return (
+    canAccessBetaFeature("live", isAdmin) ||
+    canAccessBetaFeature("coaching", isAdmin) ||
+    canAccessBetaFeature("network", isAdmin)
+  );
+}
+
+/** Whether Live / Coaching / Network appear in the sidebar (all items — filter per feature in nav). */
 export function shouldShowBetaNav(isAdmin: boolean): boolean {
-  return canAccessBetaFeatures(isAdmin);
+  return shouldShowCommunityNav(isAdmin);
 }

@@ -168,10 +168,10 @@ export function CoachingDirectoryCard({
               {coach.isProfessionalCoach && <CoachMetaPill icon="🏆" label="Top expert" tone="gold" />}
               {isFavorite && <CoachMetaPill icon="✦" label="Highly rated" tone="mint" />}
               {coach.featured && <CoachMetaPill icon="★" label="Featured" tone="gold" />}
-              {coach.firms.slice(1, 3).map((f) => (
+              {coach.firms?.slice(1, 3).map((f) => (
                 <CoachMetaPill key={f} icon="◆" label={f} tone="neutral" />
               ))}
-              {coach.specialties.slice(0, 2).map((s) => (
+              {(coach.specialties ?? []).slice(0, 2).map((s) => (
                 <CoachMetaPill key={s} icon="◎" label={s} tone="neutral" />
               ))}
             </div>

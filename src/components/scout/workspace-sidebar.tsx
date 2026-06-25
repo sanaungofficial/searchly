@@ -23,7 +23,7 @@ import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
 import { KimchiBySecondLadder } from "./scout-box";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
-import { isProductionEnv, shouldShowBetaNav, BETA_FEATURES } from "@/lib/beta-features";
+import { isProductionEnv, shouldShowCommunityNav, canAccessBetaFeature, BETA_FEATURES } from "@/lib/beta-features";
 import { isStaffPortalRole } from "@/lib/staff-portal";
 
 interface SidebarProps {
@@ -269,7 +269,7 @@ export function WorkspaceSidebar({
   const user = userProp ?? ctxUser ?? undefined;
   const isAdmin = isAdminProp ?? ctxIsAdmin;
   const userRole = userRoleProp ?? ctxUserRole;
-  const showCommunityNav = shouldShowBetaNav(isAdmin);
+  const showCommunityNav = shouldShowCommunityNav(isAdmin);
 
   const isStaff = isStaffPortalRole(userRole);
   const { loading: subLoading } = useSubscription();
@@ -626,7 +626,10 @@ export function WorkspaceSidebar({
           {showCommunityNav && (
             <>
               <SidebarSectionLabel isRail={isRail}>Community</SidebarSectionLabel>
-              {NAV_COMMUNITY.filter(({ id }) => !(isStaff && id === "live")).map(({ id, label, path, Icon }) => (
+              {NAV_COMMUNITY.filter(
+                ({ id }) =>
+                  !(isStaff && id === "live") && canAccessBetaFeature(id as "live" | "coaching" | "network", isAdmin),
+              ).map(({ id, label, path, Icon }) => (
                 <SidebarNavButton
                   key={id}
                   active={isActive(path)}
