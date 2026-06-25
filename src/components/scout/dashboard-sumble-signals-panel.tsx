@@ -143,14 +143,16 @@ export function DashboardSumbleSignalsPanel({ isMobile }: { isMobile?: boolean }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requiresLoad, setRequiresLoad] = useState(true);
+  const [companyLimit, setCompanyLimit] = useState(3);
 
-  const load = useCallback(async (options?: { refresh?: boolean; fetch?: boolean }) => {
+  const load = useCallback(async (options?: { refresh?: boolean; fetch?: boolean; limit?: number }) => {
     const refresh = options?.refresh ?? false;
     const shouldFetch = options?.fetch ?? refresh;
+    const limit = options?.limit ?? companyLimit;
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: "10" });
+      const params = new URLSearchParams({ limit: String(limit) });
       if (shouldFetch) params.set("load", "1");
       if (refresh) params.set("refresh", "1");
       const res = await fetch(`/api/dashboard/sumble-signals?${params}`);
@@ -172,11 +174,11 @@ export function DashboardSumbleSignalsPanel({ isMobile }: { isMobile?: boolean }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyLimit]);
 
   useEffect(() => {
-    void load({ fetch: false });
-  }, [load]);
+    void load({ fetch: false, limit: companyLimit });
+  }, [load, companyLimit]);
 
   const hasData =
     (data?.signals.length ?? 0) > 0 ||
@@ -214,7 +216,7 @@ export function DashboardSumbleSignalsPanel({ isMobile }: { isMobile?: boolean }
             Companies →
           </Link>
           <button
-            onClick={() => (requiresLoad ? void load({ fetch: true }) : void load({ fetch: true, refresh: true }))}
+            onClick={() => (requiresLoad ? void load({ fetch: true, limit: companyLimit }) : void load({ fetch: true, refresh: true, limit: companyLimit }))}
             disabled={loading}
             style={{
               background: "none",
@@ -239,12 +241,12 @@ export function DashboardSumbleSignalsPanel({ isMobile }: { isMobile?: boolean }
       {requiresLoad && !hasData && !loading && !error && (
         <SumbleLoadPrompt
           title="Watchlist signals"
-          description="Scan up to 10 tracked companies (priority first) via GET /organizations/{id}/signals. Returns all signals per company — cached 24 hours."
-          estimatedCredits={data?.estimatedCredits ?? 40}
+          description={`Scan up to ${companyLimit} high-priority tracked companies for Sumble org signals (~${companyLimit * 4} credits). Cached 24 hours.`}
+          estimatedCredits={data?.estimatedCredits ?? companyLimit * 4}
           creditsRemaining={data?.creditsRemaining}
           loading={loading}
-          onLoad={() => void load({ fetch: true })}
-          loadLabel="Load watchlist signals"
+          onLoad={() => void load({ fetch: true, limit: companyLimit })}
+          loadLabel={`Load signals (${companyLimit} companies)`}
         />
       )}
 
@@ -333,7 +335,29 @@ export function DashboardSumbleSignalsPanel({ isMobile }: { isMobile?: boolean }
             </ScoutBox>
           ))}
 
-          <RawJsonExplorer data={data} label="full API response (all companies)" />
+          {companyLimit < 10 && (
+            <button
+              type="button"
+              onClick={() => {
+                setCompanyLimit(10);
+                void load({ fetch: true, refresh: true, limit: 10 });
+              }}
+              disabled={loading}
+              style={{
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                fontWeight: 600,
+                color: color.forest,
+                background: "none",
+                border: border.line,
+                cursor: loading ? "wait" : "pointer",
+                padding: isMobile ? "10px 14px" : "8px 14px",
+                marginBottom: 8,
+              }}
+            >
+              Scan all 10 tracked companies (~40 credits)
+            </button>
+          )}
         </>
       )}
     </div>
