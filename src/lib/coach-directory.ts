@@ -189,6 +189,7 @@ export function pickSpotlightCoaches<T extends CoachRow>(coaches: T[], limit = 8
   return picked.slice(0, limit);
 
   function createdMs(row: CoachRow) {
+    if (!row.createdAt) return 0;
     return typeof row.createdAt === "string" ? new Date(row.createdAt).getTime() : row.createdAt.getTime();
   }
 }
