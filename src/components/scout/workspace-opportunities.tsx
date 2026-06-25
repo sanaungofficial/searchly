@@ -444,7 +444,16 @@ export function WorkspaceOpportunities() {
           gap: isMobile ? 10 : 0,
         }}
       >
-        <div style={{ display: "flex", gap: 0, overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 0,
+            overflowX: isMobile ? "auto" : "visible",
+            WebkitOverflowScrolling: "touch",
+            justifyContent: isMobile ? "center" : "flex-start",
+            width: isMobile ? "100%" : undefined,
+          }}
+        >
           {([
             ["pipeline", "Pipeline"],
             ["network", "In-Network"],

@@ -2787,7 +2787,7 @@ export function WorkspaceProfile() {
     { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
   ];
 
-  const scrollPad = isMobile ? "56px 16px 40px 56px" : "32px 36px 48px";
+  const scrollPad = isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const sectionCardPad = isMobile ? 18 : 22;
   const contentShell: React.CSSProperties = {
     width: "100%",

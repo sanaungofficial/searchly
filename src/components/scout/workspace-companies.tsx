@@ -1211,7 +1211,7 @@ export function WorkspaceCompanies({
   const selectedCompany = companies.find((c) => c.id === selectedId) ?? null;
 
   const thStyle: React.CSSProperties = { fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "8px 12px", textAlign: "left", whiteSpace: "nowrap", borderBottom: border.line, background: surface.inset };
-  const contentPad = isMobile ? "24px 16px 40px 56px" : "32px 36px 48px";
+  const contentPad = isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const sortedCompanies = sortCompanies(companies);
 
   return (
