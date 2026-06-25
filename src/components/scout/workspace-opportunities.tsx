@@ -709,6 +709,7 @@ export function WorkspaceOpportunities() {
           <PipelineNetworkSection
             onOpenJob={openNetworkJob}
             onSaveJob={addNetworkJobToPipeline}
+            actingUserId={actingUserId}
           />
         )}
         {tab === "pipeline" && (
