@@ -455,7 +455,7 @@ export function WorkspaceDashboard() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <div style={{ padding: contentPad, maxWidth: 1120, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        <div style={{ padding: contentPad, width: "100%", boxSizing: "border-box" }}>
 
           <div style={{ marginBottom: isMobile ? 20 : 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
