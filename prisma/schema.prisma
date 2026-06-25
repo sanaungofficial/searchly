@@ -43,6 +43,8 @@ model User {
   proTrialGrants   ProTrialGrant[]
   recommendedSnapshots RecommendedJobSnapshot[]
   digestSettings       UserDigestSettings?
+  coachReviews         CoachReview[]
+  coachFollows         CoachFollow[]
 
   @@index([referredByUserId])
 }
@@ -229,8 +231,73 @@ model CoachProfile {
   featured       Boolean     @default(false)
   status         CoachStatus @default(ACTIVE)
 
+  slug                  String?  @unique
+  calLink               String?
+  clientSpecializations String[] @default([])
+  experienceLevel       String?
+  clientTier            String?
+  industryYears         Int?
+  isProfessionalCoach   Boolean  @default(false)
+  whyCoach              String?
+  aboutMe               String?
+
+  vouches        CoachVouch[]
+  reviews        CoachReview[]
+  followers      CoachFollow[]
+
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+}
+
+model CoachVouch {
+  id             String       @id @default(cuid())
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+
+  authorName     String
+  authorEmail    String?
+  relationship   String?
+  message        String
+
+  createdAt      DateTime     @default(now())
+
+  @@index([coachProfileId])
+}
+
+model CoachReview {
+  id             String       @id @default(cuid())
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  authorName     String
+  coachedFor     String?
+  rating         Float
+  knowledge      Int
+  value          Int
+  responsiveness Int
+  supportiveness Int
+  message        String
+
+  createdAt      DateTime @default(now())
+
+  @@unique([coachProfileId, userId])
+  @@index([coachProfileId])
+}
+
+model CoachFollow {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, coachProfileId])
+  @@index([coachProfileId])
+  @@index([userId])
 }
 
 enum CoachStatus {
