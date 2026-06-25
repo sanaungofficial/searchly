@@ -1,5 +1,5 @@
-import { WorkspaceOpportunities } from "@/components/scout/workspace-opportunities";
+import { redirect } from "next/navigation";
 
 export default function OpportunitiesPage() {
-  return <WorkspaceOpportunities />;
+  redirect("/opportunities/pipeline");
 }

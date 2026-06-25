@@ -24,6 +24,17 @@ import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { buildNetworkProspectCard } from "@/lib/network-job-display";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
+import {
+  companiesUrl,
+  findKanbanCardByDbId,
+  legacyOpportunitiesQueryToPath,
+  networkJobUrl,
+  opportunitiesTabUrl,
+  parseOpportunitiesLocation,
+  pipelineJobUrl,
+  pipelineProspectUrl,
+  prospectPathId,
+} from "@/lib/workspace-urls";
 import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
@@ -43,15 +54,9 @@ export function WorkspaceOpportunities() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeSubtab: OppTab =
-    pathname === "/opportunities/companies"
-      ? "companies"
-      : pathname === "/opportunities/network"
-        ? "network"
-        : "pipeline";
-  const setSubtab = (t: OppTab) => { router.push(`/opportunities/${t}`); };
-  const tab = activeSubtab;
-  const setTab = setSubtab;
+  const loc = parseOpportunitiesLocation(pathname);
+  const tab = loc.tab;
+  const setTab = (t: OppTab) => { router.push(opportunitiesTabUrl(t)); };
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
   const [addJobLoading, setAddJobLoading] = useState(false);
@@ -59,33 +64,63 @@ export function WorkspaceOpportunities() {
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
   useEffect(() => {
-    const openAdd = searchParams.get("addJob") === "1";
-    const jobId = searchParams.get("job");
-    const tool = searchParams.get("tool");
-
-    if (openAdd) {
+    const legacyPath = legacyOpportunitiesQueryToPath(searchParams.toString());
+    if (legacyPath) {
+      router.replace(legacyPath);
+      return;
+    }
+    if (searchParams.get("addJob") === "1") {
       setShowAddPanel(true);
-    }
-
-    if (jobId) {
-      const card = kanbanCards.find((c) => {
-        const ext = c as KanbanCard & { _dbId?: string };
-        return ext._dbId === jobId;
-      });
-      if (card) {
-        setDrawerCardId(card.id);
-        if (tool === "resume" || tool === "cover" || tool === "fit") {
-          setDrawerTool(tool);
-        }
-        router.replace("/opportunities/pipeline");
-        return;
-      }
-    }
-
-    if (openAdd && !jobId) {
       router.replace("/opportunities/pipeline");
     }
-  }, [searchParams, kanbanCards, router, setDrawerCardId, setDrawerTool]);
+  }, [searchParams, router]);
+
+  const loadProspectFromPath = useCallback(async (prospectId: string) => {
+    const drawerId = -Math.abs(Date.now() % 1_000_000);
+    setProspectDetailLoading(true);
+    try {
+      const res = await fetch(`/api/jobs/prospect/${encodeURIComponent(prospectId)}`);
+      const data = await res.json().catch(() => ({})) as { job?: CachedJob; companyName?: string };
+      if (!res.ok || !data.job) return;
+      const companyName = data.companyName ?? "Company";
+      const job = data.job;
+      setProspectJob({ companyName, job, drawerId });
+      setProspectCard(buildProspectKanbanCard(companyName, job, drawerId));
+    } finally {
+      setProspectDetailLoading(false);
+    }
+  }, []);
+
+  const loadedProspectRef = useRef<string | null>(null);
+  const loadedNetworkJobRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (loc.jobId) {
+      const card = findKanbanCardByDbId(
+        kanbanCards as (KanbanCard & { _dbId?: string })[],
+        loc.jobId
+      );
+      if (card) {
+        setDrawerCardId(card.id);
+        setDrawerTool(loc.tool ?? null);
+      }
+    } else if (tab === "pipeline" && !loc.prospectId) {
+      setDrawerCardId(null);
+      setDrawerTool(null);
+    }
+  }, [loc.jobId, loc.tool, loc.prospectId, tab, kanbanCards, setDrawerCardId, setDrawerTool]);
+
+  useEffect(() => {
+    if (!loc.prospectId) {
+      loadedProspectRef.current = null;
+      setProspectJob(null);
+      setProspectCard(null);
+      return;
+    }
+    if (loadedProspectRef.current === loc.prospectId) return;
+    loadedProspectRef.current = loc.prospectId;
+    void loadProspectFromPath(loc.prospectId);
+  }, [loc.prospectId, loadProspectFromPath]);
 
   // CSV upload state
   const [showCsvPanel, setShowCsvPanel] = useState(false);
@@ -181,23 +216,36 @@ export function WorkspaceOpportunities() {
     updateStage(cardId, stage);
   };
 
-  const openDrawer = (cardId: number) => {
+  const openDrawer = (cardId: number, tool: DrawerTool = null) => {
+    const ext = kanbanCards.find((c) => c.id === cardId) as (KanbanCard & { _dbId?: string }) | undefined;
+    if (ext?._dbId) {
+      router.push(pipelineJobUrl(ext._dbId, tool));
+      return;
+    }
     setDrawerCardId(cardId);
-    setDrawerTool(null);
+    setDrawerTool(tool);
   };
   const closeDrawer = () => {
-    setDrawerCardId(null);
-    setDrawerTool(null);
+    router.push("/opportunities/pipeline");
+  };
+  const handleDrawerToolChange = (tool: DrawerTool) => {
+    setDrawerTool(tool);
+    if (loc.jobId) router.replace(pipelineJobUrl(loc.jobId, tool));
   };
 
   const closeProspectDrawer = () => {
+    loadedProspectRef.current = null;
     setProspectJob(null);
     setProspectCard(null);
     setAddingProspect(false);
     setProspectDetailLoading(false);
+    router.push("/opportunities/pipeline");
   };
 
   const openRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
+    const prospectId = prospectPathId(job);
+    loadedProspectRef.current = prospectId;
+    router.push(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setProspectJob({ companyName: job.companyName, job, drawerId });
     setProspectCard(buildRecommendedProspectCard(job, drawerId));
@@ -220,17 +268,20 @@ export function WorkspaceOpportunities() {
     } finally {
       setProspectDetailLoading(false);
     }
-  }, []);
+  }, [router]);
 
   const saveRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
     const meta = buildRecommendedProspectCard(job, 0)._meta;
     const created = await addJob(job.companyName, job.title, job.url ?? undefined, meta);
     if (created) {
-      setDrawerCardId(created.cardId);
+      router.push(pipelineJobUrl(created.id));
     }
-  }, [addJob]);
+  }, [addJob, router]);
 
   const openProspectJob = useCallback(async (companyName: string, job: CachedJob) => {
+    const prospectId = prospectPathId(job);
+    loadedProspectRef.current = prospectId;
+    router.push(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setProspectJob({ companyName, job, drawerId });
     setProspectCard(buildProspectKanbanCard(companyName, job, drawerId));
@@ -252,7 +303,7 @@ export function WorkspaceOpportunities() {
     } finally {
       setProspectDetailLoading(false);
     }
-  }, []);
+  }, [router]);
 
   const existingProspectPipelineCard = prospectJob
     ? findPipelineCardByUrl(kanbanCards, prospectJob.job.url)
@@ -269,10 +320,15 @@ export function WorkspaceOpportunities() {
         prospectJob.job.url ?? undefined,
         meta
       );
-      closeProspectDrawer();
+      loadedProspectRef.current = null;
+      setProspectJob(null);
+      setProspectCard(null);
+      setAddingProspect(false);
+      setProspectDetailLoading(false);
       if (created) {
-        setDrawerCardId(created.cardId);
-        setTab("pipeline");
+        router.push(pipelineJobUrl(created.id));
+      } else {
+        router.push("/opportunities/pipeline");
       }
     } finally {
       setAddingProspect(false);
@@ -281,24 +337,53 @@ export function WorkspaceOpportunities() {
 
   const openProspectInPipeline = () => {
     if (!existingProspectPipelineCard) return;
+    const ext = existingProspectPipelineCard as KanbanCard & { _dbId?: string };
     closeProspectDrawer();
-    setDrawerCardId(existingProspectPipelineCard.id);
-    setTab("pipeline");
+    if (ext._dbId) router.push(pipelineJobUrl(ext._dbId));
+    else setDrawerCardId(existingProspectPipelineCard.id);
   };
 
   const closeNetworkDrawer = () => {
+    loadedNetworkJobRef.current = null;
     setNetworkProspectJob(null);
     setNetworkProspectCard(null);
     setAddingNetworkJob(false);
+    router.push("/opportunities/network");
   };
 
   const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin);
 
   const openNetworkJob = useCallback((job: NetworkJobListing) => {
+    loadedNetworkJobRef.current = job.id;
+    router.push(networkJobUrl(job.id));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setNetworkProspectJob(job);
     setNetworkProspectCard(buildNetworkProspectCard(job, drawerId, { internalView: networkInternalView }));
-  }, [networkInternalView]);
+  }, [networkInternalView, router]);
+
+  useEffect(() => {
+    if (!loc.networkJobId) {
+      loadedNetworkJobRef.current = null;
+      setNetworkProspectJob(null);
+      setNetworkProspectCard(null);
+      return;
+    }
+    if (loadedNetworkJobRef.current === loc.networkJobId) return;
+    loadedNetworkJobRef.current = loc.networkJobId;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/network-jobs/${encodeURIComponent(loc.networkJobId!)}`);
+        const data = await res.json().catch(() => ({})) as { job?: NetworkJobListing };
+        if (res.ok && data.job) {
+          const drawerId = -Math.abs(Date.now() % 1_000_000);
+          setNetworkProspectJob(data.job);
+          setNetworkProspectCard(buildNetworkProspectCard(data.job, drawerId, { internalView: networkInternalView }));
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [loc.networkJobId, networkInternalView]);
 
   const addNetworkJobToPipeline = async (job: NetworkJobListing = networkProspectJob!) => {
     if (!job) return;
@@ -312,10 +397,14 @@ export function WorkspaceOpportunities() {
         job.topEchelonUrl ?? undefined,
         meta
       );
-      closeNetworkDrawer();
+      loadedNetworkJobRef.current = null;
+      setNetworkProspectJob(null);
+      setNetworkProspectCard(null);
+      setAddingNetworkJob(false);
       if (created) {
-        setDrawerCardId(created.cardId);
-        setTab("pipeline");
+        router.push(pipelineJobUrl(created.id));
+      } else {
+        router.push("/opportunities/network");
       }
     } finally {
       setAddingNetworkJob(false);
@@ -462,7 +551,13 @@ export function WorkspaceOpportunities() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {tab === "companies" && <WorkspaceCompanies onOpenProspectJob={openProspectJob} />}
+        {tab === "companies" && (
+          <WorkspaceCompanies
+            onOpenProspectJob={openProspectJob}
+            selectedCompanyId={loc.companyId ?? null}
+            onCompanySelect={(id) => router.push(companiesUrl(id))}
+          />
+        )}
         {tab === "network" && (
           <PipelineNetworkSection
             onOpenJob={openNetworkJob}
@@ -492,7 +587,7 @@ export function WorkspaceOpportunities() {
             onClose={closeDrawer}
             moveCard={moveCard}
             tool={drawerTool}
-            onToolChange={setDrawerTool}
+            onToolChange={handleDrawerToolChange}
             onDelete={() => { removeJob(card.id); closeDrawer(); }}
             onCardUpdate={(fields) => setKanbanCards((prev) =>
               prev.map((c) => c.id === card.id ? { ...c, ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [`_${k}`, v ?? undefined])) } : c)
@@ -531,9 +626,10 @@ export function WorkspaceOpportunities() {
           addingToPipeline={addingNetworkJob}
           existingPipelineCardId={existingNetworkPipelineCard?.id ?? null}
           onOpenInPipeline={existingNetworkPipelineCard ? () => {
+            const ext = existingNetworkPipelineCard as KanbanCard & { _dbId?: string };
             closeNetworkDrawer();
-            setDrawerCardId(existingNetworkPipelineCard.id);
-            setTab("pipeline");
+            if (ext._dbId) router.push(pipelineJobUrl(ext._dbId));
+            else setDrawerCardId(existingNetworkPipelineCard.id);
           } : undefined}
         />
       )}

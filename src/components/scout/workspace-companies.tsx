@@ -926,8 +926,12 @@ function CompanyDrawer({
 
 export function WorkspaceCompanies({
   onOpenProspectJob,
+  selectedCompanyId = null,
+  onCompanySelect,
 }: {
   onOpenProspectJob?: (companyName: string, job: CachedJob) => void;
+  selectedCompanyId?: string | null;
+  onCompanySelect?: (id: string | null) => void;
 }) {
   const isMobile = useIsMobile();
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
@@ -940,7 +944,15 @@ export function WorkspaceCompanies({
   const [addError, setAddError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(selectedCompanyId);
+  useEffect(() => {
+    setSelectedId(selectedCompanyId);
+  }, [selectedCompanyId]);
+
+  const selectCompany = (id: string | null) => {
+    setSelectedId(id);
+    onCompanySelect?.(id);
+  };
   const [userTargetRoles, setUserTargetRoles] = useState<string[]>([]);
   const [pendingScanIds, setPendingScanIds] = useState<string[]>([]);
 
@@ -1016,7 +1028,7 @@ export function WorkspaceCompanies({
           await load();
           if (data.existing?.name) {
             setAddError(`${data.existing.name} is already on your watchlist.`);
-            setSelectedId(data.existing.id);
+            selectCompany(data.existing.id);
             setShowAdd(false);
             setNewName("");
             setSelectedSuggestion(null);
@@ -1062,7 +1074,7 @@ export function WorkspaceCompanies({
       const res = await fetch(`/api/companies/${id}`, { method: "DELETE" });
       if (res.ok) {
         setCompanies((prev) => prev.filter((c) => c.id !== id));
-        if (selectedId === id) setSelectedId(null);
+        if (selectedId === id) selectCompany(null);
       } else {
         const data = await res.json().catch(() => ({}));
         setRemoveError(data.error ?? "Couldn't remove company.");
@@ -1162,7 +1174,7 @@ export function WorkspaceCompanies({
                   selected={selectedId === c.id}
                   scanning={scanning}
                   userTargetRoles={userTargetRoles}
-                  onOpen={() => setSelectedId(c.id)}
+                  onOpen={() => selectCompany(c.id)}
                   onRemove={() => handleRemove(c.id)}
                   onPriorityChange={(v) => patchField(c.id, "priority", v)}
                   isLast={i === sortedCompanies.length - 1}
@@ -1192,7 +1204,7 @@ export function WorkspaceCompanies({
                 return (
                   <tr
                     key={c.id}
-                    onClick={() => setSelectedId(c.id)}
+                    onClick={() => selectCompany(c.id)}
                     style={{
                       background: selectedId === c.id ? surface.inset : surface.card,
                       cursor: "pointer",
@@ -1258,7 +1270,7 @@ export function WorkspaceCompanies({
           company={selectedCompany}
           userTargetRoles={userTargetRoles}
           isMobile={isMobile}
-          onClose={() => setSelectedId(null)}
+          onClose={() => selectCompany(null)}
           onPatch={patchField}
           onRefreshed={handleRefreshed}
           onRemove={handleRemove}
