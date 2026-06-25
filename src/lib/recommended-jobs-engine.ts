@@ -88,7 +88,7 @@ async function enrichAndRank(
   });
 
   const enriched = await enrichRecommendedSources(sources, resumeText, {
-    heuristicOnly: !process.env.ANTHROPIC_API_KEY,
+    heuristicOnly: true,
   });
 
   const { index } = await loadTrackedCompanyIndex(userId);

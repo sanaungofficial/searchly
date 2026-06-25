@@ -160,7 +160,13 @@ export async function enrichVectorJobsWithMatchReasons(input: {
     rank: index + 1,
   }));
 
-  const claudeRows = heuristicOnly ? new Map<string, BatchMatchRow>() : await claudeBatchMatchReasons(resumeText, pairs);
+  const claudeRows =
+    heuristicOnly !== false
+      ? new Map<string, BatchMatchRow>()
+      : await claudeBatchMatchReasons(resumeText, pairs).catch((err) => {
+          console.warn("[hirebase-match-reasons] Claude batch failed, using heuristics:", err);
+          return new Map<string, BatchMatchRow>();
+        });
 
   return pairs.map(({ job, cached, rank }) => {
     const jobId = job._id ?? `rank-${rank}`;
