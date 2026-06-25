@@ -19,9 +19,10 @@ import {
 import { PlusIcon, UploadIcon } from "./workspace-icons";
 import { DataSourcesPopover } from "./data-sources-popover";
 import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipeline-recommended-section";
-import { PipelinePreferencesPanel } from "./pipeline-preferences-panel";
 import { PipelineStageJobsList } from "./pipeline-stage-jobs-list";
 import { PipelineNetworkSection } from "./pipeline-network-section";
+import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
+import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { buildNetworkProspectCard } from "@/lib/network-job-display";
@@ -43,7 +44,6 @@ import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scou
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
 import { readProspectJobCache, writeProspectJobCache } from "@/lib/prospect-jobs-cache";
 
 export type { DrawerTool };
@@ -1057,72 +1057,8 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Pipeline tab — Citebound-style list with summary + filter boxes
+   Pipeline tab — stage tabs + recommended / saved lists
    ────────────────────────────────────────────────────────────── */
-
-function PipelineStatBar({
-  label,
-  pct,
-  highlight,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  pct: number;
-  highlight?: boolean;
-  count: number;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  const inner = (
-    <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-        <ScoutLabel>{label}</ScoutLabel>
-        <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.stone }}>
-          {count > 0 ? count : `${pct}%`}
-        </span>
-      </div>
-      <div style={{ height: 3, background: "rgba(17,17,17,0.08)", position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: `${pct}%`,
-            background: highlight || active ? color.forest : color.ink,
-          }}
-        />
-      </div>
-    </>
-  );
-
-  if (!onClick) {
-    return <div style={{ marginBottom: 10 }}>{inner}</div>;
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: "block",
-        width: "100%",
-        marginBottom: 10,
-        padding: "8px 10px",
-        marginLeft: -10,
-        marginRight: -10,
-        border: active ? border.lineStrong : "1px solid transparent",
-        background: active ? "rgba(26,58,47,0.06)" : "transparent",
-        cursor: "pointer",
-        textAlign: "left",
-      }}
-    >
-      {inner}
-    </button>
-  );
-}
 
 type PipelineView = "recommended" | KanbanStage;
 
@@ -1144,117 +1080,42 @@ function PipelineTab({
   actingUserId,
 }: PipelineTabProps) {
   const isMobile = useIsMobile();
-  const [wideLayout, setWideLayout] = useState(false);
   const [pipelineView, setPipelineView] = useState<PipelineView>("recommended");
-  const [locationPrefs, setLocationPrefs] = useState<RecommendationPreferencesState | null>(null);
-  const [preferencesRefreshKey, setPreferencesRefreshKey] = useState(0);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 960px)");
-    const update = () => setWideLayout(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
 
   const stageOrder: KanbanStage[] = ["saved", "applied", "interview", "offer"];
   const closedCount = cards.filter((c) => c.stage === "closed").length;
   const activeCount = cards.filter((c) => c.stage !== "closed").length;
   const stageCounts = stageOrder.map((s) => ({ stage: s, count: cards.filter((c) => c.stage === s).length }));
-  const maxCount = Math.max(1, ...stageCounts.map((s) => s.count), closedCount);
 
-  const handlePreferencesLoaded = useCallback((prefs: RecommendationPreferencesState) => {
-    setLocationPrefs(prefs);
-  }, []);
-
-  const handlePreferencesApplied = (prefs: RecommendationPreferencesState) => {
-    setLocationPrefs(prefs);
-    setPreferencesRefreshKey((k) => k + 1);
-    setPipelineView("recommended");
+  const stageTabLabel = (stage: KanbanStage, count: number) => {
+    const base = STAGE_LABELS[stage];
+    return count > 0 ? `${base} · ${count}` : base;
   };
+
+  const pipelineTabs: { id: PipelineView; label: string }[] = [
+    { id: "recommended", label: "Discover" },
+    ...stageCounts.map(({ stage, count }) => ({ id: stage, label: stageTabLabel(stage, count) })),
+    ...(closedCount > 0 ? [{ id: "closed" as const, label: `${STAGE_LABELS.closed} · ${closedCount}` }] : []),
+  ];
 
   return (
     <div style={{ padding: isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-          <ScoutLabel>Recommended roles</ScoutLabel>
+          <ScoutLabel>Open roles</ScoutLabel>
         </div>
-        <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 10 }}>
-          Discover your next role
+        <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
+          {pipelineView === "recommended" ? "Discover your next role" : STAGE_LABELS[pipelineView as KanbanStage] ?? "Pipeline"}
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Personalized matches from Hirebase — save any role to track it in your pipeline ({activeCount} active).
+          {pipelineView === "recommended"
+            ? "Personalized matches from Hirebase — refine once, then save roles to your pipeline."
+            : `${activeCount} active role${activeCount === 1 ? "" : "s"} across your pipeline.`}
         </p>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: wideLayout ? "minmax(260px, 1fr) minmax(280px, 1fr)" : "1fr",
-          gap: 20,
-          marginBottom: 28,
-          alignItems: "stretch",
-        }}
-      >
-        <ScoutBox stack padding={22}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 12 }}>
-            <ScoutLabel>Your pipeline</ScoutLabel>
-            <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
-              {activeCount} active
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setPipelineView("recommended")}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "10px 10px",
-              marginBottom: 12,
-              marginLeft: -10,
-              border: pipelineView === "recommended" ? border.lineStrong : border.line,
-              background: pipelineView === "recommended" ? "rgba(26,58,47,0.08)" : surface.inset,
-              cursor: "pointer",
-              textAlign: "left",
-              fontFamily: fontSans,
-              fontSize: T.bodySm,
-              fontWeight: pipelineView === "recommended" ? 600 : 500,
-              color: pipelineView === "recommended" ? color.forest : color.ink,
-            }}
-          >
-            Recommendations
-          </button>
-
-          {stageCounts.map(({ stage, count }, i) => (
-            <PipelineStatBar
-              key={stage}
-              label={STAGE_LABELS[stage]}
-              count={count}
-              pct={Math.round((count / maxCount) * 100)}
-              highlight={i === 0 && count > 0}
-              active={pipelineView === stage}
-              onClick={() => setPipelineView(stage)}
-            />
-          ))}
-          {closedCount > 0 && (
-            <PipelineStatBar
-              label={STAGE_LABELS.closed}
-              count={closedCount}
-              pct={Math.round((closedCount / maxCount) * 100)}
-              active={pipelineView === "closed"}
-              onClick={() => setPipelineView("closed")}
-            />
-          )}
-        </ScoutBox>
-
-        <PipelinePreferencesPanel
-          actingUserId={actingUserId}
-          onLoaded={handlePreferencesLoaded}
-          onApplied={handlePreferencesApplied}
-        />
-      </div>
+      <WorkspaceSegmentTabs tabs={pipelineTabs} active={pipelineView} onChange={setPipelineView} isMobile={isMobile} />
 
       {pipelineView === "recommended" ? (
         <PipelineRecommendedSection
@@ -1262,8 +1123,6 @@ function PipelineTab({
           onOpenJob={onOpenRecommended}
           onSaveJob={onSaveRecommended}
           actingUserId={actingUserId}
-          locationPrefs={locationPrefs}
-          preferencesRefreshKey={preferencesRefreshKey}
         />
       ) : (
         <PipelineStageJobsList
