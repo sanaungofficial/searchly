@@ -26,6 +26,10 @@ export function CoachClientsPage() {
             router.replace("/coach-onboarding");
             return;
           }
+          if (userRole === "COACH") {
+            router.replace("/dashboard/clients");
+            return;
+          }
           setReady(true);
         })
         .catch(() => setReady(true));
