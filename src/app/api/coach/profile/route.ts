@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus, UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
 import { syncCoachSchedulerFromProfile } from "@/lib/coach-scheduler-sync";
+import { pushCoachProfileToAirtable } from "@/lib/airtable/push-coach";
 
 async function getCoachUser() {
   const supabase = await createClient();
@@ -113,6 +114,14 @@ export async function PATCH(req: NextRequest) {
       await syncCoachSchedulerFromProfile(updated.id);
     } catch (err) {
       console.error("[coach/profile] scheduler sync", err);
+    }
+  }
+
+  if (updated.airtableId) {
+    try {
+      await pushCoachProfileToAirtable(updated.id);
+    } catch (err) {
+      console.error("[coach/profile] airtable push", err);
     }
   }
 
