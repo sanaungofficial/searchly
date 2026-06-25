@@ -26,3 +26,10 @@ export async function upsertProfileFields(
     },
   });
 }
+
+/** Ensure a Profile row exists before strategy/intake AI routes read it. */
+export async function ensureProfileRow(userId: string): Promise<void> {
+  const existing = await prisma.profile.findUnique({ where: { userId }, select: { id: true } });
+  if (existing) return;
+  await upsertProfileFields(userId, {});
+}

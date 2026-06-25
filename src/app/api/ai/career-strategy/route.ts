@@ -1,15 +1,17 @@
 import { getActingUser, quotaUserFor } from "@/lib/acting-user";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
+import { anthropicErrorResponse } from "@/lib/anthropic-errors";
 import { fillStrategyPrompt } from "@/lib/career-strategy-context";
 import {
   buildStrategySnapshot,
   diffStrategySnapshot,
   normalizeStrategyDocument,
-  parseStrategyJson,
+  parseStrategyFromAi,
+  salvagePartialStrategyJson,
   type StrategySourceSnapshot,
 } from "@/lib/career-strategy";
-import { upsertProfileFields } from "@/lib/profile-write";
+import { upsertProfileFields, ensureProfileRow } from "@/lib/profile-write";
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
@@ -59,6 +61,7 @@ function strategyReadResponse(
   return {
     document: hasDocument ? normalizeStrategyDocument(profile.strategyData) : null,
     hasDocument,
+    isPartial: !!storedSnapshot?.isPartialGeneration,
     intakeNotes: profile.strategyIntakeNotes ?? "",
     updatedAt: profile.strategyUpdatedAt?.toISOString() ?? null,
     profileChanges,
@@ -68,104 +71,190 @@ function strategyReadResponse(
 
 /** Read cached strategy + staleness — never calls AI. */
 export async function GET(request: Request) {
-  const { dbUser } = await getActingUser(request);
-  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { dbUser } = await getActingUser(request);
+    if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const bundle = await loadProfileBundle(dbUser.id);
-  if (!bundle) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    const bundle = await loadProfileBundle(dbUser.id);
+    if (!bundle) {
+      return NextResponse.json({
+        document: null,
+        hasDocument: false,
+        intakeNotes: "",
+        updatedAt: null,
+        profileChanges: [],
+        isStale: false,
+        isPartial: false,
+      });
+    }
 
-  return NextResponse.json(strategyReadResponse(bundle.profile, bundle.trackedCompanies));
+    return NextResponse.json(strategyReadResponse(bundle.profile, bundle.trackedCompanies));
+  } catch (err) {
+    console.error("[career-strategy GET]", err);
+    return NextResponse.json({ error: "Failed to load strategy" }, { status: 500 });
+  }
 }
 
 /** Generate strategy — explicit action only; consumes STRATEGY credit. */
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
-  }
-
-  const acting = await getActingUser(request);
-  const { dbUser } = acting;
-  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const bundle = await loadProfileBundle(dbUser.id);
-  if (!bundle) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-
-  const { profile, trackedCompanies, user } = bundle;
-
-  if (!profile.resumeText?.trim()) {
-    return NextResponse.json({ error: "Upload a resume before generating strategy" }, { status: 404 });
-  }
-
-  const quotaUser = quotaUserFor(acting);
-  if (!quotaUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const quotaError = await requireAiQuota(quotaUser, "STRATEGY");
-  if (quotaError) return quotaError;
-
-  const template = await getPrompt("CAREER_STRATEGY");
-  const prompt = fillStrategyPrompt(template, {
-    user,
-    profile,
-    trackedCompanies,
-    intakeNotes: profile.strategyIntakeNotes,
-  });
-
-  const message = await getAnthropic().messages.create({
-    model: STRATEGY_MODEL,
-    max_tokens: 8000,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  logAiUsage({
-    userId: dbUser.id,
-    feature: "career_strategy",
-    model: STRATEGY_MODEL,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
-  }).catch(() => {});
-
-  const content = message.content[0];
-  if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-  }
-
   try {
-    const document = parseStrategyJson(content.text);
-    const now = new Date();
-    const snapshot = buildStrategySnapshot({
-      profile: {
-        ...profile,
-        targetRoles: profile.targetRoles ?? [],
-        priorities: profile.priorities ?? [],
-      },
-      trackedCompanyNames: trackedCompanies.map((c) => c.name),
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: "AI not configured" }, { status: 503 });
+    }
+
+    const acting = await getActingUser(request);
+    const { dbUser } = acting;
+    if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    await ensureProfileRow(dbUser.id);
+
+    const bundle = await loadProfileBundle(dbUser.id);
+    if (!bundle) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+    const { profile, trackedCompanies, user } = bundle;
+
+    if (!profile.resumeText?.trim()) {
+      return NextResponse.json({ error: "Upload a resume before generating strategy" }, { status: 404 });
+    }
+
+    const quotaUser = quotaUserFor(acting);
+    if (!quotaUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const quotaError = await requireAiQuota(quotaUser, "STRATEGY");
+    if (quotaError) return quotaError;
+
+    const template = await getPrompt("CAREER_STRATEGY");
+    const prompt = fillStrategyPrompt(template, {
+      user,
+      profile,
+      trackedCompanies,
+      intakeNotes: profile.strategyIntakeNotes,
     });
 
-    await upsertProfileFields(dbUser.id, {
-      strategyData: document,
-      strategyUpdatedAt: now,
-      strategySourceSnapshot: snapshot,
-      positioningStatement:
-        profile.positioningStatement ||
-        document.positioningStrategy.positioningStatement ||
-        undefined,
+    const message = await getAnthropic().messages.create({
+      model: STRATEGY_MODEL,
+      max_tokens: 16384,
+      messages: [{ role: "user", content: prompt }],
     });
 
-    return NextResponse.json({
-      ...strategyReadResponse(
-        {
-          ...profile,
-          strategyData: document,
+    logAiUsage({
+      userId: dbUser.id,
+      feature: "career_strategy",
+      model: STRATEGY_MODEL,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
+    }).catch(() => {});
+
+    const content = message.content[0];
+    if (content.type !== "text") {
+      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
+    }
+
+    try {
+      const { document, isPartial } = parseStrategyFromAi(content.text);
+      const now = new Date();
+      const snapshot: StrategySourceSnapshot = {
+        ...buildStrategySnapshot({
+          profile: {
+            ...profile,
+            targetRoles: profile.targetRoles ?? [],
+            priorities: profile.priorities ?? [],
+          },
+          trackedCompanyNames: trackedCompanies.map((c) => c.name),
+        }),
+        isPartialGeneration: isPartial || undefined,
+      };
+
+      await upsertProfileFields(dbUser.id, {
+        strategyData: document,
+        strategyUpdatedAt: now,
+        strategySourceSnapshot: snapshot,
+        positioningStatement:
+          profile.positioningStatement ||
+          document.positioningStrategy.positioningStatement ||
+          undefined,
+      });
+
+      return NextResponse.json({
+        ...strategyReadResponse(
+          {
+            ...profile,
+            strategyData: document,
+            strategyUpdatedAt: now,
+            strategySourceSnapshot: snapshot,
+          },
+          trackedCompanies,
+        ),
+        document,
+        updatedAt: now.toISOString(),
+        isPartial,
+        warning: isPartial
+          ? "Generation was cut short — review the sections below, then regenerate when ready for the full document."
+          : undefined,
+      });
+    } catch (parseErr) {
+      const salvaged = salvagePartialStrategyJson(content.text);
+      if (salvaged) {
+        const now = new Date();
+        const snapshot: StrategySourceSnapshot = {
+          ...buildStrategySnapshot({
+            profile: {
+              ...profile,
+              targetRoles: profile.targetRoles ?? [],
+              priorities: profile.priorities ?? [],
+            },
+            trackedCompanyNames: trackedCompanies.map((c) => c.name),
+          }),
+          isPartialGeneration: true,
+        };
+
+        await upsertProfileFields(dbUser.id, {
+          strategyData: salvaged,
           strategyUpdatedAt: now,
           strategySourceSnapshot: snapshot,
+          positioningStatement:
+            profile.positioningStatement ||
+            salvaged.positioningStrategy.positioningStatement ||
+            undefined,
+        });
+
+        return NextResponse.json({
+          ...strategyReadResponse(
+            {
+              ...profile,
+              strategyData: salvaged,
+              strategyUpdatedAt: now,
+              strategySourceSnapshot: snapshot,
+            },
+            trackedCompanies,
+          ),
+          document: salvaged,
+          updatedAt: now.toISOString(),
+          isPartial: true,
+          warning:
+            "Generation was cut short — we saved what was generated so you can review it without using another credit.",
+        });
+      }
+
+      const truncated = message.stop_reason === "max_tokens";
+      console.error("[career-strategy POST] parse failed", {
+        stopReason: message.stop_reason,
+        outputTokens: message.usage.output_tokens,
+        err: parseErr,
+        preview: content.text.slice(0, 400),
+      });
+      return NextResponse.json(
+        {
+          error: truncated
+            ? "Strategy generation was cut off before finishing. Please try Generate again."
+            : "Failed to parse strategy response. Please try again.",
         },
-        trackedCompanies,
-      ),
-      document,
-      updatedAt: now.toISOString(),
-    });
-  } catch {
-    return NextResponse.json({ error: "Failed to parse strategy response" }, { status: 500 });
+        { status: 500 },
+      );
+    }
+  } catch (err) {
+    console.error("[career-strategy POST]", err);
+    return anthropicErrorResponse(err);
   }
 }
 

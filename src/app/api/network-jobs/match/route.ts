@@ -1,6 +1,6 @@
 import { getActingUser } from "@/lib/acting-user";
-import { enrichNetworkJobWithMatch } from "@/lib/network-job-match";
-import { loadNetworkJobListingById } from "@/lib/network-jobs-load";
+import { enrichNetworkJobsWithMatch } from "@/lib/network-job-match";
+import { loadNetworkJobListings } from "@/lib/network-jobs-load";
 import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
 import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
@@ -8,21 +8,17 @@ import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ jobId: string }> }
-) {
-  const { jobId } = await params;
-  const externalId = decodeURIComponent(jobId);
-  const listing = await loadNetworkJobListingById(externalId);
-
-  if (!listing) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  }
-
+export async function GET(request: Request) {
+  const { jobs, source } = await loadNetworkJobListings();
   const { dbUser } = await getActingUser(request);
+
   if (!dbUser) {
-    return NextResponse.json({ job: listing });
+    return NextResponse.json({
+      jobs,
+      source,
+      count: jobs.length,
+      scored: false,
+    });
   }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
@@ -54,7 +50,16 @@ export async function GET(
     parsedData,
   });
 
-  const job = needsProfile ? listing : enrichNetworkJobWithMatch(listing, resumeText, targetRoles);
+  const matchedJobs = enrichNetworkJobsWithMatch(jobs, resumeText, targetRoles);
 
-  return NextResponse.json({ job, scored: !needsProfile });
+  return NextResponse.json({
+    jobs: matchedJobs,
+    source,
+    count: matchedJobs.length,
+    scored: true,
+    needsProfile,
+    hint: needsProfile
+      ? "Add target roles or upload a resume in Profile to unlock match scores for network roles."
+      : undefined,
+  });
 }

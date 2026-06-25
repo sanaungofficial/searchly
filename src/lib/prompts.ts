@@ -107,7 +107,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     label: "Strategy Intake Parser",
     description: "Extracts structured profile fields from pasted client intake notes.",
     category: "Profile",
-    variables: ["intakeNotes", "targetRoles", "targetSalary", "currentSalary", "targetMarket"],
+    variables: ["intakeNotes", "targetRoles", "targetSalary", "currentSalary", "targetMarket", "headline"],
   },
   PROFILE_COACH_SYSTEM: {
     label: "Profile Coach Chat",
@@ -525,20 +525,46 @@ Generate a comprehensive strategy as JSON with this exact structure (all string 
   }
 }
 
-Be specific, honest, and executive-level. Use metrics from the resume. Include 4-6 readiness categories and 3 positioning angles when possible.`,
+Be specific, honest, and executive-level. Use metrics from the resume. Include 4-6 readiness categories and 3 positioning angles when possible.
 
-  STRATEGY_INTAKE_PARSE: `You are parsing client intake notes from an external career coaching form into structured profile fields for Kimchi.
+Respond with ONLY the JSON object — no markdown code fences, no commentary before or after.`,
 
-EXISTING PROFILE (may be incomplete):
+  STRATEGY_INTAKE_PARSE: `You are parsing client intake notes from an external career coaching / onboarding form into structured profile fields for Kimchi.
+
+EXISTING PROFILE (may be incomplete — prefer new evidence from intake when richer):
 - Target roles: {{targetRoles}}
 - Target salary: {{targetSalary}}
 - Current salary: {{currentSalary}}
 - Target market: {{targetMarket}}
+- Headline: {{headline}}
 
 INTAKE NOTES TO PARSE:
 {{intakeNotes}}
 
-Extract every field you can find. Only include fields with clear evidence in the notes. Map employment status to: employed, open, or searching. Map job timeline to: asap, 3-6mo, or open.
+SECURITY — NEVER extract or return: LinkedIn passwords, login credentials, full mailing addresses, or SSNs. Omit those entirely.
+
+Map common onboarding questions:
+- Employment / "currently employed" → employmentStatus: employed | searching | open
+- Recent employer + title → recentEmployer, recentTitle in intakeContext; also draft headline (e.g. "Associate at McKinsey | Fintech Strategy")
+- Work authorization / citizenship → workAuthorization
+- Current base salary → currentSalary (e.g. "$200,000")
+- Target salary range + floor → targetSalary (e.g. "$200K–$249K (floor $195K)")
+- Location / cities → targetMarket (include primary + relocation targets, e.g. "Chicago, IL (open: NYC, SF)")
+- Relocation willingness → relocationOpenness
+- Work arrangement (remote/hybrid/onsite) → priorities array entry (e.g. "Hybrid (2–3 days in office)")
+- Why leaving / motivation → careerMotivation
+- Target role types (top 3) → targetRoles array (short labels)
+- Industries, company stage, benefits, deal-breakers → priorities entries AND intakeContext fields
+- Dream companies list → suggestedDreamCompanies (company names only, not duplicated elsewhere)
+- Roles/industries to avoid → intakeContext.avoidNotes
+- Search activity (apps, interviews) → searchDuration (e.g. "50 apps / 10 interviews last 30 days, actively searching")
+- Timeline / moving quickly → jobTimeline: asap | 3-6mo | open
+- One-sentence background + highlights + differentiators → summary and/or positioningStatement
+- LinkedIn URL → linkedinUrl (URL only, never credentials)
+- Active offers → intakeContext.activeOffers
+- Biggest search frustration → include in careerMotivation or intakeContext.searchActivity
+
+Extract every field you can find with clear evidence. Use priorities for multi-select preferences (work arrangement, industries, company stage, benefits, deal-breakers).
 
 Respond in this exact JSON format:
 {
@@ -547,20 +573,33 @@ Respond in this exact JSON format:
   "proposed": {
     "name": "optional full name",
     "headline": "optional professional headline",
-    "summary": "optional professional summary paragraph",
-    "targetRoles": ["Role 1", "Role 2"],
-    "targetSalary": "e.g. $151K–$200K",
-    "currentSalary": "optional",
+    "summary": "optional professional summary (2-4 sentences max)",
+    "linkedinUrl": "https://linkedin.com/in/...",
+    "targetRoles": ["Corp Dev / Internal Strategy", "GM / Business Ops", "Startup Ops Leadership"],
+    "targetSalary": "e.g. $200K–$249K (floor $195K)",
+    "currentSalary": "e.g. $200,000",
     "employmentStatus": "searching",
     "jobTimeline": "asap",
-    "careerMotivation": "optional string",
-    "priorities": ["Remote-first", "Hybrid-friendly"],
-    "targetMarket": "e.g. Greater Philadelphia / Southern NJ",
-    "relocationOpenness": "e.g. Open depending on role",
+    "careerMotivation": "why leaving + what they want next",
+    "priorities": ["Hybrid (2–3 days in office)", "Growth-stage companies", "Fintech", "15+ days PTO"],
+    "targetMarket": "e.g. Chicago, IL (open: NYC, SF — prefer SF or Chicago)",
+    "relocationOpenness": "e.g. Yes — NYC or San Francisco",
     "workAuthorization": "e.g. U.S. Citizen",
-    "securityClearance": "e.g. Secret (verify status)",
-    "searchDuration": "e.g. 6+ months actively searching",
+    "securityClearance": "optional",
+    "searchDuration": "e.g. 50 applications / 10 interviews in last 30 days",
     "positioningStatement": "optional first-person positioning draft"
+  },
+  "suggestedDreamCompanies": ["Plaid", "Stripe", "Ramp"],
+  "intakeContext": {
+    "recentEmployer": "McKinsey",
+    "recentTitle": "Associate",
+    "industries": "Financial Services, Fintech",
+    "companyStages": "Growth-stage, Large enterprise",
+    "avoidNotes": "Pure strategy at large firms like Visa; wants ops + strategy mix",
+    "searchActivity": "50 apps / 10 interviews last 30d; strong in interviews, needs more HM access",
+    "activeOffers": "PE-owned fintech, Commercial New Product Lead, NYC",
+    "benefitsMustHaves": "15+ PTO; equity can offset lower base",
+    "dealBreakers": "Toxic culture / leadership"
   }
 }`,
 

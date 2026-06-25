@@ -21,6 +21,10 @@ type SyncSummary = {
   fetched: number;
   upserted: number;
   pages: number;
+  totalCount?: number | null;
+  detailErrors?: number;
+  subresourceHits?: number;
+  fullCatalog?: boolean;
   durationMs: number;
 };
 
@@ -86,6 +90,7 @@ export function TopEchelonSyncPanel() {
   const [syncing, setSyncing] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [limit, setLimit] = useState("10");
+  const [fullCatalog, setFullCatalog] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastSummary, setLastSummary] = useState<SyncSummary | null>(null);
@@ -129,9 +134,17 @@ export function TopEchelonSyncPanel() {
     setLastSummary(null);
 
     const parsedLimit = Number(limit);
-    const body: { limit?: number; mfaCode?: string; forceLogin?: boolean } = {
-      limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10,
-    };
+    const body: {
+      limit?: number;
+      mfaCode?: string;
+      forceLogin?: boolean;
+      fullCatalog?: boolean;
+    } = {};
+    if (!fullCatalog) {
+      body.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
+    } else {
+      body.fullCatalog = true;
+    }
     if (mfaCode.trim()) body.mfaCode = mfaCode.trim();
     if (!status.hasSession || awaitingMfa) body.forceLogin = true;
 
@@ -165,7 +178,11 @@ export function TopEchelonSyncPanel() {
 
       setAwaitingMfa(false);
       setLastSummary(data.summary ?? null);
-      setMessage(`Synced ${data.summary?.upserted ?? 0} network jobs. Check Opportunities → Network.`);
+      setMessage(
+        data.summary?.fullCatalog
+          ? `Full catalog sync: ${data.summary?.upserted ?? 0} jobs upserted (${data.summary?.pages ?? 0} pages). Check Opportunities → Network.`
+          : `Synced ${data.summary?.upserted ?? 0} network jobs. Check Opportunities → Network.`
+      );
       setMfaCode("");
       await loadStatus();
     } catch {
@@ -248,8 +265,36 @@ export function TopEchelonSyncPanel() {
             style={{ ...inputStyle, maxWidth: 100 }}
             value={limit}
             onChange={(e) => setLimit(e.target.value)}
-            disabled={!status?.configured}
+            disabled={!status?.configured || fullCatalog}
           />
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0", maxWidth: 320, lineHeight: 1.45 }}>
+            Re-syncing overlaps updates existing rows (no duplicates). Raise this for a partial import, or use full catalog below.
+          </p>
+        </div>
+        <div>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              color: color.ink,
+              cursor: status?.configured ? "pointer" : "not-allowed",
+              marginBottom: 4,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={fullCatalog}
+              onChange={(e) => setFullCatalog(e.target.checked)}
+              disabled={!status?.configured}
+            />
+            Full catalog (~1,700 roles)
+          </label>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0", maxWidth: 280, lineHeight: 1.45 }}>
+            Paginates all TE pages, fetches detail + agency/submission/share data per job. May take several minutes.
+          </p>
         </div>
         <div>
           <label style={{ display: "block", fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, marginBottom: 4 }}>
@@ -270,7 +315,15 @@ export function TopEchelonSyncPanel() {
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <ScoutPrimaryBtn onClick={() => void runSync()} disabled={!canSync}>
-          {syncing ? "Syncing…" : awaitingMfa ? "Submit code & sync" : "Sync network jobs"}
+          {syncing
+            ? fullCatalog
+              ? "Full sync running…"
+              : "Syncing…"
+            : awaitingMfa
+              ? "Submit code & sync"
+              : fullCatalog
+                ? "Sync full catalog"
+                : "Sync network jobs"}
         </ScoutPrimaryBtn>
         <ScoutSecondaryBtn onClick={() => void loadStatus()} disabled={syncing}>
           Refresh status
@@ -287,7 +340,12 @@ export function TopEchelonSyncPanel() {
       )}
       {lastSummary && (
         <p style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-          fetched {lastSummary.fetched} · upserted {lastSummary.upserted} · {lastSummary.durationMs}ms
+          fetched {lastSummary.fetched} · upserted {lastSummary.upserted}
+          {lastSummary.pages ? ` · ${lastSummary.pages} pages` : ""}
+          {lastSummary.detailErrors ? ` · ${lastSummary.detailErrors} detail fallbacks` : ""}
+          {lastSummary.subresourceHits ? ` · ${lastSummary.subresourceHits} sub-resource hits` : ""}
+          {" · "}
+          {lastSummary.durationMs}ms
         </p>
       )}
       {error && (

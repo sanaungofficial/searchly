@@ -42,3 +42,36 @@ export function formatHirebaseErrorBody(body: string, status: number): string {
     return trimmed;
   }
 }
+
+/** Map Anthropic SDK / provider failures to a JSON NextResponse. */
+export function anthropicFailureMessage(err: unknown): string {
+  if (err && typeof err === "object") {
+    const e = err as {
+      message?: string;
+      error?: { error?: { message?: string }; message?: string };
+    };
+    const nested = e.error?.error?.message ?? e.error?.message;
+    const raw = nested ?? e.message ?? "";
+    if (/credit balance is too low/i.test(raw)) {
+      return "Anthropic API credits are exhausted. Add credits in Anthropic billing or try again later.";
+    }
+    if (raw.trim()) return raw.trim();
+  }
+  return formatApiErrorMessage(err, "AI request failed");
+}
+
+export async function readResponseJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(
+      res.ok
+        ? "Empty response from server"
+        : `Request failed (${res.status}). The server may have crashed — check logs.`,
+    );
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(text.slice(0, 240) || `Invalid response (${res.status})`);
+  }
+}

@@ -79,6 +79,15 @@ export type TopEchelonNetworkJobRaw = {
     name?: string;
     companyName?: string;
   } | null;
+  /** Full TE export envelope stored on synced rows (list + detail + sub-resources). */
+  _kimchiExport?: {
+    fetchedAt: string;
+    listSummary: TopEchelonNetworkJobRaw;
+    agencyDetails: unknown | null;
+    submissionSummary: unknown | null;
+    shares: unknown | null;
+    recruiterDetails: unknown | null;
+  };
   [key: string]: unknown;
 };
 
@@ -96,6 +105,10 @@ export type TopEchelonSyncSummary = {
   fetched: number;
   upserted: number;
   pages: number;
+  totalCount?: number | null;
+  detailErrors: number;
+  subresourceHits: number;
+  fullCatalog?: boolean;
   searchId?: number | string | null;
   durationMs: number;
 };
@@ -107,11 +120,13 @@ export type TopEchelonJobFullExport = {
   agencyDetails: unknown | null;
   submissionSummary: unknown | null;
   shares: unknown | null;
+  recruiterDetails: unknown | null;
   fieldKeys: {
     listSummary: string[];
     detail: string[];
     agencyDetails: string[] | null;
     submissionSummary: string[] | null;
     shares: string[] | null;
+    recruiterDetails: string[] | null;
   };
 };

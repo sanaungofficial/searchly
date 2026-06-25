@@ -6,6 +6,8 @@ import {
 } from "@/lib/topechelon/sync";
 import { recordTopEchelonSyncResult } from "@/lib/topechelon/session-store";
 
+export const maxDuration = 300;
+
 function authorizeCron(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return process.env.NODE_ENV !== "production";
@@ -21,9 +23,13 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const limitParam = url.searchParams.get("limit");
+    const fullParam = url.searchParams.get("full");
     const limit = limitParam ? Math.min(Math.max(Number(limitParam), 1), 50) : undefined;
+    const fullCatalog = fullParam === "1" || fullParam === "true" || !limit;
 
-    const summary = await runTopEchelonSync(limit ? { limit } : {});
+    const summary = await runTopEchelonSync(
+      fullCatalog ? { fullCatalog: true } : limit ? { limit } : { fullCatalog: true }
+    );
     return NextResponse.json({ ok: true, summary });
   } catch (err) {
     if (err instanceof TopEchelonMfaRequiredError || err instanceof TopEchelonSessionExpiredError) {

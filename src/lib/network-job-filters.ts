@@ -140,11 +140,11 @@ function parseNumberInput(value: string): number | null {
   return value.trim() && !Number.isNaN(n) ? n : null;
 }
 
-export function filterNetworkJobsFromForm(
-  jobs: NetworkJobListing[],
+export function filterNetworkJobsFromForm<T extends NetworkJobListing>(
+  jobs: T[],
   form: NetworkJobFilterForm,
   options?: { internalView?: boolean }
-): NetworkJobListing[] {
+): T[] {
   const internalView = options?.internalView ?? false;
 
   return jobs.filter((job) => {

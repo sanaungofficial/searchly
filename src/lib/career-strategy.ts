@@ -90,6 +90,8 @@ export type StrategySourceSnapshot = {
   readbackUpdatedAt: string | null;
   intakeNotesHash: string | null;
   trackedCompanyNames: string[];
+  /** Set when AI output was truncated but salvaged for review */
+  isPartialGeneration?: boolean;
 };
 
 export type StrategyProfileFields = {
@@ -109,12 +111,29 @@ export type StrategyProfileFields = {
   headline?: string | null;
   summary?: string | null;
   name?: string | null;
+  linkedinUrl?: string | null;
+};
+
+export type IntakeContextFields = {
+  industries?: string;
+  companyStages?: string;
+  avoidNotes?: string;
+  searchActivity?: string;
+  activeOffers?: string;
+  benefitsMustHaves?: string;
+  dealBreakers?: string;
+  recentEmployer?: string;
+  recentTitle?: string;
 };
 
 export type IntakeParseResult = {
   proposed: StrategyProfileFields;
   summary: string;
   fieldsFound: string[];
+  /** Dream employers to add to Companies watchlist (not profile columns). */
+  suggestedDreamCompanies?: string[];
+  /** Rich intake details kept for strategy generation (also stored in strategyIntakeNotes). */
+  intakeContext?: IntakeContextFields;
 };
 
 const SNAPSHOT_LABELS: Record<keyof Omit<StrategySourceSnapshot, "capturedAt" | "trackedCompanyNames" | "intakeNotesHash">, string> = {
@@ -231,6 +250,130 @@ export function diffStrategySnapshot(
   return changes;
 }
 
+/** Pull the outermost JSON object from model text (handles fences and preamble). */
+export function extractJsonObject(text: string): string {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced?.[1] ?? trimmed).trim();
+
+  const start = candidate.indexOf("{");
+  if (start === -1) throw new Error("No JSON found");
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < candidate.length; i++) {
+    const c = candidate[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (c === "{") depth++;
+    if (c === "}") {
+      depth--;
+      if (depth === 0) return candidate.slice(start, i + 1);
+    }
+  }
+  throw new Error("Incomplete JSON");
+}
+
+function scanUnclosedJsonStructure(jsonFragment: string): ("{" | "[")[] {
+  const stack: ("{" | "[")[] = [];
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < jsonFragment.length; i++) {
+    const c = jsonFragment[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (c === "{") stack.push("{");
+    else if (c === "[") stack.push("[");
+    else if (c === "}" && stack[stack.length - 1] === "{") stack.pop();
+    else if (c === "]" && stack[stack.length - 1] === "[") stack.pop();
+  }
+  return stack;
+}
+
+function endsInsideJsonString(text: string): boolean {
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') inString = !inString;
+  }
+  return inString;
+}
+
+function strategyHasContent(doc: CareerStrategyDocument): boolean {
+  return !!(
+    doc.executiveSummary.trim() ||
+    doc.positioningStrategy.coreDirective.trim() ||
+    doc.placementReadiness.categories.length ||
+    doc.pathForward.summary.trim()
+  );
+}
+
+/** Best-effort parse when model output was truncated mid-JSON. */
+export function salvagePartialStrategyJson(text: string): CareerStrategyDocument | null {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let candidate = (fenced?.[1] ?? trimmed).trim();
+  const start = candidate.indexOf("{");
+  if (start === -1) return null;
+  candidate = candidate.slice(start);
+
+  if (endsInsideJsonString(candidate)) candidate += '"';
+
+  const unclosed = scanUnclosedJsonStructure(candidate);
+  for (let i = unclosed.length - 1; i >= 0; i--) {
+    candidate += unclosed[i] === "{" ? "}" : "]";
+  }
+
+  try {
+    const doc = normalizeStrategyDocument(JSON.parse(candidate));
+    return strategyHasContent(doc) ? doc : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseStrategyFromAi(text: string): { document: CareerStrategyDocument; isPartial: boolean } {
+  try {
+    return { document: parseStrategyJson(text), isPartial: false };
+  } catch {
+    const salvaged = salvagePartialStrategyJson(text);
+    if (salvaged) return { document: salvaged, isPartial: true };
+    throw new Error("Failed to parse strategy response");
+  }
+}
+
 export function normalizeStrategyDocument(raw: unknown): CareerStrategyDocument {
   if (!raw || typeof raw !== "object") return { ...EMPTY_STRATEGY };
   const d = raw as Partial<CareerStrategyDocument>;
@@ -269,18 +412,16 @@ export function normalizeStrategyDocument(raw: unknown): CareerStrategyDocument 
 }
 
 export function parseStrategyJson(text: string): CareerStrategyDocument {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found");
-  return normalizeStrategyDocument(JSON.parse(jsonMatch[0]));
+  return normalizeStrategyDocument(JSON.parse(extractJsonObject(text)));
 }
 
 export function parseIntakeJson(text: string): IntakeParseResult {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found");
-  const parsed = JSON.parse(jsonMatch[0]) as IntakeParseResult;
+  const parsed = JSON.parse(extractJsonObject(text)) as IntakeParseResult;
   return {
     proposed: parsed.proposed ?? {},
     summary: parsed.summary ?? "",
     fieldsFound: parsed.fieldsFound ?? [],
+    suggestedDreamCompanies: (parsed.suggestedDreamCompanies ?? []).filter(Boolean),
+    intakeContext: parsed.intakeContext ?? {},
   };
 }

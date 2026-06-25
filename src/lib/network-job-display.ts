@@ -7,6 +7,7 @@ import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
 import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
 import { SEED_RAW_NETWORK_JOBS } from "@/lib/network-job-seed-raw";
+import type { NetworkJobMatchFields } from "@/lib/network-job-match";
 import {
   type CompensationBand,
   COMPENSATION_BAND_LABELS,
@@ -63,7 +64,7 @@ export type NetworkJobListing = {
   adminDetails: Array<{ label: string; value: string }>;
   recruiter: NetworkRecruiterDisplay | null;
   raw: TopEchelonNetworkJobRaw;
-};
+} & Partial<NetworkJobMatchFields>;
 
 function daysSince(iso: string | null): number {
   if (!iso) return 0;
@@ -130,6 +131,11 @@ function buildAdminDetails(
   push("Compensation", salary);
   push("Compensation (min)", mapped.minimumCompensation);
   push("Compensation (max)", mapped.maximumCompensation);
+
+  const kimchi = raw._kimchiExport;
+  if (kimchi?.submissionSummary) push("Submission summary", kimchi.submissionSummary);
+  if (kimchi?.shares) push("Network shares", kimchi.shares);
+  if (kimchi?.fetchedAt) push("Last TE export", kimchi.fetchedAt);
 
   return rows;
 }
@@ -213,6 +219,18 @@ export function buildNetworkProspectCard(
     description: aiDescription || null,
     jobSummary: job.recruiterNotes ?? undefined,
     tags: ["Recruiter network", job.networkStatusLabel ?? job.networkStatus ?? "network"].filter(Boolean),
+    ...(job.matchScore != null && job.matchScore > 0
+      ? {
+          vectorMatch: {
+            matchScore: job.matchScore,
+            matchLabel: job.matchLabel ?? "",
+            matchReasons: job.matchReasons ?? [],
+            matchedSkills: job.matchedSkills,
+            gapSkills: job.gapSkills,
+            vectorRank: job.matchRank,
+          },
+        }
+      : {}),
     networkJob: {
       externalId: job.externalId,
       networkId: job.networkId,
@@ -238,7 +256,7 @@ export function buildNetworkProspectCard(
     initials: company.slice(0, 2).toUpperCase(),
     role: job.positionTitle,
     stage: "saved",
-    fit: 0,
+    fit: job.matchScore && job.matchScore > 0 ? job.matchScore : 0,
     jobRef: null,
     days,
     _url: job.topEchelonUrl ?? undefined,
