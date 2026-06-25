@@ -6,6 +6,13 @@ import { hmsGuestRole, hmsHostRole } from "@/lib/hms";
 
 export type LiveJoinIntent = "host" | "guest";
 
+/**
+ * Host access policy:
+ * - Admins / super admins → any session
+ * - Assigned coach (session.coachProfileId) → their session only
+ * - Legacy fallback: coach displayName matches session.host when no coachProfileId set
+ * - Everyone else → guest only (including coaches on other hosts' sessions)
+ */
 export async function canHostLiveSession(args: {
   operator: User;
   authEmail: string;
@@ -24,15 +31,14 @@ export async function canHostLiveSession(args: {
     select: { id: true, displayName: true },
   });
 
-  if (coach) {
-    if (session.coachProfileId && coach.id === session.coachProfileId) return true;
-    if (operator.role === "COACH" || operator.role === "RECRUITER") return true;
-    if (coach.displayName.trim().toLowerCase() === session.host.trim().toLowerCase()) return true;
-  } else if (operator.role === "COACH" || operator.role === "RECRUITER") {
-    return true;
+  if (!coach) return false;
+
+  if (session.coachProfileId) {
+    return coach.id === session.coachProfileId;
   }
 
-  return false;
+  // Legacy sessions created before coachProfileId was set
+  return coach.displayName.trim().toLowerCase() === session.host.trim().toLowerCase();
 }
 
 export async function resolveLiveJoinRole(args: {
@@ -55,6 +61,7 @@ export async function resolveLiveJoinRole(args: {
     return { role: hmsHostRole(), isHost: true };
   }
 
+  // Default: assigned hosts join as host; everyone else as guest
   if (canHost) {
     return { role: hmsHostRole(), isHost: true };
   }

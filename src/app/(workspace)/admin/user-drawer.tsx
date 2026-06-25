@@ -41,7 +41,7 @@ type AiDetail = {
   byFeature: { feature: string; calls: number; costUsd: number }[];
 };
 
-const ROLE_OPTIONS: UserRole[] = ["USER", "COACH", "RECRUITER", "ADMIN"];
+const ROLE_OPTIONS: UserRole[] = ["USER", "COACH", "ADMIN"];
 
 const STATUS_STYLES: Record<SubscriptionStatus, string> = {
   ACTIVE: "bg-[rgba(26,58,47,0.08)] text-[#1A3A2F] border-[rgba(26,58,47,0.2)]",

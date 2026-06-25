@@ -8,7 +8,7 @@ import { WorkspacePageShell } from "./workspace-page-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { border, color, fontSans, type as T } from "@/lib/typography";
 
-type LiveFilter = "all" | "live" | "week";
+type LiveFilter = "all" | "mine" | "live" | "week";
 
 type LiveSessionRow = LiveSessionView & { canHost: boolean };
 
@@ -23,14 +23,16 @@ export function WorkspaceLive() {
   const [sessions, setSessions] = useState<LiveSessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [hostSessionCount, setHostSessionCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     try {
       const res = await fetch("/api/live/sessions");
       if (!res.ok) throw new Error("Could not load live sessions");
-      const data = (await res.json()) as { sessions: LiveSessionRow[] };
+      const data = (await res.json()) as { sessions: LiveSessionRow[]; hostSessionCount?: number };
       setSessions(data.sessions ?? []);
+      setHostSessionCount(data.hostSessionCount ?? 0);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load sessions");
@@ -89,6 +91,7 @@ export function WorkspaceLive() {
 
   const filters: [LiveFilter, string][] = [
     ["all", "All sessions"],
+    ...(hostSessionCount > 0 ? ([["mine", "My sessions"]] as [LiveFilter, string][]) : []),
     ["live", "Live now"],
     ["week", "This week"],
   ];
@@ -98,6 +101,7 @@ export function WorkspaceLive() {
   const upcoming = sessions.filter((s) => !s.isFeaturedWeekly && !s.isLive);
 
   const visible = (() => {
+    if (filter === "mine") return sessions.filter((s) => s.canHost);
     if (filter === "live") return liveNow;
     if (filter === "week") return upcoming;
     return [...liveNow, ...upcoming];
@@ -160,7 +164,7 @@ export function WorkspaceLive() {
           </ScoutBox>
         )}
 
-        {weekly && (
+        {weekly && filter !== "mine" && (
         <div
           style={{
             background: weekly.bgColor,

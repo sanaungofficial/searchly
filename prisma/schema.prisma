@@ -53,7 +53,6 @@ model User {
 enum UserRole {
   USER
   COACH
-  RECRUITER
   ADMIN
 }
 
@@ -327,6 +326,7 @@ model LiveSession {
 
   wentLiveAt       DateTime?
   endedAt          DateTime?
+  liveNowEmailSentAt DateTime?
 
   registrations    LiveSessionRegistration[]
 
@@ -346,6 +346,7 @@ model LiveSessionRegistration {
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   joinedAt      DateTime?
+  reminderSentAt DateTime?
   createdAt     DateTime    @default(now())
 
   @@unique([liveSessionId, userId])

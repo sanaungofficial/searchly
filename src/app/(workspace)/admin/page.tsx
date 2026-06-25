@@ -53,7 +53,6 @@ async function getAdminData() {
   const roleCounts: Record<UserRole, number> = {
     USER: 0,
     COACH: 0,
-    RECRUITER: 0,
     ADMIN: 0,
   };
   users.forEach((u) => roleCounts[u.role]++);
@@ -147,12 +146,6 @@ export default async function AdminPage() {
             value={data.roleCounts.COACH}
             sub={pct(data.roleCounts.COACH, data.totalUsers)}
             accent="#2563eb"
-          />
-          <StatCard
-            label="Recruiters"
-            value={data.roleCounts.RECRUITER}
-            sub={pct(data.roleCounts.RECRUITER, data.totalUsers)}
-            accent="#7c3aed"
           />
           <StatCard
             label="Admins"

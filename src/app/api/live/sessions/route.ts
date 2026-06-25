@@ -38,5 +38,6 @@ export async function GET(request: Request) {
     sessions,
     hmsConfigured: hmsConfigured(),
     hasLiveNow: sessions.some((s) => s.isLive),
+    hostSessionCount: sessions.filter((s) => s.canHost).length,
   });
 }
