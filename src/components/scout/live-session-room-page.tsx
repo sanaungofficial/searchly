@@ -18,7 +18,13 @@ const LiveRoomClient = dynamic(
   }
 );
 
-export function LiveSessionRoomPage({ session }: { session: LiveSession }) {
+export function LiveSessionRoomPage({
+  session,
+  joinAsGuest = false,
+}: {
+  session: LiveSession;
+  joinAsGuest?: boolean;
+}) {
   const isMobile = useIsMobile();
 
   return (
@@ -56,7 +62,7 @@ export function LiveSessionRoomPage({ session }: { session: LiveSession }) {
         </Link>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
-        <LiveRoomClient sessionId={session.id} sessionMeta={session} />
+        <LiveRoomClient sessionId={session.id} sessionMeta={session} joinAsGuest={joinAsGuest} />
       </div>
     </div>
   );

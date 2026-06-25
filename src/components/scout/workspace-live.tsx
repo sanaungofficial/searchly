@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LIVE_SESSIONS } from "./workspace-data";
+import type { LiveSession } from "@/lib/live-sessions";
 import { ScoutBox, ScoutPrimaryBtn } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -10,13 +10,55 @@ import { border, color, fontSans, type as T } from "@/lib/typography";
 
 type LiveFilter = "all" | "live" | "week";
 
+type LiveSessionRow = LiveSession & { canHost: boolean };
+
 export function WorkspaceLive() {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState<LiveFilter>("all");
+  const [sessions, setSessions] = useState<LiveSessionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [startingId, setStartingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const openSession = (sessionId: number) => {
-    router.push(`/live/${sessionId}`);
+  const loadSessions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/live/sessions");
+      if (!res.ok) throw new Error("Could not load live sessions");
+      const data = (await res.json()) as { sessions: LiveSessionRow[] };
+      setSessions(data.sessions ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load sessions");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
+  const openSession = (sessionId: number, asGuest = false) => {
+    router.push(asGuest ? `/live/${sessionId}?as=guest` : `/live/${sessionId}`);
+  };
+
+  const startSession = async (sessionId: number) => {
+    setStartingId(sessionId);
+    setError(null);
+    try {
+      const res = await fetch("/api/live/control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, action: "go-live" }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not start session");
+      router.push(`/live/${sessionId}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start session");
+      setStartingId(null);
+    }
   };
 
   const filters: [LiveFilter, string][] = [
@@ -25,15 +67,40 @@ export function WorkspaceLive() {
     ["week", "This week"],
   ];
 
-  const weekly = LIVE_SESSIONS.find((s) => s.isMiraWeekly) || LIVE_SESSIONS[0];
-  const liveNow = LIVE_SESSIONS.filter((s) => s.isLive);
-  const upcoming = LIVE_SESSIONS.filter((s) => !s.isMiraWeekly && !s.isLive);
+  const weekly = sessions.find((s) => s.isMiraWeekly) || sessions[0];
+  const liveNow = sessions.filter((s) => s.isLive);
+  const upcoming = sessions.filter((s) => !s.isMiraWeekly && !s.isLive);
 
   const visible = (() => {
     if (filter === "live") return liveNow;
     if (filter === "week") return upcoming;
     return [...liveNow, ...upcoming];
   })();
+
+  const sessionCta = (s: LiveSessionRow) => {
+    if (s.canHost) {
+      if (s.isLive) {
+        return { label: "Join as host →", onClick: () => openSession(s.id), busy: false };
+      }
+      return {
+        label: startingId === s.id ? "Starting…" : "Start session →",
+        onClick: () => void startSession(s.id),
+        busy: startingId === s.id,
+      };
+    }
+    if (s.isLive) {
+      return { label: "Join now →", onClick: () => openSession(s.id), busy: false };
+    }
+    return { label: "Reserve →", onClick: () => openSession(s.id), busy: false };
+  };
+
+  if (loading && !weekly) {
+    return (
+      <WorkspacePageShell isMobile={isMobile} label="Live with Second Ladder" mobileBarTitle="Live" title="Real sessions, real coaches.">
+        <p style={{ fontFamily: fontSans, color: color.muted }}>Loading sessions…</p>
+      </WorkspacePageShell>
+    );
+  }
 
   return (
     <WorkspacePageShell
@@ -42,7 +109,11 @@ export function WorkspaceLive() {
       mobileBarTitle="Live"
       title="Real sessions, real coaches."
     >
-        {/* Featured weekly session */}
+        {error && (
+          <p style={{ fontFamily: fontSans, color: "#C4574A", marginBottom: 16 }}>{error}</p>
+        )}
+
+        {weekly && (
         <div
           style={{
             background: weekly.bgColor,
@@ -168,7 +239,11 @@ export function WorkspaceLive() {
             </div>
           </div>
           <ScoutPrimaryBtn
-            onClick={() => openSession(weekly.id)}
+            onClick={() => {
+              const cta = sessionCta(weekly);
+              cta.onClick();
+            }}
+            disabled={sessionCta(weekly).busy}
             style={{
               background: weekly.accentColor,
               color: weekly.bgColor,
@@ -176,16 +251,22 @@ export function WorkspaceLive() {
               minHeight: isMobile ? 44 : undefined,
             }}
           >
-            Reserve seat →
+            {weekly.canHost && !weekly.isLive
+              ? sessionCta(weekly).label
+              : weekly.isLive
+                ? weekly.canHost
+                  ? "Join as host →"
+                  : "Join now →"
+                : "Reserve seat →"}
           </ScoutPrimaryBtn>
         </div>
+        )}
 
-        {/* Filter chips */}
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
           {filters.map(([id, label]) => {
             const active = filter === id;
             const bg = id === "live" && active ? "#C4574A" : active ? "#1A3A2F" : "rgba(0,0,0,0.05)";
-            const color = id === "live" && active ? "#FFFFFF" : active ? "#E8D5A3" : "#52493F";
+            const chipColor = id === "live" && active ? "#FFFFFF" : active ? "#E8D5A3" : "#52493F";
             return (
               <button
                 key={id}
@@ -193,7 +274,7 @@ export function WorkspaceLive() {
                 style={{
                   padding: "6px 14px",
                   background: bg,
-                  color,
+                  color: chipColor,
                   border: "none",
                   borderRadius: 0,
                   fontFamily: "var(--font-ui)",
@@ -208,7 +289,6 @@ export function WorkspaceLive() {
           })}
         </div>
 
-        {/* Sessions grid */}
         <div
           style={{
             display: "grid",
@@ -217,7 +297,9 @@ export function WorkspaceLive() {
             paddingBottom: 40,
           }}
         >
-          {visible.map((s) => (
+          {visible.map((s) => {
+            const cta = sessionCta(s);
+            return (
             <ScoutBox key={s.id} padding={0} style={{ overflow: "hidden" }}>
               <div style={{ background: s.bgColor, padding: "16px 18px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -301,7 +383,8 @@ export function WorkspaceLive() {
                     {s.isLive ? `${s.registered} watching` : `${s.registered} registered`}
                   </span>
                   <ScoutPrimaryBtn
-                    onClick={() => openSession(s.id)}
+                    onClick={cta.onClick}
+                    disabled={cta.busy}
                     style={{
                       padding: "6px 14px",
                       background: s.isLive ? "#C4574A" : color.forest,
@@ -310,12 +393,13 @@ export function WorkspaceLive() {
                       fontSize: T.bodySm,
                     }}
                   >
-                    {s.isLive ? "Join now →" : "Reserve →"}
+                    {cta.label}
                   </ScoutPrimaryBtn>
                 </div>
               </div>
             </ScoutBox>
-          ))}
+          );
+          })}
         </div>
     </WorkspacePageShell>
   );

@@ -7,7 +7,8 @@ import {
   hmsGuestRole,
   hmsHostRole,
 } from "@/lib/hms";
-import { getLiveSessionById } from "@/lib/live-sessions";
+import { canHostLiveSession, LiveHostForbiddenError, resolveLiveJoinRole, type LiveJoinIntent } from "@/lib/live-host";
+import { getLiveSessionByIdMerged } from "@/lib/live-sessions";
 
 export async function POST(request: Request) {
   if (!hmsConfigured()) {
@@ -17,14 +18,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const { authUser, dbUser, realDbUser } = await getActingUser(request);
+  const { authUser, dbUser, realDbUser, isImpersonating } = await getActingUser(request);
   if (!authUser || !dbUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { sessionId?: number };
+  let body: { sessionId?: number; intent?: LiveJoinIntent };
   try {
-    body = (await request.json()) as { sessionId?: number };
+    body = (await request.json()) as { sessionId?: number; intent?: LiveJoinIntent };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -34,23 +35,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
   }
 
-  const session = getLiveSessionById(sessionId);
+  const session = await getLiveSessionByIdMerged(sessionId);
   if (!session) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
   const operator = realDbUser ?? dbUser;
-  const isHost =
-    operator.role === "ADMIN" ||
-    operator.role === "COACH" ||
-    operator.role === "RECRUITER";
+  const intent = body.intent === "host" || body.intent === "guest" ? body.intent : undefined;
 
-  const role = isHost ? hmsHostRole() : hmsGuestRole();
+  let role: string;
+  let isHost: boolean;
+  try {
+    ({ role, isHost } = await resolveLiveJoinRole({
+      operator,
+      authEmail: authUser.email,
+      session,
+      isImpersonating,
+      requestedIntent: intent,
+    }));
+  } catch (err) {
+    if (err instanceof LiveHostForbiddenError) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
+    throw err;
+  }
+
   const userId = dbUser.id;
   const userName =
     dbUser.name?.trim() ||
     authUser.email?.split("@")[0] ||
     "Guest";
+
+  const canHost = await canHostLiveSession({
+    operator,
+    authEmail: authUser.email,
+    session,
+    isImpersonating,
+  });
 
   try {
     const roomId = await ensureLiveRoom(sessionId);
@@ -67,6 +88,8 @@ export async function POST(request: Request) {
       authToken,
       roomId,
       role,
+      isHost,
+      canHost,
       userName,
       session: {
         id: session.id,
@@ -78,7 +101,10 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[live/join]", err);
     return NextResponse.json(
-      { error: "Could not start live room. Check 100ms template roles (host/guest)." },
+      {
+        error: "Could not start live room. Check 100ms template roles (host/guest).",
+        expectedRoles: { host: hmsHostRole(), guest: hmsGuestRole() },
+      },
       { status: 502 }
     );
   }

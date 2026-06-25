@@ -280,9 +280,19 @@ export function WorkspaceSidebar({
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [referEarnOpen, setReferEarnOpen] = useState(false);
-  const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
+  const [hasLiveNow, setHasLiveNow] = useState(() => LIVE_SESSIONS.some((s) => s.isLive));
 
   const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
+
+  useEffect(() => {
+    if (!authChecked) return;
+    fetch("/api/live/sessions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.hasLiveNow != null) setHasLiveNow(!!data.hasLiveNow);
+      })
+      .catch(() => {});
+  }, [authChecked]);
 
   useEffect(() => {
     if (!authChecked) return;
