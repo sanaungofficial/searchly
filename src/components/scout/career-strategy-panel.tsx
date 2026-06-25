@@ -124,6 +124,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         if (res.status !== 404) setError(data.error);
       } else {
         if (data.document) setDocument(normalizeStrategyDocument(data.document));
+        else setDocument(EMPTY_STRATEGY);
         if (data.intakeNotes) setIntakeNotes(data.intakeNotes);
         if (data.updatedAt) setUpdatedAt(data.updatedAt);
         setProfileChanges(data.profileChanges ?? []);
@@ -147,7 +148,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       .catch(() => {});
   }, [loadStrategy]);
 
-  async function handleGenerate(force = false) {
+  async function handleGenerate() {
     if (!profile.resumeUrl) {
       setError("Upload a resume on the Assets tab first.");
       return;
@@ -158,7 +159,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       if (intakeNotes.trim()) {
         await onPatchProfile({ strategyIntakeNotes: intakeNotes.trim() });
       }
-      const res = await fetch(`/api/ai/career-strategy?force=${force ? "true" : "false"}`);
+      const res = await fetch("/api/ai/career-strategy", { method: "POST" });
       const data = await res.json();
       if (res.status === 402) {
         notifyCreditsChanged();
@@ -272,7 +273,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     });
   }
 
-  const hasDocument = !!document.executiveSummary || !!updatedAt;
+  const hasDocument = !!(updatedAt && document.executiveSummary);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -284,7 +285,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
             Changes: {profileChanges.join(", ")}. Regenerate only if these updates should change the strategy.
           </p>
-          <ScoutSecondaryBtn onClick={() => handleGenerate(true)} disabled={generating}>
+          <ScoutSecondaryBtn onClick={handleGenerate} disabled={generating}>
             {generating ? "Regenerating…" : "Regenerate strategy"}
           </ScoutSecondaryBtn>
         </ScoutBox>
@@ -307,10 +308,13 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || !intakeNotes.trim()}>
             {parsing ? "Parsing…" : "Parse & review profile updates"}
           </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={() => handleGenerate(true)} disabled={generating}>
+          <ScoutPrimaryBtn onClick={handleGenerate} disabled={generating}>
             {generating ? "Generating…" : hasDocument ? "Regenerate strategy" : "Generate strategy"}
           </ScoutPrimaryBtn>
         </div>
+        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
+          Strategy generation uses 1 AI credit and only runs when you click the button above.
+        </p>
         {error && (
           <p style={{ fontFamily: fontSans, fontSize: 13, color: "#b04040", marginTop: 10 }}>{error}</p>
         )}

@@ -39,22 +39,10 @@ async function loadProfileBundle(userId: string) {
   return { user, profile: user.profile, trackedCompanies };
 }
 
-export async function GET(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
-  }
-
-  const { dbUser } = await getActingUser(request);
-  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { searchParams } = new URL(request.url);
-  const force = searchParams.get("force") === "true";
-
-  const bundle = await loadProfileBundle(dbUser.id);
-  if (!bundle) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-
-  const { profile, trackedCompanies, user } = bundle;
-
+function strategyReadResponse(
+  profile: NonNullable<Awaited<ReturnType<typeof loadProfileBundle>>>["profile"],
+  trackedCompanies: { name: string }[],
+) {
   const currentSnapshot = buildStrategySnapshot({
     profile: {
       ...profile,
@@ -66,22 +54,49 @@ export async function GET(request: Request) {
 
   const storedSnapshot = profile.strategySourceSnapshot as StrategySourceSnapshot | null;
   const profileChanges = diffStrategySnapshot(storedSnapshot, currentSnapshot);
+  const hasDocument = !!profile.strategyData;
 
-  if (!force && profile.strategyData) {
-    return NextResponse.json({
-      document: normalizeStrategyDocument(profile.strategyData),
-      intakeNotes: profile.strategyIntakeNotes ?? "",
-      updatedAt: profile.strategyUpdatedAt?.toISOString() ?? null,
-      profileChanges,
-      isStale: profileChanges.length > 0,
-    });
+  return {
+    document: hasDocument ? normalizeStrategyDocument(profile.strategyData) : null,
+    hasDocument,
+    intakeNotes: profile.strategyIntakeNotes ?? "",
+    updatedAt: profile.strategyUpdatedAt?.toISOString() ?? null,
+    profileChanges,
+    isStale: hasDocument && profileChanges.length > 0,
+  };
+}
+
+/** Read cached strategy + staleness — never calls AI. */
+export async function GET(request: Request) {
+  const { dbUser } = await getActingUser(request);
+  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const bundle = await loadProfileBundle(dbUser.id);
+  if (!bundle) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  return NextResponse.json(strategyReadResponse(bundle.profile, bundle.trackedCompanies));
+}
+
+/** Generate strategy — explicit action only; consumes STRATEGY credit. */
+export async function POST(request: Request) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
+
+  const acting = await getActingUser(request);
+  const { dbUser } = acting;
+  if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const bundle = await loadProfileBundle(dbUser.id);
+  if (!bundle) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  const { profile, trackedCompanies, user } = bundle;
 
   if (!profile.resumeText?.trim()) {
     return NextResponse.json({ error: "Upload a resume before generating strategy" }, { status: 404 });
   }
 
-  const quotaUser = quotaUserFor(await getActingUser(request));
+  const quotaUser = quotaUserFor(acting);
   if (!quotaUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const quotaError = await requireAiQuota(quotaUser, "STRATEGY");
@@ -137,11 +152,17 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({
+      ...strategyReadResponse(
+        {
+          ...profile,
+          strategyData: document,
+          strategyUpdatedAt: now,
+          strategySourceSnapshot: snapshot,
+        },
+        trackedCompanies,
+      ),
       document,
-      intakeNotes: profile.strategyIntakeNotes ?? "",
       updatedAt: now.toISOString(),
-      profileChanges: [],
-      isStale: false,
     });
   } catch {
     return NextResponse.json({ error: "Failed to parse strategy response" }, { status: 500 });
