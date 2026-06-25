@@ -182,3 +182,53 @@ export function categoriesForGoal(goal: CoachGoalId): CoachCategoryGroup[] {
 export function allCategoriesForGoal(goal: CoachGoalId): string[] {
   return categoriesForGoal(goal).flatMap((g) => g.categories);
 }
+
+/** All marketplace categories (flat). */
+export function allCoachCategories(): string[] {
+  return COACH_CATEGORY_GROUPS.flatMap((g) => g.categories);
+}
+
+const CATEGORY_SLUG_MAP: Record<string, string> = {};
+const SLUG_CATEGORY_MAP: Record<string, string> = {};
+
+for (const cat of allCoachCategories()) {
+  const slug = cat
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  CATEGORY_SLUG_MAP[cat] = slug;
+  if (!SLUG_CATEGORY_MAP[slug]) SLUG_CATEGORY_MAP[slug] = cat;
+}
+
+export function categoryToSlug(category: string): string {
+  return CATEGORY_SLUG_MAP[category] ?? category.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+export function slugToCategory(slug: string): string | null {
+  return SLUG_CATEGORY_MAP[slug] ?? null;
+}
+
+/** Short directory blurb per category (extend as needed). */
+export const COACH_CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  Consulting: "Work with coaches who've cracked cases, landed MBB offers, and know how consulting interviews really work.",
+  "Career Coaching": "Get 1:1 guidance on interviews, transitions, and landing your next role from people who've done it.",
+  "Product Management": "PM interview prep, product strategy, and career growth from experienced product leaders.",
+  "Software Engineering": "Technical interviews, system design, and leveling up from engineers at top companies.",
+  "MBA Admissions": "Essays, school selection, and interview prep from coaches who've helped candidates get into top programs.",
+  "Investment Banking": "Breaking in, technicals, and offer prep from bankers who've been through the process.",
+};
+
+export function categoryDescription(category: string): string {
+  return (
+    COACH_CATEGORY_DESCRIPTIONS[category] ??
+    `Browse expert coaches in ${category}. Book a free intro call to find the right fit.`
+  );
+}
+
+export const COACH_RATE_BUCKETS = [
+  { label: "$0 – $99/hr", min: 0, max: 99 },
+  { label: "$100 – $199/hr", min: 100, max: 199 },
+  { label: "$200 – $299/hr", min: 200, max: 299 },
+  { label: "$300+/hr", min: 300, max: null as number | null },
+] as const;
+

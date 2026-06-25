@@ -57,6 +57,7 @@ type CoachProfile = {
   industries: string[];
   hourlyRate: number | null;
   category: string | null;
+  calLink: string | null;
 };
 
 const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
@@ -250,6 +251,10 @@ function MyProfileTab() {
           <div>
             <label style={labelStyle}>LinkedIn URL</label>
             <input value={form.linkedinUrl ?? ""} onChange={field("linkedinUrl")} placeholder="https://linkedin.com/in/…" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Booking link (Cal.com / Calendly)</label>
+            <input value={form.calLink ?? ""} onChange={field("calLink")} placeholder="https://cal.com/your-name" style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Leland URL</label>

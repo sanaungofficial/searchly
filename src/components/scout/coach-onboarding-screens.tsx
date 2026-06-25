@@ -630,6 +630,43 @@ export function CoachScreenFinal({
       <ScreenIntro title="Answer some final questions" body="A few more details before you submit your profile for review." />
 
       <div className="anim-fade-up" style={ONBOARDING_CARD}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, marginTop: 0, marginBottom: 8 }}>Why do you coach?</p>
+        <textarea
+          value={draft.whyCoach}
+          onChange={(e) => onChange({ whyCoach: e.target.value })}
+          rows={4}
+          placeholder="Share your motivation — what drives you to help others?"
+          style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+        />
+      </div>
+
+      <div className="anim-fade-up" style={ONBOARDING_CARD}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, marginTop: 0, marginBottom: 8 }}>Hourly rate (USD)</p>
+        <input
+          type="number"
+          min={0}
+          value={draft.hourlyRate ?? ""}
+          onChange={(e) => onChange({ hourlyRate: e.target.value ? Number(e.target.value) : null })}
+          placeholder="e.g. 150"
+          style={inputStyle}
+        />
+      </div>
+
+      <div className="anim-fade-up" style={ONBOARDING_CARD}>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, marginTop: 0, marginBottom: 8 }}>Booking link</p>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: ONBOARDING_TEXT_SECONDARY, marginTop: 0, marginBottom: 10 }}>
+          Paste your Cal.com, Calendly, or other scheduling link. Clients will use this to book intro calls and sessions.
+        </p>
+        <input
+          type="url"
+          value={draft.calLink}
+          onChange={(e) => onChange({ calLink: e.target.value })}
+          placeholder="https://cal.com/your-name"
+          style={inputStyle}
+        />
+      </div>
+
+      <div className="anim-fade-up" style={ONBOARDING_CARD}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 0 }}>Optional</p>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, marginTop: 4, marginBottom: 8 }}>Do you coach professionally?</p>
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontFamily: "var(--font-ui)", fontSize: 14, cursor: "pointer" }}>
@@ -676,7 +713,7 @@ export function CoachScreenFinal({
         </div>
       </div>
 
-      <NavRow onBack={onBack} onNext={onNext} nextLabel="Review my profile" />
+      <NavRow onBack={onBack} onNext={onNext} nextLabel="Review my profile" nextDisabled={!draft.hourlyRate || draft.hourlyRate < 1} />
     </div>
   );
 }
@@ -715,6 +752,8 @@ export function CoachScreenReview({
         <ReviewRow label="Category" value={draft.category} />
         <ReviewRow label="Experience" value={draft.experienceLevel} />
         <ReviewRow label="Expertise" value={draft.specialties.join(", ")} />
+        <ReviewRow label="Hourly rate" value={draft.hourlyRate ? `$${draft.hourlyRate}/hr` : ""} />
+        <ReviewRow label="Booking link" value={draft.calLink} />
         <ReviewRow label="LinkedIn" value={draft.linkedinUrl} />
         {draft.clientSpecializations.length > 0 && (
           <ReviewRow label="Client focus" value={draft.clientSpecializations.join(", ")} />

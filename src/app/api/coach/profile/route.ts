@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus, UserRole } from "@prisma/client";
+import { coachProfileSlug } from "@/lib/coach-slug";
 
 async function getCoachUser() {
   const supabase = await createClient();
@@ -30,13 +31,17 @@ async function ensureCoachProfile(dbUser: { id: string; email: string; name: str
   const existing = await findAndLinkProfile(dbUser);
   if (existing) return existing;
 
-  return prisma.coachProfile.create({
+  const created = await prisma.coachProfile.create({
     data: {
       userId: dbUser.id,
       email: dbUser.email,
       displayName: dbUser.name?.trim() || dbUser.email.split("@")[0],
       status: CoachStatus.PENDING,
     },
+  });
+  return prisma.coachProfile.update({
+    where: { id: created.id },
+    data: { slug: coachProfileSlug(created.displayName, created.id) },
   });
 }
 
@@ -57,7 +62,22 @@ function profilePatchData(body: Record<string, unknown>) {
   if (body.industries !== undefined) d.industries = body.industries;
   if (body.hourlyRate !== undefined) d.hourlyRate = body.hourlyRate ? Number(body.hourlyRate) : null;
   if (body.category !== undefined) d.category = (body.category as string) || null;
+  if (body.calLink !== undefined) d.calLink = (body.calLink as string) || null;
+  if (body.clientSpecializations !== undefined) d.clientSpecializations = body.clientSpecializations;
+  if (body.experienceLevel !== undefined) d.experienceLevel = (body.experienceLevel as string) || null;
+  if (body.clientTier !== undefined) d.clientTier = (body.clientTier as string) || null;
+  if (body.industryYears !== undefined) d.industryYears = body.industryYears != null ? Number(body.industryYears) : null;
+  if (body.isProfessionalCoach !== undefined) d.isProfessionalCoach = Boolean(body.isProfessionalCoach);
+  if (body.whyCoach !== undefined) d.whyCoach = (body.whyCoach as string) || null;
+  if (body.aboutMe !== undefined) d.aboutMe = (body.aboutMe as string) || null;
   return d;
+}
+
+function ensureSlug(profile: { id: string; displayName: string; slug: string | null }, patch: Record<string, unknown>) {
+  const name = (patch.displayName as string) ?? profile.displayName;
+  if (!profile.slug || patch.displayName !== undefined) {
+    patch.slug = coachProfileSlug(name, profile.id);
+  }
 }
 
 export async function GET() {
@@ -75,6 +95,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const profile = await ensureCoachProfile(me);
   const d = profilePatchData(body);
+  ensureSlug(profile, d);
 
   if (body.submitForReview) {
     d.status = CoachStatus.PENDING;

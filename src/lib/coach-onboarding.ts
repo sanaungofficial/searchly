@@ -11,11 +11,14 @@ export type CoachOnboardingDraft = {
   industryYears: number | null;
   clientTier: CoachClientTierId | "";
   qualifications: string;
+  whyCoach: string;
   headline: string;
   isProfessionalCoach: boolean;
   clientSpecializations: string[];
   photoUrl: string;
   displayName: string;
+  hourlyRate: number | null;
+  calLink: string;
 };
 
 export function coachOnboardingBio(draft: Pick<
@@ -40,6 +43,10 @@ export function coachOnboardingBio(draft: Pick<
   if (draft.isProfessionalCoach) parts.push("Professional coach");
   const header = parts.length ? `${parts.join("\n")}\n\n` : "";
   return `${header}${draft.qualifications.trim()}`.trim();
+}
+
+export function coachOnboardingAboutMe(draft: Pick<CoachOnboardingDraft, "qualifications">): string {
+  return draft.qualifications.trim();
 }
 
 export function isCoachProfileOnboardingComplete(profile: {

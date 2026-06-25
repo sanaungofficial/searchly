@@ -16,7 +16,7 @@ import {
   CoachScreenReview,
   type CoachOnboardingScreen,
 } from "@/components/scout/coach-onboarding-screens";
-import { coachOnboardingBio, type CoachOnboardingDraft } from "@/lib/coach-onboarding";
+import { coachOnboardingAboutMe, coachOnboardingBio, type CoachOnboardingDraft } from "@/lib/coach-onboarding";
 
 const INITIAL_DRAFT: CoachOnboardingDraft = {
   goal: "career",
@@ -27,11 +27,14 @@ const INITIAL_DRAFT: CoachOnboardingDraft = {
   industryYears: null,
   clientTier: "",
   qualifications: "",
+  whyCoach: "",
   headline: "",
   isProfessionalCoach: false,
   clientSpecializations: [],
   photoUrl: "",
   displayName: "",
+  hourlyRate: null,
+  calLink: "",
 };
 
 export default function CoachOnboardingPage() {
@@ -107,6 +110,7 @@ export default function CoachOnboardingPage() {
     setSubmitError(null);
     try {
       const bio = coachOnboardingBio(draft);
+      const aboutMe = coachOnboardingAboutMe(draft);
       const res = await fetch("/api/coach/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -116,8 +120,16 @@ export default function CoachOnboardingPage() {
           linkedinUrl: draft.linkedinUrl || null,
           headline: draft.headline,
           bio,
+          aboutMe,
+          whyCoach: draft.whyCoach || null,
           specialties: draft.specialties,
-          industries: draft.clientSpecializations,
+          clientSpecializations: draft.clientSpecializations,
+          experienceLevel: draft.experienceLevel || null,
+          clientTier: draft.clientTier || null,
+          industryYears: draft.industryYears,
+          isProfessionalCoach: draft.isProfessionalCoach,
+          hourlyRate: draft.hourlyRate,
+          calLink: draft.calLink || null,
           currentRole: draft.experienceLevel || null,
           photoUrl: draft.photoUrl || null,
           submitForReview: true,
