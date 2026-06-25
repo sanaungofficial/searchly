@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { JobMeta } from "@/hooks/useJobs";
@@ -598,25 +597,8 @@ export function WorkspaceDashboard() {
                 flexDirection: isMobile ? "column" : "row",
               }}
             >
-              <ScoutLabel>Market intelligence</ScoutLabel>
+              <ScoutLabel>Role market snapshot</ScoutLabel>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Link
-                  href="/market"
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    fontWeight: 600,
-                    color: color.forest,
-                    textDecoration: "none",
-                    padding: isMobile ? "10px 14px" : "6px 12px",
-                    border: border.line,
-                    minHeight: isMobile ? 44 : undefined,
-                    display: "inline-flex",
-                    alignItems: "center",
-                  }}
-                >
-                  Explore →
-                </Link>
                 <button
                   onClick={() =>
                     marketRequiresLoad
@@ -714,7 +696,9 @@ export function WorkspaceDashboard() {
                       title: marketInsight.headline?.median_salary
                         ? `Median ${formatInsightsSalary(marketInsight.headline.median_salary, marketInsight.headline.salary_currency) ?? ""}`
                         : "Salary data limited",
-                      actionable: "See full bands on Market → Salary",
+                      actionable: marketInsight.headline?.median_salary
+                        ? "Based on recent postings for your target roles"
+                        : "Salary data limited",
                       sentiment: "neutral" as const,
                     },
                     ...(marketInsight.top_companies ?? []).slice(0, 3).map((co) => ({
@@ -784,12 +768,12 @@ export function WorkspaceDashboard() {
                 <p style={displayTitleStyle(isMobile ? 20 : 22, { margin: "8px 0" })}>
                   {marketInsight.salary?.p50 != null
                     ? formatInsightsSalary(marketInsight.salary.p50, marketInsight.salary.currency)
-                    : marketInsight.headline?.dominant_experience_level ?? "See Market → Salary"}
+                    : marketInsight.headline?.dominant_experience_level ?? "Salary data limited"}
                 </p>
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
                   {marketInsight.salary?.p25 != null && marketInsight.salary?.p75 != null
                     ? `Typical range ${formatInsightsSalary(marketInsight.salary.p25, marketInsight.salary.currency)}–${formatInsightsSalary(marketInsight.salary.p75, marketInsight.salary.currency)} for ${signalsData.roleLabel}.`
-                    : "Open Salary explorer for level and location breakdowns."}
+                    : "Load market data above for salary bands by level and location."}
                 </p>
               </ScoutBox>
 

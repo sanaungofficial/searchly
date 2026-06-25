@@ -6,7 +6,6 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   DashboardIcon,
   OpportunitiesIcon,
-  MarketIcon,
   ProfileIcon,
   LiveIcon,
   CoachingIcon,
@@ -62,17 +61,8 @@ const SIDEBAR_LINE_ACTIVE = "1px solid rgba(232,213,163,0.35)";
 
 const NAV_SEARCH: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
-  { id: "market", label: "Market", path: "/market", Icon: MarketIcon },
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
 ];
-
-const MARKET_SUBNAV = [
-  { label: "Overview", path: "/market" },
-  { label: "Salary", path: "/market/salary" },
-  { label: "Skills", path: "/market/skills" },
-  { label: "Companies", path: "/market/companies" },
-  { label: "Signals", path: "/market/signals" },
-] as const;
 
 const NAV_PROFILE: NavItem = {
   id: "profile",
@@ -293,7 +283,6 @@ export function WorkspaceSidebar({
 
   const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
   const onOpportunities = pathname.startsWith("/opportunities");
-  const onMarket = pathname.startsWith("/market");
 
   useEffect(() => {
     if (!authChecked) return;
@@ -319,7 +308,6 @@ export function WorkspaceSidebar({
 
   const isActive = (path: string) => {
     if (path === "/opportunities") return pathname.startsWith("/opportunities");
-    if (path === "/market") return pathname.startsWith("/market");
     return pathname === path;
   };
 
@@ -573,23 +561,6 @@ export function WorkspaceSidebar({
                 isRail={isRail}
                 badge={id === "opportunities" ? activePipelineCount : undefined}
               />
-              {id === "market" && onMarket && !isRail && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 2 }}>
-                  {MARKET_SUBNAV.map(({ label: subLabel, path: subPath }) => (
-                    <SidebarNavButton
-                      key={subPath}
-                      active={pathname === subPath}
-                      onClick={() => navigate(subPath)}
-                      label={subLabel}
-                      Icon={() => (
-                        <span style={{ width: 15, height: 15, display: "inline-block", borderLeft: `2px solid ${pathname === subPath ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}` }} />
-                      )}
-                      isRail={false}
-                      indent
-                    />
-                  ))}
-                </div>
-              )}
               {id === "opportunities" && onOpportunities && !isRail && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 2 }}>
                   {OPP_SUBNAV.map(({ label: subLabel, path: subPath }) => (
