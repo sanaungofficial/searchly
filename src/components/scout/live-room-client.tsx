@@ -23,9 +23,19 @@ type JoinPayload = {
   session: { id: number; title: string; host: string; isLive: boolean };
 };
 
+function peerVideoTrackId(peer: HMSPeer): string {
+  const track = peer.videoTrack;
+  if (!track) return "";
+  if (typeof track === "string") return track;
+  if (typeof track === "object" && "id" in track && typeof track.id === "string") {
+    return track.id;
+  }
+  return "";
+}
+
 function PeerTile({ peer }: { peer: HMSPeer }) {
-  const trackId = peer.videoTrack ?? "";
-  const { videoRef } = useVideo({ trackId });
+  const trackId = peerVideoTrackId(peer);
+  const { videoRef } = useVideo({ trackId: trackId || undefined });
 
   return (
     <div
@@ -110,7 +120,13 @@ function LiveConference({
         if (!cancelled) setJoining(false);
       } catch (e) {
         if (!cancelled) {
-          setJoinError(e instanceof Error ? e.message : "Could not join the room");
+          const message =
+            e instanceof Error
+              ? e.message
+              : typeof e === "object" && e !== null && "message" in e
+                ? String((e as { message: unknown }).message)
+                : "Could not join the room";
+          setJoinError(message);
           setJoining(false);
         }
       }
@@ -264,7 +280,21 @@ export function LiveRoomClient({
         if (!res.ok) {
           throw new Error(data.error ?? "Could not join session");
         }
-        if (!cancelled) setJoinPayload(data);
+        const authToken =
+          typeof data.authToken === "string"
+            ? data.authToken
+            : (data.authToken as { token?: string } | undefined)?.token;
+        if (!authToken) {
+          throw new Error("Invalid live session token from server");
+        }
+        if (!cancelled) {
+          setJoinPayload({
+            ...data,
+            authToken,
+            userName: String(data.userName ?? "Guest"),
+            role: String(data.role ?? "guest"),
+          });
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Could not join session");
       } finally {
