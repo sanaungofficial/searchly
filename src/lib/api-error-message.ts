@@ -39,7 +39,8 @@ export function formatHirebaseErrorBody(body: string, status: number): string {
   try {
     return formatApiErrorMessage(JSON.parse(trimmed), `Hirebase request failed (${status})`);
   } catch {
-  return trimmed;
+    return trimmed;
+  }
 }
 
 /** Map Anthropic SDK / provider failures to a JSON NextResponse. */
@@ -73,5 +74,4 @@ export async function readResponseJson(res: Response): Promise<Record<string, un
   } catch {
     throw new Error(text.slice(0, 240) || `Invalid response (${res.status})`);
   }
-}
 }

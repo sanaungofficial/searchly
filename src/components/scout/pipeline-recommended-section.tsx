@@ -257,7 +257,7 @@ function DatalistInput({
   );
 }
 
-function splitInputList(value: string): string[] {
+function ChipToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
