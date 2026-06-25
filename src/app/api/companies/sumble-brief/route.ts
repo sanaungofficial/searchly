@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
 import { getCompanySumbleBriefBundle } from "@/lib/sumble-intel-service";
+import { canAccessSumbleBriefs } from "@/lib/sumble-access";
 
-/** Sumble AI intelligence brief for a company (50 credits). */
+/** Sumble AI intelligence brief for a company — enterprise only. */
 export async function GET(request: Request) {
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, realDbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!canAccessSumbleBriefs(dbUser, realDbUser)) {
+    return NextResponse.json(
+      { error: "Intelligence briefs are available on enterprise coaching plans.", code: "SUMBLE_BRIEF_LOCKED" },
+      { status: 403 },
+    );
+  }
 
   const { searchParams } = new URL(request.url);
   const trackedId = searchParams.get("trackedId");

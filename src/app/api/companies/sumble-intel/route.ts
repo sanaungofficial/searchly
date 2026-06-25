@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
 import { getCompanySumbleIntelBundle } from "@/lib/sumble-intel-service";
+import { canAccessSumbleBriefs } from "@/lib/sumble-access";
 
-/** Sumble org intelligence — signals, role metrics, and key people for company drawer. */
+/** Sumble org intelligence — enterprise only; signals, role metrics, and key people for company drawer. */
 export async function GET(request: Request) {
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, realDbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!canAccessSumbleBriefs(dbUser, realDbUser)) {
+    return NextResponse.json(
+      { error: "Sumble intelligence is available on enterprise coaching plans.", code: "SUMBLE_LOCKED" },
+      { status: 403 },
+    );
+  }
 
   const { searchParams } = new URL(request.url);
   const trackedId = searchParams.get("trackedId");

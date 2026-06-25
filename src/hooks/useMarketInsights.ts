@@ -31,7 +31,7 @@ export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
   const load = useCallback(
     async (options?: { refresh?: boolean; fetch?: boolean }) => {
       const refresh = options?.refresh ?? false;
-      const fetch = options?.fetch ?? refresh;
+      const shouldFetch = options?.fetch ?? refresh;
       setLoading(true);
       setError(null);
       try {
@@ -39,7 +39,7 @@ export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
           days: String(primaryDays),
           windows,
         });
-        if (fetch) params.set("load", "1");
+        if (shouldFetch) params.set("load", "1");
         if (refresh) params.set("refresh", "1");
         const res = await fetch(`/api/market/insights?${params}`);
         const body = (await res.json()) as MarketInsightsPayload;

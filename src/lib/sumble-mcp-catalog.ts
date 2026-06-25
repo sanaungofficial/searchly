@@ -67,6 +67,22 @@ export const SUMBLE_MCP_TOOLS: SumbleMcpTool[] = [
     kimchiStatus: "live",
   },
   {
+    name: "job_hiring_team",
+    endpoint: "POST /v6/teams + /v6/jobs/title-lookup + /v6/jobs related_people",
+    method: "POST",
+    description: "Job drawer hiring team — title lookup, team members with LinkedIn, hiring managers from posting.",
+    creditNotes: "~28 credits per load (cached 24h). Title lookup ~1; teams + related people vary.",
+    kimchiStatus: "live",
+  },
+  {
+    name: "person_network_expand",
+    endpoint: "POST /v6/people related_people (managers + direct_reports)",
+    method: "POST",
+    description: "Expand one hiring-team contact to inferred managers and teammates for networking.",
+    creditNotes: "~10 credits per person (cached 24h). 1 base + 1 per related person returned.",
+    kimchiStatus: "live",
+  },
+  {
     name: "title_lookup",
     endpoint: "POST /v6/jobs/title-lookup",
     method: "POST",

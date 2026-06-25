@@ -27,7 +27,12 @@ export async function GET(request: Request) {
     forceRefresh,
   });
 
-  if (bundle.error && !bundle.hiringManagers.length && !bundle.orgPeople.length && !bundle.requiresLoad) {
+  const hasPeople =
+    bundle.hiringManagers.length > 0 ||
+    bundle.orgPeople.length > 0 ||
+    bundle.hiringTeams.some((t) => t.people.length > 0);
+
+  if (bundle.error && !hasPeople && !bundle.requiresLoad) {
     return NextResponse.json(bundle, { status: bundle.configured ? 502 : 503 });
   }
 
