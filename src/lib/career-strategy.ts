@@ -111,12 +111,29 @@ export type StrategyProfileFields = {
   headline?: string | null;
   summary?: string | null;
   name?: string | null;
+  linkedinUrl?: string | null;
+};
+
+export type IntakeContextFields = {
+  industries?: string;
+  companyStages?: string;
+  avoidNotes?: string;
+  searchActivity?: string;
+  activeOffers?: string;
+  benefitsMustHaves?: string;
+  dealBreakers?: string;
+  recentEmployer?: string;
+  recentTitle?: string;
 };
 
 export type IntakeParseResult = {
   proposed: StrategyProfileFields;
   summary: string;
   fieldsFound: string[];
+  /** Dream employers to add to Companies watchlist (not profile columns). */
+  suggestedDreamCompanies?: string[];
+  /** Rich intake details kept for strategy generation (also stored in strategyIntakeNotes). */
+  intakeContext?: IntakeContextFields;
 };
 
 const SNAPSHOT_LABELS: Record<keyof Omit<StrategySourceSnapshot, "capturedAt" | "trackedCompanyNames" | "intakeNotesHash">, string> = {
@@ -404,5 +421,7 @@ export function parseIntakeJson(text: string): IntakeParseResult {
     proposed: parsed.proposed ?? {},
     summary: parsed.summary ?? "",
     fieldsFound: parsed.fieldsFound ?? [],
+    suggestedDreamCompanies: (parsed.suggestedDreamCompanies ?? []).filter(Boolean),
+    intakeContext: parsed.intakeContext ?? {},
   };
 }

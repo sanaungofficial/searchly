@@ -72,7 +72,7 @@ export function buildStrategyPromptContext(input: StrategyContextInput): Record<
       .map((r) => `${r.role} (${r.fit})`)
       .join(", "),
     trackedCompaniesSummary: companiesSummary,
-    intakeNotes: (intakeNotes ?? profile.strategyIntakeNotes ?? "").slice(0, 12000) || "None provided",
+    intakeNotes: (intakeNotes ?? profile.strategyIntakeNotes ?? "").slice(0, 24000) || "None provided",
   };
 }
 
@@ -87,6 +87,6 @@ export function fillIntakePrompt(template: string, notes: string, existingContex
   const ctx = buildStrategyPromptContext(existingContext);
   return interpolate(template, {
     ...ctx,
-    intakeNotes: notes.slice(0, 12000),
+    intakeNotes: notes.slice(0, 24000),
   });
 }
