@@ -5,6 +5,7 @@ import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
+import { parseJobDescriptionSections, hasParsedJobSections } from "@/lib/job-description-parse";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
 
@@ -173,8 +174,21 @@ function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<li[^>]*>/gi, "\n• ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/ {2,}/g, " ")
     .trim();
 }
 
@@ -227,6 +241,8 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
   const skills = mergeSkillLists(job);
   const requirementsSummary = job.requirements_summary?.trim() || null;
   const fullDescription = hasFullJobDescription(description);
+  const parsed = fullDescription ? parseJobDescriptionSections(description) : null;
+  const parsedSections = parsed && hasParsedJobSections(parsed) ? parsed : null;
 
   return {
     title: (job.job_title ?? job.title ?? "Untitled role").trim(),
@@ -235,10 +251,12 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
     url: job.application_link ?? null,
     hirebaseId: job._id ?? null,
     jobSlug: job.job_slug ?? null,
+    companySlug: job.company_slug ?? null,
+    companyLink: job.company_link ?? null,
+    companyLogo: job.company_logo ?? null,
     description,
-    jobSummary: fullDescription
-      ? summaryParagraphFromText(description!)
-      : requirementsSummary ?? (description ? description.slice(0, 420) : null),
+    jobSummary: parsedSections?.summary?.trim()
+      || (fullDescription ? summaryParagraphFromText(description!) : requirementsSummary ?? (description ? description.slice(0, 420) : null)),
     companySummary: job.company_data?.description_summary?.trim() || null,
     industries: job.company_data?.industries?.length ? job.company_data.industries : undefined,
     subindustries: job.company_data?.subindustries?.length ? job.company_data.subindustries : undefined,
@@ -249,8 +267,20 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
     salary: formatSalaryRange(job.salary_range),
     skills: skills.length ? skills : undefined,
     technologies: job.technologies?.length ? job.technologies : undefined,
-    benefits: job.benefits?.length ? job.benefits : undefined,
-    requiredQualifications: fullDescription ? undefined : requirementsFromSummary(requirementsSummary),
+    benefits: parsedSections?.benefits.length
+      ? parsedSections.benefits
+      : job.benefits?.length
+        ? job.benefits
+        : undefined,
+    responsibilities: parsedSections?.responsibilities.length ? parsedSections.responsibilities : undefined,
+    requiredQualifications: parsedSections?.requiredQualifications.length
+      ? parsedSections.requiredQualifications
+      : fullDescription
+        ? undefined
+        : requirementsFromSummary(requirementsSummary),
+    preferredQualifications: parsedSections?.preferredQualifications.length
+      ? parsedSections.preferredQualifications
+      : undefined,
     tags: job.job_categories?.length ? job.job_categories : undefined,
     datePosted: job.date_posted ?? null,
     team: job.team ?? null,
@@ -855,7 +885,7 @@ export async function fetchHirebaseVectorJobs(
 /** Full job record — used when opening a recommended or watchlist posting. */
 export async function fetchHirebaseJobById(
   jobId: string,
-): Promise<{ job: CachedJob; companyName: string } | null> {
+): Promise<{ job: CachedJob; companyName: string; raw: HirebaseJob } | null> {
   if (!jobId.trim()) return null;
   try {
     const raw = await hirebaseFetch<HirebaseJob>(
@@ -864,6 +894,7 @@ export async function fetchHirebaseJobById(
     return {
       job: mapHirebaseJob(raw),
       companyName: raw.company_name?.trim() || "Unknown company",
+      raw,
     };
   } catch (err) {
     if (err instanceof HirebaseNotFoundError) return null;

@@ -28,6 +28,10 @@ export interface JobMeta {
     gapSkills?: string[];
     vectorRank?: number;
   };
+  /** Employer metadata from Hirebase (recommended / prospect jobs). */
+  companySlug?: string | null;
+  companyWebsite?: string | null;
+  companyLogo?: string | null;
   /** Top Echelon in-network job (admin / internal). */
   networkJob?: {
     externalId: string;

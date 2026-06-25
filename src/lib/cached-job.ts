@@ -9,6 +9,9 @@ export type CachedJob = {
   url: string | null;
   hirebaseId?: string | null;
   jobSlug?: string | null;
+  companySlug?: string | null;
+  companyLink?: string | null;
+  companyLogo?: string | null;
   description?: string | null;
   jobSummary?: string | null;
   companySummary?: string | null;
@@ -20,7 +23,9 @@ export type CachedJob = {
   skills?: string[];
   technologies?: string[];
   benefits?: string[];
+  responsibilities?: string[];
   requiredQualifications?: string[];
+  preferredQualifications?: string[];
   tags?: string[];
   industries?: string[];
   subindustries?: string[];
@@ -62,6 +67,9 @@ export function mergeCachedJobs(base: CachedJob, detail: CachedJob): CachedJob {
     url: detail.url ?? base.url,
     hirebaseId: detail.hirebaseId ?? base.hirebaseId ?? null,
     jobSlug: detail.jobSlug ?? base.jobSlug ?? null,
+    companySlug: detail.companySlug ?? base.companySlug ?? null,
+    companyLink: detail.companyLink ?? base.companyLink ?? null,
+    companyLogo: detail.companyLogo ?? base.companyLogo ?? null,
     description,
     jobSummary: detail.jobSummary ?? base.jobSummary ?? null,
     companySummary: detail.companySummary ?? base.companySummary ?? null,
@@ -73,6 +81,8 @@ export function mergeCachedJobs(base: CachedJob, detail: CachedJob): CachedJob {
     skills: pickArray(detail.skills, base.skills),
     technologies: pickArray(detail.technologies, base.technologies),
     benefits: pickArray(detail.benefits, base.benefits),
+    responsibilities: pickArray(detail.responsibilities, base.responsibilities),
+    preferredQualifications: pickArray(detail.preferredQualifications, base.preferredQualifications),
     requiredQualifications: fullDescription
       ? (() => {
           const quals = pickArray(detail.requiredQualifications, base.requiredQualifications);
@@ -115,8 +125,13 @@ export function cachedJobToMeta(job: CachedJob): JobMeta {
     description: job.description ?? null,
     jobSummary: job.jobSummary ?? null,
     companySummary: job.companySummary ?? null,
+    companySlug: job.companySlug ?? null,
+    companyWebsite: job.companyLink ?? null,
+    companyLogo: job.companyLogo ?? null,
+    responsibilities: job.responsibilities?.length ? job.responsibilities : undefined,
     skills: uniqueSkills.length ? uniqueSkills : undefined,
     requiredQualifications: job.requiredQualifications?.length ? job.requiredQualifications : undefined,
+    preferredQualifications: job.preferredQualifications?.length ? job.preferredQualifications : undefined,
     benefits: job.benefits?.length ? job.benefits : undefined,
     tags: job.tags?.length ? job.tags : job.department ? [job.department] : undefined,
   };
