@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { REFERRAL_SUPPORT_EMAIL, LINKEDIN_SHARE_PRO_DAYS, REFERRAL_BONUS_PER_FEATURE } from "@/lib/plan-config";
 
 type ReferralStats = {
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function ReferEarnModal({ onClose }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<View>("hub");
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,10 @@ export function ReferEarnModal({ onClose }: Props) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const copyLink = async () => {
     if (!stats?.link) return;
@@ -76,7 +82,7 @@ export function ReferEarnModal({ onClose }: Props) {
     position: "fixed" as const,
     inset: 0,
     background: "rgba(0,0,0,0.45)",
-    zIndex: 200,
+    zIndex: 1100,
   };
 
   const modal = {
@@ -86,18 +92,20 @@ export function ReferEarnModal({ onClose }: Props) {
     transform: "translate(-50%, -50%)",
     width: view === "hub" ? 640 : 720,
     maxWidth: "calc(100vw - 32px)",
-    maxHeight: "85vh",
+    maxHeight: "min(85vh, calc(100dvh - 32px))",
     overflow: "auto",
     background: "#FFFFFF",
     borderRadius: 16,
-    zIndex: 201,
+    zIndex: 1101,
     padding: view === "hub" ? 28 : 32,
     fontFamily: "var(--font-ui), sans-serif",
   };
 
   const bonus = REFERRAL_BONUS_PER_FEATURE;
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div style={overlay} onClick={onClose} aria-hidden />
       <div style={modal} role="dialog" aria-labelledby="refer-earn-title">
@@ -231,6 +239,7 @@ export function ReferEarnModal({ onClose }: Props) {
           </>
         )}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

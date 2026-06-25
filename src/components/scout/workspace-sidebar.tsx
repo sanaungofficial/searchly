@@ -328,6 +328,25 @@ export function WorkspaceSidebar({
     setNotifRead(allRead);
   };
 
+  const closeSidebarOnMobile = () => {
+    if (isMobile && onToggle) onToggle();
+  };
+
+  const openSettings = () => {
+    setSettingsOpen(true);
+    closeSidebarOnMobile();
+  };
+
+  const openReferEarn = () => {
+    setReferEarnOpen(true);
+    closeSidebarOnMobile();
+  };
+
+  const openDiscovery = () => {
+    setDiscoveryOpen(true);
+    closeSidebarOnMobile();
+  };
+
   // Chevron icons for the toggle button
   const ChevronLeft = () => (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -627,7 +646,7 @@ export function WorkspaceSidebar({
           <div style={{ padding: "0 14px 12px" }}>
             <button
               type="button"
-              onClick={() => setReferEarnOpen(true)}
+              onClick={openReferEarn}
               data-offer="referral"
               data-trigger="sidebar_refer_earn"
               style={{
@@ -655,7 +674,7 @@ export function WorkspaceSidebar({
           <div style={{ padding: "0 14px 12px" }}>
             <button
               type="button"
-              onClick={() => setDiscoveryOpen(true)}
+              onClick={openDiscovery}
               data-offer="discovery"
               data-trigger="sidebar_help"
               style={{
@@ -697,7 +716,7 @@ export function WorkspaceSidebar({
           <div style={{ padding: "0 14px 12px" }}>
             <button
               type="button"
-              onClick={() => setReferEarnOpen(true)}
+              onClick={openReferEarn}
               data-offer="referral"
               data-trigger="sidebar_refer_earn"
               style={{
@@ -726,7 +745,7 @@ export function WorkspaceSidebar({
           <div style={{ padding: "0 14px 12px" }}>
             <button
               type="button"
-              onClick={() => setDiscoveryOpen(true)}
+              onClick={openDiscovery}
               data-offer="discovery"
               data-trigger="sidebar_help"
               style={{
@@ -751,7 +770,7 @@ export function WorkspaceSidebar({
         ) : !isMobile ? (
           <button
             type="button"
-            onClick={() => setDiscoveryOpen(true)}
+            onClick={openDiscovery}
             title="Talk to our team"
             data-offer="discovery"
             data-trigger="sidebar_help"
@@ -776,7 +795,7 @@ export function WorkspaceSidebar({
 
         {/* ── User badge — pinned on mobile so account settings is always reachable ── */}
         <button
-          onClick={() => setSettingsOpen(true)}
+          onClick={openSettings}
           title={isRail ? (user?.name ?? user?.email ?? "Account") : undefined}
           style={{
             padding: isRail ? "12px 0 18px" : isMobile ? "14px 18px max(16px, env(safe-area-inset-bottom))" : "14px 18px 20px",

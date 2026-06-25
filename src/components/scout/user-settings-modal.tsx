@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useSubscription } from "@/hooks/useSubscription";
 import { fontSans } from "@/lib/typography";
 
@@ -29,12 +30,17 @@ function initials(name: string | null, email: string) {
 }
 
 export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<SettingsTab>("profile");
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isPro, isAdmin, status, currentPeriodEnd, credits, loading, startCheckout, openPortal } = useSubscription();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -91,7 +97,9 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
     }
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
@@ -100,12 +108,12 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.45)",
-          zIndex: 100,
+          zIndex: 1100,
           animation: "fadeIn 0.15s ease both",
         }}
       />
 
-      {/* Modal */}
+      {/* Modal — portaled so it is not clipped by the sidebar transform stack */}
       <div
         style={{
           position: "fixed",
@@ -114,11 +122,11 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           transform: "translate(-50%, -50%)",
           width: 680,
           maxWidth: "calc(100vw - 32px)",
-          maxHeight: "80vh",
+          maxHeight: "min(80vh, calc(100dvh - 32px))",
           background: "#FFFFFF",
           borderRadius: 0,
           boxShadow: "0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.1)",
-          zIndex: 101,
+          zIndex: 1101,
           display: "flex",
           overflow: "hidden",
           animation: "fadeIn 0.2s ease both",
@@ -645,7 +653,8 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
 

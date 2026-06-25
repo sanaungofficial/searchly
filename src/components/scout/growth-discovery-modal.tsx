@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { DISCOVERY_BLOCKERS, type DiscoveryBlocker } from "@/lib/discovery-lead";
 
 export type GrowthDiscoveryTrigger = "sidebar_help" | "low_match" | "interview" | "dashboard" | "readback";
@@ -42,6 +43,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<ProfilePrefill | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [blocker, setBlocker] = useState<DiscoveryBlocker | "">("");
@@ -72,6 +74,10 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false));
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -111,12 +117,14 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
   const targetRoleLabel =
     profile?.targetRoles?.length ? profile.targetRoles.slice(0, 2).join(", ") : null;
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 70,
+        zIndex: 1100,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -369,6 +377,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
