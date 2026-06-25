@@ -9,14 +9,18 @@ export async function GET(request: Request) {
 
   const forceRefresh = new URL(request.url).searchParams.get("refresh") === "1";
   const allowFetch = new URL(request.url).searchParams.get("load") === "1" || forceRefresh;
+  const maxCompanies = Number(new URL(request.url).searchParams.get("limit") ?? "10");
 
   const bundle = await getDashboardSumbleSignalsBundle({
     userId: dbUser.id,
     forceRefresh,
     allowFetch,
+    maxCompanies: Number.isFinite(maxCompanies) ? maxCompanies : 10,
   });
 
-  if (bundle.error && !bundle.signals.length && !bundle.requiresLoad) {
+  const hasData = bundle.signals.length > 0 || bundle.companies.some((c) => c.matched || c.signals.length > 0);
+
+  if (bundle.error && !hasData && !bundle.requiresLoad) {
     return NextResponse.json(bundle, { status: bundle.configured ? 502 : 503 });
   }
 

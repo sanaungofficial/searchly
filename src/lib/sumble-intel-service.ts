@@ -324,17 +324,32 @@ export type TrackedCompanySignalSource = {
   sumbleUrl: string | null;
 };
 
+export type DashboardTrackedCompanySignals = {
+  trackedId: string;
+  companyName: string;
+  domain: string | null;
+  organizationId: number | null;
+  sumbleUrl: string | null;
+  matched: boolean;
+  matchError?: string;
+  signals: SumbleSignal[];
+};
+
 export type DashboardSumbleSignalsBundle = {
   configured: boolean;
+  companies: DashboardTrackedCompanySignals[];
   signals: Array<
     SumbleSignal & {
       companyName: string;
       companyDomain: string | null;
       trackedId: string;
+      organizationId: number | null;
     }
   >;
   companiesScanned: number;
+  companiesMatched: number;
   companiesWithSignals: number;
+  totalSignals: number;
   targetRoles: string[];
   generatedAt: string;
   serverCached: boolean;
@@ -346,9 +361,8 @@ export type DashboardSumbleSignalsBundle = {
 };
 
 const DASHBOARD_SIGNALS_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const DASHBOARD_MAX_COMPANIES = 3;
-const DASHBOARD_SIGNALS_PER_COMPANY = 3;
-const DASHBOARD_MAX_SIGNALS = 8;
+const DASHBOARD_MAX_COMPANIES = 10;
+const DASHBOARD_CREDITS_PER_COMPANY = 4;
 
 const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
@@ -357,17 +371,22 @@ export async function getDashboardSumbleSignalsBundle(input: {
   forceRefresh?: boolean;
   /** When false, only return server cache — never call Sumble */
   allowFetch?: boolean;
+  maxCompanies?: number;
 }): Promise<DashboardSumbleSignalsBundle> {
   const configured = isSumbleConfigured();
   const targetRoles = await loadTargetRoles(input.userId);
   const creditsRemaining = getSumbleCreditsRemaining();
-  const estimatedCredits = SUMBLE_ESTIMATED_COSTS.dashboardSignals;
+  const maxCompanies = Math.max(1, Math.min(input.maxCompanies ?? DASHBOARD_MAX_COMPANIES, DASHBOARD_MAX_COMPANIES));
+  const estimatedCredits = maxCompanies * DASHBOARD_CREDITS_PER_COMPANY;
 
   const empty: DashboardSumbleSignalsBundle = {
     configured,
+    companies: [],
     signals: [],
     companiesScanned: 0,
+    companiesMatched: 0,
     companiesWithSignals: 0,
+    totalSignals: 0,
     targetRoles,
     generatedAt: new Date().toISOString(),
     serverCached: false,
@@ -381,7 +400,7 @@ export async function getDashboardSumbleSignalsBundle(input: {
     return { ...empty, requiresLoad: undefined, error: "Sumble is not configured on this environment." };
   }
 
-  const cacheKey = insightsCacheKey("sumble-dashboard-signals", { userId: input.userId });
+  const cacheKey = insightsCacheKey("sumble-dashboard-signals-v2", { userId: input.userId, maxCompanies });
 
   if (!input.forceRefresh) {
     const hit = getInsightsCached<DashboardSumbleSignalsBundle>(cacheKey);
@@ -399,7 +418,7 @@ export async function getDashboardSumbleSignalsBundle(input: {
       where: { userId: input.userId },
       include: { companyIntel: true },
       orderBy: { updatedAt: "desc" },
-      take: 40,
+      take: 50,
     });
 
     const ranked = tracked
@@ -418,7 +437,7 @@ export async function getDashboardSumbleSignalsBundle(input: {
       })
       .filter((row) => row.domain || row.companyName.trim())
       .sort((a, b) => a.priorityRank - b.priorityRank)
-      .slice(0, DASHBOARD_MAX_COMPANIES);
+      .slice(0, maxCompanies);
 
     if (!ranked.length) {
       const bundle: DashboardSumbleSignalsBundle = {
@@ -430,50 +449,78 @@ export async function getDashboardSumbleSignalsBundle(input: {
     }
 
     let creditsUsed = 0;
-    let creditsRemaining: number | null = null;
+    let creditsRemainingAfter: number | null = null;
+    const companies: DashboardTrackedCompanySignals[] = [];
     const aggregated: DashboardSumbleSignalsBundle["signals"] = [];
 
     for (const company of ranked) {
-      if (aggregated.length >= DASHBOARD_MAX_SIGNALS) break;
-
       const match = await fetchSumbleOrganizationMatch({
         domain: company.domain,
         name: company.companyName,
       });
       creditsUsed += match.creditsUsed;
-      creditsRemaining = match.creditsRemaining ?? creditsRemaining;
+      creditsRemainingAfter = match.creditsRemaining ?? creditsRemainingAfter;
 
-      if (!match.organizationId) continue;
+      if (!match.organizationId) {
+        companies.push({
+          trackedId: company.trackedId,
+          companyName: company.companyName,
+          domain: company.domain,
+          organizationId: null,
+          sumbleUrl: null,
+          matched: false,
+          matchError: company.domain
+            ? `No Sumble match for ${company.domain}`
+            : `No Sumble match for ${company.companyName}`,
+          signals: [],
+        });
+        continue;
+      }
 
       const signalsResult = await fetchSumbleOrganizationSignals(match.organizationId);
       creditsUsed += signalsResult.creditsUsed;
-      creditsRemaining = signalsResult.creditsRemaining ?? creditsRemaining;
+      creditsRemainingAfter = signalsResult.creditsRemaining ?? creditsRemainingAfter;
 
-      for (const signal of signalsResult.signals.slice(0, DASHBOARD_SIGNALS_PER_COMPANY)) {
+      const orgName = match.organizationName ?? company.companyName;
+      companies.push({
+        trackedId: company.trackedId,
+        companyName: orgName,
+        domain: company.domain,
+        organizationId: match.organizationId,
+        sumbleUrl: match.sumbleUrl,
+        matched: true,
+        signals: signalsResult.signals,
+      });
+
+      for (const signal of signalsResult.signals) {
         aggregated.push({
           ...signal,
-          companyName: match.organizationName ?? company.companyName,
+          companyName: orgName,
           companyDomain: company.domain,
           trackedId: company.trackedId,
+          organizationId: match.organizationId,
         });
-        if (aggregated.length >= DASHBOARD_MAX_SIGNALS) break;
       }
     }
 
     aggregated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const companiesWithSignals = new Set(aggregated.map((s) => s.trackedId)).size;
+    const companiesMatched = companies.filter((c) => c.matched).length;
+    const companiesWithSignals = companies.filter((c) => c.signals.length > 0).length;
 
     const bundle: DashboardSumbleSignalsBundle = {
       configured: true,
+      companies,
       signals: aggregated,
       companiesScanned: ranked.length,
+      companiesMatched,
       companiesWithSignals,
+      totalSignals: aggregated.length,
       targetRoles,
       generatedAt: new Date().toISOString(),
       serverCached: false,
       creditsUsed,
-      creditsRemaining,
+      creditsRemaining: creditsRemainingAfter,
       requiresLoad: false,
       estimatedCredits,
     };
