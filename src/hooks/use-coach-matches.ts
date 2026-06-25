@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { topMatchedCoach } from "@/lib/coach-match";
 import type { CoachListItem } from "@/lib/coach-types";
 import {
@@ -34,23 +35,20 @@ export function useCoachMatches() {
       const data = (await res.json()) as {
         coaches?: CoachListItem[];
         scored?: boolean;
+        hint?: string | null;
       };
       if (res.ok && Array.isArray(data.coaches)) {
         setCoaches(data.coaches);
         const scored = Boolean(data.scored);
-        const needs = !scored;
-        setNeedsProfile(needs);
-        setProfileHint(
-          needs ? "Add target roles or upload a resume in Profile to unlock coach match scores." : null,
-        );
+        const hint = scored ? null : (data.hint ?? COACH_MATCH_NEEDS_SIGNAL_HINT);
+        setNeedsProfile(!scored);
+        setProfileHint(hint);
         writeCoachMatchCache({
           coaches: data.coaches,
           fetchedAt: Date.now(),
           scored,
-          needsProfile: needs,
-          hint: needs
-            ? "Add target roles or upload a resume in Profile to unlock coach match scores."
-            : null,
+          needsProfile: !scored,
+          hint,
         });
       }
     } catch {

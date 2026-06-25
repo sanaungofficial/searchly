@@ -1,11 +1,9 @@
 import { enrichCoachesWithMatch } from "@/lib/coach-match";
+import { buildCoachMatchUserContext } from "@/lib/coach-match-context";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
 import { getAuthenticatedDbUser } from "@/lib/coach-api";
-import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
-import { findResumeAssetForUser } from "@/lib/resume-artifact";
-import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 
 const coachListSelect = {
   id: true,
@@ -51,29 +49,7 @@ export async function GET() {
   });
 
   const profile = await prisma.profile.findUnique({ where: { userId: me.id } });
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
-  const parsedData = mergeParsedWithReadback(
-    normalizeParsedResumeData(profile?.parsedData ?? null),
-    profile?.readbackData,
-  );
-  let profileText =
-    profileTextForMatchReasons({
-      headline: profile?.headline,
-      targetRoles,
-      resumeText: profile?.resumeText,
-      parsedData,
-      careerMotivation: profile?.careerMotivation,
-      priorities: profile?.priorities ?? [],
-      employmentStatus: profile?.employmentStatus,
-      jobTimeline: profile?.jobTimeline,
-      targetSalary: profile?.targetSalary
-        ? Number.parseFloat(profile.targetSalary.replace(/[^0-9.]/g, "")) || null
-        : null,
-    }) || "";
-  if (!profileText.trim()) {
-    const resumeAsset = await findResumeAssetForUser(me.id);
-    if (resumeAsset?.resumeText) profileText = resumeAsset.resumeText;
-  }
+  const matchCtx = await buildCoachMatchUserContext(me.id, profile);
 
   const base = coaches.map((c) => {
     const avgRating =
@@ -86,6 +62,7 @@ export async function GET() {
       displayName: c.displayName,
       headline: c.headline,
       bio: c.bio,
+      aboutMe: c.aboutMe,
       currentRole: c.currentRole,
       currentCompany: c.currentCompany,
       location: c.location,
@@ -108,5 +85,12 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json(enrichCoachesWithMatch(base, profileText, targetRoles));
+  return NextResponse.json(
+    enrichCoachesWithMatch(
+      base,
+      matchCtx.profileText,
+      matchCtx.targetRoles,
+      matchCtx.dashboardGoals,
+    ),
+  );
 }

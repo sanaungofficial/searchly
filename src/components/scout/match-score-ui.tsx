@@ -1,7 +1,7 @@
 "use client";
 
 import { coachMatchTierExplanation, isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
-import { ScoreExplainerLabel } from "@/components/scout/score-explainer-popover";
+import { ScoreExplainerLabel, ScoreExplainerPopover } from "@/components/scout/score-explainer-popover";
 import { fontSans, fontMono, color, type as T } from "@/lib/typography";
 
 export type MatchScoreDisplayJob = {
@@ -42,6 +42,25 @@ export function MatchScoreBadge({ score, label }: { score: number; label: string
       >
         {label}
       </p>
+    </div>
+  );
+}
+
+/** Score badge + hover explainer — matches Opportunities recommended rows. */
+export function CoachMatchScoreCluster({
+  score,
+  label,
+  align = "right",
+}: {
+  score: number;
+  label: string;
+  align?: "left" | "right";
+}) {
+  if (score <= 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: align === "right" ? "flex-end" : "flex-start", gap: 4, flexShrink: 0 }}>
+      <ScoreExplainerPopover variant="coach-match" align={align} />
+      <MatchScoreBadge score={score} label={label} />
     </div>
   );
 }
@@ -151,7 +170,7 @@ export function CoachMatchSection({ job }: { job: MatchScoreDisplayJob }) {
           textTransform: "uppercase",
         }}
       >
-        <ScoreExplainerLabel variant="coach-match">Why this coach matches your profile</ScoreExplainerLabel>
+        <ScoreExplainerLabel variant="coach-match">Why this coach matches you</ScoreExplainerLabel>
       </p>
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         {tierLine}
