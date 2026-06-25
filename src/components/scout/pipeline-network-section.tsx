@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { SEED_NETWORK_JOBS, previewPlainText } from "@/lib/network-job-display";
@@ -14,6 +14,11 @@ import {
   type NetworkJobFilterForm,
   type NetworkJobFilterSuggestions,
 } from "@/lib/network-job-filters";
+import { locationFieldsFromProfileString } from "@/lib/recommended-filter-utils";
+import {
+  loadScopedNetworkSearch,
+  saveScopedNetworkSearch,
+} from "@/lib/client-session";
 import { CompanyLogo } from "./company-logo";
 import { MatchFitCallout, MatchScoreBadge } from "./match-score-ui";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
@@ -37,6 +42,7 @@ function seedAsMatched(jobs: NetworkJobListing[]): NetworkMatchedJob[] {
 interface PipelineNetworkSectionProps {
   onOpenJob: (job: NetworkJobListing) => void;
   onSaveJob?: (job: NetworkJobListing) => Promise<void>;
+  actingUserId?: string | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -395,7 +401,7 @@ function NetworkJobCard({
   );
 }
 
-export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetworkSectionProps) {
+export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: PipelineNetworkSectionProps) {
   const { isAdmin, userRole } = useWorkspace();
   const isMobile = useIsMobile();
   const internalView = canViewNetworkJobInternal(userRole, isAdmin);
@@ -405,9 +411,14 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   const [needsProfile, setNeedsProfile] = useState(false);
   const [profileHint, setProfileHint] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [form, setForm] = useState<NetworkJobFilterForm>(() => createEmptyNetworkJobFilterForm());
+  const [form, setForm] = useState<NetworkJobFilterForm>(() => ({
+    ...createEmptyNetworkJobFilterForm(),
+    search: loadScopedNetworkSearch(),
+  }));
   const [appliedForm, setAppliedForm] = useState<NetworkJobFilterForm>(() => createEmptyNetworkJobFilterForm());
   const [showFilters, setShowFilters] = useState(false);
+  const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
+  const profileFormRef = useRef<NetworkJobFilterForm | null>(null);
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -433,8 +444,38 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   }, []);
 
   useEffect(() => {
+    setAppliedForm(createEmptyNetworkJobFilterForm());
+    setProfileSuggestedLabels([]);
+    profileFormRef.current = null;
     void loadJobs();
-  }, [loadJobs]);
+
+    void fetch("/api/profile")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { targetRoles?: string[]; parsedData?: { location?: string | null } } | null) => {
+        if (!data) {
+          setForm({ ...createEmptyNetworkJobFilterForm(), search: loadScopedNetworkSearch() });
+          return;
+        }
+        const fields = locationFieldsFromProfileString(data.parsedData?.location);
+        const targetRoles = Array.isArray(data.targetRoles) ? data.targetRoles.filter(Boolean) : [];
+        const profileForm: NetworkJobFilterForm = {
+          ...createEmptyNetworkJobFilterForm(),
+          search: loadScopedNetworkSearch(),
+          jobTitles: targetRoles.join(", "),
+          locationCity: fields.city,
+          locationState: fields.region,
+        };
+        profileFormRef.current = profileForm;
+        setForm(profileForm);
+        const labels: string[] = [];
+        if (targetRoles.length) labels.push(`Titles: ${targetRoles.join(", ")}`);
+        if (fields.display) labels.push(`Location: ${fields.display}`);
+        setProfileSuggestedLabels(labels);
+      })
+      .catch(() => {
+        setForm({ ...createEmptyNetworkJobFilterForm(), search: loadScopedNetworkSearch() });
+      });
+  }, [actingUserId, loadJobs]);
 
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
   const visibleJobs = useMemo(() => {
@@ -445,12 +486,14 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   const hasActiveSearch = Boolean(appliedForm.search.trim());
 
   const applyFilters = (nextForm = form) => {
+    saveScopedNetworkSearch(nextForm.search);
     setAppliedForm({ ...nextForm });
   };
 
   const clearFilters = () => {
-    const empty = createEmptyNetworkJobFilterForm();
-    setForm(empty);
+    const empty = profileFormRef.current ?? createEmptyNetworkJobFilterForm();
+    saveScopedNetworkSearch("");
+    setForm({ ...empty, search: "" });
     setAppliedForm(createEmptyNetworkJobFilterForm());
   };
 
@@ -507,6 +550,31 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
             maxLength={400}
           />
         </FilterField>
+
+        {showFilters && profileSuggestedLabels.length > 0 && activeFilterCount === 0 && (
+          <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: "0 0 8px" }}>
+              Suggested from this profile (click Apply filters to use)
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {profileSuggestedLabels.map((label) => (
+                <span
+                  key={label}
+                  style={{
+                    padding: "3px 8px",
+                    border: border.line,
+                    fontFamily: fontSans,
+                    fontSize: T.label,
+                    color: color.muted,
+                    background: surface.card,
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {showFilters && (
           <NetworkJobFiltersGrid form={form} setForm={setForm} suggestions={suggestions} internalView={internalView} />
