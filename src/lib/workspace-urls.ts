@@ -74,6 +74,12 @@ export function profileAssetsUrl(assetId?: string | null): string {
   return `/profile/assets/${encodeURIComponent(assetId)}`;
 }
 
+export function profileLearningPathUrl(skill?: string | null): string {
+  const base = "/profile/learning-path";
+  if (!skill?.trim()) return base;
+  return `${base}?skill=${encodeURIComponent(skill.trim())}`;
+}
+
 export function profileAboutSectionUrl(section: AboutSectionSlug): string {
   if (section === "personal") return "/profile";
   return `/profile/about/${section}`;
