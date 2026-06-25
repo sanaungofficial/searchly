@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   type CareerStrategyDocument,
@@ -113,13 +113,49 @@ const textareaStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+type StrategyGenerationStatus = "running" | "complete" | "failed" | null;
+
+const POLL_MS = 4000;
+
+function applyStrategyPayload(
+  data: Record<string, unknown>,
+  setters: {
+    setDocument: (d: CareerStrategyDocument) => void;
+    setIntakeNotes: (v: string) => void;
+    setUpdatedAt: (v: string | null) => void;
+    setProfileChanges: (v: string[]) => void;
+    setIsStale: (v: boolean) => void;
+    setIsPartial: (v: boolean) => void;
+    setPartialWarning: (v: string | null) => void;
+    setHistory: (v: StrategyVersion[]) => void;
+    setSelectedVersionId: (v: "current" | string) => void;
+    setGenerationStatus: (v: StrategyGenerationStatus) => void;
+    setGenerationError: (v: string | null) => void;
+  },
+) {
+  if (data.document) {
+    setters.setDocument(normalizeStrategyDocument(data.document));
+    setters.setSelectedVersionId("current");
+  } else if (data.hasDocument === false) {
+    setters.setDocument(EMPTY_STRATEGY);
+  }
+  if (data.intakeNotes != null) setters.setIntakeNotes(String(data.intakeNotes));
+  if (data.updatedAt != null) setters.setUpdatedAt(data.updatedAt ? String(data.updatedAt) : null);
+  setters.setProfileChanges((data.profileChanges as string[]) ?? []);
+  setters.setIsStale(!!data.isStale);
+  setters.setIsPartial(!!data.isPartial);
+  if (data.warning) setters.setPartialWarning(String(data.warning));
+  setters.setHistory((data.history as StrategyVersion[]) ?? []);
+  setters.setGenerationStatus((data.generationStatus as StrategyGenerationStatus) ?? null);
+  setters.setGenerationError(data.generationError ? String(data.generationError) : null);
+}
+
 export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props) {
   const router = useRouter();
   const [intakeNotes, setIntakeNotes] = useState("");
   const [document, setDocument] = useState<CareerStrategyDocument>(EMPTY_STRATEGY);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [parseResult, setParseResult] = useState<IntakeParseResult | null>(null);
@@ -134,9 +170,35 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
   const [editMode, setEditMode] = useState(false);
   const [history, setHistory] = useState<StrategyVersion[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<"current" | string>("current");
+  const [generationStatus, setGenerationStatus] = useState<StrategyGenerationStatus>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [showCompleteBanner, setShowCompleteBanner] = useState(false);
+  const generationStatusRef = useRef<StrategyGenerationStatus>(null);
 
-  const loadStrategy = useCallback(async () => {
-    setLoading(true);
+  const isGenerating = generationStatus === "running";
+
+  useEffect(() => {
+    generationStatusRef.current = generationStatus;
+  }, [generationStatus]);
+
+  const applyPayload = useCallback((data: Record<string, unknown>) => {
+    applyStrategyPayload(data, {
+      setDocument,
+      setIntakeNotes,
+      setUpdatedAt,
+      setProfileChanges,
+      setIsStale,
+      setIsPartial,
+      setPartialWarning,
+      setHistory,
+      setSelectedVersionId,
+      setGenerationStatus,
+      setGenerationError,
+    });
+  }, []);
+
+  const refreshStrategy = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/ai/career-strategy");
@@ -144,23 +206,28 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       if (data.error && res.status !== 404) {
         setError(formatApiErrorMessage(data.error));
       } else {
-        if (data.document) setDocument(normalizeStrategyDocument(data.document));
-        else setDocument(EMPTY_STRATEGY);
-        if (data.intakeNotes) setIntakeNotes(String(data.intakeNotes));
-        if (data.updatedAt) setUpdatedAt(String(data.updatedAt));
-        setProfileChanges((data.profileChanges as string[]) ?? []);
-        setIsStale(!!data.isStale);
-        setIsPartial(!!data.isPartial);
-        setPartialWarning(null);
-        setHistory((data.history as StrategyVersion[]) ?? []);
-        if (data.document) setSelectedVersionId("current");
+        const prevStatus = generationStatusRef.current;
+        applyPayload(data);
+        const nextStatus = (data.generationStatus as StrategyGenerationStatus) ?? null;
+        if (prevStatus === "running" && nextStatus === "complete") {
+          setShowCompleteBanner(true);
+        }
+        if (nextStatus === "failed" && data.generationError) {
+          setError(String(data.generationError));
+        }
       }
     } catch (e) {
-      setError(formatApiErrorMessage(e, "Failed to load strategy"));
+      if (!options?.silent) {
+        setError(formatApiErrorMessage(e, "Failed to load strategy"));
+      }
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
-  }, []);
+  }, [applyPayload]);
+
+  const loadStrategy = useCallback(async () => {
+    await refreshStrategy();
+  }, [refreshStrategy]);
 
   useEffect(() => {
     loadStrategy();
@@ -172,6 +239,20 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       })
       .catch(() => {});
   }, [loadStrategy]);
+
+  useEffect(() => {
+    if (generationStatus !== "running") return;
+    const id = window.setInterval(() => {
+      void refreshStrategy({ silent: true });
+    }, POLL_MS);
+    return () => window.clearInterval(id);
+  }, [generationStatus, refreshStrategy]);
+
+  useEffect(() => {
+    if (!showCompleteBanner) return;
+    const id = window.setTimeout(() => setShowCompleteBanner(false), 12000);
+    return () => window.clearTimeout(id);
+  }, [showCompleteBanner]);
 
   async function saveIntakeNotes() {
     const res = await fetch("/api/ai/career-strategy", {
@@ -188,9 +269,10 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       setError("Upload a resume on the Resumes tab first.");
       return;
     }
-    setGenerating(true);
+    if (isGenerating) return;
     setError(null);
     setPartialWarning(null);
+    setShowCompleteBanner(false);
     try {
       if (intakeNotes.trim()) {
         await saveIntakeNotes();
@@ -202,20 +284,17 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         setShowUpgrade(true);
         return;
       }
-      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Generation failed"));
-      setDocument(normalizeStrategyDocument(data.document));
-      setUpdatedAt(data.updatedAt ? String(data.updatedAt) : null);
-      setProfileChanges([]);
-      setIsStale(false);
-      setIsPartial(!!data.isPartial);
-      if (data.warning) setPartialWarning(String(data.warning));
-      setHistory((data.history as StrategyVersion[]) ?? []);
-      setSelectedVersionId("current");
+      if (!res.ok && res.status !== 202) {
+        throw new Error(formatApiErrorMessage(data.error, "Generation failed"));
+      }
+      setGenerationStatus("running");
+      setGenerationError(null);
       notifyCreditsChanged();
+      if (res.status === 202) return;
+      applyPayload(data);
+      if (data.warning) setPartialWarning(String(data.warning));
     } catch (e) {
       setError(formatApiErrorMessage(e, "Generation failed"));
-    } finally {
-      setGenerating(false);
     }
   }
 
@@ -369,8 +448,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
             {partialWarning ??
               "Generation was cut short. Review the sections below — regenerate only when you want the full document (uses 1 credit)."}
           </p>
-          <ScoutSecondaryBtn onClick={handleGenerate} disabled={generating}>
-            {generating ? "Regenerating…" : "Regenerate full strategy"}
+          <ScoutSecondaryBtn onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? "Regenerating…" : "Regenerate full strategy"}
           </ScoutSecondaryBtn>
         </ScoutBox>
       )}
@@ -383,8 +462,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
             Changes: {profileChanges.join(", ")}. Regenerate only if these updates should change the strategy.
           </p>
-          <ScoutSecondaryBtn onClick={handleGenerate} disabled={generating}>
-            {generating ? "Regenerating…" : "Regenerate strategy"}
+          <ScoutSecondaryBtn onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? "Regenerating…" : "Regenerate strategy"}
           </ScoutSecondaryBtn>
         </ScoutBox>
       )}
@@ -406,11 +485,11 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           style={{ ...textareaStyle, minHeight: 140 }}
         />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-          <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || generating || !intakeNotes.trim()}>
+          <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || isGenerating || !intakeNotes.trim()}>
             {parsing ? "Parsing…" : "Parse & review profile updates"}
           </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={handleGenerate} disabled={generating || parsing}>
-            {generating ? "Generating…" : hasDocument ? "Regenerate strategy" : "Generate strategy"}
+          <ScoutPrimaryBtn onClick={handleGenerate} disabled={isGenerating || parsing}>
+            {isGenerating ? "Generating…" : hasDocument ? "Regenerate strategy" : "Generate strategy"}
           </ScoutPrimaryBtn>
         </div>
         {parsing && (
@@ -418,15 +497,10 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
             <KimchiProcessLoader preset="strategyIntake" variant="inline" />
           </div>
         )}
-        {generating && (
-          <div style={{ marginTop: 16 }}>
-            <KimchiProcessLoader preset="careerStrategy" variant="inline" />
-            {hasDocument && (
-              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
-                Your previous strategy stays visible below while the new version generates.
-              </p>
-            )}
-          </div>
+        {isGenerating && (
+          <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "12px 0 0" }}>
+            Generation runs in the background — you can leave this page and come back anytime.
+          </p>
         )}
         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
           Strategy generation uses 1 AI credit and only runs when you click the button above.
@@ -575,11 +649,11 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           </div>
         </div>
 
-        {generating && hasViewableDocument && (
+        {isGenerating && (
           <div
             style={{
               marginBottom: 12,
-              padding: "10px 12px",
+              padding: "12px 14px",
               background: "rgba(26, 58, 47, 0.06)",
               border: border.line,
               fontFamily: fontSans,
@@ -587,19 +661,64 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
               color: color.forest,
             }}
           >
-            Generating a new version… showing {selectedVersionId === "current" ? "current" : "selected"} document below.
+            <p style={{ margin: "0 0 8px", fontWeight: 600 }}>Your strategy is being written</p>
+            <p style={{ margin: 0, color: color.muted, lineHeight: 1.5 }}>
+              Usually takes 1–3 minutes. You can navigate away — we&apos;ll keep working in the background.
+              {hasViewableDocument
+                ? ` Showing ${selectedVersionId === "current" ? "current" : "selected"} document until the new version is ready.`
+                : ""}
+            </p>
+            <div style={{ marginTop: 12 }}>
+              <KimchiProcessLoader preset="careerStrategy" variant="inline" />
+            </div>
+          </div>
+        )}
+
+        {showCompleteBanner && generationStatus === "complete" && !isGenerating && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: "12px 14px",
+              background: "rgba(74, 139, 106, 0.1)",
+              border: "1px solid rgba(74, 139, 106, 0.35)",
+              fontFamily: fontSans,
+              fontSize: 13,
+              color: color.forest,
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: 600 }}>Strategy ready</p>
+            <p style={{ margin: "6px 0 0", color: color.muted }}>
+              Your career strategy document has finished generating.
+            </p>
+          </div>
+        )}
+
+        {generationStatus === "failed" && generationError && !isGenerating && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: "12px 14px",
+              background: "rgba(176, 64, 64, 0.08)",
+              border: "1px solid rgba(176, 64, 64, 0.25)",
+              fontFamily: fontSans,
+              fontSize: 13,
+              color: "#8b3030",
+            }}
+          >
+            <p style={{ margin: "0 0 6px", fontWeight: 600 }}>Generation failed</p>
+            <p style={{ margin: 0 }}>{generationError}</p>
           </div>
         )}
 
         {loading ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading…</p>
-        ) : !hasViewableDocument && !generating ? (
+        ) : !hasViewableDocument && !isGenerating ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
             No strategy yet. Paste intake notes and click Generate strategy.
           </p>
-        ) : !hasViewableDocument && generating ? (
+        ) : !hasViewableDocument && isGenerating ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
-            First strategy generating…
+            First strategy generating… check back in a minute or two.
           </p>
         ) : editMode && selectedVersionId === "current" ? (
           <StrategyEditor document={document} onChange={setDocument} />

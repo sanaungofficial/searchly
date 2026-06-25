@@ -125,6 +125,10 @@ model Profile {
   strategySourceSnapshot   Json?
   strategyIntakeNotes      String?  @db.Text
   strategyHistory          Json?
+  strategyGenerationStatus      String?
+  strategyGenerationStartedAt   DateTime?
+  strategyGenerationCompletedAt DateTime?
+  strategyGenerationError       String?  @db.Text
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
