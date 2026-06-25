@@ -55,7 +55,6 @@ import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
-import { CreditsStatusBar } from "./credits-display";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
