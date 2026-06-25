@@ -9,9 +9,17 @@ const SCRIPT_SRC =
 type Props = {
   configurationId: string;
   minHeight?: number;
+  bookingRef?: string;
+  /** reschedule | cancel — used when guest opens email link */
+  flow?: "book" | "reschedule" | "cancel";
 };
 
-export function NylasSchedulerEmbed({ configurationId, minHeight = 520 }: Props) {
+export function NylasSchedulerEmbed({
+  configurationId,
+  minHeight = 520,
+  bookingRef,
+  flow = "book",
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -51,6 +59,14 @@ export function NylasSchedulerEmbed({ configurationId, minHeight = 520 }: Props)
           "scheduler-api-url",
           process.env.NEXT_PUBLIC_NYLAS_API_URI ?? "https://api.us.nylas.com",
         );
+        if (bookingRef) {
+          el.setAttribute("booking-ref", bookingRef);
+        }
+        if (flow === "reschedule") {
+          el.setAttribute("flow-type", "reschedule");
+        } else if (flow === "cancel") {
+          el.setAttribute("flow-type", "cancel");
+        }
         hostRef.current.appendChild(el);
         setStatus("ready");
       } catch {
@@ -62,7 +78,7 @@ export function NylasSchedulerEmbed({ configurationId, minHeight = 520 }: Props)
     return () => {
       cancelled = true;
     };
-  }, [configurationId]);
+  }, [configurationId, bookingRef, flow]);
 
   if (status === "error") {
     return (
@@ -76,7 +92,7 @@ export function NylasSchedulerEmbed({ configurationId, minHeight = 520 }: Props)
     <div>
       {status === "loading" && (
         <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, padding: "8px 0 12px" }}>
-          Loading availability…
+          Loading…
         </p>
       )}
       <div ref={hostRef} style={{ minHeight, width: "100%" }} />

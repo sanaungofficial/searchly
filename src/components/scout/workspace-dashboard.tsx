@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSubscription } from "@/hooks/useSubscription";
 import type { JobMeta } from "@/hooks/useJobs";
 import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import { DashboardGoalsSection } from "@/components/scout/dashboard-goals-section";
 import { DashboardEventsSection } from "@/components/scout/dashboard-events-section";
+import { DashboardSessionsSection } from "@/components/scout/dashboard-sessions-section";
 import { type KanbanCard } from "./workspace-data";
 import { PlusIcon } from "./workspace-icons";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
@@ -154,6 +156,7 @@ function ActivityFeedItem({
 export function WorkspaceDashboard() {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const { isPro } = useSubscription();
   const { kanbanCards, addJob } = useWorkspace();
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -472,6 +475,7 @@ export function WorkspaceDashboard() {
 
           <DashboardGoalsSection isMobile={isMobile} />
           <DashboardEventsSection isMobile={isMobile} />
+          <DashboardSessionsSection isMobile={isMobile} isPro={isPro} />
 
           <div style={{ marginBottom: isMobile ? 24 : 32 }}>
             <ScoutLabel>Your pipeline</ScoutLabel>
