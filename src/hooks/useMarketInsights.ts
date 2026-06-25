@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { HirebaseInsightsResponse } from "@/lib/hirebase-insights";
+import type { MarketTrendsWindow } from "@/lib/market-trends-types";
 import { MARKET_WINDOW_OPTIONS } from "@/lib/market-insights-service";
 
 export type MarketInsightsPayload = {
@@ -9,16 +9,15 @@ export type MarketInsightsPayload = {
   dataSource?: "sumble" | "none";
   targetRoles: string[];
   roleLabel: string;
-  windows: Record<string, HirebaseInsightsResponse>;
+  windows: Record<string, MarketTrendsWindow>;
   primaryDays: number;
   headline: string;
   generatedAt: string | null;
-  /** @deprecated use dataSource */
-  hirebaseCached: boolean;
   serverCached: boolean;
   creditsRemaining?: number | null;
   requiresLoad?: boolean;
   estimatedCredits?: number;
+  jobSampleSize?: number;
   error?: string;
 };
 
@@ -53,7 +52,7 @@ export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
           if (Object.keys(body.windows ?? {}).length) setHasLoaded(true);
         }
       } catch {
-        setError("Network error loading market insights.");
+        setError("Network error loading market trends.");
       } finally {
         setLoading(false);
       }
@@ -61,7 +60,6 @@ export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
     [primaryDays, windows]
   );
 
-  /** On mount: check server cache only — never spends Sumble credits */
   useEffect(() => {
     void load({ fetch: false });
   }, [load]);
@@ -80,7 +78,7 @@ export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
 export function windowInsight(
   payload: MarketInsightsPayload | null,
   days: number
-): HirebaseInsightsResponse | null {
+): MarketTrendsWindow | null {
   if (!payload?.windows) return null;
   return payload.windows[String(days)] ?? null;
 }
@@ -89,7 +87,7 @@ export function trendDelta(
   payload: MarketInsightsPayload | null,
   shortDays: number,
   longDays: number,
-  pick: (i: HirebaseInsightsResponse) => number | undefined
+  pick: (i: MarketTrendsWindow) => number | undefined
 ): { short: number | null; long: number | null; delta: number | null; pct: number | null } {
   const a = windowInsight(payload, shortDays);
   const b = windowInsight(payload, longDays);

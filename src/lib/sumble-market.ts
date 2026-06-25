@@ -1,10 +1,13 @@
 import type {
-  HirebaseInsightsResponse,
   InsightsKeyCount,
   InsightsTopCompany,
   InsightsTopLocation,
-} from "@/lib/hirebase-insights";
-import { buildMarketHeadline } from "@/lib/hirebase-insights";
+  MarketProjectTrend,
+  MarketTrendsWindow,
+} from "@/lib/market-trends-types";
+import { buildMarketHeadline } from "@/lib/market-trends-types";
+import { filterMarketSkills } from "@/lib/market-skill-filter";
+import { jobPostMentionsAi, technologyMentionsAi } from "@/lib/market-trend-analysis";
 import {
   assertSumbleCreditsAvailable,
   SUMBLE_ESTIMATED_COSTS,
@@ -16,8 +19,8 @@ export type SumbleMarketFilters = {
   daysAgo: number;
 };
 
-/** Small job sample — one Sumble call, no parallel org search. */
-export const MARKET_JOB_SAMPLE_LIMIT = 25;
+/** Job sample for trend extraction — one Sumble search call. */
+export const MARKET_JOB_SAMPLE_LIMIT = 50;
 
 function cutoffDate(daysAgo: number): Date {
   const d = new Date();
@@ -79,7 +82,7 @@ function aggregateJobsToInsights(input: {
   jobs: SumbleJobRow[];
   corpusTotal: number;
   daysAgo: number;
-}): HirebaseInsightsResponse {
+}): MarketTrendsWindow {
   const inWindow = jobsInWindow(input.jobs, input.daysAgo);
   const sampleSize = inWindow.length;
   const corpusInWindow = input.jobs.length
@@ -87,23 +90,51 @@ function aggregateJobsToInsights(input: {
     : sampleSize;
 
   const technologies: string[] = [];
-  const projects: string[] = [];
+  const projectNames: string[] = [];
   const levels: string[] = [];
   const locations: string[] = [];
+  const projectCounts = new Map<string, MarketProjectTrend>();
   const companyCounts = new Map<string, { name: string; domain: string | null; count: number }>();
   let remoteCount = 0;
   let remoteKnown = 0;
+  let aiRelatedCount = 0;
 
   for (const job of inWindow) {
     const attrs = job.attributes;
     if (!attrs) continue;
 
+    const jobTechs: string[] = [];
     for (const tech of attrs.technologies ?? []) {
-      if (tech.name?.trim()) technologies.push(tech.name.trim());
+      if (tech.name?.trim()) {
+        const name = tech.name.trim();
+        technologies.push(name);
+        jobTechs.push(name);
+      }
     }
+
+    const jobProjectNames: string[] = [];
+    const jobProjectGoals: string[] = [];
     for (const proj of attrs.projects ?? []) {
-      if (proj.name?.trim()) projects.push(proj.name.trim());
+      if (proj.name?.trim()) {
+        const name = proj.name.trim();
+        projectNames.push(name);
+        jobProjectNames.push(name);
+        if (proj.goal?.trim()) jobProjectGoals.push(proj.goal.trim());
+        const key = proj.slug || name;
+        const prev = projectCounts.get(key);
+        if (prev) {
+          prev.count += 1;
+        } else {
+          projectCounts.set(key, {
+            key,
+            name,
+            goal: proj.goal ?? null,
+            count: 1,
+          });
+        }
+      }
     }
+
     for (const level of attrs.job_levels ?? []) {
       if (level.name?.trim()) levels.push(level.name.trim());
     }
@@ -113,6 +144,17 @@ function aggregateJobsToInsights(input: {
     if (remote != null) {
       remoteKnown += 1;
       if (remote) remoteCount += 1;
+    }
+
+    if (
+      jobPostMentionsAi({
+        title: attrs.title,
+        technologies: jobTechs,
+        projectNames: jobProjectNames,
+        projectGoals: jobProjectGoals,
+      })
+    ) {
+      aiRelatedCount += 1;
     }
 
     const org = attrs.organization;
@@ -138,9 +180,21 @@ function aggregateJobsToInsights(input: {
       percent: sampleSize ? Math.round((co.count / sampleSize) * 1000) / 10 : undefined,
     }));
 
-  const top_technologies = countByKey(technologies);
-  const top_skills = countByKey(projects.length ? projects : technologies);
+  const top_technologies = filterMarketSkills(countByKey(technologies), 25);
+  const top_skills = filterMarketSkills(
+    countByKey(projectNames.length ? projectNames : technologies),
+    25
+  );
+  const ai_technologies = top_technologies.filter((t) => technologyMentionsAi(t.key));
   const level_breakdown = countByKey(levels);
+
+  const top_projects = [...projectCounts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15)
+    .map((p) => ({
+      ...p,
+      percent: sampleSize ? Math.round((p.count / sampleSize) * 1000) / 10 : undefined,
+    }));
 
   const locationCounts = countByKey(locations);
   const top_locations: InsightsTopLocation[] = locationCounts.slice(0, 12).map((l) => ({
@@ -150,7 +204,7 @@ function aggregateJobsToInsights(input: {
   }));
 
   const remotePct = remoteKnown > 0 ? Math.round((remoteCount / remoteKnown) * 100) : undefined;
-  const dominantLevel = level_breakdown[0]?.key;
+  const aiPct = sampleSize > 0 ? Math.round((aiRelatedCount / sampleSize) * 1000) / 10 : undefined;
 
   return {
     headline: {
@@ -160,12 +214,16 @@ function aggregateJobsToInsights(input: {
       pct_remote: remotePct,
       top_company: top_companies[0]?.company_name,
       top_technology: top_technologies[0]?.key,
-      dominant_experience_level: dominantLevel,
+      dominant_experience_level: level_breakdown[0]?.key,
+      pct_ai_related: aiPct,
+      ai_related_count: aiRelatedCount,
     },
     top_technologies,
     top_skills,
     top_companies,
     top_locations,
+    top_projects,
+    ai_technologies,
     level_breakdown,
     location_type_split: remotePct != null
       ? [
@@ -230,13 +288,13 @@ export async function buildSumbleMarketWindows(input: {
   windows: number[];
   forceRefresh?: boolean;
 }): Promise<{
-  windows: Record<string, HirebaseInsightsResponse>;
+  windows: Record<string, MarketTrendsWindow>;
   creditsUsed: number;
   creditsRemaining: number | null;
 }> {
   const terms = input.jobFunctionTerms.length ? input.jobFunctionTerms : ["Product Management"];
   const corpus = await loadMarketCorpus(terms, input.forceRefresh ?? false);
-  const windows: Record<string, HirebaseInsightsResponse> = {};
+  const windows: Record<string, MarketTrendsWindow> = {};
 
   for (const days of input.windows) {
     windows[String(days)] = aggregateJobsToInsights({
@@ -256,7 +314,7 @@ export async function buildSumbleMarketWindows(input: {
 export async function fetchSumbleMarketInsights(
   filters: SumbleMarketFilters,
   forceRefresh = false
-): Promise<{ data: HirebaseInsightsResponse; creditsUsed: number; creditsRemaining: number | null }> {
+): Promise<{ data: MarketTrendsWindow; creditsUsed: number; creditsRemaining: number | null }> {
   const terms = filters.jobFunctionTerms.length
     ? filters.jobFunctionTerms
     : ["Product Management"];
@@ -276,7 +334,7 @@ export async function fetchSumbleMarketInsights(
 }
 
 export function buildSumbleMarketHeadline(
-  insight: HirebaseInsightsResponse,
+  insight: MarketTrendsWindow,
   roleLabel: string,
   daysAgo: number
 ): string {

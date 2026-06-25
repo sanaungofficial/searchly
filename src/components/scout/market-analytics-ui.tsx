@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { HirebaseInsightsResponse, InsightsKeyCount } from "@/lib/hirebase-insights";
-import { formatInsightsSalary, formatSalaryRange } from "@/lib/hirebase-insights";
+import type { MarketTrendsWindow, InsightsKeyCount } from "@/lib/market-trends-types";
 import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
@@ -167,21 +166,20 @@ export function KpiGrid({
   insight,
   isMobile,
 }: {
-  insight: HirebaseInsightsResponse;
+  insight: MarketTrendsWindow;
   isMobile?: boolean;
 }) {
   const h = insight.headline;
-  const currency = h?.salary_currency ?? insight.salary?.currency ?? "USD";
   const items = [
     { label: "Active roles", value: h?.total_count?.toLocaleString() ?? "—" },
+    { label: "Sample size", value: h?.sample_size?.toLocaleString() ?? "—" },
     { label: "New this week", value: h?.new_this_week?.toLocaleString() ?? "—" },
     {
-      label: "Median salary",
-      value: h?.median_salary != null ? formatInsightsSalary(h.median_salary, currency) ?? "—" : "—",
+      label: "AI / automation",
+      value: h?.pct_ai_related != null ? `${Math.round(h.pct_ai_related)}%` : "—",
     },
     { label: "Remote", value: h?.pct_remote != null ? `${Math.round(h.pct_remote)}%` : "—" },
     { label: "Top tech", value: h?.top_technology ?? "—" },
-    { label: "Top level", value: h?.dominant_experience_level ?? "—" },
   ];
 
   return (
@@ -277,106 +275,24 @@ export function SplitBars({
 
 export function SalaryDeepDive({
   insight,
-  dataSource,
 }: {
-  insight: HirebaseInsightsResponse;
+  insight: MarketTrendsWindow;
   dataSource?: "sumble" | "none";
 }) {
-  const s = insight.salary;
-  const currency = s?.currency ?? insight.headline?.salary_currency ?? "USD";
-  if (!s?.p50 && !insight.headline?.median_salary) {
-    return (
-      <ScoutBox padding="20px 22px">
-        <ScoutLabel>Salary</ScoutLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 0" }}>
-          {dataSource === "sumble"
-            ? "Sumble job listings do not include salary bands yet. Use Overview, Skills, or Companies for demand signals."
-            : "Not enough salary disclosures in this cohort."}
-          {dataSource !== "sumble" &&
-            insight.headline?.pct_disclosing_salary != null &&
-            ` Only ${Math.round(insight.headline.pct_disclosing_salary)}% of listings disclose pay.`}
-        </p>
-      </ScoutBox>
-    );
-  }
-
-  const bands = [
-    { label: "p25", value: s?.p25 },
-    { label: "Median", value: s?.p50 ?? insight.headline?.median_salary },
-    { label: "p75", value: s?.p75 },
-    { label: "p90", value: s?.p90 },
-  ];
-
+  const h = insight.headline;
   return (
-    <>
-      <ScoutBox stack padding="20px 24px" style={{ marginBottom: 12 }}>
-        <ScoutLabel>Salary distribution</ScoutLabel>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-            gap: 12,
-            marginTop: 12,
-          }}
-        >
-          {bands.map((b) => (
-            <div key={b.label}>
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>{b.label}</p>
-              <p style={{ ...displayTitleStyle(22, { margin: "4px 0 0" }) }}>
-                {formatInsightsSalary(b.value, currency) ?? "—"}
-              </p>
-            </div>
-          ))}
-        </div>
-        {s?.count != null && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "12px 0 0" }}>
-            Based on {s.count.toLocaleString()} listings with disclosed salary.
-          </p>
-        )}
-      </ScoutBox>
-
-      {(insight.salary_by_level?.length ?? 0) > 0 && (
-        <ScoutBox stack padding="18px 20px" style={{ marginBottom: 12 }}>
-          <ScoutLabel>By experience level</ScoutLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-            {insight.salary_by_level!.map((row) => (
-              <div
-                key={row.key}
-                style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}
-              >
-                <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>
-                  {row.key}
-                </span>
-                <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.forest }}>
-                  {formatSalaryRange(row.p25, row.p75, currency) ?? formatInsightsSalary(row.p50, currency) ?? "—"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </ScoutBox>
+    <ScoutBox padding="20px 22px">
+      <ScoutLabel>Salary</ScoutLabel>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 0", lineHeight: 1.55 }}>
+        Kimchi does not use Hirebase Insights for salary bands. Sumble job samples also omit comp data.
+        Use skills, technologies, and initiatives from job posts for market trends instead.
+      </p>
+      {h?.dominant_experience_level && (
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.stone, margin: "10px 0 0" }}>
+          Most common level in sample: {h.dominant_experience_level}
+        </p>
       )}
-
-      {(insight.salary_by_location_type?.length ?? 0) > 0 && (
-        <ScoutBox stack padding="18px 20px" style={{ marginBottom: 12 }}>
-          <ScoutLabel>By work arrangement</ScoutLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-            {insight.salary_by_location_type!.map((row) => (
-              <div
-                key={row.key}
-                style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}
-              >
-                <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>
-                  {row.key}
-                </span>
-                <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.forest }}>
-                  {formatSalaryRange(row.p25, row.p75, currency) ?? formatInsightsSalary(row.p50, currency) ?? "—"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </ScoutBox>
-      )}
-    </>
+    </ScoutBox>
   );
 }
 
