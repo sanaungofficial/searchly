@@ -94,6 +94,7 @@ export function ChatWidget() {
     setChatView,
     chatPulse,
     fitChatNonce,
+    fitChatJob,
     openFitChat,
     openPricing,
     coachChatNonce,
@@ -118,7 +119,12 @@ export function ChatWidget() {
       ? drawerCardId
       : selectedJobId;
 
-  const currentJob = effectiveJobId !== null ? kanbanCards.find((c) => c.id === effectiveJobId) : null;
+  const currentJob =
+    chatView === "chat" && fitChatJob
+      ? fitChatJob
+      : effectiveJobId !== null
+        ? kanbanCards.find((c) => c.id === effectiveJobId) ?? null
+        : null;
   const needsJobPicker = chatView === "tools" && drawerCardId === null && kanbanCards.length > 0;
   const hasJobs = kanbanCards.length > 0;
 
@@ -146,13 +152,12 @@ export function ChatWidget() {
   }, []);
 
   useEffect(() => {
-    if (chatOpen && chatView === "chat" && drawerCardId !== null) {
-      const job = kanbanCards.find((c) => c.id === drawerCardId);
-      if (job) {
-        resetFitChat(job);
-      }
-    }
-  }, [fitChatNonce, chatOpen, chatView, drawerCardId, kanbanCards, resetFitChat]);
+    if (!chatOpen || chatView !== "chat") return;
+    const job =
+      fitChatJob ??
+      (drawerCardId !== null ? kanbanCards.find((c) => c.id === drawerCardId) : null);
+    if (job) resetFitChat(job);
+  }, [fitChatNonce, chatOpen, chatView, drawerCardId, kanbanCards, fitChatJob, resetFitChat]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -173,9 +178,10 @@ export function ChatWidget() {
   };
 
   const handleOpenTool = (jobId: number, tool: DrawerTool) => {
-    const ext = kanbanCards.find((c) => c.id === jobId) as (typeof kanbanCards[number] & { _dbId?: string }) | undefined;
+    const job = kanbanCards.find((c) => c.id === jobId);
+    const ext = job as (typeof kanbanCards[number] & { _dbId?: string }) | undefined;
     if (tool === "fit") {
-      openFitChat(jobId);
+      if (job) openFitChat(job);
       if (ext?._dbId) router.push(pipelineJobUrl(ext._dbId, "fit"));
       return;
     }

@@ -1346,7 +1346,7 @@ export function JobDrawer({
                 title="Analyze how well you fit"
                 subtitle="Understand your strengths and gaps for this role."
                 buttonLabel="Analyze fit"
-                onClick={() => openFitChat(card.id)}
+                onClick={() => openFitChat(card)}
               />
               <AiToolCard
                 highlighted
@@ -1406,7 +1406,7 @@ export function JobDrawer({
                 <button type="button" onClick={() => setCoverDrawerOpen(true)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
                   Build cover letter
                 </button>
-                <button type="button" onClick={() => openFitChat(card.id)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
+                <button type="button" onClick={() => openFitChat(card)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
                   Analyze fit
                 </button>
                 {externalPostUrl && (
