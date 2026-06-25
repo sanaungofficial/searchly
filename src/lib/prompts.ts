@@ -93,6 +93,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Profile",
     variables: ["sectionId", "sectionLabel", "entryLabel", "draftSlice", "targetRoles"],
   },
+  RESUME_SECTION_SUGGEST: {
+    label: "Resume Section Fix",
+    description: "Generates rewrite options for one resume section.",
+    category: "Resume",
+    variables: ["sectionId", "sectionLabel", "entryLabel", "draftSlice", "targetRoles"],
+  },
   RESUME_TAILOR: {
     label: "Resume Tailor",
     description: "Parses and tailors a resume for a specific job. Returns JSON sections.",
@@ -668,6 +674,39 @@ Rules:
 - experience entry: rewrite ONLY the description field as 2-4 short paragraphs with metrics; do not repeat title/company/dates in the text
 - education entry: suggest degree line improvements when entryLabel indicates a specific school
 - skills: return a comma-separated list in suggestion text, ordered by recruiter search relevance
+- Return ONLY the JSON object`,
+  RESUME_SECTION_SUGGEST: `You are a senior career coach. Suggest concrete rewrites for ONE section of a resume.
+
+Section: {{sectionLabel}}{{entryLabel}}
+Target roles: {{targetRoles}}
+
+Current content:
+{{draftSlice}}
+
+Return ONLY valid JSON:
+{
+  "issues": [
+    {
+      "severity": "Urgent",
+      "title": "short issue title",
+      "issueDetected": "what is weak or missing in one sentence",
+      "whyItMatters": "why recruiters care about this",
+      "howToImprove": "specific actionable guidance"
+    }
+  ],
+  "suggestions": [
+    { "label": "Option A", "text": "full replacement text the user can apply" },
+    { "label": "Option B", "text": "alternate rewrite" }
+  ]
+}
+
+Rules:
+- issues: 1-3 items specific to THIS section (not generic advice)
+- suggestions: 2-3 complete rewrites the user can paste in
+- summary: return a full professional summary paragraph
+- skills: return comma-separated skills ordered by relevance
+- experience entry: return bullet lines separated by newlines (each line one accomplishment)
+- education entry: suggest improved degree/school line
 - Return ONLY the JSON object`,
   COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
 

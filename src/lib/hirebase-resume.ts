@@ -292,7 +292,7 @@ export async function parseResumeWithHirebase(input: {
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(detail || `Hirebase resume embed failed (${res.status})`);
+    throw new Error(formatHirebaseErrorBody(detail, res.status));
   }
 
   const body = (await res.json()) as HirebaseEmbedResponse;

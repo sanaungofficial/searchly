@@ -369,6 +369,9 @@ export function ResumeMatchDrawer({
   const [tailoredData, setTailoredData] = useState<TailoredData | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [applyingTweakId, setApplyingTweakId] = useState<string | null>(null);
+  const [downloadingExport, setDownloadingExport] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const { openPricing } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
   const proUser = isPro || isAdmin;
@@ -493,16 +496,69 @@ export function ResumeMatchDrawer({
     }
   }
 
-  function downloadResume(text: string) {
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${company}-${jobTitle}-tailored.txt`
-      .replace(/[^a-z0-9-]/gi, "-")
-      .toLowerCase();
-    a.click();
-    URL.revokeObjectURL(url);
+  async function applyTweak(tweak: { id: string; label: string }) {
+    if (!tailoredData || applyingTweakId) return;
+    setApplyingTweakId(tweak.id);
+    try {
+      const res = await fetch("/api/ai/apply-resume-tweak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tailoredText: tailoredData.tailoredText,
+          tweakLabel: tweak.label,
+          jobTitle,
+          company,
+        }),
+      });
+      if (res.status === 402) {
+        notifyCreditsChanged();
+        setShowUpgrade(true);
+        return;
+      }
+      const json = await res.json();
+      if (json.error) setGenerateError(json.error);
+      else if (json.tailoredText) {
+        setTailoredData({
+          ...tailoredData,
+          tailoredText: json.tailoredText,
+          tweaks: tailoredData.tweaks.filter((t) => t.id !== tweak.id),
+          changes: [...tailoredData.changes, json.changeSummary ?? `Applied: ${tweak.label}`],
+        });
+        notifyCreditsChanged();
+      }
+    } catch {
+      setGenerateError("Could not apply tweak — try again.");
+    } finally {
+      setApplyingTweakId(null);
+    }
+  }
+
+  async function exportResume(format: "pdf" | "docx") {
+    if (!tailoredData) return;
+    setDownloadingExport(true);
+    setDownloadMenuOpen(false);
+    try {
+      const res = await fetch("/api/resume/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: tailoredData.tailoredText,
+          format,
+          filename: `${company}-${jobTitle}-tailored`,
+        }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${company}-${jobTitle}-tailored.${format}`.replace(/[^a-z0-9.-]/gi, "-").toLowerCase();
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } finally {
+      setDownloadingExport(false);
+    }
   }
 
   function deriveJobTitleMatch(d: MatchData): boolean {
@@ -1809,17 +1865,22 @@ export function ResumeMatchDrawer({
                           }}
                         >
                           {tailoredData.tweaks.map((tweak) => (
-                            <div
+                            <button
                               key={tweak.id}
+                              type="button"
+                              disabled={!!applyingTweakId}
+                              onClick={() => void applyTweak(tweak)}
                               style={{
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "space-between",
                                 padding: "10px 14px",
-                                background: "#FAFAF9",
+                                background: applyingTweakId === tweak.id ? "#F0EDE8" : "#FAFAF9",
                                 borderRadius: 0,
                                 border: "1px solid rgba(0,0,0,0.08)",
-                                cursor: "default",
+                                cursor: applyingTweakId ? "wait" : "pointer",
+                                width: "100%",
+                                textAlign: "left",
                               }}
                             >
                               <p
@@ -1828,13 +1889,14 @@ export function ResumeMatchDrawer({
                                   fontSize: 14,
                                   color: "#52493F",
                                   lineHeight: 1.4,
+                                  margin: 0,
                                 }}
                               >
-                                {tweak.label}
+                                {applyingTweakId === tweak.id ? "Applying…" : tweak.label}
                               </p>
                               <span
                                 style={{
-                                  color: "#C0B8B0",
+                                  color: "#1A3A2F",
                                   fontSize: 16,
                                   flexShrink: 0,
                                   marginLeft: 8,
@@ -1842,7 +1904,7 @@ export function ResumeMatchDrawer({
                               >
                                 ›
                               </span>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -1943,6 +2005,7 @@ export function ResumeMatchDrawer({
         {step === 3 && !aligning && tailoredData && (
           <div
             style={{
+              position: "relative",
               padding: "16px 32px",
               borderTop: "1px solid rgba(0,0,0,0.07)",
               flexShrink: 0,
@@ -1971,7 +2034,8 @@ export function ResumeMatchDrawer({
             </button>
             <button
               type="button"
-              onClick={() => downloadResume(tailoredData.tailoredText)}
+              onClick={() => setDownloadMenuOpen((v) => !v)}
+              disabled={downloadingExport}
               style={{
                 flex: 1,
                 padding: "14px",
@@ -1982,12 +2046,28 @@ export function ResumeMatchDrawer({
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: downloadingExport ? "wait" : "pointer",
                 letterSpacing: "0.3px",
               }}
             >
-              ⬇ Download Resume
+              {downloadingExport ? "Preparing…" : "⬇ Download Resume"}
             </button>
+            {downloadMenuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 32,
+                  bottom: 72,
+                  background: "#FFFFFF",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  minWidth: 180,
+                  zIndex: 5,
+                }}
+              >
+                <button type="button" onClick={() => void exportResume("pdf")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer" }}>Download PDF</button>
+                <button type="button" onClick={() => void exportResume("docx")} style={{ width: "100%", padding: "12px 16px", textAlign: "left", background: "none", border: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer", borderTop: "1px solid rgba(0,0,0,0.08)" }}>Download Word</button>
+              </div>
+            )}
           </div>
         )}
       </div>
