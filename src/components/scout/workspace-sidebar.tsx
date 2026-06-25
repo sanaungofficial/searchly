@@ -78,7 +78,8 @@ const NAV_COMMUNITY: NavItem[] = [
 ];
 
 const OPP_SUBNAV = [
-  { label: "In-Network", path: "/opportunities/network" },
+  { label: "Open Roles", path: "/opportunities/pipeline" },
+  { label: "Network", path: "/opportunities/network" },
   { label: "Companies", path: "/opportunities/companies" },
 ] as const;
 
