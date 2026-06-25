@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CoachMatchSection, MatchScoreBadge } from "@/components/scout/match-score-ui";
 import { NylasSchedulerEmbed } from "@/components/scout/nylas-scheduler-embed";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
