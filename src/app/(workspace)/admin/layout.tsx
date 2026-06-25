@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         style={{
           borderBottom: "1px solid rgba(17,17,17,0.14)",
           background: "var(--scout-surface)",
-          padding: "16px 32px",
+          padding: "16px 36px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           super admin
         </span>
       </header>
-      <main style={{ maxWidth: 1120, margin: "0 auto", padding: "32px 32px 48px", width: "100%", boxSizing: "border-box" }}>
+      <main style={{ padding: "32px 36px 48px", width: "100%", boxSizing: "border-box" }}>
         {children}
       </main>
     </div>

@@ -13,6 +13,7 @@ type Props = {
   /** Short title for mobile top bar (defaults to label) */
   mobileBarTitle?: string;
   children: ReactNode;
+  /** Optional max content width; omit for full-width layout (matches Opportunities). */
   maxWidth?: number;
 };
 
@@ -24,7 +25,7 @@ export function WorkspacePageShell({
   isMobile = false,
   mobileBarTitle,
   children,
-  maxWidth = 1120,
+  maxWidth,
 }: Props) {
   const pad = isMobile ? "20px 16px 48px" : "32px 36px 48px";
   const barTitle = mobileBarTitle ?? label;
@@ -54,7 +55,14 @@ export function WorkspacePageShell({
           background: surface.page,
         }}
       >
-        <div style={{ padding: pad, maxWidth, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        <div
+          style={{
+            padding: pad,
+            ...(maxWidth != null ? { maxWidth, margin: "0 auto" } : {}),
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
           <div style={{ marginBottom: isMobile ? 20 : 24 }}>
             {!isMobile && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>

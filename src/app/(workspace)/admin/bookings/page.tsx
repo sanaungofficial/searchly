@@ -43,7 +43,7 @@ export default function AdminBookingsPage() {
   }, []);
 
   return (
-    <div style={{ padding: "24px 32px", maxWidth: 1200 }}>
+    <div>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
         <h1 style={{ ...displayTitleStyle(28), margin: 0 }}>Bookings</h1>
         <AdminNav />
