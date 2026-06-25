@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMarketInsights, windowInsight } from "@/hooks/useMarketInsights";
+import { windowInsight } from "@/hooks/useMarketInsights";
+import { useSharedMarketInsights } from "@/contexts/market-insights-context";
 import { MarketShell } from "@/components/scout/market-shell";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import {
@@ -17,22 +17,21 @@ import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
 
 export function MarketCompaniesPage() {
-  const [days, setDays] = useState(30);
   const isMobile = useIsMobile();
-  const { data, loading, error, refresh, load, requiresLoad } = useMarketInsights(days, "7,30,90,180");
-  const insight = windowInsight(data, days);
+  const { data, loading, error, refresh, load, requiresLoad, primaryDays, setPrimaryDays } = useSharedMarketInsights();
+  const insight = windowInsight(data, primaryDays);
   const companies = insight?.top_companies ?? [];
 
   return (
     <MarketShell
       title="Top employers"
-      subtitle="Companies hiring your target roles — load on demand to conserve Sumble credits."
-      toolbar={<WindowPicker value={days} onChange={setDays} isMobile={isMobile} />}
+      subtitle="Uses the same market load as Overview — no extra credits when you switch tabs."
+      toolbar={<WindowPicker value={primaryDays} onChange={setPrimaryDays} isMobile={isMobile} />}
     >
       {requiresLoad && !insight && !error && (
         <SumbleLoadPrompt
           title="Top employers"
-          description="Pull a small job sample to rank employers hiring your target roles."
+          description="Load market data once — employer rankings share the same cached sample as other Market tabs."
           estimatedCredits={data?.estimatedCredits ?? 25}
           creditsRemaining={data?.creditsRemaining}
           loading={loading}

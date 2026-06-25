@@ -92,7 +92,7 @@ export function InsightsEmpty({
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 12px", lineHeight: 1.55 }}>
         {message}
       </p>
-      {!configured && (
+      {configured === false && (
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: 0 }}>
           Market insights require SUMBLE_API_KEY on the server (set on Vercel preview + prod).
         </p>

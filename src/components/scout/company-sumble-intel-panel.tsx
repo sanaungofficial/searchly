@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { hostnameFromUrl } from "@/lib/company-domain";
 import { formatSumbleFunding, formatSumbleGrowth } from "@/lib/sumble";
 import type { CompanySumbleIntelBundle, CompanySumbleBriefBundle } from "@/lib/sumble-intel-service";
+import type { OrganizationTechEnrichBundle } from "@/lib/sumble-tech-stack-service";
 import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
 import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
 import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
@@ -74,6 +75,128 @@ function PanelHeader({
       </div>
       <IntelRefreshButton onClick={onRefresh} disabled={loading} />
     </div>
+  );
+}
+
+function SumbleTechOverlapSection({
+  organizationId,
+  compact,
+}: {
+  organizationId: number;
+  compact?: boolean;
+}) {
+  const [data, setData] = useState<OrganizationTechEnrichBundle | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [requiresLoad, setRequiresLoad] = useState(true);
+
+  const probe = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/companies/sumble-tech-enrich?organizationId=${organizationId}`);
+      const body = (await res.json()) as OrganizationTechEnrichBundle;
+      setData(body);
+      setRequiresLoad(body.requiresLoad ?? !body.technologies.some((t) => t.used));
+      if (body.error && !body.technologies.length) setError(body.error);
+    } catch {
+      setError("Could not check tech overlap cache.");
+    } finally {
+      setLoading(false);
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
+    void probe();
+  }, [probe]);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/companies/sumble-tech-enrich?organizationId=${organizationId}&load=1`);
+      const body = (await res.json()) as OrganizationTechEnrichBundle;
+      setData(body);
+      setRequiresLoad(false);
+      if (!res.ok && !body.technologies.length) setError(body.error ?? "Enrich failed.");
+    } catch {
+      setError("Network error loading tech overlap.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const used = data?.technologies.filter((t) => t.used) ?? [];
+  const unused = data?.technologies.filter((t) => !t.used) ?? [];
+
+  if (requiresLoad && !used.length && !error) {
+    return (
+      <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+        <ScoutLabel>Your stack at this company</ScoutLabel>
+        <SumbleLoadPrompt
+          title="Technology overlap"
+          description="See which of your profile technologies this company uses in jobs and people data."
+          estimatedCredits={data?.estimatedCredits ?? 25}
+          creditsRemaining={data?.creditsRemaining}
+          loading={loading}
+          onLoad={load}
+          loadLabel="Check stack overlap"
+        />
+      </ScoutBox>
+    );
+  }
+
+  if (error && !used.length) {
+    return (
+      <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+        <ScoutLabel>Your stack at this company</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0" }}>{error}</p>
+      </ScoutBox>
+    );
+  }
+
+  if (!used.length && !requiresLoad) {
+    return (
+      <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+        <ScoutLabel>Your stack at this company</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0" }}>
+          No overlap found for your resolved technologies.
+        </p>
+      </ScoutBox>
+    );
+  }
+
+  return (
+    <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+      <ScoutLabel>Your stack at this company</ScoutLabel>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+        {used.map((t) => (
+          <span
+            key={t.slug}
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              padding: "6px 10px",
+              background: "rgba(74,139,106,0.14)",
+              border: border.line,
+              color: color.forest,
+            }}
+          >
+            {t.name}
+            {(t.jobPostCount > 0 || t.peopleCount > 0) && (
+              <span style={{ fontFamily: fontMono, color: color.muted, marginLeft: 6 }}>
+                {t.jobPostCount} jobs · {t.peopleCount} people
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
+      {unused.length > 0 && (
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "10px 0 0" }}>
+          Not detected: {unused.map((t) => t.name).slice(0, 6).join(", ")}
+        </p>
+      )}
+    </ScoutBox>
   );
 }
 
@@ -545,6 +668,8 @@ export function CompanySumbleIntelPanel({
           </ScoutSecondaryBtn>
         </ScoutBox>
       )}
+
+      {org.id != null && <SumbleTechOverlapSection organizationId={org.id} compact={compact} />}
 
       <SumbleBriefSection
         trackedId={trackedId}

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
-import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
 import { CompanySumbleIntelPanel } from "@/components/scout/company-sumble-intel-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
@@ -59,12 +58,6 @@ interface TrackedCompany {
 }
 
 type Field = keyof Omit<TrackedCompany, "id" | "createdAt" | "jobsCache" | "lastJobsFetchedAt">;
-
-function hirebaseSlugFromEnrichment(raw: EnrichmentCache | null): string | null {
-  if (!raw) return null;
-  const hb = (raw as EnrichmentCache & { hirebase?: { slug?: string } }).hirebase;
-  return hb?.slug?.trim() || null;
-}
 
 function enrichmentWebsite(company: TrackedCompany): string | null {
   return (company.enrichmentCache as EnrichmentCache | null)?.websiteUrl ?? null;
@@ -1059,14 +1052,6 @@ function CompanyDrawer({
             )}
           </DrawerSection>
 
-          <DrawerSection title="Hirebase analytics">
-            <CompanyHirebaseIntelPanel
-              trackedId={company.id}
-              companyName={company.name}
-              slugHint={hirebaseSlugFromEnrichment(intel)}
-            />
-          </DrawerSection>
-
           <DrawerSection title="Sumble intelligence">
             <CompanySumbleIntelPanel
               trackedId={company.id}
@@ -1511,12 +1496,6 @@ export function WorkspaceCompanies({
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
-              <DrawerSection title="Hirebase analytics">
-                <CompanyHirebaseIntelPanel
-                  companyName={intelName || intelSlug}
-                  slugHint={intelSlug}
-                />
-              </DrawerSection>
               <DrawerSection title="Sumble intelligence">
                 <CompanySumbleIntelPanel
                   companyName={intelName || intelSlug}

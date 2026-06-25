@@ -50,6 +50,7 @@ interface AISuggestion {
   impact: string;
 }
 import { SparkleIcon } from "./workspace-icons";
+import { ProfileTechStackPanel } from "./profile-tech-stack-panel";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { CreditsStatusBar } from "./credits-display";
@@ -646,6 +647,8 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
           </div>
         </div>
       )}
+
+      {!editing && <ProfileTechStackPanel skills={skills} />}
     </div>
   );
 }
@@ -2636,7 +2639,15 @@ export function WorkspaceProfile() {
 
   const handleSkillsSave = async (skills: string[]) => {
     if (!profile) return;
-    const newParsedData = { ...(profile.parsedData || { education: [], workExperience: [] }), skills };
+    const prevSkills = profile.parsedData?.skills || [];
+    const skillsChanged =
+      skills.length !== prevSkills.length ||
+      skills.some((s, i) => s.toLowerCase() !== (prevSkills[i] ?? "").toLowerCase());
+    const newParsedData = {
+      ...(profile.parsedData || { education: [], workExperience: [] }),
+      skills,
+      ...(skillsChanged ? { sumbleTechnologies: undefined, sumbleTechnologiesResolvedAt: null } : {}),
+    };
     await patchProfile({ parsedData: newParsedData });
     setProfile((p) => p ? { ...p, parsedData: newParsedData } : p);
   };
