@@ -10,3 +10,11 @@ export function parseLiveSessionRouteId(raw: string): string | null {
   if (!trimmed) return null;
   return trimmed;
 }
+
+/** URL segment for /live/[sessionId] — prefer legacy numeric id for seeded 100ms rooms. */
+export function liveSessionRouteId(session: {
+  id: string;
+  legacyNumericId?: number | null;
+}): string {
+  return session.legacyNumericId != null ? String(session.legacyNumericId) : session.id;
+}

@@ -2,8 +2,10 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { LiveSession } from "@/lib/live-sessions";
+import { LiveSessionLobby } from "@/components/scout/live-session-lobby";
 import { color, fontSans, border as B } from "@/lib/typography";
 
 const LiveRoomClient = dynamic(
@@ -26,6 +28,7 @@ export function LiveSessionRoomPage({
   joinAsGuest?: boolean;
 }) {
   const isMobile = useIsMobile();
+  const [inRoom, setInRoom] = useState(false);
 
   return (
     <div
@@ -61,12 +64,20 @@ export function LiveSessionRoomPage({
           ← Live sessions
         </Link>
       </div>
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <LiveRoomClient
-          sessionId={session.id}
-          sessionMeta={session}
-          joinAsGuest={joinAsGuest}
-        />
+      <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+        {inRoom ? (
+          <LiveRoomClient
+            sessionId={session.id}
+            sessionMeta={session}
+            joinAsGuest={joinAsGuest}
+          />
+        ) : (
+          <LiveSessionLobby
+            session={session}
+            joinAsGuest={joinAsGuest}
+            onEnterRoom={() => setInRoom(true)}
+          />
+        )}
       </div>
     </div>
   );
