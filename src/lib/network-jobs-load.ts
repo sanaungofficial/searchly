@@ -29,6 +29,9 @@ function rowToListing(row: {
       phone: row.recruiterRecord.phone,
       agencyName: row.recruiterRecord.agencyName,
     };
+    if (row.recruiterRecord.agencyName && !listing.agencyName) {
+      listing.agencyName = row.recruiterRecord.agencyName;
+    }
   }
   return listing;
 }
