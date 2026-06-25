@@ -6,6 +6,7 @@ import {
   hmsConfigured,
   hmsGuestRole,
   hmsHostRole,
+  prepareLiveRoom,
 } from "@/lib/hms";
 import {
   canHostLiveSession,
@@ -74,6 +75,16 @@ export async function POST(request: Request) {
     throw err;
   }
 
+  if (!isHost && row.status !== "LIVE") {
+    return NextResponse.json(
+      {
+        error: "This session has not started yet. Register and return when we're live.",
+        code: "NOT_LIVE",
+      },
+      { status: 403 }
+    );
+  }
+
   const canHost = await canHostLiveSession({
     operator,
     authEmail: authUser.email,
@@ -88,7 +99,10 @@ export async function POST(request: Request) {
     "Guest";
 
   try {
-    const roomId = await ensureLiveRoom(row);
+    const roomId =
+      row.status === "LIVE" || isHost
+        ? await prepareLiveRoom(row)
+        : await ensureLiveRoom(row);
     const hms = getHmsSdk();
     const auth = await hms.auth.getAuthToken({
       roomId,
