@@ -9,6 +9,7 @@ export type CompanySuggestItem = {
   name: string;
   website: string | null;
   careersUrl: string | null;
+  logoUrl: string | null;
   type: string | null;
   source: "catalog" | "intel" | "hirebase";
 };
@@ -159,6 +160,7 @@ export function catalogToSuggestItem(company: CatalogCompany, intelId?: string):
     name: company.name,
     website: company.website ?? null,
     careersUrl: company.careersUrl ?? null,
+    logoUrl: null,
     type: company.type ?? null,
     source: "catalog",
   };
@@ -176,6 +178,7 @@ export function hirebaseToSuggestItem(company: HirebaseCompany): CompanySuggestI
     name: company.company_name?.trim() || slug,
     website: company.company_link ?? null,
     careersUrl: null,
+    logoUrl: company.company_logo?.trim() || null,
     type,
     source: "hirebase",
   };

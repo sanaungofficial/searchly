@@ -19,6 +19,7 @@ function getAnthropic() {
 function sectionSlice(
   draft: LinkedInProfileDraft,
   sectionId: LinkedInSectionId,
+  entryId?: string,
   entryLabel?: string,
 ): string {
   switch (sectionId) {
@@ -28,12 +29,25 @@ function sectionSlice(
       return draft.about;
     case "skills":
       return draft.skills.join(", ");
-    case "education":
+    case "education": {
+      if (entryId) {
+        const entry = draft.education.find((e) => e.id === entryId);
+        return entry ? JSON.stringify(entry, null, 2) : JSON.stringify(draft.education, null, 2);
+      }
       return JSON.stringify(draft.education, null, 2);
+    }
     case "experience": {
+      if (entryId) {
+        const entry = draft.experience.find((e) => e.id === entryId);
+        return entry ? JSON.stringify(entry, null, 2) : "";
+      }
       const entry = entryLabel
         ? draft.experience.find(
-            (e) => e.company === entryLabel || e.title === entryLabel || `${e.company} ${e.title}`.includes(entryLabel),
+            (e) =>
+              e.id === entryLabel ||
+              e.company === entryLabel ||
+              e.title === entryLabel ||
+              `${e.company} ${e.title}`.includes(entryLabel),
           )
         : draft.experience[0];
       return entry ? JSON.stringify(entry, null, 2) : JSON.stringify(draft.experience.slice(0, 2), null, 2);
@@ -62,8 +76,9 @@ export async function POST(request: Request) {
   if (!sectionId || !(sectionId in LINKEDIN_SECTION_TITLES)) {
     return NextResponse.json({ error: "Invalid section" }, { status: 400 });
   }
+  const entryId = typeof body.entryId === "string" ? body.entryId : undefined;
   const entryLabel = typeof body.entryLabel === "string" ? body.entryLabel : undefined;
-  const draftSlice = sectionSlice(draft, sectionId, entryLabel);
+  const draftSlice = sectionSlice(draft, sectionId, entryId, entryLabel);
   const targetRoles = (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
 
   if (!process.env.ANTHROPIC_API_KEY) {
