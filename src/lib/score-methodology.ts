@@ -3,6 +3,7 @@
 export type ScoreExplainerVariant =
   | "job-match"
   | "vector-match"
+  | "network-match"
   | "resume-quality"
   | "keyword-match"
   | "role-gap"
@@ -61,6 +62,29 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       {
         title: "Not resume embed",
         body: "This view does not call Hirebase resume embed. For deep AI fit analysis on a saved job, use Analyze fit in the job drawer.",
+      },
+    ],
+    scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",
+  },
+  "network-match": {
+    title: "Network role match",
+    subtitle: "How recruiter-network roles rank against your profile.",
+    bullets: [
+      {
+        title: "Where roles come from",
+        body: "Shared privately through Top Echelon Big Biller — curated recruiter-network openings, not public job boards.",
+      },
+      {
+        title: "How the score is calculated",
+        body: "Instant profile-based scoring: keyword overlap with the posting and recruiter notes, target-title alignment, and relative rank among network roles.",
+      },
+      {
+        title: "Why you're a good fit",
+        body: "Bullets highlight aligned industries, skills, and keyword overlap from your resume and target roles.",
+      },
+      {
+        title: "Deeper analysis",
+        body: "Open a role and use Analyze fit in the job drawer for full AI resume–job match on that posting.",
       },
     ],
     scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { SEED_NETWORK_JOBS, previewPlainText } from "@/lib/network-job-display";
+import type { NetworkMatchedJob } from "@/lib/network-job-match";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
   createEmptyNetworkJobFilterForm,
@@ -14,9 +15,24 @@ import {
   type NetworkJobFilterSuggestions,
 } from "@/lib/network-job-filters";
 import { CompanyLogo } from "./company-logo";
+import { MatchFitCallout, MatchScoreBadge } from "./match-score-ui";
+import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { matchScoreStyle } from "@/lib/match-score";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+const EMPTY_MATCH = {
+  matchScore: 0,
+  matchLabel: "",
+  matchReasons: [] as string[],
+  matchedSkills: [] as string[],
+  gapSkills: [] as string[],
+};
+
+function seedAsMatched(jobs: NetworkJobListing[]): NetworkMatchedJob[] {
+  return jobs.map((job) => ({ ...job, ...EMPTY_MATCH }));
+}
 
 interface PipelineNetworkSectionProps {
   onOpenJob: (job: NetworkJobListing) => void;
@@ -238,7 +254,7 @@ function NetworkJobCard({
   onSave,
   saving,
 }: {
-  job: NetworkJobListing;
+  job: NetworkMatchedJob;
   internalView: boolean;
   onOpen: () => void;
   onSave?: () => void;
@@ -251,9 +267,11 @@ function NetworkJobCard({
       ? `Shared ${job.sharedAtLabel} · ${job.sharedAtRelative}`
       : `Shared ${job.sharedAtLabel}`
     : null;
+  const scoreStyle = job.matchScore && job.matchScore > 0 ? matchScoreStyle(job.matchScore) : null;
+  const borderAccent = scoreStyle?.accent ?? "rgba(196,168,106,0.55)";
 
   return (
-    <ScoutBox stack padding={18} style={{ borderTop: "3px solid rgba(196,168,106,0.55)" }}>
+    <ScoutBox stack padding={18} style={{ borderTop: `3px solid ${borderAccent}` }}>
       <div
         role="button"
         tabIndex={0}
@@ -268,7 +286,9 @@ function NetworkJobCard({
       >
         <CompanyLogo name={company} website={job.agencyWebsite} logoUrl={job.agencyLogoUrl} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
             <span
               style={{
                 padding: "2px 8px",
@@ -292,18 +312,18 @@ function NetworkJobCard({
             {internalView && job.networkId && (
               <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.mutedLight }}>{job.networkId}</span>
             )}
-          </div>
+              </div>
 
-          <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.positionTitle}</p>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
-            {company}
-            {job.location ? ` · ${job.location}` : ""}
-          </p>
-          {shareLabel && (
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 8px" }}>{shareLabel}</p>
-          )}
+              <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{job.positionTitle}</p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
+                {company}
+                {job.location ? ` · ${job.location}` : ""}
+              </p>
+              {shareLabel && (
+                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 8px" }}>{shareLabel}</p>
+              )}
 
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: summary ? 10 : 0 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: summary ? 10 : 0 }}>
             {job.industries.map((industry) => (
               <span key={industry} style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                 {industry}
@@ -334,19 +354,28 @@ function NetworkJobCard({
                 Guarantee: {job.guaranteeLabel}
               </span>
             )}
-          </div>
+              </div>
 
-          {summary && (
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.55, margin: 0 }}>
-              {summary}
-            </p>
-          )}
+              {summary && (
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.55, margin: 0 }}>
+                  {summary}
+                </p>
+              )}
+            </div>
+            {job.matchScore != null && job.matchScore > 0 && job.matchLabel && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                <ScoreExplainerPopover variant="network-match" align="right" />
+                <MatchScoreBadge score={job.matchScore} label={job.matchLabel} />
+              </div>
+            )}
+          </div>
+          {job.matchScore != null && job.matchScore > 0 && <MatchFitCallout job={job} />}
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>
         {onSave && (
-          <ScoutPrimaryBtn onClick={(e) => { e.stopPropagation(); onSave(); }} disabled={saving}>
+          <ScoutPrimaryBtn onClick={() => onSave()} disabled={saving}>
             {saving ? "Saving…" : "Save to pipeline"}
           </ScoutPrimaryBtn>
         )}
@@ -371,8 +400,10 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   const isMobile = useIsMobile();
   const internalView = canViewNetworkJobInternal(userRole, isAdmin);
 
-  const [jobs, setJobs] = useState<NetworkJobListing[]>(SEED_NETWORK_JOBS);
+  const [jobs, setJobs] = useState<NetworkMatchedJob[]>(() => seedAsMatched(SEED_NETWORK_JOBS));
   const [loading, setLoading] = useState(true);
+  const [needsProfile, setNeedsProfile] = useState(false);
+  const [profileHint, setProfileHint] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [form, setForm] = useState<NetworkJobFilterForm>(() => createEmptyNetworkJobFilterForm());
   const [appliedForm, setAppliedForm] = useState<NetworkJobFilterForm>(() => createEmptyNetworkJobFilterForm());
@@ -381,13 +412,21 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/network-jobs");
-      const data = (await res.json()) as { jobs?: NetworkJobListing[] };
+      const res = await fetch("/api/network-jobs/match");
+      const data = (await res.json()) as {
+        jobs?: NetworkMatchedJob[];
+        needsProfile?: boolean;
+        hint?: string;
+      };
       if (res.ok && Array.isArray(data.jobs) && data.jobs.length) {
         setJobs(data.jobs);
+        setNeedsProfile(Boolean(data.needsProfile));
+        setProfileHint(data.hint ?? null);
       }
     } catch {
-      setJobs(SEED_NETWORK_JOBS);
+      setJobs(seedAsMatched(SEED_NETWORK_JOBS));
+      setNeedsProfile(false);
+      setProfileHint(null);
     } finally {
       setLoading(false);
     }
@@ -398,10 +437,10 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   }, [loadJobs]);
 
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
-  const visibleJobs = useMemo(
-    () => filterNetworkJobsFromForm(jobs, appliedForm, { internalView }),
-    [jobs, appliedForm, internalView]
-  );
+  const visibleJobs = useMemo(() => {
+    const filtered = filterNetworkJobsFromForm(jobs, appliedForm, { internalView });
+    return [...filtered].sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+  }, [jobs, appliedForm, internalView]);
   const activeFilterCount = countActiveNetworkFilterFields(appliedForm, internalView);
   const hasActiveSearch = Boolean(appliedForm.search.trim());
 
@@ -423,10 +462,10 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
           <ScoutLabel>Premium recruiter network{internalView ? " · internal" : ""}</ScoutLabel>
         </div>
         <ScoutDisplayTitle size={36} style={{ marginBottom: 10 }}>
-          In-network & second-tier roles
+          Network roles
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Shared privately through Top Echelon Big Biller — not public job boards. Search or filter to narrow the list, then open a role for match tools and recruiter details.
+          Shared privately through Top Echelon Big Biller — not public job boards. Each role is scored against your profile, same as Open Roles.
         </p>
       </div>
 
@@ -436,8 +475,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
             <ScoutLabel>Network roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               {internalView
-                ? "Full internal view — fee, guarantee, status, and agency filters available."
-                : "Curated roles shared with you. Use search and filters to find the right fit."}
+                ? "Full internal view — fee, guarantee, status, and agency filters available. Sorted by profile match."
+                : "Curated roles shared with you — sorted by how well they match your profile."}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -471,6 +510,12 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
 
         {showFilters && (
           <NetworkJobFiltersGrid form={form} setForm={setForm} suggestions={suggestions} internalView={internalView} />
+        )}
+
+        {needsProfile && profileHint && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
+            {profileHint}
+          </p>
         )}
 
         {!loading && (
