@@ -201,9 +201,9 @@ export function WorkspaceDashboard() {
     { key: "offer", label: "Offer" },
   ];
 
-  const headerPad = isMobile ? "12px 16px 12px 56px" : "12px 28px";
-  const panelPad = isMobile ? "12px 16px 12px 56px" : "12px 28px";
-  const contentPad = isMobile ? "24px 16px 40px 56px" : "32px 36px 48px";
+  const headerPad = isMobile ? "12px 16px" : "12px 28px";
+  const panelPad = isMobile ? "12px 16px" : "12px 28px";
+  const contentPad = isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const statValueSize = isMobile ? 36 : T.stat;
   const statCardPad = isMobile ? "16px 18px" : "20px 24px";
 
