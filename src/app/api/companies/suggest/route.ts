@@ -71,6 +71,7 @@ export async function GET(request: Request) {
       name: intel.name,
       website: intel.website,
       careersUrl: intel.careersUrl,
+      logoUrl: null,
       type: null,
       source: "intel",
     });

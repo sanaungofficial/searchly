@@ -1,9 +1,20 @@
 import { parseJsonFromModel, type ParsedResumeData } from "@/lib/resume-parse";
 
+export type LinkedInOrgSource = "hirebase" | "catalog" | "intel" | "manual";
+
+export interface LinkedInOrgRef {
+  name: string;
+  slug?: string | null;
+  logoUrl?: string | null;
+  website?: string | null;
+  source?: LinkedInOrgSource | null;
+}
+
 export interface LinkedInExperienceEntry {
   id: string;
   title: string;
   company: string;
+  companyRef?: LinkedInOrgRef | null;
   location?: string | null;
   from?: string | null;
   to?: string | null;
@@ -14,6 +25,7 @@ export interface LinkedInExperienceEntry {
 export interface LinkedInEducationEntry {
   id: string;
   school: string;
+  schoolRef?: LinkedInOrgRef | null;
   degree: string;
   field?: string | null;
   from?: string | null;
@@ -29,6 +41,8 @@ export interface LinkedInFeaturedLink {
 export interface LinkedInProfileDraft {
   headline: string;
   about: string;
+  /** Profile-level location (LinkedIn intro), not tied to a single role */
+  location?: string | null;
   experience: LinkedInExperienceEntry[];
   education: LinkedInEducationEntry[];
   skills: string[];
@@ -37,6 +51,29 @@ export interface LinkedInProfileDraft {
   coverPhotoUrl?: string | null;
   sourceAssetId?: string | null;
   generatedAt?: string | null;
+}
+
+export function newLinkedInEntryId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeOrgRef(raw: unknown): LinkedInOrgRef | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const name = asString(row.name);
+  if (!name) return null;
+  const source = row.source;
+  const validSource =
+    source === "hirebase" || source === "catalog" || source === "intel" || source === "manual"
+      ? source
+      : null;
+  return {
+    name,
+    slug: asStringOrNull(row.slug),
+    logoUrl: asStringOrNull(row.logoUrl),
+    website: asStringOrNull(row.website),
+    source: validSource,
+  };
 }
 
 const HEADLINE_MAX = 120;
@@ -166,10 +203,12 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
           const company = asString(row.company);
           const description = asString(row.description);
           if (!title && !company && !description) return null;
+          const companyRef = normalizeOrgRef(row.companyRef);
           return {
             id: asString(row.id) || `li_exp_${index}`,
             title: title || "Role",
-            company: company || "Company",
+            company: companyRef?.name || company || "Company",
+            companyRef,
             location: asStringOrNull(row.location),
             from: asStringOrNull(row.from),
             to: asStringOrNull(row.to),
@@ -188,9 +227,11 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
           const school = asString(row.school);
           const degree = asString(row.degree);
           if (!school && !degree) return null;
+          const schoolRef = normalizeOrgRef(row.schoolRef);
           return {
             id: asString(row.id) || `li_edu_${index}`,
-            school: school || "School",
+            school: schoolRef?.name || school || "School",
+            schoolRef,
             degree: degree || "Degree",
             field: asStringOrNull(row.field),
             from: asStringOrNull(row.from),
@@ -217,9 +258,13 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
         .filter((f): f is LinkedInFeaturedLink => f !== null)
     : [];
 
+  const draftLocation = asStringOrNull(obj.location);
+  const legacyLocation = experience[0]?.location ?? null;
+
   return {
     headline: clamp(headline, HEADLINE_MAX),
     about: clamp(about, ABOUT_MAX),
+    location: draftLocation ?? legacyLocation,
     experience,
     education,
     skills,
