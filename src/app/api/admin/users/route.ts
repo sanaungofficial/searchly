@@ -1,16 +1,8 @@
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
-
-function getAdminClient() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
 
 export async function POST(req: Request) {
   if (!await requireAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -22,7 +14,7 @@ export async function POST(req: Request) {
 
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
-  const admin = getAdminClient();
+  const admin = getSupabaseAdmin();
   const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: name ?? "" },
   });

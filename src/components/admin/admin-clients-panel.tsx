@@ -73,6 +73,216 @@ function activeStage(stage: JobStage) {
   return !["REJECTED", "WITHDRAWN", "SAVED"].includes(stage);
 }
 
+function CreateClientModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (client: AdminClient, meta: { warnings: string[] }) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError("Email is required.");
+      return;
+    }
+    if (!resumeFile && !linkedinUrl.trim()) {
+      setError("Upload a resume or paste a LinkedIn URL.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.set("email", email.trim());
+      if (name.trim()) formData.set("name", name.trim());
+      if (linkedinUrl.trim()) formData.set("linkedinUrl", linkedinUrl.trim());
+      if (resumeFile) formData.set("resume", resumeFile);
+
+      const res = await fetch("/api/admin/clients", { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(formatApiErrorMessage(data?.error ?? data, "Could not create client."));
+      }
+      if (!data.client) {
+        throw new Error("Unexpected response from server.");
+      }
+      onCreated(data.client as AdminClient, { warnings: Array.isArray(data.warnings) ? data.warnings : [] });
+      onClose();
+    } catch (err) {
+      setError(formatApiErrorMessage(err, "Could not create client."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const fieldStyle: React.CSSProperties = {
+    width: "100%",
+    fontSize: 14,
+    background: surface.card,
+    border: border.line,
+    borderRadius: 0,
+    padding: "9px 12px",
+    outline: "none",
+    fontFamily: fontSans,
+    boxSizing: "border-box",
+  };
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 300 }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 301,
+          padding: 16,
+        }}
+      >
+        <div
+          style={{
+            background: surface.card,
+            border: border.lineStrong,
+            width: "100%",
+            maxWidth: 480,
+            padding: 24,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <h2 style={{ ...displayTitleStyle(22), margin: 0 }}>Add client</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ background: "none", border: "none", fontSize: 18, color: color.muted, cursor: "pointer" }}
+            >
+              ×
+            </button>
+          </div>
+
+          <p style={{ fontSize: T.bodySm, color: color.stone, margin: "0 0 20px", lineHeight: 1.55 }}>
+            Creates the account, sends a sign-in invite, and parses their resume or LinkedIn profile so you can manage them right away.
+          </p>
+
+          <form onSubmit={(e) => void handleSubmit(e)} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label style={{ display: "block", fontSize: T.caption, color: color.muted, fontFamily: fontMono, marginBottom: 6 }}>
+                Email *
+              </label>
+              <input
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="client@example.com"
+                style={fieldStyle}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: T.caption, color: color.muted, fontFamily: fontMono, marginBottom: 6 }}>
+                Name (optional)
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full name"
+                style={fieldStyle}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: T.caption, color: color.muted, fontFamily: fontMono, marginBottom: 6 }}>
+                Resume (PDF, DOCX, or TXT)
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
+                style={{ ...fieldStyle, padding: "8px 12px" }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: T.caption, color: color.muted, fontFamily: fontMono, marginBottom: 6 }}>
+                LinkedIn profile URL
+              </label>
+              <input
+                type="url"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                placeholder="https://linkedin.com/in/…"
+                style={fieldStyle}
+              />
+            </div>
+            <p style={{ fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>
+              Provide at least one of resume or LinkedIn. Resume parse uses AI on production; LinkedIn import needs Apify configured.
+            </p>
+            {error && <p style={{ fontSize: T.bodySm, color: "#C4574A", margin: 0 }}>{error}</p>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  padding: "10px 16px",
+                  background: surface.inset,
+                  border: border.line,
+                  borderRadius: 0,
+                  fontSize: 14,
+                  fontFamily: fontSans,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  padding: "10px 18px",
+                  background: color.forest,
+                  color: color.gold,
+                  border: "none",
+                  borderRadius: 0,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  fontFamily: fontSans,
+                  cursor: loading ? "default" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading ? "Creating…" : "Create client"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function AdminClientsPanel({
   apiPath,
   onViewAsClient,
@@ -87,6 +297,8 @@ export function AdminClientsPanel({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminClient | null>(null);
   const [search, setSearch] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [createNotice, setCreateNotice] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(apiPath)
@@ -319,13 +531,39 @@ export function AdminClientsPanel({
 
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
-        <p style={sectionLabelStyle}>Clients</p>
-        <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 8px" }}>Manage clients</h1>
-        <p style={{ fontSize: 14, color: color.stone, margin: 0, maxWidth: 560 }}>
-          View client accounts, check their pipeline, and open their workspace to upload resumes or review job matches.
-        </p>
+      <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <p style={sectionLabelStyle}>Clients</p>
+          <h1 style={{ ...displayTitleStyle(28), margin: "4px 0 8px" }}>Manage clients</h1>
+          <p style={{ fontSize: 14, color: color.stone, margin: 0, maxWidth: 560 }}>
+            Add client accounts with a resume or LinkedIn profile, then open their workspace to manage jobs and assets.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setShowCreate(true); setCreateNotice(null); }}
+          style={{
+            padding: "10px 18px",
+            background: color.forest,
+            color: color.gold,
+            border: "none",
+            borderRadius: 0,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: fontSans,
+            whiteSpace: "nowrap",
+          }}
+        >
+          + Add client
+        </button>
       </div>
+
+      {createNotice && (
+        <div style={{ background: "rgba(26,58,47,0.06)", border: border.line, padding: "12px 16px", marginBottom: 20, fontSize: T.bodySm, color: color.stone, lineHeight: 1.5 }}>
+          {createNotice}
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
         {[
@@ -454,6 +692,21 @@ export function AdminClientsPanel({
           <p style={{ color: "var(--scout-muted)", fontSize: 14, textAlign: "center", padding: "40px 0" }}>No clients found.</p>
         )}
       </div>
+
+      {showCreate && (
+        <CreateClientModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(client, meta) => {
+            setClients((prev) => [client, ...prev.filter((c) => c.id !== client.id)]);
+            setSelected(client);
+            setCreateNotice(
+              meta.warnings.length > 0
+                ? `Client created. ${meta.warnings.join(" ")}`
+                : "Client created and profile imported.",
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
