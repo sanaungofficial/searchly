@@ -55,12 +55,13 @@ export async function POST(request: Request) {
   try {
     const roomId = await ensureLiveRoom(sessionId);
     const hms = getHmsSdk();
-    const authToken = await hms.auth.getAuthToken({
+    const auth = await hms.auth.getAuthToken({
       roomId,
       role,
       userId,
       validForSeconds: 60 * 60 * 4,
     });
+    const authToken = typeof auth === "string" ? auth : auth.token;
 
     return NextResponse.json({
       authToken,
