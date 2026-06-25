@@ -4,23 +4,24 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   linkedInChecklist,
   linkedInEditUrl,
-  newLinkedInEntryId,
-  type LinkedInProfileDraft,
 } from "@/lib/linkedin-profile";
-import {
-  getLinkedInSectionFixIssues,
-  linkedInAnalysisToReport,
-  LINKEDIN_SECTION_TITLES,
-  type LinkedInAnalysisData,
-  type LinkedInSectionId,
-} from "@/lib/linkedin-analysis";
 import { useCompactLayout } from "@/hooks/use-compact-layout";
 import { LinkedInGenerateLoader } from "./linkedin-generate-loader";
 import { ScoutBox, ScoutDisplayTitle, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface } from "@/lib/typography";
 import { JobrightScorePill } from "./profile-resume-jobright-document";
 import { ResumeAnalysisReportDrawer, buildFullReport } from "./profile-resume-analysis-report";
-import { ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
+import { ResumeSectionFixDrawer, type SectionFixIssue } from "./profile-resume-section-fix-drawer";
+import {
+  getLinkedInSectionFixIssues,
+  linkedInAnalysisToReport,
+  linkedInExperienceEntryScores,
+  findPriorityLinkedInSection,
+  LINKEDIN_SECTION_TITLES,
+  type LinkedInAnalysisData,
+  type LinkedInSectionId,
+} from "@/lib/linkedin-analysis";
+import { LINKEDIN_EMPLOYMENT_TYPES, newLinkedInEntryId, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
@@ -299,11 +300,16 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const [reportOpen, setReportOpen] = useState(false);
   const [fixSection, setFixSection] = useState<FixSectionState>(null);
   const [fixSuggestions, setFixSuggestions] = useState<{ id: string; label: string; text: string }[]>([]);
+  const [fixSuggestIssues, setFixSuggestIssues] = useState<SectionFixIssue[]>([]);
   const [fixSuggestionsLoading, setFixSuggestionsLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [showImportInput, setShowImportInput] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const analysisDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   draftRef.current = draft;
 
@@ -364,9 +370,19 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
 
   useEffect(() => {
     void load();
+    return () => {
+      if (analysisDebounceRef.current) clearTimeout(analysisDebounceRef.current);
+    };
   }, [load]);
 
-  const saveDraft = async (next?: LinkedInProfileDraft) => {
+  const scheduleAnalysisRefresh = useCallback(() => {
+    if (analysisDebounceRef.current) clearTimeout(analysisDebounceRef.current);
+    analysisDebounceRef.current = setTimeout(() => {
+      void loadAnalysis(true);
+    }, 2500);
+  }, [loadAnalysis]);
+
+  const saveDraft = async (next?: LinkedInProfileDraft, refreshAnalysis = true) => {
     const payload = next ?? draftRef.current;
     if (!payload) return;
     setDraft(payload);
@@ -386,6 +402,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       setUpdatedAt(new Date().toISOString());
       setSaveHint("Saved");
       setTimeout(() => setSaveHint(null), 2000);
+      if (refreshAnalysis) scheduleAnalysisRefresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -472,6 +489,39 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     e.target.value = "";
   };
 
+  const importFromLinkedIn = async () => {
+    const url = (importUrl.trim() || linkedinUrl?.trim()) ?? "";
+    if (!url) {
+      setError("Enter your LinkedIn profile URL to import.");
+      setShowImportInput(true);
+      return;
+    }
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/profile/linkedin-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Import failed");
+      const next = data.draft as LinkedInProfileDraft;
+      setDraft(next);
+      draftRef.current = next;
+      if (typeof data.linkedinUrl === "string") setLinkedinUrl(data.linkedinUrl);
+      if (typeof data.name === "string") setName(data.name);
+      setUpdatedAt(new Date().toISOString());
+      setShowImportInput(false);
+      setImportUrl("");
+      await loadAnalysis(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "LinkedIn import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const openFix = (
     sectionId: LinkedInSectionId,
     options?: { entryId?: string; entryLabel?: string; mode?: "fix" | "impact" },
@@ -481,6 +531,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     const entryLabel = options?.entryLabel;
     setFixSection({ sectionId, entryId, entryLabel, mode });
     setFixSuggestions([]);
+    setFixSuggestIssues([]);
     if (mode === "impact") return;
 
     setFixSuggestionsLoading(true);
@@ -491,8 +542,38 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     })
       .then(async (res) => {
         const data = await res.json();
-        if (res.ok && Array.isArray(data.suggestions)) {
-          setFixSuggestions(data.suggestions);
+        if (res.ok) {
+          if (Array.isArray(data.suggestions)) setFixSuggestions(data.suggestions);
+          if (Array.isArray(data.issues)) {
+            setFixSuggestIssues(
+              data.issues.map(
+                (
+                  row: {
+                    id?: string;
+                    severity?: string;
+                    title?: string;
+                    issueDetected?: string;
+                    whyItMatters?: string;
+                    howToImprove?: string;
+                  },
+                  i: number,
+                ) => ({
+                  id: row.id ?? `${sectionId}-s-${i}`,
+                  severity:
+                    row.severity === "Urgent" ||
+                    row.severity === "Critical" ||
+                    row.severity === "Optional" ||
+                    row.severity === "Minor"
+                      ? row.severity
+                      : "Optional",
+                  title: row.title ?? "Suggestion",
+                  issueDetected: row.issueDetected ?? "",
+                  whyItMatters: row.whyItMatters ?? "",
+                  howToImprove: row.howToImprove ?? "",
+                }),
+              ),
+            );
+          }
         }
       })
       .catch(() => {})
@@ -550,6 +631,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
           title: "",
           company: "",
           companyRef: null,
+          employmentType: "Full-time",
           location: null,
           from: null,
           to: null,
@@ -605,13 +687,24 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     highlights: analysisReport.highlights,
     updatedAt: analysisReport.updatedAt,
   });
-  const fixIssues = fixSection
+  const experienceScores = draft ? linkedInExperienceEntryScores(draft) : [];
+  const scoreByEntryId = new Map(experienceScores.map((s) => [s.entryId, s]));
+
+  const reportSectionIssues = fixSection
     ? getLinkedInSectionFixIssues(
         fixSection.sectionId,
         { ...analysisReport, highlights: fullReport.highlights, issues: fullReport.issues },
         fixSection.mode === "impact" ? "impact" : "all",
       )
     : [];
+
+  const fixIssues: SectionFixIssue[] = !fixSection
+    ? []
+    : fixSection.mode === "impact"
+      ? reportSectionIssues
+      : fixSuggestIssues.length > 0
+        ? fixSuggestIssues
+        : reportSectionIssues;
 
   return (
     <div style={{ paddingBottom: 48, minWidth: 0, width: "100%", position: "relative" }}>
@@ -641,6 +734,17 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
           )}
           {saveHint && <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#1A3A2F" }}>{saveHint}</span>}
           {saving && <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: LI.muted }}>Saving…</span>}
+          <ScoutSecondaryBtn
+            type="button"
+            onClick={() => {
+              setShowImportInput((v) => !v);
+              if (!importUrl && linkedinUrl) setImportUrl(linkedinUrl);
+            }}
+            disabled={importing}
+            style={{ padding: "10px 18px" }}
+          >
+            {importing ? "Importing…" : "Import from LinkedIn"}
+          </ScoutSecondaryBtn>
           <ScoutPrimaryBtn onClick={() => void generate()} disabled={generating} style={{ padding: "10px 18px" }}>
             {generating ? "Generating…" : draft ? "Regenerate from resume" : "Generate from resume"}
           </ScoutPrimaryBtn>
@@ -651,6 +755,34 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       </div>
 
       {error && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 16 }}>{error}</p>}
+
+      {showImportInput && (
+        <ScoutBox padding={16} style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+          <input
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            placeholder="https://www.linkedin.com/in/your-handle"
+            style={{
+              flex: "1 1 240px",
+              minWidth: 200,
+              padding: "10px 12px",
+              fontFamily: fontSans,
+              fontSize: 14,
+              border: border.line,
+              background: surface.inset,
+            }}
+          />
+          <ScoutPrimaryBtn type="button" onClick={() => void importFromLinkedIn()} disabled={importing}>
+            {importing ? "Importing…" : "Run import"}
+          </ScoutPrimaryBtn>
+          <ScoutSecondaryBtn type="button" onClick={() => setShowImportInput(false)} disabled={importing}>
+            Cancel
+          </ScoutSecondaryBtn>
+          <p style={{ flex: "1 1 100%", margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+            Pulls your live LinkedIn profile into this editor. Requires Apify on this environment (production).
+          </p>
+        </ScoutBox>
+      )}
 
       {!draft && !generating && (
         <ScoutBox padding={stackLayout ? 24 : 40} style={{ textAlign: "center" }}>
@@ -741,7 +873,9 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                   No roles yet — add your work history to match your LinkedIn profile.
                 </p>
               )}
-              {draft.experience.map((exp, idx) => (
+              {draft.experience.map((exp, idx) => {
+                const entryScore = scoreByEntryId.get(exp.id);
+                return (
                 <div
                   key={exp.id}
                   style={{
@@ -760,6 +894,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
                         <input
                           value={exp.title}
                           onChange={(e) =>
@@ -773,8 +908,25 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                           onFocus={() => setFocusedField(`${exp.id}-title`)}
                           onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
                           placeholder="Job title"
-                          style={fieldStyle(`${exp.id}-title`, { fontSize: 16, fontWeight: 600 })}
+                          style={fieldStyle(`${exp.id}-title`, { fontSize: 16, fontWeight: 600, flex: 1 })}
                         />
+                        {entryScore && entryScore.score < 80 && (
+                          <span
+                            title={entryScore.issues.join(" · ")}
+                            style={{
+                              flexShrink: 0,
+                              fontFamily: "system-ui",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "3px 8px",
+                              background: entryScore.score < 60 ? "#fde8e8" : "#fef3c7",
+                              color: entryScore.score < 60 ? "#b24040" : "#92400e",
+                            }}
+                          >
+                            {entryScore.grade}
+                          </span>
+                        )}
+                        </div>
                         <LiEntryMenu
                           canMoveUp={idx > 0}
                           canMoveDown={idx < draft.experience.length - 1}
@@ -809,6 +961,27 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                         onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
                         inputStyle={fieldStyle(`${exp.id}-company`, { fontSize: 14, color: LI.muted })}
                       />
+                      <select
+                        value={exp.employmentType ?? ""}
+                        onChange={(e) =>
+                          patchDraft((d) => ({
+                            ...d,
+                            experience: d.experience.map((row) =>
+                              row.id === exp.id ? { ...row, employmentType: e.target.value || null } : row,
+                            ),
+                          }))
+                        }
+                        onBlur={saveCurrentDraft}
+                        style={{
+                          ...fieldStyle(`${exp.id}-type`, { fontSize: 13, color: LI.muted, marginTop: 6, maxWidth: 200 }),
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="">Employment type</option>
+                        {LINKEDIN_EMPLOYMENT_TYPES.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, marginBottom: 10 }}>
                         <input
                           value={exp.from ?? ""}
@@ -898,7 +1071,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
@@ -1072,11 +1246,103 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 </ScoutSecondaryBtn>
               </div>
             </div>
+
+            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: 0, color: LI.text }}>Featured</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    patchDraft((d) => ({
+                      ...d,
+                      featured: [
+                        ...d.featured,
+                        { id: newLinkedInEntryId("feat"), label: "Featured link", url: "https://" },
+                      ],
+                    }));
+                    saveCurrentDraft();
+                  }}
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    border: `1px solid ${LI.border}`,
+                    background: LI.card,
+                    color: LI.blue,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Add link
+                </button>
+              </div>
+              {draft.featured.length === 0 && (
+                <p style={{ fontFamily: "system-ui", fontSize: 14, color: LI.muted, margin: 0 }}>
+                  Optional — add portfolio links, articles, or media featured on your LinkedIn profile.
+                </p>
+              )}
+              {draft.featured.map((feat) => (
+                <div key={feat.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <input
+                      value={feat.label}
+                      onChange={(e) =>
+                        patchDraft((d) => ({
+                          ...d,
+                          featured: d.featured.map((row) =>
+                            row.id === feat.id ? { ...row, label: e.target.value } : row,
+                          ),
+                        }))
+                      }
+                      onBlur={saveCurrentDraft}
+                      placeholder="Label"
+                      style={fieldStyle(`${feat.id}-label`, { fontSize: 14, fontWeight: 600 })}
+                    />
+                    <input
+                      value={feat.url}
+                      onChange={(e) =>
+                        patchDraft((d) => ({
+                          ...d,
+                          featured: d.featured.map((row) =>
+                            row.id === feat.id ? { ...row, url: e.target.value } : row,
+                          ),
+                        }))
+                      }
+                      onBlur={saveCurrentDraft}
+                      placeholder="https://"
+                      style={fieldStyle(`${feat.id}-url`, { fontSize: 13, color: LI.muted, marginTop: 4 })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      patchDraft((d) => ({ ...d, featured: d.featured.filter((row) => row.id !== feat.id) }));
+                      saveCurrentDraft();
+                    }}
+                    style={{ ...entryMenuBtnStyle(false), color: "#b24040", marginTop: 4 }}
+                    title="Remove link"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <ScoutBox padding={stackLayout ? 16 : 20} style={{ minWidth: 0, position: stackLayout ? undefined : "sticky", top: 16 }}>
             <h4 style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, margin: "0 0 4px", color: color.ink }}>What to update on LinkedIn</h4>
             <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 16px" }}>Copy each block into LinkedIn after you edit here.</p>
+            {experienceScores.length > 0 && (
+              <div style={{ marginBottom: 16, padding: 12, border: border.line, background: surface.inset }}>
+                <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 700, color: color.ink, margin: "0 0 8px" }}>Experience quality</p>
+                {experienceScores.map((entry) => (
+                  <div key={entry.entryId} style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6, fontFamily: "var(--font-ui)", fontSize: 12 }}>
+                    <span style={{ color: LI.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.label}</span>
+                    <span style={{ fontWeight: 700, color: entry.score < 60 ? "#b24040" : entry.score < 80 ? "#92400e" : LI.blue, flexShrink: 0 }}>{entry.grade}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: stackLayout ? undefined : "calc(100vh - 220px)", overflowY: stackLayout ? undefined : "auto" }}>
               {checklist.map((item) => (
                 <div key={item.id} style={{ border: border.line, borderRadius: 0, padding: 12, background: surface.inset }}>
@@ -1110,7 +1376,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         error={analysisLoading ? undefined : analysis?.error && !fullReport.issues.length ? analysis.error : undefined}
         onBeginImprovements={() => {
           setReportOpen(false);
-          openFix("headline");
+          openFix(findPriorityLinkedInSection(analysisReport));
         }}
         onRefresh={() => void loadAnalysis(true)}
         aiUnavailable={!!analysis?.error && fullReport.issues.length > 0}
@@ -1128,6 +1394,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         onClose={() => {
           setFixSection(null);
           setFixSuggestions([]);
+          setFixSuggestIssues([]);
         }}
       />
     </div>

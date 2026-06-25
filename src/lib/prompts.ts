@@ -628,6 +628,7 @@ Return ONLY valid JSON:
 Use priority: Urgent, Critical, or Optional.
 Use severity: Minor, Urgent, Critical, or Optional.
 sectionHint must be one of: headline, about, experience, education, skills.
+For experience issues, mention the specific company or role title when possible.
 Focus on LinkedIn norms: keyword headline, scannable About hook, paragraph impact in experience, skills for search.
 Include 8-12 improvements across improvements and highlights.
 
@@ -661,9 +662,12 @@ Return ONLY valid JSON:
 }
 
 Rules:
-- issues: 1-3 items specific to this section
+- issues: 1-3 items specific to THIS section or role (not generic resume advice)
 - suggestions: 2-3 complete rewrites the user can paste in (respect LinkedIn length norms)
-- headline ≤120 chars, about can be longer, experience entry is paragraph prose
+- headline ≤120 chars; about uses short paragraphs with a strong first-line hook
+- experience entry: rewrite ONLY the description field as 2-4 short paragraphs with metrics; do not repeat title/company/dates in the text
+- education entry: suggest degree line improvements when entryLabel indicates a specific school
+- skills: return a comma-separated list in suggestion text, ordered by recruiter search relevance
 - Return ONLY the JSON object`,
   COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
 
