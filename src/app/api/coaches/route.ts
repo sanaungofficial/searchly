@@ -36,7 +36,10 @@ export async function GET(req: NextRequest) {
   const me = await getAuthenticatedDbUser();
 
   const coaches = await prisma.coachProfile.findMany({
-    where: { status: CoachStatus.ACTIVE },
+    where: {
+      status: CoachStatus.ACTIVE,
+      ...(me ? { NOT: { userId: me.id } } : {}),
+    },
     select: coachListSelect,
   });
 

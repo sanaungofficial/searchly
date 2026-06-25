@@ -80,7 +80,8 @@ type BookedCoach = {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { openPricing } = useWorkspace();
+  const { openPricing, userRole } = useWorkspace();
+  const isCoach = userRole === "COACH";
   const { isPro, loading: subLoading } = useSubscription();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -138,15 +139,45 @@ export function DashboardHomeTop({ isMobile }: Props) {
   }, []);
 
   useEffect(() => {
+    if (isCoach) {
+      setBookedCoach(null);
+      setBookingLoading(false);
+      return;
+    }
+
     setBookingLoading(true);
-    fetch("/api/coaches/my-booking")
+    fetch("/api/bookings/me?upcoming=true&limit=1")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        setBookedCoach(d?.booking ?? null);
+      .then(async (d) => {
+        let row = d?.bookings?.[0];
+        if (!row) {
+          const pastRes = await fetch("/api/bookings/me?upcoming=false&limit=1");
+          const pastData = pastRes.ok ? await pastRes.json() : null;
+          row = pastData?.bookings?.[0];
+        }
+        if (!row) {
+          setBookedCoach(null);
+          return;
+        }
+        setBookedCoach({
+          bookingId: row.id,
+          nylasBookingRef: row.nylasBookingRef ?? null,
+          startAt: row.startAt,
+          endAt: row.endAt,
+          status: row.status,
+          title: row.title ?? null,
+          coach: {
+            id: row.coachProfileId,
+            slug: row.coachSlug ?? null,
+            displayName: row.coachName,
+            photoUrl: row.coachPhotoUrl ?? null,
+            headline: null,
+          },
+        });
       })
       .catch(() => setBookedCoach(null))
       .finally(() => setBookingLoading(false));
-  }, []);
+  }, [isCoach]);
 
   const goals = profile?.dashboardGoals ?? [];
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
@@ -597,8 +628,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const rightColumn = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-      {/* Coach status */}
-      {!bookingLoading && !bookedCoach && (
+      {/* Coach status — seekers only */}
+      {!isCoach && !bookingLoading && !bookedCoach && (
         <div
           style={{
             ...CARD,
@@ -620,7 +651,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       )}
 
-      {!bookingLoading && bookedCoach && (
+      {!isCoach && !bookingLoading && bookedCoach && (
         <div
           style={{
             ...CARD,

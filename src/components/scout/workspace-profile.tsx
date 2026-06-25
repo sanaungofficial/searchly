@@ -57,8 +57,6 @@ import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
-import { ProfileMyCoachCard } from "./coach-ui";
-import { useCoachMatches } from "@/hooks/use-coach-matches";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -2515,7 +2513,6 @@ export function WorkspaceProfile() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const { openPricing } = useWorkspace();
-  const { myCoach, loading: coachLoading, needsProfile: coachNeedsProfile, profileHint: coachProfileHint } = useCoachMatches();
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
   const openResumeEditor = (assetId: string) => {
@@ -3015,17 +3012,6 @@ export function WorkspaceProfile() {
           </ScoutBox>
         )}
 
-        <ProfileMyCoachCard
-          coach={myCoach}
-          loading={coachLoading}
-          needsProfile={coachNeedsProfile}
-          profileHint={coachProfileHint}
-          isPro={isPro}
-          isMobile={isMobile}
-          onSubscribe={openPricing}
-        />
-
-        {/* Main tab bar */}
         <div style={{ display: "flex", border: border.line, overflowX: "auto", marginBottom: page === "about" && isMobile ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flexShrink: 0 }}>
           {PAGE_TABS.map(({ id, label }, i) => (
             <button

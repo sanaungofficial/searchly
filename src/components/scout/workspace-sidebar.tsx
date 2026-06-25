@@ -581,9 +581,9 @@ export function WorkspaceSidebar({
             />
           )}
 
-          {isStaff && (
+          {isStaff && userRole !== "COACH" && (
             <SidebarNavButton
-              active={pathname === "/clients"}
+              active={pathname === "/clients" || pathname.startsWith("/dashboard/clients")}
               onClick={() => navigate("/clients")}
               label="Clients"
               isRail={isRail}
@@ -645,7 +645,7 @@ export function WorkspaceSidebar({
           {showCommunityNav && (
             <>
               <SidebarSectionLabel isRail={isRail}>Community</SidebarSectionLabel>
-              {NAV_COMMUNITY.map(({ id, label, path, Icon }) => (
+              {NAV_COMMUNITY.filter(({ id }) => !(userRole === "COACH" && id === "live")).map(({ id, label, path, Icon }) => (
                 <SidebarNavButton
                   key={id}
                   active={isActive(path)}
