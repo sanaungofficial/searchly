@@ -1,6 +1,8 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { loadJobDescriptionForUser } from "@/lib/job-description-server";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { normalizeParsedResumeData, parsedResumeToText } from "@/lib/resume-parse";
+import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -22,18 +24,29 @@ export async function POST(req: NextRequest) {
   const quotaError = await requireAiQuota(dbUser, "MATCH");
   if (quotaError) return quotaError;
 
-  const resumeText = dbUser.profile?.resumeText;
-  if (!resumeText) {
-    return NextResponse.json({ error: "No resume found" }, { status: 404 });
-  }
-
   const body = await req.json();
-  const { jobTitle, company, description, jobId } = body as {
+  const { jobTitle, company, description, jobId, assetId } = body as {
     jobTitle?: string;
     company?: string;
     description?: string;
     jobId?: string;
+    assetId?: string;
   };
+
+  let resumeText = dbUser.profile?.resumeText?.trim() ?? "";
+  if (assetId?.trim()) {
+    const asset = await prisma.userAsset.findFirst({
+      where: { id: assetId.trim(), userId: dbUser.id, type: "RESUME" },
+    });
+    if (!asset) {
+      return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+    }
+    const parsed = normalizeParsedResumeData(asset.parsedData);
+    resumeText = asset.resumeText?.trim() || (parsed ? parsedResumeToText(parsed) : "");
+  }
+  if (!resumeText) {
+    return NextResponse.json({ error: "No resume found" }, { status: 404 });
+  }
 
   let finalDescription = description?.trim() ?? "";
   if (!finalDescription && jobId) {
