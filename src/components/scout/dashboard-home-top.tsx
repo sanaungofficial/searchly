@@ -17,6 +17,7 @@ import {
   SALES_TEAM_FORM_URL,
 } from "@/lib/dashboard-goals";
 import { formatBookingWhen } from "@/lib/coach-user-booking";
+import { isStaffPortalRole } from "@/lib/staff-portal";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
@@ -82,7 +83,7 @@ type BookedCoach = {
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
   const { openPricing, userRole } = useWorkspace();
-  const isCoach = userRole === "COACH";
+  const isStaffPortal = isStaffPortalRole(userRole);
   const { isPro, loading: subLoading } = useSubscription();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -141,7 +142,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   }, []);
 
   useEffect(() => {
-    if (isCoach) {
+    if (isStaffPortal) {
       setBookedCoach(null);
       setBookingLoading(false);
       return;
@@ -179,7 +180,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       })
       .catch(() => setBookedCoach(null))
       .finally(() => setBookingLoading(false));
-  }, [isCoach]);
+  }, [isStaffPortal]);
 
   const goals = profile?.dashboardGoals ?? [];
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
@@ -659,7 +660,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const rightColumn = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
       {/* Coach status — seekers only */}
-      {!isCoach && !bookingLoading && !bookedCoach && (
+      {!isStaffPortal && !bookingLoading && !bookedCoach && (
         <div
           style={{
             ...CARD,
@@ -681,7 +682,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       )}
 
-      {!isCoach && !bookingLoading && bookedCoach && (
+      {!isStaffPortal && !bookingLoading && bookedCoach && (
         <div
           style={{
             ...CARD,
