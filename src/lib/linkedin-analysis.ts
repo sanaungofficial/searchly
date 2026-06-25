@@ -259,3 +259,71 @@ export const LINKEDIN_SECTION_TITLES: Record<LinkedInSectionId, string> = {
   education: "Education",
   skills: "Skills",
 };
+
+export type LinkedInExperienceEntryScore = {
+  entryId: string;
+  label: string;
+  score: number;
+  grade: string;
+  issues: string[];
+};
+
+/** Heuristic per-role quality score for inline coaching badges. */
+export function linkedInExperienceEntryScores(draft: LinkedInProfileDraft): LinkedInExperienceEntryScore[] {
+  return draft.experience.map((exp) => {
+    let score = 100;
+    const issues: string[] = [];
+
+    if (!exp.title.trim()) {
+      score -= 15;
+      issues.push("Add a job title");
+    }
+    if (!exp.company.trim()) {
+      score -= 15;
+      issues.push("Link or name the company");
+    }
+    const desc = exp.description.trim();
+    if (!desc) {
+      score -= 35;
+      issues.push("Add a role description");
+    } else if (desc.length < 120) {
+      score -= 20;
+      issues.push("Expand with more impact detail");
+    }
+    if (desc && !/\d|%|\$|#/.test(desc)) {
+      score -= 15;
+      issues.push("Include measurable results");
+    }
+
+    const finalScore = Math.max(0, Math.min(100, score));
+    const { grade } = scoreToGrade(finalScore);
+    const label =
+      exp.title && exp.company ? `${exp.title} at ${exp.company}` : exp.title || exp.company || "Role";
+
+    return { entryId: exp.id, label, score: finalScore, grade, issues };
+  });
+}
+
+export function findPriorityLinkedInSection(
+  fullReport: ReturnType<typeof linkedInAnalysisToReport>,
+): LinkedInSectionId {
+  for (const group of fullReport.highlights) {
+    for (const item of group.items) {
+      if (
+        (item.severity === "Urgent" || item.severity === "Critical") &&
+        item.sectionHint &&
+        item.sectionHint in LINKEDIN_SECTION_TITLES
+      ) {
+        return item.sectionHint as LinkedInSectionId;
+      }
+    }
+  }
+  for (const issue of fullReport.issues) {
+    if (issue.priority === "Urgent" || issue.priority === "Critical") {
+      for (const [sectionId, pattern] of Object.entries(SECTION_PATTERNS) as [LinkedInSectionId, RegExp][]) {
+        if (pattern.test(`${issue.title} ${issue.detail}`)) return sectionId;
+      }
+    }
+  }
+  return "headline";
+}

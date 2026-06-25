@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { JobMeta } from "@/hooks/useJobs";
 import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
-import {
-  INITIAL_SIGNALS,
-  type KanbanCard,
-  type SignalItem,
-  type SignalsData,
-} from "./workspace-data";
+import { type KanbanCard } from "./workspace-data";
 import { PlusIcon, RefreshIcon } from "./workspace-icons";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
+import { windowInsight } from "@/hooks/useMarketInsights";
+import { formatInsightsSalary } from "@/lib/hirebase-insights";
 
 const STAT_LABEL: React.CSSProperties = {
   fontFamily: fontSans,
@@ -184,8 +183,34 @@ export function WorkspaceDashboard() {
   }>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
-  const [signalsData, setSignalsData] = useState<SignalsData | null>(INITIAL_SIGNALS);
-  const [signalsLoading, setSignalsLoading] = useState(false);
+  const [signalsData, setSignalsData] = useState<MarketInsightsPayload | null>(null);
+  const [signalsLoading, setSignalsLoading] = useState(true);
+  const [signalsError, setSignalsError] = useState<string | null>(null);
+
+  const loadMarketSignals = useCallback(async (refresh = false) => {
+    setSignalsLoading(true);
+    setSignalsError(null);
+    try {
+      const params = new URLSearchParams({ days: "30", windows: "7,30,90" });
+      if (refresh) params.set("refresh", "1");
+      const res = await fetch(`/api/market/insights?${params}`);
+      const body = (await res.json()) as MarketInsightsPayload;
+      setSignalsData(body);
+      if (!res.ok && !Object.keys(body.windows ?? {}).length) {
+        setSignalsError(body.error ?? "Market data unavailable.");
+      }
+    } catch {
+      setSignalsError("Could not load market insights.");
+    } finally {
+      setSignalsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMarketSignals(false);
+  }, [loadMarketSignals]);
+
+  const marketInsight = windowInsight(signalsData, 30);
 
   const pipeline = {
     saved: kanbanCards.filter((c) => c.stage === "saved").length,
@@ -266,12 +291,7 @@ export function WorkspaceDashboard() {
   };
 
   const refreshSignals = () => {
-    setSignalsLoading(true);
-    setSignalsData(null);
-    window.setTimeout(() => {
-      setSignalsData(INITIAL_SIGNALS);
-      setSignalsLoading(false);
-    }, 1500);
+    void loadMarketSignals(true);
   };
 
   const openAddPanel = () => setShowAddPanel(true);
@@ -477,7 +497,7 @@ export function WorkspaceDashboard() {
               Your job search at a glance
             </ScoutDisplayTitle>
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
-              Pipeline counts, recent activity, and weekly market signals — white boxes on cream, same as Opportunities.
+              Pipeline counts, recent activity, and live market intelligence from Hirebase.
             </p>
           </div>
 
@@ -577,46 +597,79 @@ export function WorkspaceDashboard() {
                 flexDirection: isMobile ? "column" : "row",
               }}
             >
-              <ScoutLabel>Kimchi signals · updated weekly</ScoutLabel>
-              <button
-                onClick={refreshSignals}
-                style={{
-                  background: "none",
-                  border: border.line,
-                  cursor: "pointer",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  color: color.forest,
-                  padding: isMobile ? "10px 14px" : "6px 12px",
-                  minHeight: isMobile ? 44 : undefined,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <RefreshIcon /> Refresh
-              </button>
+              <ScoutLabel>Market intelligence</ScoutLabel>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Link
+                  href="/market"
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: T.caption,
+                    fontWeight: 600,
+                    color: color.forest,
+                    textDecoration: "none",
+                    padding: isMobile ? "10px 14px" : "6px 12px",
+                    border: border.line,
+                    minHeight: isMobile ? 44 : undefined,
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  Explore →
+                </Link>
+                <button
+                  onClick={refreshSignals}
+                  disabled={signalsLoading}
+                  style={{
+                    background: "none",
+                    border: border.line,
+                    cursor: signalsLoading ? "wait" : "pointer",
+                    fontFamily: fontSans,
+                    fontSize: T.caption,
+                    fontWeight: 600,
+                    color: color.forest,
+                    padding: isMobile ? "10px 14px" : "6px 12px",
+                    minHeight: isMobile ? 44 : undefined,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <RefreshIcon /> Refresh
+                </button>
+              </div>
             </div>
 
-            {signalsLoading && (
+            {signalsLoading && !marketInsight && (
               <ScoutBox padding="14px 18px">
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: color.forest, animation: "pulse 1s ease infinite", flexShrink: 0 }} />
                   <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
-                    Kimchi is scanning the market…
+                    Loading market intelligence…
                   </p>
                 </div>
               </ScoutBox>
             )}
 
-            {signalsData && (
+            {signalsError && !marketInsight && (
+              <ScoutBox padding="14px 18px">
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
+                  {signalsError}
+                </p>
+              </ScoutBox>
+            )}
+
+            {marketInsight && signalsData && (
               <>
                 <ScoutBox stack padding={isMobile ? "16px 18px" : "18px 22px"} style={{ marginBottom: 12 }}>
-                  <ScoutLabel>This week&apos;s read</ScoutLabel>
+                  <ScoutLabel>This week&apos;s read · {signalsData.roleLabel}</ScoutLabel>
                   <p style={displayTitleStyle(isMobile ? 20 : 24, { margin: "10px 0 0", color: color.ink })}>
-                    {signalsData.headline}
+                    {signalsData.headline || signalsData.roleLabel}
                   </p>
+                  {signalsData.generatedAt && (
+                    <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
+                      Updated {new Date(signalsData.generatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </p>
+                  )}
                 </ScoutBox>
                 <div
                   style={{
@@ -632,9 +685,30 @@ export function WorkspaceDashboard() {
                     WebkitOverflowScrolling: "touch",
                   }}
                 >
-                  {signalsData.signals.map((s: SignalItem, i: number) => {
-                    const sentimentColor = s.sentiment === "positive" ? "#2D6B4A" : s.sentiment === "negative" ? "#8B3A3A" : "#7A6020";
-                    const typeLabel = s.type === "hiring_surge" ? "Hiring" : s.type === "hiring_freeze" ? "Freeze" : s.type === "funding" ? "Funding" : s.type === "role_demand" ? "Demand" : s.type === "salary" ? "Salary" : "Trend";
+                  {[
+                    {
+                      type: "Demand",
+                      title: `${marketInsight.headline?.total_count?.toLocaleString() ?? "—"} active roles`,
+                      actionable: `${marketInsight.headline?.new_this_week ?? 0} posted this week`,
+                      sentiment: "positive" as const,
+                    },
+                    {
+                      type: "Salary",
+                      title: marketInsight.headline?.median_salary
+                        ? `Median ${formatInsightsSalary(marketInsight.headline.median_salary, marketInsight.headline.salary_currency) ?? ""}`
+                        : "Salary data limited",
+                      actionable: "See full bands on Market → Salary",
+                      sentiment: "neutral" as const,
+                    },
+                    ...(marketInsight.top_companies ?? []).slice(0, 3).map((co) => ({
+                      type: "Hiring",
+                      company: co.company_name,
+                      title: `${co.company_name} — ${co.count} roles`,
+                      actionable: "View company intel",
+                      sentiment: "positive" as const,
+                    })),
+                  ].map((s, i) => {
+                    const sentimentColor = s.sentiment === "positive" ? "#2D6B4A" : "#7A6020";
                     return (
                       <ScoutBox
                         key={i}
@@ -655,9 +729,9 @@ export function WorkspaceDashboard() {
                               letterSpacing: "0.05em",
                             }}
                           >
-                            {typeLabel}
+                            {s.type}
                           </span>
-                          {s.company && (
+                          {"company" in s && s.company && (
                             <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
                               {s.company}
                             </span>
@@ -677,8 +751,7 @@ export function WorkspaceDashboard() {
             )}
           </div>
 
-          {/* Salary benchmark + hot/cold skills */}
-          {signalsData && (
+          {marketInsight && signalsData && (
             <div
               style={{
                 display: "grid",
@@ -690,19 +763,23 @@ export function WorkspaceDashboard() {
               <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
                 <ScoutLabel>Salary benchmark</ScoutLabel>
                 <p style={displayTitleStyle(isMobile ? 20 : 22, { margin: "8px 0" })}>
-                  {signalsData.salaryBenchmark.role}
+                  {marketInsight.salary?.p50 != null
+                    ? formatInsightsSalary(marketInsight.salary.p50, marketInsight.salary.currency)
+                    : marketInsight.headline?.dominant_experience_level ?? "See Market → Salary"}
                 </p>
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
-                  {signalsData.salaryBenchmark.note}
+                  {marketInsight.salary?.p25 != null && marketInsight.salary?.p75 != null
+                    ? `Typical range ${formatInsightsSalary(marketInsight.salary.p25, marketInsight.salary.currency)}–${formatInsightsSalary(marketInsight.salary.p75, marketInsight.salary.currency)} for ${signalsData.roleLabel}.`
+                    : "Open Salary explorer for level and location breakdowns."}
                 </p>
               </ScoutBox>
 
               <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
                 <ScoutLabel>Skills in demand</ScoutLabel>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 14px" }}>
-                  {signalsData.hotSkills.map((s) => (
+                  {(marketInsight.top_skills ?? []).slice(0, 6).map((s) => (
                     <span
-                      key={s}
+                      key={s.key}
                       style={{
                         padding: "4px 12px",
                         background: surface.inset,
@@ -713,15 +790,15 @@ export function WorkspaceDashboard() {
                         color: color.forest,
                       }}
                     >
-                      ↑ {s}
+                      ↑ {s.key}
                     </span>
                   ))}
                 </div>
-                <ScoutLabel>Cooling</ScoutLabel>
+                <ScoutLabel>Technologies</ScoutLabel>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                  {signalsData.coldSkills.map((s) => (
+                  {(marketInsight.top_technologies ?? []).slice(0, 4).map((s) => (
                     <span
-                      key={s}
+                      key={s.key}
                       style={{
                         padding: "4px 12px",
                         background: surface.inset,
@@ -731,7 +808,7 @@ export function WorkspaceDashboard() {
                         color: color.muted,
                       }}
                     >
-                      ↓ {s}
+                      {s.key}
                     </span>
                   ))}
                 </div>

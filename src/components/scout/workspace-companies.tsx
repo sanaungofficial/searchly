@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
+import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
+import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -13,6 +16,8 @@ const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 interface JobsCache {
   jobs: CachedJob[];
   scanned_url: string;
+  source?: "hirebase" | "ai_scrape";
+  hirebase_slug?: string | null;
 }
 
 interface EnrichmentLeader { name: string; title: string; }
@@ -34,6 +39,7 @@ interface EnrichmentCache {
 
 interface TrackedCompany {
   id: string;
+  companyIntelId?: string | null;
   name: string;
   website: string | null;
   notes: string | null;
@@ -52,6 +58,12 @@ interface TrackedCompany {
 }
 
 type Field = keyof Omit<TrackedCompany, "id" | "createdAt" | "jobsCache" | "lastJobsFetchedAt">;
+
+function hirebaseSlugFromEnrichment(raw: EnrichmentCache | null): string | null {
+  if (!raw) return null;
+  const hb = (raw as EnrichmentCache & { hirebase?: { slug?: string } }).hirebase;
+  return hb?.slug?.trim() || null;
+}
 
 function enrichmentWebsite(company: TrackedCompany): string | null {
   return (company.enrichmentCache as EnrichmentCache | null)?.websiteUrl ?? null;
@@ -302,84 +314,141 @@ function linkHost(url: string | null | undefined): string | null {
   }
 }
 
-function companyLinkedinUrl(company: TrackedCompany): string | null {
-  const raw = company.enrichmentCache as (EnrichmentCache & { hirebase?: { linkedinLink?: string | null } }) | null;
-  return raw?.hirebase?.linkedinLink?.trim() || null;
+function hirebaseMeta(company: TrackedCompany) {
+  return (company.enrichmentCache as (EnrichmentCache & { hirebase?: { slug?: string; linkedinLink?: string | null } }) | null)?.hirebase ?? null;
 }
 
-function companyTopMatchTitle(company: TrackedCompany): string | null {
-  const jobs = (company.jobsCache as JobsCache | null)?.jobs;
-  return jobs?.[0]?.title?.trim() || null;
+function catalogForCompany(company: TrackedCompany) {
+  return getCatalogCompany(normalizeCompanySlug(company.name));
 }
 
-const quickLinkStyle: React.CSSProperties = {
+function hostsMatch(a: string, b: string): boolean {
+  const ha = linkHost(a);
+  const hb = linkHost(b);
+  return !!ha && !!hb && ha === hb;
+}
+
+function resolvedWebsite(company: TrackedCompany): string | null {
+  return company.website?.trim() || enrichmentWebsite(company)?.trim() || null;
+}
+
+function isWebsiteFromApi(company: TrackedCompany): boolean {
+  const website = resolvedWebsite(company);
+  if (!website) return false;
+  if (hirebaseMeta(company)?.slug) return true;
+  const cache = company.jobsCache as JobsCache | null;
+  if (cache?.source === "hirebase" || cache?.hirebase_slug) return true;
+  const catalog = catalogForCompany(company);
+  if (catalog?.website && hostsMatch(catalog.website, website)) return true;
+  if (enrichmentWebsite(company) && hostsMatch(enrichmentWebsite(company)!, website)) return true;
+  if (company.companyIntelId && company.website?.trim() && !catalog) return true;
+  return false;
+}
+
+function isCareersFromApi(company: TrackedCompany): boolean {
+  const careers = company.careersUrl?.trim();
+  if (!careers) return false;
+  const catalog = catalogForCompany(company);
+  return !!(catalog?.careersUrl && hostsMatch(catalog.careersUrl, careers));
+}
+
+const urlLinkStyle: React.CSSProperties = {
   fontFamily: fontSans,
   fontSize: 13,
   color: color.muted,
   textDecoration: "none",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 3,
 };
 
-function CompanyQuickLinks({
+function CompanyUrlLink({
+  href,
+  title,
+  onClick,
+}: {
+  href: string;
+  title: string;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <a
+      href={formatExternalUrl(href)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={title}
+      onClick={onClick}
+      style={urlLinkStyle}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = color.forest;
+        e.currentTarget.style.textDecoration = "underline";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = color.muted;
+        e.currentTarget.style.textDecoration = "none";
+      }}
+    >
+      {linkHost(href) ?? "Link"} ↗
+    </a>
+  );
+}
+
+function CompanyUrlCell({
+  url,
+  title,
+  onClick,
+}: {
+  url: string | null;
+  title: string;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
+  if (!url) {
+    return <span style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>—</span>;
+  }
+  return <CompanyUrlLink href={url} title={title} onClick={onClick} />;
+}
+
+function companyRowSurface(selected: boolean, hovered: boolean): { background: string; borderLeft: string; boxShadow: string } {
+  if (selected) {
+    return { background: surface.inset, borderLeft: `3px solid ${color.forest}`, boxShadow: "none" };
+  }
+  if (hovered) {
+    return {
+      background: "#ebe6df",
+      borderLeft: `3px solid ${color.forest}`,
+      boxShadow: "inset 0 0 0 1px rgba(26,58,47,0.08)",
+    };
+  }
+  return { background: surface.card, borderLeft: "3px solid transparent", boxShadow: "none" };
+}
+
+function DrawerUrlField({
   company,
-  compact = false,
-  onLinkClick,
+  field,
+  placeholder,
+  onPatch,
 }: {
   company: TrackedCompany;
-  compact?: boolean;
-  onLinkClick?: (e: React.MouseEvent) => void;
+  field: "website" | "careersUrl";
+  placeholder: string;
+  onPatch: (id: string, field: Field, value: string) => void;
 }) {
-  const website = company.website?.trim() || enrichmentWebsite(company);
-  const careers = company.careersUrl?.trim();
-  const linkedin = companyLinkedinUrl(company);
-  const links = [
-    website ? { label: linkHost(website) ?? "Website", href: formatExternalUrl(website), title: "Company website" } : null,
-    careers ? { label: linkHost(careers) ?? "Careers", href: formatExternalUrl(careers), title: "Careers page" } : null,
-    linkedin ? { label: "LinkedIn", href: linkedin, title: "Company LinkedIn" } : null,
-  ].filter(Boolean) as Array<{ label: string; href: string; title: string }>;
+  const url = field === "website" ? resolvedWebsite(company) : company.careersUrl?.trim() || null;
+  const fromApi = field === "website" ? isWebsiteFromApi(company) : isCareersFromApi(company);
 
-  if (!links.length) {
+  if (fromApi && url) {
     return (
-      <span style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, fontStyle: "italic" }}>
-        Add website or careers URL in drawer
-      </span>
+      <div style={{ fontFamily: "monospace", fontSize: 12, color: color.stone, lineHeight: 1.4 }}>
+        <CompanyUrlLink href={url} title={field === "website" ? "Company website" : "Careers page"} />
+        <span style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, marginLeft: 8 }}>from company data</span>
+      </div>
     );
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: compact ? "4px 10px" : "6px 14px",
-        marginTop: compact ? 4 : 6,
-        alignItems: "center",
-      }}
-    >
-      {links.map((link) => (
-        <a
-          key={link.href}
-          href={link.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={link.title}
-          onClick={onLinkClick}
-          style={quickLinkStyle}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = color.forest;
-            e.currentTarget.style.textDecoration = "underline";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = color.muted;
-            e.currentTarget.style.textDecoration = "none";
-          }}
-        >
-          {link.label} ↗
-        </a>
-      ))}
-    </div>
+    <InlineInput
+      value={field === "website" ? (company.website ?? "") : (company.careersUrl ?? "")}
+      placeholder={placeholder}
+      onBlur={(v) => onPatch(company.id, field, v)}
+      mono
+    />
   );
 }
 
@@ -427,6 +496,105 @@ function OpenRolesSummary({
   );
 }
 
+function CompanyTableRow({
+  company,
+  selected,
+  scanning,
+  userTargetRoles,
+  isLast,
+  onOpen,
+  onRemove,
+  onPriorityChange,
+}: {
+  company: TrackedCompany;
+  selected: boolean;
+  scanning: boolean;
+  userTargetRoles: string[];
+  isLast: boolean;
+  onOpen: () => void;
+  onRemove: () => void;
+  onPriorityChange: (value: string) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const row = companyRowSurface(selected, hovered);
+  const subtitle = companySubtitle(company);
+  const rowTd: React.CSSProperties = {
+    padding: "10px 12px",
+    verticalAlign: "middle",
+    borderBottom: isLast ? "none" : border.line,
+    background: row.background,
+    transition: "background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease",
+  };
+
+  return (
+    <tr
+      onClick={onOpen}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ cursor: "pointer" }}
+    >
+      <td
+        style={{
+          ...rowTd,
+          borderLeft: row.borderLeft,
+          boxShadow: row.boxShadow,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <CompanyLogo
+            name={company.name}
+            website={company.website}
+            careersUrl={company.careersUrl}
+            enrichmentWebsiteUrl={enrichmentWebsite(company)}
+            size={28}
+            borderRadius={0}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={displayTitleStyle(T.bodySm, { lineHeight: 1.2, fontWeight: hovered || selected ? 600 : 500 })}>
+              {company.name}
+            </div>
+            {subtitle && (
+              <div style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {subtitle}
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
+      <td style={rowTd} onClick={(e) => e.stopPropagation()}>
+        <CompanyUrlCell url={resolvedWebsite(company)} title="Company website" onClick={(e) => e.stopPropagation()} />
+      </td>
+      <td style={rowTd} onClick={(e) => e.stopPropagation()}>
+        <CompanyUrlCell url={company.careersUrl?.trim() || null} title="Careers page" onClick={(e) => e.stopPropagation()} />
+      </td>
+      <td style={rowTd}>
+        <OpenRolesSummary company={company} userTargetRoles={userTargetRoles} scanning={scanning} />
+      </td>
+      <td style={rowTd} onClick={(e) => e.stopPropagation()}>
+        <PriorityBadge value={company.priority ?? ""} onChange={onPriorityChange} />
+      </td>
+      <td style={rowTd}>
+        <span style={{ fontFamily: fontSans, fontSize: 14, color: company.lastJobsFetchedAt ? color.ink : color.muted, whiteSpace: "nowrap" }}>
+          {scanning ? "Scanning…" : company.lastJobsFetchedAt ? timeAgo(company.lastJobsFetchedAt) : "—"}
+        </span>
+      </td>
+      <td style={{ ...rowTd, textAlign: "center", width: 48 }} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={onRemove}
+          title="Remove company"
+          aria-label={`Remove ${company.name}`}
+          style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 0, lineHeight: 1 }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
+        >
+          ×
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 function MobileCompanyCard({
   company,
   selected,
@@ -446,7 +614,11 @@ function MobileCompanyCard({
   onPriorityChange: (value: string) => void;
   isLast: boolean;
 }) {
+  const [hovered, setHovered] = useState(false);
   const subtitle = companySubtitle(company);
+  const row = companyRowSurface(selected, hovered);
+  const website = resolvedWebsite(company);
+  const careers = company.careersUrl?.trim() || null;
 
   return (
     <div
@@ -459,11 +631,16 @@ function MobileCompanyCard({
           onOpen();
         }
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        padding: "14px 16px",
+        padding: "12px 14px",
         borderBottom: isLast ? "none" : border.line,
-        background: selected ? surface.inset : surface.card,
+        borderLeft: row.borderLeft,
+        background: row.background,
+        boxShadow: row.boxShadow,
         cursor: "pointer",
+        transition: "background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease",
       }}
     >
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -472,18 +649,21 @@ function MobileCompanyCard({
           website={company.website}
           careersUrl={company.careersUrl}
           enrichmentWebsiteUrl={enrichmentWebsite(company)}
-          size={36}
+          size={32}
           borderRadius={0}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={displayTitleStyle(T.body, { lineHeight: 1.2 })}>{company.name}</div>
+          <div style={displayTitleStyle(T.body, { lineHeight: 1.2, fontWeight: hovered || selected ? 600 : 500 })}>{company.name}</div>
           {subtitle && (
             <div style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, marginTop: 2 }}>{subtitle}</div>
           )}
-          <CompanyQuickLinks company={company} compact onLinkClick={(e) => e.stopPropagation()} />
-          {companyTopMatchTitle(company) && (
-            <div style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, marginTop: 6, lineHeight: 1.35 }}>
-              Latest match: {companyTopMatchTitle(company)}
+          {(website || careers) && (
+            <div
+              style={{ display: "flex", flexWrap: "wrap", gap: "4px 10px", marginTop: 4, alignItems: "center" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {website && <CompanyUrlLink href={website} title="Company website" onClick={(e) => e.stopPropagation()} />}
+              {careers && <CompanyUrlLink href={careers} title="Careers page" onClick={(e) => e.stopPropagation()} />}
             </div>
           )}
           <div
@@ -491,7 +671,7 @@ function MobileCompanyCard({
               display: "flex",
               flexWrap: "wrap",
               gap: "8px 12px",
-              marginTop: 10,
+              marginTop: 8,
               alignItems: "center",
             }}
           >
@@ -878,6 +1058,14 @@ function CompanyDrawer({
             )}
           </DrawerSection>
 
+          <DrawerSection title="Hirebase analytics">
+            <CompanyHirebaseIntelPanel
+              trackedId={company.id}
+              companyName={company.name}
+              slugHint={hirebaseSlugFromEnrichment(intel)}
+            />
+          </DrawerSection>
+
           {/* Notes */}
           <DrawerSection title="Notes">
             <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px" }}>
@@ -894,10 +1082,10 @@ function CompanyDrawer({
               <InlineInput value={company.hqLocation ?? ""} placeholder="e.g. Philadelphia, PA" onBlur={(v) => onPatch(company.id, "hqLocation", v)} />
             </DrawerField>
             <DrawerField label="Website">
-              <InlineInput value={company.website ?? ""} placeholder="https://example.com" onBlur={(v) => onPatch(company.id, "website", v)} mono />
+              <DrawerUrlField company={company} field="website" placeholder="https://example.com" onPatch={onPatch} />
             </DrawerField>
             <DrawerField label="Careers URL">
-              <InlineInput value={company.careersUrl ?? ""} placeholder="https://example.com/careers" onBlur={(v) => onPatch(company.id, "careersUrl", v)} mono />
+              <DrawerUrlField company={company} field="careersUrl" placeholder="https://example.com/careers" onPatch={onPatch} />
             </DrawerField>
             <DrawerField label="Culture & Mission">
               <AutoTextarea value={company.cultureMission ?? ""} placeholder="What's their culture, values, or mission?" onBlur={(v) => onPatch(company.id, "cultureMission", v)} />
@@ -934,6 +1122,10 @@ export function WorkspaceCompanies({
   onCompanySelect?: (id: string | null) => void;
 }) {
   const isMobile = useIsMobile();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const intelSlug = searchParams.get("intel");
+  const intelName = searchParams.get("name");
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1090,8 +1282,7 @@ export function WorkspaceCompanies({
 
   const selectedCompany = companies.find((c) => c.id === selectedId) ?? null;
 
-  const thStyle: React.CSSProperties = { fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "10px 14px", textAlign: "left", whiteSpace: "nowrap", borderBottom: border.line, background: surface.inset };
-  const tdStyle: React.CSSProperties = { padding: "12px 14px", verticalAlign: "top", borderBottom: border.line, background: surface.card };
+  const thStyle: React.CSSProperties = { fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "8px 12px", textAlign: "left", whiteSpace: "nowrap", borderBottom: border.line, background: surface.inset };
   const contentPad = isMobile ? "24px 16px 40px 56px" : "32px 36px 48px";
   const sortedCompanies = sortCompanies(companies);
 
@@ -1187,81 +1378,86 @@ export function WorkspaceCompanies({
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: "38%" }}>Company</th>
-                <th style={{ ...thStyle, width: "14%" }}>Matches</th>
-                <th style={{ ...thStyle, width: "12%" }}>Priority</th>
-                <th style={{ ...thStyle, width: "14%" }}>Last scanned</th>
+                <th style={{ ...thStyle, width: "22%" }}>Company</th>
+                <th style={{ ...thStyle, width: "14%" }}>Website</th>
+                <th style={{ ...thStyle, width: "14%" }}>Careers</th>
+                <th style={{ ...thStyle, width: "12%" }}>Matches</th>
+                <th style={{ ...thStyle, width: "10%" }}>Priority</th>
+                <th style={{ ...thStyle, width: "12%" }}>Last scanned</th>
                 <th style={{ ...thStyle, width: 48 }}></th>
               </tr>
             </thead>
             <tbody>
-              {sortedCompanies.map((c, i) => {
-                const isLast = i === sortedCompanies.length - 1;
-                const rowTd: React.CSSProperties = { ...tdStyle, borderBottom: isLast ? "none" : tdStyle.borderBottom };
-                const scanning = pendingScanIds.includes(c.id);
-                const subtitle = companySubtitle(c);
-                const topMatch = companyTopMatchTitle(c);
-                return (
-                  <tr
-                    key={c.id}
-                    onClick={() => selectCompany(c.id)}
-                    style={{
-                      background: selectedId === c.id ? surface.inset : surface.card,
-                      cursor: "pointer",
-                      transition: "background 0.12s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedId !== c.id) e.currentTarget.style.background = "#f5f2ed";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = selectedId === c.id ? surface.inset : surface.card;
-                    }}
-                  >
-                    <td style={rowTd}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                        <CompanyLogo
-                          name={c.name}
-                          website={c.website}
-                          careersUrl={c.careersUrl}
-                          enrichmentWebsiteUrl={enrichmentWebsite(c)}
-                          size={32}
-                          borderRadius={0}
-                        />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={displayTitleStyle(T.body, { lineHeight: 1.2 })}>{c.name}</div>
-                          {subtitle && (
-                            <div style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, marginTop: 2 }}>{subtitle}</div>
-                          )}
-                          <CompanyQuickLinks company={c} compact onLinkClick={(e) => e.stopPropagation()} />
-                          {topMatch && (
-                            <div style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, marginTop: 6, lineHeight: 1.35 }}>
-                              Latest match: {topMatch}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td style={rowTd}>
-                      <OpenRolesSummary company={c} userTargetRoles={userTargetRoles} scanning={scanning} />
-                    </td>
-                    <td style={rowTd} onClick={(e) => e.stopPropagation()}>
-                      <PriorityBadge value={c.priority ?? ""} onChange={(v) => patchField(c.id, "priority", v)} />
-                    </td>
-                    <td style={rowTd}>
-                      <span style={{ fontFamily: fontSans, fontSize: 14, color: c.lastJobsFetchedAt ? color.ink : color.muted }}>
-                        {scanning ? "Scanning…" : c.lastJobsFetchedAt ? timeAgo(c.lastJobsFetchedAt) : "—"}
-                      </span>
-                    </td>
-                    <td style={{ ...rowTd, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => handleRemove(c.id)} title="Remove company" style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 0, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")} onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}>×</button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {sortedCompanies.map((c, i) => (
+                <CompanyTableRow
+                  key={c.id}
+                  company={c}
+                  selected={selectedId === c.id}
+                  scanning={pendingScanIds.includes(c.id)}
+                  userTargetRoles={userTargetRoles}
+                  isLast={i === sortedCompanies.length - 1}
+                  onOpen={() => selectCompany(c.id)}
+                  onRemove={() => handleRemove(c.id)}
+                  onPriorityChange={(v) => patchField(c.id, "priority", v)}
+                />
+              ))}
             </tbody>
           </table>
         </ScoutBox>
         )
+      )}
+
+      {intelSlug && !selectedCompany && (
+        <>
+          <div
+            onClick={() => router.replace("/opportunities/companies")}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200 }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: isMobile ? 0 : 8,
+              right: isMobile ? 0 : 8,
+              bottom: isMobile ? 0 : 8,
+              left: isMobile ? 0 : undefined,
+              width: isMobile ? "100%" : DRAWER_WIDTH,
+              maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
+              background: surface.inset,
+              border: isMobile ? "none" : border.lineStrong,
+              zIndex: 201,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                padding: isMobile ? "14px 16px" : "20px 24px",
+                borderBottom: border.line,
+                background: surface.card,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <ScoutDisplayTitle size={isMobile ? 20 : 24}>{intelName || intelSlug}</ScoutDisplayTitle>
+              <button
+                type="button"
+                onClick={() => router.replace("/opportunities/companies")}
+                style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
+              <CompanyHirebaseIntelPanel
+                companyName={intelName || intelSlug}
+                slugHint={intelSlug}
+              />
+            </div>
+          </div>
+        </>
       )}
 
       {/* Company detail drawer */}

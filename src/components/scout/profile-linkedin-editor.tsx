@@ -4,23 +4,27 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   linkedInChecklist,
   linkedInEditUrl,
-  type LinkedInProfileDraft,
 } from "@/lib/linkedin-profile";
-import {
-  getLinkedInSectionFixIssues,
-  linkedInAnalysisToReport,
-  LINKEDIN_SECTION_TITLES,
-  type LinkedInAnalysisData,
-  type LinkedInSectionId,
-} from "@/lib/linkedin-analysis";
 import { useCompactLayout } from "@/hooks/use-compact-layout";
 import { LinkedInGenerateLoader } from "./linkedin-generate-loader";
 import { ScoutBox, ScoutDisplayTitle, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface } from "@/lib/typography";
 import { JobrightScorePill } from "./profile-resume-jobright-document";
 import { ResumeAnalysisReportDrawer, buildFullReport } from "./profile-resume-analysis-report";
-import { ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
+import { ResumeSectionFixDrawer, type SectionFixIssue } from "./profile-resume-section-fix-drawer";
+import {
+  getLinkedInSectionFixIssues,
+  linkedInAnalysisToReport,
+  linkedInExperienceEntryScores,
+  findPriorityLinkedInSection,
+  LINKEDIN_SECTION_TITLES,
+  type LinkedInAnalysisData,
+  type LinkedInSectionId,
+} from "@/lib/linkedin-analysis";
+import { LINKEDIN_EMPLOYMENT_TYPES, newLinkedInEntryId, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { LinkedInOrgPicker } from "./linkedin-org-picker";
+import { CompanyLogo } from "./company-logo";
 
 const LI = {
   bg: "#f3f2ef",
@@ -40,8 +44,8 @@ type PhotoType = "profile" | "cover";
 
 type FixSectionState = {
   sectionId: LinkedInSectionId;
-  entryLabel?: string;
   entryId?: string;
+  entryLabel?: string;
   mode: "fix" | "impact";
 } | null;
 
@@ -80,6 +84,40 @@ async function copyText(text: string) {
     return false;
   }
 }
+
+function LiEntryMenu({
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+  canMoveUp,
+  canMoveDown,
+}: {
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+      <button type="button" disabled={!canMoveUp} onClick={onMoveUp} title="Move up" style={entryMenuBtnStyle(!canMoveUp)}>↑</button>
+      <button type="button" disabled={!canMoveDown} onClick={onMoveDown} title="Move down" style={entryMenuBtnStyle(!canMoveDown)}>↓</button>
+      <button type="button" onClick={onDelete} title="Remove" style={{ ...entryMenuBtnStyle(false), color: "#b24040" }}>×</button>
+    </div>
+  );
+}
+
+const entryMenuBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  padding: "2px 8px",
+  fontSize: 14,
+  fontWeight: 600,
+  borderRadius: 4,
+  border: `1px solid ${LI.border}`,
+  background: LI.card,
+  color: disabled ? LI.muted : LI.text,
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.45 : 1,
+});
 
 function LiSectionActions({ onFix, onImpact }: { onFix: () => void; onImpact: () => void }) {
   return (
@@ -124,17 +162,51 @@ function LiSectionHeader({
   title,
   onFix,
   onImpact,
+  onAdd,
+  addLabel,
 }: {
   title: string;
   onFix: () => void;
   onImpact: () => void;
+  onAdd?: () => void;
+  addLabel?: string;
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
       <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: 0, color: LI.text }}>{title}</h4>
-      <LiSectionActions onFix={onFix} onImpact={onImpact} />
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            style={{
+              padding: "4px 10px",
+              fontSize: 11,
+              fontWeight: 600,
+              borderRadius: 4,
+              border: `1px solid ${LI.border}`,
+              background: LI.card,
+              color: LI.blue,
+              cursor: "pointer",
+            }}
+          >
+            {addLabel ?? "+ Add"}
+          </button>
+        )}
+        <LiSectionActions onFix={onFix} onImpact={onImpact} />
+      </div>
     </div>
   );
+}
+
+function reorderEntries<T extends { id: string }>(list: T[], id: string, direction: "up" | "down"): T[] {
+  const idx = list.findIndex((row) => row.id === id);
+  if (idx < 0) return list;
+  const swap = direction === "up" ? idx - 1 : idx + 1;
+  if (swap < 0 || swap >= list.length) return list;
+  const next = [...list];
+  [next[idx], next[swap]] = [next[swap], next[idx]];
+  return next;
 }
 
 function PhotoEditOverlay({
@@ -228,11 +300,16 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const [reportOpen, setReportOpen] = useState(false);
   const [fixSection, setFixSection] = useState<FixSectionState>(null);
   const [fixSuggestions, setFixSuggestions] = useState<{ id: string; label: string; text: string }[]>([]);
+  const [fixSuggestIssues, setFixSuggestIssues] = useState<SectionFixIssue[]>([]);
   const [fixSuggestionsLoading, setFixSuggestionsLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [showImportInput, setShowImportInput] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const analysisDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   draftRef.current = draft;
 
@@ -293,9 +370,19 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
 
   useEffect(() => {
     void load();
+    return () => {
+      if (analysisDebounceRef.current) clearTimeout(analysisDebounceRef.current);
+    };
   }, [load]);
 
-  const saveDraft = async (next?: LinkedInProfileDraft) => {
+  const scheduleAnalysisRefresh = useCallback(() => {
+    if (analysisDebounceRef.current) clearTimeout(analysisDebounceRef.current);
+    analysisDebounceRef.current = setTimeout(() => {
+      void loadAnalysis(true);
+    }, 2500);
+  }, [loadAnalysis]);
+
+  const saveDraft = async (next?: LinkedInProfileDraft, refreshAnalysis = true) => {
     const payload = next ?? draftRef.current;
     if (!payload) return;
     setDraft(payload);
@@ -315,6 +402,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       setUpdatedAt(new Date().toISOString());
       setSaveHint("Saved");
       setTimeout(() => setSaveHint(null), 2000);
+      if (refreshAnalysis) scheduleAnalysisRefresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -401,21 +489,91 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     e.target.value = "";
   };
 
-  const openFix = (sectionId: LinkedInSectionId, entryLabel?: string, mode: "fix" | "impact" = "fix") => {
-    setFixSection({ sectionId, entryLabel, mode });
+  const importFromLinkedIn = async () => {
+    const url = (importUrl.trim() || linkedinUrl?.trim()) ?? "";
+    if (!url) {
+      setError("Enter your LinkedIn profile URL to import.");
+      setShowImportInput(true);
+      return;
+    }
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/profile/linkedin-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Import failed");
+      const next = data.draft as LinkedInProfileDraft;
+      setDraft(next);
+      draftRef.current = next;
+      if (typeof data.linkedinUrl === "string") setLinkedinUrl(data.linkedinUrl);
+      if (typeof data.name === "string") setName(data.name);
+      setUpdatedAt(new Date().toISOString());
+      setShowImportInput(false);
+      setImportUrl("");
+      await loadAnalysis(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "LinkedIn import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const openFix = (
+    sectionId: LinkedInSectionId,
+    options?: { entryId?: string; entryLabel?: string; mode?: "fix" | "impact" },
+  ) => {
+    const mode = options?.mode ?? "fix";
+    const entryId = options?.entryId;
+    const entryLabel = options?.entryLabel;
+    setFixSection({ sectionId, entryId, entryLabel, mode });
     setFixSuggestions([]);
+    setFixSuggestIssues([]);
     if (mode === "impact") return;
 
     setFixSuggestionsLoading(true);
     void fetch("/api/profile/linkedin-draft/section-suggest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sectionId, entryLabel }),
+      body: JSON.stringify({ sectionId, entryId, entryLabel }),
     })
       .then(async (res) => {
         const data = await res.json();
-        if (res.ok && Array.isArray(data.suggestions)) {
-          setFixSuggestions(data.suggestions);
+        if (res.ok) {
+          if (Array.isArray(data.suggestions)) setFixSuggestions(data.suggestions);
+          if (Array.isArray(data.issues)) {
+            setFixSuggestIssues(
+              data.issues.map(
+                (
+                  row: {
+                    id?: string;
+                    severity?: string;
+                    title?: string;
+                    issueDetected?: string;
+                    whyItMatters?: string;
+                    howToImprove?: string;
+                  },
+                  i: number,
+                ) => ({
+                  id: row.id ?? `${sectionId}-s-${i}`,
+                  severity:
+                    row.severity === "Urgent" ||
+                    row.severity === "Critical" ||
+                    row.severity === "Optional" ||
+                    row.severity === "Minor"
+                      ? row.severity
+                      : "Optional",
+                  title: row.title ?? "Suggestion",
+                  issueDetected: row.issueDetected ?? "",
+                  whyItMatters: row.whyItMatters ?? "",
+                  howToImprove: row.howToImprove ?? "",
+                }),
+              ),
+            );
+          }
         }
       })
       .catch(() => {})
@@ -424,7 +582,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
 
   const applyFixSuggestion = (text: string) => {
     if (!fixSection) return;
-    const { sectionId, entryLabel } = fixSection;
+    const { sectionId, entryId } = fixSection;
     patchDraft((d) => {
       if (sectionId === "headline") return { ...d, headline: text.slice(0, 120) };
       if (sectionId === "about") return { ...d, about: text };
@@ -435,14 +593,25 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         };
       }
       if (sectionId === "experience") {
+        if (entryId) {
+          return {
+            ...d,
+            experience: d.experience.map((exp) =>
+              exp.id === entryId ? { ...exp, description: text } : exp,
+            ),
+          };
+        }
         return {
           ...d,
-          experience: d.experience.map((exp) => {
-            const match =
-              entryLabel &&
-              (exp.company === entryLabel || exp.title === entryLabel || `${exp.company} ${exp.title}`.includes(entryLabel));
-            return match ? { ...exp, description: text } : exp;
-          }),
+          experience: d.experience.map((exp, i) => (i === 0 ? { ...exp, description: text } : exp)),
+        };
+      }
+      if (sectionId === "education" && entryId) {
+        return {
+          ...d,
+          education: d.education.map((edu) =>
+            edu.id === entryId ? { ...edu, degree: text } : edu,
+          ),
         };
       }
       return d;
@@ -450,6 +619,44 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     void saveDraft(draftRef.current ?? undefined);
     setFixSection(null);
     setFixSuggestions([]);
+  };
+
+  const addExperience = () => {
+    patchDraft((d) => ({
+      ...d,
+      experience: [
+        ...d.experience,
+        {
+          id: newLinkedInEntryId("li_exp"),
+          title: "",
+          company: "",
+          companyRef: null,
+          employmentType: "Full-time",
+          location: null,
+          from: null,
+          to: null,
+          description: "",
+        },
+      ],
+    }));
+  };
+
+  const addEducation = () => {
+    patchDraft((d) => ({
+      ...d,
+      education: [
+        ...d.education,
+        {
+          id: newLinkedInEntryId("li_edu"),
+          school: "",
+          schoolRef: null,
+          degree: "",
+          field: null,
+          from: null,
+          to: null,
+        },
+      ],
+    }));
   };
 
   const fieldStyle = (id: string, extra?: React.CSSProperties): React.CSSProperties => ({
@@ -480,13 +687,24 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     highlights: analysisReport.highlights,
     updatedAt: analysisReport.updatedAt,
   });
-  const fixIssues = fixSection
+  const experienceScores = draft ? linkedInExperienceEntryScores(draft) : [];
+  const scoreByEntryId = new Map(experienceScores.map((s) => [s.entryId, s]));
+
+  const reportSectionIssues = fixSection
     ? getLinkedInSectionFixIssues(
         fixSection.sectionId,
         { ...analysisReport, highlights: fullReport.highlights, issues: fullReport.issues },
         fixSection.mode === "impact" ? "impact" : "all",
       )
     : [];
+
+  const fixIssues: SectionFixIssue[] = !fixSection
+    ? []
+    : fixSection.mode === "impact"
+      ? reportSectionIssues
+      : fixSuggestIssues.length > 0
+        ? fixSuggestIssues
+        : reportSectionIssues;
 
   return (
     <div style={{ paddingBottom: 48, minWidth: 0, width: "100%", position: "relative" }}>
@@ -516,6 +734,17 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
           )}
           {saveHint && <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#1A3A2F" }}>{saveHint}</span>}
           {saving && <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: LI.muted }}>Saving…</span>}
+          <ScoutSecondaryBtn
+            type="button"
+            onClick={() => {
+              setShowImportInput((v) => !v);
+              if (!importUrl && linkedinUrl) setImportUrl(linkedinUrl);
+            }}
+            disabled={importing}
+            style={{ padding: "10px 18px" }}
+          >
+            {importing ? "Importing…" : "Import from LinkedIn"}
+          </ScoutSecondaryBtn>
           <ScoutPrimaryBtn onClick={() => void generate()} disabled={generating} style={{ padding: "10px 18px" }}>
             {generating ? "Generating…" : draft ? "Regenerate from resume" : "Generate from resume"}
           </ScoutPrimaryBtn>
@@ -526,6 +755,34 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       </div>
 
       {error && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 16 }}>{error}</p>}
+
+      {showImportInput && (
+        <ScoutBox padding={16} style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+          <input
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            placeholder="https://www.linkedin.com/in/your-handle"
+            style={{
+              flex: "1 1 240px",
+              minWidth: 200,
+              padding: "10px 12px",
+              fontFamily: fontSans,
+              fontSize: 14,
+              border: border.line,
+              background: surface.inset,
+            }}
+          />
+          <ScoutPrimaryBtn type="button" onClick={() => void importFromLinkedIn()} disabled={importing}>
+            {importing ? "Importing…" : "Run import"}
+          </ScoutPrimaryBtn>
+          <ScoutSecondaryBtn type="button" onClick={() => setShowImportInput(false)} disabled={importing}>
+            Cancel
+          </ScoutSecondaryBtn>
+          <p style={{ flex: "1 1 100%", margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+            Pulls your live LinkedIn profile into this editor. Requires Apify on this environment (production).
+          </p>
+        </ScoutBox>
+      )}
 
       {!draft && !generating && (
         <ScoutBox padding={stackLayout ? 24 : 40} style={{ textAlign: "center" }}>
@@ -569,7 +826,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 </div>
                 <h3 style={{ fontFamily: "system-ui, sans-serif", fontSize: stackLayout ? 20 : 24, fontWeight: 600, color: LI.text, margin: "12px 0 4px" }}>{name}</h3>
 
-                <LiSectionHeader title="Headline" onFix={() => openFix("headline")} onImpact={() => openFix("headline", undefined, "impact")} />
+                <LiSectionHeader title="Headline" onFix={() => openFix("headline")} onImpact={() => openFix("headline", { mode: "impact" })} />
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: LI.muted, margin: "0 0 6px" }}>{draft.headline.length}/120</p>
                 <textarea
                   value={draft.headline}
@@ -580,25 +837,18 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                   style={fieldStyle("headline", { fontSize: 14, lineHeight: 1.45, resize: "vertical" })}
                 />
                 <input
-                  value={draft.experience[0]?.location ?? ""}
-                  onChange={(e) => {
-                    if (!draft.experience[0]) return;
-                    const loc = e.target.value;
-                    patchDraft((d) => ({
-                      ...d,
-                      experience: d.experience.map((row, i) => (i === 0 ? { ...row, location: loc } : row)),
-                    }));
-                  }}
+                  value={draft.location ?? ""}
+                  onChange={(e) => patchDraft((d) => ({ ...d, location: e.target.value }))}
                   onFocus={() => setFocusedField("location")}
                   onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
-                  placeholder="Location"
+                  placeholder="City, State/Region, Country"
                   style={fieldStyle("location", { fontSize: 13, color: LI.muted, marginTop: 8 })}
                 />
               </div>
             </div>
 
             <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-              <LiSectionHeader title="About" onFix={() => openFix("about")} onImpact={() => openFix("about", undefined, "impact")} />
+              <LiSectionHeader title="About" onFix={() => openFix("about")} onImpact={() => openFix("about", { mode: "impact" })} />
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: LI.muted, margin: "0 0 8px" }}>{draft.about.length}/2600</p>
               <textarea
                 value={draft.about}
@@ -611,102 +861,340 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             </div>
 
             <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-              <LiSectionHeader title="Experience" onFix={() => openFix("experience")} onImpact={() => openFix("experience", undefined, "impact")} />
-              {draft.experience.map((exp, idx) => (
-                <div key={exp.id} style={{ marginBottom: idx < draft.experience.length - 1 ? 24 : 0, paddingBottom: idx < draft.experience.length - 1 ? 24 : 0, borderBottom: idx < draft.experience.length - 1 ? `1px solid ${LI.border}` : undefined }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                      <input
-                        value={exp.title}
-                        onChange={(e) => patchDraft((d) => ({ ...d, experience: d.experience.map((row) => (row.id === exp.id ? { ...row, title: e.target.value } : row)) }))}
-                        onFocus={() => setFocusedField(`${exp.id}-title`)}
-                        onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
-                        placeholder="Job title"
-                        style={fieldStyle(`${exp.id}-title`, { fontSize: 16, fontWeight: 600 })}
-                      />
-                      <input
+              <LiSectionHeader
+                title="Experience"
+                addLabel="+ Add role"
+                onAdd={() => { addExperience(); saveCurrentDraft(); }}
+                onFix={() => openFix("experience")}
+                onImpact={() => openFix("experience", { mode: "impact" })}
+              />
+              {draft.experience.length === 0 && (
+                <p style={{ fontFamily: "system-ui", fontSize: 14, color: LI.muted, margin: "0 0 12px" }}>
+                  No roles yet — add your work history to match your LinkedIn profile.
+                </p>
+              )}
+              {draft.experience.map((exp, idx) => {
+                const entryScore = scoreByEntryId.get(exp.id);
+                return (
+                <div
+                  key={exp.id}
+                  style={{
+                    marginBottom: idx < draft.experience.length - 1 ? 24 : 0,
+                    paddingBottom: idx < draft.experience.length - 1 ? 24 : 0,
+                    borderBottom: idx < draft.experience.length - 1 ? `1px solid ${LI.border}` : undefined,
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <CompanyLogo
+                      name={exp.company || "Company"}
+                      website={exp.companyRef?.website}
+                      logoUrl={exp.companyRef?.logoUrl}
+                      size={48}
+                      borderRadius={0}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                        <input
+                          value={exp.title}
+                          onChange={(e) =>
+                            patchDraft((d) => ({
+                              ...d,
+                              experience: d.experience.map((row) =>
+                                row.id === exp.id ? { ...row, title: e.target.value } : row,
+                              ),
+                            }))
+                          }
+                          onFocus={() => setFocusedField(`${exp.id}-title`)}
+                          onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
+                          placeholder="Job title"
+                          style={fieldStyle(`${exp.id}-title`, { fontSize: 16, fontWeight: 600, flex: 1 })}
+                        />
+                        {entryScore && entryScore.score < 80 && (
+                          <span
+                            title={entryScore.issues.join(" · ")}
+                            style={{
+                              flexShrink: 0,
+                              fontFamily: "system-ui",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "3px 8px",
+                              background: entryScore.score < 60 ? "#fde8e8" : "#fef3c7",
+                              color: entryScore.score < 60 ? "#b24040" : "#92400e",
+                            }}
+                          >
+                            {entryScore.grade}
+                          </span>
+                        )}
+                        </div>
+                        <LiEntryMenu
+                          canMoveUp={idx > 0}
+                          canMoveDown={idx < draft.experience.length - 1}
+                          onMoveUp={() => {
+                            patchDraft((d) => ({ ...d, experience: reorderEntries(d.experience, exp.id, "up") }));
+                            saveCurrentDraft();
+                          }}
+                          onMoveDown={() => {
+                            patchDraft((d) => ({ ...d, experience: reorderEntries(d.experience, exp.id, "down") }));
+                            saveCurrentDraft();
+                          }}
+                          onDelete={() => {
+                            patchDraft((d) => ({ ...d, experience: d.experience.filter((row) => row.id !== exp.id) }));
+                            saveCurrentDraft();
+                          }}
+                        />
+                      </div>
+                      <LinkedInOrgPicker
                         value={exp.company}
-                        onChange={(e) => patchDraft((d) => ({ ...d, experience: d.experience.map((row) => (row.id === exp.id ? { ...row, company: e.target.value } : row)) }))}
+                        orgRef={exp.companyRef}
+                        placeholder="Company name"
+                        showLogo={false}
+                        onChange={(name, ref) =>
+                          patchDraft((d) => ({
+                            ...d,
+                            experience: d.experience.map((row) =>
+                              row.id === exp.id ? { ...row, company: name, companyRef: ref } : row,
+                            ),
+                          }))
+                        }
                         onFocus={() => setFocusedField(`${exp.id}-company`)}
                         onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
-                        placeholder="Company"
-                        style={fieldStyle(`${exp.id}-company`, { fontSize: 14, color: LI.muted, marginTop: 4 })}
+                        inputStyle={fieldStyle(`${exp.id}-company`, { fontSize: 14, color: LI.muted })}
                       />
-                    </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: "0 1 auto" }}>
-                      <LiSectionActions onFix={() => openFix("experience", exp.company || exp.title)} onImpact={() => openFix("experience", exp.company || exp.title, "impact")} />
+                      <select
+                        value={exp.employmentType ?? ""}
+                        onChange={(e) =>
+                          patchDraft((d) => ({
+                            ...d,
+                            experience: d.experience.map((row) =>
+                              row.id === exp.id ? { ...row, employmentType: e.target.value || null } : row,
+                            ),
+                          }))
+                        }
+                        onBlur={saveCurrentDraft}
+                        style={{
+                          ...fieldStyle(`${exp.id}-type`, { fontSize: 13, color: LI.muted, marginTop: 6, maxWidth: 200 }),
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="">Employment type</option>
+                        {LINKEDIN_EMPLOYMENT_TYPES.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, marginBottom: 10 }}>
+                        <input
+                          value={exp.from ?? ""}
+                          onChange={(e) =>
+                            patchDraft((d) => ({
+                              ...d,
+                              experience: d.experience.map((row) =>
+                                row.id === exp.id ? { ...row, from: e.target.value } : row,
+                              ),
+                            }))
+                          }
+                          onFocus={() => setFocusedField(`${exp.id}-from`)}
+                          onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
+                          placeholder="Start month/year"
+                          style={fieldStyle(`${exp.id}-from`, { fontSize: 13, color: LI.muted, width: stackLayout ? "100%" : 110, flex: stackLayout ? "1 1 100%" : undefined })}
+                        />
+                        <span style={{ color: LI.muted, alignSelf: "center" }}>–</span>
+                        <input
+                          value={exp.to ?? ""}
+                          onChange={(e) =>
+                            patchDraft((d) => ({
+                              ...d,
+                              experience: d.experience.map((row) =>
+                                row.id === exp.id ? { ...row, to: e.target.value } : row,
+                              ),
+                            }))
+                          }
+                          onFocus={() => setFocusedField(`${exp.id}-to`)}
+                          onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
+                          placeholder="End or Present"
+                          style={fieldStyle(`${exp.id}-to`, { fontSize: 13, color: LI.muted, width: stackLayout ? "100%" : 120, flex: stackLayout ? "1 1 100%" : undefined })}
+                        />
+                        <input
+                          value={exp.location ?? ""}
+                          onChange={(e) =>
+                            patchDraft((d) => ({
+                              ...d,
+                              experience: d.experience.map((row) =>
+                                row.id === exp.id ? { ...row, location: e.target.value } : row,
+                              ),
+                            }))
+                          }
+                          onFocus={() => setFocusedField(`${exp.id}-loc`)}
+                          onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
+                          placeholder="Location"
+                          style={fieldStyle(`${exp.id}-loc`, { fontSize: 13, color: LI.muted, flex: "1 1 140px", minWidth: 120 })}
+                        />
+                      </div>
+                      <textarea
+                        value={exp.description}
+                        onChange={(e) =>
+                          patchDraft((d) => ({
+                            ...d,
+                            experience: d.experience.map((row) =>
+                              row.id === exp.id ? { ...row, description: e.target.value } : row,
+                            ),
+                          }))
+                        }
+                        onFocus={() => setFocusedField(`${exp.id}-desc`)}
+                        onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
+                        rows={5}
+                        placeholder="Describe your impact in paragraphs…"
+                        style={fieldStyle(`${exp.id}-desc`, { fontSize: 14, lineHeight: 1.55, resize: "vertical" })}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openFix("experience", {
+                            entryId: exp.id,
+                            entryLabel: exp.title ? `${exp.title}${exp.company ? ` at ${exp.company}` : ""}` : exp.company,
+                          })
+                        }
+                        style={{
+                          marginTop: 8,
+                          padding: 0,
+                          border: "none",
+                          background: "none",
+                          fontFamily: "system-ui",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: LI.blue,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Improve this role
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                    <input
-                      value={exp.from ?? ""}
-                      onChange={(e) => patchDraft((d) => ({ ...d, experience: d.experience.map((row) => (row.id === exp.id ? { ...row, from: e.target.value } : row)) }))}
-                      onFocus={() => setFocusedField(`${exp.id}-from`)}
-                      onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
-                      placeholder="Start"
-                      style={fieldStyle(`${exp.id}-from`, { fontSize: 13, color: LI.muted, width: stackLayout ? "100%" : 100, flex: stackLayout ? "1 1 100%" : undefined })}
+                </div>
+              );
+              })}
+            </div>
+
+            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+              <LiSectionHeader
+                title="Education"
+                addLabel="+ Add school"
+                onAdd={() => { addEducation(); saveCurrentDraft(); }}
+                onFix={() => openFix("education")}
+                onImpact={() => openFix("education", { mode: "impact" })}
+              />
+              {draft.education.length === 0 && (
+                <p style={{ fontFamily: "system-ui", fontSize: 14, color: LI.muted, margin: "0 0 12px" }}>
+                  Add schools and degrees to match your LinkedIn education section.
+                </p>
+              )}
+              {draft.education.map((edu, idx) => (
+                <div
+                  key={edu.id}
+                  style={{
+                    marginBottom: idx < draft.education.length - 1 ? 20 : 0,
+                    paddingBottom: idx < draft.education.length - 1 ? 20 : 0,
+                    borderBottom: idx < draft.education.length - 1 ? `1px solid ${LI.border}` : undefined,
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <CompanyLogo
+                      name={edu.school || "School"}
+                      website={edu.schoolRef?.website}
+                      logoUrl={edu.schoolRef?.logoUrl}
+                      size={48}
+                      borderRadius={0}
                     />
-                    <span style={{ color: LI.muted, alignSelf: "center" }}>–</span>
-                    <input
-                      value={exp.to ?? ""}
-                      onChange={(e) => patchDraft((d) => ({ ...d, experience: d.experience.map((row) => (row.id === exp.id ? { ...row, to: e.target.value } : row)) }))}
-                      onFocus={() => setFocusedField(`${exp.id}-to`)}
-                      onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
-                      placeholder="End or Present"
-                      style={fieldStyle(`${exp.id}-to`, { fontSize: 13, color: LI.muted, width: stackLayout ? "100%" : 120, flex: stackLayout ? "1 1 100%" : undefined })}
-                    />
-                    <input
-                      value={exp.location ?? ""}
-                      onChange={(e) => patchDraft((d) => ({ ...d, experience: d.experience.map((row) => (row.id === exp.id ? { ...row, location: e.target.value } : row)) }))}
-                      onFocus={() => setFocusedField(`${exp.id}-loc`)}
-                      onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
-                      placeholder="Location"
-                      style={fieldStyle(`${exp.id}-loc`, { fontSize: 13, color: LI.muted, flex: "1 1 140px", minWidth: 120 })}
-                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <LinkedInOrgPicker
+                            value={edu.school}
+                            orgRef={edu.schoolRef}
+                            placeholder="School or university"
+                            showLogo={false}
+                            onChange={(name, ref) =>
+                              patchDraft((d) => ({
+                                ...d,
+                                education: d.education.map((row) =>
+                                  row.id === edu.id ? { ...row, school: name, schoolRef: ref } : row,
+                                ),
+                              }))
+                            }
+                            onBlur={saveCurrentDraft}
+                            inputStyle={fieldStyle(`${edu.id}-school`, { fontSize: 15, fontWeight: 600 })}
+                          />
+                        </div>
+                        <LiEntryMenu
+                          canMoveUp={idx > 0}
+                          canMoveDown={idx < draft.education.length - 1}
+                          onMoveUp={() => {
+                            patchDraft((d) => ({ ...d, education: reorderEntries(d.education, edu.id, "up") }));
+                            saveCurrentDraft();
+                          }}
+                          onMoveDown={() => {
+                            patchDraft((d) => ({ ...d, education: reorderEntries(d.education, edu.id, "down") }));
+                            saveCurrentDraft();
+                          }}
+                          onDelete={() => {
+                            patchDraft((d) => ({ ...d, education: d.education.filter((row) => row.id !== edu.id) }));
+                            saveCurrentDraft();
+                          }}
+                        />
+                      </div>
+                      <input
+                        value={edu.degree}
+                        onChange={(e) =>
+                          patchDraft((d) => ({
+                            ...d,
+                            education: d.education.map((row) =>
+                              row.id === edu.id ? { ...row, degree: e.target.value } : row,
+                            ),
+                          }))
+                        }
+                        onBlur={saveCurrentDraft}
+                        placeholder="Degree, field of study"
+                        style={fieldStyle(`${edu.id}-degree`, { fontSize: 14, marginTop: 4 })}
+                      />
+                      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                        <input
+                          value={edu.from ?? ""}
+                          onChange={(e) =>
+                            patchDraft((d) => ({
+                              ...d,
+                              education: d.education.map((row) =>
+                                row.id === edu.id ? { ...row, from: e.target.value } : row,
+                              ),
+                            }))
+                          }
+                          onBlur={saveCurrentDraft}
+                          placeholder="Start year"
+                          style={fieldStyle(`${edu.id}-from`, { fontSize: 13, color: LI.muted, width: 90 })}
+                        />
+                        <span style={{ color: LI.muted, alignSelf: "center" }}>–</span>
+                        <input
+                          value={edu.to ?? ""}
+                          onChange={(e) =>
+                            patchDraft((d) => ({
+                              ...d,
+                              education: d.education.map((row) =>
+                                row.id === edu.id ? { ...row, to: e.target.value } : row,
+                              ),
+                            }))
+                          }
+                          onBlur={saveCurrentDraft}
+                          placeholder="End year"
+                          style={fieldStyle(`${edu.id}-to`, { fontSize: 13, color: LI.muted, width: 90 })}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <textarea
-                    value={exp.description}
-                    onChange={(e) => patchDraft((d) => ({ ...d, experience: d.experience.map((row) => (row.id === exp.id ? { ...row, description: e.target.value } : row)) }))}
-                    onFocus={() => setFocusedField(`${exp.id}-desc`)}
-                    onBlur={() => { setFocusedField(null); saveCurrentDraft(); }}
-                    rows={5}
-                    placeholder="Describe your impact in paragraphs…"
-                    style={fieldStyle(`${exp.id}-desc`, { fontSize: 14, lineHeight: 1.55, resize: "vertical" })}
-                  />
                 </div>
               ))}
             </div>
 
-            {draft.education.length > 0 && (
-              <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-                <LiSectionHeader title="Education" onFix={() => openFix("education")} onImpact={() => openFix("education", undefined, "impact")} />
-                {draft.education.map((edu, idx) => (
-                  <div key={edu.id} style={{ marginBottom: idx < draft.education.length - 1 ? 16 : 0 }}>
-                    <input
-                      value={edu.school}
-                      onChange={(e) => patchDraft((d) => ({ ...d, education: d.education.map((row) => (row.id === edu.id ? { ...row, school: e.target.value } : row)) }))}
-                      onBlur={saveCurrentDraft}
-                      placeholder="School"
-                      style={fieldStyle(`${edu.id}-school`, { fontSize: 15, fontWeight: 600 })}
-                    />
-                    <input
-                      value={edu.degree}
-                      onChange={(e) => patchDraft((d) => ({ ...d, education: d.education.map((row) => (row.id === edu.id ? { ...row, degree: e.target.value } : row)) }))}
-                      onBlur={saveCurrentDraft}
-                      placeholder="Degree"
-                      style={fieldStyle(`${edu.id}-degree`, { fontSize: 14, marginTop: 4 })}
-                    />
-                    <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                      <input value={edu.from ?? ""} onChange={(e) => patchDraft((d) => ({ ...d, education: d.education.map((row) => (row.id === edu.id ? { ...row, from: e.target.value } : row)) }))} onBlur={saveCurrentDraft} placeholder="From" style={fieldStyle(`${edu.id}-from`, { fontSize: 13, color: LI.muted, width: 90 })} />
-                      <input value={edu.to ?? ""} onChange={(e) => patchDraft((d) => ({ ...d, education: d.education.map((row) => (row.id === edu.id ? { ...row, to: e.target.value } : row)) }))} onBlur={saveCurrentDraft} placeholder="To" style={fieldStyle(`${edu.id}-to`, { fontSize: 13, color: LI.muted, width: 90 })} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
             <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-              <LiSectionHeader title="Skills" onFix={() => openFix("skills")} onImpact={() => openFix("skills", undefined, "impact")} />
+              <LiSectionHeader title="Skills" onFix={() => openFix("skills")} onImpact={() => openFix("skills", { mode: "impact" })} />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 {draft.skills.map((skill) => (
                   <span key={skill} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "system-ui", fontSize: 14, fontWeight: 600, color: LI.muted, background: "#eef3f8", padding: "6px 10px 6px 14px", borderRadius: 16 }}>
@@ -758,11 +1246,103 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 </ScoutSecondaryBtn>
               </div>
             </div>
+
+            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: 0, color: LI.text }}>Featured</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    patchDraft((d) => ({
+                      ...d,
+                      featured: [
+                        ...d.featured,
+                        { id: newLinkedInEntryId("feat"), label: "Featured link", url: "https://" },
+                      ],
+                    }));
+                    saveCurrentDraft();
+                  }}
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    border: `1px solid ${LI.border}`,
+                    background: LI.card,
+                    color: LI.blue,
+                    cursor: "pointer",
+                  }}
+                >
+                  + Add link
+                </button>
+              </div>
+              {draft.featured.length === 0 && (
+                <p style={{ fontFamily: "system-ui", fontSize: 14, color: LI.muted, margin: 0 }}>
+                  Optional — add portfolio links, articles, or media featured on your LinkedIn profile.
+                </p>
+              )}
+              {draft.featured.map((feat) => (
+                <div key={feat.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <input
+                      value={feat.label}
+                      onChange={(e) =>
+                        patchDraft((d) => ({
+                          ...d,
+                          featured: d.featured.map((row) =>
+                            row.id === feat.id ? { ...row, label: e.target.value } : row,
+                          ),
+                        }))
+                      }
+                      onBlur={saveCurrentDraft}
+                      placeholder="Label"
+                      style={fieldStyle(`${feat.id}-label`, { fontSize: 14, fontWeight: 600 })}
+                    />
+                    <input
+                      value={feat.url}
+                      onChange={(e) =>
+                        patchDraft((d) => ({
+                          ...d,
+                          featured: d.featured.map((row) =>
+                            row.id === feat.id ? { ...row, url: e.target.value } : row,
+                          ),
+                        }))
+                      }
+                      onBlur={saveCurrentDraft}
+                      placeholder="https://"
+                      style={fieldStyle(`${feat.id}-url`, { fontSize: 13, color: LI.muted, marginTop: 4 })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      patchDraft((d) => ({ ...d, featured: d.featured.filter((row) => row.id !== feat.id) }));
+                      saveCurrentDraft();
+                    }}
+                    style={{ ...entryMenuBtnStyle(false), color: "#b24040", marginTop: 4 }}
+                    title="Remove link"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <ScoutBox padding={stackLayout ? 16 : 20} style={{ minWidth: 0, position: stackLayout ? undefined : "sticky", top: 16 }}>
             <h4 style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, margin: "0 0 4px", color: color.ink }}>What to update on LinkedIn</h4>
             <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 16px" }}>Copy each block into LinkedIn after you edit here.</p>
+            {experienceScores.length > 0 && (
+              <div style={{ marginBottom: 16, padding: 12, border: border.line, background: surface.inset }}>
+                <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 700, color: color.ink, margin: "0 0 8px" }}>Experience quality</p>
+                {experienceScores.map((entry) => (
+                  <div key={entry.entryId} style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6, fontFamily: "var(--font-ui)", fontSize: 12 }}>
+                    <span style={{ color: LI.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.label}</span>
+                    <span style={{ fontWeight: 700, color: entry.score < 60 ? "#b24040" : entry.score < 80 ? "#92400e" : LI.blue, flexShrink: 0 }}>{entry.grade}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: stackLayout ? undefined : "calc(100vh - 220px)", overflowY: stackLayout ? undefined : "auto" }}>
               {checklist.map((item) => (
                 <div key={item.id} style={{ border: border.line, borderRadius: 0, padding: 12, background: surface.inset }}>
@@ -796,7 +1376,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         error={analysisLoading ? undefined : analysis?.error && !fullReport.issues.length ? analysis.error : undefined}
         onBeginImprovements={() => {
           setReportOpen(false);
-          openFix("headline");
+          openFix(findPriorityLinkedInSection(analysisReport));
         }}
         onRefresh={() => void loadAnalysis(true)}
         aiUnavailable={!!analysis?.error && fullReport.issues.length > 0}
@@ -814,6 +1394,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         onClose={() => {
           setFixSection(null);
           setFixSuggestions([]);
+          setFixSuggestIssues([]);
         }}
       />
     </div>
