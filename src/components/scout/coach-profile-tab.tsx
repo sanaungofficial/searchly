@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
@@ -384,7 +385,14 @@ export function CoachProfileTab({
           </div>
           <div>
             <label style={labelStyle}>Current Company</label>
-            <input value={form.currentCompany ?? ""} onChange={field("currentCompany")} style={inputStyle} />
+            <LinkedInOrgPicker
+              value={form.currentCompany ?? ""}
+              placeholder="Search company (Hirebase lookup)…"
+              onChange={(name) => setForm((f) => ({ ...f, currentCompany: name || null }))}
+              inputStyle={inputStyle}
+              logoSize={36}
+              hintLabel="employer"
+            />
           </div>
           <div>
             <label style={labelStyle}>Hourly Rate ($)</label>

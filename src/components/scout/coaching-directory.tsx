@@ -9,7 +9,6 @@ import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { categoryToSlug } from "@/lib/coach-categories";
 import {
-  featuredPresetFilters,
   filterCoaches,
   parseCoachDirectoryFilters,
   pickSpotlightCoaches,
@@ -17,7 +16,7 @@ import {
   SPOTLIGHT_BADGE_LABELS,
 } from "@/lib/coach-directory";
 import { writeCoachMatchCache } from "@/lib/coach-match-cache";
-import type { CoachFeaturedPreset, CoachListItem, CoachSpotlightBadge } from "@/lib/coach-types";
+import type { CoachListItem, CoachSpotlightBadge } from "@/lib/coach-types";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Props = {
@@ -147,7 +146,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const [showFilters, setShowFilters] = useState(false);
   const [searchInput, setSearchInput] = useState(searchParams.get("q") ?? "");
   const debouncedSearch = useDebouncedValue(searchInput);
-  const [preset, setPreset] = useState<CoachFeaturedPreset | "">("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const urlFilters = useMemo(() => parseCoachDirectoryFilters(searchParams), [searchParams]);
   const activeFilterCount = countActiveFilters(searchParams);
@@ -182,11 +181,18 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
   const loadCoaches = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [listRes, followRes] = await Promise.all([
         fetch("/api/coaches"),
         fetch("/api/coaches/following"),
       ]);
+      if (!listRes.ok) {
+        const errBody = await listRes.json().catch(() => ({}));
+        setLoadError(typeof errBody.error === "string" ? errBody.error : "Could not load coaches.");
+        setAllCoaches([]);
+        return;
+      }
       const data = await listRes.json();
       const coaches = Array.isArray(data.coaches) ? data.coaches : Array.isArray(data) ? data : [];
       setAllCoaches(coaches);
@@ -203,6 +209,9 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
         const followed = await followRes.json();
         setFollowedIds(new Set((followed as CoachListItem[]).map((c) => c.id)));
       }
+    } catch {
+      setLoadError("Could not load coaches. Try refreshing.");
+      setAllCoaches([]);
     } finally {
       setLoading(false);
     }
@@ -215,13 +224,8 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const activeFilters = useMemo(() => {
     const f = { ...urlFilters, q: debouncedSearch.trim() || undefined };
     if (category) f.category = category;
-    if (preset === "budget") {
-      Object.assign(f, featuredPresetFilters("budget"));
-    } else if (preset === "popular") {
-      Object.assign(f, featuredPresetFilters("popular"));
-    }
     return f;
-  }, [urlFilters, debouncedSearch, category, preset]);
+  }, [urlFilters, debouncedSearch, category]);
 
   const categoryPool = useMemo(
     () => (category ? allCoaches.filter((c) => c.category === category) : allCoaches),
@@ -248,7 +252,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const setFilter = (key: string, value: string) => setFilters({ [key]: value });
 
   const clearFilters = () => {
-    setPreset("");
     setFilters({
       firm: "",
       specialty: "",
@@ -261,7 +264,6 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
   const toggleProfessionalFilter = (checked: boolean) => {
     setFilters({ professional: checked ? "1" : "" });
-    if (!checked && preset === "professional") setPreset("");
   };
 
   const toggleFollow = async (coach: CoachListItem) => {
@@ -278,26 +280,10 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
     }
   };
 
-  const presetPills: { id: CoachFeaturedPreset; label: string }[] = [
-    { id: "popular", label: "Popular" },
-    { id: "professional", label: "Professional" },
-    { id: "budget", label: "Budget-friendly" },
-  ];
-
   const sectionTitle = category ? `${category} Experts` : "All coaches";
 
-  const togglePreset = (id: CoachFeaturedPreset) => {
-    if (id === "professional") {
-      const next = !professionalFilter;
-      setFilters({ professional: next ? "1" : "" });
-      setPreset(next ? "professional" : "");
-      return;
-    }
-    setPreset((cur) => (cur === id ? "" : id));
-    if (professionalFilter) setFilters({ professional: "" });
-  };
-
   const showSidebar = !isMobile || showFilters;
+  const filtersActive = activeFilterCount > 0 || debouncedSearch.trim().length > 0;
 
   return (
     <div>
@@ -346,33 +332,13 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
           style={inputStyle}
         />
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-          {presetPills.map((p) => {
-            const active = p.id === "professional" ? professionalFilter : preset === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => togglePreset(p.id)}
-                style={{
-                  padding: "8px 14px",
-                  border: active ? border.lineStrong : border.line,
-                  background: active ? "rgba(26,58,47,0.08)" : surface.card,
-                  fontFamily: fontSans,
-                  fontSize: T.bodySm,
-                  fontWeight: active ? 600 : 400,
-                  color: color.forest,
-                  cursor: "pointer",
-                  borderRadius: 999,
-                }}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
+        {loadError && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#b45309", margin: "12px 0 0", lineHeight: 1.5 }}>
+            {loadError}
+          </p>
+        )}
 
-        {!scored && !loading && (
+        {!scored && !loading && !loadError && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "14px 0 0", lineHeight: 1.5, padding: "10px 12px", background: surface.inset, border: border.line }}>
             {COACH_MATCH_NEEDS_SIGNAL_HINT}
           </p>
@@ -409,8 +375,30 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
           ) : filteredCoaches.length === 0 ? (
             <ScoutBox style={{ padding: 48, textAlign: "center" }}>
               <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
-                No coaches match your filters — try broadening your search or clearing filters.
+                {allCoaches.length === 0
+                  ? "No coaches are available right now."
+                  : filtersActive
+                    ? "No coaches match your filters — try broadening your search or clearing filters."
+                    : "No coaches in this category."}
               </p>
+              {filtersActive && allCoaches.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  style={{
+                    marginTop: 14,
+                    background: "none",
+                    border: border.line,
+                    padding: "8px 14px",
+                    fontFamily: fontSans,
+                    fontSize: T.bodySm,
+                    color: color.forest,
+                    cursor: "pointer",
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
             </ScoutBox>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
