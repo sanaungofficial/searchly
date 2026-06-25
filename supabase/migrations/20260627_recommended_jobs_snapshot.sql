@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS "JobListingCache" (
   "payload" JSONB NOT NULL,
   "companyName" TEXT,
   "fetchedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "JobListingCache_pkey" PRIMARY KEY ("id")
 );
 
@@ -32,9 +32,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS "RecommendedJobSnapshot_userId_snapshotDate_ke
 CREATE INDEX IF NOT EXISTS "RecommendedJobSnapshot_userId_idx" ON "RecommendedJobSnapshot"("userId");
 CREATE INDEX IF NOT EXISTS "RecommendedJobSnapshot_snapshotDate_idx" ON "RecommendedJobSnapshot"("snapshotDate");
 
-ALTER TABLE "RecommendedJobSnapshot"
-  ADD CONSTRAINT "RecommendedJobSnapshot_userId_fkey"
-  FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "RecommendedJobSnapshot"
+    ADD CONSTRAINT "RecommendedJobSnapshot_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS "UserDigestSettings" (
   "id" TEXT NOT NULL,
@@ -44,12 +48,16 @@ CREATE TABLE IF NOT EXISTS "UserDigestSettings" (
   "lastDigestJobIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
   "lastManualRefreshAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "UserDigestSettings_pkey" PRIMARY KEY ("id")
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "UserDigestSettings_userId_key" ON "UserDigestSettings"("userId");
 
-ALTER TABLE "UserDigestSettings"
-  ADD CONSTRAINT "UserDigestSettings_userId_fkey"
-  FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "UserDigestSettings"
+    ADD CONSTRAINT "UserDigestSettings_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
