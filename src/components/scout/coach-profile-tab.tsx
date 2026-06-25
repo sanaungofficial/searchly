@@ -217,6 +217,7 @@ export function CoachProfileTab({
   useEffect(() => {
     const nylas = searchParams.get("nylas");
     const reason = searchParams.get("reason");
+    const detail = searchParams.get("detail");
     if (nylas === "connected") {
       setNylasNotice({ type: "success", message: "Calendar connected — in-app booking is enabled." });
       refreshNylasStatus().catch(() => {});
@@ -224,15 +225,20 @@ export function CoachProfileTab({
       const messages: Record<string, string> = {
         config: "Nylas is not configured on this environment.",
         auth: "Calendar authorization was cancelled or failed.",
+        denied:
+          "Calendar access was denied. If you use Nylas sandbox, add your Google account under Hosted Authentication → Test users, then try again.",
+        provider:
+          "Google sign-in is not enabled in Nylas. In the Nylas dashboard, open Hosted Authentication → Identity providers and enable Google.",
         state: "Session expired — please try connecting again.",
         profile: "Coach profile not found.",
         redirect:
           "OAuth redirect URI mismatch. In Nylas → Hosted Authentication, add https://app.kimchi.so/api/nylas/callback",
         setup: "Connected, but scheduler setup failed. Try again or contact support.",
       };
+      const base = messages[reason ?? ""] ?? "Calendar connection failed. Please try again.";
       setNylasNotice({
         type: "error",
-        message: messages[reason ?? ""] ?? "Calendar connection failed. Please try again.",
+        message: detail ? `${base} (${detail})` : base,
       });
     }
   }, [searchParams]);
