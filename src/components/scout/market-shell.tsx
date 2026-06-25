@@ -11,6 +11,7 @@ const MARKET_SUBNAV = [
   { label: "Salary", path: "/market/salary" },
   { label: "Skills", path: "/market/skills" },
   { label: "Companies", path: "/market/companies" },
+  { label: "Signals", path: "/market/signals" },
 ] as const;
 
 export function MarketShell({

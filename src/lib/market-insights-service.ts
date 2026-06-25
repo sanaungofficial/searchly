@@ -13,7 +13,7 @@ import {
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { resolveHirebaseCompanySlug } from "@/lib/hirebase";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
-import { isSumbleConfigured, sumbleJobFunctionTerm } from "@/lib/sumble";
+import { isSumbleConfigured, sumbleJobFunctionTerm, lookupSumbleJobFunctionTerms } from "@/lib/sumble";
 import { buildSumbleMarketHeadline, buildSumbleMarketWindows, MARKET_JOB_SAMPLE_LIMIT } from "@/lib/sumble-market";
 import { getSumbleCreditsRemaining, SumbleInsufficientCreditsError } from "@/lib/sumble-credits";
 
@@ -68,6 +68,19 @@ function jobFunctionTermsFromRoles(roles: string[]): string[] {
   return [...new Set(terms)].slice(0, 3);
 }
 
+async function resolveMarketJobFunctionTerms(
+  roles: string[],
+  useLookup: boolean
+): Promise<string[]> {
+  if (!useLookup) return jobFunctionTermsFromRoles(roles.length ? roles : ["Product Manager"]);
+  try {
+    const lookup = await lookupSumbleJobFunctionTerms(roles.length ? roles : ["Product Manager"]);
+    return lookup.terms;
+  } catch {
+    return jobFunctionTermsFromRoles(roles);
+  }
+}
+
 async function loadTargetRoles(userId: string): Promise<string[]> {
   const profile = await prisma.profile.findUnique({
     where: { userId },
@@ -87,8 +100,9 @@ export async function getMarketInsightsBundle(input: {
   const configured = isSumbleConfigured();
   const targetRoles = await loadTargetRoles(input.userId);
   const titles = defaultTitles(targetRoles);
-  const jobFunctionTerms = jobFunctionTermsFromRoles(
-    targetRoles.length ? targetRoles : ["Product Manager"]
+  const jobFunctionTerms = await resolveMarketJobFunctionTerms(
+    targetRoles.length ? targetRoles : ["Product Manager"],
+    input.allowFetch === true
   );
   const roleLabel = roleLabelFromTitles(titles);
   const primaryDays = input.primaryDays ?? 30;

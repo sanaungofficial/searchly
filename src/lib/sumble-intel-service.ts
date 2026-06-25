@@ -6,13 +6,18 @@ import {
   fetchSumbleOrganizationSignals,
   fetchSumblePeopleAtOrganization,
   fetchSumbleTeamsAtOrganization,
+  fetchSumbleIntelligenceBrief,
+  fetchSumbleTechnologiesFind,
+  lookupSumbleJobFunctionTerms,
   isSumbleConfigured,
   sumbleJobFunctionTerm,
   type SumbleEntityResult,
+  type SumbleIntelligenceBrief,
   type SumbleOrganizationAttributes,
   type SumblePersonRow,
   type SumbleSignal,
   type SumbleTeamRow,
+  type SumbleTechnologyHit,
 } from "@/lib/sumble";
 import {
   getInsightsCached,
@@ -75,6 +80,16 @@ function jobFunctionTermsFromRoles(roles: string[]): string[] {
   return [...new Set(terms)].slice(0, 3);
 }
 
+async function resolveJobFunctionTerms(roles: string[], useLookup: boolean): Promise<string[]> {
+  if (!useLookup || !roles.length) return jobFunctionTermsFromRoles(roles.length ? roles : ["Product Manager"]);
+  try {
+    const lookup = await lookupSumbleJobFunctionTerms(roles);
+    return lookup.terms;
+  } catch {
+    return jobFunctionTermsFromRoles(roles);
+  }
+}
+
 export async function getCompanySumbleIntelBundle(input: {
   userId: string;
   companyName: string;
@@ -92,8 +107,9 @@ export async function getCompanySumbleIntelBundle(input: {
   const companyName = input.companyName.trim();
   const domain = resolveDomain(input);
   const targetRoles = await loadTargetRoles(input.userId);
-  const jobFunctionTerms = jobFunctionTermsFromRoles(
-    targetRoles.length ? targetRoles : ["Product Manager"]
+  const jobFunctionTerms = await resolveJobFunctionTerms(
+    targetRoles.length ? targetRoles : ["Product Manager"],
+    input.allowFetch === true
   );
   const creditsRemaining = getSumbleCreditsRemaining();
   const includePeople = input.includePeople === true;
@@ -481,5 +497,204 @@ export async function getDashboardSumbleSignalsBundle(input: {
     };
     setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_ERROR_TTL_MS);
     return bundle;
+  }
+}
+
+export type CompanySumbleBriefBundle = {
+  configured: boolean;
+  companyName: string;
+  organizationId: number | null;
+  brief: SumbleIntelligenceBrief | null;
+  pending: boolean;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+  generatedAt: string;
+  serverCached: boolean;
+  requiresLoad?: boolean;
+  estimatedCredits?: number;
+  error?: string;
+};
+
+export async function getCompanySumbleBriefBundle(input: {
+  userId: string;
+  companyName: string;
+  website?: string | null;
+  careersUrl?: string | null;
+  allowFetch?: boolean;
+  forceRefresh?: boolean;
+}): Promise<CompanySumbleBriefBundle> {
+  const configured = isSumbleConfigured();
+  const companyName = input.companyName.trim();
+  const domain = resolveDomain(input);
+  const creditsRemaining = getSumbleCreditsRemaining();
+  const estimatedCredits = SUMBLE_ESTIMATED_COSTS.intelligenceBrief;
+
+  const empty: CompanySumbleBriefBundle = {
+    configured,
+    companyName,
+    organizationId: null,
+    brief: null,
+    pending: false,
+    creditsUsed: 0,
+    creditsRemaining,
+    generatedAt: new Date().toISOString(),
+    serverCached: false,
+    requiresLoad: configured ? true : undefined,
+    estimatedCredits: configured ? estimatedCredits : undefined,
+  };
+
+  if (!configured) {
+    return { ...empty, requiresLoad: undefined, error: "Sumble is not configured." };
+  }
+
+  const cacheKey = insightsCacheKey("sumble-intel-brief", { companyName, domain });
+
+  if (!input.forceRefresh) {
+    const hit = getInsightsCached<CompanySumbleBriefBundle>(cacheKey);
+    if (hit?.brief) return { ...hit, serverCached: true, requiresLoad: false };
+  }
+
+  if (!input.allowFetch) {
+    return empty;
+  }
+
+  try {
+    assertSumbleCreditsAvailable(estimatedCredits);
+
+    const match = await fetchSumbleOrganizationMatch({ domain, name: companyName });
+    if (!match.organizationId) {
+      const bundle: CompanySumbleBriefBundle = {
+        ...empty,
+        creditsUsed: match.creditsUsed,
+        creditsRemaining: match.creditsRemaining,
+        requiresLoad: false,
+        error: "Could not match this company in Sumble.",
+      };
+      setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_ERROR_TTL_MS);
+      return bundle;
+    }
+
+    const briefResult = await fetchSumbleIntelligenceBrief(match.organizationId);
+
+    const bundle: CompanySumbleBriefBundle = {
+      configured: true,
+      companyName: match.organizationName ?? companyName,
+      organizationId: match.organizationId,
+      brief: briefResult.brief,
+      pending: briefResult.pending,
+      creditsUsed: match.creditsUsed + briefResult.creditsUsed,
+      creditsRemaining: briefResult.creditsRemaining ?? match.creditsRemaining,
+      generatedAt: new Date().toISOString(),
+      serverCached: false,
+      requiresLoad: false,
+      estimatedCredits,
+      error: briefResult.pending ? briefResult.message : undefined,
+    };
+
+    if (briefResult.brief) {
+      setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_TTL_MS);
+    }
+    return bundle;
+  } catch (err) {
+    const message =
+      err instanceof SumbleInsufficientCreditsError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Intelligence brief failed.";
+    return {
+      ...empty,
+      error: message,
+      creditsRemaining:
+        err instanceof SumbleInsufficientCreditsError ? err.creditsRemaining : creditsRemaining,
+    };
+  }
+}
+
+export type CompanySumbleTechBundle = {
+  configured: boolean;
+  query: string;
+  technologies: SumbleTechnologyHit[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+  generatedAt: string;
+  serverCached: boolean;
+  requiresLoad?: boolean;
+  estimatedCredits?: number;
+  error?: string;
+};
+
+export async function getCompanySumbleTechBundle(input: {
+  query: string;
+  allowFetch?: boolean;
+  forceRefresh?: boolean;
+}): Promise<CompanySumbleTechBundle> {
+  const configured = isSumbleConfigured();
+  const query = input.query.trim();
+  const creditsRemaining = getSumbleCreditsRemaining();
+  const estimatedCredits = 1;
+
+  const empty: CompanySumbleTechBundle = {
+    configured,
+    query,
+    technologies: [],
+    creditsUsed: 0,
+    creditsRemaining,
+    generatedAt: new Date().toISOString(),
+    serverCached: false,
+    requiresLoad: configured ? true : undefined,
+    estimatedCredits: configured ? estimatedCredits : undefined,
+  };
+
+  if (!configured) {
+    return { ...empty, requiresLoad: undefined, error: "Sumble is not configured." };
+  }
+
+  if (!query) {
+    return { ...empty, error: "Search query is required." };
+  }
+
+  const cacheKey = insightsCacheKey("sumble-tech-find", { query: query.toLowerCase() });
+
+  if (!input.forceRefresh) {
+    const hit = getInsightsCached<CompanySumbleTechBundle>(cacheKey);
+    if (hit) return { ...hit, serverCached: true, requiresLoad: false };
+  }
+
+  if (!input.allowFetch) {
+    return empty;
+  }
+
+  try {
+    assertSumbleCreditsAvailable(estimatedCredits);
+    const result = await fetchSumbleTechnologiesFind(query);
+
+    const bundle: CompanySumbleTechBundle = {
+      configured: true,
+      query,
+      technologies: result.technologies.slice(0, 10),
+      creditsUsed: result.creditsUsed,
+      creditsRemaining: result.creditsRemaining,
+      generatedAt: new Date().toISOString(),
+      serverCached: false,
+      requiresLoad: false,
+      estimatedCredits,
+    };
+
+    setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_TTL_MS);
+    return bundle;
+  } catch (err) {
+    const message =
+      err instanceof SumbleInsufficientCreditsError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Technology search failed.";
+    return {
+      ...empty,
+      error: message,
+      creditsRemaining:
+        err instanceof SumbleInsufficientCreditsError ? err.creditsRemaining : creditsRemaining,
+    };
   }
 }

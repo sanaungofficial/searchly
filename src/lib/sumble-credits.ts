@@ -13,6 +13,12 @@ export const SUMBLE_ESTIMATED_COSTS = {
   intelligenceBrief: 50,
   emailReveal: 10,
   phoneReveal: 80,
+  jobContacts: 8,
+  marketSignals: 8,
+  marketProjects: 15,
+  growingEmployers: 15,
+  orgListSync: 5,
+  titleLookup: 1,
 } as const;
 
 export function recordSumbleCreditsRemaining(remaining: number | null | undefined): void {
