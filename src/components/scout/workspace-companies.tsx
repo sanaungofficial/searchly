@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
+import { CompanySumbleIntelPanel } from "@/components/scout/company-sumble-intel-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
@@ -1063,6 +1064,14 @@ function CompanyDrawer({
               trackedId={company.id}
               companyName={company.name}
               slugHint={hirebaseSlugFromEnrichment(intel)}
+            />
+          </DrawerSection>
+
+          <DrawerSection title="Sumble intelligence">
+            <CompanySumbleIntelPanel
+              trackedId={company.id}
+              companyName={company.name}
+              website={company.website ?? enrichmentWebsite(intel)}
             />
           </DrawerSection>
 
