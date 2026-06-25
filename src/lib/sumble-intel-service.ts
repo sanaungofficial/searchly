@@ -18,6 +18,7 @@ import {
 } from "@/lib/insights-cache";
 
 const SUMBLE_INTEL_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SUMBLE_INTEL_ERROR_TTL_MS = 5 * 60 * 1000; // 5 minutes — don't stick on bad cache
 
 export type CompanySumbleIntelBundle = {
   configured: boolean;
@@ -135,16 +136,16 @@ export async function getCompanySumbleIntelBundle(input: {
     const organization = orgResult.organization?.attributes ?? null;
     const roleMetrics = orgResult.organization?.entities ?? [];
 
-    if (!organization?.id) {
+    if (organization?.id == null && !organization?.name?.trim()) {
       const bundle: CompanySumbleIntelBundle = {
         ...empty,
         creditsUsed,
         creditsRemaining,
         error: domain
-          ? `No Sumble match for ${domain}.`
-          : `No Sumble match for ${companyName}.`,
+          ? `No Sumble match for ${domain}. Try Refresh after updating the website.`
+          : `No Sumble match for ${companyName}. Add a website domain and refresh.`,
       };
-      setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_TTL_MS);
+      setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_ERROR_TTL_MS);
       return bundle;
     }
 
@@ -186,9 +187,11 @@ export async function getCompanySumbleIntelBundle(input: {
     setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_TTL_MS);
     return bundle;
   } catch (err) {
-    return {
+    const bundle: CompanySumbleIntelBundle = {
       ...empty,
       error: err instanceof Error ? err.message : "Sumble request failed.",
     };
+    setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_ERROR_TTL_MS);
+    return bundle;
   }
 }

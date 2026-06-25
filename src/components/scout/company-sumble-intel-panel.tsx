@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { hostnameFromUrl } from "@/lib/company-domain";
 import { formatSumbleFunding, formatSumbleGrowth } from "@/lib/sumble";
 import type { CompanySumbleIntelBundle } from "@/lib/sumble-intel-service";
-import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
+import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
+import { ScoutBox, ScoutLabel } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
 
 function formatSignalDate(iso: string): string {
@@ -30,6 +32,48 @@ function StatChip({ label, value }: { label: string; value: string }) {
   );
 }
 
+function PanelHeader({
+  loading,
+  onRefresh,
+  sumbleUrl,
+}: {
+  loading: boolean;
+  onRefresh: () => void;
+  sumbleUrl?: string | null;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+        marginBottom: 12,
+      }}
+    >
+      <div>
+        {sumbleUrl && (
+          <a
+            href={sumbleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              color: color.muted,
+              textDecoration: "none",
+            }}
+          >
+            View on Sumble ↗
+          </a>
+        )}
+      </div>
+      <IntelRefreshButton onClick={onRefresh} disabled={loading} />
+    </div>
+  );
+}
+
 export function CompanySumbleIntelPanel({
   trackedId,
   companyName,
@@ -45,6 +89,8 @@ export function CompanySumbleIntelPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const domainHint = hostnameFromUrl(website) ?? website?.trim() ?? null;
+
   const load = useCallback(
     async (refresh = false) => {
       setLoading(true);
@@ -52,7 +98,7 @@ export function CompanySumbleIntelPanel({
       try {
         const params = new URLSearchParams({ name: companyName });
         if (trackedId) params.set("trackedId", trackedId);
-        if (website?.trim()) params.set("domain", website.trim());
+        if (domainHint) params.set("domain", domainHint);
         if (refresh) params.set("refresh", "1");
         const res = await fetch(`/api/companies/sumble-intel?${params}`);
         const body = (await res.json()) as CompanySumbleIntelBundle;
@@ -66,7 +112,7 @@ export function CompanySumbleIntelPanel({
         setLoading(false);
       }
     },
-    [trackedId, companyName, website]
+    [trackedId, companyName, domainHint]
   );
 
   useEffect(() => {
@@ -76,6 +122,7 @@ export function CompanySumbleIntelPanel({
   if (loading && !data?.organization) {
     return (
       <ScoutBox padding="14px 16px">
+        <PanelHeader loading={loading} onRefresh={() => void load(true)} />
         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
           Loading Sumble intelligence…
         </p>
@@ -86,8 +133,8 @@ export function CompanySumbleIntelPanel({
   if (error && !data?.organization) {
     return (
       <ScoutBox padding="14px 16px">
-        <ScoutLabel>Sumble intelligence</ScoutLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.5 }}>
+        <PanelHeader loading={loading} onRefresh={() => void load(true)} />
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 0", lineHeight: 1.5 }}>
           {error}
         </p>
         {!data?.configured && (
@@ -106,40 +153,7 @@ export function CompanySumbleIntelPanel({
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          marginBottom: 12,
-        }}
-      >
-        <div>
-          <ScoutLabel>Sumble intelligence</ScoutLabel>
-          {data.sumbleUrl && (
-            <a
-              href={data.sumbleUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                color: color.muted,
-                display: "block",
-                marginTop: 4,
-                textDecoration: "none",
-              }}
-            >
-              View on Sumble ↗
-            </a>
-          )}
-        </div>
-        <ScoutSecondaryBtn onClick={() => void load(true)} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
-        </ScoutSecondaryBtn>
-      </div>
+      <PanelHeader loading={loading} onRefresh={() => void load(true)} sumbleUrl={data.sumbleUrl} />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: compact ? 12 : 16 }}>
         {org.employee_count != null && (
