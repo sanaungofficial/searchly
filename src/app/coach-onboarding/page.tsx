@@ -54,8 +54,14 @@ export default function CoachOnboardingPage() {
       if (statusRes.ok) {
         const status = await statusRes.json();
         if (status.complete) {
-          router.replace("/clients");
-          return;
+          if (status.phase === "vouches") {
+            router.replace("/coach-onboarding/vouches");
+            return;
+          }
+          if (status.phase === "portal") {
+            router.replace("/clients");
+            return;
+          }
         }
         if (status.role !== "COACH" && status.role !== "ADMIN") {
           router.replace("/dashboard");
@@ -126,7 +132,7 @@ export default function CoachOnboardingPage() {
         body: JSON.stringify({ complete: true }),
       });
 
-      router.push("/clients?onboarding=submitted");
+      router.push("/coach-onboarding/vouches?welcome=1");
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Submit failed");
       setSubmitting(false);

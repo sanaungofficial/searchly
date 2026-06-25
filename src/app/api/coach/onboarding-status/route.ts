@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
-import { isCoachProfileOnboardingComplete } from "@/lib/coach-onboarding";
+import { coachOnboardingPhase, isCoachProfileOnboardingComplete } from "@/lib/coach-onboarding";
 
 async function getStaffUser() {
   const supabase = await createClient();
@@ -30,15 +30,25 @@ export async function GET() {
   }
 
   const profileComplete = isCoachProfileOnboardingComplete(me.coachProfile);
-  const complete = Boolean(me.onboardingCompletedAt) || profileComplete;
+  const questionnaireComplete = Boolean(me.onboardingCompletedAt) || profileComplete;
+  const profileStatus = me.coachProfile?.status ?? null;
+  const phase = coachOnboardingPhase({ questionnaireComplete, profileStatus });
+
+  let vouchCount = 0;
+  if (me.coachProfile?.id) {
+    vouchCount = await prisma.coachVouch.count({ where: { coachProfileId: me.coachProfile.id } });
+  }
 
   return NextResponse.json({
-    complete,
+    complete: questionnaireComplete,
+    phase,
     role: me.role,
     displayName: me.name ?? me.email.split("@")[0],
     avatarUrl: me.avatarUrl,
     profile: me.coachProfile,
-    status: me.coachProfile?.status ?? null,
+    status: profileStatus,
+    vouchCount,
+    coachProfileId: me.coachProfile?.id ?? null,
   });
 }
 

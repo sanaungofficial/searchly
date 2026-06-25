@@ -302,15 +302,19 @@ export function WorkspaceCoach() {
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
-  const [showSubmittedBanner, setShowSubmittedBanner] = useState(false);
+  const [onboardingPhase, setOnboardingPhase] = useState<string | null>(null);
+  const [vouchCount, setVouchCount] = useState(0);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("onboarding") === "submitted") {
-      setShowSubmittedBanner(true);
-      window.history.replaceState({}, "", "/clients");
-    }
+    fetch("/api/coach/onboarding-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setOnboardingPhase(data.phase ?? null);
+          setVouchCount(data.vouchCount ?? 0);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -452,11 +456,14 @@ export function WorkspaceCoach() {
 
   return (
     <WorkspacePageShell label="Coach portal" title={tab === "clients" ? "Clients" : "My Profile"}>
-      {showSubmittedBanner && (
-        <div style={{ background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.25)", padding: "12px 16px", marginBottom: 20 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "#047857", fontFamily: fontSans }}>
-            Profile submitted for review. We&apos;ll notify you when your coach listing is approved.
+      {onboardingPhase === "vouches" && (
+        <div style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)", padding: "12px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "#92400e", fontFamily: fontSans }}>
+            Profile in review · {vouchCount} vouch{vouchCount === 1 ? "" : "es"} collected
           </p>
+          <a href="/coach-onboarding/vouches" style={{ fontSize: 14, fontFamily: fontSans, color: "#1A3A2F", fontWeight: 600 }}>
+            Gather vouches →
+          </a>
         </div>
       )}
       {tabs}

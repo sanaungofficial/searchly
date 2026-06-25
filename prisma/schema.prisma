@@ -229,8 +229,25 @@ model CoachProfile {
   featured       Boolean     @default(false)
   status         CoachStatus @default(ACTIVE)
 
+  vouches        CoachVouch[]
+
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+}
+
+model CoachVouch {
+  id             String       @id @default(cuid())
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+
+  authorName     String
+  authorEmail    String?
+  relationship   String?
+  message        String
+
+  createdAt      DateTime     @default(now())
+
+  @@index([coachProfileId])
 }
 
 enum CoachStatus {

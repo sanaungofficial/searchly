@@ -56,3 +56,28 @@ export function isCoachProfileOnboardingComplete(profile: {
       profile.bio?.trim(),
   );
 }
+
+export type CoachOnboardingPhase = "questionnaire" | "vouches" | "portal";
+
+export function coachOnboardingPhase(input: {
+  questionnaireComplete: boolean;
+  profileStatus: string | null;
+}): CoachOnboardingPhase {
+  if (!input.questionnaireComplete) return "questionnaire";
+  if (input.profileStatus === "ACTIVE") return "portal";
+  return "vouches";
+}
+
+export function coachVouchUrl(coachProfileId: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  return `${base.replace(/\/$/, "")}/vouch/${coachProfileId}`;
+}
+
+export function coachVouchShareMessage(displayName: string, vouchUrl: string): string {
+  return `Hi! I'm applying to coach on Kimchi and would love a quick vouch from you about our work together. It only takes a minute:
+
+${vouchUrl}
+
+Thanks!
+${displayName}`;
+}

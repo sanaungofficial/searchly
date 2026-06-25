@@ -22,7 +22,7 @@ export function CoachClientsPage() {
       fetch("/api/coach/onboarding-status")
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
-          if (data && !data.complete) {
+          if (data?.phase === "questionnaire") {
             router.replace("/coach-onboarding");
             return;
           }
