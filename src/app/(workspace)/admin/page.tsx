@@ -3,6 +3,7 @@ import { SubscriptionStatus, UserRole } from "@prisma/client";
 import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { UsersTable } from "./users-table";
 import { TopEchelonSyncPanel } from "./top-echelon-sync-panel";
+import { AirtableCoachesSyncPanel } from "./airtable-coaches-sync-panel";
 import { AdminUsagePanel } from "@/components/admin/admin-usage-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "@/components/scout/scout-box";
 import { color, displayTitleStyle, fontMono, type as T } from "@/lib/typography";
@@ -192,7 +193,10 @@ export default async function AdminPage() {
 
       <section>
         <h2 className={adminSectionLabel}>Integrations</h2>
-        <TopEchelonSyncPanel />
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <AirtableCoachesSyncPanel />
+          <TopEchelonSyncPanel />
+        </div>
       </section>
 
       <section>

@@ -9,6 +9,10 @@
       "schedule": "0 7 * * 0"
     },
     {
+      "path": "/api/cron/airtable-coaches-sync",
+      "schedule": "0 5 * * *"
+    },
+    {
       "path": "/api/cron/recommended-jobs-snapshot",
       "schedule": "0 8 * * *"
     },

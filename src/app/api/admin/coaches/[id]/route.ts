@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
+import { pushCoachProfileToAirtable } from "@/lib/airtable/push-coach";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
@@ -32,6 +33,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
   const coach = await prisma.coachProfile.update({ where: { id }, data: coachData(body) });
+
+  if (coach.airtableId) {
+    try {
+      await pushCoachProfileToAirtable(coach.id);
+    } catch (err) {
+      console.error("[admin/coaches] airtable push", err);
+    }
+  }
+
   return NextResponse.json(coach);
 }
 
