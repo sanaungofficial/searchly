@@ -10,6 +10,7 @@ import {
   KpiGrid,
   RankList,
   SplitBars,
+  SumbleLoadPrompt,
   TrendCompareRow,
   WindowPicker,
   ScoresGrid,
@@ -20,16 +21,27 @@ import { displayTitleStyle, fontSans, color, type as T } from "@/lib/typography"
 export function MarketOverviewPage() {
   const [days, setDays] = useState(30);
   const isMobile = useIsMobile();
-  const { data, loading, error, refresh } = useMarketInsights(days, "7,30,90,180");
+  const { data, loading, error, refresh, load, requiresLoad } = useMarketInsights(days, "7,30,90,180");
   const insight = windowInsight(data, days);
 
   return (
     <MarketShell
       title="Market overview"
-      subtitle="Live hiring analytics for your target roles — zoom the time window to see momentum."
+      subtitle="Hiring analytics for your target roles — load on demand to conserve Sumble credits."
       toolbar={<WindowPicker value={days} onChange={setDays} isMobile={isMobile} />}
     >
-      <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />
+      {requiresLoad && !insight && !error && (
+        <SumbleLoadPrompt
+          title="Market overview"
+          description="Pull a small job sample from Sumble for your target roles. Nothing loads automatically."
+          estimatedCredits={data?.estimatedCredits ?? 25}
+          creditsRemaining={data?.creditsRemaining}
+          loading={loading}
+          onLoad={load}
+        />
+      )}
+
+      {!requiresLoad && <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />}
 
       {loading && !insight && (
         <ScoutBox padding="20px 22px">

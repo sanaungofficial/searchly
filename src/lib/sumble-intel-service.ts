@@ -19,6 +19,12 @@ import {
   insightsCacheKey,
   setInsightsCached,
 } from "@/lib/insights-cache";
+import {
+  assertSumbleCreditsAvailable,
+  getSumbleCreditsRemaining,
+  SUMBLE_ESTIMATED_COSTS,
+  SumbleInsufficientCreditsError,
+} from "@/lib/sumble-credits";
 
 const SUMBLE_INTEL_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const SUMBLE_INTEL_ERROR_TTL_MS = 5 * 60 * 1000; // 5 minutes — don't stick on bad cache
@@ -44,6 +50,8 @@ export type CompanySumbleIntelBundle = {
   sumbleUrl: string | null;
   peopleSourceUrl: string | null;
   teamsSourceUrl: string | null;
+  requiresLoad?: boolean;
+  estimatedCredits?: number;
   error?: string;
 };
 
@@ -75,7 +83,10 @@ export async function getCompanySumbleIntelBundle(input: {
   slugHint?: string | null;
   includePeople?: boolean;
   includeTeams?: boolean;
+  includeSignals?: boolean;
   forceRefresh?: boolean;
+  /** When false, only return server cache — never call Sumble */
+  allowFetch?: boolean;
 }): Promise<CompanySumbleIntelBundle> {
   const configured = isSumbleConfigured();
   const companyName = input.companyName.trim();
@@ -84,6 +95,14 @@ export async function getCompanySumbleIntelBundle(input: {
   const jobFunctionTerms = jobFunctionTermsFromRoles(
     targetRoles.length ? targetRoles : ["Product Manager"]
   );
+  const creditsRemaining = getSumbleCreditsRemaining();
+  const includePeople = input.includePeople === true;
+  const includeTeams = input.includeTeams === true;
+  const includeSignals = input.includeSignals !== false;
+  const estimatedCredits =
+    SUMBLE_ESTIMATED_COSTS.companyLite +
+    (includePeople ? 5 : 0) +
+    (includeTeams ? 5 : 0);
 
   const empty: CompanySumbleIntelBundle = {
     configured,
@@ -100,17 +119,20 @@ export async function getCompanySumbleIntelBundle(input: {
     targetRoles,
     jobFunctionTerms,
     creditsUsed: 0,
-    creditsRemaining: null,
+    creditsRemaining,
     generatedAt: new Date().toISOString(),
     serverCached: false,
     sumbleUrl: null,
     peopleSourceUrl: null,
     teamsSourceUrl: null,
+    requiresLoad: configured ? true : undefined,
+    estimatedCredits: configured ? estimatedCredits : undefined,
   };
 
   if (!configured) {
     return {
       ...empty,
+      requiresLoad: undefined,
       error: "Sumble is not configured on this environment.",
     };
   }
@@ -124,27 +146,35 @@ export async function getCompanySumbleIntelBundle(input: {
     domain,
     slug: input.slugHint ?? null,
     jobFunctionTerms,
-    includePeople: input.includePeople ?? true,
-    includeTeams: input.includeTeams ?? true,
+    includePeople,
+    includeTeams,
+    includeSignals,
   });
 
   if (!input.forceRefresh) {
     const hit = getInsightsCached<CompanySumbleIntelBundle>(cacheKey);
-    if (hit) return { ...hit, serverCached: true };
+    if (hit) return { ...hit, serverCached: true, requiresLoad: false };
+  }
+
+  if (!input.allowFetch) {
+    return empty;
   }
 
   try {
+    assertSumbleCreditsAvailable(estimatedCredits);
+
     let creditsUsed = 0;
-    let creditsRemaining: number | null = null;
+    let creditsRemainingAfter: number | null = creditsRemaining;
 
     const orgResult = await fetchSumbleOrganization({
       domain,
       name: companyName,
       slug: input.slugHint,
       jobFunctionTerms,
+      includeRoleMetrics: true,
     });
     creditsUsed += orgResult.creditsUsed;
-    creditsRemaining = orgResult.creditsRemaining;
+    creditsRemainingAfter = orgResult.creditsRemaining;
 
     const organization = orgResult.organization?.attributes ?? null;
     const roleMetrics = orgResult.organization?.entities ?? [];
@@ -153,7 +183,8 @@ export async function getCompanySumbleIntelBundle(input: {
       const bundle: CompanySumbleIntelBundle = {
         ...empty,
         creditsUsed,
-        creditsRemaining,
+        creditsRemaining: creditsRemainingAfter,
+        requiresLoad: false,
         error: domain
           ? `No Sumble match for ${domain}. Try Refresh after updating the website.`
           : `No Sumble match for ${companyName}. Add a website domain and refresh.`,
@@ -169,51 +200,58 @@ export async function getCompanySumbleIntelBundle(input: {
         organization,
         roleMetrics,
         creditsUsed,
-        creditsRemaining,
+        creditsRemaining: creditsRemainingAfter,
         companyName: organization?.name ?? companyName,
         sumbleUrl: organization?.sumble_url ?? null,
+        requiresLoad: false,
         error: "Sumble matched this company but could not load detailed intel yet. Try Refresh.",
       };
       setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_ERROR_TTL_MS);
       return bundle;
     }
 
-    const includePeople = input.includePeople !== false;
-    const includeTeams = input.includeTeams !== false;
+    let signalsResult = {
+      signals: [] as SumbleSignal[],
+      creditsUsed: 0,
+      creditsRemaining: creditsRemainingAfter,
+    };
+    let peopleResult = {
+      people: [] as SumblePersonRow[],
+      total: 0,
+      creditsUsed: 0,
+      creditsRemaining: creditsRemainingAfter,
+      sourceDataUrl: null as string | null,
+      filteredByRole: false,
+    };
+    let teamsResult = {
+      teams: [] as SumbleTeamRow[],
+      total: 0,
+      creditsUsed: 0,
+      creditsRemaining: creditsRemainingAfter,
+      sourceDataUrl: null as string | null,
+    };
 
-    const [signalsResult, peopleResult, teamsResult] = await Promise.all([
-      fetchSumbleOrganizationSignals(orgId),
-      includePeople
-        ? fetchSumblePeopleAtOrganization({
-            organizationId: orgId,
-            limit: 5,
-            jobFunctionTerms,
-          })
-        : Promise.resolve({
-            people: [],
-            total: 0,
-            creditsUsed: 0,
-            creditsRemaining,
-            sourceDataUrl: null,
-            filteredByRole: false,
-          }),
-      includeTeams
-        ? fetchSumbleTeamsAtOrganization({ organizationId: orgId, limit: 5 })
-        : Promise.resolve({
-            teams: [],
-            total: 0,
-            creditsUsed: 0,
-            creditsRemaining,
-            sourceDataUrl: null,
-          }),
-    ]);
+    if (includeSignals) {
+      signalsResult = await fetchSumbleOrganizationSignals(orgId);
+      creditsUsed += signalsResult.creditsUsed;
+      creditsRemainingAfter = signalsResult.creditsRemaining ?? creditsRemainingAfter;
+    }
 
-    creditsUsed += signalsResult.creditsUsed + peopleResult.creditsUsed + teamsResult.creditsUsed;
-    creditsRemaining =
-      teamsResult.creditsRemaining ??
-      peopleResult.creditsRemaining ??
-      signalsResult.creditsRemaining ??
-      creditsRemaining;
+    if (includePeople) {
+      peopleResult = await fetchSumblePeopleAtOrganization({
+        organizationId: orgId,
+        limit: 5,
+        jobFunctionTerms,
+      });
+      creditsUsed += peopleResult.creditsUsed;
+      creditsRemainingAfter = peopleResult.creditsRemaining ?? creditsRemainingAfter;
+    }
+
+    if (includeTeams) {
+      teamsResult = await fetchSumbleTeamsAtOrganization({ organizationId: orgId, limit: 5 });
+      creditsUsed += teamsResult.creditsUsed;
+      creditsRemainingAfter = teamsResult.creditsRemaining ?? creditsRemainingAfter;
+    }
 
     const bundle: CompanySumbleIntelBundle = {
       configured: true,
@@ -221,7 +259,7 @@ export async function getCompanySumbleIntelBundle(input: {
       domain,
       organization,
       roleMetrics,
-      signals: signalsResult.signals.slice(0, 12),
+      signals: signalsResult.signals.slice(0, 8),
       people: peopleResult.people,
       peopleTotal: peopleResult.total,
       peopleFilteredByRole: peopleResult.filteredByRole,
@@ -230,20 +268,32 @@ export async function getCompanySumbleIntelBundle(input: {
       targetRoles,
       jobFunctionTerms,
       creditsUsed,
-      creditsRemaining,
+      creditsRemaining: creditsRemainingAfter,
       generatedAt: new Date().toISOString(),
       serverCached: false,
       sumbleUrl: organization.sumble_url ?? null,
       peopleSourceUrl: peopleResult.sourceDataUrl,
       teamsSourceUrl: teamsResult.sourceDataUrl,
+      requiresLoad: false,
+      estimatedCredits,
     };
 
     setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_TTL_MS);
     return bundle;
   } catch (err) {
+    const message =
+      err instanceof SumbleInsufficientCreditsError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Sumble request failed.";
     const bundle: CompanySumbleIntelBundle = {
       ...empty,
-      error: err instanceof Error ? err.message : "Sumble request failed.",
+      error: message,
+      creditsRemaining:
+        err instanceof SumbleInsufficientCreditsError
+          ? err.creditsRemaining
+          : creditsRemaining,
     };
     setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_ERROR_TTL_MS);
     return bundle;
@@ -274,22 +324,28 @@ export type DashboardSumbleSignalsBundle = {
   serverCached: boolean;
   creditsUsed: number;
   creditsRemaining: number | null;
+  requiresLoad?: boolean;
+  estimatedCredits?: number;
   error?: string;
 };
 
-const DASHBOARD_SIGNALS_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
-const DASHBOARD_MAX_COMPANIES = 6;
-const DASHBOARD_SIGNALS_PER_COMPANY = 4;
-const DASHBOARD_MAX_SIGNALS = 12;
+const DASHBOARD_SIGNALS_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DASHBOARD_MAX_COMPANIES = 3;
+const DASHBOARD_SIGNALS_PER_COMPANY = 3;
+const DASHBOARD_MAX_SIGNALS = 8;
 
 const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 export async function getDashboardSumbleSignalsBundle(input: {
   userId: string;
   forceRefresh?: boolean;
+  /** When false, only return server cache — never call Sumble */
+  allowFetch?: boolean;
 }): Promise<DashboardSumbleSignalsBundle> {
   const configured = isSumbleConfigured();
   const targetRoles = await loadTargetRoles(input.userId);
+  const creditsRemaining = getSumbleCreditsRemaining();
+  const estimatedCredits = SUMBLE_ESTIMATED_COSTS.dashboardSignals;
 
   const empty: DashboardSumbleSignalsBundle = {
     configured,
@@ -300,21 +356,29 @@ export async function getDashboardSumbleSignalsBundle(input: {
     generatedAt: new Date().toISOString(),
     serverCached: false,
     creditsUsed: 0,
-    creditsRemaining: null,
+    creditsRemaining,
+    requiresLoad: configured ? true : undefined,
+    estimatedCredits: configured ? estimatedCredits : undefined,
   };
 
   if (!configured) {
-    return { ...empty, error: "Sumble is not configured on this environment." };
+    return { ...empty, requiresLoad: undefined, error: "Sumble is not configured on this environment." };
   }
 
   const cacheKey = insightsCacheKey("sumble-dashboard-signals", { userId: input.userId });
 
   if (!input.forceRefresh) {
     const hit = getInsightsCached<DashboardSumbleSignalsBundle>(cacheKey);
-    if (hit) return { ...hit, serverCached: true };
+    if (hit) return { ...hit, serverCached: true, requiresLoad: false };
+  }
+
+  if (!input.allowFetch) {
+    return empty;
   }
 
   try {
+    assertSumbleCreditsAvailable(estimatedCredits);
+
     const tracked = await prisma.trackedCompany.findMany({
       where: { userId: input.userId },
       include: { companyIntel: true },
@@ -394,14 +458,26 @@ export async function getDashboardSumbleSignalsBundle(input: {
       serverCached: false,
       creditsUsed,
       creditsRemaining,
+      requiresLoad: false,
+      estimatedCredits,
     };
 
     setInsightsCached(cacheKey, bundle, DASHBOARD_SIGNALS_TTL_MS);
     return bundle;
   } catch (err) {
+    const message =
+      err instanceof SumbleInsufficientCreditsError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Sumble dashboard signals failed.";
     const bundle: DashboardSumbleSignalsBundle = {
       ...empty,
-      error: err instanceof Error ? err.message : "Sumble dashboard signals failed.",
+      error: message,
+      creditsRemaining:
+        err instanceof SumbleInsufficientCreditsError
+          ? err.creditsRemaining
+          : creditsRemaining,
     };
     setInsightsCached(cacheKey, bundle, SUMBLE_INTEL_ERROR_TTL_MS);
     return bundle;

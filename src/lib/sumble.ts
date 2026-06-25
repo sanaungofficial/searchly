@@ -1,5 +1,6 @@
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { hostnameFromUrl } from "@/lib/company-domain";
+import { recordSumbleCreditsRemaining } from "@/lib/sumble-credits";
 
 const SUMBLE_BASE = "https://api.sumble.com/v6";
 
@@ -178,7 +179,9 @@ async function sumbleFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message);
   }
 
-  return res.json() as Promise<T>;
+  const data = (await res.json()) as T & { credits_remaining?: number | null };
+  recordSumbleCreditsRemaining(data.credits_remaining);
+  return data;
 }
 
 export class SumbleNotFoundError extends Error {
@@ -470,7 +473,7 @@ export async function fetchSumbleJobsSearch(input: {
   creditsUsed: number;
   creditsRemaining: number | null;
 }> {
-  const limit = Math.max(1, Math.min(input.limit ?? 100, 200));
+  const limit = Math.max(1, Math.min(input.limit ?? 25, 50));
   const term = input.jobFunctionTerm.trim() || "Product Management";
 
   const attempts = [jobFunctionQuery(term)];
