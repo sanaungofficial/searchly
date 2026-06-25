@@ -4,9 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkspaceProfileTabBar, type ProfileTabItem } from "@/components/scout/workspace-profile-tab-bar";
+import { isStaffPortalRole } from "@/lib/staff-portal";
 import { surface } from "@/lib/typography";
 
-const COACH_TABS: ProfileTabItem[] = [
+const STAFF_TABS: ProfileTabItem[] = [
   { id: "home", label: "Dashboard", href: "/dashboard" },
   { id: "clients", label: "Clients", href: "/dashboard/clients" },
   { id: "bookings", label: "Bookings", href: "/dashboard/bookings" },
@@ -23,14 +24,14 @@ export function DashboardCoachShell({ children }: Props) {
   const isMobile = useIsMobile();
   const { userRole } = useWorkspace();
 
-  if (userRole !== "COACH") {
+  if (!isStaffPortalRole(userRole)) {
     return <>{children}</>;
   }
 
   const activeHref =
     pathname === "/dashboard"
       ? "/dashboard"
-      : COACH_TABS.find((t) => t.href !== "/dashboard" && pathname.startsWith(t.href))?.href ?? pathname;
+      : STAFF_TABS.find((t) => t.href !== "/dashboard" && pathname.startsWith(t.href))?.href ?? pathname;
 
   const horizontalPad = isMobile ? 16 : 28;
 
@@ -47,7 +48,7 @@ export function DashboardCoachShell({ children }: Props) {
     >
       <div style={{ padding: `${isMobile ? 12 : 16}px ${horizontalPad}px 0`, flexShrink: 0 }}>
         <WorkspaceProfileTabBar
-          tabs={COACH_TABS}
+          tabs={STAFF_TABS}
           activeHref={activeHref}
           onNavigate={(href) => router.push(href)}
           isMobile={isMobile}
