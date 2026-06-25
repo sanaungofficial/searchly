@@ -187,15 +187,42 @@ export function CompanySumbleIntelPanel({
                 <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, fontWeight: 600 }}>
                   {entity.term}
                 </span>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
                   {entity.job_post_count != null && (
-                    <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.forest }}>
-                      {entity.job_post_count} open roles
-                    </span>
+                    entity.job_post_count_url ? (
+                      <a
+                        href={entity.job_post_count_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontFamily: fontMono, fontSize: T.caption, color: color.forest, textDecoration: "none" }}
+                      >
+                        {entity.job_post_count} open roles ↗
+                      </a>
+                    ) : (
+                      <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.forest }}>
+                        {entity.job_post_count} open roles
+                      </span>
+                    )
                   )}
                   {entity.people_count != null && (
+                    entity.people_count_url ? (
+                      <a
+                        href={entity.people_count_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, textDecoration: "none" }}
+                      >
+                        {entity.people_count.toLocaleString()} people ↗
+                      </a>
+                    ) : (
+                      <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
+                        {entity.people_count.toLocaleString()} people
+                      </span>
+                    )
+                  )}
+                  {entity.team_count != null && entity.team_count > 0 && (
                     <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
-                      {entity.people_count.toLocaleString()} people
+                      {entity.team_count} teams
                     </span>
                   )}
                   {entity.job_post_count_growth_1y != null && (
@@ -240,10 +267,76 @@ export function CompanySumbleIntelPanel({
         </ScoutBox>
       )}
 
-      {data.people.length > 0 && (
-        <ScoutBox padding="12px 14px">
+      {data.teams.length > 0 && (
+        <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-            <ScoutLabel>Key people</ScoutLabel>
+            <ScoutLabel>Active teams</ScoutLabel>
+            {data.teamsSourceUrl && (
+              <a
+                href={data.teamsSourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "none" }}
+              >
+                All {data.teamsTotal.toLocaleString()} ↗
+              </a>
+            )}
+          </div>
+          <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0 }}>
+            {data.teams.map((team) => {
+              const attrs = team.attributes;
+              if (!attrs?.name) return null;
+              return (
+                <li
+                  key={team.team_id ?? attrs.name}
+                  style={{ padding: "8px 0", borderBottom: border.line }}
+                >
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}>
+                    {team.sumble_url ? (
+                      <a
+                        href={team.sumble_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontFamily: fontSans,
+                          fontSize: T.bodySm,
+                          color: color.forest,
+                          fontWeight: 600,
+                          textDecoration: "none",
+                        }}
+                      >
+                        {attrs.name} ↗
+                      </a>
+                    ) : (
+                      <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, fontWeight: 600 }}>
+                        {attrs.name}
+                      </span>
+                    )}
+                    <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>
+                      {attrs.jobs_count != null ? `${attrs.jobs_count} roles` : ""}
+                      {attrs.people_count != null ? ` · ${attrs.people_count} people` : ""}
+                    </span>
+                  </div>
+                  {attrs.technology_list && attrs.technology_list.length > 0 && (
+                    <div style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 4 }}>
+                      {attrs.technology_list.slice(0, 4).join(" · ")}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </ScoutBox>
+      )}
+
+      {data.people.length > 0 && (
+        <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+            <ScoutLabel>
+              {data.peopleFilteredByRole && data.jobFunctionTerms[0]
+                ? `People · ${data.jobFunctionTerms[0]}`
+                : "Key people"}
+            </ScoutLabel>
             {data.peopleSourceUrl && (
               <a
                 href={data.peopleSourceUrl}
@@ -306,9 +399,12 @@ export function CompanySumbleIntelPanel({
         </ScoutBox>
       )}
 
-      {data.signals.length === 0 && data.people.length === 0 && !data.roleMetrics.length && (
+      {data.signals.length === 0 &&
+        data.people.length === 0 &&
+        data.teams.length === 0 &&
+        !data.roleMetrics.length && (
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-          Sumble matched this organization but returned no signals or people for your filters yet.
+          Sumble matched this organization but returned no signals, teams, or people for your filters yet.
         </p>
       )}
 

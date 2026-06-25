@@ -1460,10 +1460,18 @@ export function WorkspaceCompanies({
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
-              <CompanyHirebaseIntelPanel
-                companyName={intelName || intelSlug}
-                slugHint={intelSlug}
-              />
+              <DrawerSection title="Hirebase analytics">
+                <CompanyHirebaseIntelPanel
+                  companyName={intelName || intelSlug}
+                  slugHint={intelSlug}
+                />
+              </DrawerSection>
+              <DrawerSection title="Sumble intelligence">
+                <CompanySumbleIntelPanel
+                  companyName={intelName || intelSlug}
+                  website={intelSlug.includes(".") ? intelSlug : undefined}
+                />
+              </DrawerSection>
             </div>
           </div>
         </>
