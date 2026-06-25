@@ -99,6 +99,7 @@ export async function ensureHirebaseArtifactForUser(userId: string): Promise<{
       bytes,
       ext,
       filename: primaryAsset?.name || "resume.pdf",
+      userId,
     });
     if (!hirebase?.artifactId) {
       return {

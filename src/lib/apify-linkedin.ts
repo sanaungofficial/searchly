@@ -1,4 +1,5 @@
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
+import { logApifyLinkedInRun } from "@/lib/external-api-usage";
 import type { LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import type { ParsedResumeData } from "@/lib/resume-parse";
 
@@ -179,7 +180,10 @@ export function buildResumeTextFromParsed(parsed: ParsedResumeData): string {
   return parts.join("\n\n").trim();
 }
 
-export async function scrapeLinkedInProfile(linkedinUrl: string): Promise<ApifyLinkedInProfile> {
+export async function scrapeLinkedInProfile(
+  linkedinUrl: string,
+  ctx?: { userId?: string | null },
+): Promise<ApifyLinkedInProfile> {
   const token = process.env.APIFY_API_TOKEN?.trim();
   if (!token) throw new Error("APIFY_API_TOKEN is not configured.");
 
@@ -219,6 +223,7 @@ export async function scrapeLinkedInProfile(linkedinUrl: string): Promise<ApifyL
     throw new Error("LinkedIn profile could not be loaded — check the URL is public.");
   }
 
+  logApifyLinkedInRun(ctx?.userId);
   return profile;
 }
 

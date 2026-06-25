@@ -5,6 +5,22 @@ import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
 import { color, displayTitleStyle, fontMono, type as T } from "@/lib/typography";
 import { adminSectionLabel } from "@/app/(workspace)/admin/admin-styles";
 
+type DailyPoint = { date: string; calls: number; costUsd: number };
+
+type ExternalProvider = {
+  provider: string;
+  label: string;
+  configured: boolean;
+  costThisMonth: number;
+  callsThisMonth: number;
+  unitsThisMonth: number;
+  costTotal: number;
+  callsTotal: number;
+  byOperation: Array<{ operation: string; calls: number; units: number; costUsd: number }>;
+  dailyLast30Days: DailyPoint[];
+  note?: string;
+};
+
 type UsageResponse = {
   anthropic: {
     costThisMonth: number;
@@ -15,7 +31,7 @@ type UsageResponse = {
     callsTotal: number;
     byFeature: Array<{ feature: string; calls: number; costUsd: number }>;
     byModel: Array<{ model: string; calls: number; costUsd: number; tokensIn: number; tokensOut: number }>;
-    dailyLast30Days: Array<{ date: string; calls: number; costUsd: number }>;
+    dailyLast30Days: DailyPoint[];
     topUsersThisMonth: Array<{ userId: string; name: string | null; email: string; calls: number; costUsd: number }>;
   };
   supabase: {
@@ -43,6 +59,13 @@ type UsageResponse = {
       note: string;
     };
   };
+  externalApis: ExternalProvider[];
+  summary: {
+    anthropicThisMonth: number;
+    externalApisThisMonth: number;
+    supabaseEstimateMonthly: number;
+    estimatedTotalMonthly: number;
+  };
   generatedAt: string;
 };
 
@@ -54,6 +77,17 @@ const FEATURE_LABELS: Record<string, string> = {
   JOB_PARSE: "Job parse",
   CHAT: "Scout chat",
   RESUME_TAILOR: "Resume tailor",
+};
+
+const OPERATION_LABELS: Record<string, string> = {
+  "jobs.vsearch": "Vector job search",
+  "jobs.search": "Job search",
+  "jobs.get": "Job detail",
+  "companies.jobs": "Company job listings",
+  "companies.search": "Company search",
+  "companies.get": "Company profile",
+  "resumes.embed": "Resume embed / parse",
+  "linkedin.profile_scrape": "LinkedIn profile scrape",
 };
 
 function fmtUsd(n: number): string {
@@ -167,7 +201,7 @@ function BreakdownTable({
   );
 }
 
-function DailySpendChart({ days }: { days: UsageResponse["anthropic"]["dailyLast30Days"] }) {
+function DailySpendChart({ days }: { days: DailyPoint[] }) {
   if (days.length === 0) {
     return <p style={{ fontSize: T.bodySm, color: color.muted, margin: 0 }}>No AI calls in the last 30 days.</p>;
   }
@@ -192,6 +226,90 @@ function DailySpendChart({ days }: { days: UsageResponse["anthropic"]["dailyLast
           />
         );
       })}
+    </div>
+  );
+}
+
+function ExternalProviderSection({ provider, monthLabel }: { provider: ExternalProvider; monthLabel: string }) {
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <ScoutLabel>{provider.label}</ScoutLabel>
+        <span
+          style={{
+            fontSize: T.caption,
+            fontFamily: fontMono,
+            color: provider.configured ? color.forest : color.muted,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+          }}
+        >
+          {provider.configured ? "configured" : "not configured"}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4" style={{ marginBottom: 16 }}>
+        <StatCard
+          label={`Est. spend · ${monthLabel}`}
+          value={fmtUsd(provider.costThisMonth)}
+          sub={`${provider.callsThisMonth.toLocaleString()} API calls · ${provider.unitsThisMonth.toLocaleString()} units`}
+        />
+        <StatCard label="All-time est." value={fmtUsd(provider.costTotal)} sub={`${provider.callsTotal.toLocaleString()} calls`} />
+        {provider.provider === "HIREBASE" ? (
+          <>
+            <StatCard label="Primary use" value="Job data" sub="Search, vsearch, company scans" />
+            <StatCard label="Resume API" value="Embed" sub="Resume parse + vector matching" />
+          </>
+        ) : provider.provider === "APIFY" ? (
+          <>
+            <StatCard label="Primary use" value="LinkedIn" sub="Profile import on onboarding / admin" />
+            <StatCard label="Per run" value="~$0.05 est." sub="Set APIFY_USD_PER_LINKEDIN_RUN" />
+          </>
+        ) : (
+          <>
+            <StatCard label="Primary use" value="ATS sync" sub="Network jobs import" />
+            <StatCard label="Metered cost" value="—" sub="Partner API — no usage log yet" />
+          </>
+        )}
+      </div>
+      {provider.byOperation.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginBottom: 12 }}>
+          <ScoutBox padding="20px 24px">
+            <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: fontMono, margin: "0 0 12px" }}>
+              By operation
+            </p>
+            <BreakdownTable
+              rows={provider.byOperation.map((op) => ({
+                operation: OPERATION_LABELS[op.operation] ?? op.operation,
+                calls: op.calls,
+                units: op.units,
+                cost: fmtUsd(op.costUsd),
+              }))}
+              columns={[
+                { key: "operation", label: "Operation" },
+                { key: "calls", label: "Calls", align: "right" },
+                { key: "units", label: "Units", align: "right" },
+                { key: "cost", label: "Est.", align: "right" },
+              ]}
+            />
+          </ScoutBox>
+          <ScoutBox padding="20px 24px">
+            <p style={{ fontSize: T.label, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: fontMono, margin: "0 0 12px" }}>
+              Daily calls (30 days)
+            </p>
+            <DailySpendChart days={provider.dailyLast30Days} />
+          </ScoutBox>
+        </div>
+      )}
+      {provider.callsTotal === 0 && (
+        <ScoutBox padding="16px 20px">
+          <p style={{ fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+            No logged calls yet — usage is tracked from this deploy forward.
+          </p>
+        </ScoutBox>
+      )}
+      {provider.note && (
+        <p style={{ fontSize: T.caption, color: color.muted, marginTop: 12 }}>{provider.note}</p>
+      )}
     </div>
   );
 }
@@ -234,8 +352,10 @@ export function AdminUsagePanel() {
     );
   }
 
-  const { anthropic, supabase } = data;
+  const { anthropic, supabase, externalApis, summary } = data;
   const monthLabel = new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
+  const hirebase = externalApis.find((p) => p.provider === "HIREBASE");
+  const otherApis = externalApis.filter((p) => p.provider !== "HIREBASE");
 
   return (
     <section>
@@ -245,6 +365,28 @@ export function AdminUsagePanel() {
           Updated {new Date(data.generatedAt).toLocaleString()}
         </p>
       </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4" style={{ marginBottom: 32 }}>
+        <StatCard
+          label="Est. infra total / mo"
+          value={fmtUsd(summary.estimatedTotalMonthly)}
+          sub="Anthropic + APIs + Supabase"
+          accent={color.forest}
+        />
+        <StatCard label="Anthropic" value={fmtUsd(summary.anthropicThisMonth)} sub="This month" />
+        <StatCard label="External APIs" value={fmtUsd(summary.externalApisThisMonth)} sub="HireBase, Apify, etc." />
+        <StatCard label="Supabase (est.)" value={fmtUsd(summary.supabaseEstimateMonthly)} sub="Plan + storage" />
+      </div>
+
+      <ScoutBox padding="16px 20px" style={{ marginBottom: 32 }}>
+        <p style={{ fontSize: T.bodySm, color: color.stone, margin: "0 0 8px", fontWeight: 600 }}>Also worth knowing</p>
+        <p style={{ fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.5 }}>
+          <strong>Stripe</strong> (revenue, not cost) — see MRR in legacy revenue API.{" "}
+          <strong>Vercel</strong> hosting — check the Vercel dashboard.{" "}
+          <strong>Partnero</strong> referrals — low volume, no meter here.{" "}
+          HireBase and Apify costs below are <em>estimates</em> until you tune the env vars to match your plan.
+        </p>
+      </ScoutBox>
 
       {/* Anthropic */}
       <div style={{ marginBottom: 32 }}>
@@ -346,6 +488,12 @@ export function AdminUsagePanel() {
           for authoritative totals.
         </p>
       </div>
+
+      {hirebase && <ExternalProviderSection provider={hirebase} monthLabel={monthLabel} />}
+
+      {otherApis.map((p) => (
+        <ExternalProviderSection key={p.provider} provider={p} monthLabel={monthLabel} />
+      ))}
 
       {/* Supabase */}
       <div>

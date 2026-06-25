@@ -62,6 +62,7 @@ export async function POST(request: Request) {
     ext,
     structuredPrompt,
     file.name,
+    actingUser.id,
   );
 
   if (!resumeText) {

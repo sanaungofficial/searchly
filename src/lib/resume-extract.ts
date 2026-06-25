@@ -207,6 +207,7 @@ export async function parseResumeFile(
   ext: string,
   structuredPrompt: string,
   filename?: string,
+  userId?: string | null,
 ): Promise<ResumeFileParseResult> {
   const rawText = await extractRawResumeText(bytes, ext);
   const hirebaseEnabled = isHirebaseResumeConfigured();
@@ -214,7 +215,7 @@ export async function parseResumeFile(
 
   if (hirebaseEnabled) {
     try {
-      const hirebase = await parseResumeWithHirebase({ bytes, ext, filename });
+      const hirebase = await parseResumeWithHirebase({ bytes, ext, filename, userId });
       if (hirebase?.parsed && !isLikelyBrokenWorkExperience(hirebase.parsed.workExperience)) {
         return {
           text: rawText || hirebase.resumeText,
