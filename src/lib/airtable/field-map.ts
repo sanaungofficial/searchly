@@ -1,32 +1,38 @@
 import type { AirtableAttachment, AirtableRecord, MappedCoachFromAirtable } from "@/lib/airtable/types";
 
-/** First matching Airtable column name wins (case-sensitive). */
+/**
+ * First matching Airtable column name wins (case-sensitive).
+ * Mapped from MBB/Big 4 Mentors (tblnl8cmFBBynOwg0) via Airtable MCP schema discovery.
+ */
 const FIELD_ALIASES = {
-  displayName: ["Name", "Full Name", "Coach Name", "Display Name", "Coach"],
+  displayName: ["Full Name", "Name", "Coach Name", "Display Name", "Coach"],
+  firstName: ["First Name", "First ﻿Name", "First Name"],
+  lastName: ["Last Name", "Last Name (Abbrivated)"],
   email: ["Email", "Email Address"],
-  headline: ["Headline", "Title", "Short Bio", "Tagline"],
-  bio: ["Bio", "Description", "Profile Bio"],
+  headline: ["Short Bio", "Headline", "Title", "Tagline"],
+  bio: ["Intro Call Notes", "Bio", "Description", "Profile Bio"],
   aboutMe: ["About Me", "About", "Long Bio", "Profile"],
-  whyCoach: ["Why Coach", "Why I Coach", "Coaching Philosophy"],
-  currentRole: ["Current Role", "Role", "Job Title", "Title (Current)"],
+  whyCoach: ["Why Coach", "Why I Coach", "Coaching Philosophy", "Webinar Topics"],
+  currentRole: ["Job Title", "Current Role", "Role", "Title (Current)"],
   currentCompany: ["Current Company", "Company", "Employer", "Organization"],
   location: ["Location", "City", "Geo"],
-  linkedinUrl: ["LinkedIn", "LinkedIn URL", "LinkedIn Profile", "Linkedin"],
-  lelandUrl: ["Leland URL", "Leland", "Leland Link"],
+  linkedinUrl: ["LinkedIn URL", "LinkedIn", "LinkedIn Profile", "Linkedin"],
+  lelandUrl: ["Coach Profile URL", "Leland URL", "Leland", "Leland Link"],
   calLink: ["Cal Link", "Calendly", "Booking Link", "Scheduler Link", "Cal.com"],
-  photo: ["Photo", "Headshot", "Profile Photo", "Image", "Avatar", "Picture"],
-  firms: ["Firms", "Companies", "Past Companies", "Company History"],
-  schools: ["Schools", "Education", "Universities"],
-  specialties: ["Specialties", "Services", "Coaching Services", "Focus Areas"],
-  industries: ["Industries", "Industry", "Sectors"],
-  clientSpecializations: ["Client Specializations", "Client Types", "Who I Coach"],
+  photo: ["Profile Pic", "Photo", "Headshot", "Profile Photo", "Image", "Avatar", "Picture"],
+  firms: ["Associated Firms", "Firms", "Companies", "Past Companies", "Company History"],
+  schools: ["Education (Text)", "Education", "Schools", "Universities"],
+  specialties: ["Coaching Skills", "Specialties", "Services", "Coaching Services", "Focus Areas"],
+  industries: ["Outreach Campaign", "Industries", "Industry", "Sectors"],
+  clientSpecializations: ["Exit Paths", "Client Specializations", "Client Types", "Who I Coach"],
   hourlyRate: ["Hourly Rate", "Rate", "Price", "Session Rate", "$/hr"],
-  category: ["Category", "Coach Category", "Tier"],
+  category: ["Outreach Campaign", "Category", "Coach Category", "Tier"],
   featured: ["Featured", "Is Featured", "Highlight"],
   status: ["Status", "Coach Status", "Active"],
+  profileStatus: ["Profile Status"],
   isProfessionalCoach: ["Professional Coach", "Is Professional Coach", "Pro Coach"],
   experienceLevel: ["Experience Level", "Seniority"],
-  clientTier: ["Client Tier", "Target Tier"],
+  clientTier: ["Credits Required", "Client Tier", "Target Tier"],
   industryYears: ["Industry Years", "Years in Industry", "Years Experience"],
 } as const;
 
@@ -44,6 +50,10 @@ function asString(value: unknown): string | null {
     return trimmed || null;
   }
   if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value && typeof value === "object" && "name" in value) {
+    const name = String((value as { name: string }).name).trim();
+    return name || null;
+  }
   return null;
 }
 
@@ -83,7 +93,7 @@ function parseBoolean(value: unknown): boolean {
   if (typeof value === "boolean") return value;
   const str = asString(value)?.toLowerCase();
   if (!str) return false;
-  return ["true", "yes", "y", "1", "featured", "active"].includes(str);
+  return ["true", "yes", "y", "1", "featured", "active", "profile updated", "updated"].includes(str);
 }
 
 function parseCoachStatus(value: unknown): "ACTIVE" | "PENDING" | "INACTIVE" {
@@ -110,10 +120,22 @@ function parseInteger(value: unknown): number | null {
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
+function resolveDisplayName(fields: Record<string, unknown>): string | null {
+  const full = asString(pickField(fields, FIELD_ALIASES.displayName));
+  if (full) return full;
+  const first = asString(pickField(fields, FIELD_ALIASES.firstName));
+  const last = asString(pickField(fields, FIELD_ALIASES.lastName));
+  const combined = [first, last].filter(Boolean).join(" ").trim();
+  return combined || null;
+}
+
 export function mapAirtableRecordToCoach(record: AirtableRecord): MappedCoachFromAirtable | null {
   const fields = record.fields;
-  const displayName = asString(pickField(fields, FIELD_ALIASES.displayName));
+  const displayName = resolveDisplayName(fields);
   if (!displayName) return null;
+
+  const profileStatus = pickField(fields, FIELD_ALIASES.profileStatus);
+  const featuredRaw = pickField(fields, FIELD_ALIASES.featured) ?? profileStatus;
 
   return {
     airtableId: record.id,
@@ -134,7 +156,7 @@ export function mapAirtableRecordToCoach(record: AirtableRecord): MappedCoachFro
     clientSpecializations: asStringArray(pickField(fields, FIELD_ALIASES.clientSpecializations)),
     hourlyRate: parseHourlyRate(pickField(fields, FIELD_ALIASES.hourlyRate)),
     category: asString(pickField(fields, FIELD_ALIASES.category)),
-    featured: parseBoolean(pickField(fields, FIELD_ALIASES.featured)),
+    featured: parseBoolean(featuredRaw),
     status: parseCoachStatus(pickField(fields, FIELD_ALIASES.status)),
     isProfessionalCoach: parseBoolean(pickField(fields, FIELD_ALIASES.isProfessionalCoach)),
     whyCoach: asString(pickField(fields, FIELD_ALIASES.whyCoach)),

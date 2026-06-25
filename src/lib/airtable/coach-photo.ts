@@ -31,7 +31,7 @@ export async function persistCoachPhotoFromAttachment(
   options?: { forceRefresh?: boolean }
 ): Promise<string | null> {
   if (!options?.forceRefresh && isKimchiHostedPhoto(existingPhotoUrl)) {
-    return existingPhotoUrl;
+    return existingPhotoUrl ?? null;
   }
 
   try {

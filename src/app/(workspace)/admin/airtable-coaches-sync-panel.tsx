@@ -179,10 +179,11 @@ export function AirtableCoachesSyncPanel() {
     <ScoutBox padding={24}>
       <ScoutLabel>Airtable coaches</ScoutLabel>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
-        Import coach profiles (including photos) from your Airtable base into Kimchi. Re-syncing updates existing rows by Airtable record ID — no duplicates.
+        Import coach profiles from your <strong>MBB/Big 4 Mentors</strong> Airtable table (field mapping verified via Airtable MCP). Re-syncing updates existing rows by Airtable record ID — no duplicates.
         {status?.pushEnabled
           ? " Kimchi coach profile edits are pushed back to Airtable when linked."
           : " Set AIRTABLE_SYNC_PUSH=true to push Kimchi edits back to Airtable."}
+        {" "}Automated sync on Vercel uses <code style={{ fontFamily: fontMono }}>AIRTABLE_API_KEY</code> (MCP auth is for Cursor only).
       </p>
 
       {forbidden && (
