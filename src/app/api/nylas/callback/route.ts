@@ -3,13 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
 import {
-  exchangeNylasCode,
+  clearNylasOAuthCookie,
   createCoachSchedulerConfig,
+  exchangeNylasCode,
   getNylasConfig,
+  mapNylasOAuthError,
   nylasProfileReturnUrl,
   resolveKimchiAppUrl,
+  resolveNylasOAuthState,
   schedulerSlugForCoach,
-  verifyNylasState,
 } from "@/lib/nylas";
 
 async function profileOwnerRole(coachProfileId: string): Promise<UserRole | null> {
@@ -34,21 +36,52 @@ export async function GET(req: NextRequest) {
 
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
-  const error = req.nextUrl.searchParams.get("error");
+  const oauthError = req.nextUrl.searchParams.get("error");
+  const oauthErrorReason = req.nextUrl.searchParams.get("error_reason");
+  const oauthErrorDescription = req.nextUrl.searchParams.get("error_description");
 
-  const parsed = verifyNylasState(state ?? "");
-  const role = parsed ? await profileOwnerRole(parsed.coachProfileId) : UserRole.ADMIN;
+  const parsedEarly = resolveNylasOAuthState(req, state);
+  const role = parsedEarly ? await profileOwnerRole(parsedEarly.coachProfileId) : UserRole.ADMIN;
   const returnRole = role === UserRole.COACH ? "COACH" : "ADMIN";
 
   function redirectWith(params: Record<string, string>) {
-    return NextResponse.redirect(nylasProfileReturnUrl(appUrl, returnRole, params));
+    const response = NextResponse.redirect(nylasProfileReturnUrl(appUrl, returnRole, params));
+    clearNylasOAuthCookie(response);
+    return response;
   }
 
-  if (error || !code || !state) {
-    return redirectWith({ nylas: "error", reason: "auth" });
+  if (oauthError) {
+    console.error("[nylas/callback] OAuth error", {
+      error: oauthError,
+      error_reason: oauthErrorReason,
+      error_description: oauthErrorDescription,
+    });
+    const mapped = mapNylasOAuthError({
+      error: oauthError,
+      errorReason: oauthErrorReason,
+      errorDescription: oauthErrorDescription,
+    });
+    return redirectWith({
+      nylas: "error",
+      reason: mapped.reason,
+      ...(mapped.detail ? { detail: mapped.detail } : {}),
+    });
   }
 
+  if (!code) {
+    console.error("[nylas/callback] Missing authorization code", {
+      hasState: Boolean(state),
+      hasCookie: Boolean(req.cookies.get("nylas_oauth_state")?.value),
+    });
+    return redirectWith({ nylas: "error", reason: "auth", detail: "missing_code" });
+  }
+
+  const parsed = parsedEarly;
   if (!parsed) {
+    console.error("[nylas/callback] Invalid OAuth state", {
+      hasState: Boolean(state),
+      hasCookie: Boolean(req.cookies.get("nylas_oauth_state")?.value),
+    });
     return redirectWith({ nylas: "error", reason: "state" });
   }
 
@@ -83,6 +116,11 @@ export async function GET(req: NextRequest) {
     return redirectWith({ nylas: "connected" });
   } catch (err) {
     console.error("[nylas/callback]", err);
-    return redirectWith({ nylas: "error", reason: "setup" });
+    const message = err instanceof Error ? err.message : "Scheduler setup failed";
+    return redirectWith({
+      nylas: "error",
+      reason: "setup",
+      ...(message ? { detail: message.slice(0, 200) } : {}),
+    });
   }
 }
