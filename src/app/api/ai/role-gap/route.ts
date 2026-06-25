@@ -10,6 +10,7 @@ import {
 import { jobMatchToRoleGap, roleJobDescription } from "@/lib/role-gap-from-match";
 import { heuristicRoleGapAnalysis } from "@/lib/role-gap-heuristic";
 import { ensureAssetResumeParsed } from "@/lib/ensure-asset-resume";
+import { upsertProfileFields } from "@/lib/profile-write";
 import { getActingUser } from "@/lib/acting-user";
 import { normalizeParsedResumeData, parseJsonFromModel } from "@/lib/resume-parse";
 import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
@@ -30,11 +31,7 @@ async function saveRoleAnalysis(
   const profile = await prisma.profile.findUnique({ where: { userId } });
   const existing = normalizeRoleAnalysesMap(profile?.roleAnalyses);
   const next = setStoredRoleAnalysis(existing, role, analysis);
-  await prisma.profile.upsert({
-    where: { userId },
-    update: { roleAnalyses: next as object },
-    create: { userId, targetRoles: [], roleAnalyses: next as object },
-  });
+  await upsertProfileFields(userId, { roleAnalyses: next as object });
 }
 
 async function resolveResumeSource(
@@ -219,8 +216,15 @@ export async function GET(request: Request) {
       };
       await saveRoleAnalysis(dbUser.id, role, stored);
       return NextResponse.json({ ...stored, cached: false, stale: false, heuristic: true });
-    } catch {
-      return NextResponse.json({ error: "Analysis failed — try again in a moment." }, { status: 500 });
+    } catch (fallbackErr) {
+      console.error("[role-gap] fallback failed", fallbackErr);
+      return NextResponse.json(
+        {
+          error: "Could not save analysis. Your profile may need onboarding completion.",
+          code: "SAVE_FAILED",
+        },
+        { status: 500 },
+      );
     }
   }
 }

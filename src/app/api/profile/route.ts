@@ -3,6 +3,7 @@ import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume
 import { normalizeRoleAnalysesMap } from "@/lib/role-gap";
 import { normalizeSkillGoals, normalizeUpskillProgress } from "@/lib/upskill-programs";
 import { normalizeTargetRoleSettings } from "@/lib/target-role-settings";
+import { upsertProfileFields } from "@/lib/profile-write";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 
@@ -77,11 +78,7 @@ export async function PATCH(request: Request) {
   if (targetRoleSettings !== undefined) profileUpdate.targetRoleSettings = targetRoleSettings;
 
   if (Object.keys(profileUpdate).length > 0) {
-    await prisma.profile.upsert({
-      where: { userId: dbUser.id },
-      update: profileUpdate,
-      create: { userId: dbUser.id, ...profileUpdate, targetRoles: (profileUpdate.targetRoles as string[]) || [] },
-    });
+    await upsertProfileFields(dbUser.id, profileUpdate);
   }
 
   return NextResponse.json({ ok: true });
