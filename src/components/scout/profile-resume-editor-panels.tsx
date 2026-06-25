@@ -211,7 +211,7 @@ export function ReportPanel({
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
         {[
-          { label: "Quality rating", value: score != null ? `${score}/100` : "—" },
+          { label: "Quality rating", value: score != null ? `${Math.round(score)}/100` : "—" },
           { label: "Sections", value: `${5 - missing.length}/5` },
         ].map((stat) => (
           <div key={stat.label} style={{ background: JR.bg, borderRadius: 0, padding: "10px 12px", textAlign: "center" }}>

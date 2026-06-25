@@ -13,8 +13,9 @@ import {
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { resolveHirebaseCompanySlug } from "@/lib/hirebase";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
-import { isSumbleConfigured, sumbleJobFunctionTerm } from "@/lib/sumble";
-import { buildSumbleMarketHeadline, buildSumbleMarketWindows } from "@/lib/sumble-market";
+import { isSumbleConfigured, sumbleJobFunctionTerm, lookupSumbleJobFunctionTerms } from "@/lib/sumble";
+import { buildSumbleMarketHeadline, buildSumbleMarketWindows, MARKET_JOB_SAMPLE_LIMIT } from "@/lib/sumble-market";
+import { getSumbleCreditsRemaining, SumbleInsufficientCreditsError } from "@/lib/sumble-credits";
 
 export const MARKET_WINDOW_OPTIONS = [7, 30, 90, 180] as const;
 export type MarketWindow = (typeof MARKET_WINDOW_OPTIONS)[number];
@@ -32,6 +33,9 @@ export type MarketInsightsBundle = {
   hirebaseCached: boolean;
   serverCached: boolean;
   creditsRemaining: number | null;
+  /** True when no cached data — client must pass load=1 to fetch from Sumble */
+  requiresLoad?: boolean;
+  estimatedCredits?: number;
   error?: string;
 };
 
@@ -64,6 +68,19 @@ function jobFunctionTermsFromRoles(roles: string[]): string[] {
   return [...new Set(terms)].slice(0, 3);
 }
 
+async function resolveMarketJobFunctionTerms(
+  roles: string[],
+  useLookup: boolean
+): Promise<string[]> {
+  if (!useLookup) return jobFunctionTermsFromRoles(roles.length ? roles : ["Product Manager"]);
+  try {
+    const lookup = await lookupSumbleJobFunctionTerms(roles.length ? roles : ["Product Manager"]);
+    return lookup.terms;
+  } catch {
+    return jobFunctionTermsFromRoles(roles);
+  }
+}
+
 async function loadTargetRoles(userId: string): Promise<string[]> {
   const profile = await prisma.profile.findUnique({
     where: { userId },
@@ -77,31 +94,45 @@ export async function getMarketInsightsBundle(input: {
   primaryDays?: number;
   compareWindows?: number[];
   forceRefresh?: boolean;
+  /** When false, only return server cache — never call Sumble */
+  allowFetch?: boolean;
 }): Promise<MarketInsightsBundle> {
   const configured = isSumbleConfigured();
   const targetRoles = await loadTargetRoles(input.userId);
   const titles = defaultTitles(targetRoles);
-  const jobFunctionTerms = jobFunctionTermsFromRoles(
-    targetRoles.length ? targetRoles : ["Product Manager"]
+  const jobFunctionTerms = await resolveMarketJobFunctionTerms(
+    targetRoles.length ? targetRoles : ["Product Manager"],
+    input.allowFetch === true
   );
   const roleLabel = roleLabelFromTitles(titles);
   const primaryDays = input.primaryDays ?? 30;
   const compareWindows = input.compareWindows ?? [7, 30, 90];
   const windowsToFetch = [...new Set([primaryDays, ...compareWindows])].sort((a, b) => a - b);
+  const creditsRemaining = getSumbleCreditsRemaining();
+  const estimatedCredits = MARKET_JOB_SAMPLE_LIMIT;
+
+  const emptyBundle = (): MarketInsightsBundle => ({
+    configured: !!configured,
+    dataSource: configured ? "sumble" : "none",
+    targetRoles: titles,
+    roleLabel,
+    windows: {},
+    primaryDays,
+    headline: "",
+    generatedAt: null,
+    hirebaseCached: false,
+    serverCached: false,
+    creditsRemaining,
+    requiresLoad: configured ? true : undefined,
+    estimatedCredits: configured ? estimatedCredits : undefined,
+  });
 
   if (!configured) {
     return {
+      ...emptyBundle(),
       configured: false,
       dataSource: "none",
-      targetRoles: titles,
-      roleLabel,
-      windows: {},
-      primaryDays,
-      headline: "",
-      generatedAt: null,
-      hirebaseCached: false,
-      serverCached: false,
-      creditsRemaining: null,
+      requiresLoad: undefined,
       error: "Sumble is not configured on this environment.",
     };
   }
@@ -114,11 +145,15 @@ export async function getMarketInsightsBundle(input: {
 
   if (!input.forceRefresh) {
     const hit = getInsightsCached<Omit<MarketInsightsBundle, "serverCached">>(cacheKey);
-    if (hit) return { ...hit, serverCached: true };
+    if (hit) return { ...hit, serverCached: true, requiresLoad: false };
+  }
+
+  if (!input.allowFetch) {
+    return emptyBundle();
   }
 
   try {
-    const { windows, creditsUsed, creditsRemaining } = await buildSumbleMarketWindows({
+    const { windows, creditsUsed, creditsRemaining: remaining } = await buildSumbleMarketWindows({
       jobFunctionTerms,
       windows: windowsToFetch,
       forceRefresh: input.forceRefresh,
@@ -138,26 +173,28 @@ export async function getMarketInsightsBundle(input: {
       generatedAt,
       hirebaseCached: false,
       serverCached: false,
-      creditsRemaining,
+      creditsRemaining: remaining ?? creditsRemaining,
+      requiresLoad: false,
+      estimatedCredits,
     };
 
     setInsightsCached(cacheKey, { ...bundle, serverCached: false }, INSIGHTS_CACHE_TTL_MS);
     void creditsUsed;
     return bundle;
   } catch (err) {
+    const message =
+      err instanceof SumbleInsufficientCreditsError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Failed to load market insights.";
     return {
-      configured: true,
-      dataSource: "sumble",
-      targetRoles: titles,
-      roleLabel,
-      windows: {},
-      primaryDays,
-      headline: "",
-      generatedAt: null,
-      hirebaseCached: false,
-      serverCached: false,
-      creditsRemaining: null,
-      error: err instanceof Error ? err.message : "Failed to load market insights.",
+      ...emptyBundle(),
+      error: message,
+      creditsRemaining:
+        err instanceof SumbleInsufficientCreditsError
+          ? err.creditsRemaining
+          : creditsRemaining,
     };
   }
 }

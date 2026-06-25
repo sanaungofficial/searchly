@@ -1,140 +1,158 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { ParsedResumeData } from "@/lib/resume-parse";
 
-const MARGIN = 50;
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
+const MARGIN = 54;
 const LINE_HEIGHT = 14;
-const MAX_WIDTH = PAGE_WIDTH - MARGIN * 2;
+const BODY_SIZE = 11;
+const HEADING_SIZE = 13;
+const NAME_SIZE = 16;
 
-function wrapText(text: string, maxChars = 92): string[] {
+function wrapLines(text: string, maxWidth: number, font: Awaited<ReturnType<PDFDocument["embedFont"]>>, size: number): string[] {
+  const words = text.replace(/\r/g, "").split(/\s+/).filter(Boolean);
   const lines: string[] = [];
-  for (const paragraph of text.split(/\n+/)) {
-    const words = paragraph.trim().split(/\s+/).filter(Boolean);
-    if (!words.length) {
-      lines.push("");
-      continue;
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (font.widthOfTextAtSize(next, size) <= maxWidth) {
+      line = next;
+    } else {
+      if (line) lines.push(line);
+      line = word;
     }
-    let current = "";
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word;
-      if (next.length > maxChars && current) {
-        lines.push(current);
-        current = word;
-      } else {
-        current = next;
-      }
-    }
-    if (current) lines.push(current);
   }
-  return lines;
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+async function createPdfWriter() {
+  const pdf = await PDFDocument.create();
+  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  let y = PAGE_HEIGHT - MARGIN;
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const maxWidth = PAGE_WIDTH - MARGIN * 2;
+
+  const ensureSpace = (needed: number) => {
+    if (y - needed >= MARGIN) return;
+    page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    y = PAGE_HEIGHT - MARGIN;
+  };
+
+  const writeLine = (text: string, opts?: { bold?: boolean; size?: number; gap?: number }) => {
+    const size = opts?.size ?? BODY_SIZE;
+    const gap = opts?.gap ?? LINE_HEIGHT;
+    ensureSpace(gap);
+    page.drawText(text, {
+      x: MARGIN,
+      y: y - size,
+      size,
+      font: opts?.bold ? fontBold : font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    y -= gap;
+  };
+
+  const writeParagraph = (text: string, opts?: { bold?: boolean; size?: number }) => {
+    const size = opts?.size ?? BODY_SIZE;
+    const f = opts?.bold ? fontBold : font;
+    for (const rawLine of text.split("\n")) {
+      for (const line of wrapLines(rawLine.trim(), maxWidth, f, size)) {
+        writeLine(line, { bold: opts?.bold, size });
+      }
+      y -= 4;
+    }
+  };
+
+  const writeHeading = (text: string) => {
+    y -= 8;
+    writeLine(text.toUpperCase(), { bold: true, size: HEADING_SIZE, gap: HEADING_SIZE + 6 });
+  };
+
+  return {
+    finish: async (filename: string) => {
+      const bytes = await pdf.save();
+      return { buffer: Buffer.from(bytes), filename };
+    },
+    writeLine,
+    writeParagraph,
+    writeHeading,
+  };
 }
 
 export async function buildResumePdf(
   data: ParsedResumeData,
   filename = "resume.pdf",
 ): Promise<{ buffer: Buffer; filename: string }> {
-  const pdf = await PDFDocument.create();
-  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  let y = PAGE_HEIGHT - MARGIN;
+  const w = await createPdfWriter();
 
-  function ensureSpace(lines = 1) {
-    if (y - lines * LINE_HEIGHT < MARGIN) {
-      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      y = PAGE_HEIGHT - MARGIN;
-    }
-  }
-
-  function drawLine(text: string, opts?: { bold?: boolean; size?: number; gap?: number }) {
-    const size = opts?.size ?? 11;
-    const gap = opts?.gap ?? LINE_HEIGHT;
-    for (const line of wrapText(text)) {
-      ensureSpace();
-      page.drawText(line, {
-        x: MARGIN,
-        y,
-        size,
-        font: opts?.bold ? fontBold : font,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      y -= gap;
-    }
-  }
-
-  if (data.name) {
-    drawLine(data.name, { bold: true, size: 16, gap: 18 });
-  }
-
-  const contact = [data.email, data.phone, data.location, data.linkedinUrl, data.website]
-    .filter(Boolean)
-    .join(" · ");
-  if (contact) drawLine(contact, { size: 10, gap: 16 });
+  if (data.name) w.writeLine(data.name, { bold: true, size: NAME_SIZE, gap: NAME_SIZE + 4 });
+  const contact = [data.email, data.phone, data.location, data.linkedinUrl, data.website].filter(Boolean).join(" · ");
+  if (contact) w.writeParagraph(contact);
 
   if (data.summary) {
-    drawLine("PROFESSIONAL SUMMARY", { bold: true, size: 12, gap: 16 });
-    drawLine(data.summary);
-    y -= 6;
+    w.writeHeading("Professional Summary");
+    w.writeParagraph(data.summary);
   }
 
-  if (data.skills.length) {
-    drawLine("SKILLS", { bold: true, size: 12, gap: 16 });
-    drawLine(data.skills.join(" · "));
-    y -= 6;
+  if (data.skillGroups.length) {
+    w.writeHeading("Areas of Emphasis");
+    for (const group of data.skillGroups) {
+      w.writeLine(group.label, { bold: true });
+      w.writeParagraph(group.skills.join(" · "));
+    }
+  } else if (data.skills.length) {
+    w.writeHeading("Skills");
+    w.writeParagraph(data.skills.join(" · "));
   }
 
   if (data.workExperience.length) {
-    drawLine("EXPERIENCE", { bold: true, size: 12, gap: 16 });
+    w.writeHeading("Professional Experience");
     for (const job of data.workExperience) {
       const dates = [job.from, job.to].filter(Boolean).join(" – ");
-      drawLine(`${job.title}${dates ? ` · ${dates}` : ""}`, { bold: true, size: 11 });
-      drawLine(`${job.company}${job.location ? ` · ${job.location}` : ""}`, { size: 10 });
-      if (job.description) drawLine(job.description);
-      for (const bullet of job.bullets ?? []) {
-        drawLine(`• ${bullet.replace(/^[•\-\*–—]\s*/, "")}`);
+      w.writeLine([job.title, dates].filter(Boolean).join("  "), { bold: true });
+      w.writeLine(job.company, { bold: false });
+      if (job.description) w.writeParagraph(job.description);
+      for (const bullet of job.bullets) {
+        w.writeParagraph(`• ${bullet}`);
       }
-      y -= 4;
     }
   }
 
   if (data.education.length) {
-    drawLine("EDUCATION", { bold: true, size: 12, gap: 16 });
+    w.writeHeading("Education");
     for (const edu of data.education) {
-      drawLine(`${edu.degree}${edu.field ? `, ${edu.field}` : ""}`, { bold: true, size: 11 });
-      drawLine(`${edu.school}${edu.from || edu.to ? ` · ${[edu.from, edu.to].filter(Boolean).join(" – ")}` : ""}`);
-      y -= 4;
+      w.writeLine(edu.school, { bold: true });
+      w.writeParagraph(
+        [[edu.degree, edu.field].filter(Boolean).join(", "), [edu.from, edu.to].filter(Boolean).join(" – ")]
+          .filter(Boolean)
+          .join(" · "),
+      );
     }
   }
 
-  const bytes = await pdf.save();
-  return { buffer: Buffer.from(bytes), filename };
+  if (data.certifications.length) {
+    w.writeHeading("Certifications");
+    for (const cert of data.certifications) {
+      w.writeParagraph([cert.name, cert.issuer, cert.date].filter(Boolean).join(" · "));
+    }
+  }
+
+  return w.finish(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
 }
 
-export async function buildPlainTextPdf(
+export async function buildPlainTextResumePdf(
   text: string,
   filename = "resume.pdf",
 ): Promise<{ buffer: Buffer; filename: string }> {
-  const pdf = await PDFDocument.create();
-  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  let y = PAGE_HEIGHT - MARGIN;
-
-  for (const line of wrapText(text)) {
-    if (y - LINE_HEIGHT < MARGIN) {
-      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      y = PAGE_HEIGHT - MARGIN;
+  const w = await createPdfWriter();
+  for (const line of text.split("\n")) {
+    if (!line.trim()) {
+      w.writeLine("");
+      continue;
     }
-    page.drawText(line || " ", {
-      x: MARGIN,
-      y,
-      size: 11,
-      font,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    y -= LINE_HEIGHT;
+    w.writeParagraph(line);
   }
-
-  const bytes = await pdf.save();
-  return { buffer: Buffer.from(bytes), filename };
+  return w.finish(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
 }

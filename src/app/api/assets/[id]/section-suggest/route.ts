@@ -1,8 +1,17 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { parseJsonFromModel, normalizeParsedResumeData, type ParsedResumeData, type ResumeSectionId } from "@/lib/resume-parse";
+import { getPrompt, interpolate } from "@/lib/prompts";
+import { parseJsonFromModel, sectionTextBlob, normalizeParsedResumeData, type ResumeSectionId } from "@/lib/resume-parse";
+import { createClient } from "@/utils/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+
+const SECTION_LABELS: Record<ResumeSectionId, string> = {
+  summary: "Professional Summary",
+  skills: "Areas of Emphasis",
+  experience: "Work Experience",
+  education: "Education & Training",
+  certifications: "Certifications",
+};
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
@@ -10,41 +19,26 @@ function getAnthropic() {
   return _anthropic;
 }
 
-const SECTION_LABELS: Record<ResumeSectionId, string> = {
-  summary: "Professional Summary",
-  skills: "Skills",
-  experience: "Work Experience",
-  education: "Education",
-  certifications: "Certifications",
-};
-
-function sectionSlice(data: ParsedResumeData, sectionId: ResumeSectionId, entryLabel?: string): string {
-  switch (sectionId) {
-    case "summary":
-      return data.summary || "";
-    case "skills":
-      return data.skills.join(", ");
-    case "experience": {
-      if (entryLabel) {
-        const entry = data.workExperience.find(
-          (w) =>
-            w.company === entryLabel ||
-            w.title === entryLabel ||
-            `${w.company} ${w.title}`.includes(entryLabel),
-        );
-        return entry
-          ? JSON.stringify({ title: entry.title, company: entry.company, bullets: entry.bullets, description: entry.description }, null, 2)
-          : JSON.stringify(data.workExperience.slice(0, 2), null, 2);
-      }
-      return JSON.stringify(data.workExperience.slice(0, 2), null, 2);
-    }
-    case "education":
-      return JSON.stringify(data.education, null, 2);
-    case "certifications":
-      return data.certifications.map((c) => c.name).join("\n");
-    default:
-      return "";
+function experienceSlice(
+  parsed: ReturnType<typeof normalizeParsedResumeData>,
+  entryId?: string,
+  entryLabel?: string,
+): string {
+  if (!parsed) return "";
+  if (entryId) {
+    const entry = parsed.workExperience.find((e) => e.id === entryId);
+    return entry ? JSON.stringify(entry, null, 2) : "";
   }
+  const entry = entryLabel
+    ? parsed.workExperience.find(
+        (e) =>
+          e.id === entryLabel ||
+          e.company === entryLabel ||
+          e.title === entryLabel ||
+          `${e.company} ${e.title}`.includes(entryLabel),
+      )
+    : parsed.workExperience[0];
+  return entry ? JSON.stringify(entry, null, 2) : JSON.stringify(parsed.workExperience.slice(0, 2), null, 2);
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -55,64 +49,57 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { profile: true },
+  });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const asset = await prisma.userAsset.findFirst({ where: { id, userId: dbUser.id, type: "RESUME" } });
+  const asset = await prisma.userAsset.findFirst({
+    where: { id, userId: dbUser.id, type: "RESUME" },
+  });
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const parsed = normalizeParsedResumeData(asset.parsedData);
+  if (!parsed) return NextResponse.json({ error: "No resume data" }, { status: 404 });
 
   const body = await request.json().catch(() => ({}));
   const sectionId = body.sectionId as ResumeSectionId;
   if (!sectionId || !(sectionId in SECTION_LABELS)) {
     return NextResponse.json({ error: "Invalid section" }, { status: 400 });
   }
+  const entryId = typeof body.entryId === "string" ? body.entryId : undefined;
   const entryLabel = typeof body.entryLabel === "string" ? body.entryLabel : undefined;
-  const parsed = normalizeParsedResumeData(asset.parsedData);
-  if (!parsed) return NextResponse.json({ error: "No resume data" }, { status: 404 });
 
-  const draftSlice = sectionSlice(parsed, sectionId, entryLabel);
+  const draftSlice =
+    sectionId === "experience"
+      ? experienceSlice(parsed, entryId, entryLabel)
+      : sectionTextBlob(parsed, sectionId, entryId);
+
+  const targetRoles = (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({
       issues: [],
-      suggestions: draftSlice.trim()
-        ? [
-            {
-              id: "dev-preview",
-              label: "Dev preview",
-              text: draftSlice.slice(0, 800) || "Add content — full AI suggestions on production.",
-            },
-          ]
-        : [],
+      suggestions: [
+        {
+          label: "Dev preview",
+          text: draftSlice.slice(0, 500) || "Add content here — full AI suggestions available on production.",
+        },
+      ],
     });
   }
 
-  const prompt = `You are an expert resume coach. Suggest concrete rewrites for ONE section of a resume.
-
-Section: ${SECTION_LABELS[sectionId]}${entryLabel ? ` (${entryLabel})` : ""}
-
-Current content:
-${draftSlice.slice(0, 6000) || "(empty)"}
-
-Return ONLY valid JSON:
-{
-  "issues": [
-    {
-      "severity": "Urgent|Critical|Optional|Minor",
-      "title": "Short issue title",
-      "issueDetected": "What is wrong",
-      "whyItMatters": "Why recruiters care",
-      "howToImprove": "Actionable fix"
-    }
-  ],
-  "suggestions": [
-    { "label": "Option name", "text": "Full rewritten section text ready to paste" }
-  ]
-}
-
-Provide 1-3 suggestions with complete rewrite text. Do not fabricate employers or degrees.`;
-
   try {
+    const template = await getPrompt("RESUME_SECTION_SUGGEST");
+    const prompt = interpolate(template, {
+      sectionId,
+      sectionLabel: SECTION_LABELS[sectionId],
+      entryLabel: entryLabel ? ` (${entryLabel})` : "",
+      draftSlice: draftSlice.slice(0, 6000),
+      targetRoles,
+    });
+
     const message = await getAnthropic().messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1500,
@@ -120,13 +107,13 @@ Provide 1-3 suggestions with complete rewrite text. Do not fabricate employers o
     });
 
     const text = message.content[0]?.type === "text" ? message.content[0].text : "";
-    const parsedResponse = parseJsonFromModel(text) as {
+    const result = parseJsonFromModel(text) as {
       issues?: Array<Record<string, unknown>>;
       suggestions?: Array<{ label?: string; text?: string }>;
     } | null;
 
-    const issues = Array.isArray(parsedResponse?.issues)
-      ? parsedResponse!.issues
+    const issues = Array.isArray(result?.issues)
+      ? result!.issues
           .map((row, i) => ({
             id: `${sectionId}-s-${i}`,
             severity: (typeof row.severity === "string" ? row.severity : "Optional") as
@@ -142,8 +129,8 @@ Provide 1-3 suggestions with complete rewrite text. Do not fabricate employers o
           .filter((row) => row.issueDetected || row.howToImprove)
       : [];
 
-    const suggestions = Array.isArray(parsedResponse?.suggestions)
-      ? parsedResponse!.suggestions
+    const suggestions = Array.isArray(result?.suggestions)
+      ? result!.suggestions
           .map((s, i) => ({
             id: `opt-${i}`,
             label: typeof s.label === "string" ? s.label : `Option ${i + 1}`,

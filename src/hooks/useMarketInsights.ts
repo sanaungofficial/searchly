@@ -17,16 +17,21 @@ export type MarketInsightsPayload = {
   hirebaseCached: boolean;
   serverCached: boolean;
   creditsRemaining?: number | null;
+  requiresLoad?: boolean;
+  estimatedCredits?: number;
   error?: string;
 };
 
 export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
   const [data, setData] = useState<MarketInsightsPayload | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const load = useCallback(
-    async (refresh = false) => {
+    async (options?: { refresh?: boolean; fetch?: boolean }) => {
+      const refresh = options?.refresh ?? false;
+      const fetch = options?.fetch ?? refresh;
       setLoading(true);
       setError(null);
       try {
@@ -34,15 +39,18 @@ export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
           days: String(primaryDays),
           windows,
         });
+        if (fetch) params.set("load", "1");
         if (refresh) params.set("refresh", "1");
         const res = await fetch(`/api/market/insights?${params}`);
         const body = (await res.json()) as MarketInsightsPayload;
-        if (!res.ok && !body.windows) {
+        if (!res.ok && !body.windows && !body.requiresLoad) {
           setError(body.error ?? "Could not load market data.");
           setData(body);
         } else {
           setData(body);
           if (body.error) setError(body.error);
+          else setError(null);
+          if (Object.keys(body.windows ?? {}).length) setHasLoaded(true);
         }
       } catch {
         setError("Network error loading market insights.");
@@ -53,11 +61,20 @@ export function useMarketInsights(primaryDays: number, windows = "7,30,90") {
     [primaryDays, windows]
   );
 
+  /** On mount: check server cache only — never spends Sumble credits */
   useEffect(() => {
-    void load(false);
+    void load({ fetch: false });
   }, [load]);
 
-  return { data, loading, error, refresh: () => load(true) };
+  return {
+    data,
+    loading,
+    error,
+    hasLoaded,
+    requiresLoad: data?.requiresLoad ?? !hasLoaded,
+    load: () => load({ fetch: true }),
+    refresh: () => load({ fetch: true, refresh: true }),
+  };
 }
 
 export function windowInsight(

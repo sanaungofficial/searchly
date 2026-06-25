@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { hostnameFromUrl } from "@/lib/company-domain";
 import { formatSumbleFunding, formatSumbleGrowth } from "@/lib/sumble";
-import type { CompanySumbleIntelBundle } from "@/lib/sumble-intel-service";
+import type { CompanySumbleIntelBundle, CompanySumbleBriefBundle } from "@/lib/sumble-intel-service";
+import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
 import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
-import { ScoutBox, ScoutLabel } from "./scout-box";
+import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
+import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
 
 function formatSignalDate(iso: string): string {
@@ -74,6 +76,103 @@ function PanelHeader({
   );
 }
 
+function SumbleBriefSection({
+  trackedId,
+  companyName,
+  domainHint,
+  compact,
+}: {
+  trackedId?: string;
+  companyName: string;
+  domainHint: string | null;
+  compact?: boolean;
+}) {
+  const [briefData, setBriefData] = useState<CompanySumbleBriefBundle | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefError, setBriefError] = useState<string | null>(null);
+  const [briefRequiresLoad, setBriefRequiresLoad] = useState(true);
+
+  const loadBrief = useCallback(
+    async (fetch = false) => {
+      setBriefLoading(true);
+      setBriefError(null);
+      try {
+        const params = new URLSearchParams({ name: companyName });
+        if (trackedId) params.set("trackedId", trackedId);
+        if (domainHint) params.set("domain", domainHint);
+        if (fetch) params.set("load", "1");
+        const res = await fetch(`/api/companies/sumble-brief?${params}`);
+        const body = (await res.json()) as CompanySumbleBriefBundle;
+        setBriefData(body);
+        setBriefRequiresLoad(body.requiresLoad ?? !body.brief);
+        if (body.error && !body.brief) setBriefError(body.error);
+      } catch {
+        setBriefError("Could not load intelligence brief.");
+      } finally {
+        setBriefLoading(false);
+      }
+    },
+    [trackedId, companyName, domainHint]
+  );
+
+  useEffect(() => {
+    setBriefData(null);
+    setBriefRequiresLoad(true);
+    void loadBrief(false);
+  }, [loadBrief]);
+
+  if (briefRequiresLoad && !briefData?.brief) {
+    return (
+      <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+        <ScoutLabel>Account intelligence brief</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 12px", lineHeight: 1.5 }}>
+          AI-generated account angle from Sumble (~{SUMBLE_ESTIMATED_COSTS.intelligenceBrief} credits). May take a moment to generate.
+        </p>
+        <ScoutSecondaryBtn onClick={() => void loadBrief(true)} disabled={briefLoading} style={{ minHeight: 40 }}>
+          {briefLoading ? "Loading…" : "Load account brief"}
+        </ScoutSecondaryBtn>
+      </ScoutBox>
+    );
+  }
+
+  if (!briefData?.brief) {
+    if (briefError) {
+      return (
+        <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+          <ScoutLabel>Account intelligence brief</ScoutLabel>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0" }}>{briefError}</p>
+        </ScoutBox>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+        <ScoutLabel>{briefData.brief.title}</ScoutLabel>
+        {briefData.brief.sumble_url && (
+          <a href={briefData.brief.sumble_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "none" }}>
+            View on Sumble ↗
+          </a>
+        )}
+      </div>
+      <div
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.bodySm,
+          color: color.stone,
+          marginTop: 10,
+          lineHeight: 1.6,
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {briefData.brief.body}
+      </div>
+    </ScoutBox>
+  );
+}
+
 export function CompanySumbleIntelPanel({
   trackedId,
   companyName,
@@ -86,25 +185,40 @@ export function CompanySumbleIntelPanel({
   compact?: boolean;
 }) {
   const [data, setData] = useState<CompanySumbleIntelBundle | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requiresLoad, setRequiresLoad] = useState(true);
+  const [detailLoaded, setDetailLoaded] = useState(false);
 
   const domainHint = hostnameFromUrl(website) ?? website?.trim() ?? null;
 
   const load = useCallback(
-    async (refresh = false) => {
+    async (options?: { refresh?: boolean; fetch?: boolean; people?: boolean; teams?: boolean }) => {
+      const refresh = options?.refresh ?? false;
+      const fetch = options?.fetch ?? refresh;
+      const people = options?.people ?? false;
+      const teams = options?.teams ?? false;
       setLoading(true);
       setError(null);
       try {
         const params = new URLSearchParams({ name: companyName });
         if (trackedId) params.set("trackedId", trackedId);
         if (domainHint) params.set("domain", domainHint);
+        if (fetch) params.set("load", "1");
         if (refresh) params.set("refresh", "1");
+        if (people) params.set("people", "1");
+        if (teams) params.set("teams", "1");
         const res = await fetch(`/api/companies/sumble-intel?${params}`);
         const body = (await res.json()) as CompanySumbleIntelBundle;
         setData(body);
-        if (!res.ok || (body.error && !body.organization)) {
+        setRequiresLoad(body.requiresLoad ?? !body.organization);
+        if (people || teams) setDetailLoaded(true);
+        if (!res.ok || (body.error && !body.organization && !body.requiresLoad)) {
           setError(body.error ?? "Could not load Sumble intelligence.");
+        } else if (body.error) {
+          setError(body.error);
+        } else {
+          setError(null);
         }
       } catch {
         setError("Network error loading Sumble intelligence.");
@@ -116,13 +230,31 @@ export function CompanySumbleIntelPanel({
   );
 
   useEffect(() => {
-    void load(false);
+    setData(null);
+    setError(null);
+    setRequiresLoad(true);
+    setDetailLoaded(false);
+    void load({ fetch: false });
   }, [load]);
+
+  if (requiresLoad && !data?.organization) {
+    return (
+      <SumbleLoadPrompt
+        title="Sumble intelligence"
+        description={`Load org profile and signals for ${companyName}. People and teams are optional after the base load.`}
+        estimatedCredits={data?.estimatedCredits ?? 8}
+        creditsRemaining={data?.creditsRemaining}
+        loading={loading}
+        onLoad={() => void load({ fetch: true })}
+        loadLabel="Load company intel"
+      />
+    );
+  }
 
   if (loading && !data?.organization) {
     return (
       <ScoutBox padding="14px 16px">
-        <PanelHeader loading={loading} onRefresh={() => void load(true)} />
+        <PanelHeader loading={loading} onRefresh={() => void load({ fetch: true, refresh: true })} />
         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
           Loading Sumble intelligence…
         </p>
@@ -133,7 +265,7 @@ export function CompanySumbleIntelPanel({
   if (error && !data?.organization) {
     return (
       <ScoutBox padding="14px 16px">
-        <PanelHeader loading={loading} onRefresh={() => void load(true)} />
+        <PanelHeader loading={loading} onRefresh={() => void load({ fetch: true, refresh: true })} />
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 0", lineHeight: 1.5 }}>
           {error}
         </p>
@@ -153,7 +285,7 @@ export function CompanySumbleIntelPanel({
 
   return (
     <div>
-      <PanelHeader loading={loading} onRefresh={() => void load(true)} sumbleUrl={data.sumbleUrl} />
+      <PanelHeader loading={loading} onRefresh={() => void load({ fetch: true, refresh: true })} sumbleUrl={data.sumbleUrl} />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: compact ? 12 : 16 }}>
         {org.employee_count != null && (
@@ -399,6 +531,29 @@ export function CompanySumbleIntelPanel({
         </ScoutBox>
       )}
 
+      {!detailLoaded && data.people.length === 0 && data.teams.length === 0 && (
+        <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
+          <ScoutLabel>People & teams</ScoutLabel>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 12px", lineHeight: 1.5 }}>
+            Optional — loads key people and active teams (~10 additional credits).
+          </p>
+          <ScoutSecondaryBtn
+            onClick={() => void load({ fetch: true, people: true, teams: true })}
+            disabled={loading}
+            style={{ minHeight: 40 }}
+          >
+            {loading ? "Loading…" : "Load people & teams"}
+          </ScoutSecondaryBtn>
+        </ScoutBox>
+      )}
+
+      <SumbleBriefSection
+        trackedId={trackedId}
+        companyName={companyName}
+        domainHint={domainHint}
+        compact={compact}
+      />
+
       {data.signals.length === 0 &&
         data.people.length === 0 &&
         data.teams.length === 0 &&
@@ -412,6 +567,7 @@ export function CompanySumbleIntelPanel({
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "12px 0 0" }}>
           Updated {new Date(data.generatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
           {data.serverCached ? " · cached" : ""}
+          {data.creditsRemaining != null ? ` · ${data.creditsRemaining.toLocaleString()} credits left` : ""}
         </p>
       )}
     </div>

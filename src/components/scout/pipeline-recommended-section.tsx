@@ -34,12 +34,6 @@ import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as 
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
 
-function sanitizeRecommendedError(msg: string | null | undefined): string | null {
-  if (!msg?.trim()) return null;
-  if (/embed|artifact|permission|vsearch|Hirebase resume/i.test(msg)) return null;
-  return msg.trim();
-}
-
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
   totalCount?: number;
@@ -797,14 +791,18 @@ export function PipelineRecommendedSection({
         if (gen !== fetchGenRef.current) return;
 
         if (!res.ok) {
-          const msg = sanitizeRecommendedError(formatApiErrorMessage(data.error, "Could not load recommended jobs."));
-          setError(
-            msg
-              ? data.needsResume
-                ? `${msg} Upload or re-upload your resume from Profile → Assets.`
-                : msg
-              : null,
-          );
+          const rawMsg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
+          const isEmbedNoise =
+            /embed|artifact|hirebase|permission|forbidden|403|vector/i.test(rawMsg);
+          const msg =
+            data.needsResume && !isEmbedNoise
+              ? `${rawMsg} Upload or re-upload your resume from Profile → Assets.`
+              : data.needsResume
+                ? "Upload a resume from Profile → Assets to see personalized recommendations."
+                : isEmbedNoise
+                  ? null
+                  : rawMsg;
+          setError(msg);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -876,7 +874,7 @@ export function PipelineRecommendedSection({
 
     if (cached && isCacheFresh(cached)) {
       setJobs(cached.jobs);
-      setError(sanitizeRecommendedError(cached.error));
+      setError(cached.error ?? null);
       setHasLoadedOnce(true);
       setLoading(false);
       return;
@@ -898,7 +896,7 @@ export function PipelineRecommendedSection({
     const cached = readRecommendedCache(cacheKey);
     if (cached && isCacheFresh(cached)) {
       setJobs(cached.jobs);
-      setError(sanitizeRecommendedError(cached.error));
+      setError(cached.error ?? null);
       setHasLoadedOnce(true);
       setLoading(false);
       return;

@@ -173,8 +173,24 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     }
   }
 
-  function downloadPdf() {
+  async function downloadPdf() {
     setDownloadMenuOpen(false);
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/resume/tailored/${jobId}/download?format=pdf`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `resume-${company || "tailored"}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+    } finally {
+      setDownloading(false);
+    }
     window.print();
   }
 

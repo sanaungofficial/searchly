@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react";
-import { X, Download, Loader2, Check, RefreshCw, Share2 } from "lucide-react";
+import { X, Download, Loader2, Check, RefreshCw, Share2, ChevronDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   type ParsedResumeData,
@@ -14,9 +14,9 @@ import { JR, type ReportIssue } from "./profile-resume-editor-panels";
 import {
   ResumeAnalysisReportDrawer,
   buildFullReport,
-  normalizeQualityScore,
   scoreToGrade,
   type ReportHighlightCategory,
+  type ReportHighlightItem,
 } from "./profile-resume-analysis-report";
 import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobright-document";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
@@ -81,30 +81,7 @@ function normalizeAnalysis(raw: AnalysisData): { score?: number; headline?: stri
       issues.push({ priority: "Optional", title: "Improvement", detail: tip });
     });
   }
-  return { score: normalizeQualityScore(raw.score), headline: raw.headline, strengths: raw.strengths, issues };
-}
-
-function findPriorityResumeSection(fullReport: ReturnType<typeof buildFullReport>): ResumeSectionId {
-  for (const group of fullReport.highlights) {
-    for (const item of group.items) {
-      if (
-        (item.severity === "Urgent" || item.severity === "Critical") &&
-        item.sectionHint
-      ) {
-        return item.sectionHint;
-      }
-    }
-  }
-  for (const issue of fullReport.issues) {
-    if (issue.priority === "Urgent" || issue.priority === "Critical") {
-      const title = `${issue.title} ${issue.detail}`.toLowerCase();
-      if (/summary|skill|keyword/.test(title)) return "summary";
-      if (/education|degree/.test(title)) return "education";
-      if (/certif/.test(title)) return "certifications";
-      if (/experience|bullet|impact/.test(title)) return "experience";
-    }
-  }
-  return "experience";
+  return { score: raw.score, headline: raw.headline, strengths: raw.strengths, issues };
 }
 
 export function ProfileResumeEditor({
@@ -122,14 +99,13 @@ export function ProfileResumeEditor({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [assetName, setAssetName] = useState("");
   const [isPrimary, setIsPrimary] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedResumeData>(emptyParsedResumeData());
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [fixSection, setFixSection] = useState<{ sectionId: ResumeSectionId; entryLabel?: string; mode?: "all" | "impact" } | null>(null);
+  const [fixSection, setFixSection] = useState<{ sectionId: ResumeSectionId; entryLabel?: string; entryId?: string; mode?: "all" | "impact" } | null>(null);
   const [fixSuggestions, setFixSuggestions] = useState<{ id: string; label: string; text: string }[]>([]);
   const [fixSuggestIssues, setFixSuggestIssues] = useState<ReturnType<typeof getSectionFixIssues>>([]);
   const [fixSuggestionsLoading, setFixSuggestionsLoading] = useState(false);
@@ -141,7 +117,9 @@ export function ProfileResumeEditor({
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const downloadRef = useRef<HTMLDivElement>(null);
   const pendingAutoMatch = useRef(false);
   const autoMatchStarted = useRef(false);
 
@@ -158,7 +136,7 @@ export function ProfileResumeEditor({
   }));
 
   const fullReport = buildFullReport({
-    score: normalizeQualityScore(report?.score ?? completeness.pct),
+    score: report?.score ?? completeness.pct,
     headline: report?.headline,
     strengths: report?.strengths,
     issues: reportIssues,
@@ -166,13 +144,12 @@ export function ProfileResumeEditor({
     updatedAt: analysis?._cachedAt,
   });
 
-  function beginImprovements() {
-    setReportOpen(false);
-    openResumeFix(findPriorityResumeSection(fullReport));
-  }
-
-  function openResumeFix(sectionId: ResumeSectionId, entryLabel?: string, mode: "all" | "impact" = "all") {
-    setFixSection({ sectionId, entryLabel, mode });
+  const openFixSection = useCallback((
+    sectionId: ResumeSectionId,
+    options?: { entryLabel?: string; entryId?: string; mode?: "all" | "impact" },
+  ) => {
+    const mode = options?.mode ?? "all";
+    setFixSection({ sectionId, entryLabel: options?.entryLabel, entryId: options?.entryId, mode });
     setFixSuggestions([]);
     setFixSuggestIssues([]);
     if (mode === "impact" || !assetId) return;
@@ -181,7 +158,11 @@ export function ProfileResumeEditor({
     void fetch(`/api/assets/${assetId}/section-suggest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sectionId, entryLabel }),
+      body: JSON.stringify({
+        sectionId,
+        entryId: options?.entryId,
+        entryLabel: options?.entryLabel,
+      }),
     })
       .then(async (res) => {
         const data = await res.json();
@@ -221,49 +202,34 @@ export function ProfileResumeEditor({
       })
       .catch(() => {})
       .finally(() => setFixSuggestionsLoading(false));
+  }, [assetId]);
+
+  function sectionFromHighlight(item: ReportHighlightItem): ResumeSectionId {
+    if (item.sectionHint) return item.sectionHint;
+    const title = `${item.title} ${item.summary}`.toLowerCase();
+    if (/summary|headline|keyword|relevant/.test(title)) return "summary";
+    if (/skill|emphasis|competenc/.test(title)) return "skills";
+    if (/education|degree|school/.test(title)) return "education";
+    if (/certif|credential/.test(title)) return "certifications";
+    return "experience";
   }
 
-  function applyResumeSuggestion(text: string) {
-    if (!fixSection) return;
-    const { sectionId, entryLabel } = fixSection;
-    const next = { ...parsedData };
-
-    if (sectionId === "summary") {
-      next.summary = text;
-    } else if (sectionId === "skills") {
-      next.skills = text.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
-    } else if (sectionId === "experience") {
-      const matchEntry = (w: (typeof next.workExperience)[0]) =>
-        !entryLabel ||
-        w.company === entryLabel ||
-        w.title === entryLabel ||
-        `${w.company} ${w.title}`.includes(entryLabel);
-      next.workExperience = next.workExperience.map((w) =>
-        matchEntry(w) ? { ...w, bullets: text.split("\n").map((b) => b.trim()).filter(Boolean) } : w,
-      );
-    } else if (sectionId === "education") {
-      next.education = next.education.map((edu, i) => (i === 0 || entryLabel === edu.school ? { ...edu, degree: text } : edu));
-    } else if (sectionId === "certifications") {
-      next.certifications = text.split("\n").map((name, i) => ({
-        id: next.certifications[i]?.id ?? `cert_${Date.now()}_${i}`,
-        name: name.trim(),
-      })).filter((c) => c.name);
-    }
-
-    queueSave(next);
-    setFixSection(null);
-    setFixSuggestions([]);
-    setFixSuggestIssues([]);
+  function beginImprovements() {
+    setReportOpen(false);
+    const firstUrgent = fullReport.highlights
+      .flatMap((g) => g.items)
+      .find((i) => i.severity === "Urgent" || i.severity === "Critical");
+    const sectionId = firstUrgent ? sectionFromHighlight(firstUrgent) : "experience";
+    openFixSection(sectionId, { mode: "all" });
   }
 
-  const displayScore = normalizeQualityScore(report?.score ?? completeness.pct);
+  const displayScore = report?.score ?? completeness.pct;
   const { grade, label: gradeLabel } = scoreToGrade(displayScore);
-  const fixIssues =
-    fixSuggestIssues.length > 0
-      ? fixSuggestIssues
-      : fixSection
-        ? getSectionFixIssues(fixSection.sectionId, fullReport, fixSection.mode ?? "all")
-        : [];
+  const fixIssues = fixSection
+    ? (fixSuggestIssues.length
+        ? fixSuggestIssues
+        : getSectionFixIssues(fixSection.sectionId, fullReport, fixSection.mode ?? "all"))
+    : [];
   const sectionMatches = matchResult?.keywords?.length ? computeSectionMatches(parsedData, matchResult.keywords) : {};
   const entryMatches = matchResult?.keywords?.length ? computeExperienceEntryMatches(parsedData, matchResult.keywords) : {};
 
@@ -308,6 +274,62 @@ export function ProfileResumeEditor({
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => void saveParsedData(next), 600);
   }, [saveParsedData]);
+
+  const applyFixSuggestion = useCallback((text: string) => {
+    if (!fixSection) return;
+    const { sectionId, entryId, entryLabel } = fixSection;
+    let next = { ...parsedData };
+
+    if (sectionId === "summary") {
+      next = { ...next, summary: text };
+    } else if (sectionId === "skills") {
+      const skills = text.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+      next = { ...next, skills, skillGroups: skills.length ? [{ id: "skills_0", label: "Skills", skills }] : [] };
+    } else if (sectionId === "experience") {
+      const bullets = text.split("\n").map((l) => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+      if (entryId || entryLabel) {
+        next = {
+          ...next,
+          workExperience: next.workExperience.map((exp) => {
+            const match =
+              (entryId && exp.id === entryId) ||
+              (entryLabel && (exp.company === entryLabel || exp.title === entryLabel));
+            return match ? { ...exp, bullets: bullets.length ? bullets : [text] } : exp;
+          }),
+        };
+      } else if (next.workExperience[0]) {
+        next.workExperience[0] = {
+          ...next.workExperience[0],
+          bullets: bullets.length ? bullets : [text],
+        };
+      }
+    } else if (sectionId === "education") {
+      next = {
+        ...next,
+        education: next.education.map((edu, i) =>
+          (entryId && edu.id === entryId) || (!entryId && i === 0)
+            ? { ...edu, degree: text.split("\n")[0]?.trim() || text }
+            : edu,
+        ),
+      };
+    } else if (sectionId === "certifications") {
+      const names = text.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+      next = {
+        ...next,
+        certifications: names.map((name, i) => ({
+          id: next.certifications[i]?.id ?? `cert_${i}`,
+          name,
+          issuer: next.certifications[i]?.issuer ?? null,
+          date: next.certifications[i]?.date ?? null,
+        })),
+      };
+    }
+
+    void saveParsedData(next);
+    setFixSection(null);
+    setFixSuggestions([]);
+    setFixSuggestIssues([]);
+  }, [fixSection, parsedData, saveParsedData]);
 
   const runMatchAnalysis = useCallback(async () => {
     if (!assetId || !jobDescription.trim()) return;
@@ -424,51 +446,21 @@ export function ProfileResumeEditor({
 
   if (!open) return null;
 
-  async function downloadDocx() {
+  async function downloadFile(format: "docx" | "pdf") {
     if (!assetId) return;
     setDownloading(true);
-    setDownloadError(null);
+    setDownloadMenuOpen(false);
     try {
-      const res = await fetch(`/api/assets/${assetId}/download?format=docx`);
+      const res = await fetch(`/api/assets/${assetId}/download?format=${format}`);
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${assetName || "resume"}.docx`;
+        a.download = `${assetName || "resume"}.${format}`;
         a.click();
         URL.revokeObjectURL(url);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setDownloadError(typeof data.error === "string" ? data.error : "Download failed");
       }
-    } catch {
-      setDownloadError("Download failed");
-    } finally {
-      setDownloading(false);
-    }
-  }
-
-  async function downloadPdf() {
-    if (!assetId) return;
-    setDownloading(true);
-    setDownloadError(null);
-    try {
-      const res = await fetch(`/api/assets/${assetId}/download?format=pdf`);
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${assetName || "resume"}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setDownloadError(typeof data.error === "string" ? data.error : "PDF download failed");
-      }
-    } catch {
-      setDownloadError("PDF download failed");
     } finally {
       setDownloading(false);
     }
@@ -493,13 +485,17 @@ export function ProfileResumeEditor({
             <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>
             {shareMsg && <span style={{ fontSize: 12, color: JR.green }}>{shareMsg}</span>}
             <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, cursor: "pointer" }}>Preview</button>
-            <button type="button" onClick={() => void downloadDocx()} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />} Word
-            </button>
-            <button type="button" onClick={() => void downloadPdf()} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              PDF
-            </button>
-            {downloadError && <span style={{ fontSize: 12, color: JR.urgent }}>{downloadError}</span>}
+            <div ref={downloadRef} style={{ position: "relative" }}>
+              <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />} Download <ChevronDown size={12} />
+              </button>
+              {downloadMenuOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, background: JR.panel, border: `1px solid ${JR.border}`, minWidth: 160, zIndex: 10 }}>
+                  <button type="button" onClick={() => void downloadFile("pdf")} style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 12, cursor: "pointer" }}>Download PDF</button>
+                  <button type="button" onClick={() => void downloadFile("docx")} style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", fontSize: 12, cursor: "pointer", borderTop: `1px solid ${JR.border}` }}>Download Word</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         {onboardingJobLabel && (
@@ -524,7 +520,7 @@ export function ProfileResumeEditor({
                 <p style={{ fontSize: 14 }}>{reparsing ? "Parsing resume structure…" : "Loading resume…"}</p>
               </div>
             ) : (
-              <JobrightResumeDocument data={parsedData} onChange={queueSave} onFixSection={(sectionId, entryLabel) => openResumeFix(sectionId, entryLabel, "all")} onImpactSection={(sectionId, entryLabel) => openResumeFix(sectionId, entryLabel, "impact")} onOpenAiAnalysis={() => setReportOpen(true)} score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} sectionMatches={sectionMatches} entryMatches={entryMatches} />
+              <JobrightResumeDocument data={parsedData} onChange={queueSave} onFixSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "all" })} onImpactSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "impact" })} onOpenAiAnalysis={() => setReportOpen(true)} score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} sectionMatches={sectionMatches} entryMatches={entryMatches} />
             )}
           </div>
           {!isMobile && (matchPanelOpen ? (
@@ -538,22 +534,8 @@ export function ProfileResumeEditor({
             <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} embedded />
           </div>
         )}
-        <ResumeAnalysisReportDrawer open={reportOpen} onClose={() => setReportOpen(false)} report={fullReport} loading={analysisLoading} error={analysisLoading ? undefined : analysis?.error && !reportIssues.length ? analysis.error : undefined} onBeginImprovements={beginImprovements} onRefresh={() => assetId && loadAnalysis(assetId, true)} aiUnavailable={!!analysis?.error && reportIssues.length > 0} />
-        <ResumeSectionFixDrawer
-          open={!!fixSection}
-          sectionId={fixSection?.sectionId ?? null}
-          entryLabel={fixSection?.entryLabel}
-          issues={fixIssues}
-          drawerMode={fixSection?.mode === "impact" ? "impact" : "fix"}
-          suggestions={fixSuggestions}
-          suggestionsLoading={fixSuggestionsLoading}
-          onApplySuggestion={applyResumeSuggestion}
-          onClose={() => {
-            setFixSection(null);
-            setFixSuggestions([]);
-            setFixSuggestIssues([]);
-          }}
-        />
+        <ResumeAnalysisReportDrawer open={reportOpen} onClose={() => setReportOpen(false)} report={fullReport} loading={analysisLoading} error={analysisLoading ? undefined : analysis?.error && !reportIssues.length ? analysis.error : undefined} onBeginImprovements={beginImprovements} onFixHighlight={(item) => { setReportOpen(false); openFixSection(sectionFromHighlight(item), { mode: "impact" }); }} onRefresh={() => assetId && loadAnalysis(assetId, true)} aiUnavailable={!!analysis?.error && reportIssues.length > 0} />
+        <ResumeSectionFixDrawer open={!!fixSection} sectionId={fixSection?.sectionId ?? null} entryLabel={fixSection?.entryLabel} issues={fixIssues} drawerMode={fixSection?.mode === "impact" ? "impact" : "fix"} suggestions={fixSuggestions} suggestionsLoading={fixSuggestionsLoading} onApplySuggestion={applyFixSuggestion} onClose={() => { setFixSection(null); setFixSuggestions([]); setFixSuggestIssues([]); }} />
         <style>{`@media print { body > *:not(.resume-print-outer) { display: none !important; } .resume-print-outer { position: static !important; display: block !important; } .resume-print-backdrop, .resume-print-hide { display: none !important; } .resume-print-target { position: static !important; width: 100% !important; height: auto !important; box-shadow: none !important; border-radius: 0 !important; transform: none !important; } .resume-print-center { padding: 0 !important; overflow: visible !important; } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>

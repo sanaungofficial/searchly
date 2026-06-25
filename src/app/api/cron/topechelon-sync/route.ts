@@ -19,7 +19,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const summary = await runTopEchelonSync();
+    const url = new URL(request.url);
+    const limitParam = url.searchParams.get("limit");
+    const limit = limitParam ? Math.min(Math.max(Number(limitParam), 1), 50) : undefined;
+
+    const summary = await runTopEchelonSync(limit ? { limit } : {});
     return NextResponse.json({ ok: true, summary });
   } catch (err) {
     if (err instanceof TopEchelonMfaRequiredError || err instanceof TopEchelonSessionExpiredError) {
