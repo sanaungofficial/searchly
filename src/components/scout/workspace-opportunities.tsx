@@ -85,12 +85,32 @@ export function WorkspaceOpportunities() {
     setProspectDetailLoading(true);
     try {
       const res = await fetch(`/api/jobs/prospect/${encodeURIComponent(prospectId)}`);
-      const data = (await res.json().catch(() => ({}))) as { job?: CachedJob; companyName?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        job?: CachedJob;
+        companyName?: string;
+        match?: {
+          matchScore: number;
+          matchLabel: string;
+          matchReasons: string[];
+          matchedSkills?: string[];
+          gapSkills?: string[];
+        };
+      };
       if (!res.ok || !data.job) return;
       const companyName = data.companyName ?? "Company";
       const job = data.job;
+      const matched = {
+        ...job,
+        companyName,
+        title: job.title,
+        matchScore: data.match?.matchScore ?? 0,
+        matchLabel: data.match?.matchLabel ?? "",
+        matchReasons: data.match?.matchReasons ?? [],
+        matchedSkills: data.match?.matchedSkills,
+        gapSkills: data.match?.gapSkills,
+      };
       setProspectJob({ companyName, job, drawerId });
-      setProspectCard(buildProspectKanbanCard(companyName, job, drawerId));
+      setProspectCard(buildRecommendedProspectCard(matched, drawerId));
     } finally {
       setProspectDetailLoading(false);
     }

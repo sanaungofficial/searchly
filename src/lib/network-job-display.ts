@@ -7,7 +7,7 @@ import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
 import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
 import { SEED_RAW_NETWORK_JOBS } from "@/lib/network-job-seed-raw";
-import type { NetworkJobMatchFields } from "@/lib/network-job-match";
+import { parseJobDescriptionSections, hasParsedJobSections } from "@/lib/job-description-parse";
 import {
   type CompensationBand,
   COMPENSATION_BAND_LABELS,
@@ -206,6 +206,7 @@ export function buildNetworkProspectCard(
   const aiDescription = [job.description, job.recruiterNotes ? `Recruiter notes:\n${job.recruiterNotes}` : null]
     .filter(Boolean)
     .join("\n\n");
+  const parsed = parseJobDescriptionSections(aiDescription);
 
   const meta: JobMeta = {
     location: job.location,
@@ -217,7 +218,11 @@ export function buildNetworkProspectCard(
         ? false
         : null,
     description: aiDescription || null,
-    jobSummary: job.recruiterNotes ?? undefined,
+    jobSummary: hasParsedJobSections(parsed) ? parsed.summary || undefined : job.recruiterNotes ?? undefined,
+    responsibilities: parsed.responsibilities.length ? parsed.responsibilities : undefined,
+    requiredQualifications: parsed.requiredQualifications.length ? parsed.requiredQualifications : undefined,
+    preferredQualifications: parsed.preferredQualifications.length ? parsed.preferredQualifications : undefined,
+    benefits: parsed.benefits.length ? parsed.benefits : undefined,
     tags: ["Recruiter network", job.networkStatusLabel ?? job.networkStatus ?? "network"].filter(Boolean),
     ...(job.matchScore != null && job.matchScore > 0
       ? {

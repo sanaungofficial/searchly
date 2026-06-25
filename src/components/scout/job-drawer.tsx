@@ -382,11 +382,11 @@ function resolveJobFields(meta: JobMeta | null) {
   const hasStructuredSections = !!(
     meta?.jobSummary ||
     meta?.companySummary ||
-    (meta?.responsibilities && meta.responsibilities.length > 0) ||
-    (meta?.skills && meta.skills.length > 0) ||
-    (meta?.requiredQualifications && meta.requiredQualifications.length > 0) ||
-    (meta?.preferredQualifications && meta.preferredQualifications.length > 0) ||
-    (meta?.benefits && meta.benefits.length > 0)
+    responsibilities.length > 0 ||
+    skills.length > 0 ||
+    requiredQualifications.length > 0 ||
+    preferredQualifications.length > 0 ||
+    benefits.length > 0
   );
   return {
     responsibilities,
@@ -792,9 +792,12 @@ export function JobDrawer({
   } = resolveJobFields(meta);
 
   const jobWebsite = urlValue || cardUrl;
+  const applicationUrl = jobWebsite;
+  const companyWebsite = meta?.companyWebsite?.trim() || guessCompanyWebsite(jobWebsite);
   const { data: hirebaseCompany, loading: hirebaseLoading } = useHirebaseCompanyProfile({
     companyName: card.company,
-    website: guessCompanyWebsite(jobWebsite),
+    website: companyWebsite,
+    slugHint: meta?.companySlug ?? null,
     enabled: true,
   });
 
@@ -807,18 +810,14 @@ export function JobDrawer({
   const fullDescriptionText = meta?.description?.trim() || jobDescription;
   const hasFullPosting = (meta?.description?.trim().length ?? 0) >= 200;
   const networkJob = meta?.networkJob ?? null;
+  const displayFit = card.fit > 0 ? card.fit : (meta?.vectorMatch?.matchScore ?? 0);
   const scrollSections: ScrollSection[] = networkJob
     ? ["overview", "recruiter", "company"]
     : ["overview", "company"];
-  const externalPostUrl = networkJob?.internalView === false ? null : (networkJob?.topEchelonUrl ?? urlValue);
+  const externalPostUrl = networkJob?.internalView === false ? null : (networkJob?.topEchelonUrl ?? applicationUrl);
   const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
-  const showStructuredExtras =
-    !hasFullPosting &&
-    (responsibilities.length > 0 ||
-      skills.length > 0 ||
-      requiredQualifications.length > 0 ||
-      preferredQualifications.length > 0 ||
-      benefits.length > 0);
+  const showParsedSections = hasStructuredSections;
+  const showFullDescriptionBlob = hasFullPosting && !showParsedSections;
   const backdropZ = elevated ? 210 : 60;
   const drawerZ = elevated ? 211 : 70;
 
@@ -926,9 +925,9 @@ export function JobDrawer({
                   <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
                     <CompanyLogo
                       name={networkJob?.agencyName ?? card.company}
-                      website={networkJob?.agencyWebsite ?? jobWebsite}
+                      website={networkJob?.agencyWebsite ?? companyWebsite ?? jobWebsite}
                       enrichmentWebsiteUrl={hirebaseCompany?.profile?.company_link ?? hirebaseCompany?.enrichment?.websiteUrl}
-                      logoUrl={networkJob?.agencyLogoUrl ?? hirebaseCompany?.profile?.company_logo ?? hirebaseCompany?.enrichment?.hirebase?.logo}
+                      logoUrl={networkJob?.agencyLogoUrl ?? meta?.companyLogo ?? hirebaseCompany?.profile?.company_logo ?? hirebaseCompany?.enrichment?.hirebase?.logo}
                       size={isMobile ? 48 : 56}
                     />
                     <div>
@@ -951,7 +950,7 @@ export function JobDrawer({
                     {expLevel && <MetaRow icon={<IconBriefcase />} label={expLevel} />}
                   </div>
                 </div>
-                <MatchScoreCard fit={card.fit} onRunMatch={canRunMatch ? () => setMatchDrawerOpen(true) : undefined} fullWidth={isMobile} />
+                <MatchScoreCard fit={displayFit} onRunMatch={canRunMatch ? () => setMatchDrawerOpen(true) : undefined} fullWidth={isMobile} />
               </div>
             </div>
 
@@ -959,14 +958,76 @@ export function JobDrawer({
             <div style={{ padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
               {networkJob && <JobDrawerNetworkAdminSection networkJob={networkJob} />}
 
-              <JobDescriptionPanel
-                text={fullDescriptionText}
-                loading={detailLoading && !hasFullPosting}
-                editable={!prospectMode && tool === null && !hasFullPosting && !hasStructuredSections}
-                value={descValue}
-                onChange={setDescValue}
-                onBlur={() => patchDescription(descValue)}
-              />
+              {(!showParsedSections || (detailLoading && !hasFullPosting)) && (
+                <JobDescriptionPanel
+                  text={fullDescriptionText}
+                  loading={detailLoading && !hasFullPosting}
+                  editable={!prospectMode && tool === null && !hasFullPosting && !showParsedSections}
+                  value={descValue}
+                  onChange={setDescValue}
+                  onBlur={() => patchDescription(descValue)}
+                />
+              )}
+
+              {showParsedSections && jobSummary && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconBriefcase />}>About the role</SectionTitle>
+                  <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{jobSummary}</p>
+                </div>
+              )}
+
+              {showParsedSections && responsibilities.length > 0 && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconBriefcase />}>Responsibilities</SectionTitle>
+                  <BulletList items={responsibilities} />
+                </div>
+              )}
+
+              {showParsedSections && (skills.length > 0 || requiredQualifications.length > 0 || preferredQualifications.length > 0) && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconTarget />}>Qualifications</SectionTitle>
+                  {skills.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: requiredQualifications.length > 0 || preferredQualifications.length > 0 ? 16 : 0 }}>
+                      {skills.map((s, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            padding: "6px 13px",
+                            background: displayFit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
+                            border: displayFit >= 70 ? "1px solid rgba(74,139,106,0.25)" : line,
+                            borderRadius: 0,
+                            fontFamily: sans,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: displayFit >= 70 ? "#2A4A3A" : "#5C534A",
+                          }}
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {requiredQualifications.length > 0 && (
+                    <div style={{ marginBottom: preferredQualifications.length > 0 ? 14 : 0 }}>
+                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#5C534A", margin: "0 0 8px" }}>Required</p>
+                      <BulletList items={requiredQualifications} />
+                    </div>
+                  )}
+                  {preferredQualifications.length > 0 && (
+                    <div>
+                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#5C534A", margin: "0 0 8px" }}>Preferred</p>
+                      <BulletList items={preferredQualifications} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {showParsedSections && benefits.length > 0 && (
+                <div style={{ marginBottom: 22 }}>
+                  <SectionTitle icon={<IconGift />}>Benefits</SectionTitle>
+                  <BulletList items={benefits} />
+                </div>
+              )}
 
               {networkJob?.recruiterNotes && (
                 <div style={{ marginBottom: 22 }}>
@@ -979,7 +1040,7 @@ export function JobDrawer({
                 </div>
               )}
 
-              {!hasFullPosting && jobSummary && (
+              {!showParsedSections && !hasFullPosting && jobSummary && (
                 <div style={{ marginBottom: 22 }}>
                   <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{jobSummary}</p>
                   {tags.length > 0 && (
@@ -1031,59 +1092,6 @@ export function JobDrawer({
                 </div>
               )}
 
-              {showStructuredExtras && responsibilities.length > 0 && (
-                <div style={{ marginBottom: 22 }}>
-                  <SectionTitle icon={<IconBriefcase />}>Responsibilities</SectionTitle>
-                  <BulletList items={responsibilities} />
-                </div>
-              )}
-
-              {showStructuredExtras && (skills.length > 0 || requiredQualifications.length > 0 || preferredQualifications.length > 0) && (
-                <div style={{ marginBottom: 22 }}>
-                  <SectionTitle icon={<IconTarget />}>Qualification</SectionTitle>
-                  {skills.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: requiredQualifications.length > 0 || preferredQualifications.length > 0 ? 16 : 0 }}>
-                      {skills.map((s, i) => (
-                        <span
-                          key={i}
-                          style={{
-                            padding: "6px 13px",
-                            background: card.fit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
-                            border: card.fit >= 70 ? "1px solid rgba(74,139,106,0.25)" : line,
-                            borderRadius: 0,
-                            fontFamily: sans,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: card.fit >= 70 ? "#2A4A3A" : "#5C534A",
-                          }}
-                        >
-                          {card.fit >= 70 ? "👍 " : ""}{s}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {requiredQualifications.length > 0 && (
-                    <div style={{ marginBottom: preferredQualifications.length > 0 ? 14 : 0 }}>
-                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#5C534A", margin: "0 0 8px" }}>Required</p>
-                      <BulletList items={requiredQualifications} />
-                    </div>
-                  )}
-                  {preferredQualifications.length > 0 && (
-                    <div>
-                      <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#5C534A", margin: "0 0 8px" }}>Preferred</p>
-                      <BulletList items={preferredQualifications} />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {showStructuredExtras && benefits.length > 0 && (
-                <div style={{ marginBottom: 22 }}>
-                  <SectionTitle icon={<IconGift />}>Benefits</SectionTitle>
-                  <BulletList items={benefits} />
-                </div>
-              )}
-
               {tool !== null && !job && (
                 <div style={{ padding: 16, background: cardBg, border: line, borderRadius: 0, marginBottom: 14 }}>
                   <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
@@ -1131,28 +1139,50 @@ export function JobDrawer({
                   companyName={card.company}
                   location={location}
                   parsedSummary={companySummary}
-                  jobUrl={jobWebsite}
+                  jobUrl={companyWebsite}
                   hirebase={hirebaseCompany}
                   loading={hirebaseLoading}
                   trackPanel={
                     <CompanyTrackPanel
                       companyName={card.company}
-                      jobUrl={jobWebsite}
+                      jobUrl={companyWebsite ?? applicationUrl}
                       hqLocation={location ?? null}
                     />
                   }
                 />
               </div>
 
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: line }}>
-                <input
-                  value={urlValue}
-                  onChange={(e) => setUrlValue(e.target.value)}
-                  onBlur={() => patchField({ url: urlValue || null })}
-                  placeholder="Job URL…"
-                  style={{ width: "100%", fontSize: 13, fontFamily: sans, color: "#8A8278", background: "transparent", border: "none", borderBottom: "1px solid rgba(0,0,0,0.1)", outline: "none", padding: "4px 0" }}
-                />
-              </div>
+              {prospectMode && applicationUrl ? (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: line }}>
+                  <a
+                    href={applicationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontFamily: sans,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: color.forest,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Apply on company site ↗
+                  </a>
+                </div>
+              ) : !prospectMode && dbId ? (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: line }}>
+                  <input
+                    value={urlValue}
+                    onChange={(e) => setUrlValue(e.target.value)}
+                    onBlur={() => patchField({ url: urlValue || null })}
+                    placeholder="Job URL…"
+                    style={{ width: "100%", fontSize: 13, fontFamily: sans, color: "#8A8278", background: "transparent", border: "none", borderBottom: "1px solid rgba(0,0,0,0.1)", outline: "none", padding: "4px 0" }}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -1322,8 +1352,12 @@ export function JobDrawer({
                 highlighted
                 creditCost={1}
                 title="Improve resume match"
-                subtitle="See your match score and tailor your resume for this role."
-                buttonLabel="Optimize my resume"
+                subtitle={
+                  displayFit > 0
+                    ? `You're at ${displayFit}% for this role — tailor your resume to strengthen your fit.`
+                    : "See your match score and tailor your resume for this role."
+                }
+                buttonLabel={displayFit > 0 ? `Optimize (${displayFit}%)` : "Optimize my resume"}
                 onClick={() => setMatchDrawerOpen(true)}
               />
               <AiToolCard
@@ -1346,7 +1380,7 @@ export function JobDrawer({
                 onClick={() => setMatchDrawerOpen(true)}
                 style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
               >
-                {card.fit <= 0 ? "See how you match →" : `Improve match (${card.fit}%) →`}
+                {displayFit <= 0 ? "See how you match →" : `Improve match (${displayFit}%) →`}
               </button>
             ) : externalPostUrl ? (
               <a
