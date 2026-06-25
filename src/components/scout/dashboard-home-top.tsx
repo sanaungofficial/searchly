@@ -23,7 +23,7 @@ import { liveSessionRouteId } from "@/lib/live-sessions";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
-import { ProfileSyncPromptModal } from "@/components/scout/profile-sync-prompt-modal";
+import { DashboardAddGoalModal } from "@/components/scout/dashboard-add-goal-modal";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -89,7 +89,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showAddGoal, setShowAddGoal] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [pickValue, setPickValue] = useState("");
   const [pickTargetMonth, setPickTargetMonth] = useState("");
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
@@ -254,7 +254,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
     await persistGoals([...goals, next]);
     setPickValue("");
     setPickTargetMonth("");
-    setShowAddGoal(false);
+    setGoalModalOpen(false);
 
     const sync = profileNeedsSyncForGoal(option.value, profile);
     if (sync) setPendingSync(sync);
@@ -271,6 +271,12 @@ export function DashboardHomeTop({ isMobile }: Props) {
     await persistGoals(next);
     setEditingTargetId(null);
     setEditTargetMonth("");
+  };
+
+  const openGoalModal = () => {
+    setPickValue("");
+    setPickTargetMonth("");
+    setGoalModalOpen(true);
   };
 
   const openCoachProfile = (slug: string | null, coachId: string) => {
@@ -443,7 +449,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
           {canAdd && (
             <button
               type="button"
-              onClick={() => setShowAddGoal((v) => !v)}
+              onClick={openGoalModal}
               aria-label="Add goal"
               style={{
                 width: 28,
@@ -464,12 +470,19 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
         {loading ? (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>Loading…</p>
-        ) : goals.length === 0 && !showAddGoal ? (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
-            What are you working toward? Add up to {DASHBOARD_GOAL_MAX} outcomes.
-          </p>
+        ) : goals.length === 0 ? (
+          <div>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: "0 0 14px" }}>
+              What are you working toward? Add up to {DASHBOARD_GOAL_MAX} outcomes.
+            </p>
+            {canAdd && (
+              <ScoutPrimaryBtn onClick={openGoalModal} style={{ width: "100%", minHeight: 42 }}>
+                Add your outcome
+              </ScoutPrimaryBtn>
+            )}
+          </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: showAddGoal || canAdd ? 14 : 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: canAdd ? 14 : 0 }}>
             {goals.map((goal) => {
               const targetLabel = formatGoalTargetDate(goal.targetDate);
               const isEditingTarget = editingTargetId === goal.id;
@@ -585,69 +598,9 @@ export function DashboardHomeTop({ isMobile }: Props) {
           </div>
         )}
 
-        {(showAddGoal || (goals.length === 0 && canAdd)) && (
-          <div style={{ marginBottom: 14 }}>
-            <select
-              value={pickValue}
-              onChange={(e) => setPickValue(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 10px",
-                border: border.line,
-                background: surface.card,
-                fontFamily: fontSans,
-                fontSize: isMobile ? 16 : T.bodySm,
-                color: color.ink,
-                marginBottom: 8,
-              }}
-            >
-              <option value="">Choose an outcome…</option>
-              {(["job_search", "coaching", "career"] as const).map((cat) => {
-                const opts = availableOptions.filter((o) => o.category === cat);
-                if (opts.length === 0) return null;
-                return (
-                  <optgroup key={cat} label={dashboardGoalCategoryLabel(cat)}>
-                    {opts.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </select>
-            <label style={{ display: "block", fontFamily: fontSans, fontSize: T.label, color: color.muted, marginBottom: 6 }}>
-              Target date (optional)
-            </label>
-            <input
-              type="month"
-              value={pickTargetMonth}
-              onChange={(e) => setPickTargetMonth(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 10px",
-                border: border.line,
-                background: surface.card,
-                fontFamily: fontSans,
-                fontSize: isMobile ? 16 : T.bodySm,
-                color: color.ink,
-                marginBottom: 8,
-                boxSizing: "border-box",
-              }}
-            />
-            <ScoutSecondaryBtn
-              onClick={addGoal}
-              disabled={!pickValue || saving}
-              style={{ width: "100%", minHeight: 40 }}
-            >
-              {saving ? "Saving…" : "Save goal"}
-            </ScoutSecondaryBtn>
-          </div>
-        )}
-
-        {canAdd && !showAddGoal && goals.length > 0 && (
+        {canAdd && goals.length > 0 && (
           <ScoutPrimaryBtn
-            onClick={() => setShowAddGoal(true)}
+            onClick={openGoalModal}
             style={{ width: "100%", minHeight: 42 }}
           >
             Add your outcome
@@ -1080,6 +1033,17 @@ export function DashboardHomeTop({ isMobile }: Props) {
       )}
       {scheduleOpen && <GrowthDiscoveryModal trigger="dashboard_schedule" onClose={() => setScheduleOpen(false)} />}
       {interestOpen && <EventInterestModal onClose={() => setInterestOpen(false)} />}
+      <DashboardAddGoalModal
+        open={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        pickValue={pickValue}
+        onPickValueChange={setPickValue}
+        pickTargetMonth={pickTargetMonth}
+        onPickTargetMonthChange={setPickTargetMonth}
+        availableOptions={availableOptions}
+        saving={saving}
+        onSave={() => void addGoal()}
+      />
     </>
   );
 }

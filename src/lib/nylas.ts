@@ -76,12 +76,12 @@ export function nylasProfileReturnUrl(
 ): string {
   const base = appUrl.replace(/\/$/, "");
   const path = isStaffPortalRole(role)
-    ? `${base}/dashboard/clients?tab=profile`
+    ? `${base}/dashboard/expert-profile`
     : `${base}/admin/profile`;
   if (!params || Object.keys(params).length === 0) return path;
 
   const qs = new URLSearchParams(params).toString();
-  return isStaffPortalRole(role) ? `${path}&${qs}` : `${path}?${qs}`;
+  return qs ? `${path}?${qs}` : path;
 }
 
 export function isNylasConfigured(): boolean {

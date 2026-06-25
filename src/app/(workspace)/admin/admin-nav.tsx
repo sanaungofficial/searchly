@@ -8,7 +8,6 @@ export function AdminNav() {
   const pathname = usePathname();
   const tabs = [
     { label: "Dashboard", href: "/admin" },
-    { label: "My Profile", href: "/admin/profile" },
     { label: "Prompts", href: "/admin/prompts" },
     { label: "Company scans", href: "/admin/company-scans" },
   ];

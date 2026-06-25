@@ -466,7 +466,6 @@ export function WorkspaceDashboard() {
 
           <DashboardHomeTop isMobile={isMobile} />
 
-          {!isStaffPortal && (
           <div style={{ borderTop: border.line, paddingTop: isMobile ? 24 : 32, marginBottom: isMobile ? 24 : 32 }}>
             <ScoutLabel>Your pipeline</ScoutLabel>
 
@@ -551,7 +550,6 @@ export function WorkspaceDashboard() {
               </>
             )}
           </div>
-          )}
 
         </div>
       </div>
