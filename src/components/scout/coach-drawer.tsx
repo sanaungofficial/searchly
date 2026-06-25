@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { MatchFitCallout, MatchScoreBadge } from "@/components/scout/match-score-ui";
+import { NylasSchedulerEmbed } from "@/components/scout/nylas-scheduler-embed";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { CoachListItem, CoachProfileDetail, CoachReviewItem } from "@/lib/coach-types";
@@ -135,6 +136,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   const [loading, setLoading] = useState(true);
   const [showReview, setShowReview] = useState(false);
   const [aboutExpanded, setAboutExpanded] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
 
   useLayoutEffect(() => {
     requestAnimationFrame(() => setVisible(true));
@@ -177,6 +179,8 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   const displayName = coach?.displayName ?? preview?.displayName ?? "Coach";
   const aboutText = coach?.aboutMe || coach?.bio || "";
   const bookUrl = coach?.calLink;
+  const nylasConfigId = coach?.nylasSchedulerConfigId;
+  const canBookInApp = Boolean(isPro && nylasConfigId && coach?.hasNylasBooking);
 
   return (
     <>
@@ -257,6 +261,11 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                       </p>
                     )}
                   </div>
+                  {showBooking && canBookInApp && nylasConfigId && (
+                    <div style={{ marginTop: 16, border: border.line, padding: 12, background: "#fff" }}>
+                      <NylasSchedulerEmbed configurationId={nylasConfigId} minHeight={480} />
+                    </div>
+                  )}
                 </ScoutBox>
 
                 {coach.specialties.length > 0 && (
@@ -325,7 +334,21 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                       </p>
                     )}
                   </div>
-                  {bookUrl && isPro ? (
+                  {canBookInApp ? (
+                    <>
+                      <ScoutPrimaryBtn
+                        onClick={() => setShowBooking((v) => !v)}
+                        style={{ width: "100%", minHeight: 44, marginBottom: 8 }}
+                      >
+                        {showBooking ? "Hide calendar" : "Book a session"}
+                      </ScoutPrimaryBtn>
+                      {bookUrl && (
+                        <a href={bookUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
+                          <ScoutSecondaryBtn style={{ width: "100%", minHeight: 44 }}>External booking link</ScoutSecondaryBtn>
+                        </a>
+                      )}
+                    </>
+                  ) : bookUrl && isPro ? (
                     <>
                       <a href={bookUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
                         <ScoutPrimaryBtn style={{ width: "100%", minHeight: 44 }}>Schedule free intro call</ScoutPrimaryBtn>

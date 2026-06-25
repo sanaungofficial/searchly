@@ -23,6 +23,8 @@ export type CoachListItem = {
   reviewCount: number;
   followerCount: number;
   calLink?: string | null;
+  nylasSchedulerConfigId?: string | null;
+  hasNylasBooking?: boolean;
   linkedinUrl?: string | null;
   createdAt?: string;
   matchScore?: number;
@@ -67,6 +69,8 @@ export type CoachReviewAggregates = {
 export type CoachProfileDetail = CoachListItem & {
   linkedinUrl: string | null;
   calLink: string | null;
+  nylasSchedulerConfigId: string | null;
+  hasNylasBooking: boolean;
   experienceLevel: string | null;
   clientTier: string | null;
   industryYears: number | null;

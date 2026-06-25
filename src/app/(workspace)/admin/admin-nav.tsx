@@ -11,6 +11,7 @@ export function AdminNav() {
     { label: "Clients", href: "/admin/clients" },
     { label: "Prompts", href: "/admin/prompts" },
     { label: "Company scans", href: "/admin/company-scans" },
+    { label: "Bookings", href: "/admin/bookings" },
   ];
 
   return (
