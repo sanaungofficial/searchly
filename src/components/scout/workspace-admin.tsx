@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type UserRole = "USER" | "COACH" | "RECRUITER" | "ADMIN";
+type UserRole = "USER" | "COACH" | "ADMIN";
 
 type AdminUser = {
   id: string;
@@ -107,11 +107,10 @@ const STATUS_STYLES: Record<string, { color: string; background: string; border:
 const ROLE_STYLES: Record<UserRole, { color: string; background: string; border: string }> = {
   ADMIN:     { color: "#7c3aed", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)" },
   COACH:     { color: "#0369a1", background: "rgba(3,105,161,0.08)",  border: "1px solid rgba(3,105,161,0.2)" },
-  RECRUITER: { color: "#0f766e", background: "rgba(15,118,110,0.08)", border: "1px solid rgba(15,118,110,0.2)" },
   USER:      { color: "#a8a29e", background: "transparent",           border: "1px solid rgba(168,162,158,0.2)" },
 };
 
-const ROLES: UserRole[] = ["USER", "COACH", "RECRUITER", "ADMIN"];
+const ROLES: UserRole[] = ["USER", "COACH", "ADMIN"];
 
 function StatCard({ label, value, sub, accent }: { label: string; value: number | string; sub?: string; accent?: string }) {
   return (

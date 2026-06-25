@@ -59,12 +59,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "End time must be after start time" }, { status: 400 });
   }
 
+  if (!body.coachProfileId?.trim()) {
+    return NextResponse.json({ error: "coachProfileId is required — assign a host coach" }, { status: 400 });
+  }
+
   try {
     const row = await createLiveSession({
       title: body.title,
       description: body.description,
       category: body.category,
-      coachProfileId: body.coachProfileId ?? null,
+      coachProfileId: body.coachProfileId.trim(),
       hostName: body.hostName,
       scheduledStart,
       scheduledEnd,

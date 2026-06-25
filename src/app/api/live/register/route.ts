@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { findLiveSessionByRouteId, registerForLiveSession } from "@/lib/live-session-db";
+import { sendLiveSessionRegistrationEmail } from "@/lib/live-session-emails";
 
 export async function POST(request: Request) {
   const { authUser, dbUser } = await getActingUser(request);
@@ -29,7 +30,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This session is no longer available" }, { status: 410 });
   }
 
-  await registerForLiveSession(row.id, dbUser.id);
+  const { created } = await registerForLiveSession(row.id, dbUser.id);
 
-  return NextResponse.json({ ok: true, registered: true });
+  if (created && dbUser.email) {
+    void sendLiveSessionRegistrationEmail({
+      email: dbUser.email,
+      name: dbUser.name,
+      session: {
+        title: row.title,
+        host: row.hostName,
+        scheduledStart: row.scheduledStart,
+        scheduledEnd: row.scheduledEnd,
+        legacyNumericId: row.legacyNumericId,
+        id: row.id,
+      },
+    }).catch((err) => console.error("[live/register email]", err));
+  }
+
+  return NextResponse.json({ ok: true, registered: true, created });
 }

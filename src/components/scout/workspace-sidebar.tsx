@@ -270,7 +270,7 @@ export function WorkspaceSidebar({
   const userRole = userRoleProp ?? ctxUserRole;
   const showCommunityNav = shouldShowBetaNav(isAdmin);
 
-  const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
+  const isStaff = userRole === "COACH" || userRole === "ADMIN";
   const { loading: subLoading } = useSubscription();
   const { credits, showCredits, unlimitedAi } = useCredits();
   const { openPricing } = useWorkspace();

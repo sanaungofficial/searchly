@@ -8,7 +8,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 export function CoachClientsPage() {
   const router = useRouter();
   const { userRole } = useWorkspace();
-  const isStaff = userRole === "COACH" || userRole === "RECRUITER" || userRole === "ADMIN";
+  const isStaff = userRole === "COACH" || userRole === "ADMIN";
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

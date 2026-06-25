@@ -189,11 +189,16 @@ export async function setLiveSessionStatus(
 }
 
 export async function registerForLiveSession(liveSessionId: string, userId: string) {
-  return prisma.liveSessionRegistration.upsert({
+  const existing = await prisma.liveSessionRegistration.findUnique({
     where: { liveSessionId_userId: { liveSessionId, userId } },
-    create: { liveSessionId, userId },
-    update: {},
   });
+  if (existing) {
+    return { registration: existing, created: false as const };
+  }
+  const registration = await prisma.liveSessionRegistration.create({
+    data: { liveSessionId, userId },
+  });
+  return { registration, created: true as const };
 }
 
 export async function markLiveSessionJoined(liveSessionId: string, userId: string) {

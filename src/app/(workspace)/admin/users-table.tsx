@@ -11,7 +11,6 @@ const PAGE_SIZE = 25;
 const ROLE_STYLES: Record<UserRole, string> = {
   USER: "bg-[var(--scout-inset)] text-[#52493F] border-[rgba(17,17,17,0.14)]",
   COACH: "bg-blue-50 text-blue-700 border-blue-200",
-  RECRUITER: "bg-purple-50 text-purple-700 border-purple-200",
   ADMIN: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
@@ -30,7 +29,7 @@ function formatDate(d: Date | string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-const ROLE_FILTERS: (UserRole | "ALL")[] = ["ALL", "USER", "COACH", "RECRUITER", "ADMIN"];
+const ROLE_FILTERS: (UserRole | "ALL")[] = ["ALL", "USER", "COACH", "ADMIN"];
 const SUB_FILTERS = ["ALL", "FREE", "PAID", "PAST_DUE"] as const;
 type SubFilter = (typeof SUB_FILTERS)[number];
 
@@ -130,7 +129,6 @@ function InviteModal({
               >
                 <option value="USER">user</option>
                 <option value="COACH">coach</option>
-                <option value="RECRUITER">recruiter</option>
                 <option value="ADMIN">admin</option>
               </select>
             </div>

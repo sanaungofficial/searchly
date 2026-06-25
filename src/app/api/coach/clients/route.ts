@@ -12,7 +12,7 @@ async function getDbUser() {
 
 export async function GET() {
   const me = await getDbUser();
-  if (!me || (me.role !== UserRole.COACH && me.role !== UserRole.ADMIN && me.role !== UserRole.RECRUITER)) {
+  if (!me || (me.role !== UserRole.COACH && me.role !== UserRole.ADMIN)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

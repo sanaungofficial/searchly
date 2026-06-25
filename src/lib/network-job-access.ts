@@ -8,7 +8,7 @@ export function canViewNetworkJobInternal(
 ): boolean {
   if (isImpersonating) return false;
   if (isAdmin) return true;
-  return userRole === "ADMIN" || userRole === "RECRUITER" || userRole === "COACH";
+  return userRole === "ADMIN" || userRole === "COACH";
 }
 
 /** Server-side: use the logged-in operator, not the impersonated client. */

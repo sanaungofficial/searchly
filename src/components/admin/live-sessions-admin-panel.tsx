@@ -143,7 +143,7 @@ export function LiveSessionsAdminPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          coachProfileId: form.coachProfileId || null,
+          coachProfileId: form.coachProfileId,
         }),
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -336,8 +336,8 @@ export function LiveSessionsAdminPanel() {
               <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
             </label>
             <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Coach (host)</span>
-              <select style={inputStyle} value={form.coachProfileId} onChange={(e) => setForm((f) => ({ ...f, coachProfileId: e.target.value }))}>
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Coach (host) *</span>
+              <select required style={inputStyle} value={form.coachProfileId} onChange={(e) => setForm((f) => ({ ...f, coachProfileId: e.target.value }))}>
                 <option value="">— Select coach —</option>
                 {coaches.map((c) => (
                   <option key={c.id} value={c.id}>{c.displayName}{c.headline ? ` · ${c.headline}` : ""}</option>
