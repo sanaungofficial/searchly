@@ -57,9 +57,10 @@ export function JobDrawerRecruiterSection({
     );
   }
 
-  const chips = [recruiter.agencyName, networkJob.networkId ? `Network ${networkJob.networkId}` : null].filter(
-    Boolean
-  ) as string[];
+  const chips = [
+    recruiter.agencyName,
+    networkJob.internalView && networkJob.networkId ? `Network ${networkJob.networkId}` : null,
+  ].filter(Boolean) as string[];
 
   return (
     <ScoutBox padding={20}>

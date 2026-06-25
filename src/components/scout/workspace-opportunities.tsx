@@ -55,7 +55,7 @@ type OppTab = "pipeline" | "network" | "companies";
 interface OpportunitiesProps {}
 
 export function WorkspaceOpportunities() {
-  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId } = useWorkspace();
+  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId, isImpersonating } = useWorkspace();
   const isMobile = useIsMobile();
   const router = useRouter();
   const pathname = usePathname();
@@ -394,7 +394,7 @@ export function WorkspaceOpportunities() {
     router.push("/opportunities/network");
   };
 
-  const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin);
+  const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
 
   const openNetworkJob = useCallback((job: NetworkJobListing) => {
     pendingNetworkNavRef.current = job.id;

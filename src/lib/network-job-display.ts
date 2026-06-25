@@ -226,9 +226,11 @@ export function buildNetworkProspectCard(
   options?: { internalView?: boolean }
 ): KanbanCard & { _url?: string; _meta?: JobMeta; _networkJobId?: string } {
   const internalView = options?.internalView ?? false;
-  const aiDescription = [job.description, job.recruiterNotes ? `Recruiter notes:\n${job.recruiterNotes}` : null]
-    .filter(Boolean)
-    .join("\n\n");
+  const aiDescription = internalView
+    ? [job.description, job.recruiterNotes ? `Recruiter notes:\n${job.recruiterNotes}` : null]
+        .filter(Boolean)
+        .join("\n\n")
+    : job.description?.trim() || "";
   const parsed = parseJobDescriptionSections(aiDescription);
 
   const meta: JobMeta = {
@@ -241,7 +243,11 @@ export function buildNetworkProspectCard(
         ? false
         : null,
     description: aiDescription || null,
-    jobSummary: hasParsedJobSections(parsed) ? parsed.summary || undefined : job.recruiterNotes ?? undefined,
+    jobSummary: hasParsedJobSections(parsed)
+      ? parsed.summary || undefined
+      : internalView
+        ? job.recruiterNotes ?? undefined
+        : undefined,
     responsibilities: parsed.responsibilities.length ? parsed.responsibilities : undefined,
     requiredQualifications: parsed.requiredQualifications.length ? parsed.requiredQualifications : undefined,
     preferredQualifications: parsed.preferredQualifications.length ? parsed.preferredQualifications : undefined,
@@ -263,7 +269,7 @@ export function buildNetworkProspectCard(
       externalId: job.externalId,
       networkId: job.networkId,
       topEchelonUrl: job.topEchelonUrl,
-      recruiterNotes: job.recruiterNotes,
+      recruiterNotes: internalView ? job.recruiterNotes : null,
       fee: internalView ? job.fee : null,
       networkStatus: internalView ? (job.networkStatusLabel ?? job.networkStatus) : null,
       adminDetails: internalView ? job.adminDetails : [],

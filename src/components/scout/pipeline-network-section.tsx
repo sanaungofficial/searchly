@@ -413,9 +413,9 @@ function NetworkJobCard({
 }
 
 export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: PipelineNetworkSectionProps) {
-  const { isAdmin, userRole } = useWorkspace();
+  const { isAdmin, userRole, isImpersonating } = useWorkspace();
   const isMobile = useIsMobile();
-  const internalView = canViewNetworkJobInternal(userRole, isAdmin);
+  const internalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
 
   const [jobs, setJobs] = useState<NetworkMatchedJob[]>(() => readNetworkJobsCache()?.jobs ?? seedAsMatched(SEED_NETWORK_JOBS));
   const [loading, setLoading] = useState(() => !readNetworkJobsCache());
