@@ -113,15 +113,28 @@ function LiveConference({
 
   useEffect(() => {
     let cancelled = false;
+    const joinTimeout = window.setTimeout(() => {
+      if (!cancelled) {
+        setJoinError(
+          "Connection timed out. If the host hasn't started yet, wait until the session is live. Otherwise check camera/mic permissions or try again.",
+        );
+        setJoining(false);
+      }
+    }, 30000);
+
     (async () => {
       try {
         await hmsActions.join({
           authToken: joinPayload.authToken,
           userName: joinPayload.userName,
         });
-        if (!cancelled) setJoining(false);
+        if (!cancelled) {
+          window.clearTimeout(joinTimeout);
+          setJoining(false);
+        }
       } catch (e) {
         if (!cancelled) {
+          window.clearTimeout(joinTimeout);
           const message =
             e instanceof Error
               ? e.message
@@ -136,6 +149,7 @@ function LiveConference({
 
     return () => {
       cancelled = true;
+      window.clearTimeout(joinTimeout);
       void hmsActions.leave();
     };
   }, [hmsActions, joinPayload.authToken, joinPayload.userName]);
@@ -159,7 +173,12 @@ function LiveConference({
   if (joining || !isConnected) {
     return (
       <div style={{ padding: 48, textAlign: "center" }}>
-        <p style={{ fontFamily: fontSans, fontSize: 15, color: color.muted }}>Connecting to live room…</p>
+        <p style={{ fontFamily: fontSans, fontSize: 15, color: color.muted, marginBottom: 8 }}>
+          Connecting to live room…
+        </p>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, opacity: 0.85 }}>
+          Allow camera and microphone if your browser asks.
+        </p>
       </div>
     );
   }

@@ -18,6 +18,7 @@ import {
 } from "@/lib/dashboard-goals";
 import { formatBookingWhen } from "@/lib/coach-user-booking";
 import type { LiveSessionView } from "@/lib/live-session-types";
+import { liveSessionRouteId } from "@/lib/live-sessions";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
@@ -100,6 +101,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const [allSessions, setAllSessions] = useState<LiveSessionView[]>([]);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const [registerBusyId, setRegisterBusyId] = useState<string | null>(null);
   const eventsScrollRef = useRef<HTMLDivElement>(null);
 
   const loadProfile = useCallback(() => {
@@ -160,6 +162,34 @@ export function DashboardHomeTop({ isMobile }: Props) {
     );
     return [...live, ...upcoming].slice(0, 8);
   }, [allSessions]);
+
+  const reloadSessions = useCallback(() => {
+    return fetch("/api/live/sessions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d?.sessions)) setAllSessions(d.sessions);
+      })
+      .catch(() => {});
+  }, []);
+
+  const registerForSession = async (session: LiveSessionView) => {
+    const routeId = liveSessionRouteId(session);
+    setRegisterBusyId(session.id);
+    try {
+      const res = await fetch("/api/live/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: routeId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not register");
+      await reloadSessions();
+    } catch {
+      // Registration errors are non-blocking on the dashboard carousel
+    } finally {
+      setRegisterBusyId(null);
+    }
+  };
 
   const persistGoals = async (next: DashboardGoal[]) => {
     setSaving(true);
@@ -834,7 +864,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
               padding: "0 4px 4px",
             }}
           >
-            {eventSessions.map((session) => (
+            {eventSessions.map((session) => {
+              const routeId = liveSessionRouteId(session);
+              const isBusy = registerBusyId === session.id;
+              return (
               <div
                 key={session.id}
                 style={{
@@ -847,16 +880,12 @@ export function DashboardHomeTop({ isMobile }: Props) {
                   flexDirection: "column",
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => router.push(`/live/${session.id}`)}
+                <div
                   style={{
                     textAlign: "left",
                     padding: 0,
-                    border: "none",
                     background: session.bgColor,
                     color: session.accentColor,
-                    cursor: "pointer",
                     minHeight: 120,
                     width: "100%",
                   }}
@@ -899,7 +928,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                       {session.registered} registered
                     </p>
                   </div>
-                </button>
+                </div>
                 <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div
@@ -932,14 +961,32 @@ export function DashboardHomeTop({ isMobile }: Props) {
                     </div>
                   </div>
                   <ScoutPrimaryBtn
-                    onClick={() => router.push(`/live/${session.id}`)}
+                    onClick={() => {
+                      if (session.isLive) {
+                        router.push(`/live/${routeId}`);
+                        return;
+                      }
+                      if (session.isRegistered) {
+                        router.push(`/live/${routeId}`);
+                        return;
+                      }
+                      void registerForSession(session);
+                    }}
+                    disabled={isBusy}
                     style={{ minHeight: 38, width: "100%", fontSize: T.caption }}
                   >
-                    {session.isRegistered ? "View session" : "Register"}
+                    {session.isLive
+                      ? "Join now →"
+                      : isBusy
+                        ? "Saving…"
+                        : session.isRegistered
+                          ? "Registered ✓"
+                          : "Register →"}
                   </ScoutPrimaryBtn>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 
