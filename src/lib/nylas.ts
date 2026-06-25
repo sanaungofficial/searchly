@@ -5,15 +5,6 @@ const DEFAULT_API_URI = "https://api.us.nylas.com";
 
 export const NYLAS_OAUTH_COOKIE = "nylas_oauth_state";
 
-/** Calendar scopes needed for Nylas Scheduler (read/write events). */
-export const NYLAS_CALENDAR_SCOPES = {
-  google: [
-    "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/calendar.events",
-  ],
-  microsoft: ["Calendars.ReadWrite", "offline_access"],
-} as const;
-
 export type NylasConfig = {
   apiKey: string;
   clientId: string;
@@ -55,6 +46,21 @@ export function resolveKimchiAppUrl(req?: { headers: Headers; nextUrl?: { origin
 
 export function nylasRedirectUri(appUrl: string): string {
   return `${appUrl.replace(/\/$/, "")}/api/nylas/callback`;
+}
+
+/** Canonical host for Nylas OAuth — must match a URI registered in Nylas dashboard. */
+export function nylasOAuthAppUrl(): string {
+  const forced = process.env.NYLAS_OAUTH_APP_URL?.trim();
+  if (forced) return forced.replace(/\/$/, "");
+
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (envUrl && envUrl.includes("kimchi.so")) return envUrl.replace(/\/$/, "");
+
+  return "https://app.kimchi.so";
+}
+
+export function nylasOAuthRedirectUri(): string {
+  return `${nylasOAuthAppUrl()}/api/nylas/callback`;
 }
 
 export function nylasWebhookUrl(appUrl: string): string {
@@ -131,34 +137,38 @@ export type NylasAuthUrlResponse = {
   url?: string;
 };
 
+/** Build the documented GET /v3/connect/auth URL (browser redirect). */
+export function buildNylasAuthUrl(params: {
+  provider: "google" | "microsoft";
+  state: string;
+  loginHint?: string;
+}): string {
+  const cfg = getNylasConfig();
+  if (!cfg) throw new Error("Nylas is not configured");
+
+  const redirectUri = nylasOAuthRedirectUri();
+  const query = new URLSearchParams({
+    client_id: cfg.clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    access_type: "offline",
+    provider: params.provider,
+    state: params.state,
+    prompt: "detect",
+  });
+  if (params.loginHint) query.set("login_hint", params.loginHint);
+
+  return `${cfg.apiUri}/v3/connect/auth?${query.toString()}`;
+}
+
+/** @deprecated Use buildNylasAuthUrl — kept for callers expecting async. */
 export async function createNylasAuthUrl(params: {
   provider: "google" | "microsoft";
   state: string;
   loginHint?: string;
   appUrl?: string;
 }): Promise<string> {
-  const cfg = getNylasConfig(params.appUrl);
-  if (!cfg) throw new Error("Nylas is not configured");
-
-  const payload = {
-    client_id: cfg.clientId,
-    redirect_uri: nylasRedirectUri(cfg.appUrl),
-    response_type: "code",
-    access_type: "offline",
-    provider: params.provider,
-    state: params.state,
-    scope: [...NYLAS_CALENDAR_SCOPES[params.provider]],
-    ...(params.loginHint ? { login_hint: params.loginHint } : {}),
-  };
-
-  const res = await nylasFetch<NylasAuthUrlResponse>("/v3/connect/auth", {
-    method: "POST",
-    body: payload,
-  });
-
-  const url = res.data?.url ?? res.url;
-  if (!url) throw new Error("Nylas did not return an auth URL");
-  return url;
+  return buildNylasAuthUrl(params);
 }
 
 export type NylasTokenResponse = {
@@ -172,8 +182,8 @@ export type NylasTokenResponse = {
   };
 };
 
-export async function exchangeNylasCode(code: string, appUrl?: string): Promise<{ grantId: string; email?: string }> {
-  const cfg = getNylasConfig(appUrl);
+export async function exchangeNylasCode(code: string, _appUrl?: string): Promise<{ grantId: string; email?: string }> {
+  const cfg = getNylasConfig();
   if (!cfg) throw new Error("Nylas is not configured");
 
   const res = await nylasFetch<NylasTokenResponse>("/v3/connect/token", {
@@ -182,7 +192,7 @@ export async function exchangeNylasCode(code: string, appUrl?: string): Promise<
       client_id: cfg.clientId,
       client_secret: cfg.apiKey,
       code,
-      redirect_uri: nylasRedirectUri(cfg.appUrl),
+      redirect_uri: nylasOAuthRedirectUri(),
       grant_type: "authorization_code",
       code_verifier: "nylas",
     },
@@ -205,6 +215,7 @@ export async function createCoachSchedulerConfig(params: {
   coachEmail: string;
   slug: string;
 }): Promise<{ configId: string; slug?: string }> {
+  const appBase = nylasOAuthAppUrl();
   const res = await nylasFetch<{ data?: NylasSchedulerConfig } & NylasSchedulerConfig>(
     `/v3/grants/${params.grantId}/scheduling/configurations`,
     {
@@ -228,8 +239,8 @@ export async function createCoachSchedulerConfig(params: {
           description: "Book a 1:1 coaching session via Kimchi.",
         },
         scheduler: {
-          rescheduling_url: `${getNylasConfig()?.appUrl ?? ""}/coaching`,
-          cancellation_url: `${getNylasConfig()?.appUrl ?? ""}/coaching`,
+          rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
+          cancellation_url: `${appBase}/coaching/cancel/:booking_ref`,
         },
       },
     },
@@ -241,7 +252,7 @@ export async function createCoachSchedulerConfig(params: {
   return { configId, slug: data.slug ?? params.slug };
 }
 
-export function signNylasState(payload: { coachProfileId: string; ts: number }): string {
+export function signNylasState(payload: { coachProfileId: string; ts: number; returnAppUrl?: string }): string {
   const cfg = getNylasConfig();
   if (!cfg) throw new Error("Nylas is not configured");
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -249,7 +260,7 @@ export function signNylasState(payload: { coachProfileId: string; ts: number }):
   return `${body}.${sig}`;
 }
 
-export type NylasOAuthState = { coachProfileId: string; ts: number };
+export type NylasOAuthState = { coachProfileId: string; ts: number; returnAppUrl?: string };
 
 export function verifyNylasState(state: string): NylasOAuthState | null {
   const cfg = getNylasConfig();
@@ -269,10 +280,15 @@ export function verifyNylasState(state: string): NylasOAuthState | null {
     const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as {
       coachProfileId?: string;
       ts?: number;
+      returnAppUrl?: string;
     };
     if (!parsed.coachProfileId || !parsed.ts) return null;
     if (Date.now() - parsed.ts > 1000 * 60 * 60) return null;
-    return { coachProfileId: parsed.coachProfileId, ts: parsed.ts };
+    return {
+      coachProfileId: parsed.coachProfileId,
+      ts: parsed.ts,
+      ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
+    };
   } catch {
     return null;
   }
@@ -344,6 +360,10 @@ export function mapNylasOAuthError(params: {
 
   if (error) {
     return { reason: "auth", detail: errorDescription ?? errorReason ?? error };
+  }
+
+  if (errorReason && !error) {
+    return { reason: "auth", detail: errorDescription ?? errorReason };
   }
 
   return { reason: "auth" };
