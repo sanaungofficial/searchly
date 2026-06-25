@@ -361,6 +361,7 @@ export type DashboardSumbleSignalsBundle = {
 };
 
 const DASHBOARD_SIGNALS_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DASHBOARD_DEFAULT_COMPANIES = 3;
 const DASHBOARD_MAX_COMPANIES = 10;
 const DASHBOARD_CREDITS_PER_COMPANY = 4;
 
@@ -376,7 +377,10 @@ export async function getDashboardSumbleSignalsBundle(input: {
   const configured = isSumbleConfigured();
   const targetRoles = await loadTargetRoles(input.userId);
   const creditsRemaining = getSumbleCreditsRemaining();
-  const maxCompanies = Math.max(1, Math.min(input.maxCompanies ?? DASHBOARD_MAX_COMPANIES, DASHBOARD_MAX_COMPANIES));
+  const maxCompanies = Math.max(
+    1,
+    Math.min(input.maxCompanies ?? DASHBOARD_DEFAULT_COMPANIES, DASHBOARD_MAX_COMPANIES)
+  );
   const estimatedCredits = maxCompanies * DASHBOARD_CREDITS_PER_COMPANY;
 
   const empty: DashboardSumbleSignalsBundle = {

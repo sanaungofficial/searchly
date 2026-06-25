@@ -24,13 +24,13 @@ export function MarketSalaryPage() {
   return (
     <MarketShell
       title="Salary explorer"
-      subtitle="Comp bands by level and work arrangement — load on demand (Sumble has no salary bands yet)."
+      subtitle="Comp bands by level and work arrangement — powered by Hirebase when configured."
       toolbar={<WindowPicker value={days} onChange={setDays} isMobile={isMobile} />}
     >
       {requiresLoad && !insight && !error && (
         <SumbleLoadPrompt
           title="Salary explorer"
-          description="Load market data first. Sumble listings do not include salary bands — other tabs have richer signals."
+          description="Loads market data first. Salary bands come from Hirebase (included with your API key)."
           estimatedCredits={data?.estimatedCredits ?? 25}
           creditsRemaining={data?.creditsRemaining}
           loading={loading}

@@ -9,7 +9,7 @@ export const SUMBLE_ESTIMATED_COSTS = {
   marketSample: 25,
   companyLite: 8,
   companyFull: 20,
-  dashboardSignals: 40,
+  dashboardSignals: 12,
   intelligenceBrief: 50,
   emailReveal: 10,
   phoneReveal: 80,

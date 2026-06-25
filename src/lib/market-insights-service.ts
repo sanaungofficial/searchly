@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { HirebaseInsightsResponse } from "@/lib/hirebase-insights";
 import {
   fetchHirebaseCompanyInsights,
+  fetchHirebaseMarketInsights,
   type MarketInsightsFilters,
 } from "@/lib/hirebase-insights";
 import {
@@ -23,7 +24,7 @@ export type MarketWindow = (typeof MARKET_WINDOW_OPTIONS)[number];
 
 export type MarketInsightsBundle = {
   configured: boolean;
-  dataSource: "sumble" | "none";
+  dataSource: "sumble" | "sumble+hirebase" | "none";
   targetRoles: string[];
   roleLabel: string;
   windows: Record<string, HirebaseInsightsResponse>;
@@ -37,6 +38,9 @@ export type MarketInsightsBundle = {
   /** True when no cached data — client must pass load=1 to fetch from Sumble */
   requiresLoad?: boolean;
   estimatedCredits?: number;
+  /** Sumble job sample size used for skills/employers (not salary) */
+  jobSampleSize?: number;
+  salarySource?: "hirebase" | "none";
   error?: string;
 };
 
@@ -91,6 +95,33 @@ async function loadTargetRoles(userId: string): Promise<string[]> {
   return (profile?.targetRoles ?? []).map((r) => r.trim()).filter(Boolean);
 }
 
+/** Merge Hirebase salary bands into a Sumble-derived window (skills/employers stay from Sumble sample). */
+function mergeHirebaseSalaryIntoWindow(
+  sumbleWindow: HirebaseInsightsResponse,
+  hirebaseWindow: HirebaseInsightsResponse
+): HirebaseInsightsResponse {
+  const hbHeadline = hirebaseWindow.headline;
+  const hbSalary = hirebaseWindow.salary;
+  return {
+    ...sumbleWindow,
+    salary: hbSalary ?? sumbleWindow.salary,
+    salary_by_level: hirebaseWindow.salary_by_level ?? sumbleWindow.salary_by_level,
+    salary_by_location_type:
+      hirebaseWindow.salary_by_location_type ?? sumbleWindow.salary_by_location_type,
+    top_benefits: hirebaseWindow.top_benefits?.length
+      ? hirebaseWindow.top_benefits
+      : sumbleWindow.top_benefits,
+    headline: {
+      ...sumbleWindow.headline,
+      median_salary: hbHeadline?.median_salary ?? hbSalary?.p50 ?? sumbleWindow.headline?.median_salary,
+      salary_currency:
+        hbHeadline?.salary_currency ?? hbSalary?.currency ?? sumbleWindow.headline?.salary_currency,
+      pct_disclosing_salary:
+        hbHeadline?.pct_disclosing_salary ?? sumbleWindow.headline?.pct_disclosing_salary,
+    },
+  };
+}
+
 export async function getMarketInsightsBundle(input: {
   userId: string;
   primaryDays?: number;
@@ -139,10 +170,12 @@ export async function getMarketInsightsBundle(input: {
     };
   }
 
-  const cacheKey = insightsCacheKey("sumble-market", {
+  const hirebaseReady = isHirebaseConfigured();
+  const cacheKey = insightsCacheKey("sumble-market-v2", {
     userId: input.userId,
     jobFunctionTerms,
     windows: windowsToFetch,
+    hirebaseSalary: hirebaseReady,
   });
 
   if (!input.forceRefresh) {
@@ -161,23 +194,66 @@ export async function getMarketInsightsBundle(input: {
       forceRefresh: input.forceRefresh,
     });
 
+    let hirebaseCached = false;
+
+    if (hirebaseReady) {
+      await Promise.all(
+        windowsToFetch.map(async (days) => {
+          const key = insightsCacheKey("hirebase-market-salary", {
+            userId: input.userId,
+            titles,
+            days,
+          });
+          let hirebaseWindow: HirebaseInsightsResponse | null = null;
+
+          if (!input.forceRefresh) {
+            hirebaseWindow = getInsightsCached<HirebaseInsightsResponse>(key);
+            if (hirebaseWindow) hirebaseCached = true;
+          }
+
+          if (!hirebaseWindow) {
+            try {
+              hirebaseWindow = await fetchHirebaseMarketInsights({
+                job_titles: titles,
+                days_ago: days,
+              });
+              setInsightsCached(key, hirebaseWindow, INSIGHTS_CACHE_TTL_MS);
+            } catch {
+              hirebaseWindow = null;
+            }
+          }
+
+          if (hirebaseWindow && windows[String(days)]) {
+            windows[String(days)] = mergeHirebaseSalaryIntoWindow(windows[String(days)], hirebaseWindow);
+          }
+        })
+      );
+    }
+
     const primary = windows[String(primaryDays)] ?? windows[String(windowsToFetch[0])];
     const generatedAt = primary?.generated_at ?? new Date().toISOString();
+    const hasHirebaseSalary =
+      hirebaseReady &&
+      (primary?.salary?.p50 != null || primary?.headline?.median_salary != null);
+    const salarySource: "hirebase" | "none" = hasHirebaseSalary ? "hirebase" : "none";
+    const dataSource = hasHirebaseSalary ? "sumble+hirebase" : "sumble";
 
     const bundle: MarketInsightsBundle = {
       configured: true,
-      dataSource: "sumble",
+      dataSource,
       targetRoles: titles,
       roleLabel,
       windows,
       primaryDays,
       headline: primary ? buildSumbleMarketHeadline(primary, roleLabel, primaryDays) : "",
       generatedAt,
-      hirebaseCached: false,
+      hirebaseCached,
       serverCached: false,
       creditsRemaining: remaining ?? creditsRemaining,
       requiresLoad: false,
       estimatedCredits,
+      jobSampleSize: primary?.headline?.sample_size ?? MARKET_JOB_SAMPLE_LIMIT,
+      salarySource,
     };
 
     setInsightsCached(cacheKey, { ...bundle, serverCached: false }, INSIGHTS_CACHE_TTL_MS);

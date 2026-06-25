@@ -6,7 +6,7 @@ import { MARKET_WINDOW_OPTIONS } from "@/lib/market-insights-service";
 
 export type MarketInsightsPayload = {
   configured: boolean;
-  dataSource?: "sumble" | "none";
+  dataSource?: "sumble" | "sumble+hirebase" | "none";
   targetRoles: string[];
   roleLabel: string;
   windows: Record<string, HirebaseInsightsResponse>;
@@ -19,6 +19,8 @@ export type MarketInsightsPayload = {
   creditsRemaining?: number | null;
   requiresLoad?: boolean;
   estimatedCredits?: number;
+  jobSampleSize?: number;
+  salarySource?: "hirebase" | "none";
   error?: string;
 };
 

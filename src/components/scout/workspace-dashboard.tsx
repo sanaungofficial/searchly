@@ -18,6 +18,26 @@ import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
 import { formatInsightsSalary } from "@/lib/hirebase-insights";
 import { DashboardSumbleSignalsPanel } from "@/components/scout/dashboard-sumble-signals-panel";
 
+const marketCardLinkStyle: React.CSSProperties = {
+  textDecoration: "none",
+  color: "inherit",
+  display: "block",
+  flex: "none",
+  width: "100%",
+};
+
+function marketSalaryTitle(
+  insight: NonNullable<ReturnType<typeof windowInsight>>,
+  salarySource?: "hirebase" | "none"
+): string {
+  const median = insight.headline?.median_salary ?? insight.salary?.p50;
+  const currency = insight.headline?.salary_currency ?? insight.salary?.currency;
+  if (median != null) {
+    return `Median ${formatInsightsSalary(median, currency) ?? ""}`;
+  }
+  return salarySource === "hirebase" ? "Salary bands loading…" : "Open salary explorer";
+}
+
 const STAT_LABEL: React.CSSProperties = {
   fontFamily: fontSans,
   fontSize: T.label,
@@ -647,7 +667,7 @@ export function WorkspaceDashboard() {
             {marketRequiresLoad && !marketInsight && !signalsLoading && !signalsError && (
               <SumbleLoadPrompt
                 title="Market snapshot"
-                description="Load a small job sample for your target roles. Market data does not load automatically."
+                description="~25 Sumble credits for skills and hiring trends from a job sample. Salary bands come from Hirebase at no extra Sumble cost. Does not load automatically."
                 estimatedCredits={signalsData?.estimatedCredits ?? 25}
                 creditsRemaining={signalsData?.creditsRemaining}
                 loading={signalsLoading}
@@ -684,6 +704,9 @@ export function WorkspaceDashboard() {
                   </p>
                   {signalsData.generatedAt && (
                     <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
+                      Based on {signalsData.jobSampleSize ?? marketInsight.headline?.sample_size ?? 25} recent listings
+                      {signalsData.salarySource === "hirebase" ? " · salary from Hirebase" : ""}
+                      {" · "}
                       Updated {new Date(signalsData.generatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     </p>
                   )}
@@ -705,62 +728,74 @@ export function WorkspaceDashboard() {
                   {[
                     {
                       type: "Demand",
-                      title: `${marketInsight.headline?.total_count?.toLocaleString() ?? "—"} active roles`,
-                      actionable: `${marketInsight.headline?.new_this_week ?? 0} posted this week`,
+                      href: "/market",
+                      title: `${marketInsight.headline?.total_count?.toLocaleString() ?? "—"} active roles (market size)`,
+                      actionable: `${marketInsight.headline?.new_this_week ?? 0} in sample posted this week`,
                       sentiment: "positive" as const,
                     },
                     {
                       type: "Salary",
-                      title: marketInsight.headline?.median_salary
-                        ? `Median ${formatInsightsSalary(marketInsight.headline.median_salary, marketInsight.headline.salary_currency) ?? ""}`
-                        : "Salary data limited",
-                      actionable: "See full bands on Market → Salary",
+                      href: "/market/salary",
+                      title: marketSalaryTitle(marketInsight, signalsData.salarySource),
+                      actionable:
+                        marketInsight.salary?.p50 != null || marketInsight.headline?.median_salary != null
+                          ? "View bands by level and location"
+                          : "Load salary explorer",
                       sentiment: "neutral" as const,
                     },
                     ...(marketInsight.top_companies ?? []).slice(0, 3).map((co) => ({
                       type: "Hiring",
+                      href: "/market/companies",
                       company: co.company_name,
-                      title: `${co.company_name} — ${co.count} roles`,
-                      actionable: "View company intel",
+                      title: `${co.company_name} — ${co.count} in sample`,
+                      actionable: "See top employers →",
                       sentiment: "positive" as const,
                     })),
                   ].map((s, i) => {
                     const sentimentColor = s.sentiment === "positive" ? "#2D6B4A" : "#7A6020";
                     return (
-                      <ScoutBox
+                      <Link
                         key={i}
-                        padding="18px 20px"
-                        style={{ flex: "none", width: isMobile ? "min(85vw, 272px)" : 272 }}
+                        href={s.href}
+                        style={{
+                          ...marketCardLinkStyle,
+                          width: isMobile ? "min(85vw, 272px)" : 272,
+                        }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                          <span
-                            style={{
-                              padding: "2px 8px",
-                              background: surface.inset,
-                              border: border.line,
-                              fontFamily: fontMono,
-                              fontSize: T.caption,
-                              fontWeight: 700,
-                              color: sentimentColor,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            {s.type}
-                          </span>
-                          {"company" in s && s.company && (
-                            <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
-                              {s.company}
+                        <ScoutBox
+                          padding="18px 20px"
+                          style={{ height: "100%", cursor: "pointer", transition: "border-color 0.15s ease" }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                            <span
+                              style={{
+                                padding: "2px 8px",
+                                background: surface.inset,
+                                border: border.line,
+                                fontFamily: fontMono,
+                                fontSize: T.caption,
+                                fontWeight: 700,
+                                color: sentimentColor,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              {s.type}
                             </span>
-                          )}
-                        </div>
-                        <p style={displayTitleStyle(isMobile ? 17 : 19, { marginBottom: 8, lineHeight: 1.35 })}>
-                          {s.title}
-                        </p>
-                        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, lineHeight: 1.55, margin: 0 }}>
-                          → {s.actionable}
-                        </p>
-                      </ScoutBox>
+                            {"company" in s && s.company && (
+                              <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
+                                {s.company}
+                              </span>
+                            )}
+                          </div>
+                          <p style={displayTitleStyle(isMobile ? 17 : 19, { marginBottom: 8, lineHeight: 1.35 })}>
+                            {s.title}
+                          </p>
+                          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, lineHeight: 1.55, margin: 0 }}>
+                            {s.actionable} →
+                          </p>
+                        </ScoutBox>
+                      </Link>
                     );
                   })}
                 </div>
@@ -779,26 +814,44 @@ export function WorkspaceDashboard() {
                 marginTop: 20,
               }}
             >
-              <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
-                <ScoutLabel>Salary benchmark</ScoutLabel>
-                <p style={displayTitleStyle(isMobile ? 20 : 22, { margin: "8px 0" })}>
-                  {marketInsight.salary?.p50 != null
-                    ? formatInsightsSalary(marketInsight.salary.p50, marketInsight.salary.currency)
-                    : marketInsight.headline?.dominant_experience_level ?? "See Market → Salary"}
-                </p>
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
-                  {marketInsight.salary?.p25 != null && marketInsight.salary?.p75 != null
-                    ? `Typical range ${formatInsightsSalary(marketInsight.salary.p25, marketInsight.salary.currency)}–${formatInsightsSalary(marketInsight.salary.p75, marketInsight.salary.currency)} for ${signalsData.roleLabel}.`
-                    : "Open Salary explorer for level and location breakdowns."}
-                </p>
-              </ScoutBox>
+              <Link href="/market/salary" style={{ textDecoration: "none", color: "inherit" }}>
+                <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"} style={{ height: "100%", cursor: "pointer" }}>
+                  <ScoutLabel>Salary benchmark</ScoutLabel>
+                  <p style={displayTitleStyle(isMobile ? 20 : 22, { margin: "8px 0" })}>
+                    {marketInsight.salary?.p50 != null
+                      ? formatInsightsSalary(marketInsight.salary.p50, marketInsight.salary.currency)
+                      : marketInsight.headline?.median_salary != null
+                        ? formatInsightsSalary(marketInsight.headline.median_salary, marketInsight.headline.salary_currency)
+                        : "Tap to open salary explorer →"}
+                  </p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
+                    {marketInsight.salary?.p25 != null && marketInsight.salary?.p75 != null
+                      ? `Typical range ${formatInsightsSalary(marketInsight.salary.p25, marketInsight.salary.currency)}–${formatInsightsSalary(marketInsight.salary.p75, marketInsight.salary.currency)} for ${signalsData.roleLabel}.`
+                      : signalsData.salarySource === "hirebase"
+                        ? "Hirebase comp bands for your target roles — open for level and location breakdowns."
+                        : "Salary requires Hirebase on this environment."}
+                  </p>
+                </ScoutBox>
+              </Link>
 
               <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
-                <ScoutLabel>Skills in demand</ScoutLabel>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                  <ScoutLabel>Skills in demand</ScoutLabel>
+                  <Link
+                    href="/market/skills"
+                    style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, textDecoration: "none" }}
+                  >
+                    Market →
+                  </Link>
+                </div>
+                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.5 }}>
+                  Tap a skill to add it to Upskilling.
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "0 0 14px" }}>
                   {(marketInsight.top_skills ?? []).slice(0, 6).map((s) => (
-                    <span
+                    <Link
                       key={s.key}
+                      href={`/profile/learning-path?skill=${encodeURIComponent(s.key)}`}
                       style={{
                         padding: "4px 12px",
                         background: surface.inset,
@@ -807,17 +860,19 @@ export function WorkspaceDashboard() {
                         fontSize: T.caption,
                         fontWeight: 500,
                         color: color.forest,
+                        textDecoration: "none",
                       }}
                     >
-                      ↑ {s.key}
-                    </span>
+                      + {s.key}
+                    </Link>
                   ))}
                 </div>
                 <ScoutLabel>Technologies</ScoutLabel>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
                   {(marketInsight.top_technologies ?? []).slice(0, 4).map((s) => (
-                    <span
+                    <Link
                       key={s.key}
+                      href={`/profile/learning-path?skill=${encodeURIComponent(s.key)}`}
                       style={{
                         padding: "4px 12px",
                         background: surface.inset,
@@ -825,10 +880,11 @@ export function WorkspaceDashboard() {
                         fontFamily: fontSans,
                         fontSize: T.caption,
                         color: color.muted,
+                        textDecoration: "none",
                       }}
                     >
                       {s.key}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               </ScoutBox>

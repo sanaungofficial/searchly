@@ -9,13 +9,13 @@ export async function GET(request: Request) {
 
   const forceRefresh = new URL(request.url).searchParams.get("refresh") === "1";
   const allowFetch = new URL(request.url).searchParams.get("load") === "1" || forceRefresh;
-  const maxCompanies = Number(new URL(request.url).searchParams.get("limit") ?? "10");
+  const maxCompanies = Number(new URL(request.url).searchParams.get("limit") ?? "3");
 
   const bundle = await getDashboardSumbleSignalsBundle({
     userId: dbUser.id,
     forceRefresh,
     allowFetch,
-    maxCompanies: Number.isFinite(maxCompanies) ? maxCompanies : 10,
+    maxCompanies: Number.isFinite(maxCompanies) ? maxCompanies : 3,
   });
 
   const hasData = bundle.signals.length > 0 || bundle.companies.some((c) => c.matched || c.signals.length > 0);

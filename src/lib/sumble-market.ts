@@ -5,6 +5,7 @@ import type {
   InsightsTopLocation,
 } from "@/lib/hirebase-insights";
 import { buildMarketHeadline } from "@/lib/hirebase-insights";
+import { filterMarketSkills } from "@/lib/market-skill-filter";
 import {
   assertSumbleCreditsAvailable,
   SUMBLE_ESTIMATED_COSTS,
@@ -138,8 +139,11 @@ function aggregateJobsToInsights(input: {
       percent: sampleSize ? Math.round((co.count / sampleSize) * 1000) / 10 : undefined,
     }));
 
-  const top_technologies = countByKey(technologies);
-  const top_skills = countByKey(projects.length ? projects : technologies);
+  const top_technologies = filterMarketSkills(countByKey(technologies), 25);
+  const top_skills = filterMarketSkills(
+    countByKey(projects.length ? projects : technologies),
+    25
+  );
   const level_breakdown = countByKey(levels);
 
   const locationCounts = countByKey(locations);
