@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { interpretNetworkJob, SEED_NETWORK_JOBS, type NetworkJobListing } from "@/lib/network-job-display";
+import { interpretNetworkJob, SEED_NETWORK_JOBS } from "@/lib/network-job-display";
 import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 
 function rowToListing(row: {
   externalId: string;
-  topEchelonUrl: string | null;
   raw: unknown;
   recruiterRecord: {
     externalId: string;
@@ -16,9 +15,8 @@ function rowToListing(row: {
     phone: string | null;
     agencyName: string | null;
   } | null;
-}): NetworkJobListing {
+}) {
   const listing = interpretNetworkJob(row.raw as TopEchelonNetworkJobRaw);
-  if (row.topEchelonUrl) listing.topEchelonUrl = row.topEchelonUrl;
   if (row.recruiterRecord) {
     listing.recruiter = {
       id: row.recruiterRecord.externalId,
@@ -34,28 +32,25 @@ function rowToListing(row: {
   return listing;
 }
 
-export async function GET() {
-  try {
-    const rows = await prisma.networkJob.findMany({
-      include: { recruiterRecord: true },
-      orderBy: { sharedAt: "desc" },
-      take: 200,
-    });
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ jobId: string }> }
+) {
+  const { jobId } = await params;
+  const externalId = decodeURIComponent(jobId);
 
-    if (rows.length > 0) {
-      return NextResponse.json({
-        jobs: rows.map(rowToListing),
-        source: "database",
-        count: rows.length,
-      });
-    }
-  } catch (err) {
-    console.warn("[network-jobs] DB read failed, using seed:", err);
+  try {
+    const row = await prisma.networkJob.findFirst({
+      where: { externalId },
+      include: { recruiterRecord: true },
+    });
+    if (row) return NextResponse.json({ job: rowToListing(row) });
+  } catch {
+    // fall through to seed lookup
   }
 
-  return NextResponse.json({
-    jobs: SEED_NETWORK_JOBS,
-    source: "seed",
-    count: SEED_NETWORK_JOBS.length,
-  });
+  const seed = SEED_NETWORK_JOBS.find((j) => j.id === externalId || j.externalId === externalId);
+  if (seed) return NextResponse.json({ job: seed });
+
+  return NextResponse.json({ error: "Job not found" }, { status: 404 });
 }

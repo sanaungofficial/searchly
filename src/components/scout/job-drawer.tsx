@@ -919,10 +919,10 @@ export function JobDrawer({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
                     <CompanyLogo
-                      name={card.company}
-                      website={jobWebsite}
+                      name={networkJob?.agencyName ?? card.company}
+                      website={networkJob?.agencyWebsite ?? jobWebsite}
                       enrichmentWebsiteUrl={hirebaseCompany?.profile?.company_link ?? hirebaseCompany?.enrichment?.websiteUrl}
-                      logoUrl={hirebaseCompany?.profile?.company_logo ?? hirebaseCompany?.enrichment?.hirebase?.logo}
+                      logoUrl={networkJob?.agencyLogoUrl ?? hirebaseCompany?.profile?.company_logo ?? hirebaseCompany?.enrichment?.hirebase?.logo}
                       size={56}
                     />
                     <div>

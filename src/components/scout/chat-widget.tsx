@@ -13,6 +13,7 @@ import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditCostBadge, CreditsInlineHint, CreditsStatusBar } from "@/components/scout/credits-display";
 import { ScoreExplainerPopover } from "@/components/scout/score-explainer-popover";
 import { notifyCreditsChanged } from "@/lib/credits";
+import { pipelineJobUrl } from "@/lib/workspace-urls";
 
 const sans = fontSans;
 
@@ -149,15 +150,18 @@ export function ChatWidget() {
   };
 
   const handleOpenTool = (jobId: number, tool: DrawerTool) => {
+    const ext = kanbanCards.find((c) => c.id === jobId) as (typeof kanbanCards[number] & { _dbId?: string }) | undefined;
     if (tool === "fit") {
       openFitChat(jobId);
+      if (ext?._dbId) router.push(pipelineJobUrl(ext._dbId, "fit"));
       return;
     }
     setDrawerCardId(jobId);
     setDrawerTool(tool);
     setChatOpen(false);
     setSelectedJobId(null);
-    router.push("/opportunities");
+    if (ext?._dbId) router.push(pipelineJobUrl(ext._dbId, tool));
+    else router.push("/opportunities/pipeline");
   };
 
   const handleToolClick = (tool: DrawerTool) => {

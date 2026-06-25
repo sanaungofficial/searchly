@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     /* optional body */
   }
 
-  const limit = Math.min(Math.max(body.limit ?? 3, 1), 10);
+  const limit = Math.min(Math.max(body.limit ?? 10, 1), 50);
 
   try {
     const stored = await loadTopEchelonSession();

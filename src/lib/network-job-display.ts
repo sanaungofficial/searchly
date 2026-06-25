@@ -12,6 +12,7 @@ import {
   COMPENSATION_BAND_LABELS,
   compensationBand,
   extractIndustries,
+  formatCompensationFromRaw,
   formatCompensationLabel,
   formatNetworkSharedDate,
   formatNetworkStatus,
@@ -34,6 +35,9 @@ export type NetworkJobListing = {
   networkId: string | null;
   positionTitle: string;
   companyName: string | null;
+  agencyName: string | null;
+  agencyWebsite: string | null;
+  agencyLogoUrl: string | null;
   city: string | null;
   state: string | null;
   location: string | null;
@@ -136,9 +140,14 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
   const industries = extractIndustries(raw);
   const compensationMin = mapped.minimumCompensation;
   const compensationMax = mapped.maximumCompensation;
-  const salary =
-    formatCompensationLabel(compensationMin, compensationMax, mapped.jobType) ?? mapped._display.salary;
-  const band = compensationBand(compensationMin, compensationMax, mapped.jobType);
+  const payTypeHint =
+    typeof raw.compensation_type === "string"
+      ? raw.compensation_type
+      : typeof raw.pay_type === "string"
+        ? raw.pay_type
+        : null;
+  const salary = formatCompensationFromRaw(raw) ?? mapped._display.salary;
+  const band = compensationBand(compensationMin, compensationMax, mapped.jobType, payTypeHint);
   const networkStatusLabel = formatNetworkStatus(mapped.networkStatus);
   const sharedAtIso = mapped.sharedAt?.toISOString() ?? null;
   const shared = formatNetworkSharedDate(sharedAtIso);
@@ -151,6 +160,9 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
     networkId: mapped.networkId,
     positionTitle: mapped.positionTitle,
     companyName: mapped.companyName,
+    agencyName: mapped.agencyName ?? mapped.companyName,
+    agencyWebsite: mapped.agencyWebsite,
+    agencyLogoUrl: mapped.agencyLogoUrl,
     city: mapped.city,
     state: mapped.state,
     location: mapped.location,
@@ -210,11 +222,14 @@ export function buildNetworkProspectCard(
       networkStatus: internalView ? (job.networkStatusLabel ?? job.networkStatus) : null,
       adminDetails: internalView ? job.adminDetails : [],
       internalView,
+      agencyName: job.agencyName,
+      agencyWebsite: job.agencyWebsite,
+      agencyLogoUrl: job.agencyLogoUrl,
       recruiter: job.recruiter,
     },
   };
 
-  const company = job.companyName ?? job.recruiter?.agencyName ?? "Confidential employer";
+  const company = job.agencyName ?? job.companyName ?? job.recruiter?.agencyName ?? "Recruiting firm";
   const days = daysSince(job.sharedAt);
 
   return {

@@ -2,6 +2,8 @@ import { stripHtml } from "@/lib/topechelon/html";
 import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 import { topEchelonNetworkJobUrl } from "@/lib/topechelon/top-echelon-url";
 import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
+import { mapAgencyBranding } from "@/lib/topechelon/map-agency-branding";
+import { formatCompensationFromRaw } from "@/lib/network-job-format";
 
 function stateAbbrev(state: TopEchelonNetworkJobRaw["state"]): string | null {
   if (!state) return null;
@@ -11,23 +13,6 @@ function stateAbbrev(state: TopEchelonNetworkJobRaw["state"]): string | null {
 
 function recruiterName(job: TopEchelonNetworkJobRaw): string | null {
   return mapTopEchelonNetworkRecruiter(job)?.name ?? null;
-}
-
-function formatCompensation(
-  min: number | null | undefined,
-  max: number | null | undefined,
-  jobType: string | null
-): string | null {
-  if (min == null && max == null) return null;
-  const isHourly =
-    jobType?.toLowerCase().includes("contract") || (min != null && min > 0 && min < 500);
-  const fmt = (n: number) => {
-    if (isHourly) return `$${n.toFixed(2)}/hr`;
-    if (n >= 1000) return `$${Math.round(n / 1000)}K`;
-    return `$${n.toLocaleString()}`;
-  };
-  if (min != null && max != null && min !== max) return `${fmt(min)} – ${fmt(max)}`;
-  return fmt(min ?? max!);
 }
 
 function formatFee(fee: string | number | null | undefined, feeType: string | null): string | null {
@@ -43,6 +28,7 @@ export function mapTopEchelonNetworkJob(job: TopEchelonNetworkJobRaw) {
   const state = stateAbbrev(job.state);
   const location = [city, state].filter(Boolean).join(", ") || null;
   const agency = job.agencyDetail ?? job.agency_detail;
+  const branding = mapAgencyBranding(job);
   const jobType = (job.jobType ?? job.job_type ?? null) as string | null;
   const minComp = (job.minimumCompensation ?? job.minimum_compensation) as number | null | undefined;
   const maxComp = (job.maximumCompensation ?? job.maximum_compensation) as number | null | undefined;
@@ -56,10 +42,14 @@ export function mapTopEchelonNetworkJob(job: TopEchelonNetworkJobRaw) {
     networkId: (job.networkId ?? job.network_id ?? null) as string | null,
     positionTitle: ((job.positionTitle ?? job.position_title) as string | undefined)?.trim() || "Untitled role",
     companyName:
+      branding.agencyName ??
       (agency as { companyName?: string; company_name?: string; name?: string } | undefined)?.companyName ??
       (agency as { company_name?: string } | undefined)?.company_name ??
       (agency as { name?: string } | undefined)?.name ??
       null,
+    agencyName: branding.agencyName,
+    agencyWebsite: branding.agencyWebsite,
+    agencyLogoUrl: branding.agencyLogoUrl,
     city,
     state,
     location,
@@ -83,7 +73,7 @@ export function mapTopEchelonNetworkJob(job: TopEchelonNetworkJobRaw) {
     syncedAt: new Date(),
     // Derived display helpers stored alongside for API responses
     _display: {
-      salary: formatCompensation(minComp, maxComp, jobType),
+      salary: formatCompensationFromRaw(job),
       feeLabel: formatFee(job.fee as string | number | null | undefined, feeType),
       descriptionText: stripHtml(descriptionHtml),
       recruiterNotesText: stripHtml(commentsHtml),
