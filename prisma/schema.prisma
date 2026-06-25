@@ -45,6 +45,7 @@ model User {
   digestSettings       UserDigestSettings?
   coachReviews         CoachReview[]
   coachFollows         CoachFollow[]
+  liveSessionRegistrations LiveSessionRegistration[]
 
   @@index([referredByUserId])
 }
@@ -248,6 +249,7 @@ model CoachProfile {
   reviews        CoachReview[]
   followers      CoachFollow[]
   bookings       CoachBooking[]
+  liveSessions   LiveSession[]
 
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -283,6 +285,68 @@ model CoachBooking {
 
   @@index([coachProfileId])
   @@index([startAt])
+}
+
+enum LiveSessionStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+model LiveSession {
+  id               String            @id @default(cuid())
+  legacyNumericId  Int?              @unique
+
+  title            String
+  description      String
+  category         String            @default("General")
+
+  coachProfileId   String?
+  coachProfile     CoachProfile?     @relation(fields: [coachProfileId], references: [id], onDelete: SetNull)
+
+  hostName         String
+  hostInitials     String?
+  hostRole         String?
+  hostRating       Float?
+  hostReviewCount  Int               @default(0)
+
+  scheduledStart   DateTime
+  scheduledEnd     DateTime
+  status           LiveSessionStatus @default(SCHEDULED)
+
+  isFeaturedWeekly Boolean           @default(false)
+  bgColor          String            @default("#1A3A2F")
+  accentColor      String            @default("#E8D5A3")
+
+  hmsRoomId        String?
+
+  wentLiveAt       DateTime?
+  endedAt          DateTime?
+
+  registrations    LiveSessionRegistration[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([status])
+  @@index([scheduledStart])
+  @@index([coachProfileId])
+}
+
+model LiveSessionRegistration {
+  id            String      @id @default(cuid())
+  liveSessionId String
+  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt      DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@unique([liveSessionId, userId])
+  @@index([userId])
 }
 
 model CoachVouch {

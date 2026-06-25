@@ -13,7 +13,7 @@ import {
   BellIcon,
   ArrowLeftIcon,
 } from "./workspace-icons";
-import { NOTIFICATIONS, LIVE_SESSIONS } from "./workspace-data";
+import { NOTIFICATIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
 import { GrowthDiscoveryModal } from "./growth-discovery-modal";
 import { ReferEarnModal } from "./refer-earn-modal";
@@ -280,7 +280,7 @@ export function WorkspaceSidebar({
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [referEarnOpen, setReferEarnOpen] = useState(false);
-  const [hasLiveNow, setHasLiveNow] = useState(() => LIVE_SESSIONS.some((s) => s.isLive));
+  const [hasLiveNow, setHasLiveNow] = useState(false);
 
   const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
 

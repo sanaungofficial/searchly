@@ -7,8 +7,17 @@ import {
   hmsGuestRole,
   hmsHostRole,
 } from "@/lib/hms";
-import { canHostLiveSession, LiveHostForbiddenError, resolveLiveJoinRole, type LiveJoinIntent } from "@/lib/live-host";
-import { getLiveSessionByIdMerged } from "@/lib/live-sessions";
+import {
+  canHostLiveSession,
+  LiveHostForbiddenError,
+  resolveLiveJoinRole,
+  type LiveJoinIntent,
+} from "@/lib/live-host";
+import {
+  findLiveSessionByRouteId,
+  markLiveSessionJoined,
+  toLiveSessionView,
+} from "@/lib/live-session-db";
 
 export async function POST(request: Request) {
   if (!hmsConfigured()) {
@@ -23,23 +32,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { sessionId?: number; intent?: LiveJoinIntent };
+  let body: { sessionId?: string; intent?: LiveJoinIntent };
   try {
-    body = (await request.json()) as { sessionId?: number; intent?: LiveJoinIntent };
+    body = (await request.json()) as { sessionId?: string; intent?: LiveJoinIntent };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const sessionId = body.sessionId;
-  if (sessionId == null || !Number.isFinite(sessionId)) {
+  const sessionId = body.sessionId?.trim();
+  if (!sessionId) {
     return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
   }
 
-  const session = await getLiveSessionByIdMerged(sessionId);
-  if (!session) {
+  const row = await findLiveSessionByRouteId(sessionId);
+  if (!row) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
+  if (row.status === "CANCELLED" || row.status === "ENDED") {
+    return NextResponse.json({ error: "This session has ended" }, { status: 410 });
+  }
+
+  const session = toLiveSessionView(row);
   const operator = realDbUser ?? dbUser;
   const intent = body.intent === "host" || body.intent === "guest" ? body.intent : undefined;
 
@@ -60,12 +74,6 @@ export async function POST(request: Request) {
     throw err;
   }
 
-  const userId = dbUser.id;
-  const userName =
-    dbUser.name?.trim() ||
-    authUser.email?.split("@")[0] ||
-    "Guest";
-
   const canHost = await canHostLiveSession({
     operator,
     authEmail: authUser.email,
@@ -73,8 +81,14 @@ export async function POST(request: Request) {
     isImpersonating,
   });
 
+  const userId = dbUser.id;
+  const userName =
+    dbUser.name?.trim() ||
+    authUser.email?.split("@")[0] ||
+    "Guest";
+
   try {
-    const roomId = await ensureLiveRoom(sessionId);
+    const roomId = await ensureLiveRoom(row);
     const hms = getHmsSdk();
     const auth = await hms.auth.getAuthToken({
       roomId,
@@ -83,6 +97,8 @@ export async function POST(request: Request) {
       validForSeconds: 60 * 60 * 4,
     });
     const authToken = typeof auth === "string" ? auth : auth.token;
+
+    await markLiveSessionJoined(row.id, dbUser.id);
 
     return NextResponse.json({
       authToken,

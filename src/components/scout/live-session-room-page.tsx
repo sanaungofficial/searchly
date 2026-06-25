@@ -62,7 +62,11 @@ export function LiveSessionRoomPage({
         </Link>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
-        <LiveRoomClient sessionId={session.id} sessionMeta={session} joinAsGuest={joinAsGuest} />
+        <LiveRoomClient
+          sessionId={session.id}
+          sessionMeta={session}
+          joinAsGuest={joinAsGuest}
+        />
       </div>
     </div>
   );

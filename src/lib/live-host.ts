@@ -1,5 +1,5 @@
 import type { User } from "@prisma/client";
-import type { LiveSession } from "@/lib/live-sessions";
+import type { LiveSessionView } from "@/lib/live-session-types";
 import { isSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hmsGuestRole, hmsHostRole } from "@/lib/hms";
@@ -9,22 +9,26 @@ export type LiveJoinIntent = "host" | "guest";
 export async function canHostLiveSession(args: {
   operator: User;
   authEmail: string;
-  session: LiveSession;
+  session: Pick<LiveSessionView, "coachProfileId" | "host">;
   isImpersonating: boolean;
 }): Promise<boolean> {
   const { operator, authEmail, session, isImpersonating } = args;
   if (isImpersonating) return false;
 
   if (operator.role === "ADMIN" || isSuperAdmin(authEmail)) return true;
-  if (operator.role === "COACH" || operator.role === "RECRUITER") return true;
 
   const coach = await prisma.coachProfile.findFirst({
     where: {
       OR: [{ userId: operator.id }, ...(authEmail ? [{ email: authEmail }] : [])],
     },
-    select: { displayName: true },
+    select: { id: true, displayName: true },
   });
-  if (coach && coach.displayName.trim().toLowerCase() === session.host.trim().toLowerCase()) {
+
+  if (coach) {
+    if (session.coachProfileId && coach.id === session.coachProfileId) return true;
+    if (operator.role === "COACH" || operator.role === "RECRUITER") return true;
+    if (coach.displayName.trim().toLowerCase() === session.host.trim().toLowerCase()) return true;
+  } else if (operator.role === "COACH" || operator.role === "RECRUITER") {
     return true;
   }
 
@@ -34,7 +38,7 @@ export async function canHostLiveSession(args: {
 export async function resolveLiveJoinRole(args: {
   operator: User;
   authEmail: string;
-  session: LiveSession;
+  session: Pick<LiveSessionView, "coachProfileId" | "host">;
   isImpersonating: boolean;
   requestedIntent?: LiveJoinIntent;
 }): Promise<{ role: string; isHost: boolean }> {

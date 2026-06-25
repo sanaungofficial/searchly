@@ -265,7 +265,7 @@ export function LiveRoomClient({
   sessionMeta,
   joinAsGuest = false,
 }: {
-  sessionId: number;
+  sessionId: string;
   sessionMeta: LiveSession;
   joinAsGuest?: boolean;
 }) {
@@ -282,9 +282,9 @@ export function LiveRoomClient({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sessionId,
-            ...(joinAsGuest ? { intent: "guest" } : {}),
-          }),
+          sessionId: sessionMeta.legacyNumericId != null ? String(sessionMeta.legacyNumericId) : sessionId,
+          ...(joinAsGuest ? { intent: "guest" } : {}),
+        }),
         });
         const data = (await res.json().catch(() => ({}))) as JoinPayload & { error?: string };
         if (!res.ok) {
