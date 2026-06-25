@@ -16,6 +16,7 @@ import {
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PipelineNetworkSectionProps {
   onOpenJob: (job: NetworkJobListing) => void;
@@ -100,8 +101,9 @@ function NetworkJobFiltersGrid({
   suggestions: NetworkJobFilterSuggestions;
   internalView: boolean;
 }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: isMobile ? "12px 0" : "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
       <FilterSectionHeader
         title="Type to filter"
         hint="Free text — matches title, company, location, industry, and description. Separate multiple job titles or keywords with commas."
@@ -366,6 +368,7 @@ function NetworkJobCard({
 
 export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetworkSectionProps) {
   const { isAdmin, userRole } = useWorkspace();
+  const isMobile = useIsMobile();
   const internalView = canViewNetworkJobInternal(userRole, isAdmin);
 
   const [jobs, setJobs] = useState<NetworkJobListing[]>(SEED_NETWORK_JOBS);
@@ -413,7 +416,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   };
 
   return (
-    <div style={{ padding: "32px 36px 48px" }}>
+    <div style={{ padding: isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: "#C4A86A", display: "inline-block", flexShrink: 0 }} />
@@ -428,7 +431,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
       </div>
 
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 12, marginBottom: 12 }}>
           <div>
             <ScoutLabel>Network roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>

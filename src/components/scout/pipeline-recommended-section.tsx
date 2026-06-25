@@ -31,6 +31,7 @@ import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
@@ -311,8 +312,9 @@ function JobFiltersGrid({
   toggleSet: (set: Set<string>, value: string) => Set<string>;
   trackedCompanyNames: string[];
 }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: isMobile ? "12px 0" : "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
       <FilterSectionHeader
         title="Type to filter"
         hint="Free text — matches job title, company, location, and description. Separate multiple job titles or keywords with commas."
@@ -718,6 +720,7 @@ export function PipelineRecommendedSection({
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
   onChangeStage: (cardId: number, stage: KanbanStage) => void;
 }) {
+  const isMobile = useIsMobile();
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadStoredSemanticQuery(),
@@ -928,7 +931,7 @@ export function PipelineRecommendedSection({
   return (
     <div>
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 12, marginBottom: 12 }}>
           <div>
             <ScoreExplainerLabel variant="vector-match">
               <ScoutLabel>Recommended roles</ScoutLabel>

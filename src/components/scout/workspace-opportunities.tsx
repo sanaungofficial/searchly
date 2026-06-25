@@ -40,6 +40,7 @@ import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { StageFilter } from "@/lib/role-listings";
 
 export type { DrawerTool };
@@ -52,6 +53,7 @@ interface OpportunitiesProps {}
 
 export function WorkspaceOpportunities() {
   const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole } = useWorkspace();
+  const isMobile = useIsMobile();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -431,16 +433,18 @@ export function WorkspaceOpportunities() {
       {/* Tab bar */}
       <div
         style={{
-          padding: "12px 28px",
+          padding: isMobile ? "10px 12px" : "12px 28px",
           borderBottom: border.line,
           background: surface.card,
           flexShrink: 0,
           display: "flex",
-          alignItems: "center",
+          alignItems: isMobile ? "stretch" : "center",
           justifyContent: "space-between",
+          flexDirection: isMobile ? "column" : "row",
+          gap: isMobile ? 10 : 0,
         }}
       >
-        <div style={{ display: "flex", gap: 0 }}>
+        <div style={{ display: "flex", gap: 0, overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch" }}>
           {([
             ["pipeline", "Pipeline"],
             ["network", "In-Network"],
@@ -452,7 +456,7 @@ export function WorkspaceOpportunities() {
                 key={id}
                 onClick={() => setTab(id)}
                 style={{
-                  padding: "7px 18px",
+                  padding: isMobile ? "8px 14px" : "7px 18px",
                   border: "none",
                   borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
                   background: "transparent",
@@ -463,6 +467,8 @@ export function WorkspaceOpportunities() {
                   cursor: "pointer",
                   transition: "all 0.15s",
                   letterSpacing: "0.1px",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
                 {label}
@@ -470,7 +476,7 @@ export function WorkspaceOpportunities() {
             );
           })}
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: isMobile ? "wrap" : "nowrap", justifyContent: isMobile ? "flex-start" : "flex-end" }}>
           <DataSourcesPopover compact />
           {tab !== "companies" && tab !== "network" && <button
             onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
@@ -677,7 +683,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
   return (
     <div
       style={{
-        padding: "16px 28px",
+        padding: "16px clamp(16px, 4vw, 28px)",
         background: surface.card,
         borderBottom: border.line,
         animation: "fadeIn 0.2s ease both",
@@ -763,7 +769,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
   return (
     <div
       style={{
-        padding: "16px 28px",
+        padding: "16px clamp(16px, 4vw, 28px)",
         background: surface.card,
         borderBottom: border.line,
         animation: "fadeIn 0.2s ease both",
@@ -944,6 +950,7 @@ function PipelineTab({
   onOpenRecommended,
   onSaveRecommended,
 }: PipelineTabProps) {
+  const isMobile = useIsMobile();
   const [wideLayout, setWideLayout] = useState(false);
 
   useEffect(() => {
@@ -971,13 +978,13 @@ function PipelineTab({
   ];
 
   return (
-    <div style={{ padding: "32px 36px 48px" }}>
+    <div style={{ padding: isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
           <ScoutLabel>Recommended roles</ScoutLabel>
         </div>
-        <ScoutDisplayTitle size={36} style={{ marginBottom: 10 }}>
+        <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 10 }}>
           Every role in one place
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>

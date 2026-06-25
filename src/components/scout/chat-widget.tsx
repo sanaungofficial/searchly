@@ -14,6 +14,7 @@ import { CreditCostBadge, CreditsInlineHint, CreditsStatusBar } from "@/componen
 import { ScoreExplainerPopover } from "@/components/scout/score-explainer-popover";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const sans = fontSans;
 
@@ -97,6 +98,7 @@ export function ChatWidget() {
     openPricing,
   } = useWorkspace();
 
+  const isMobile = useIsMobile();
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -253,8 +255,12 @@ export function ChatWidget() {
     }
   };
 
-  const panelWidth = chatView === "chat" ? 380 : 320;
-  const panelHeight = chatView === "chat" ? "min(640px, calc(100vh - 120px))" : undefined;
+  const panelWidth = isMobile ? "calc(100vw - 24px)" : chatView === "chat" ? 380 : 320;
+  const panelHeight = isMobile
+    ? "min(70vh, calc(100vh - env(safe-area-inset-bottom) - 96px))"
+    : chatView === "chat"
+      ? "min(640px, calc(100vh - 120px))"
+      : undefined;
 
   return (
     <>
@@ -263,8 +269,9 @@ export function ChatWidget() {
         aria-label={chatOpen ? "Close Scout" : "Open Scout AI"}
         style={{
           position: "fixed",
-          bottom: 24,
-          right: 24,
+          bottom: isMobile ? "max(16px, env(safe-area-inset-bottom))" : 24,
+          right: isMobile ? 12 : 24,
+          left: isMobile ? 12 : undefined,
           width: 52,
           height: 52,
           borderRadius: 0,
@@ -306,10 +313,12 @@ export function ChatWidget() {
           <div
             style={{
               position: "fixed",
-              bottom: 88,
-              right: 24,
+              bottom: isMobile ? "max(76px, calc(68px + env(safe-area-inset-bottom)))" : 88,
+              right: isMobile ? 12 : 24,
+              left: isMobile ? 12 : undefined,
               width: panelWidth,
               height: panelHeight,
+              maxHeight: isMobile ? "calc(100vh - 96px - env(safe-area-inset-bottom))" : undefined,
               background: "#FFFFFF",
               borderRadius: 0,
               boxShadow: "0 12px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
