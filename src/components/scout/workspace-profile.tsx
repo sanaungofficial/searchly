@@ -61,6 +61,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -2798,6 +2799,9 @@ export function WorkspaceProfile() {
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
+      {isMobile && (
+        <WorkspaceMobileTopBar center={<ScoutLabel>Your profile</ScoutLabel>} />
+      )}
       <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" }}>
         <div style={contentShell}>
         {upskillToast && (
@@ -2812,10 +2816,12 @@ export function WorkspaceProfile() {
         )}
         {/* Header */}
         <div style={{ marginBottom: isMobile ? 24 : 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-            <ScoutLabel>Your profile</ScoutLabel>
-          </div>
+          {!isMobile && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+              <ScoutLabel>Your profile</ScoutLabel>
+            </div>
+          )}
           <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
             {loading ? "Loading…" : profile?.name || "Your story, through Kimchi"}
           </ScoutDisplayTitle>

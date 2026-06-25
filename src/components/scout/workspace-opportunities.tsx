@@ -41,6 +41,7 @@ import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scou
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import type { StageFilter } from "@/lib/role-listings";
 
 export type { DrawerTool };
@@ -431,106 +432,204 @@ export function WorkspaceOpportunities() {
       }}
     >
       {/* Tab bar */}
-      <div
-        style={{
-          padding: isMobile ? "10px 12px" : "12px 28px",
-          borderBottom: border.line,
-          background: surface.card,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: isMobile ? "stretch" : "center",
-          justifyContent: "space-between",
-          flexDirection: isMobile ? "column" : "row",
-          gap: isMobile ? 10 : 0,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 0,
-            overflowX: isMobile ? "auto" : "visible",
-            WebkitOverflowScrolling: "touch",
-            justifyContent: isMobile ? "center" : "flex-start",
-            width: isMobile ? "100%" : undefined,
-          }}
-        >
-          {([
-            ["pipeline", "Pipeline"],
-            ["network", "In-Network"],
-            ["companies", "Companies"],
-          ] as [OppTab, string][]).map(([id, label]) => {
-            const active = tab === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
+      {isMobile ? (
+        <>
+          <WorkspaceMobileTopBar
+            center={
+              <div
                 style={{
-                  padding: isMobile ? "8px 14px" : "7px 18px",
-                  border: "none",
-                  borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
-                  background: "transparent",
-                  color: active ? color.forest : color.muted,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: active ? 600 : 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  letterSpacing: "0.1px",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
+                  display: "flex",
+                  gap: 0,
+                  overflowX: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  justifyContent: "center",
+                  maxWidth: "100%",
                 }}
               >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: isMobile ? "wrap" : "nowrap", justifyContent: isMobile ? "flex-start" : "flex-end" }}>
-          <DataSourcesPopover compact />
-          {tab !== "companies" && tab !== "network" && <button
-            onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
+                {([
+                  ["pipeline", "Pipeline"],
+                  ["network", "In-Network"],
+                  ["companies", "Companies"],
+                ] as [OppTab, string][]).map(([id, label]) => {
+                  const active = tab === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setTab(id)}
+                      style={{
+                        padding: "8px 14px",
+                        border: "none",
+                        borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
+                        background: "transparent",
+                        color: active ? color.forest : color.muted,
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
+                        fontWeight: active ? 600 : 500,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        letterSpacing: "0.1px",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            }
+          />
+          <div
             style={{
-              padding: "8px 16px",
-              background: color.forest,
-              color: color.gold,
-              border: border.lineStrong,
-              borderRadius: 0,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              fontWeight: 600,
-              cursor: "pointer",
-              letterSpacing: "0.2px",
-              display: "inline-flex",
+              padding: "8px 12px",
+              borderBottom: border.line,
+              background: surface.card,
+              flexShrink: 0,
+              display: "flex",
+              gap: 8,
               alignItems: "center",
-              gap: 5,
+              flexWrap: "wrap",
             }}
           >
-            <PlusIcon /> Add job
-          </button>}
-          {tab === "pipeline" && (
-            <button
-              onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
-              style={{
-                padding: "8px 16px",
-                background: showCsvPanel ? color.forest : surface.card,
-                color: showCsvPanel ? color.gold : color.forest,
-                border: border.lineStrong,
-                borderRadius: 0,
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                fontWeight: 600,
-                cursor: "pointer",
-                letterSpacing: "0.2px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <UploadIcon /> Upload CSV
-            </button>
-          )}
+            <DataSourcesPopover compact />
+            {tab !== "companies" && tab !== "network" && (
+              <button
+                onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
+                style={{
+                  padding: "8px 16px",
+                  background: color.forest,
+                  color: color.gold,
+                  border: border.lineStrong,
+                  borderRadius: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  letterSpacing: "0.2px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <PlusIcon /> Add job
+              </button>
+            )}
+            {tab === "pipeline" && (
+              <button
+                onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
+                style={{
+                  padding: "8px 16px",
+                  background: showCsvPanel ? color.forest : surface.card,
+                  color: showCsvPanel ? color.gold : color.forest,
+                  border: border.lineStrong,
+                  borderRadius: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  letterSpacing: "0.2px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <UploadIcon /> Upload CSV
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
+        <div
+          style={{
+            padding: "12px 28px",
+            borderBottom: border.line,
+            background: surface.card,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", gap: 0 }}>
+            {([
+              ["pipeline", "Pipeline"],
+              ["network", "In-Network"],
+              ["companies", "Companies"],
+            ] as [OppTab, string][]).map(([id, label]) => {
+              const active = tab === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  style={{
+                    padding: "7px 18px",
+                    border: "none",
+                    borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
+                    background: "transparent",
+                    color: active ? color.forest : color.muted,
+                    fontFamily: fontSans,
+                    fontSize: T.caption,
+                    fontWeight: active ? 600 : 500,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    letterSpacing: "0.1px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <DataSourcesPopover compact />
+            {tab !== "companies" && tab !== "network" && (
+              <button
+                onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
+                style={{
+                  padding: "8px 16px",
+                  background: color.forest,
+                  color: color.gold,
+                  border: border.lineStrong,
+                  borderRadius: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  letterSpacing: "0.2px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <PlusIcon /> Add job
+              </button>
+            )}
+            {tab === "pipeline" && (
+              <button
+                onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
+                style={{
+                  padding: "8px 16px",
+                  background: showCsvPanel ? color.forest : surface.card,
+                  color: showCsvPanel ? color.gold : color.forest,
+                  border: border.lineStrong,
+                  borderRadius: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  letterSpacing: "0.2px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <UploadIcon /> Upload CSV
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* URL paste panel — renders in Pipeline tab (DiscoverTab has its own inline panel) */}
       {showAddPanel && tab === "pipeline" && (

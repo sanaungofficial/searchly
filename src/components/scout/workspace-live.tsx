@@ -33,6 +33,7 @@ export function WorkspaceLive() {
     <WorkspacePageShell
       isMobile={isMobile}
       label="Live with Second Ladder"
+      mobileBarTitle="Live"
       title="Real sessions, real coaches."
     >
         {/* Featured weekly session */}
