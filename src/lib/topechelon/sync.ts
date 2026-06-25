@@ -79,6 +79,35 @@ async function upsertNetworkRecruiter(job: TopEchelonNetworkJobRaw): Promise<str
   return row.id;
 }
 
+async function upsertNetworkJob(
+  dbFields: ReturnType<typeof toNetworkJobDbRecord>,
+  recruiterRecordId: string | null
+): Promise<void> {
+  const data = { ...dbFields, recruiterRecordId };
+
+  // TE list rows use numeric ids; detail payloads can differ. Prefer an existing row
+  // keyed by networkId (e.g. OH229-2755929) so re-syncs update instead of inserting twice.
+  if (dbFields.networkId) {
+    const existing = await prisma.networkJob.findFirst({
+      where: { networkId: dbFields.networkId },
+      select: { externalId: true },
+    });
+    if (existing && existing.externalId !== dbFields.externalId) {
+      await prisma.networkJob.update({
+        where: { externalId: existing.externalId },
+        data,
+      });
+      return;
+    }
+  }
+
+  await prisma.networkJob.upsert({
+    where: { externalId: dbFields.externalId },
+    create: data,
+    update: data,
+  });
+}
+
 export async function runTopEchelonSync(
   options: RunTopEchelonSyncOptions = {}
 ): Promise<TopEchelonSyncSummary> {
@@ -126,11 +155,7 @@ export async function runTopEchelonSync(
     const dbFields = toNetworkJobDbRecord(job);
     const recruiterRecordId = await upsertNetworkRecruiter(job);
 
-    await prisma.networkJob.upsert({
-      where: { externalId: dbFields.externalId },
-      create: { ...dbFields, recruiterRecordId },
-      update: { ...dbFields, recruiterRecordId },
-    });
+    await upsertNetworkJob(dbFields, recruiterRecordId);
     upserted += 1;
   }
 

@@ -250,6 +250,9 @@ export function TopEchelonSyncPanel() {
             onChange={(e) => setLimit(e.target.value)}
             disabled={!status?.configured}
           />
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0", maxWidth: 320, lineHeight: 1.45 }}>
+            Re-syncing overlaps updates existing rows (no duplicates). Raise this to pull more listings from Top Echelon.
+          </p>
         </div>
         <div>
           <label style={{ display: "block", fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, marginBottom: 4 }}>
