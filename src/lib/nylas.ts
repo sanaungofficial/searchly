@@ -74,7 +74,7 @@ export function nylasProfileReturnUrl(
   params?: Record<string, string>,
 ): string {
   const base = appUrl.replace(/\/$/, "");
-  const path = role === "ADMIN" ? `${base}/admin/profile` : `${base}/clients?tab=profile`;
+  const path = role === "ADMIN" ? `${base}/admin/profile` : `${base}/dashboard/clients?tab=profile`;
   if (!params || Object.keys(params).length === 0) return path;
 
   const qs = new URLSearchParams(params).toString();

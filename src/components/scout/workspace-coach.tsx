@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CoachProfileTab } from "./coach-profile-tab";
 import { CoachBookingsTab } from "./coach-bookings-tab";
 import { ScoutBox } from "./scout-box";
@@ -70,8 +71,9 @@ function activeStage(stage: JobStage) {
   return !["REJECTED", "WITHDRAWN", "SAVED"].includes(stage);
 }
 
-export function WorkspaceCoach() {
+export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
   const searchParams = useSearchParams();
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState<CoachTab>("clients");
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,8 +86,9 @@ export function WorkspaceCoach() {
   useEffect(() => {
     const urlTab = searchParams.get("tab");
     if (urlTab === "profile") setTab("profile");
-    if (urlTab === "bookings") setTab("bookings");
-  }, [searchParams]);
+    else if (!embedded && urlTab === "bookings") setTab("bookings");
+    else if (embedded && urlTab !== "profile") setTab("clients");
+  }, [searchParams, embedded]);
 
   useEffect(() => {
     fetch("/api/coach/onboarding-status")
@@ -111,7 +114,7 @@ export function WorkspaceCoach() {
     return (c.name ?? "").toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
   });
 
-  const tabs = (
+  const tabs = embedded ? null : (
     <WorkspaceSegmentTabs
       tabs={[
         { id: "clients" as const, label: "Clients" },
@@ -122,6 +125,45 @@ export function WorkspaceCoach() {
       onChange={(id) => { setTab(id); setSelected(null); }}
     />
   );
+
+  const pageTitle =
+    tab === "clients" ? "Clients" : tab === "bookings" ? "Bookings" : "My Profile";
+
+  const embeddedPad = isMobile ? "16px" : "28px";
+
+  const shell = (title: string, content: ReactNode) => {
+    if (embedded) {
+      return (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div style={{ padding: `0 ${embeddedPad} 32px`, maxWidth: 960 }}>
+            <WorkspacePageShell label="Coach portal" title={title}>
+              {onboardingBanner}
+              {content}
+            </WorkspacePageShell>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <WorkspacePageShell label="Coach portal" title={title}>
+        {onboardingBanner}
+        {tabs}
+        {content}
+      </WorkspacePageShell>
+    );
+  };
+
+  const onboardingBanner =
+    onboardingPhase === "vouches" ? (
+      <div style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)", padding: "12px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <p style={{ margin: 0, fontSize: 14, color: "#92400e", fontFamily: fontSans }}>
+          Profile in review · {vouchCount} vouch{vouchCount === 1 ? "" : "es"} collected
+        </p>
+        <a href="/coach-onboarding/vouches" style={{ fontSize: 14, fontFamily: fontSans, color: "#1A3A2F", fontWeight: 600 }}>
+          Gather vouches →
+        </a>
+      </div>
+    ) : null;
 
   if (loading && tab === "clients") return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -138,9 +180,8 @@ export function WorkspaceCoach() {
   if (selected && tab === "clients") {
     const activeJobs = selected.jobs.filter((j) => activeStage(j.stage));
     const appliedJobs = selected.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
-    return (
-      <WorkspacePageShell label="Coach portal" title={selected.name ?? selected.email.split("@")[0]}>
-        {tabs}
+    return shell(selected.name ?? selected.email.split("@")[0], (
+      <>
         <button onClick={() => setSelected(null)}
           style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: color.muted, fontSize: T.caption, fontFamily: fontSans, marginBottom: 24, padding: 0 }}>
           ← All Clients
@@ -233,24 +274,12 @@ export function WorkspaceCoach() {
             </table>
           )}
         </div>
-      </WorkspacePageShell>
-    );
+      </>
+    ));
   }
 
-  return (
-    <WorkspacePageShell label="Coach portal" title={tab === "clients" ? "Clients" : tab === "bookings" ? "Bookings" : "My Profile"}>
-      {onboardingPhase === "vouches" && (
-        <div style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)", padding: "12px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "#92400e", fontFamily: fontSans }}>
-            Profile in review · {vouchCount} vouch{vouchCount === 1 ? "" : "es"} collected
-          </p>
-          <a href="/coach-onboarding/vouches" style={{ fontSize: 14, fontFamily: fontSans, color: "#1A3A2F", fontWeight: 600 }}>
-            Gather vouches →
-          </a>
-        </div>
-      )}
-      {tabs}
-
+  return shell(pageTitle, (
+    <>
       {tab === "profile" ? (
         <CoachProfileTab />
       ) : tab === "bookings" ? (
@@ -325,6 +354,6 @@ export function WorkspaceCoach() {
           </div>
         </>
       )}
-    </WorkspacePageShell>
-  );
+    </>
+  ));
 }
