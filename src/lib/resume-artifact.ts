@@ -32,6 +32,7 @@ export async function ensureHirebaseArtifactForUser(userId: string): Promise<{
   parsed: ParsedResumeData | null;
   reEmbedded: boolean;
   error?: string;
+  embedFailed?: boolean;
 }> {
   const profile = await prisma.profile.findUnique({ where: { userId } });
   const primaryAsset = await prisma.userAsset.findFirst({
@@ -121,13 +122,19 @@ export async function ensureHirebaseArtifactForUser(userId: string): Promise<{
       reEmbedded: true,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Hirebase embed failed.";
+    const raw = err instanceof Error ? err.message : "";
+    const isPermission =
+      /403|forbidden|permission|not authorized|unauthorized/i.test(raw);
+    const msg = isPermission
+      ? "Resume matching is temporarily unavailable — showing roles from your tracked companies instead."
+      : "Could not prepare your resume for matching. Try re-uploading a PDF or DOCX from Profile.";
     return {
       artifactId: null,
       resumeText: resumeText || null,
       parsed,
       reEmbedded: false,
       error: msg,
+      embedFailed: true,
     };
   }
 }

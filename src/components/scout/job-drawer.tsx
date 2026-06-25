@@ -1305,6 +1305,13 @@ export function JobDrawer({
               </p>
               <CreditsStatusBar />
               <AiToolCard
+                creditCost={1}
+                title="Analyze how well you fit"
+                subtitle="Understand your strengths and gaps for this role."
+                buttonLabel="Analyze fit"
+                onClick={() => openFitChat(card.id)}
+              />
+              <AiToolCard
                 highlighted
                 creditCost={1}
                 title="Improve resume match"
@@ -1318,13 +1325,6 @@ export function JobDrawer({
                 subtitle="Make your application stand out with a tailored letter."
                 buttonLabel="Build cover letter"
                 onClick={() => setCoverDrawerOpen(true)}
-              />
-              <AiToolCard
-                creditCost={1}
-                title="Analyze how well you fit"
-                subtitle="Understand your strengths and gaps for this role."
-                buttonLabel="Analyze fit"
-                onClick={() => openFitChat(card.id)}
               />
             </div>
           </div>

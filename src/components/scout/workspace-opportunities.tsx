@@ -773,8 +773,9 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
           type="url"
           placeholder="Paste a job listing URL — e.g. https://stripe.com/jobs/..."
           value={url}
+          disabled={loading}
           onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+          onKeyDown={(e) => e.key === "Enter" && !loading && onSubmit()}
           style={{
             flex: 1,
             padding: "9px 12px",
@@ -789,6 +790,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         />
         <button
           onClick={onSubmit}
+          disabled={loading || !url.trim()}
           style={{
             padding: "9px 18px",
             background: color.forest,
@@ -798,11 +800,22 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             fontFamily: fontSans,
             fontSize: T.caption,
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: loading || !url.trim() ? "not-allowed" : "pointer",
+            opacity: loading || !url.trim() ? 0.65 : 1,
             flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          Search →
+          {loading ? (
+            <>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: color.gold, animation: "pulse 1s ease infinite", display: "inline-block" }} />
+              Analyzing…
+            </>
+          ) : (
+            "Search →"
+          )}
         </button>
         <button
           onClick={onDismiss}
