@@ -6,6 +6,7 @@ import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { WorkspaceSidebar } from "@/components/scout/workspace-sidebar";
 import { ChatWidget } from "@/components/scout/chat-widget";
 import { PricingModal } from "@/components/scout/pricing-modal";
+import { MOBILE_TOP_BAR_HEIGHT } from "@/components/scout/workspace-mobile-top-bar";
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const {
@@ -61,17 +62,16 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
           flex: 1,
           overflow: "hidden",
           position: "relative",
-          paddingTop: isMobile && collapsed ? 52 : 0,
           boxSizing: "border-box",
         }}
       >
-        {/* Mobile hamburger — only shows when sidebar is collapsed on mobile */}
+        {/* Mobile hamburger — sits in left gutter of each page's top bar row */}
         {isMobile && collapsed && (
           <button
             onClick={() => setCollapsed(false)}
             style={{
               position: "absolute",
-              top: 14,
+              top: (MOBILE_TOP_BAR_HEIGHT - 36) / 2,
               left: 14,
               zIndex: 50,
               width: 36,

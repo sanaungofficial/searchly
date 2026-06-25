@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ScoutDisplayTitle, ScoutLabel } from "./scout-box";
+import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import { color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
   title: ReactNode;
   subtitle?: ReactNode;
   isMobile?: boolean;
+  /** Short title for mobile top bar (defaults to label) */
+  mobileBarTitle?: string;
   children: ReactNode;
   maxWidth?: number;
 };
@@ -19,10 +22,12 @@ export function WorkspacePageShell({
   title,
   subtitle,
   isMobile = false,
+  mobileBarTitle,
   children,
   maxWidth = 1120,
 }: Props) {
   const pad = isMobile ? "16px 16px 0" : "20px 32px 0";
+  const barTitle = mobileBarTitle ?? label;
 
   return (
     <div
@@ -35,13 +40,18 @@ export function WorkspacePageShell({
         animation: "fadeIn 0.3s ease both",
       }}
     >
+      {isMobile && (
+        <WorkspaceMobileTopBar center={<ScoutLabel>{barTitle}</ScoutLabel>} />
+      )}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <div style={{ padding: pad, maxWidth, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
           <div style={{ marginBottom: isMobile ? 20 : 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-              <ScoutLabel>{label}</ScoutLabel>
-            </div>
+            {!isMobile && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+                <ScoutLabel>{label}</ScoutLabel>
+              </div>
+            )}
             <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: subtitle ? 10 : 0 }}>
               {title}
             </ScoutDisplayTitle>

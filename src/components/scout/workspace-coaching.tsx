@@ -66,6 +66,7 @@ export function WorkspaceCoaching() {
     <WorkspacePageShell
       isMobile={isMobile}
       label="1:1 coaching"
+      mobileBarTitle="Coaching"
       title="Talk to someone who's done it."
     >
       <WorkspaceSegmentTabs

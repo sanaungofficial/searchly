@@ -9,6 +9,7 @@ import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import { type KanbanCard } from "./workspace-data";
 import { PlusIcon } from "./workspace-icons";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 const STAT_LABEL: React.CSSProperties = {
@@ -278,26 +279,40 @@ export function WorkspaceDashboard() {
         animation: "fadeIn 0.3s ease both",
       }}
     >
-      <div
-        style={{
-          padding: headerPad,
-          borderBottom: border.line,
-          background: surface.card,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <ScoutLabel>Dashboard</ScoutLabel>
-        <ScoutPrimaryBtn
-          onClick={() => setShowAddPanel((p) => !p)}
-          style={{ minHeight: 44, padding: isMobile ? "10px 14px" : "8px 16px" }}
+      {isMobile ? (
+        <WorkspaceMobileTopBar
+          center={<ScoutLabel>Dashboard</ScoutLabel>}
+          right={
+            <ScoutPrimaryBtn
+              onClick={() => setShowAddPanel((p) => !p)}
+              style={{ minHeight: 36, padding: "8px 12px", fontSize: T.caption }}
+            >
+              <PlusIcon /> {showAddPanel ? "Close" : "Add job"}
+            </ScoutPrimaryBtn>
+          }
+        />
+      ) : (
+        <div
+          style={{
+            padding: headerPad,
+            borderBottom: border.line,
+            background: surface.card,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
         >
-          <PlusIcon /> {isMobile && showAddPanel ? "Close" : "Add job"}
-        </ScoutPrimaryBtn>
-      </div>
+          <ScoutLabel>Dashboard</ScoutLabel>
+          <ScoutPrimaryBtn
+            onClick={() => setShowAddPanel((p) => !p)}
+            style={{ minHeight: 44, padding: "8px 16px" }}
+          >
+            <PlusIcon /> Add job
+          </ScoutPrimaryBtn>
+        </div>
+      )}
 
       {showAddPanel && (
         <div
