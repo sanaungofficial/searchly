@@ -130,6 +130,9 @@ model Profile {
   strategyGenerationCompletedAt DateTime?
   strategyGenerationError       String?  @db.Text
 
+  profileSuggestionsData       Json?
+  profileSuggestionsUpdatedAt  DateTime?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

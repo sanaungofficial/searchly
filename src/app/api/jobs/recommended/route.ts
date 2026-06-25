@@ -114,7 +114,23 @@ async function handleRecommended(request: Request) {
         return snapshotResponse(cached, { filtersApplied: searchFilters });
       }
     } catch (err) {
-      console.warn("[recommended] snapshot read failed, falling back to live:", err);
+      console.warn("[recommended] snapshot read failed:", err);
+    }
+
+    if (preferCache) {
+      return NextResponse.json({
+        jobs: [],
+        totalCount: 0,
+        page: 1,
+        limit: VECTOR_SEARCH_RESULTS_MAX,
+        totalPages: 0,
+        filtersApplied: searchFilters,
+        effectiveFilters: searchFilters,
+        fromSnapshot: false,
+        scoreFloor: RECOMMENDED_MATCH_SCORE_FLOOR,
+        hint: "Click Refresh to pull live recommendations from Hirebase.",
+        needsRefresh: true,
+      });
     }
   }
 

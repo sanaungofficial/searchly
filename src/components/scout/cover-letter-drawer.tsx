@@ -14,6 +14,7 @@ interface CoverLetterDrawerProps {
   company: string;
   description: string;
   jobId?: string;
+  initialLetter?: string | null;
   onClose: () => void;
 }
 
@@ -41,10 +42,10 @@ async function streamInto(
   onChunk(decoder.decode());
 }
 
-export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClose }: CoverLetterDrawerProps) {
+export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, onClose }: CoverLetterDrawerProps) {
   const { user, openPricing } = useWorkspace();
-  const [letter, setLetter] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [letter, setLetter] = useState<string | null>(initialLetter?.trim() || null);
+  const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"ai" | "editor">("ai");
@@ -150,9 +151,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
-    generate();
     return () => abortRef.current?.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleClose() {
@@ -329,13 +328,35 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
             <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
               {loading ? (
                 <KimchiProcessLoader preset="coverLetter" variant="centered" />
-              ) : error && !letter ? (
-                <div style={{ color: "#C4574A", fontFamily: fontSans, fontSize: 13, paddingTop: 40 }}>
-                  {error === "No resume found"
-                    ? "Upload a resume in your profile first."
-                    : error === "No job description provided"
-                    ? "No description available for this job."
-                    : "Could not generate a cover letter."}
+              ) : !letter ? (
+                <div style={{ paddingTop: 48, textAlign: "center", maxWidth: 360, margin: "0 auto" }}>
+                  <p style={{ fontFamily: fontSans, fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 20 }}>
+                    {error
+                      ? error === "No resume found"
+                        ? "Upload a resume in your profile first."
+                        : error === "No job description provided"
+                          ? "No description available for this job."
+                          : "Could not generate a cover letter."
+                      : "Generate a tailored cover letter for this role when you're ready."}
+                  </p>
+                  {error !== "No resume found" && (
+                    <button
+                      type="button"
+                      onClick={() => generate()}
+                      style={{
+                        padding: "12px 20px",
+                        background: "#1C3A2F",
+                        color: "#E8D5A3",
+                        border: "none",
+                        fontFamily: fontSans,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Generate cover letter →
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div
@@ -453,6 +474,8 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
                         ? "Rewriting based on your feedback…"
                         : error
                         ? "Couldn't generate a cover letter. Try again below."
+                        : !letter
+                        ? "Generate a cover letter when you're ready — it won't run automatically."
                         : "Your cover letter is ready. Use the suggestions below or type your own instruction."}
                     </div>
 

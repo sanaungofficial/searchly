@@ -44,6 +44,7 @@ import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
+import { readProspectJobCache, writeProspectJobCache } from "@/lib/prospect-jobs-cache";
 
 export type { DrawerTool };
 
@@ -82,6 +83,24 @@ export function WorkspaceOpportunities() {
 
   const loadProspectFromPath = useCallback(async (prospectId: string) => {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
+    const cached = readProspectJobCache(prospectId);
+    if (cached) {
+      const matched = {
+        ...cached.job,
+        companyName: cached.companyName ?? "Company",
+        title: cached.job.title,
+        matchScore: cached.match?.matchScore ?? 0,
+        matchLabel: cached.match?.matchLabel ?? "",
+        matchReasons: cached.match?.matchReasons ?? [],
+        matchedSkills: cached.match?.matchedSkills,
+        gapSkills: cached.match?.gapSkills,
+      };
+      setProspectJob({ companyName: cached.companyName ?? "Company", job: cached.job, drawerId });
+      setProspectCard(buildRecommendedProspectCard(matched, drawerId));
+      setProspectDetailLoading(false);
+      return;
+    }
+
     setProspectDetailLoading(true);
     try {
       const res = await fetch(`/api/jobs/prospect/${encodeURIComponent(prospectId)}`);
@@ -99,6 +118,13 @@ export function WorkspaceOpportunities() {
       if (!res.ok || !data.job) return;
       const companyName = data.companyName ?? "Company";
       const job = data.job;
+      writeProspectJobCache({
+        prospectId,
+        job,
+        companyName,
+        match: data.match,
+        fetchedAt: Date.now(),
+      });
       const matched = {
         ...job,
         companyName,
@@ -274,65 +300,29 @@ export function WorkspaceOpportunities() {
     router.push("/opportunities/pipeline");
   };
 
-  const openRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
+  const openRecommendedJob = useCallback((job: VectorMatchedJob) => {
     const prospectId = prospectPathId(job);
     pendingProspectNavRef.current = prospectId;
     loadedProspectRef.current = prospectId;
     router.push(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
-    setProspectJob({ companyName: job.companyName, job, drawerId });
-    setProspectCard(buildRecommendedProspectCard(job, drawerId));
-    setProspectDetailLoading(true);
-
-    try {
-      const hirebaseId = job.hirebaseId?.trim();
-      if (hirebaseId) {
-        const res = await fetch(`/api/jobs/prospect/${encodeURIComponent(hirebaseId)}`);
-        const data = (await res.json().catch(() => ({}))) as { job?: CachedJob; companyName?: string };
-        if (res.ok && data.job) {
-          const enriched: VectorMatchedJob = {
-            ...job,
-            ...data.job,
-            companyName: data.companyName ?? job.companyName,
-            matchScore: job.matchScore,
-            matchLabel: job.matchLabel,
-            matchReasons: job.matchReasons,
-            matchedSkills: job.matchedSkills,
-            gapSkills: job.gapSkills,
-            vectorRank: job.vectorRank,
-          };
-          setProspectJob((prev) => (prev ? { ...prev, companyName: enriched.companyName, job: enriched } : null));
-          setProspectCard(buildRecommendedProspectCard(enriched, drawerId));
-          return;
-        }
-      }
-
-      const res = await fetch("/api/companies/prospect-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { job?: CachedJob };
-      if (res.ok && data.job) {
-        const enriched: VectorMatchedJob = {
+    const cached = readProspectJobCache(prospectId);
+    const enriched: VectorMatchedJob = cached?.job
+      ? {
           ...job,
-          ...data.job,
-          companyName: job.companyName,
+          ...cached.job,
+          companyName: cached.companyName ?? job.companyName,
           matchScore: job.matchScore,
           matchLabel: job.matchLabel,
           matchReasons: job.matchReasons,
           matchedSkills: job.matchedSkills,
           gapSkills: job.gapSkills,
           vectorRank: job.vectorRank,
-        };
-        setProspectJob((prev) => (prev ? { ...prev, job: enriched } : null));
-        setProspectCard(buildRecommendedProspectCard(enriched, drawerId));
-      }
-    } catch {
-      // Drawer still opens with vector match data.
-    } finally {
-      setProspectDetailLoading(false);
-    }
+        }
+      : job;
+    setProspectJob({ companyName: enriched.companyName, job: enriched, drawerId });
+    setProspectCard(buildRecommendedProspectCard(enriched, drawerId));
+    setProspectDetailLoading(false);
   }, [router]);
 
   const saveRecommendedJob = useCallback(async (job: VectorMatchedJob) => {
@@ -343,32 +333,17 @@ export function WorkspaceOpportunities() {
     }
   }, [addJob, router]);
 
-  const openProspectJob = useCallback(async (companyName: string, job: CachedJob) => {
+  const openProspectJob = useCallback((companyName: string, job: CachedJob) => {
     const prospectId = prospectPathId(job);
     pendingProspectNavRef.current = prospectId;
     loadedProspectRef.current = prospectId;
     router.push(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
-    setProspectJob({ companyName, job, drawerId });
-    setProspectCard(buildProspectKanbanCard(companyName, job, drawerId));
-    setProspectDetailLoading(Boolean(job.hirebaseId));
-
-    try {
-      const res = await fetch("/api/companies/prospect-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job }),
-      });
-      const data = await res.json().catch(() => ({})) as { job?: CachedJob };
-      if (res.ok && data.job) {
-        setProspectJob((prev) => (prev ? { ...prev, job: data.job! } : null));
-        setProspectCard(buildProspectKanbanCard(companyName, data.job, drawerId));
-      }
-    } catch {
-      // Drawer still opens with cached snapshot.
-    } finally {
-      setProspectDetailLoading(false);
-    }
+    const cached = readProspectJobCache(prospectId);
+    const displayJob = cached?.job ?? job;
+    setProspectJob({ companyName: cached?.companyName ?? companyName, job: displayJob, drawerId });
+    setProspectCard(buildProspectKanbanCard(cached?.companyName ?? companyName, displayJob, drawerId));
+    setProspectDetailLoading(false);
   }, [router]);
 
   const existingProspectPipelineCard = prospectJob

@@ -15,7 +15,7 @@ import {
 } from "./workspace-data";
 import { ResumeEditor } from "./resume-editor";
 import { CompanyLogo } from "./company-logo";
-import { ResumeMatchDrawer } from "./resume-match-drawer";
+import { ResumeMatchDrawer, type MatchData } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { CreditsStatusBar } from "./credits-display";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
@@ -650,7 +650,8 @@ export function JobDrawer({
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
-  const meta = (card as KanbanCard & { _meta?: JobMeta })._meta ?? null;
+  const cardExt = card as KanbanCard & { _meta?: JobMeta; _coverLetter?: string; _fitAnalysis?: string };
+  const meta = cardExt._meta ?? null;
   const [activeSection, setActiveSection] = useState<ScrollSection>("overview");
   const scrollRef = useRef<HTMLDivElement>(null);
   const companySectionRef = useRef<HTMLDivElement>(null);
@@ -794,11 +795,12 @@ export function JobDrawer({
   const jobWebsite = urlValue || cardUrl;
   const applicationUrl = jobWebsite;
   const companyWebsite = meta?.companyWebsite?.trim() || guessCompanyWebsite(jobWebsite);
+  const hasStoredCompanyIntel = Boolean(meta?.companySummary?.trim() || meta?.companyWebsite?.trim());
   const { data: hirebaseCompany, loading: hirebaseLoading } = useHirebaseCompanyProfile({
     companyName: card.company,
     website: companyWebsite,
     slugHint: meta?.companySlug ?? null,
-    enabled: true,
+    enabled: !hasStoredCompanyIntel,
   });
 
   const linkedinForCompany =
@@ -1445,6 +1447,18 @@ export function JobDrawer({
           company={card.company}
           description={jobDescription}
           jobId={dbId ?? undefined}
+          initialMatchData={(() => {
+            if (!cardExt._fitAnalysis) return null;
+            try {
+              const parsed = JSON.parse(cardExt._fitAnalysis) as Partial<MatchData>;
+              if (typeof parsed.score === "number" && Array.isArray(parsed.keywords)) {
+                return parsed as MatchData;
+              }
+            } catch {
+              /* partial fitAnalysis from vector score only */
+            }
+            return null;
+          })()}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             if (dbId) setResumeEditorOpen(true);
@@ -1459,6 +1473,7 @@ export function JobDrawer({
           company={card.company}
           description={jobDescription}
           jobId={dbId ?? undefined}
+          initialLetter={cardExt._coverLetter ?? null}
           onClose={() => setCoverDrawerOpen(false)}
         />
       )}

@@ -26,6 +26,8 @@ interface MatchData {
   summaryNote: string;
 }
 
+export type { MatchData };
+
 interface TailoredData {
   tailoredText: string;
   changes: string[];
@@ -352,7 +354,8 @@ export function ResumeMatchDrawer({
   onTailorResume,
 }: ResumeMatchDrawerProps) {
   const [data, setData] = useState<MatchData | null>(initialMatchData ?? null);
-  const [loading, setLoading] = useState(!initialMatchData);
+  const [loading, setLoading] = useState(false);
+  const [hasRequestedAnalysis, setHasRequestedAnalysis] = useState(Boolean(initialMatchData));
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState<Step>(1);
@@ -399,6 +402,7 @@ export function ResumeMatchDrawer({
   }, []);
 
   function generate(overrideDesc?: string) {
+    setHasRequestedAnalysis(true);
     setLoading(true);
     setError(null);
     setData(null);
@@ -444,11 +448,7 @@ export function ResumeMatchDrawer({
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
-    if (!initialMatchData) {
-      generate();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobTitle, company, description]);
+  }, []);
 
   function handleClose() {
     setVisible(false);
@@ -710,6 +710,30 @@ export function ResumeMatchDrawer({
           {step === 1 && (
             <>
               {loading && <KimchiProcessLoader preset="jobMatch" variant="centered" />}
+
+              {!loading && !data && !error && !hasRequestedAnalysis && (
+                <div style={{ paddingTop: 12, textAlign: "center" }}>
+                  <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginBottom: 16, lineHeight: 1.55 }}>
+                    See how your resume compares to this role — keyword gaps, title alignment, and a fit score.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => generate()}
+                    style={{
+                      padding: "12px 20px",
+                      background: color.forest,
+                      color: color.gold,
+                      border: "none",
+                      fontFamily: fontSans,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Analyze my resume →
+                  </button>
+                </div>
+              )}
 
               {error && (
                 <div style={{ paddingTop: 20 }}>

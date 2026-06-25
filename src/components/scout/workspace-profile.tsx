@@ -2525,7 +2525,6 @@ export function WorkspaceProfile() {
   };
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
-  const reparseAttempted = useRef(false);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -2559,23 +2558,6 @@ export function WorkspaceProfile() {
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!profile?.resumeUrl || reparseAttempted.current) return;
-    const hasStructure =
-      (profile.parsedData?.education?.length ?? 0) > 0 ||
-      (profile.parsedData?.workExperience?.length ?? 0) > 0;
-    if (hasStructure) return;
-    reparseAttempted.current = true;
-    fetch("/api/resume/reparse", { method: "POST" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.parsedData) {
-          setProfile((p) => (p ? { ...p, parsedData: data.parsedData, name: data.name || p.name } : p));
-        }
-      })
-      .catch(() => {});
-  }, [profile?.resumeUrl, profile?.parsedData]);
 
   useEffect(() => {
     if (!profile?.resumeUrl) return;
@@ -2618,6 +2600,26 @@ export function WorkspaceProfile() {
       .finally(() => setSuggestionsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.resumeUrl]);
+
+  const refreshProfileSuggestions = () => {
+    if (!profile?.resumeUrl) return;
+    setSuggestionsLoading(true);
+    fetch("/api/ai/profile-suggestions?force=true")
+      .then(async (r) => {
+        if (r.status === 402) {
+          notifyCreditsChanged();
+          setShowUpgrade(true);
+          return;
+        }
+        const data = await r.json();
+        if (data.suggestions) {
+          setProfileSuggestions(data.suggestions);
+          notifyCreditsChanged();
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSuggestionsLoading(false));
+  };
 
   const patchProfile = async (patch: Record<string, unknown>) => {
     await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
