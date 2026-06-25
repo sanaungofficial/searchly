@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { CoachMatchScoreCluster, MatchFitCallout } from "@/components/scout/match-score-ui";
+import { CoachFitAssessment, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { CoachListItem } from "@/lib/coach-types";
 import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
@@ -195,7 +195,7 @@ export function ProfileMyCoachCard({
           )}
 
           {(coach.matchScore ?? 0) > 0 && (
-            <MatchFitCallout
+            <CoachFitAssessment
               job={{
                 matchScore: coach.matchScore!,
                 matchLabel: coach.matchLabel ?? "",

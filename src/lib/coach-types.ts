@@ -90,6 +90,7 @@ export type CoachDirectoryFilters = {
   rateMin?: number;
   rateMax?: number;
   featuredOnly?: boolean;
+  professionalOnly?: boolean;
   sort?: "default" | "price-low" | "price-high" | "rating" | "newest" | "match";
 };
 
