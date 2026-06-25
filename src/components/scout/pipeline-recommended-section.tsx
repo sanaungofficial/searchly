@@ -51,7 +51,7 @@ import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
-import { MatchFitCallout, MatchScoreBadge } from "./match-score-ui";
+import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
 import { matchScoreStyle } from "@/lib/match-score";
 
 type JobsApiResponse = {
@@ -663,6 +663,7 @@ function RecommendedResultsList({
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                       <ScoreExplainerPopover variant="vector-match" align="right" />
                       <MatchScoreBadge score={matchJob.matchScore} label={matchJob.matchLabel} />
+                      <ScoreSourceHint />
                     </div>
                   )}
                 </div>
@@ -1062,7 +1063,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Fresh roles matched to your profile from Hirebase — remote and local to your area. Save any role to track it in your pipeline.
+              Fresh roles matched to your profile from Hirebase — remote and local to your area. Match scores are free estimates until you analyze a role in the drawer. Save any role to track it in your pipeline.
             </p>
             {snapshotMeta?.generatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>

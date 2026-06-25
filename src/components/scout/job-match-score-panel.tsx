@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fontSans, color, surface, border as B } from "@/lib/typography";
+import { notifyCreditsChanged } from "@/lib/credits";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import {
   MatchBreakdownBar,
@@ -15,6 +16,10 @@ import {
 
 const sans = fontSans;
 const line = B.line;
+
+function matchCacheKey(jobKey: string, assetId: string) {
+  return `kimchi-match:${jobKey}:${assetId}`;
+}
 
 export function JobMatchScorePanel({
   vectorFit,
@@ -41,6 +46,9 @@ export function JobMatchScorePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const jobKey = jobId ?? `${company}:${jobTitle}`;
+  const canAnalyze = description.trim().length >= 40;
+
   useEffect(() => {
     fetch("/api/assets")
       .then((r) => r.json())
@@ -57,7 +65,7 @@ export function JobMatchScorePanel({
 
   const fetchMatch = useCallback(
     async (assetId: string) => {
-      if (!description.trim() || description.trim().length < 40) return;
+      if (!canAnalyze) return;
       setLoading(true);
       setError(null);
       try {
@@ -70,15 +78,21 @@ export function JobMatchScorePanel({
           body: JSON.stringify(body),
         });
         const data = (await res.json()) as MatchData & { error?: string };
+        if (res.status === 402) {
+          notifyCreditsChanged();
+          setError(data.error ?? "Out of credits for this month");
+          setAiMatch(null);
+          return;
+        }
         if (!res.ok) {
           setError(data.error ?? "Could not analyze match");
           setAiMatch(null);
           return;
         }
         setAiMatch(data);
-        const cacheKey = `kimchi-match:${jobId ?? `${company}:${jobTitle}`}:${assetId}`;
+        notifyCreditsChanged();
         try {
-          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          sessionStorage.setItem(matchCacheKey(jobKey, assetId), JSON.stringify(data));
         } catch {
           /* ignore */
         }
@@ -89,23 +103,41 @@ export function JobMatchScorePanel({
         setLoading(false);
       }
     },
-    [company, description, jobId, jobTitle],
+    [canAnalyze, company, description, jobId, jobKey, jobTitle],
   );
 
+  // On job or resume selection change: restore session cache only — never auto-call AI on drawer open.
   useEffect(() => {
-    if (!selectedId || !description.trim() || description.trim().length < 40) return;
-    const cacheKey = `kimchi-match:${jobId ?? `${company}:${jobTitle}`}:${selectedId}`;
+    if (!selectedId || !canAnalyze) {
+      setAiMatch(null);
+      setError(null);
+      return;
+    }
     try {
-      const cached = sessionStorage.getItem(cacheKey);
+      const cached = sessionStorage.getItem(matchCacheKey(jobKey, selectedId));
       if (cached) {
         setAiMatch(JSON.parse(cached) as MatchData);
+        setError(null);
         return;
       }
     } catch {
       /* ignore */
     }
-    void fetchMatch(selectedId);
-  }, [selectedId, description, fetchMatch, company, jobTitle, jobId]);
+    setAiMatch(null);
+    setError(null);
+  }, [jobKey, selectedId, canAnalyze]);
+
+  const handleResumeChange = useCallback(
+    (assetId: string) => {
+      setSelectedId(assetId);
+      void fetchMatch(assetId);
+    },
+    [fetchMatch],
+  );
+
+  const handleAnalyze = useCallback(() => {
+    if (selectedId) void fetchMatch(selectedId);
+  }, [fetchMatch, selectedId]);
 
   const selectedResumeName =
     assets.find((a) => a.id === selectedId)?.name.replace(/\.[^.]+$/, "") ?? null;
@@ -167,14 +199,14 @@ export function JobMatchScorePanel({
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: headlineColor, letterSpacing: "0.5px", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 4 }}>
             {label ? `${label} MATCH` : "MATCH"}
-            <ScoreExplainerPopover variant="job-match" align="right" />
+            <ScoreExplainerPopover variant={aiMatch ? "job-match" : "vector-match"} align="right" />
           </p>
           <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", margin: 0 }}>
-            {aiMatch ? "For selected resume" : "Profile estimate — pick a resume"}
+            {aiMatch ? "For selected resume · uses AI" : "Free estimate — analyze for AI score"}
           </p>
           {assets.length > 0 && selectedId && (
             <div style={{ marginTop: 10 }}>
-              <ResumeSelectDropdown assets={assets} value={selectedId} onChange={setSelectedId} />
+              <ResumeSelectDropdown assets={assets} value={selectedId} onChange={handleResumeChange} />
             </div>
           )}
         </div>
@@ -196,6 +228,28 @@ export function JobMatchScorePanel({
           <MatchBreakdownBar label="Skills" pct={breakdown.skills} />
           <MatchBreakdownBar label="Industry Exp." pct={breakdown.industry} />
         </>
+      )}
+
+      {!aiMatch && !loading && canAnalyze && selectedId && (
+        <button
+          type="button"
+          onClick={handleAnalyze}
+          style={{
+            width: "100%",
+            marginTop: 12,
+            padding: "11px 14px",
+            background: color.forest,
+            color: color.gold,
+            border: "none",
+            borderRadius: 0,
+            fontFamily: sans,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Analyze with AI
+        </button>
       )}
 
       {onRunFullMatch && (

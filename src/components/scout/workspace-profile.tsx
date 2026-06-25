@@ -948,6 +948,19 @@ function DreamRoleTab({
       if (assetId) params.set("assetId", assetId);
       const res = await fetch(`/api/ai/role-gap?${params.toString()}`);
       const data = await res.json().catch(() => ({}));
+      if (res.status === 402) {
+        notifyCreditsChanged();
+        setAnalysisErrors((prev) => ({
+          ...prev,
+          [role]: typeof data.error === "string" ? data.error : "Out of credits for this month",
+        }));
+        if (stored) {
+          setAnalysis((prev) => ({ ...prev, [role]: viewFromStored(stored, role) }));
+        } else {
+          setAnalysis((prev) => ({ ...prev, [role]: "error" }));
+        }
+        return;
+      }
       if (!res.ok || data.error) {
         const message =
           typeof data.error === "string"
@@ -988,6 +1001,7 @@ function DreamRoleTab({
         ...prev,
         [role]: toRoleAnalysisView(storedResult, Boolean(data.stale)),
       }));
+      if (!data.cached) notifyCreditsChanged();
     } catch {
       setAnalysisErrors((prev) => ({
         ...prev,

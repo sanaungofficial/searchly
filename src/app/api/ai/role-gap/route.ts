@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requireAiQuota } from "@/lib/ai-guard";
+import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import {
   buildResumeFingerprint,
@@ -105,7 +107,7 @@ function parseJobMatchFromText(text: string): JobMatchResult | null {
   };
 }
 
-async function analyzeRoleViaJobMatch(role: string, resumeText: string): Promise<JobMatchResult> {
+async function analyzeRoleViaJobMatch(role: string, resumeText: string, userId: string): Promise<JobMatchResult> {
   const description = roleJobDescription(role);
   if (!process.env.ANTHROPIC_API_KEY) {
     return fallbackJobMatch(description, resumeText);
@@ -125,6 +127,8 @@ async function analyzeRoleViaJobMatch(role: string, resumeText: string): Promise
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
+
+    logAiUsage(userId, "FIT_ANALYSIS", "claude-haiku-4-5-20251001", message.usage.input_tokens, message.usage.output_tokens);
 
     const content = message.content[0];
     if (content.type !== "text") throw new Error("Unexpected AI response");
@@ -164,6 +168,12 @@ export async function GET(request: Request) {
     if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+    const dbUserWithSub = await prisma.user.findUnique({
+      where: { id: dbUser.id },
+      include: { subscription: true },
+    });
+    if (!dbUserWithSub) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
     const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
     const { source, parseError } = await resolveResumeSource(dbUser.id, assetId, profile);
     if (!source) {
@@ -175,16 +185,21 @@ export async function GET(request: Request) {
     const cached = getStoredRoleAnalysis(analyses, role, source.resumeAssetId);
     const stale = cached ? cached.resumeFingerprint !== fingerprint : false;
 
-    if (!force && cached) {
+    if (!force && cached && !stale) {
       return NextResponse.json({
         ...cached,
         cached: true,
-        stale,
+        stale: false,
         analyzedAt: cached.analyzedAt,
       });
     }
 
-    const jobMatch = await analyzeRoleViaJobMatch(role, source.resumeText);
+    if (process.env.ANTHROPIC_API_KEY) {
+      const quotaError = await requireAiQuota(dbUserWithSub, "MATCH");
+      if (quotaError) return quotaError;
+    }
+
+    const jobMatch = await analyzeRoleViaJobMatch(role, source.resumeText, dbUser.id);
     const roleGap = jobMatchToRoleGap(role, jobMatch);
     const stored = storedFromAnalysis(roleGap, fingerprint, source.resumeAssetId);
     await saveRoleAnalysis(dbUser.id, role, stored);

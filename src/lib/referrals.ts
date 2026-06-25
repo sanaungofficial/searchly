@@ -50,7 +50,7 @@ export async function attachReferrer(refereeId: string, referralCodeOrId: string
   return true;
 }
 
-const REFERRAL_BONUS_FEATURES: PlanCreditFeature[] = ["MATCH", "TAILOR", "INSIDER"];
+const REFERRAL_BONUS_FEATURES: PlanCreditFeature[] = ["MATCH", "TAILOR", "SCOUT"];
 
 async function grantReferralBonuses(userId: string, amount: number) {
   for (const feature of REFERRAL_BONUS_FEATURES) {
@@ -139,11 +139,11 @@ export async function getReferralStats(userId: string) {
   const invitesCompleted = Math.max(events.length, partneroReferrals);
   let matchEarned = 0;
   let tailorEarned = 0;
-  let insiderEarned = 0;
+  let scoutEarned = 0;
   for (const e of events) {
     matchEarned += e.matchBonus;
     tailorEarned += e.tailorBonus;
-    insiderEarned += e.insiderBonus;
+    scoutEarned += e.insiderBonus;
   }
 
   const bonusByFeature = Object.fromEntries(bonusRows.map((r) => [r.feature, r.remaining]));
@@ -154,7 +154,9 @@ export async function getReferralStats(userId: string) {
     invitesCompleted,
     matchCreditsEarned: matchEarned,
     tailorCreditsEarned: tailorEarned,
-    insiderCreditsEarned: insiderEarned,
+    scoutCreditsEarned: scoutEarned,
+    /** @deprecated use scoutCreditsEarned — legacy field name from insiderBonus column */
+    insiderCreditsEarned: scoutEarned,
     bonusRemaining: bonusByFeature,
     linkedInPending: !!linkedInPending,
   };

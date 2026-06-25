@@ -4,7 +4,7 @@ import { grantFeatureBonus } from "@/lib/feature-credits";
 import { REFERRAL_BONUS_PER_FEATURE } from "@/lib/plan-config";
 import type { PlanCreditFeature } from "@prisma/client";
 
-const BONUS_FEATURES: PlanCreditFeature[] = ["MATCH", "TAILOR", "INSIDER"];
+const BONUS_FEATURES: PlanCreditFeature[] = ["MATCH", "TAILOR", "SCOUT"];
 
 async function grantReferralBonuses(userId: string, amount: number) {
   for (const feature of BONUS_FEATURES) {

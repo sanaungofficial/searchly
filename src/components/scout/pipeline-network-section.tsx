@@ -24,7 +24,7 @@ import {
   writeNetworkJobsCache,
 } from "@/lib/network-jobs-cache";
 import { CompanyLogo } from "./company-logo";
-import { MatchFitCallout, MatchScoreBadge } from "./match-score-ui";
+import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -383,6 +383,7 @@ function NetworkJobCard({
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                 <ScoreExplainerPopover variant="network-match" align="right" />
                 <MatchScoreBadge score={job.matchScore} label={job.matchLabel} />
+                <ScoreSourceHint />
               </div>
             )}
           </div>

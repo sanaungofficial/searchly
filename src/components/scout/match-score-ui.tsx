@@ -46,6 +46,24 @@ export function MatchScoreBadge({ score, label }: { score: number; label: string
   );
 }
 
+/** Small label under score badges — AI vs instant heuristic. */
+export function ScoreSourceHint({ usesAi = false }: { usesAi?: boolean }) {
+  return (
+    <span
+      style={{
+        fontFamily: fontSans,
+        fontSize: 10,
+        fontWeight: 600,
+        color: color.mutedLight,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+      }}
+    >
+      {usesAi ? "uses AI" : "free estimate"}
+    </span>
+  );
+}
+
 /** Score badge + hover explainer — matches Opportunities recommended rows. */
 export function CoachMatchScoreCluster({
   score,
@@ -61,6 +79,7 @@ export function CoachMatchScoreCluster({
     <div style={{ display: "flex", flexDirection: "column", alignItems: align === "right" ? "flex-end" : "flex-start", gap: 4, flexShrink: 0 }}>
       <ScoreExplainerPopover variant="coach-match" align={align} />
       <MatchScoreBadge score={score} label={label} />
+      <ScoreSourceHint />
     </div>
   );
 }
@@ -194,7 +213,8 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
       </p>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         <span style={{ fontWeight: 600, color: score.accent }}>{job.matchLabel}</span>
-        {" "}· {job.matchScore}/100 from your profile
+        {" "}· {job.matchScore}/100 from your profile ·{" "}
+        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>free estimate</span>
       </p>
       <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
         {reasons.map((reason) => (
@@ -272,6 +292,8 @@ export function CoachMatchSection({ job }: { job: MatchScoreDisplayJob }) {
       </p>
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         {tierLine}
+        {" · "}
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>free estimate</span>
       </p>
       <ul style={{ margin: 0, paddingLeft: 20, fontFamily: fontSans, fontSize: 14, color: color.ink, lineHeight: 1.55 }}>
         {reasons.map((reason) => (

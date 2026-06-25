@@ -10,7 +10,7 @@ type ReferralStats = {
   invitesCompleted: number;
   matchCreditsEarned: number;
   tailorCreditsEarned: number;
-  insiderCreditsEarned: number;
+  scoutCreditsEarned: number;
   linkedInPending: boolean;
 };
 
@@ -184,7 +184,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 { label: "Invites Completed", value: stats.invitesCompleted },
                 { label: "Match Credits Earned", value: stats.matchCreditsEarned },
                 { label: "Tailor Credits Earned", value: stats.tailorCreditsEarned },
-                { label: "Insider Credits Earned", value: stats.insiderCreditsEarned },
+                { label: "Scout Credits Earned", value: stats.scoutCreditsEarned },
               ].map((card) => (
                 <div key={card.label} style={{ background: "#F7F5F2", borderRadius: 10, padding: "16px 12px", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#1A1A1A" }}>{card.value}</p>

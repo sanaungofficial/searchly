@@ -7,6 +7,7 @@ export const FREE_DAILY_LIMITS: Record<PlanCreditFeature, number | null> = {
   TAILOR: 2,
   COVER_LETTER: 2,
   SCOUT: 4,
+  /** @deprecated unused — enum kept for DB compat; referral bonuses grant SCOUT instead */
   INSIDER: 2,
   READBACK: 2,
   STRATEGY: 2,
