@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { useCoachMatches } from "@/hooks/use-coach-matches";
 import { useSubscription } from "@/hooks/useSubscription";
 import {
   DASHBOARD_GOAL_MAX,
@@ -11,11 +10,13 @@ import {
   type DashboardGoal,
   dashboardGoalCategoryLabel,
   findDashboardGoalOption,
+  formatGoalTargetDate,
   profileNeedsSyncForGoal,
   recommendationLabelForGoals,
   recommendationPathForGoals,
   SALES_TEAM_FORM_URL,
 } from "@/lib/dashboard-goals";
+import { formatBookingWhen } from "@/lib/coach-user-booking";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
@@ -61,17 +62,36 @@ function shortBio(profile: ProfileData | null): string | null {
   return null;
 }
 
+type BookedCoach = {
+  bookingId: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+  title: string | null;
+  coach: {
+    id: string;
+    slug: string | null;
+    displayName: string;
+    photoUrl: string | null;
+    headline: string | null;
+  };
+};
+
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
   const { openPricing } = useWorkspace();
   const { isPro, loading: subLoading } = useSubscription();
-  const { myCoach, loading: coachLoading } = useCoachMatches();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [pickValue, setPickValue] = useState("");
+  const [pickTargetMonth, setPickTargetMonth] = useState("");
+  const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
+  const [editTargetMonth, setEditTargetMonth] = useState("");
+  const [bookedCoach, setBookedCoach] = useState<BookedCoach | null>(null);
+  const [bookingLoading, setBookingLoading] = useState(true);
   const [pendingSync, setPendingSync] = useState<ReturnType<typeof profileNeedsSyncForGoal>>(null);
   const [syncSaving, setSyncSaving] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -116,6 +136,17 @@ export function DashboardHomeTop({ isMobile }: Props) {
       .finally(() => setSessionsLoaded(true));
   }, []);
 
+  useEffect(() => {
+    setBookingLoading(true);
+    fetch("/api/coaches/my-booking")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        setBookedCoach(d?.booking ?? null);
+      })
+      .catch(() => setBookedCoach(null))
+      .finally(() => setBookingLoading(false));
+  }, []);
+
   const goals = profile?.dashboardGoals ?? [];
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
   const availableOptions = DASHBOARD_GOAL_OPTIONS.filter((o) => !usedValues.has(o.value));
@@ -155,9 +186,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
       value: option.value,
       label: option.label,
       createdAt: new Date().toISOString(),
+      ...(pickTargetMonth.trim() ? { targetDate: pickTargetMonth.trim().slice(0, 7) } : {}),
     };
     await persistGoals([...goals, next]);
     setPickValue("");
+    setPickTargetMonth("");
     setShowAddGoal(false);
 
     const sync = profileNeedsSyncForGoal(option.value, profile);
@@ -166,6 +199,20 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const removeGoal = (id: string) => {
     persistGoals(goals.filter((g) => g.id !== id));
+  };
+
+  const updateGoalTarget = async (id: string, targetDate: string | null) => {
+    const next = goals.map((g) =>
+      g.id === id ? { ...g, targetDate: targetDate?.trim().slice(0, 7) || null } : g,
+    );
+    await persistGoals(next);
+    setEditingTargetId(null);
+    setEditTargetMonth("");
+  };
+
+  const openCoachProfile = (slug: string | null, coachId: string) => {
+    if (slug) router.push(`/coaching/coach/${slug}`);
+    else router.push("/coaching");
   };
 
   const handleScheduleCall = () => {
@@ -360,12 +407,61 @@ export function DashboardHomeTop({ isMobile }: Props) {
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: showAddGoal || canAdd ? 14 : 0 }}>
-            {goals.map((goal) => (
+            {goals.map((goal) => {
+              const targetLabel = formatGoalTargetDate(goal.targetDate);
+              const isEditingTarget = editingTargetId === goal.id;
+              return (
               <div key={goal.id} style={{ borderBottom: border.line, paddingBottom: 12 }}>
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 6px", lineHeight: 1.4 }}>
+                {targetLabel && (
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
+                    {targetLabel}
+                  </p>
+                )}
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px", lineHeight: 1.4 }}>
                   {goal.label}
                 </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                {isEditingTarget ? (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                    <input
+                      type="month"
+                      value={editTargetMonth}
+                      onChange={(e) => setEditTargetMonth(e.target.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: 140,
+                        padding: "8px 10px",
+                        border: border.line,
+                        fontFamily: fontSans,
+                        fontSize: isMobile ? 16 : T.bodySm,
+                      }}
+                    />
+                    <ScoutSecondaryBtn
+                      onClick={() => updateGoalTarget(goal.id, editTargetMonth || null)}
+                      disabled={saving}
+                      style={{ minHeight: 36 }}
+                    >
+                      Save
+                    </ScoutSecondaryBtn>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTargetId(null);
+                        setEditTargetMonth("");
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
+                        color: color.muted,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <span
                     style={{
                       fontFamily: fontSans,
@@ -378,27 +474,51 @@ export function DashboardHomeTop({ isMobile }: Props) {
                   >
                     {dashboardGoalCategoryLabel(goal.category)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => removeGoal(goal.id)}
-                    disabled={saving}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      fontFamily: fontSans,
-                      fontSize: T.caption,
-                      color: color.muted,
-                      cursor: saving ? "default" : "pointer",
-                      textDecoration: "underline",
-                      textUnderlineOffset: 2,
-                    }}
-                  >
-                    Remove
-                  </button>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTargetId(goal.id);
+                        setEditTargetMonth(goal.targetDate ?? "");
+                      }}
+                      disabled={saving}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
+                        color: color.forest,
+                        cursor: saving ? "default" : "pointer",
+                        textDecoration: "underline",
+                        textUnderlineOffset: 2,
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeGoal(goal.id)}
+                      disabled={saving}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontFamily: fontSans,
+                        fontSize: T.caption,
+                        color: color.muted,
+                        cursor: saving ? "default" : "pointer",
+                        textDecoration: "underline",
+                        textUnderlineOffset: 2,
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 
@@ -433,6 +553,25 @@ export function DashboardHomeTop({ isMobile }: Props) {
                 );
               })}
             </select>
+            <label style={{ display: "block", fontFamily: fontSans, fontSize: T.label, color: color.muted, marginBottom: 6 }}>
+              Target date (optional)
+            </label>
+            <input
+              type="month"
+              value={pickTargetMonth}
+              onChange={(e) => setPickTargetMonth(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 10px",
+                border: border.line,
+                background: surface.card,
+                fontFamily: fontSans,
+                fontSize: isMobile ? 16 : T.bodySm,
+                color: color.ink,
+                marginBottom: 8,
+                boxSizing: "border-box",
+              }}
+            />
             <ScoutSecondaryBtn
               onClick={addGoal}
               disabled={!pickValue || saving}
@@ -458,7 +597,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const rightColumn = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
       {/* Coach status */}
-      {!coachLoading && !myCoach && (
+      {!bookingLoading && !bookedCoach && (
         <div
           style={{
             ...CARD,
@@ -480,27 +619,38 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       )}
 
-      {!coachLoading && myCoach && (
+      {!bookingLoading && bookedCoach && (
         <div
           style={{
             ...CARD,
             padding: isMobile ? "16px 18px" : "18px 22px",
             display: "flex",
-            alignItems: "center",
+            alignItems: isMobile ? "flex-start" : "center",
             gap: 14,
+            flexDirection: isMobile ? "column" : "row",
           }}
         >
-          <CoachAvatar name={myCoach.displayName} photoUrl={myCoach.photoUrl} size={48} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
-              Top match for you
-            </p>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: 0 }}>
-              {myCoach.displayName}
-            </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
+            <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={48} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
+                Your coach
+              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
+                {bookedCoach.coach.displayName}
+              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+                {new Date(bookedCoach.startAt) >= new Date()
+                  ? `Next session · ${formatBookingWhen(bookedCoach.startAt)}`
+                  : `Last session · ${formatBookingWhen(bookedCoach.startAt)}`}
+              </p>
+            </div>
           </div>
-          <ScoutSecondaryBtn onClick={() => router.push("/coaching")} style={{ minHeight: 40, flexShrink: 0 }}>
-            View →
+          <ScoutSecondaryBtn
+            onClick={() => openCoachProfile(bookedCoach.coach.slug, bookedCoach.coach.id)}
+            style={{ minHeight: 40, flexShrink: 0, width: isMobile ? "100%" : undefined }}
+          >
+            View coach →
           </ScoutSecondaryBtn>
         </div>
       )}
