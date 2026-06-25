@@ -3,13 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { hostnameFromUrl } from "@/lib/company-domain";
 import { formatSumbleFunding, formatSumbleGrowth } from "@/lib/sumble";
-import type { CompanySumbleIntelBundle, CompanySumbleBriefBundle } from "@/lib/sumble-intel-service";
-import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
+import type { CompanySumbleIntelBundle } from "@/lib/sumble-intel-service";
 import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
 import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
+
+type AccessPayload = {
+  allowed: boolean;
+  configured: boolean;
+  isAdmin: boolean;
+};
 
 function formatSignalDate(iso: string): string {
   try {
@@ -32,6 +37,35 @@ function StatChip({ label, value }: { label: string; value: string }) {
       <div style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginBottom: 4 }}>{label}</div>
       <div style={{ fontFamily: fontMono, fontSize: T.bodySm, color: color.forest, fontWeight: 600 }}>{value}</div>
     </div>
+  );
+}
+
+function SumbleEnterpriseLocked() {
+  return (
+    <ScoutBox style={{ marginBottom: 16 }}>
+      <ScoutLabel>Sumble intelligence</ScoutLabel>
+      <div
+        style={{
+          marginTop: 12,
+          padding: "14px 16px",
+          background: surface.inset,
+          border: border.line,
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-start",
+        }}
+      >
+        <span style={{ fontSize: 18, lineHeight: 1, opacity: 0.45 }} aria-hidden>🔒</span>
+        <div>
+          <div style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, marginBottom: 4 }}>
+            Enterprise feature
+          </div>
+          <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55 }}>
+            Company intelligence — org profile, signals, teams, contacts, and research briefs — is included with enterprise coaching.
+          </div>
+        </div>
+      </div>
+    </ScoutBox>
   );
 }
 
@@ -77,103 +111,6 @@ function PanelHeader({
   );
 }
 
-function SumbleBriefSection({
-  trackedId,
-  companyName,
-  domainHint,
-  compact,
-}: {
-  trackedId?: string;
-  companyName: string;
-  domainHint: string | null;
-  compact?: boolean;
-}) {
-  const [briefData, setBriefData] = useState<CompanySumbleBriefBundle | null>(null);
-  const [briefLoading, setBriefLoading] = useState(false);
-  const [briefError, setBriefError] = useState<string | null>(null);
-  const [briefRequiresLoad, setBriefRequiresLoad] = useState(true);
-
-  const loadBrief = useCallback(
-    async (fetch = false) => {
-      setBriefLoading(true);
-      setBriefError(null);
-      try {
-        const params = new URLSearchParams({ name: companyName });
-        if (trackedId) params.set("trackedId", trackedId);
-        if (domainHint) params.set("domain", domainHint);
-        if (fetch) params.set("load", "1");
-        const res = await fetch(`/api/companies/sumble-brief?${params}`);
-        const body = (await res.json()) as CompanySumbleBriefBundle;
-        setBriefData(body);
-        setBriefRequiresLoad(body.requiresLoad ?? !body.brief);
-        if (body.error && !body.brief) setBriefError(body.error);
-      } catch {
-        setBriefError("Could not load intelligence brief.");
-      } finally {
-        setBriefLoading(false);
-      }
-    },
-    [trackedId, companyName, domainHint]
-  );
-
-  useEffect(() => {
-    setBriefData(null);
-    setBriefRequiresLoad(true);
-    void loadBrief(false);
-  }, [loadBrief]);
-
-  if (briefRequiresLoad && !briefData?.brief) {
-    return (
-      <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
-        <ScoutLabel>Account intelligence brief</ScoutLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 12px", lineHeight: 1.5 }}>
-          AI-generated account angle from Sumble (~{SUMBLE_ESTIMATED_COSTS.intelligenceBrief} credits). May take a moment to generate.
-        </p>
-        <ScoutSecondaryBtn onClick={() => void loadBrief(true)} disabled={briefLoading} style={{ minHeight: 40 }}>
-          {briefLoading ? "Loading…" : "Load account brief"}
-        </ScoutSecondaryBtn>
-      </ScoutBox>
-    );
-  }
-
-  if (!briefData?.brief) {
-    if (briefError) {
-      return (
-        <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
-          <ScoutLabel>Account intelligence brief</ScoutLabel>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0" }}>{briefError}</p>
-        </ScoutBox>
-      );
-    }
-    return null;
-  }
-
-  return (
-    <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-        <ScoutLabel>{briefData.brief.title}</ScoutLabel>
-        {briefData.brief.sumble_url && (
-          <a href={briefData.brief.sumble_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "none" }}>
-            View on Sumble ↗
-          </a>
-        )}
-      </div>
-      <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: T.bodySm,
-          color: color.stone,
-          marginTop: 10,
-          lineHeight: 1.6,
-          whiteSpace: "pre-wrap",
-        }}
-      >
-        {briefData.brief.body}
-      </div>
-    </ScoutBox>
-  );
-}
-
 export function CompanySumbleIntelPanel({
   trackedId,
   companyName,
@@ -185,6 +122,8 @@ export function CompanySumbleIntelPanel({
   website?: string | null;
   compact?: boolean;
 }) {
+  const [access, setAccess] = useState<AccessPayload | null>(null);
+  const [loadingAccess, setLoadingAccess] = useState(true);
   const [data, setData] = useState<CompanySumbleIntelBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,10 +132,29 @@ export function CompanySumbleIntelPanel({
 
   const domainHint = hostnameFromUrl(website) ?? website?.trim() ?? null;
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingAccess(true);
+    fetch("/api/companies/sumble-brief/access")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((payload: AccessPayload | null) => {
+        if (!cancelled && payload) setAccess(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setAccess({ allowed: false, configured: false, isAdmin: false });
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAccess(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const load = useCallback(
     async (options?: { refresh?: boolean; fetch?: boolean; people?: boolean; teams?: boolean }) => {
       const refresh = options?.refresh ?? false;
-      const fetch = options?.fetch ?? refresh;
+      const fetchData = options?.fetch ?? refresh;
       const people = options?.people ?? false;
       const teams = options?.teams ?? false;
       setLoading(true);
@@ -205,12 +163,16 @@ export function CompanySumbleIntelPanel({
         const params = new URLSearchParams({ name: companyName });
         if (trackedId) params.set("trackedId", trackedId);
         if (domainHint) params.set("domain", domainHint);
-        if (fetch) params.set("load", "1");
+        if (fetchData) params.set("load", "1");
         if (refresh) params.set("refresh", "1");
         if (people) params.set("people", "1");
         if (teams) params.set("teams", "1");
         const res = await fetch(`/api/companies/sumble-intel?${params}`);
         const body = (await res.json()) as CompanySumbleIntelBundle;
+        if (res.status === 403) {
+          setAccess({ allowed: false, configured: body.configured, isAdmin: false });
+          return;
+        }
         setData(body);
         setRequiresLoad(body.requiresLoad ?? !body.organization);
         if (people || teams) setDetailLoaded(true);
@@ -231,20 +193,43 @@ export function CompanySumbleIntelPanel({
   );
 
   useEffect(() => {
+    if (!access?.allowed) return;
     setData(null);
     setError(null);
     setRequiresLoad(true);
     setDetailLoaded(false);
     void load({ fetch: false });
-  }, [load]);
+  }, [load, access?.allowed]);
+
+  if (loadingAccess) {
+    return (
+      <ScoutBox style={{ marginBottom: 16 }}>
+        <ScoutLabel>Sumble intelligence</ScoutLabel>
+        <div style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>Loading…</div>
+      </ScoutBox>
+    );
+  }
+
+  if (!access?.allowed) {
+    return <SumbleEnterpriseLocked />;
+  }
+
+  if (!access.configured) {
+    return (
+      <ScoutBox style={{ marginBottom: 16 }}>
+        <ScoutLabel>Sumble intelligence</ScoutLabel>
+        <div style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.5 }}>
+          Sumble intelligence is not configured on this environment yet.
+        </div>
+      </ScoutBox>
+    );
+  }
 
   if (requiresLoad && !data?.organization) {
     return (
       <SumbleLoadPrompt
         title="Sumble intelligence"
         description={`Load org profile and signals for ${companyName}. People and teams are optional after the base load.`}
-        estimatedCredits={data?.estimatedCredits ?? 8}
-        creditsRemaining={data?.creditsRemaining}
         loading={loading}
         onLoad={() => void load({ fetch: true })}
         loadLabel="Load company intel"
@@ -268,11 +253,6 @@ export function CompanySumbleIntelPanel({
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 0", lineHeight: 1.5 }}>
           {error}
         </p>
-        {!data?.configured && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-            Set SUMBLE_API_KEY on Vercel preview + prod.
-          </p>
-        )}
       </ScoutBox>
     );
   }
@@ -534,7 +514,7 @@ export function CompanySumbleIntelPanel({
         <ScoutBox padding="12px 14px" style={{ marginBottom: compact ? 12 : 16 }}>
           <ScoutLabel>People & teams</ScoutLabel>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 12px", lineHeight: 1.5 }}>
-            Optional — loads key people and active teams (~10 additional credits).
+            Optional — load key people and active teams for deeper research.
           </p>
           <ScoutSecondaryBtn
             onClick={() => void load({ fetch: true, people: true, teams: true })}
@@ -545,13 +525,6 @@ export function CompanySumbleIntelPanel({
           </ScoutSecondaryBtn>
         </ScoutBox>
       )}
-
-      <SumbleBriefSection
-        trackedId={trackedId}
-        companyName={companyName}
-        domainHint={domainHint}
-        compact={compact}
-      />
 
       {data.signals.length === 0 &&
         data.people.length === 0 &&
@@ -566,7 +539,6 @@ export function CompanySumbleIntelPanel({
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "12px 0 0" }}>
           Updated {new Date(data.generatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
           {data.serverCached ? " · cached" : ""}
-          {data.creditsRemaining != null ? ` · ${data.creditsRemaining.toLocaleString()} credits left` : ""}
         </p>
       )}
     </div>
