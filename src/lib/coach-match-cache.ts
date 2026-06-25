@@ -1,10 +1,10 @@
-import type { MatchedCoach } from "@/lib/coach-match";
+import type { CoachListItem } from "@/lib/coach-types";
 import { getActingUserScope } from "@/lib/client-session";
 
 const CACHE_PREFIX = "kimchi_coach_match_v1";
 
 export type CoachMatchCacheEntry = {
-  coaches: MatchedCoach[];
+  coaches: CoachListItem[];
   fetchedAt: number;
   scored: boolean;
   needsProfile?: boolean;

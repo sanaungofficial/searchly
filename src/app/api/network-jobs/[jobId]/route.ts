@@ -1,5 +1,9 @@
 import { getActingUser } from "@/lib/acting-user";
 import { enrichNetworkJobWithMatch } from "@/lib/network-job-match";
+import {
+  canViewNetworkJobInternalFromSession,
+  sanitizeNetworkJobListing,
+} from "@/lib/network-job-access";
 import { loadNetworkJobListingById } from "@/lib/network-jobs-load";
 import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
 import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
@@ -20,9 +24,15 @@ export async function GET(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, realDbUser, isImpersonating } = await getActingUser(request);
+  const internalView = canViewNetworkJobInternalFromSession(
+    realDbUser,
+    realDbUser?.role === "ADMIN",
+    isImpersonating
+  );
+
   if (!dbUser) {
-    return NextResponse.json({ job: listing });
+    return NextResponse.json({ job: sanitizeNetworkJobListing(listing, internalView) });
   }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
@@ -54,7 +64,11 @@ export async function GET(
     parsedData,
   });
 
-  const job = needsProfile ? listing : enrichNetworkJobWithMatch(listing, resumeText, targetRoles);
+  const enriched = needsProfile
+    ? listing
+    : enrichNetworkJobWithMatch(listing, resumeText, targetRoles);
+
+  const job = sanitizeNetworkJobListing(enriched, internalView);
 
   return NextResponse.json({ job, scored: !needsProfile });
 }

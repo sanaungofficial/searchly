@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
-import type { MatchedCoach } from "@/lib/coach-match";
 import { topMatchedCoach } from "@/lib/coach-match";
+import type { CoachListItem } from "@/lib/coach-types";
 import {
   readCoachMatchCache,
   writeCoachMatchCache,
@@ -11,7 +11,7 @@ import {
 
 export function useCoachMatches() {
   const { actingUserId } = useWorkspace();
-  const [coaches, setCoaches] = useState<MatchedCoach[]>(() => readCoachMatchCache()?.coaches ?? []);
+  const [coaches, setCoaches] = useState<CoachListItem[]>(() => readCoachMatchCache()?.coaches ?? []);
   const [loading, setLoading] = useState(() => !readCoachMatchCache());
   const [needsProfile, setNeedsProfile] = useState(() => readCoachMatchCache()?.needsProfile ?? false);
   const [profileHint, setProfileHint] = useState<string | null>(() => readCoachMatchCache()?.hint ?? null);
@@ -30,23 +30,27 @@ export function useCoachMatches() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/coaches/match");
+      const res = await fetch("/api/coaches");
       const data = (await res.json()) as {
-        coaches?: MatchedCoach[];
-        needsProfile?: boolean;
-        hint?: string;
+        coaches?: CoachListItem[];
         scored?: boolean;
       };
       if (res.ok && Array.isArray(data.coaches)) {
         setCoaches(data.coaches);
-        setNeedsProfile(Boolean(data.needsProfile));
-        setProfileHint(data.hint ?? null);
+        const scored = Boolean(data.scored);
+        const needs = !scored;
+        setNeedsProfile(needs);
+        setProfileHint(
+          needs ? "Add target roles or upload a resume in Profile to unlock coach match scores." : null,
+        );
         writeCoachMatchCache({
           coaches: data.coaches,
           fetchedAt: Date.now(),
-          scored: Boolean(data.scored),
-          needsProfile: data.needsProfile,
-          hint: data.hint ?? null,
+          scored,
+          needsProfile: needs,
+          hint: needs
+            ? "Add target roles or upload a resume in Profile to unlock coach match scores."
+            : null,
         });
       }
     } catch {

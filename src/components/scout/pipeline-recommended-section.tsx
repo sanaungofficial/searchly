@@ -22,7 +22,13 @@ import {
 import { normalizeJobUrl } from "@/lib/cached-job";
 import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
 import {
+  mergeRecommendationPriorities,
+  RECOMMENDATION_RELOCATION_PRIORITIES,
+} from "@/lib/recommendation-preferences";
+import { parseProfileLocationString } from "@/lib/profile-location";
+import {
   describeActiveFilters,
+  formatProfileLocation,
   HIREBASE_FILTER_COUNTRIES,
   HIREBASE_FILTER_US_STATES,
   locationFieldsFromProfileString,
@@ -32,6 +38,7 @@ import {
   filtersCacheKey,
   readRecommendedCache,
   writeRecommendedCache,
+  type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
 import {
   loadScopedSemanticQuery,
@@ -147,10 +154,46 @@ function filtersToForm(f: VectorSearchFilters) {
     experienceLevels: new Set(f.experienceLevels ?? []),
     companySizeBuckets: new Set(f.companySizeBuckets ?? []),
     visaSponsored: f.visaSponsored === true,
+    relocationPriorities: [] as string[],
   };
 }
 
 type FilterForm = ReturnType<typeof filtersToForm>;
+
+function relocationOnly(priorities: string[]): string[] {
+  return priorities.filter((p) =>
+    (RECOMMENDATION_RELOCATION_PRIORITIES as readonly string[]).includes(p),
+  );
+}
+
+function mergeProfilePrioritiesIntoForm(form: FilterForm, priorities: string[]): FilterForm {
+  const locationTypes = new Set(form.locationTypes);
+  if (priorities.includes("Remote-first")) locationTypes.add("Remote");
+  if (priorities.includes("Hybrid-friendly")) locationTypes.add("Hybrid");
+  return {
+    ...form,
+    locationTypes,
+    relocationPriorities: relocationOnly(priorities),
+  };
+}
+
+function profilePrioritiesFromForm(form: FilterForm): string[] {
+  const set = new Set(relocationOnly(form.relocationPriorities));
+  if (form.locationTypes.has("Remote")) set.add("Remote-first");
+  if (form.locationTypes.has("Hybrid")) set.add("Hybrid-friendly");
+  return [...set];
+}
+
+function profileLocationFromForm(form: FilterForm): string {
+  const parsed = parseProfileLocationString(
+    formatProfileLocation({
+      city: form.locationCity.trim() || undefined,
+      region: form.locationRegion.trim() || undefined,
+      country: form.locationCountry.trim() || undefined,
+    }),
+  );
+  return parsed ? formatProfileLocation(parsed) : "";
+}
 
 function defaultFeedForm(): FilterForm {
   return {
@@ -290,120 +333,166 @@ function JobFiltersGrid({
   setForm,
   toggleSet,
   trackedCompanyNames,
+  showAdvanced,
+  onToggleAdvanced,
 }: {
   form: FilterForm;
   setForm: React.Dispatch<React.SetStateAction<FilterForm>>;
   toggleSet: (set: Set<string>, value: string) => Set<string>;
   trackedCompanyNames: string[];
+  showAdvanced: boolean;
+  onToggleAdvanced: () => void;
 }) {
   const isMobile = useIsMobile();
+  const locationGrid = isMobile ? "1fr" : "1.2fr 1fr 1fr";
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: isMobile ? "12px 0" : "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
+    <div style={{ marginTop: 16, padding: 16, background: surface.inset, border: border.line }}>
       <FilterSectionHeader
-        title="Type to filter"
-        hint="Free text — matches job title, company, location, and description. Separate multiple job titles or keywords with commas."
+        title="Where & how you want to work"
+        hint="Your home base plus work arrangement. Saved to your profile when you search."
       />
-      <FilterField label="Job titles">
-        <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Operations" />
-      </FilterField>
-      <FilterField label="Keywords">
-        <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" />
-      </FilterField>
-      <FilterField label="Company">
-        <DatalistInput
-          value={form.companyName}
-          onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
-          listId="recommended-company-suggestions"
-          options={trackedCompanyNames}
-          placeholder={trackedCompanyNames.length ? "Pick a tracked company or type any name" : "Stripe"}
-        />
-      </FilterField>
-      <FilterField label="City">
-        <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} placeholder="San Francisco" />
-      </FilterField>
-      <FilterField label="State / region">
-        <DatalistInput
-          value={form.locationRegion}
-          onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
-          listId="recommended-region-suggestions"
-          options={HIREBASE_FILTER_US_STATES}
-          placeholder="California"
-        />
-      </FilterField>
-      <FilterField label="Country">
-        <DatalistInput
-          value={form.locationCountry}
-          onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
-          listId="recommended-country-suggestions"
-          options={[...HIREBASE_FILTER_COUNTRIES]}
-          placeholder="United States"
-        />
-      </FilterField>
-      <FilterField label="Posted after">
-        <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "4px 0 0", lineHeight: 1.4 }}>
-          Leave empty to include all posts in our index — not just recent ones.
-        </p>
-      </FilterField>
-      <FilterField label="Salary from ($)">
-        <input
-          type="number"
-          style={inputStyle}
-          value={form.salaryFrom}
-          onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))}
-          placeholder="150000"
-          min={0}
-        />
-      </FilterField>
-      <FilterField label="Salary to ($)">
-        <input
-          type="number"
-          style={inputStyle}
-          value={form.salaryTo}
-          onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))}
-          placeholder="250000"
-          min={0}
-        />
+      <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
+        <FilterField label="City">
+          <input style={inputStyle} value={form.locationCity} onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))} placeholder="Baltimore" />
+        </FilterField>
+        <FilterField label="State / region">
+          <DatalistInput
+            value={form.locationRegion}
+            onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
+            listId="recommended-region-suggestions"
+            options={[...HIREBASE_FILTER_US_STATES]}
+            placeholder="Maryland"
+          />
+        </FilterField>
+        <FilterField label="Country">
+          <DatalistInput
+            value={form.locationCountry}
+            onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
+            listId="recommended-country-suggestions"
+            options={[...HIREBASE_FILTER_COUNTRIES]}
+            placeholder="United States"
+          />
+        </FilterField>
+      </div>
+
+      <FilterField label="Work arrangement">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {HIREBASE_LOCATION_TYPES.map((t) => (
+            <ChipToggle key={t} label={t} active={form.locationTypes.has(t)} onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))} />
+          ))}
+        </div>
       </FilterField>
 
-      <FilterSectionHeader
-        title="Select options"
-        hint="Tap to toggle — these use fixed Hirebase categories (work arrangement, job type, seniority, company size)."
-      />
-      <div style={{ gridColumn: "1 / -1" }}>
-        <FilterField label="Work arrangement">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {HIREBASE_LOCATION_TYPES.map((t) => (
-              <ChipToggle key={t} label={t} active={form.locationTypes.has(t)} onClick={() => setForm((f) => ({ ...f, locationTypes: toggleSet(f.locationTypes, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-        <FilterField label="Employment type">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {HIREBASE_JOB_TYPES.map((t) => (
-              <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-        <FilterField label="Experience level">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
-              <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-        <FilterField label="Company size (employees)">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {HIREBASE_COMPANY_SIZE_BUCKETS.map((t) => (
-              <ChipToggle key={t} label={t} active={form.companySizeBuckets.has(t)} onClick={() => setForm((f) => ({ ...f, companySizeBuckets: toggleSet(f.companySizeBuckets, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, color: color.ink, cursor: "pointer" }}>
-          <input type="checkbox" checked={form.visaSponsored} onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))} />
-          Visa sponsorship only
-        </label>
+      <FilterField label="Open to relocating">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {RECOMMENDATION_RELOCATION_PRIORITIES.map((pref) => (
+            <ChipToggle
+              key={pref}
+              label={pref.replace("Open to relocating ", "").replace(/^./, (c) => c.toUpperCase())}
+              active={form.relocationPriorities.includes(pref)}
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  relocationPriorities: mergeRecommendationPriorities(
+                    f.relocationPriorities,
+                    pref,
+                    !f.relocationPriorities.includes(pref),
+                  ),
+                }))
+              }
+            />
+          ))}
+        </div>
+      </FilterField>
+
+      <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
+        <FilterSectionHeader
+          title="Role criteria"
+          hint="Keywords and titles for a live Hirebase search."
+        />
       </div>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
+        <FilterField label="Job titles">
+          <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Strategy Manager, VP Ops" />
+        </FilterField>
+        <FilterField label="Keywords">
+          <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, B2B SaaS" />
+        </FilterField>
+        <FilterField label="Company">
+          <DatalistInput
+            value={form.companyName}
+            onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
+            listId="recommended-company-suggestions"
+            options={trackedCompanyNames}
+            placeholder={trackedCompanyNames.length ? "Tracked or any company" : "Stripe"}
+          />
+        </FilterField>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <button
+          type="button"
+          onClick={onToggleAdvanced}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 600,
+            color: color.forest,
+            cursor: "pointer",
+            textDecoration: "underline",
+          }}
+        >
+          {showAdvanced ? "Hide advanced filters" : "More filters (salary, date posted, level…)"}
+        </button>
+      </div>
+
+      {showAdvanced && (
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginTop: 14, paddingTop: 14, borderTop: border.line }}>
+          <FilterField label="Posted after">
+            <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "4px 0 0", lineHeight: 1.4 }}>
+              Leave empty for all indexed posts.
+            </p>
+          </FilterField>
+          <FilterField label="Salary from ($)">
+            <input type="number" style={inputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} placeholder="150000" min={0} />
+          </FilterField>
+          <FilterField label="Salary to ($)">
+            <input type="number" style={inputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} placeholder="250000" min={0} />
+          </FilterField>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <FilterField label="Employment type">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {HIREBASE_JOB_TYPES.map((t) => (
+                  <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleSet(f.jobTypes, t) }))} />
+                ))}
+              </div>
+            </FilterField>
+            <FilterField label="Experience level">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {HIREBASE_EXPERIENCE_LEVELS.map((t) => (
+                  <ChipToggle key={t} label={t} active={form.experienceLevels.has(t)} onClick={() => setForm((f) => ({ ...f, experienceLevels: toggleSet(f.experienceLevels, t) }))} />
+                ))}
+              </div>
+            </FilterField>
+            <FilterField label="Company size">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {HIREBASE_COMPANY_SIZE_BUCKETS.map((t) => (
+                  <ChipToggle key={t} label={t} active={form.companySizeBuckets.has(t)} onClick={() => setForm((f) => ({ ...f, companySizeBuckets: toggleSet(f.companySizeBuckets, t) }))} />
+                ))}
+              </div>
+            </FilterField>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: T.caption, color: color.ink, cursor: "pointer" }}>
+              <input type="checkbox" checked={form.visaSponsored} onChange={(e) => setForm((f) => ({ ...f, visaSponsored: e.target.checked }))} />
+              Visa sponsorship only
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -580,10 +669,13 @@ function RecommendedResultsList({
                 {matchJob.matchScore > 0 && <MatchFitCallout job={matchJob} />}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap", alignItems: "center" }}>
+            <div
+              style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap", alignItems: "center" }}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
               <ScoutPrimaryBtn
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   const saveKey = row.dedupeKey;
                   setSavingKey(saveKey);
                   onSaveJob(matchJob).finally(() => setSavingKey(null));
@@ -616,17 +708,12 @@ export function PipelineRecommendedSection({
   onOpenJob,
   onSaveJob,
   actingUserId,
-  locationPrefs,
-  preferencesRefreshKey = 0,
 }: {
   /** Used only to hide roles already saved to the pipeline. */
   pipelineCards: KanbanCard[];
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
   actingUserId?: string | null;
-  locationPrefs?: RecommendationPreferencesState | null;
-  /** Increment to refetch after inline preference changes. */
-  preferencesRefreshKey?: number;
 }) {
   const isMobile = useIsMobile();
   const [form, setForm] = useState(() => ({
@@ -638,7 +725,9 @@ export function PipelineRecommendedSection({
     semanticQuery: "",
   }));
   const [showFilters, setShowFilters] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [profileBaseline, setProfileBaseline] = useState<RecommendationPreferencesState | null>(null);
 
   const [jobs, setJobs] = useState<VectorMatchedJob[]>(() => readDefaultFeedCache()?.jobs ?? []);
   const [loading, setLoading] = useState(() => !readDefaultFeedCache());
@@ -749,36 +838,38 @@ export function PipelineRecommendedSection({
     void fetch("/api/jobs/recommended/defaults")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { filters?: VectorSearchFilters; labels?: string[] } | null) => {
-        if (!data?.filters) {
-          setDefaultsLoaded(true);
-          return;
+        if (data?.filters) {
+          defaultFormRef.current = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
+          setProfileSuggestedLabels(data.labels ?? describeActiveFilters(data.filters));
         }
-        const base = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
-        defaultFormRef.current = base;
-        const empty = filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS);
-        setForm({
-          ...empty,
-          semanticQuery: loadScopedSemanticQuery(),
-          locationCity: base.locationCity,
-          locationRegion: base.locationRegion,
-          locationCountry: base.locationCountry,
-        });
-        setProfileSuggestedLabels(data.labels ?? describeActiveFilters(data.filters));
         setDefaultsLoaded(true);
       })
       .catch(() => setDefaultsLoaded(true));
-  }, [actingUserId]);
 
-  useEffect(() => {
-    if (!locationPrefs?.location?.trim()) return;
-    const fields = locationFieldsFromProfileString(locationPrefs.location);
-    setForm((f) => ({
-      ...f,
-      locationCity: fields.city,
-      locationRegion: fields.region,
-      locationCountry: fields.country,
-    }));
-  }, [locationPrefs?.location]);
+    void fetch("/api/profile")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { parsedData?: { location?: string | null }; priorities?: string[] } | null) => {
+        if (!data) return;
+        const fields = locationFieldsFromProfileString(data.parsedData?.location);
+        const priorities = Array.isArray(data.priorities) ? data.priorities : [];
+        setProfileBaseline({
+          location: fields.display,
+          priorities: [...priorities],
+        });
+        setForm((f) =>
+          mergeProfilePrioritiesIntoForm(
+            {
+              ...f,
+              locationCity: fields.city || f.locationCity,
+              locationRegion: fields.region || f.locationRegion,
+              locationCountry: fields.country || f.locationCountry || "United States",
+            },
+            priorities,
+          ),
+        );
+      })
+      .catch(() => {});
+  }, [actingUserId]);
 
   useEffect(() => {
     fetch("/api/companies")
@@ -828,15 +919,32 @@ export function PipelineRecommendedSection({
     void fetchRecommended(feedForm, { preferCache: true });
   }, [fetchRecommended, actingUserId, defaultsLoaded]);
 
-  useEffect(() => {
-    if (preferencesRefreshKey <= 0) return;
-    // Preferences saved — update filter form from profile location only; user clicks Refresh for live Hirebase.
-    const defaultForm: FilterForm = {
-      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
-      semanticQuery: appliedForm.semanticQuery,
+  const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
+    const location = profileLocationFromForm(filtersForm);
+    const priorities = profilePrioritiesFromForm(filtersForm);
+    const unchanged =
+      profileBaseline &&
+      location.trim() === profileBaseline.location.trim() &&
+      JSON.stringify([...priorities].sort()) === JSON.stringify([...profileBaseline.priorities].sort());
+    if (unchanged) return;
+
+    const profileRes = await fetch("/api/profile");
+    const profile = (await profileRes.json().catch(() => ({}))) as {
+      parsedData?: Record<string, unknown> | null;
     };
-    setAppliedForm(defaultForm);
-  }, [preferencesRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!profileRes.ok) return;
+
+    const parsedData = {
+      ...(profile.parsedData && typeof profile.parsedData === "object" ? profile.parsedData : {}),
+      location: location.trim() || null,
+    };
+    await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parsedData, priorities }),
+    });
+    setProfileBaseline({ location: location.trim(), priorities: [...priorities] });
+  }, [profileBaseline]);
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
@@ -848,11 +956,21 @@ export function PipelineRecommendedSection({
   const applyProfileSuggestions = () => {
     const suggested = defaultFormRef.current;
     if (!suggested) return;
-    setForm({ ...suggested, semanticQuery: form.semanticQuery });
+    setForm((f) =>
+      mergeProfilePrioritiesIntoForm(
+        {
+          ...suggested,
+          semanticQuery: f.semanticQuery,
+          relocationPriorities: suggested.relocationPriorities ?? [],
+        },
+        profilePrioritiesFromForm(suggested),
+      ),
+    );
     setShowFilters(true);
   };
 
-  const applyFilters = (filtersForm = form) => {
+  const applyFilters = async (filtersForm = form) => {
+    await saveProfileFromForm(filtersForm);
     setAppliedForm(filtersForm);
     const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
     const isDefaultFeed =
@@ -1016,13 +1134,14 @@ export function PipelineRecommendedSection({
         )}
 
         {showFilters && (
-          <>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "12px 0 0", lineHeight: 1.5 }}>
-              These are the same Hirebase filters used on the backend — adjust city, state, country, work arrangement, and more, then Apply.
-              Match preferences (top) control remote/relocation scope on the default feed.
-            </p>
-            <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} trackedCompanyNames={trackedCompanyNames} />
-          </>
+          <JobFiltersGrid
+            form={form}
+            setForm={setForm}
+            toggleSet={toggleSet}
+            trackedCompanyNames={trackedCompanyNames}
+            showAdvanced={showAdvanced}
+            onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+          />
         )}
 
         <ActiveFiltersBar labels={activeFilterLabels} onClear={hasSearchFilters ? clearSearchFilters : undefined} />

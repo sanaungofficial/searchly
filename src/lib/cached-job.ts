@@ -96,6 +96,8 @@ export function mergeCachedJobs(base: CachedJob, detail: CachedJob): CachedJob {
     educationLevel: detail.educationLevel ?? base.educationLevel ?? null,
     visaSponsored: detail.visaSponsored ?? base.visaSponsored ?? null,
     jobBoard: detail.jobBoard ?? base.jobBoard ?? null,
+    industries: pickArray(detail.industries, base.industries),
+    subindustries: pickArray(detail.subindustries, base.subindustries),
   };
 
   if (fullDescription && merged.requiredQualifications?.length === 1 && merged.requiredQualifications[0] === merged.jobSummary?.trim()) {
@@ -134,6 +136,14 @@ export function cachedJobToMeta(job: CachedJob): JobMeta {
     preferredQualifications: job.preferredQualifications?.length ? job.preferredQualifications : undefined,
     benefits: job.benefits?.length ? job.benefits : undefined,
     tags: job.tags?.length ? job.tags : job.department ? [job.department] : undefined,
+    datePosted: job.datePosted ?? null,
+    department: job.department ?? null,
+    team: job.team ?? null,
+    educationLevel: job.educationLevel ?? null,
+    visaSponsored: job.visaSponsored ?? null,
+    jobBoard: job.jobBoard ?? null,
+    industries: job.industries?.length ? job.industries : undefined,
+    subindustries: job.subindustries?.length ? job.subindustries : undefined,
   };
 }
 

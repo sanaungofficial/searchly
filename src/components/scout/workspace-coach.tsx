@@ -57,6 +57,7 @@ type CoachProfile = {
   industries: string[];
   hourlyRate: number | null;
   category: string | null;
+  calLink: string | null;
 };
 
 const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
@@ -252,6 +253,10 @@ function MyProfileTab() {
             <input value={form.linkedinUrl ?? ""} onChange={field("linkedinUrl")} placeholder="https://linkedin.com/in/…" style={inputStyle} />
           </div>
           <div>
+            <label style={labelStyle}>Booking link (Cal.com / Calendly)</label>
+            <input value={form.calLink ?? ""} onChange={field("calLink")} placeholder="https://cal.com/your-name" style={inputStyle} />
+          </div>
+          <div>
             <label style={labelStyle}>Leland URL</label>
             <input value={form.lelandUrl ?? ""} onChange={field("lelandUrl")} placeholder="https://leland.com/…" style={inputStyle} />
           </div>
@@ -302,6 +307,20 @@ export function WorkspaceCoach() {
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
+  const [onboardingPhase, setOnboardingPhase] = useState<string | null>(null);
+  const [vouchCount, setVouchCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/coach/onboarding-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setOnboardingPhase(data.phase ?? null);
+          setVouchCount(data.vouchCount ?? 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/coach/clients")
@@ -442,6 +461,16 @@ export function WorkspaceCoach() {
 
   return (
     <WorkspacePageShell label="Coach portal" title={tab === "clients" ? "Clients" : "My Profile"}>
+      {onboardingPhase === "vouches" && (
+        <div style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)", padding: "12px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "#92400e", fontFamily: fontSans }}>
+            Profile in review · {vouchCount} vouch{vouchCount === 1 ? "" : "es"} collected
+          </p>
+          <a href="/coach-onboarding/vouches" style={{ fontSize: 14, fontFamily: fontSans, color: "#1A3A2F", fontWeight: 600 }}>
+            Gather vouches →
+          </a>
+        </div>
+      )}
       {tabs}
 
       {tab === "profile" ? (

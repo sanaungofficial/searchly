@@ -92,7 +92,7 @@ function jobHaystack(job: NetworkJobListing, internalView: boolean): string {
     job.city,
     job.state,
     job.description,
-    job.recruiterNotes,
+    ...(internalView ? [job.recruiterNotes] : []),
     job.recruiter?.name,
     job.salary,
     ...job.industries,

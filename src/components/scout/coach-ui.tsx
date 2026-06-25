@@ -1,52 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { MatchFitCallout, MatchScoreBadge } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
-import type { MatchedCoach } from "@/lib/coach-match";
+import type { CoachListItem } from "@/lib/coach-types";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
-
-export function coachInitials(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-export function CoachAvatar({ coach, size }: { coach: MatchedCoach; size: number }) {
-  const [imgError, setImgError] = useState(false);
-  if (coach.photoUrl && !imgError) {
-    return (
-      <img
-        src={coach.photoUrl}
-        alt={coach.displayName}
-        onError={() => setImgError(true)}
-        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-      />
-    );
-  }
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: "#1A3A2F",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
-    >
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: size * 0.33, fontWeight: 600, color: "#E8D5A3" }}>
-        {coachInitials(coach.displayName)}
-      </span>
-    </div>
-  );
-}
 
 export function CoachRate({
   hourlyRate,
@@ -60,8 +19,8 @@ export function CoachRate({
   if (!hourlyRate) return null;
   if (isPro) {
     return (
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F", fontWeight: 500 }}>
-        ${hourlyRate}/hr
+      <span style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 600 }}>
+        ${hourlyRate}<span style={{ fontWeight: 400, color: color.muted }}>/hr</span>
       </span>
     );
   }
@@ -71,7 +30,7 @@ export function CoachRate({
       title="Subscribe to see rate"
       style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", userSelect: "none" }}
     >
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "#1A3A2F", filter: "blur(4px)", pointerEvents: "none" }}>
+      <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, filter: "blur(4px)", pointerEvents: "none" }}>
         ${hourlyRate}/hr
       </span>
     </span>
@@ -91,7 +50,7 @@ export function ProfileHintBanner({
   return (
     <ScoutBox
       padding={isMobile ? "14px 16px" : "16px 20px"}
-      style={{ marginBottom: 14, background: "rgba(196,168,106,0.08)", border: border.lineStrong }}
+      style={{ marginBottom: 20, background: "rgba(196,168,106,0.08)", border: border.lineStrong }}
     >
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, margin: "0 0 8px", lineHeight: 1.55 }}>
         {profileHint ?? "Add target roles or upload a resume to unlock coach match scores."}
@@ -121,7 +80,7 @@ export function ProfileMyCoachCard({
   isMobile,
   onSubscribe,
 }: {
-  coach: MatchedCoach | null;
+  coach: CoachListItem | null;
   loading: boolean;
   needsProfile: boolean;
   profileHint: string | null;
@@ -140,7 +99,7 @@ export function ProfileMyCoachCard({
   if (!coach) {
     return (
       <ScoutBox padding={isMobile ? 18 : 22} style={{ marginBottom: 24 }}>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1px", margin: "0 0 10px" }}>
+        <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: color.muted, margin: "0 0 10px" }}>
           My Coach
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 10px", lineHeight: 1.55 }}>
@@ -157,8 +116,8 @@ export function ProfileMyCoachCard({
 
   return (
     <ScoutBox padding={isMobile ? 18 : 22} style={{ marginBottom: 24 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "1px", margin: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: color.muted, margin: 0 }}>
           My Coach
         </p>
         <Link href="/coaching" style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, textDecoration: "none" }}>
@@ -167,68 +126,75 @@ export function ProfileMyCoachCard({
       </div>
 
       {needsProfile && (
-        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 14px", lineHeight: 1.5 }}>
           {profileHint ?? "Complete your profile for sharper coach matches."}
         </p>
       )}
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-        <CoachAvatar coach={coach} size={56} />
+        <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={56} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 8 }}>
             <div style={{ minWidth: 0 }}>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+              <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, color: color.ink, margin: 0 }}>
                 {coach.displayName}
               </p>
-              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", margin: "4px 0 0" }}>
-                {coach.currentRole}{coach.currentCompany ? ` · ${coach.currentCompany}` : ""}
-              </p>
+              <div style={{ marginTop: 4 }}>
+                <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
+              </div>
+              {(coach.currentRole || coach.headline) && (
+                <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "6px 0 0" }}>
+                  {coach.currentRole}{coach.currentCompany ? ` · ${coach.currentCompany}` : coach.headline ? ` · ${coach.headline}` : ""}
+                </p>
+              )}
             </div>
-            {coach.matchScore > 0 && (
-              <MatchScoreBadge score={coach.matchScore} label={coach.matchLabel} />
+            {(coach.matchScore ?? 0) > 0 && (
+              <MatchScoreBadge score={coach.matchScore!} label={coach.matchLabel ?? ""} />
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: coach.bio ? 12 : 0 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: coach.bio ? 12 : 0, alignItems: "center" }}>
             {coach.firms.slice(0, 2).map((f) => (
-              <span key={f} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F", fontWeight: 500 }}>{f}</span>
+              <span key={f} style={{ fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 500 }}>{f}</span>
             ))}
             <CoachRate hourlyRate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} />
             {coach.location && (
-              <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>{coach.location}</span>
+              <span style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>{coach.location}</span>
             )}
           </div>
 
           {coach.bio && (
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 400, color: "#52493F", lineHeight: 1.65, margin: "0 0 12px", textWrap: "pretty" } as React.CSSProperties}>
+            <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.65, margin: "0 0 12px" }}>
               {coach.bio.slice(0, 280)}{coach.bio.length > 280 ? "…" : ""}
             </p>
           )}
 
           {coach.specialties.length > 0 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: coach.matchScore > 0 ? 12 : 0 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: (coach.matchScore ?? 0) > 0 ? 12 : 0 }}>
               {coach.specialties.slice(0, 4).map((s) => (
-                <span key={s} style={{ padding: "5px 12px", background: "rgba(26,58,47,0.06)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F" }}>
+                <span key={s} style={{ padding: "5px 12px", background: "rgba(26,58,47,0.06)", fontFamily: fontSans, fontSize: 14, color: color.forest }}>
                   {s}
                 </span>
               ))}
             </div>
           )}
 
-          {coach.matchScore > 0 && (
+          {(coach.matchScore ?? 0) > 0 && (
             <MatchFitCallout
               job={{
-                matchScore: coach.matchScore,
-                matchLabel: coach.matchLabel,
-                matchReasons: coach.matchReasons,
-                matchedSkills: coach.matchedTags,
+                matchScore: coach.matchScore!,
+                matchLabel: coach.matchLabel ?? "",
+                matchReasons: coach.matchReasons ?? [],
+                matchedSkills: coach.matchedSkills,
               }}
             />
           )}
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-            {isPro ? (
-              <ScoutPrimaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Book a session →</ScoutPrimaryBtn>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
+            {isPro && coach.calLink ? (
+              <a href={coach.calLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <ScoutPrimaryBtn style={{ minHeight: isMobile ? 44 : undefined }}>Book a session →</ScoutPrimaryBtn>
+              </a>
             ) : (
               <ScoutSecondaryBtn onClick={onSubscribe} style={{ minHeight: isMobile ? 44 : undefined }}>
                 Subscribe to book
