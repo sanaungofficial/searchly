@@ -69,15 +69,15 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
   },
   "coach-match": {
     title: "Coach profile match",
-    subtitle: "How well a coach aligns with your Kimchi profile — not a job posting.",
+    subtitle: "How well a coach aligns with your dashboard goals and Kimchi profile — not a job posting.",
     bullets: [
       {
         title: "What we compare",
-        body: "Your resume, target roles, headline, and priorities against the coach's category, specialties, firms, and bio.",
+        body: "Your dashboard goals (from Home), resume, target roles, headline, and priorities against the coach's category, specialties, firms, and bio.",
       },
       {
         title: "How the score is calculated",
-        body: "Instant heuristic scoring: keyword overlap between profiles, bonus when your target role matches their coaching category, and points for matching specialties or firm backgrounds.",
+        body: "Instant heuristic scoring — no AI on the directory. When you have goals and profile, goals count ~55% and profile ~45%. Goals alone or profile alone still produce a score when only one is available.",
       },
       {
         title: "Stretch vs strong",

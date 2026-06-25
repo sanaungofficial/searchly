@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { MatchFitCallout, MatchScoreBadge } from "@/components/scout/match-score-ui";
+import { CoachMatchScoreCluster, MatchFitCallout } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { CoachListItem } from "@/lib/coach-types";
+import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 export function CoachRate({
@@ -53,20 +54,34 @@ export function ProfileHintBanner({
       style={{ marginBottom: 20, background: "rgba(196,168,106,0.08)", border: border.lineStrong }}
     >
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, margin: "0 0 8px", lineHeight: 1.55 }}>
-        {profileHint ?? "Add target roles or upload a resume to unlock coach match scores."}
+        {profileHint ?? COACH_MATCH_NEEDS_SIGNAL_HINT}
       </p>
-      <Link
-        href="/profile/dream-role"
-        style={{
-          fontFamily: fontSans,
-          fontSize: T.bodySm,
-          fontWeight: 600,
-          color: color.forest,
-          textDecoration: "none",
-        }}
-      >
-        Add target roles →
-      </Link>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <Link
+          href="/dashboard"
+          style={{
+            fontFamily: fontSans,
+            fontSize: T.bodySm,
+            fontWeight: 600,
+            color: color.forest,
+            textDecoration: "none",
+          }}
+        >
+          Add goals on Dashboard →
+        </Link>
+        <Link
+          href="/profile/dream-role"
+          style={{
+            fontFamily: fontSans,
+            fontSize: T.bodySm,
+            fontWeight: 600,
+            color: color.forest,
+            textDecoration: "none",
+          }}
+        >
+          Add target roles →
+        </Link>
+      </div>
     </ScoutBox>
   );
 }
@@ -104,7 +119,7 @@ export function ProfileMyCoachCard({
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 10px", lineHeight: 1.55 }}>
           {needsProfile
-            ? "Add target roles or a resume to get matched with a coach."
+            ? "Add goals on your Dashboard or target roles on Profile to get matched with a coach."
             : "Browse coaches to find someone who fits your goals."}
         </p>
         <Link href="/coaching" style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, textDecoration: "none" }}>
@@ -149,7 +164,7 @@ export function ProfileMyCoachCard({
               )}
             </div>
             {(coach.matchScore ?? 0) > 0 && (
-              <MatchScoreBadge score={coach.matchScore!} label={coach.matchLabel ?? ""} />
+              <CoachMatchScoreCluster score={coach.matchScore!} label={coach.matchLabel ?? ""} align="right" />
             )}
           </div>
 

@@ -3,9 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
 import { getAuthenticatedDbUser } from "@/lib/coach-api";
 import { enrichCoachesWithMatch } from "@/lib/coach-match";
-import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
-import { findResumeAssetForUser } from "@/lib/resume-artifact";
-import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
+import { buildCoachMatchUserContext } from "@/lib/coach-match-context";
 
 const coachListSelect = {
   id: true,
@@ -42,35 +40,17 @@ export async function GET(req: NextRequest) {
     select: coachListSelect,
   });
 
-  let profileText = "";
-  let targetRoles: string[] = [];
+  let matchCtx: Awaited<ReturnType<typeof buildCoachMatchUserContext>> = {
+    profileText: "",
+    targetRoles: [],
+    dashboardGoals: [],
+    scored: false,
+    hint: null,
+  };
 
   if (me) {
     const profile = await prisma.profile.findUnique({ where: { userId: me.id } });
-    targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
-    const parsedData = mergeParsedWithReadback(
-      normalizeParsedResumeData(profile?.parsedData ?? null),
-      profile?.readbackData,
-    );
-    profileText =
-      profileTextForMatchReasons({
-        headline: profile?.headline,
-        targetRoles,
-        resumeText: profile?.resumeText,
-        parsedData,
-        careerMotivation: profile?.careerMotivation,
-        priorities: profile?.priorities ?? [],
-        employmentStatus: profile?.employmentStatus,
-        jobTimeline: profile?.jobTimeline,
-        targetSalary: profile?.targetSalary
-          ? Number.parseFloat(profile.targetSalary.replace(/[^0-9.]/g, "")) || null
-          : null,
-      }) || "";
-
-    if (!profileText.trim()) {
-      const resumeAsset = await findResumeAssetForUser(me.id);
-      if (resumeAsset?.resumeText) profileText = resumeAsset.resumeText;
-    }
+    matchCtx = await buildCoachMatchUserContext(me.id, profile);
   }
 
   const base = coaches.map((c) => {
@@ -107,10 +87,16 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  const withMatch = enrichCoachesWithMatch(base, profileText, targetRoles);
+  const withMatch = enrichCoachesWithMatch(
+    base,
+    matchCtx.profileText,
+    matchCtx.targetRoles,
+    matchCtx.dashboardGoals,
+  );
 
   return NextResponse.json({
     coaches: withMatch,
-    scored: Boolean(profileText.trim()),
+    scored: matchCtx.scored,
+    hint: matchCtx.hint,
   });
 }

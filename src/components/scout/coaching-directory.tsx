@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { MatchScoreBadge } from "@/components/scout/match-score-ui";
+import { MatchFitCallout, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
+import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import {
   COACH_CLIENT_SPECIALIZATIONS,
@@ -299,9 +300,15 @@ function DirectoryRow({
                 </div>
               </div>
               {(coach.matchScore ?? 0) > 0 && (
-                <MatchScoreBadge score={coach.matchScore!} label={coach.matchLabel ?? ""} />
+                <CoachMatchScoreCluster score={coach.matchScore!} label={coach.matchLabel ?? ""} align="right" />
               )}
             </div>
+
+            {(coach.matchScore ?? 0) > 0 && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <MatchFitCallout job={coach} />
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: coach.headline || coach.bio ? 10 : 0 }}>
               {coach.hourlyRate ? <RateDisplay rate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} /> : null}
@@ -391,12 +398,13 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
       const coaches = Array.isArray(data.coaches) ? data.coaches : Array.isArray(data) ? data : [];
       setAllCoaches(coaches);
       setScored(Boolean(data.scored));
+      const hint = typeof data.hint === "string" ? data.hint : COACH_MATCH_NEEDS_SIGNAL_HINT;
       writeCoachMatchCache({
         coaches,
         fetchedAt: Date.now(),
         scored: Boolean(data.scored),
         needsProfile: !data.scored,
-        hint: !data.scored ? "Add target roles or upload a resume in Profile to unlock coach match scores." : null,
+        hint: !data.scored ? hint : null,
       });
       if (followRes.ok) {
         const followed = await followRes.json();
@@ -564,7 +572,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
 
         {!scored && !loading && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "16px 0 0", lineHeight: 1.5, padding: "10px 12px", background: surface.inset, border: border.line }}>
-            Add target roles or a resume on your profile to see personalized match scores.
+            {COACH_MATCH_NEEDS_SIGNAL_HINT}
           </p>
         )}
 
