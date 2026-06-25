@@ -5,6 +5,7 @@ import {
   parsedResumeToText,
   type ParsedResumeData,
 } from "@/lib/resume-parse";
+import { logHirebaseApiCall } from "@/lib/external-api-usage";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -275,6 +276,7 @@ export async function parseResumeWithHirebase(input: {
   bytes: Buffer;
   ext: string;
   filename?: string;
+  userId?: string | null;
 }): Promise<HirebaseResumeParseResult | null> {
   if (!isHirebaseResumeConfigured()) return null;
   if (input.bytes.length > MAX_BYTES) {
@@ -299,6 +301,14 @@ export async function parseResumeWithHirebase(input: {
   }
 
   const body = (await res.json()) as HirebaseEmbedResponse;
+  logHirebaseApiCall({
+    path: "/v2/resumes/embed",
+    method: "POST",
+    userId: input.userId,
+    data: body,
+    status: res.status,
+  });
+
   if (!body.resume) return null;
 
   const artifactId = extractArtifactId(body);

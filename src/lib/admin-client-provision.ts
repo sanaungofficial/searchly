@@ -108,6 +108,7 @@ async function uploadResumeForClient(input: {
     ext,
     structuredPrompt,
     file.name,
+    dbUser.id,
   );
 
   if (!resumeText) {
@@ -162,7 +163,7 @@ async function importLinkedInForClient(input: {
   }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const scraped = await scrapeLinkedInProfile(linkedinUrl);
+  const scraped = await scrapeLinkedInProfile(linkedinUrl, { userId: dbUser.id });
   const incomingParsed = mapApifyProfileToParsedData(scraped);
   const existingParsed = normalizeParsedResumeData(profile?.parsedData ?? null);
   const mergedParsed = mergeLinkedInImportParsed(existingParsed, incomingParsed);

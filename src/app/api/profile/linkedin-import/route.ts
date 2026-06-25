@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const scraped = await scrapeLinkedInProfile(linkedinUrl);
+    const scraped = await scrapeLinkedInProfile(linkedinUrl, { userId: dbUser.id });
     const incomingParsed = mapApifyProfileToParsedData(scraped);
     const existingParsed = normalizeParsedResumeData(profile?.parsedData ?? null);
     const mergedParsed = mergeLinkedInImportParsed(existingParsed, incomingParsed);

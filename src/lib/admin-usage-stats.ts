@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import type { ExternalApiProvider } from "@prisma/client";
 
 const STORAGE_BUCKETS = ["resumes", "avatars"] as const;
 const MAX_STORAGE_OBJECTS = 10_000;
@@ -49,6 +50,27 @@ export type SupabaseUsageStats = {
     estimatedMonthlyUsd: number;
     note: string;
   };
+};
+
+export type ExternalProviderUsageStats = {
+  provider: ExternalApiProvider;
+  label: string;
+  configured: boolean;
+  costThisMonth: number;
+  callsThisMonth: number;
+  unitsThisMonth: number;
+  costTotal: number;
+  callsTotal: number;
+  byOperation: Array<{ operation: string; calls: number; units: number; costUsd: number }>;
+  dailyLast30Days: Array<{ date: string; calls: number; costUsd: number }>;
+  note?: string;
+};
+
+export type InfraCostSummary = {
+  anthropicThisMonth: number;
+  externalApisThisMonth: number;
+  supabaseEstimateMonthly: number;
+  estimatedTotalMonthly: number;
 };
 
 function startOfMonth(): Date {
@@ -289,10 +311,118 @@ export async function getSupabaseUsageStats(): Promise<SupabaseUsageStats> {
   };
 }
 
+const PROVIDER_LABELS: Record<ExternalApiProvider, string> = {
+  HIREBASE: "HireBase",
+  APIFY: "Apify (LinkedIn)",
+  TOPECHELON: "Top Echelon",
+};
+
+const PROVIDER_NOTES: Partial<Record<ExternalApiProvider, string>> = {
+  HIREBASE:
+    "Costs are estimated from logged API calls. Set HIREBASE_USD_PER_JOB / HIREBASE_USD_PER_API_CALL to match your HireBase plan.",
+  APIFY:
+    "Estimated per LinkedIn scrape run. Set APIFY_USD_PER_LINKEDIN_RUN to match your Apify actor pricing.",
+  TOPECHELON: "ATS sync — no metered cost tracked yet.",
+};
+
+function isProviderConfigured(provider: ExternalApiProvider): boolean {
+  if (provider === "HIREBASE") return !!process.env.HIREBASE_API_KEY?.trim();
+  if (provider === "APIFY") return !!process.env.APIFY_API_TOKEN?.trim();
+  if (provider === "TOPECHELON") {
+    return !!(process.env.TOPECHELON_EMAIL?.trim() && process.env.TOPECHELON_PASSWORD?.trim());
+  }
+  return false;
+}
+
+export async function getExternalProviderUsageStats(
+  provider: ExternalApiProvider,
+): Promise<ExternalProviderUsageStats> {
+  const monthStart = startOfMonth();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [monthAgg, totalAgg, byOperation, recentLogs] = await Promise.all([
+    prisma.externalApiUsageLog.aggregate({
+      where: { provider, createdAt: { gte: monthStart } },
+      _sum: { costUsd: true, units: true },
+      _count: true,
+    }),
+    prisma.externalApiUsageLog.aggregate({
+      where: { provider },
+      _sum: { costUsd: true, units: true },
+      _count: true,
+    }),
+    prisma.externalApiUsageLog.groupBy({
+      by: ["operation"],
+      where: { provider },
+      _sum: { costUsd: true, units: true },
+      _count: true,
+    }),
+    prisma.externalApiUsageLog.findMany({
+      where: { provider, createdAt: { gte: thirtyDaysAgo } },
+      select: { createdAt: true, costUsd: true },
+    }),
+  ]);
+
+  const dailyMap = new Map<string, { calls: number; costUsd: number }>();
+  for (const log of recentLogs) {
+    const key = dayKey(log.createdAt);
+    const entry = dailyMap.get(key) ?? { calls: 0, costUsd: 0 };
+    entry.calls += 1;
+    entry.costUsd += log.costUsd;
+    dailyMap.set(key, entry);
+  }
+
+  return {
+    provider,
+    label: PROVIDER_LABELS[provider],
+    configured: isProviderConfigured(provider),
+    costThisMonth: roundUsd(monthAgg._sum.costUsd ?? 0),
+    callsThisMonth: monthAgg._count,
+    unitsThisMonth: monthAgg._sum.units ?? 0,
+    costTotal: roundUsd(totalAgg._sum.costUsd ?? 0),
+    callsTotal: totalAgg._count,
+    byOperation: byOperation
+      .map((row) => ({
+        operation: row.operation,
+        calls: row._count,
+        units: row._sum.units ?? 0,
+        costUsd: roundUsd(row._sum.costUsd ?? 0),
+      }))
+      .sort((a, b) => b.costUsd - a.costUsd),
+    dailyLast30Days: [...dailyMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({ date, calls: v.calls, costUsd: roundUsd(v.costUsd) })),
+    note: PROVIDER_NOTES[provider],
+  };
+}
+
+export async function getExternalApisUsageStats(): Promise<ExternalProviderUsageStats[]> {
+  const providers: ExternalApiProvider[] = ["HIREBASE", "APIFY", "TOPECHELON"];
+  return Promise.all(providers.map((p) => getExternalProviderUsageStats(p)));
+}
+
+export async function getInfraCostSummary(
+  anthropic: AnthropicUsageStats,
+  externalApis: ExternalProviderUsageStats[],
+  supabase: SupabaseUsageStats,
+): Promise<InfraCostSummary> {
+  const externalApisThisMonth = externalApis.reduce((sum, p) => sum + p.costThisMonth, 0);
+  return {
+    anthropicThisMonth: anthropic.costThisMonth,
+    externalApisThisMonth: roundUsd(externalApisThisMonth),
+    supabaseEstimateMonthly: supabase.estimate.estimatedMonthlyUsd,
+    estimatedTotalMonthly: roundUsd(
+      anthropic.costThisMonth + externalApisThisMonth + supabase.estimate.estimatedMonthlyUsd,
+    ),
+  };
+}
+
 export async function getAdminUsageStats() {
-  const [anthropic, supabase] = await Promise.all([
+  const [anthropic, supabase, externalApis] = await Promise.all([
     getAnthropicUsageStats(),
     getSupabaseUsageStats(),
+    getExternalApisUsageStats(),
   ]);
-  return { anthropic, supabase, generatedAt: new Date().toISOString() };
+  const summary = await getInfraCostSummary(anthropic, externalApis, supabase);
+  return { anthropic, supabase, externalApis, summary, generatedAt: new Date().toISOString() };
 }

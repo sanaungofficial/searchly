@@ -6,6 +6,7 @@ import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { parseJobDescriptionSections, hasParsedJobSections } from "@/lib/job-description-parse";
+import { logHirebaseApiCall } from "@/lib/external-api-usage";
 
 const HIREBASE_BASE = "https://api.hirebase.org";
 
@@ -130,7 +131,12 @@ function getApiKey(): string {
   return key;
 }
 
-async function hirebaseFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function hirebaseFetch<T>(
+  path: string,
+  init?: RequestInit,
+  ctx?: { userId?: string | null },
+): Promise<T> {
+  const method = init?.method ?? "GET";
   const res = await fetch(`${HIREBASE_BASE}${path}`, {
     ...init,
     headers: {
@@ -142,6 +148,7 @@ async function hirebaseFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (res.status === 404) {
+    logHirebaseApiCall({ path, method, userId: ctx?.userId, status: 404 });
     throw new HirebaseNotFoundError(path);
   }
 
@@ -150,7 +157,9 @@ async function hirebaseFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(formatHirebaseErrorBody(body, res.status));
   }
 
-  return res.json() as Promise<T>;
+  const data = (await res.json()) as T;
+  logHirebaseApiCall({ path, method, userId: ctx?.userId, data, status: res.status });
+  return data;
 }
 
 export class HirebaseNotFoundError extends Error {

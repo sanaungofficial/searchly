@@ -257,6 +257,12 @@ enum AiFeature {
   RESUME_TAILOR
 }
 
+enum ExternalApiProvider {
+  HIREBASE
+  APIFY
+  TOPECHELON
+}
+
 model CompanyIntel {
   id                   String    @id @default(cuid())
   name                 String
@@ -317,6 +323,21 @@ model AiUsageLog {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model ExternalApiUsageLog {
+  id        String              @id @default(cuid())
+  provider  ExternalApiProvider
+  operation String
+  userId    String?
+  units     Int                 @default(1)
+  costUsd   Float               @default(0)
+  meta      Json?
+  createdAt DateTime            @default(now())
+
+  @@index([provider])
+  @@index([createdAt])
+  @@index([userId])
 }
 
 model MonthlyUsage {
