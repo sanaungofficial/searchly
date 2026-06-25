@@ -8,6 +8,7 @@ import {
   exchangeNylasCode,
   getNylasConfig,
   mapNylasOAuthError,
+  nylasOAuthRedirectUri,
   nylasProfileReturnUrl,
   resolveKimchiAppUrl,
   resolveNylasOAuthState,
@@ -43,18 +44,20 @@ export async function GET(req: NextRequest) {
   const parsedEarly = resolveNylasOAuthState(req, state);
   const role = parsedEarly ? await profileOwnerRole(parsedEarly.coachProfileId) : UserRole.ADMIN;
   const returnRole = role === UserRole.COACH ? "COACH" : "ADMIN";
+  const profileAppUrl = parsedEarly?.returnAppUrl ?? appUrl;
 
   function redirectWith(params: Record<string, string>) {
-    const response = NextResponse.redirect(nylasProfileReturnUrl(appUrl, returnRole, params));
+    const response = NextResponse.redirect(nylasProfileReturnUrl(profileAppUrl, returnRole, params));
     clearNylasOAuthCookie(response);
     return response;
   }
 
-  if (oauthError) {
+  if (oauthError || oauthErrorReason) {
     console.error("[nylas/callback] OAuth error", {
       error: oauthError,
       error_reason: oauthErrorReason,
       error_description: oauthErrorDescription,
+      params: Object.fromEntries(req.nextUrl.searchParams.entries()),
     });
     const mapped = mapNylasOAuthError({
       error: oauthError,
@@ -70,8 +73,8 @@ export async function GET(req: NextRequest) {
 
   if (!code) {
     console.error("[nylas/callback] Missing authorization code", {
-      hasState: Boolean(state),
-      hasCookie: Boolean(req.cookies.get("nylas_oauth_state")?.value),
+      params: Object.fromEntries(req.nextUrl.searchParams.entries()),
+      redirectUri: nylasOAuthRedirectUri(),
     });
     return redirectWith({ nylas: "error", reason: "auth", detail: "missing_code" });
   }

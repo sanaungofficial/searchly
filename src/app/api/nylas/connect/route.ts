@@ -5,7 +5,7 @@ import { CoachStatus, UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
 import {
   attachNylasOAuthCookie,
-  createNylasAuthUrl,
+  buildNylasAuthUrl,
   getNylasConfig,
   isNylasConfigured,
   nylasProfileReturnUrl,
@@ -69,17 +69,17 @@ export async function GET(req: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
-  const state = signNylasState({ coachProfileId: ctx.profile.id, ts: Date.now() });
+  const oauthPayload = { coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
+  const state = signNylasState(oauthPayload);
 
   try {
-    const url = await createNylasAuthUrl({
+    const url = buildNylasAuthUrl({
       provider,
       state,
       loginHint: ctx.profile.email ?? ctx.dbUser.email,
-      appUrl,
     });
     const response = NextResponse.redirect(url);
-    attachNylasOAuthCookie(response, { coachProfileId: ctx.profile.id, ts: Date.now() });
+    attachNylasOAuthCookie(response, oauthPayload);
     return response;
   } catch (err) {
     console.error("[nylas/connect]", err);
@@ -105,14 +105,14 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as { provider?: string };
   const provider = body.provider === "microsoft" ? "microsoft" : "google";
-  const state = signNylasState({ coachProfileId: ctx.profile.id, ts: Date.now() });
+  const oauthPayload = { coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
+  const state = signNylasState(oauthPayload);
 
   try {
-    const url = await createNylasAuthUrl({
+    const url = buildNylasAuthUrl({
       provider,
       state,
       loginHint: ctx.profile.email ?? ctx.dbUser.email,
-      appUrl,
     });
     return NextResponse.json({ url });
   } catch (err) {

@@ -235,7 +235,11 @@ export function CoachProfileTab({
           "OAuth redirect URI mismatch. In Nylas → Hosted Authentication, add https://app.kimchi.so/api/nylas/callback",
         setup: "Connected, but scheduler setup failed. Try again or contact support.",
       };
-      const base = messages[reason ?? ""] ?? "Calendar connection failed. Please try again.";
+      let base = messages[reason ?? ""] ?? "Calendar connection failed. Please try again.";
+      if (detail === "missing_code") {
+        base =
+          "Google login finished but Nylas did not return an authorization code. In the Nylas dashboard, confirm Google is enabled under Identity providers and your account is listed under Test users (sandbox).";
+      }
       setNylasNotice({
         type: "error",
         message: detail ? `${base} (${detail})` : base,
