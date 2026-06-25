@@ -8,13 +8,15 @@ export async function GET(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const forceRefresh = new URL(request.url).searchParams.get("refresh") === "1";
+  const allowFetch = new URL(request.url).searchParams.get("load") === "1" || forceRefresh;
 
   const bundle = await getDashboardSumbleSignalsBundle({
     userId: dbUser.id,
     forceRefresh,
+    allowFetch,
   });
 
-  if (bundle.error && !bundle.signals.length) {
+  if (bundle.error && !bundle.signals.length && !bundle.requiresLoad) {
     return NextResponse.json(bundle, { status: bundle.configured ? 502 : 503 });
   }
 

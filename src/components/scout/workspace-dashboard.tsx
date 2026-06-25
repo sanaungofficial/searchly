@@ -13,6 +13,7 @@ import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondar
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
 import { windowInsight } from "@/hooks/useMarketInsights";
+import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
 import { formatInsightsSalary } from "@/lib/hirebase-insights";
 import type { DashboardSumbleSignalsBundle } from "@/lib/sumble-intel-service";
 
@@ -193,24 +194,34 @@ export function WorkspaceDashboard() {
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
   const [signalsData, setSignalsData] = useState<MarketInsightsPayload | null>(null);
-  const [signalsLoading, setSignalsLoading] = useState(true);
+  const [signalsLoading, setSignalsLoading] = useState(false);
   const [signalsError, setSignalsError] = useState<string | null>(null);
+  const [marketRequiresLoad, setMarketRequiresLoad] = useState(true);
 
   const [watchlistSignals, setWatchlistSignals] = useState<DashboardSumbleSignalsBundle | null>(null);
-  const [watchlistLoading, setWatchlistLoading] = useState(true);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
+  const [watchlistRequiresLoad, setWatchlistRequiresLoad] = useState(true);
 
-  const loadMarketSignals = useCallback(async (refresh = false) => {
+  const loadMarketSignals = useCallback(async (options?: { refresh?: boolean; fetch?: boolean }) => {
+    const refresh = options?.refresh ?? false;
+    const fetch = options?.fetch ?? refresh;
     setSignalsLoading(true);
     setSignalsError(null);
     try {
       const params = new URLSearchParams({ days: "30", windows: "7,30,90" });
+      if (fetch) params.set("load", "1");
       if (refresh) params.set("refresh", "1");
       const res = await fetch(`/api/market/insights?${params}`);
       const body = (await res.json()) as MarketInsightsPayload;
       setSignalsData(body);
-      if (!res.ok && !Object.keys(body.windows ?? {}).length) {
+      setMarketRequiresLoad(body.requiresLoad ?? !Object.keys(body.windows ?? {}).length);
+      if (!res.ok && !Object.keys(body.windows ?? {}).length && !body.requiresLoad) {
         setSignalsError(body.error ?? "Market data unavailable.");
+      } else if (body.error) {
+        setSignalsError(body.error);
+      } else {
+        setSignalsError(null);
       }
     } catch {
       setSignalsError("Could not load market insights.");
@@ -219,17 +230,25 @@ export function WorkspaceDashboard() {
     }
   }, []);
 
-  const loadWatchlistSignals = useCallback(async (refresh = false) => {
+  const loadWatchlistSignals = useCallback(async (options?: { refresh?: boolean; fetch?: boolean }) => {
+    const refresh = options?.refresh ?? false;
+    const fetch = options?.fetch ?? refresh;
     setWatchlistLoading(true);
     setWatchlistError(null);
     try {
       const params = new URLSearchParams();
+      if (fetch) params.set("load", "1");
       if (refresh) params.set("refresh", "1");
       const res = await fetch(`/api/dashboard/sumble-signals?${params}`);
       const body = (await res.json()) as DashboardSumbleSignalsBundle;
       setWatchlistSignals(body);
-      if (!res.ok && !body.signals?.length) {
+      setWatchlistRequiresLoad(body.requiresLoad ?? !body.signals?.length);
+      if (!res.ok && !body.signals?.length && !body.requiresLoad) {
         setWatchlistError(body.error ?? "Company signals unavailable.");
+      } else if (body.error) {
+        setWatchlistError(body.error);
+      } else {
+        setWatchlistError(null);
       }
     } catch {
       setWatchlistError("Could not load company signals.");
@@ -239,12 +258,9 @@ export function WorkspaceDashboard() {
   }, []);
 
   useEffect(() => {
-    void loadMarketSignals(false);
-  }, [loadMarketSignals]);
-
-  useEffect(() => {
-    void loadWatchlistSignals(false);
-  }, [loadWatchlistSignals]);
+    void loadMarketSignals({ fetch: false });
+    void loadWatchlistSignals({ fetch: false });
+  }, [loadMarketSignals, loadWatchlistSignals]);
 
   const marketInsight = windowInsight(signalsData, 30);
 
@@ -326,13 +342,12 @@ export function WorkspaceDashboard() {
     setAddJobError(null);
   };
 
-  const refreshSignals = () => {
-    void loadMarketSignals(true);
-    void loadWatchlistSignals(true);
+  const refreshMarketSignals = () => {
+    void loadMarketSignals({ fetch: true, refresh: true });
   };
 
   const refreshWatchlistSignals = () => {
-    void loadWatchlistSignals(true);
+    void loadWatchlistSignals({ fetch: true, refresh: true });
   };
 
   const openAddPanel = () => setShowAddPanel(true);
@@ -538,7 +553,7 @@ export function WorkspaceDashboard() {
               Your job search at a glance
             </ScoutDisplayTitle>
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
-              Pipeline counts, recent activity, and live market intelligence from Sumble.
+              Pipeline counts, recent activity, and on-demand market intelligence from Sumble.
             </p>
           </div>
 
@@ -658,7 +673,11 @@ export function WorkspaceDashboard() {
                   Explore →
                 </Link>
                 <button
-                  onClick={refreshSignals}
+                  onClick={() =>
+                    marketRequiresLoad
+                      ? void loadMarketSignals({ fetch: true })
+                      : refreshMarketSignals()
+                  }
                   disabled={signalsLoading}
                   style={{
                     background: "none",
@@ -675,12 +694,24 @@ export function WorkspaceDashboard() {
                     gap: 4,
                   }}
                 >
-                  <RefreshIcon /> Refresh
+                  <RefreshIcon /> {marketRequiresLoad ? "Load" : "Refresh"}
                 </button>
               </div>
             </div>
 
-            {signalsLoading && !marketInsight && (
+            {marketRequiresLoad && !marketInsight && !signalsLoading && !signalsError && (
+              <SumbleLoadPrompt
+                title="Market snapshot"
+                description="Load a small job sample for your target roles. Market data does not load automatically."
+                estimatedCredits={signalsData?.estimatedCredits ?? 25}
+                creditsRemaining={signalsData?.creditsRemaining}
+                loading={signalsLoading}
+                onLoad={() => void loadMarketSignals({ fetch: true })}
+                loadLabel="Load market data"
+              />
+            )}
+
+            {signalsLoading && !marketInsight && !marketRequiresLoad && (
               <ScoutBox padding="14px 18px">
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: color.forest, animation: "pulse 1s ease infinite", flexShrink: 0 }} />
@@ -823,7 +854,11 @@ export function WorkspaceDashboard() {
                   Companies →
                 </Link>
                 <button
-                  onClick={refreshWatchlistSignals}
+                  onClick={() =>
+                    watchlistRequiresLoad
+                      ? void loadWatchlistSignals({ fetch: true })
+                      : refreshWatchlistSignals()
+                  }
                   disabled={watchlistLoading}
                   style={{
                     background: "none",
@@ -840,12 +875,24 @@ export function WorkspaceDashboard() {
                     gap: 4,
                   }}
                 >
-                  <RefreshIcon /> Refresh
+                  <RefreshIcon /> {watchlistRequiresLoad ? "Load" : "Refresh"}
                 </button>
               </div>
             </div>
 
-            {watchlistLoading && !watchlistSignals?.signals?.length && (
+            {watchlistRequiresLoad && !watchlistSignals?.signals?.length && !watchlistLoading && !watchlistError && (
+              <SumbleLoadPrompt
+                title="Watchlist signals"
+                description="Scan up to 3 tracked companies for recent Sumble signals. Does not run automatically."
+                estimatedCredits={watchlistSignals?.estimatedCredits ?? 12}
+                creditsRemaining={watchlistSignals?.creditsRemaining}
+                loading={watchlistLoading}
+                onLoad={() => void loadWatchlistSignals({ fetch: true })}
+                loadLabel="Load watchlist signals"
+              />
+            )}
+
+            {watchlistLoading && !watchlistSignals?.signals?.length && !watchlistRequiresLoad && (
               <ScoutBox padding="14px 18px">
                 <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
                   Loading signals from your watchlist…
@@ -853,7 +900,7 @@ export function WorkspaceDashboard() {
               </ScoutBox>
             )}
 
-            {watchlistError && !watchlistSignals?.signals?.length && (
+            {watchlistError && !watchlistSignals?.signals?.length && !watchlistRequiresLoad && (
               <ScoutBox padding="14px 18px">
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
                   {watchlistError}

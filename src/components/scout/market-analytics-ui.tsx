@@ -123,6 +123,46 @@ export function InsightsEmpty({
   );
 }
 
+export function SumbleLoadPrompt({
+  title,
+  description,
+  estimatedCredits,
+  creditsRemaining,
+  loading,
+  onLoad,
+  loadLabel = "Load from Sumble",
+}: {
+  title: string;
+  description: string;
+  estimatedCredits?: number;
+  creditsRemaining?: number | null;
+  loading?: boolean;
+  onLoad: () => void;
+  loadLabel?: string;
+}) {
+  return (
+    <ScoutBox padding="24px 22px" style={{ textAlign: "center" }}>
+      <ScoutLabel>{title}</ScoutLabel>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55 }}>
+        {description}
+      </p>
+      {estimatedCredits != null && (
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.mutedLight, margin: "0 0 14px" }}>
+          Uses ~{estimatedCredits} Sumble credits per load. Data is cached for 24 hours after loading.
+          {creditsRemaining != null ? ` ${creditsRemaining.toLocaleString()} credits remaining.` : ""}
+        </p>
+      )}
+      <ScoutSecondaryBtn
+        onClick={onLoad}
+        disabled={loading}
+        style={{ minHeight: 44, padding: "10px 18px", fontWeight: 600 }}
+      >
+        {loading ? "Loading…" : loadLabel}
+      </ScoutSecondaryBtn>
+    </ScoutBox>
+  );
+}
+
 export function KpiGrid({
   insight,
   isMobile,

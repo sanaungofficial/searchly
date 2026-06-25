@@ -9,6 +9,7 @@ import { CompanyLogo } from "@/components/scout/company-logo";
 import {
   InsightsEmpty,
   InsightsMetaRow,
+  SumbleLoadPrompt,
   WindowPicker,
 } from "@/components/scout/market-analytics-ui";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
@@ -17,17 +18,28 @@ import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typ
 export function MarketCompaniesPage() {
   const [days, setDays] = useState(30);
   const isMobile = useIsMobile();
-  const { data, loading, error, refresh } = useMarketInsights(days, "7,30,90,180");
+  const { data, loading, error, refresh, load, requiresLoad } = useMarketInsights(days, "7,30,90,180");
   const insight = windowInsight(data, days);
   const companies = insight?.top_companies ?? [];
 
   return (
     <MarketShell
       title="Top employers"
-      subtitle="Companies hiring your target roles most often in this market window."
+      subtitle="Companies hiring your target roles — load on demand to conserve Sumble credits."
       toolbar={<WindowPicker value={days} onChange={setDays} isMobile={isMobile} />}
     >
-      <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />
+      {requiresLoad && !insight && !error && (
+        <SumbleLoadPrompt
+          title="Top employers"
+          description="Pull a small job sample to rank employers hiring your target roles."
+          estimatedCredits={data?.estimatedCredits ?? 25}
+          creditsRemaining={data?.creditsRemaining}
+          loading={loading}
+          onLoad={load}
+        />
+      )}
+
+      {!requiresLoad && <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />}
 
       {loading && !insight && (
         <ScoutBox padding="20px 22px">

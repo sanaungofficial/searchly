@@ -8,6 +8,7 @@ import {
   InsightsEmpty,
   InsightsMetaRow,
   RankList,
+  SumbleLoadPrompt,
   WindowPicker,
 } from "@/components/scout/market-analytics-ui";
 import { ScoutBox } from "@/components/scout/scout-box";
@@ -16,16 +17,27 @@ import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 export function MarketSkillsPage() {
   const [days, setDays] = useState(30);
   const isMobile = useIsMobile();
-  const { data, loading, error, refresh } = useMarketInsights(days, "7,30,90,180");
+  const { data, loading, error, refresh, load, requiresLoad } = useMarketInsights(days, "7,30,90,180");
   const insight = windowInsight(data, days);
 
   return (
     <MarketShell
       title="Skills & stack"
-      subtitle="Technologies and skills employers ask for most in your target market."
+      subtitle="Technologies and skills employers ask for — load on demand to conserve Sumble credits."
       toolbar={<WindowPicker value={days} onChange={setDays} isMobile={isMobile} />}
     >
-      <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />
+      {requiresLoad && !insight && !error && (
+        <SumbleLoadPrompt
+          title="Skills & stack"
+          description="Pull a small job sample to see technologies and projects in demand for your roles."
+          estimatedCredits={data?.estimatedCredits ?? 25}
+          creditsRemaining={data?.creditsRemaining}
+          loading={loading}
+          onLoad={load}
+        />
+      )}
+
+      {!requiresLoad && <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />}
 
       {loading && !insight && (
         <ScoutBox padding="20px 22px">
