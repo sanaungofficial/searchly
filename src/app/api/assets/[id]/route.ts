@@ -2,6 +2,7 @@ import { getActingUser } from "@/lib/acting-user";
 import { getOwnedAssetForActingUser } from "@/lib/owned-asset";
 import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
+import { resumeParseFields } from "@/lib/resume-asset-parse";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -31,6 +32,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     updatedAt: asset.updatedAt,
     profileName: dbUser.name,
     profileEmail: dbUser.email,
+    targetJobTitle: asset.targetJobTitle,
+    ...resumeParseFields(asset),
   });
 }
 
@@ -43,15 +46,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await request.json();
-  const { name, parsedData, isPrimary } = body as {
+  const { name, parsedData, isPrimary, targetJobTitle } = body as {
     name?: string;
     parsedData?: ParsedResumeData;
     isPrimary?: boolean;
+    targetJobTitle?: string | null;
   };
 
   const update: Prisma.UserAssetUpdateInput = {};
-  if (name !== undefined) update.name = name;
+  if (name !== undefined) update.name = name.trim() || name;
   if (parsedData !== undefined) update.parsedData = parsedData as unknown as Prisma.InputJsonValue;
+  if (targetJobTitle !== undefined) update.targetJobTitle = targetJobTitle?.trim() || null;
 
   if (isPrimary === true) {
     await prisma.userAsset.updateMany({

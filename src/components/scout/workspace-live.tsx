@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LiveSessionView } from "@/lib/live-session-types";
+import { liveSessionRouteId } from "@/lib/live-sessions";
 import { ScoutBox, ScoutPrimaryBtn } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,7 +14,7 @@ type LiveFilter = "all" | "mine" | "live" | "week";
 type LiveSessionRow = LiveSessionView & { canHost: boolean };
 
 function sessionRouteId(s: LiveSessionRow): string {
-  return s.legacyNumericId != null ? String(s.legacyNumericId) : s.id;
+  return liveSessionRouteId(s);
 }
 
 export function WorkspaceLive() {
@@ -122,7 +123,11 @@ export function WorkspaceLive() {
       return { label: "Join now →", onClick: () => openSession(s), busy: false };
     }
     if (s.isRegistered) {
-      return { label: "Reserved ✓", onClick: () => openSession(s), busy: false };
+      return {
+        label: "View session →",
+        onClick: () => openSession(s),
+        busy: false,
+      };
     }
     return {
       label: busyId === s.id ? "Saving…" : "Reserve seat →",
