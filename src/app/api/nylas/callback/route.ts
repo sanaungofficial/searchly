@@ -7,6 +7,7 @@ import {
   createCoachSchedulerConfig,
   getNylasConfig,
   nylasProfileReturnUrl,
+  resolveKimchiAppUrl,
   schedulerSlugForCoach,
   verifyNylasState,
 } from "@/lib/nylas";
@@ -22,12 +23,12 @@ async function profileOwnerRole(coachProfileId: string): Promise<UserRole | null
 }
 
 export async function GET(req: NextRequest) {
-  const cfg = getNylasConfig();
-  const fallback = cfg?.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const appUrl = resolveKimchiAppUrl(req);
+  const cfg = getNylasConfig(appUrl);
 
   if (!cfg) {
     return NextResponse.redirect(
-      nylasProfileReturnUrl(fallback, "ADMIN", { nylas: "error", reason: "config" }),
+      nylasProfileReturnUrl(appUrl, "ADMIN", { nylas: "error", reason: "config" }),
     );
   }
 
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   const returnRole = role === UserRole.COACH ? "COACH" : "ADMIN";
 
   function redirectWith(params: Record<string, string>) {
-    return NextResponse.redirect(nylasProfileReturnUrl(cfg.appUrl, returnRole, params));
+    return NextResponse.redirect(nylasProfileReturnUrl(appUrl, returnRole, params));
   }
 
   if (error || !code || !state) {
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { grantId, email } = await exchangeNylasCode(code);
+    const { grantId, email } = await exchangeNylasCode(code, appUrl);
     const profile = await prisma.coachProfile.findUnique({ where: { id: parsed.coachProfileId } });
     if (!profile) {
       return redirectWith({ nylas: "error", reason: "profile" });
@@ -80,7 +81,8 @@ export async function GET(req: NextRequest) {
     });
 
     return redirectWith({ nylas: "connected" });
-  } catch {
+  } catch (err) {
+    console.error("[nylas/callback]", err);
     return redirectWith({ nylas: "error", reason: "setup" });
   }
 }
