@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
-import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
 import { CompanySumbleIntelPanel } from "@/components/scout/company-sumble-intel-panel";
 import { CompanySumbleBriefPanel } from "@/components/scout/company-sumble-brief-panel";
 import { getSumbleBriefFromEnrichment, mergeSumbleBriefIntoEnrichment } from "@/lib/sumble-brief-cache";
@@ -1061,14 +1060,6 @@ function CompanyDrawer({
             )}
           </DrawerSection>
 
-          <DrawerSection title="Company insights · Hirebase">
-            <CompanyHirebaseIntelPanel
-              trackedId={company.id}
-              companyName={company.name}
-              slugHint={hirebaseSlugFromEnrichment(intel) ?? hirebaseMeta(company)?.slug ?? null}
-            />
-          </DrawerSection>
-
           <DrawerSection title="Sumble intelligence">
             <CompanySumbleIntelPanel
               trackedId={company.id}
@@ -1524,12 +1515,6 @@ export function WorkspaceCompanies({
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
-              <DrawerSection title="Company insights · Hirebase">
-                <CompanyHirebaseIntelPanel
-                  companyName={intelName || intelSlug}
-                  slugHint={intelSlug}
-                />
-              </DrawerSection>
               <DrawerSection title="Sumble intelligence">
                 <CompanySumbleIntelPanel
                   companyName={intelName || intelSlug}

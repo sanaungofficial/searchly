@@ -1,20 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { JobMeta } from "@/hooks/useJobs";
 import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import { type KanbanCard } from "./workspace-data";
-import { PlusIcon, RefreshIcon } from "./workspace-icons";
+import { PlusIcon } from "./workspace-icons";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
-import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
-import { windowInsight } from "@/hooks/useMarketInsights";
-import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
-import { formatInsightsSalary } from "@/lib/hirebase-insights";
+import { DashboardMarketTrendsPanel } from "@/components/scout/dashboard-market-trends-panel";
 import { DashboardSumbleSignalsPanel } from "@/components/scout/dashboard-sumble-signals-panel";
 
 const STAT_LABEL: React.CSSProperties = {
@@ -185,43 +182,7 @@ export function WorkspaceDashboard() {
   }>(null);
   const [addJobError, setAddJobError] = useState<string | null>(null);
 
-  const [signalsData, setSignalsData] = useState<MarketInsightsPayload | null>(null);
-  const [signalsLoading, setSignalsLoading] = useState(false);
-  const [signalsError, setSignalsError] = useState<string | null>(null);
-  const [marketRequiresLoad, setMarketRequiresLoad] = useState(true);
-
-  const loadMarketSignals = useCallback(async (options?: { refresh?: boolean; fetch?: boolean }) => {
-    const refresh = options?.refresh ?? false;
-    const shouldFetch = options?.fetch ?? refresh;
-    setSignalsLoading(true);
-    setSignalsError(null);
-    try {
-      const params = new URLSearchParams({ days: "30", windows: "7,30,90" });
-      if (shouldFetch) params.set("load", "1");
-      if (refresh) params.set("refresh", "1");
-      const res = await fetch(`/api/market/insights?${params}`);
-      const body = (await res.json()) as MarketInsightsPayload;
-      setSignalsData(body);
-      setMarketRequiresLoad(body.requiresLoad ?? !Object.keys(body.windows ?? {}).length);
-      if (!res.ok && !Object.keys(body.windows ?? {}).length && !body.requiresLoad) {
-        setSignalsError(body.error ?? "Market data unavailable.");
-      } else if (body.error) {
-        setSignalsError(body.error);
-      } else {
-        setSignalsError(null);
-      }
-    } catch {
-      setSignalsError("Could not load market insights.");
-    } finally {
-      setSignalsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadMarketSignals({ fetch: false });
-  }, [loadMarketSignals]);
-
-  const marketInsight = windowInsight(signalsData, 30);
+  const openAddPanel = () => setShowAddPanel(true);
 
   const pipeline = {
     saved: kanbanCards.filter((c) => c.stage === "saved").length,
@@ -300,12 +261,6 @@ export function WorkspaceDashboard() {
     setJobAnalysis(null);
     setAddJobError(null);
   };
-
-  const refreshMarketSignals = () => {
-    void loadMarketSignals({ fetch: true, refresh: true });
-  };
-
-  const openAddPanel = () => setShowAddPanel(true);
 
   const jobAnalysisColumns =
     jobAnalysis?.description && jobAnalysis.requirements.length > 0
@@ -586,238 +541,9 @@ export function WorkspaceDashboard() {
             )}
           </div>
 
-          <div style={{ marginBottom: 28 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: isMobile ? "flex-start" : "center",
-                justifyContent: "space-between",
-                marginBottom: 10,
-                gap: 12,
-                flexDirection: isMobile ? "column" : "row",
-              }}
-            >
-              <ScoutLabel>Role market snapshot</ScoutLabel>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  onClick={() =>
-                    marketRequiresLoad
-                      ? void loadMarketSignals({ fetch: true })
-                      : refreshMarketSignals()
-                  }
-                  disabled={signalsLoading}
-                  style={{
-                    background: "none",
-                    border: border.line,
-                    cursor: signalsLoading ? "wait" : "pointer",
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    fontWeight: 600,
-                    color: color.forest,
-                    padding: isMobile ? "10px 14px" : "6px 12px",
-                    minHeight: isMobile ? 44 : undefined,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <RefreshIcon /> {marketRequiresLoad ? "Load" : "Refresh"}
-                </button>
-              </div>
-            </div>
-
-            {marketRequiresLoad && !marketInsight && !signalsLoading && !signalsError && (
-              <SumbleLoadPrompt
-                title="Market snapshot"
-                description="Load a small job sample for your target roles. Market data does not load automatically."
-                estimatedCredits={signalsData?.estimatedCredits ?? 25}
-                creditsRemaining={signalsData?.creditsRemaining}
-                loading={signalsLoading}
-                onLoad={() => void loadMarketSignals({ fetch: true })}
-                loadLabel="Load market data"
-              />
-            )}
-
-            {signalsLoading && !marketInsight && !marketRequiresLoad && (
-              <ScoutBox padding="14px 18px">
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: color.forest, animation: "pulse 1s ease infinite", flexShrink: 0 }} />
-                  <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
-                    Loading market intelligence…
-                  </p>
-                </div>
-              </ScoutBox>
-            )}
-
-            {signalsError && !marketInsight && (
-              <ScoutBox padding="14px 18px">
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
-                  {signalsError}
-                </p>
-              </ScoutBox>
-            )}
-
-            {marketInsight && signalsData && (
-              <>
-                <ScoutBox stack padding={isMobile ? "16px 18px" : "18px 22px"} style={{ marginBottom: 12 }}>
-                  <ScoutLabel>This week&apos;s read · {signalsData.roleLabel}</ScoutLabel>
-                  <p style={displayTitleStyle(isMobile ? 20 : 24, { margin: "10px 0 0", color: color.ink })}>
-                    {signalsData.headline || signalsData.roleLabel}
-                  </p>
-                  {signalsData.generatedAt && (
-                    <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-                      Updated {new Date(signalsData.generatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                    </p>
-                  )}
-                </ScoutBox>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    overflowX: "auto",
-                    paddingBottom: 4,
-                    marginLeft: isMobile ? -16 : 0,
-                    marginRight: isMobile ? -16 : 0,
-                    paddingLeft: isMobile ? 16 : 0,
-                    paddingRight: isMobile ? 16 : 0,
-                    scrollbarWidth: "none",
-                    WebkitOverflowScrolling: "touch",
-                  }}
-                >
-                  {[
-                    {
-                      type: "Demand",
-                      title: `${marketInsight.headline?.total_count?.toLocaleString() ?? "—"} active roles`,
-                      actionable: `${marketInsight.headline?.new_this_week ?? 0} posted this week`,
-                      sentiment: "positive" as const,
-                    },
-                    {
-                      type: "Salary",
-                      title: marketInsight.headline?.median_salary
-                        ? `Median ${formatInsightsSalary(marketInsight.headline.median_salary, marketInsight.headline.salary_currency) ?? ""}`
-                        : "Salary data limited",
-                      actionable: marketInsight.headline?.median_salary
-                        ? "Based on recent postings for your target roles"
-                        : "Salary data limited",
-                      sentiment: "neutral" as const,
-                    },
-                    ...(marketInsight.top_companies ?? []).slice(0, 3).map((co) => ({
-                      type: "Hiring",
-                      company: co.company_name,
-                      title: `${co.company_name} — ${co.count} roles`,
-                      actionable: "View company intel",
-                      sentiment: "positive" as const,
-                    })),
-                  ].map((s, i) => {
-                    const sentimentColor = s.sentiment === "positive" ? "#2D6B4A" : "#7A6020";
-                    return (
-                      <ScoutBox
-                        key={i}
-                        padding="18px 20px"
-                        style={{ flex: "none", width: isMobile ? "min(85vw, 272px)" : 272 }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                          <span
-                            style={{
-                              padding: "2px 8px",
-                              background: surface.inset,
-                              border: border.line,
-                              fontFamily: fontMono,
-                              fontSize: T.caption,
-                              fontWeight: 700,
-                              color: sentimentColor,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            {s.type}
-                          </span>
-                          {"company" in s && s.company && (
-                            <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
-                              {s.company}
-                            </span>
-                          )}
-                        </div>
-                        <p style={displayTitleStyle(isMobile ? 17 : 19, { marginBottom: 8, lineHeight: 1.35 })}>
-                          {s.title}
-                        </p>
-                        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, lineHeight: 1.55, margin: 0 }}>
-                          → {s.actionable}
-                        </p>
-                      </ScoutBox>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
+          <DashboardMarketTrendsPanel isMobile={isMobile} />
 
           <DashboardSumbleSignalsPanel isMobile={isMobile} />
-
-          {marketInsight && signalsData && (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: 12,
-                marginTop: 20,
-              }}
-            >
-              <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
-                <ScoutLabel>Salary benchmark</ScoutLabel>
-                <p style={displayTitleStyle(isMobile ? 20 : 22, { margin: "8px 0" })}>
-                  {marketInsight.salary?.p50 != null
-                    ? formatInsightsSalary(marketInsight.salary.p50, marketInsight.salary.currency)
-                    : marketInsight.headline?.dominant_experience_level ?? "Salary data limited"}
-                </p>
-                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: 0 }}>
-                  {marketInsight.salary?.p25 != null && marketInsight.salary?.p75 != null
-                    ? `Typical range ${formatInsightsSalary(marketInsight.salary.p25, marketInsight.salary.currency)}–${formatInsightsSalary(marketInsight.salary.p75, marketInsight.salary.currency)} for ${signalsData.roleLabel}.`
-                    : "Load market data above for salary bands by level and location."}
-                </p>
-              </ScoutBox>
-
-              <ScoutBox padding={isMobile ? "18px 20px" : "22px 24px"}>
-                <ScoutLabel>Skills in demand</ScoutLabel>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 14px" }}>
-                  {(marketInsight.top_skills ?? []).slice(0, 6).map((s) => (
-                    <span
-                      key={s.key}
-                      style={{
-                        padding: "4px 12px",
-                        background: surface.inset,
-                        border: border.line,
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        fontWeight: 500,
-                        color: color.forest,
-                      }}
-                    >
-                      ↑ {s.key}
-                    </span>
-                  ))}
-                </div>
-                <ScoutLabel>Technologies</ScoutLabel>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                  {(marketInsight.top_technologies ?? []).slice(0, 4).map((s) => (
-                    <span
-                      key={s.key}
-                      style={{
-                        padding: "4px 12px",
-                        background: surface.inset,
-                        border: border.line,
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        color: color.muted,
-                      }}
-                    >
-                      {s.key}
-                    </span>
-                  ))}
-                </div>
-              </ScoutBox>
-            </div>
-          )}
 
         </div>
       </div>
