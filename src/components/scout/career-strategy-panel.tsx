@@ -13,6 +13,7 @@ import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, T } from "@/lib/typography";
 
@@ -316,13 +317,23 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           style={{ ...textareaStyle, minHeight: 140 }}
         />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-          <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || !intakeNotes.trim()}>
+          <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || generating || !intakeNotes.trim()}>
             {parsing ? "Parsing…" : "Parse & review profile updates"}
           </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={handleGenerate} disabled={generating}>
+          <ScoutPrimaryBtn onClick={handleGenerate} disabled={generating || parsing}>
             {generating ? "Generating…" : hasDocument ? "Regenerate strategy" : "Generate strategy"}
           </ScoutPrimaryBtn>
         </div>
+        {parsing && (
+          <div style={{ marginTop: 16 }}>
+            <KimchiProcessLoader preset="strategyIntake" variant="inline" />
+          </div>
+        )}
+        {generating && (
+          <div style={{ marginTop: 16 }}>
+            <KimchiProcessLoader preset="careerStrategy" variant="inline" />
+          </div>
+        )}
         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
           Strategy generation uses 1 AI credit and only runs when you click the button above.
         </p>
@@ -441,6 +452,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
 
         {loading ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading…</p>
+        ) : generating ? (
+          <KimchiProcessLoader preset="careerStrategy" variant="centered" />
         ) : !hasDocument ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
             No strategy yet. Paste intake notes and click Generate strategy.

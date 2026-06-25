@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 
     const message = await getAnthropic().messages.create({
       model: STRATEGY_MODEL,
-      max_tokens: 8000,
+      max_tokens: 16384,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -182,8 +182,22 @@ export async function POST(request: Request) {
         document,
         updatedAt: now.toISOString(),
       });
-    } catch {
-      return NextResponse.json({ error: "Failed to parse strategy response" }, { status: 500 });
+    } catch (parseErr) {
+      const truncated = message.stop_reason === "max_tokens";
+      console.error("[career-strategy POST] parse failed", {
+        stopReason: message.stop_reason,
+        outputTokens: message.usage.output_tokens,
+        err: parseErr,
+        preview: content.text.slice(0, 400),
+      });
+      return NextResponse.json(
+        {
+          error: truncated
+            ? "Strategy generation was cut off before finishing. Please try Generate again."
+            : "Failed to parse strategy response. Please try again.",
+        },
+        { status: 500 },
+      );
     }
   } catch (err) {
     console.error("[career-strategy POST]", err);
