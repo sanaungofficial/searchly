@@ -1,7 +1,6 @@
 "use client";
 
 import { CoachBookingsTab } from "@/components/scout/coach-bookings-tab";
-import { WorkspacePageShell } from "@/components/scout/workspace-page-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function DashboardBookingsPage() {
@@ -10,10 +9,8 @@ export default function DashboardBookingsPage() {
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ padding: `0 ${pad} ${pad}`, maxWidth: 960 }}>
-        <WorkspacePageShell label="Coach portal" title="Bookings" isMobile={isMobile}>
-          <CoachBookingsTab />
-        </WorkspacePageShell>
+      <div style={{ padding: `0 ${pad} ${pad}` }}>
+        <CoachBookingsTab />
       </div>
     </div>
   );

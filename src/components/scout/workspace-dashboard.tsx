@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { isStaffPortalRole } from "@/lib/staff-portal";
 import type { JobMeta } from "@/hooks/useJobs";
 import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import { DashboardHomeTop } from "@/components/scout/dashboard-home-top";
@@ -153,7 +154,8 @@ function ActivityFeedItem({
 export function WorkspaceDashboard() {
   const router = useRouter();
   const isMobile = useIsMobile();
-  const { kanbanCards, addJob } = useWorkspace();
+  const { kanbanCards, addJob, userRole } = useWorkspace();
+  const isStaffPortal = isStaffPortalRole(userRole);
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
@@ -205,7 +207,13 @@ export function WorkspaceDashboard() {
 
   const headerPad = isMobile ? "12px 16px" : "12px 28px";
   const panelPad = isMobile ? "12px 16px" : "12px 28px";
-  const contentPad = isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
+  const contentPad = isMobile
+    ? isStaffPortal
+      ? "20px 16px 40px"
+      : "24px 16px 40px 16px"
+    : isStaffPortal
+      ? "24px 28px 40px"
+      : "32px 36px 48px";
   const statValueSize = isMobile ? 36 : T.stat;
   const statCardPad = isMobile ? "16px 18px" : "20px 24px";
 
@@ -280,7 +288,7 @@ export function WorkspaceDashboard() {
         animation: "fadeIn 0.3s ease both",
       }}
     >
-      {isMobile ? (
+      {!isStaffPortal && (isMobile ? (
         <WorkspaceMobileTopBar
           center={<ScoutLabel>Dashboard</ScoutLabel>}
           right={
@@ -313,9 +321,9 @@ export function WorkspaceDashboard() {
             <PlusIcon /> Add job
           </ScoutPrimaryBtn>
         </div>
-      )}
+      ))}
 
-      {showAddPanel && (
+      {!isStaffPortal && showAddPanel && (
         <div
           style={{
             padding: panelPad,
@@ -458,6 +466,7 @@ export function WorkspaceDashboard() {
 
           <DashboardHomeTop isMobile={isMobile} />
 
+          {!isStaffPortal && (
           <div style={{ borderTop: border.line, paddingTop: isMobile ? 24 : 32, marginBottom: isMobile ? 24 : 32 }}>
             <ScoutLabel>Your pipeline</ScoutLabel>
 
@@ -542,6 +551,7 @@ export function WorkspaceDashboard() {
               </>
             )}
           </div>
+          )}
 
         </div>
       </div>
