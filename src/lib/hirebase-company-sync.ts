@@ -31,6 +31,10 @@ export type CompanyEnrichmentCache = {
   recentNews?: Array<{ title: string; date: string; summary: string }>;
   glassdoorRating?: string | null;
   websiteUrl?: string | null;
+  subindustries?: string[];
+  services?: string[];
+  companyType?: string | null;
+  isRecruitingAgency?: boolean | null;
   hirebase?: HirebaseEnrichmentMeta;
   _primarySource?: "hirebase" | "ai";
 };
@@ -70,6 +74,10 @@ export function enrichmentFromHirebaseProfile(profile: HirebaseCompanyProfile): 
     description: profile.description_summary,
     employeeCount: formatEmployeeRange(profile.size_range),
     industry: profile.industries[0] ?? null,
+    subindustries: profile.subindustries,
+    services: profile.services,
+    companyType: profile.company_type,
+    isRecruitingAgency: profile.is_recruiting_agency,
     websiteUrl: normalizeWebsiteUrl(profile.company_link),
     hirebase: {
       slug: profile.company_slug,

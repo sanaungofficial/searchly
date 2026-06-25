@@ -325,6 +325,10 @@ function hirebaseMeta(company: TrackedCompany) {
   return (company.enrichmentCache as (EnrichmentCache & { hirebase?: { slug?: string; linkedinLink?: string | null } }) | null)?.hirebase ?? null;
 }
 
+function profileLinkedIn(intel: EnrichmentCache | null, company: TrackedCompany): string | null {
+  return hirebaseMeta(company)?.linkedinLink?.trim() || null;
+}
+
 function catalogForCompany(company: TrackedCompany) {
   return getCatalogCompany(normalizeCompanySlug(company.name));
 }
@@ -899,15 +903,52 @@ function CompanyDrawer({
                 borderRadius={0}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <InlineInput value={company.name} placeholder="Company name" onBlur={(v) => v.trim() && onPatch(company.id, "name", v)} bold />
-                <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-                  {company.website && <a href={company.website.startsWith("http") ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 14, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Website</a>}
-                  {company.careersUrl && <a href={company.careersUrl.startsWith("http") ? company.careersUrl : `https://${company.careersUrl}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "monospace", fontSize: 14, color: "#6b7280", textDecoration: "none" }} onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")} onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}>↗ Careers</a>}
+                <div style={{ ...displayTitleStyle(isMobile ? 20 : 22), margin: 0 }}>{company.name}</div>
+                <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>Priority</span>
+                    <PriorityBadge value={company.priority ?? ""} onChange={(v) => onPatch(company.id, "priority", v)} />
+                  </div>
+                  {(company.website ?? enrichmentWebsite(company)) && (
+                    <a
+                      href={formatExternalUrl(company.website ?? enrichmentWebsite(company)!)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                    >
+                      Website ↗
+                    </a>
+                  )}
+                  {company.careersUrl && (
+                    <a
+                      href={formatExternalUrl(company.careersUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                    >
+                      Careers ↗
+                    </a>
+                  )}
+                  {profileLinkedIn(intel, company) && (
+                    <a
+                      href={profileLinkedIn(intel, company)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                    >
+                      LinkedIn ↗
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
-              <PriorityBadge value={company.priority ?? ""} onChange={(v) => onPatch(company.id, "priority", v)} />
               <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "2px 6px", borderRadius: 0, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#333")} onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}>×</button>
             </div>
           </div>
@@ -928,7 +969,7 @@ function CompanyDrawer({
           <DrawerSection title="Matching roles">
             {matchRoles.length === 0 && (
               <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
-                Add target roles in Profile → Target Roles, or under Details below. We only pull openings that match your targets — not every role at this company.
+                Add target roles in Profile → Target Roles. We only pull openings that match your targets — not every role at this company.
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -978,9 +1019,6 @@ function CompanyDrawer({
             {jobs.length > 0 && matchRoles.length > 0 && (
               <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 8, lineHeight: 1.45 }}>
                 Matching against: {matchRoles.slice(0, 4).join(", ")}{matchRoles.length > 4 ? ` +${matchRoles.length - 4} more` : ""}
-                {parseRolesText(company.targetRoles).length > 0 && userTargetRoles.length > 0 && (
-                  <span> (profile roles + roles at this company)</span>
-                )}
               </div>
             )}
           </DrawerSection>
@@ -990,31 +1028,6 @@ function CompanyDrawer({
             <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px" }}>
               <AutoTextarea value={company.notes ?? ""} placeholder="Add notes about this company, contacts, conversations…" onBlur={(v) => onPatch(company.id, "notes", v)} />
             </div>
-          </DrawerSection>
-
-          {/* Details */}
-          <DrawerSection title="Details">
-            <DrawerField label="Type / Industry">
-              <InlineInput value={company.type ?? ""} placeholder="e.g. Media / Technology" onBlur={(v) => onPatch(company.id, "type", v)} />
-            </DrawerField>
-            <DrawerField label="HQ / Location">
-              <InlineInput value={company.hqLocation ?? ""} placeholder="e.g. Philadelphia, PA" onBlur={(v) => onPatch(company.id, "hqLocation", v)} />
-            </DrawerField>
-            <DrawerField label="Website">
-              <DrawerUrlField company={company} field="website" placeholder="https://example.com" onPatch={onPatch} />
-            </DrawerField>
-            <DrawerField label="Careers URL">
-              <DrawerUrlField company={company} field="careersUrl" placeholder="https://example.com/careers" onPatch={onPatch} />
-            </DrawerField>
-            <DrawerField label="Culture & Mission">
-              <AutoTextarea value={company.cultureMission ?? ""} placeholder="What's their culture, values, or mission?" onBlur={(v) => onPatch(company.id, "cultureMission", v)} />
-            </DrawerField>
-            <DrawerField label="Your Edge">
-              <AutoTextarea value={company.candidateEdge ?? ""} placeholder="Why are you a strong fit here?" onBlur={(v) => onPatch(company.id, "candidateEdge", v)} />
-            </DrawerField>
-            <DrawerField label="Target Roles at This Company">
-              <AutoTextarea value={company.targetRoles ?? ""} placeholder="e.g. Director of Strategy, VP Operations…" onBlur={(v) => onPatch(company.id, "targetRoles", v)} />
-            </DrawerField>
           </DrawerSection>
 
           {/* Danger zone */}

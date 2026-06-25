@@ -70,6 +70,16 @@ export type HirebaseCompany = {
   size_range?: { min?: number; max?: number } | null;
   industries?: string[];
   subindustries?: string[];
+  services?: string[];
+  type?: string | null;
+  is_recruiting_agency?: boolean | null;
+  is_3rd_party_agency?: boolean | null;
+};
+
+export type HirebaseCompanyProfileRole = {
+  title: string;
+  location: string | null;
+  url: string | null;
 };
 
 export type HirebaseCompanyProfile = {
@@ -83,7 +93,12 @@ export type HirebaseCompanyProfile = {
   size_range: { min?: number; max?: number } | null;
   industries: string[];
   subindustries: string[];
+  services: string[];
+  company_type: string | null;
+  is_recruiting_agency: boolean | null;
+  is_third_party_agency: boolean | null;
   sample_open_jobs: number;
+  sample_roles: HirebaseCompanyProfileRole[];
 };
 
 type GetCompanyResponse = {
@@ -308,7 +323,8 @@ export async function searchHirebaseCompanies(query: string, limit = 8): Promise
 
 function normalizeCompanyProfile(
   raw: HirebaseCompany,
-  sampleOpenJobs = 0
+  sampleOpenJobs = 0,
+  sampleJobs: HirebaseJob[] = [],
 ): HirebaseCompanyProfile {
   const slug = raw.company_slug ?? raw.slug ?? "";
   return {
@@ -322,7 +338,16 @@ function normalizeCompanyProfile(
     size_range: raw.size_range ?? null,
     industries: raw.industries ?? [],
     subindustries: raw.subindustries ?? [],
+    services: raw.services ?? [],
+    company_type: raw.type ?? null,
+    is_recruiting_agency: raw.is_recruiting_agency ?? null,
+    is_third_party_agency: raw.is_3rd_party_agency ?? null,
     sample_open_jobs: raw.total_jobs ?? sampleOpenJobs,
+    sample_roles: sampleJobs.slice(0, 10).map((job) => ({
+      title: job.job_title?.trim() || job.title?.trim() || "Open role",
+      location: formatLocation(job),
+      url: job.application_link?.trim() || job.job_board_link?.trim() || null,
+    })),
   };
 }
 
@@ -355,7 +380,11 @@ export async function fetchHirebaseCompanyProfile(input: {
       `/v2/hirebase/companies/${encodeURIComponent(slug)}`
     );
     if (data.company) {
-      return normalizeCompanyProfile(data.company, data.jobs?.length ?? 0);
+      return normalizeCompanyProfile(
+        data.company,
+        data.company.total_jobs ?? data.jobs?.length ?? 0,
+        data.jobs ?? [],
+      );
     }
   } catch (err) {
     if (!(err instanceof HirebaseNotFoundError)) throw err;
