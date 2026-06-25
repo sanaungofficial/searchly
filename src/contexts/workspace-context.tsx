@@ -38,7 +38,8 @@ interface WorkspaceContextValue {
   setChatView: (view: "tools" | "chat" | "coach") => void;
   chatPulse: boolean;
   fitChatNonce: number;
-  openFitChat: (jobId: number) => void;
+  fitChatJob: KanbanCard | null;
+  openFitChat: (job: KanbanCard) => void;
   coachChatNonce: number;
   openProfileCoach: () => void;
   notifOpen: boolean;
@@ -77,6 +78,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [chatView, setChatView] = useState<"tools" | "chat">("tools");
   const [chatPulse, setChatPulse] = useState(false);
   const [fitChatNonce, setFitChatNonce] = useState(0);
+  const [fitChatJob, setFitChatJob] = useState<KanbanCard | null>(null);
   const [coachChatNonce, setCoachChatNonce] = useState(0);
   const [pricingOpen, setPricingOpen] = useState(false);
   const [impersonation, setImpersonation] = useState<ImpersonationState>({ active: false });
@@ -89,8 +91,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const openPricing = useCallback(() => setPricingOpen(true), []);
   const closePricing = useCallback(() => setPricingOpen(false), []);
 
-  const openFitChat = useCallback((jobId: number) => {
-    setDrawerCardId(jobId);
+  const openFitChat = useCallback((job: KanbanCard) => {
+    setFitChatJob(job);
+    setDrawerCardId(job.id);
     setDrawerTool(null);
     setChatView("chat");
     setChatOpen(true);
@@ -202,6 +205,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setChatView,
         chatPulse,
         fitChatNonce,
+        fitChatJob,
         openFitChat,
         coachChatNonce,
         openProfileCoach,
