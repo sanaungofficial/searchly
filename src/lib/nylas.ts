@@ -215,6 +215,7 @@ export async function createCoachSchedulerConfig(params: {
   coachEmail: string;
   slug: string;
 }): Promise<{ configId: string; slug?: string }> {
+  const appBase = nylasOAuthAppUrl();
   const res = await nylasFetch<{ data?: NylasSchedulerConfig } & NylasSchedulerConfig>(
     `/v3/grants/${params.grantId}/scheduling/configurations`,
     {
@@ -238,8 +239,8 @@ export async function createCoachSchedulerConfig(params: {
           description: "Book a 1:1 coaching session via Kimchi.",
         },
         scheduler: {
-          rescheduling_url: `${getNylasConfig()?.appUrl ?? ""}/coaching`,
-          cancellation_url: `${getNylasConfig()?.appUrl ?? ""}/coaching`,
+          rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
+          cancellation_url: `${appBase}/coaching/cancel/:booking_ref`,
         },
       },
     },
