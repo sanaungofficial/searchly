@@ -23,6 +23,7 @@ export function JobMatchScorePanel({
   description,
   jobId,
   onRunFullMatch,
+  onMatchChange,
   fullWidth,
 }: {
   vectorFit: number;
@@ -31,6 +32,7 @@ export function JobMatchScorePanel({
   description: string;
   jobId?: string | null;
   onRunFullMatch?: () => void;
+  onMatchChange?: (data: MatchData | null, assetId: string | null, loading: boolean, resumeName: string | null) => void;
   fullWidth?: boolean;
 }) {
   const [assets, setAssets] = useState<ResumeAssetOption[]>([]);
@@ -104,6 +106,13 @@ export function JobMatchScorePanel({
     }
     void fetchMatch(selectedId);
   }, [selectedId, description, fetchMatch, company, jobTitle, jobId]);
+
+  const selectedResumeName =
+    assets.find((a) => a.id === selectedId)?.name.replace(/\.[^.]+$/, "") ?? null;
+
+  useEffect(() => {
+    onMatchChange?.(aiMatch, selectedId, loading, selectedResumeName);
+  }, [aiMatch, selectedId, loading, selectedResumeName, onMatchChange]);
 
   const displayScore = aiMatch?.score ?? (vectorFit > 0 ? vectorFit / 10 : 0);
   const headlineColor = displayScore > 0 ? scoreColor(displayScore) : color.muted;

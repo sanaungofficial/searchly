@@ -15,7 +15,7 @@ import {
 } from "./workspace-data";
 import { ResumeEditor } from "./resume-editor";
 import { CompanyLogo } from "./company-logo";
-import { ResumeMatchDrawer, type MatchData } from "./resume-match-drawer";
+import { ResumeMatchDrawer } from "./resume-match-drawer";
 import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { CreditsStatusBar } from "./credits-display";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
@@ -26,6 +26,8 @@ import { fontSans, fontMono, color, surface, border as B, type as T, drawerType 
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { JobMatchScorePanel } from "./job-match-score-panel";
+import type { MatchData } from "./job-match-ui";
+import { matchDataToFitDisplay } from "./job-match-ui";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -396,18 +398,40 @@ function formatDatePosted(value: string | null | undefined): string | null {
   return parsed.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-function JobDrawerMatchSection({ meta }: { meta: JobMeta }) {
-  const match = meta.vectorMatch;
+function JobDrawerMatchSection({
+  meta,
+  resumeMatch,
+  resumeMatchLoading,
+  resumeName,
+}: {
+  meta: JobMeta | null;
+  resumeMatch?: MatchData | null;
+  resumeMatchLoading?: boolean;
+  resumeName?: string | null;
+}) {
+  const vector = meta?.vectorMatch;
+  const fromResume = resumeMatch ? matchDataToFitDisplay(resumeMatch) : null;
+  const match = fromResume ?? vector;
   if (!match || match.matchScore <= 0) return null;
+
+  const sourceLabel = fromResume
+    ? resumeName
+      ? `for ${resumeName}`
+      : "for selected resume"
+    : "from your profile snapshot (Discover feed)";
 
   return (
     <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)" }}>
       <SectionTitle icon={<IconTarget />}>
-        <ScoreExplainerLabel variant="vector-match">Why this is a match</ScoreExplainerLabel>
+        <ScoreExplainerLabel variant={fromResume ? "job-match" : "vector-match"}>Why this is a match</ScoreExplainerLabel>
       </SectionTitle>
       <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px" }}>
-        {match.matchLabel} fit ({match.matchScore}/100) from your resume profile
+        {match.matchLabel} fit ({match.matchScore}/100) {sourceLabel}
+        {fromResume ? " · uses AI" : " · free estimate"}
       </p>
+      {resumeMatchLoading && !fromResume && (
+        <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>Analyzing selected resume…</p>
+      )}
       {match.matchReasons.length > 0 ? (
         <ul style={{ margin: 0, paddingLeft: 20, fontFamily: sans, fontSize: 14, color: "#2A2218", lineHeight: 1.55 }}>
           {match.matchReasons.map((reason) => (
@@ -691,6 +715,17 @@ export function JobDrawer({
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
   const [coverDrawerOpen, setCoverDrawerOpen] = useState(false);
+  const [resumeMatchForJob, setResumeMatchForJob] = useState<MatchData | null>(null);
+  const [resumeMatchLoading, setResumeMatchLoading] = useState(false);
+  const [resumeMatchName, setResumeMatchName] = useState<string | null>(null);
+  const handleResumeMatchChange = useCallback(
+    (data: MatchData | null, _assetId: string | null, loading: boolean, name: string | null) => {
+      setResumeMatchForJob(data);
+      setResumeMatchLoading(loading);
+      setResumeMatchName(name);
+    },
+    [],
+  );
   const [visible, setVisible] = useState(false);
   useLayoutEffect(() => { setVisible(true); }, []);
 
@@ -721,6 +756,9 @@ export function JobDrawer({
   useEffect(() => {
     setActiveSection("overview");
     setMobileToolsOpen(false);
+    setResumeMatchForJob(null);
+    setResumeMatchLoading(false);
+    setResumeMatchName(null);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [card.id]);
 
@@ -990,6 +1028,7 @@ export function JobDrawer({
                   company={card.company}
                   description={jobDescription}
                   jobId={dbId}
+                  onMatchChange={handleResumeMatchChange}
                   onRunFullMatch={canRunMatch ? () => setMatchDrawerOpen(true) : undefined}
                   fullWidth={isMobile}
                 />
@@ -1000,9 +1039,14 @@ export function JobDrawer({
             <div style={{ padding: isMobile ? "20px 16px 28px" : "28px 32px 36px" }}>
               {networkJob && <JobDrawerNetworkAdminSection networkJob={networkJob} />}
 
-              {meta?.vectorMatch && meta.vectorMatch.matchScore > 0 && (
-                <JobDrawerMatchSection meta={meta} />
-              )}
+              {(meta?.vectorMatch?.matchScore ?? 0) > 0 || resumeMatchForJob ? (
+                <JobDrawerMatchSection
+                  meta={meta}
+                  resumeMatch={resumeMatchForJob}
+                  resumeMatchLoading={resumeMatchLoading}
+                  resumeName={resumeMatchName}
+                />
+              ) : null}
 
               {(!showParsedSections || (detailLoading && !hasFullPosting)) && (
                 <JobDescriptionPanel

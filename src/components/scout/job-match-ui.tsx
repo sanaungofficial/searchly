@@ -20,6 +20,46 @@ export interface MatchData {
   summaryNote: string;
 }
 
+export function matchDataToFitDisplay(data: MatchData): {
+  matchScore: number;
+  matchLabel: string;
+  matchReasons: string[];
+  matchedSkills: string[];
+  gapSkills: string[];
+} {
+  const matchedKw = data.keywords.filter((k) => k.matched);
+  const gapKw = data.keywords.filter((k) => !k.matched);
+  const reasons: string[] = [];
+
+  if (data.summaryNote?.trim()) {
+    reasons.push(data.summaryNote.trim());
+  }
+  if (data.yoeMatch && data.yoeCandidate) {
+    reasons.push(`Your ${data.yoeCandidate} meets the ${data.yoeRequired} requirement.`);
+  } else if (data.yoeRequired && data.yoeCandidate) {
+    reasons.push(`Experience: role asks for ${data.yoeRequired}; your resume shows ${data.yoeCandidate}.`);
+  }
+  if (data.industryMatch && data.industries.length) {
+    reasons.push(`Industry overlap with ${data.industries.slice(0, 3).join(", ")}.`);
+  } else if (data.industries.length) {
+    reasons.push(`Limited industry overlap with ${data.industries.slice(0, 3).join(", ")}.`);
+  }
+  if (data.keywords.length) {
+    reasons.push(`${matchedKw.length} of ${data.keywords.length} key job terms appear on your resume.`);
+  }
+  if (data.jobTitleMatch === false && data.jobTitle && data.resumeTitle) {
+    reasons.push(`Title: posting is "${data.jobTitle}" — your recent title is "${data.resumeTitle}".`);
+  }
+
+  return {
+    matchScore: Math.round(data.score * 10),
+    matchLabel: data.scoreLabel,
+    matchReasons: reasons.filter(Boolean).slice(0, 4),
+    matchedSkills: matchedKw.map((k) => k.text).slice(0, 8),
+    gapSkills: gapKw.map((k) => k.text).slice(0, 4),
+  };
+}
+
 export type MatchScoreBand = "excellent" | "strong" | "good" | "fair" | "poor";
 
 export function scoreBand(score: number): MatchScoreBand {
