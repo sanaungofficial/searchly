@@ -23,6 +23,7 @@ export function CompanyLogo({
   logoUrl,
   size = 32,
   borderRadius,
+  skipDomainLookup = false,
 }: {
   name: string;
   website?: string | null;
@@ -32,6 +33,8 @@ export function CompanyLogo({
   logoUrl?: string | null;
   size?: number;
   borderRadius?: number;
+  /** When true, only use logoUrl — no Clearbit/favicon domain guessing (network recruiter cards). */
+  skipDomainLookup?: boolean;
 }) {
   const [stage, setStage] = useState<"primary" | "fallback" | "initials">("primary");
   const [directFailed, setDirectFailed] = useState(false);
@@ -78,7 +81,7 @@ export function CompanyLogo({
     );
   }
 
-  if (domain && urls && stage !== "initials") {
+  if (!skipDomainLookup && domain && urls && stage !== "initials") {
     const src = stage === "primary" ? urls.primary : urls.fallback;
     return (
       <div

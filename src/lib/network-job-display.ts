@@ -66,6 +66,29 @@ export type NetworkJobListing = {
   raw: TopEchelonNetworkJobRaw;
 } & Partial<NetworkJobMatchFields>;
 
+/** Best agency label for cards/logos — avoids generic "Recruiting firm". */
+export function networkAgencyDisplayName(job: {
+  agencyName?: string | null;
+  companyName?: string | null;
+  networkId?: string | null;
+  recruiter?: { agencyName?: string | null } | null;
+}): string {
+  const fromFields =
+    job.agencyName?.trim() ||
+    job.recruiter?.agencyName?.trim() ||
+    job.companyName?.trim() ||
+    null;
+  if (fromFields) return fromFields;
+
+  const networkId = job.networkId?.trim();
+  if (networkId) {
+    const prefix = networkId.match(/^([A-Za-z]+\d*)/)?.[1];
+    if (prefix) return prefix;
+  }
+
+  return "Network";
+}
+
 function daysSince(iso: string | null): number {
   if (!iso) return 0;
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24)));

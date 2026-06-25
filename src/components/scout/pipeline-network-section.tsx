@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { NetworkJobListing } from "@/lib/network-job-display";
-import { SEED_NETWORK_JOBS, previewPlainText } from "@/lib/network-job-display";
+import { networkAgencyDisplayName, previewPlainText, SEED_NETWORK_JOBS } from "@/lib/network-job-display";
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
@@ -266,7 +266,8 @@ function NetworkJobCard({
   onSave?: () => void;
   saving?: boolean;
 }) {
-  const company = job.agencyName ?? job.companyName ?? job.recruiter?.agencyName ?? "Recruiting firm";
+  const company = networkAgencyDisplayName(job);
+  const hasAgencyLogo = Boolean(job.agencyLogoUrl?.trim());
   const summary = previewPlainText(job.description);
   const shareLabel = job.sharedAt
     ? job.sharedAtRelative
@@ -290,7 +291,13 @@ function NetworkJobCard({
         }}
         style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
       >
-        <CompanyLogo name={company} website={job.agencyWebsite} logoUrl={job.agencyLogoUrl} size={44} />
+        <CompanyLogo
+          name={company}
+          logoUrl={hasAgencyLogo ? job.agencyLogoUrl : null}
+          website={hasAgencyLogo ? job.agencyWebsite : null}
+          skipDomainLookup={!hasAgencyLogo}
+          size={44}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
             <div style={{ minWidth: 0 }}>

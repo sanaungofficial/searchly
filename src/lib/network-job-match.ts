@@ -58,7 +58,8 @@ export function enrichNetworkJobsWithMatch(
   resumeText: string,
   targetRoles: string[] = [],
 ): NetworkMatchedJob[] {
-  const profileText = resumeText.trim();
+  const rolesLine = targetRoles.map((r) => r.trim()).filter(Boolean).join(", ");
+  const profileText = [resumeText.trim(), rolesLine].filter(Boolean).join("\n");
   if (!profileText || !jobs.length) {
     return jobs.map((job) => ({ ...job, ...EMPTY_MATCH }));
   }

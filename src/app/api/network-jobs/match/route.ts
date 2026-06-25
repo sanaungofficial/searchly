@@ -2,11 +2,30 @@ import { getActingUser } from "@/lib/acting-user";
 import { enrichNetworkJobsWithMatch } from "@/lib/network-job-match";
 import { loadNetworkJobListings } from "@/lib/network-jobs-load";
 import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
-import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
+import { buildProfileVSearchQuery, profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+
+function buildNetworkMatchProfileText(input: {
+  headline?: string | null;
+  targetRoles: string[];
+  careerMotivation?: string | null;
+  priorities?: string[];
+  resumeText: string;
+}): string {
+  if (input.resumeText.trim()) return input.resumeText.trim();
+
+  const parts = [
+    input.headline?.trim(),
+    input.targetRoles.join(", "),
+    input.careerMotivation?.trim(),
+    ...(input.priorities ?? []).map((p) => p.trim()).filter(Boolean),
+  ].filter(Boolean);
+
+  return parts.join("\n").trim();
+}
 
 export async function GET(request: Request) {
   const { jobs, source } = await loadNetworkJobListings();
@@ -28,7 +47,7 @@ export async function GET(request: Request) {
     profile?.readbackData,
   );
   const resumeAsset = await findResumeAssetForUser(dbUser.id);
-  const resumeText = profileTextForMatchReasons({
+  const profileInput = {
     headline: profile?.headline,
     targetRoles,
     resumeText: profile?.resumeText,
@@ -40,7 +59,18 @@ export async function GET(request: Request) {
     targetSalary: profile?.targetSalary
       ? Number.parseFloat(profile.targetSalary.replace(/[^0-9.]/g, "")) || null
       : null,
-  });
+  };
+
+  const resumeText =
+    profileTextForMatchReasons(profileInput) ||
+    buildProfileVSearchQuery(profileInput) ||
+    buildNetworkMatchProfileText({
+      headline: profile?.headline,
+      targetRoles,
+      careerMotivation: profile?.careerMotivation,
+      priorities: profile?.priorities ?? [],
+      resumeText: "",
+    });
 
   const needsProfile = !hasProfileSignals({
     targetRoles,
