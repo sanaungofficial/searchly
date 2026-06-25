@@ -4,6 +4,7 @@ export type ScoreExplainerVariant =
   | "job-match"
   | "vector-match"
   | "network-match"
+  | "coach-match"
   | "resume-quality"
   | "keyword-match"
   | "role-gap"
@@ -62,6 +63,29 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       {
         title: "Not resume embed",
         body: "This view does not call Hirebase resume embed. For deep AI fit analysis on a saved job, use Analyze fit in the job drawer.",
+      },
+    ],
+    scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",
+  },
+  "coach-match": {
+    title: "Coach profile match",
+    subtitle: "How well a coach aligns with your Kimchi profile — not a job posting.",
+    bullets: [
+      {
+        title: "What we compare",
+        body: "Your resume, target roles, headline, and priorities against the coach's category, specialties, firms, and bio.",
+      },
+      {
+        title: "How the score is calculated",
+        body: "Instant heuristic scoring: keyword overlap between profiles, bonus when your target role matches their coaching category, and points for matching specialties or firm backgrounds.",
+      },
+      {
+        title: "Stretch vs strong",
+        body: "Stretch (below 50) means different primary focus — not a bad coach. Use Prepare for session chat to see if they're still worth an intro call.",
+      },
+      {
+        title: "Deeper prep",
+        body: "Open Prepare for session in the coach drawer for AI help with questions, session goals, and coach background — uses your full profile plus this coach's profile.",
       },
     ],
     scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",

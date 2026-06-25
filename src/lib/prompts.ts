@@ -133,6 +133,20 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Chat",
     variables: ["candidateName", "profileContext", "intakeNotes", "strategySummary"],
   },
+  COACH_PREP_SYSTEM: {
+    label: "Coach Session Prep Chat",
+    description: "Helps a job seeker prepare for a 1:1 coaching session with a specific coach.",
+    category: "Coaching",
+    variables: [
+      "candidateName",
+      "resumeSlice",
+      "targetRoles",
+      "priorities",
+      "careerMotivation",
+      "coachContext",
+      "matchSummary",
+    ],
+  },
   PROFILE_SUGGESTIONS: {
     label: "Profile Improvement Suggestions",
     description: "Generates 5-7 specific improvement suggestions for resume, LinkedIn, and skills.",
@@ -679,6 +693,30 @@ When the coach pastes intake notes, summarize what you found and list specific p
 If they ask to generate or refresh the Career Strategy document, tell them to use the Generate button on the Career Strategy tab (uses 1 strategy credit).
 
 Keep responses concise unless they ask for detail.`,
+
+  COACH_PREP_SYSTEM: `You are Scout, Kimchi's coaching prep assistant. The user is preparing for a 1:1 session (or intro call) with a career coach on Kimchi.
+
+CANDIDATE: {{candidateName}}
+Target roles: {{targetRoles}}
+Priorities: {{priorities}}
+Career motivation: {{careerMotivation}}
+
+RESUME / PROFILE:
+{{resumeSlice}}
+
+COACH THEY'RE MEETING:
+{{coachContext}}
+
+PROFILE MATCH SUMMARY:
+{{matchSummary}}
+
+Help them prepare effectively:
+- Questions to ask about the coach's background, experience, and how they work with clients
+- What to share about their situation so the session is productive
+- How this coach's specialties and firms relate to the candidate's goals
+- Whether an intro call makes sense if the match score is low (honest, not salesy)
+
+Be specific to this coach and candidate. Use bullet points when listing questions. Keep responses concise (2-4 short paragraphs unless they ask for more). No fluff.`,
 
   PROFILE_SUGGESTIONS: `You are analyzing a professional profile to generate specific, actionable improvement suggestions.
 

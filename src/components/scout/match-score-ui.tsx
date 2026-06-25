@@ -1,6 +1,7 @@
 "use client";
 
-import { isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
+import { coachMatchTierExplanation, isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
+import { ScoreExplainerLabel } from "@/components/scout/score-explainer-popover";
 import { fontSans, fontMono, color, type as T } from "@/lib/typography";
 
 export type MatchScoreDisplayJob = {
@@ -111,6 +112,66 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
                 fontSize: T.label,
                 fontWeight: 500,
                 color: score.accent,
+              }}
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Job-drawer-style match block for coach profiles (green callout + explainer). */
+export function CoachMatchSection({ job }: { job: MatchScoreDisplayJob }) {
+  const reasons = job.matchReasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, 4);
+  if (!reasons.length || job.matchScore <= 0) return null;
+
+  const matchedSkills = job.matchedSkills?.slice(0, 8) ?? [];
+  const tierLine = coachMatchTierExplanation(job.matchScore, job.matchLabel);
+
+  return (
+    <div
+      style={{
+        marginBottom: 22,
+        padding: "16px 18px",
+        background: "rgba(74,139,106,0.08)",
+        border: "1px solid rgba(74,139,106,0.22)",
+      }}
+    >
+      <p
+        style={{
+          fontFamily: fontSans,
+          fontSize: T.label,
+          fontWeight: 700,
+          color: color.forest,
+          margin: "0 0 8px",
+          letterSpacing: "0.03em",
+          textTransform: "uppercase",
+        }}
+      >
+        <ScoreExplainerLabel variant="coach-match">Why this coach matches your profile</ScoreExplainerLabel>
+      </p>
+      <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
+        {tierLine}
+      </p>
+      <ul style={{ margin: 0, paddingLeft: 20, fontFamily: fontSans, fontSize: 14, color: color.ink, lineHeight: 1.55 }}>
+        {reasons.map((reason) => (
+          <li key={reason} style={{ marginBottom: 6 }}>{reason}</li>
+        ))}
+      </ul>
+      {matchedSkills.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+          {matchedSkills.map((skill) => (
+            <span
+              key={skill}
+              style={{
+                padding: "4px 10px",
+                background: "rgba(74,139,106,0.14)",
+                fontFamily: fontSans,
+                fontSize: 12,
+                color: "#2A4A3A",
               }}
             >
               {skill}

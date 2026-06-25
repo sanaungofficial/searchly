@@ -1,5 +1,5 @@
 import { fallbackJobMatch } from "@/lib/resume-match";
-import { isLowQualityMatchReason, matchScoreLabelFor, usableKeywordSummary } from "@/lib/match-score";
+import { coachProfileKeywordSummary, matchScoreLabelFor } from "@/lib/match-score";
 
 export type CoachMatchFields = {
   matchScore: number;
@@ -91,12 +91,10 @@ export function enrichCoachWithMatch<T extends CoachMatchInput>(
   if (coach.category && reasons.length < 2) {
     reasons.push(`${coach.displayName} coaches in ${coach.category} — relevant to your search.`);
   }
-  const keywordNote =
-    usableKeywordSummary(
-      fallback.keywords.filter((k) => k.matched).length,
-      fallback.keywords.length,
-    ) ??
-    (fallback.summaryNote && !isLowQualityMatchReason(fallback.summaryNote) ? fallback.summaryNote : null);
+  const keywordNote = coachProfileKeywordSummary(
+    fallback.keywords.filter((k) => k.matched).length,
+    fallback.keywords.length,
+  );
   if (keywordNote && reasons.length < 3) reasons.push(keywordNote);
   if (!reasons.length) {
     reasons.push("Open this profile to see how this coach can help with your goals.");
