@@ -166,8 +166,7 @@ function LiveConference({
 
   const isHost =
     joinPayload.isHost ??
-    joinPayload.role === "host" ||
-    joinPayload.role.includes("broadcaster");
+    (joinPayload.role === "host" || joinPayload.role.includes("broadcaster"));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
