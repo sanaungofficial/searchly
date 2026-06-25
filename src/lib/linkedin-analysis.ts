@@ -2,7 +2,7 @@ import type { LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import type { ReportIssue } from "@/components/scout/profile-resume-editor-panels";
 import type { ReportHighlightCategory } from "@/components/scout/profile-resume-analysis-report";
 import { parseJsonFromModel } from "@/lib/resume-parse";
-import { scoreToGrade } from "@/components/scout/profile-resume-analysis-report";
+import { normalizeQualityScore, scoreToGrade } from "@/components/scout/profile-resume-analysis-report";
 
 export type LinkedInSectionId = "headline" | "about" | "experience" | "education" | "skills";
 
@@ -61,7 +61,7 @@ export function linkedInDraftCompleteness(draft: LinkedInProfileDraft): { pct: n
 export function normalizeLinkedInAnalysis(raw: unknown): LinkedInAnalysisData | null {
   if (!raw || typeof raw !== "object") return null;
   const obj = raw as Record<string, unknown>;
-  const score = typeof obj.score === "number" ? Math.round(obj.score) : undefined;
+  const score = typeof obj.score === "number" ? normalizeQualityScore(obj.score) : undefined;
   return {
     score,
     headline: typeof obj.headline === "string" ? obj.headline : undefined,
@@ -135,7 +135,7 @@ export function linkedInAnalysisToReport(
     })),
   })) as ReportHighlightCategory[];
 
-  const score = analysis?.score ?? completeness.pct;
+  const score = normalizeQualityScore(analysis?.score ?? completeness.pct);
   const { grade, label: gradeLabel } = scoreToGrade(score);
 
   return {

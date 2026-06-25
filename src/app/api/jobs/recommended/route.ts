@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
-import { fetchRecommendedViaResumeVSearch } from "@/lib/recommended-jobs-fallback";
+import { fetchRecommendedFromTrackedCompanies, fetchRecommendedViaResumeVSearch } from "@/lib/recommended-jobs-fallback";
 import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
@@ -10,7 +10,6 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
-import { formatApiErrorMessage } from "@/lib/api-error-message";
 
 async function parseRecommendedFilters(request: Request): Promise<{
   filters: VectorSearchFilters;
@@ -41,7 +40,7 @@ async function handleRecommended(request: Request) {
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
-  const { filters } = await parseRecommendedFilters(request);
+  const { filters, preferCache } = await parseRecommendedFilters(request);
   const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
   const searchFilters = semanticQuery ? { ...filters, semanticQuery } : filters;
 
@@ -63,17 +62,51 @@ async function handleRecommended(request: Request) {
   });
 
   const artifact = await ensureHirebaseArtifactForUser(dbUser.id);
+
+  async function respondFromTrackedFallback(matchMode: "tracked" | "tracked_fallback") {
+    const result = await fetchRecommendedFromTrackedCompanies({
+      userId: dbUser!.id,
+      profileTargetRoles: targetRoles,
+      filters: searchFilters,
+      maxJobs: VECTOR_SEARCH_RESULTS_MAX,
+      preferCache,
+    });
+
+    if (!result.sources.length) {
+      return NextResponse.json(
+        {
+          error: result.companyCount === 0
+            ? "Track companies on the Companies page to see recommended roles."
+            : "No matching roles at your tracked companies — try broadening filters or track more companies.",
+          needsCompanies: result.companyCount === 0,
+          needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
+          needsResume: false,
+          companyCount: result.companyCount,
+        },
+        { status: 404 },
+      );
+    }
+
+    const jobs = await enrichRecommendedSources(result.sources, resumeText, {
+      heuristicOnly: !process.env.ANTHROPIC_API_KEY,
+    });
+
+    return NextResponse.json({
+      jobs,
+      totalCount: jobs.length,
+      page: 1,
+      limit: VECTOR_SEARCH_RESULTS_MAX,
+      totalPages: 1,
+      matchMode,
+      companyCount: result.companyCount,
+      trackedWithMatches: result.trackedWithMatches,
+      filtersApplied: searchFilters,
+      resumeVSearch: false,
+    });
+  }
+
   if (!artifact.artifactId) {
-    return NextResponse.json(
-      {
-        error:
-          artifact.error ??
-          "Upload a resume first — we need a Hirebase embed artifact to match jobs to your background.",
-        needsResume: true,
-        needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
-      },
-      { status: 404 },
-    );
+    return respondFromTrackedFallback("tracked_fallback");
   }
 
   try {
@@ -124,8 +157,8 @@ async function handleRecommended(request: Request) {
       resumeVSearch: true,
     });
   } catch (err) {
-    const msg = formatApiErrorMessage(err, "Could not load recommended jobs.");
-    return NextResponse.json({ error: msg }, { status: 502 });
+    console.error("[jobs/recommended resume vsearch]", err);
+    return respondFromTrackedFallback("tracked_fallback");
   }
 }
 

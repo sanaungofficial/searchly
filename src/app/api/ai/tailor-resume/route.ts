@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
     selectedSections,
     missingKeywords,
     workEditMode,
+    applyTweak,
+    baseTailoredText,
   } = body as {
     jobTitle?: string;
     company?: string;
@@ -43,7 +45,49 @@ export async function POST(req: NextRequest) {
     selectedSections?: string[];
     missingKeywords?: string[];
     workEditMode?: "quick" | "full";
+    applyTweak?: string;
+    baseTailoredText?: string;
   };
+
+  if (applyTweak?.trim() && baseTailoredText?.trim()) {
+    const tweakPrompt = `You are an expert resume writer. Apply ONE optional improvement to this tailored resume.
+
+IMPROVEMENT TO APPLY: ${applyTweak.trim()}
+
+CURRENT TAILORED RESUME:
+${baseTailoredText.slice(0, 5000)}
+
+Rules:
+- Apply only the requested improvement — do not rewrite unrelated sections
+- Do NOT fabricate experience, credentials, or metrics
+- Keep the same overall structure
+
+Return ONLY valid JSON:
+{
+  "tailoredText": "full updated resume text",
+  "changes": ["What changed in one sentence"],
+  "newScore": 8.5,
+  "tweaks": [{ "id": "slug", "label": "Another optional improvement under 55 chars" }],
+  "injectedKeywords": []
+}`;
+
+    const message = await getAnthropic().messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: tweakPrompt }],
+    });
+    const content = message.content[0];
+    if (content.type !== "text") {
+      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
+    }
+    try {
+      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON");
+      return NextResponse.json(JSON.parse(jsonMatch[0]));
+    } catch {
+      return NextResponse.json({ error: "Failed to parse tweak response" }, { status: 500 });
+    }
+  }
 
   let finalDescription = description?.trim() ?? "";
   if (!finalDescription && jobId) {

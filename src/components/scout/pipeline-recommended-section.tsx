@@ -34,6 +34,12 @@ import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as 
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
 
+function sanitizeRecommendedError(msg: string | null | undefined): string | null {
+  if (!msg?.trim()) return null;
+  if (/embed|artifact|permission|vsearch|Hirebase resume/i.test(msg)) return null;
+  return msg.trim();
+}
+
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
   totalCount?: number;
@@ -791,11 +797,13 @@ export function PipelineRecommendedSection({
         if (gen !== fetchGenRef.current) return;
 
         if (!res.ok) {
-          const msg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
+          const msg = sanitizeRecommendedError(formatApiErrorMessage(data.error, "Could not load recommended jobs."));
           setError(
-            data.needsResume
-              ? `${msg} Upload or re-upload your resume from Profile → Assets.`
-              : msg,
+            msg
+              ? data.needsResume
+                ? `${msg} Upload or re-upload your resume from Profile → Assets.`
+                : msg
+              : null,
           );
           if (!background) setJobs([]);
           writeRecommendedCache({
@@ -868,7 +876,7 @@ export function PipelineRecommendedSection({
 
     if (cached && isCacheFresh(cached)) {
       setJobs(cached.jobs);
-      setError(cached.error ?? null);
+      setError(sanitizeRecommendedError(cached.error));
       setHasLoadedOnce(true);
       setLoading(false);
       return;
@@ -890,7 +898,7 @@ export function PipelineRecommendedSection({
     const cached = readRecommendedCache(cacheKey);
     if (cached && isCacheFresh(cached)) {
       setJobs(cached.jobs);
-      setError(cached.error ?? null);
+      setError(sanitizeRecommendedError(cached.error));
       setHasLoadedOnce(true);
       setLoading(false);
       return;

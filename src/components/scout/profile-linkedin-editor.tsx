@@ -506,9 +506,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Import failed");
-      const next = data.draft as LinkedInProfileDraft;
-      setDraft(next);
-      draftRef.current = next;
+      await load();
       if (typeof data.linkedinUrl === "string") setLinkedinUrl(data.linkedinUrl);
       if (typeof data.name === "string") setName(data.name);
       setUpdatedAt(new Date().toISOString());

@@ -3,7 +3,7 @@ import { getActingUser } from "@/lib/acting-user";
 import { NextResponse } from "next/server";
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
-import { mergeParsedResumeData } from "@/lib/merge-parsed-data";
+import { mergeLinkedInImportParsed } from "@/lib/merge-parsed-data";
 import {
   buildResumeTextFromParsed,
   isApifyConfigured,
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const scraped = await scrapeLinkedInProfile(linkedinUrl);
     const incomingParsed = mapApifyProfileToParsedData(scraped);
     const existingParsed = normalizeParsedResumeData(profile?.parsedData ?? null);
-    const mergedParsed = mergeParsedResumeData(existingParsed, incomingParsed);
+    const mergedParsed = mergeLinkedInImportParsed(existingParsed, incomingParsed);
     const linkedInDraft = mapApifyProfileToLinkedInDraft(scraped);
     const resumeText = buildResumeTextFromParsed(mergedParsed);
 

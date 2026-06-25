@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 import { JR } from "./profile-resume-editor-panels";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
@@ -32,11 +33,19 @@ export interface FullAnalysisReport {
   updatedAt?: string | null;
 }
 
+export function normalizeQualityScore(score?: number | null): number {
+  if (score == null || Number.isNaN(Number(score))) return 0;
+  const s = Number(score);
+  if (s > 0 && s <= 10) return Math.round(s * 10);
+  return Math.round(Math.min(100, Math.max(0, s)));
+}
+
 export function scoreToGrade(score: number): { grade: string; label: string } {
-  if (score >= 90) return { grade: "A", label: "EXCELLENT" };
-  if (score >= 80) return { grade: "B", label: "GOOD" };
-  if (score >= 70) return { grade: "C", label: "FAIR" };
-  if (score >= 60) return { grade: "D", label: "NEEDS WORK" };
+  const normalized = normalizeQualityScore(score);
+  if (normalized >= 90) return { grade: "A", label: "EXCELLENT" };
+  if (normalized >= 80) return { grade: "B", label: "GOOD" };
+  if (normalized >= 70) return { grade: "C", label: "FAIR" };
+  if (normalized >= 60) return { grade: "D", label: "NEEDS WORK" };
   return { grade: "F", label: "POOR" };
 }
 
@@ -84,7 +93,7 @@ export function buildFullReport(input: {
   highlights?: ReportHighlightCategory[];
   updatedAt?: string | null;
 }): FullAnalysisReport {
-  const score = input.score ?? 0;
+  const score = normalizeQualityScore(input.score);
   const { grade, label } = scoreToGrade(score);
   const highlights =
     input.highlights?.length
@@ -153,39 +162,44 @@ export function ResumeAnalysisReportDrawer({
   aiUnavailable?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
 
   useLayoutEffect(() => {
     setVisible(open);
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const urgentCount = report?.issues.filter((i) => i.priority === "Urgent").length ?? 0;
   const criticalCount = report?.issues.filter((i) => i.priority === "Critical").length ?? 0;
   const optionalCount = report?.issues.filter((i) => i.priority === "Optional").length ?? 0;
 
-  return (
+  return createPortal(
     <>
       <div
         onClick={onClose}
         style={{
-          position: "absolute",
+          position: "fixed",
           inset: 0,
           background: "rgba(17,24,39,0.25)",
-          zIndex: 30,
+          zIndex: 1400,
           opacity: visible ? 1 : 0,
           transition: "opacity 0.25s ease",
         }}
       />
       <div
         style={{
-          position: "absolute",
+          position: "fixed",
           top: 0,
           right: 0,
           bottom: 0,
           width: "min(480px, 92vw)",
           background: JR.panel,
-          zIndex: 31,
+          zIndex: 1401,
           display: "flex",
           flexDirection: "column",
           boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
@@ -339,7 +353,8 @@ export function ResumeAnalysisReportDrawer({
         )}
       </div>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-    </>
+    </>,
+    document.body,
   );
 }
 

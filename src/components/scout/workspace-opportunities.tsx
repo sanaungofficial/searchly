@@ -789,20 +789,22 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         />
         <button
           onClick={onSubmit}
+          disabled={loading}
           style={{
             padding: "9px 18px",
-            background: color.forest,
+            background: loading ? color.muted : color.forest,
             color: color.gold,
             border: border.lineStrong,
             borderRadius: 0,
             fontFamily: fontSans,
             fontSize: T.caption,
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: loading ? "wait" : "pointer",
             flexShrink: 0,
+            opacity: loading ? 0.85 : 1,
           }}
         >
-          Search →
+          {loading ? "Analyzing…" : "Search →"}
         </button>
         <button
           onClick={onDismiss}
