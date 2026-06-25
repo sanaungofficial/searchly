@@ -78,7 +78,7 @@ const NAV_COMMUNITY: NavItem[] = [
 ];
 
 const OPP_SUBNAV = [
-  { label: "Pipeline", path: "/opportunities/pipeline" },
+  { label: "In-Network", path: "/opportunities/network" },
   { label: "Companies", path: "/opportunities/companies" },
 ] as const;
 
@@ -282,7 +282,6 @@ export function WorkspaceSidebar({
   const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
 
   const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
-  const onOpportunities = pathname.startsWith("/opportunities");
 
   useEffect(() => {
     if (!authChecked) return;
@@ -590,16 +589,16 @@ export function WorkspaceSidebar({
                 isRail={isRail}
                 badge={id === "opportunities" ? activePipelineCount : undefined}
               />
-              {id === "opportunities" && onOpportunities && !isRail && (
+              {id === "opportunities" && !isRail && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 2 }}>
                   {OPP_SUBNAV.map(({ label: subLabel, path: subPath }) => (
                     <SidebarNavButton
                       key={subPath}
-                      active={pathname === subPath}
+                      active={pathname.startsWith(subPath)}
                       onClick={() => navigate(subPath)}
                       label={subLabel}
                       Icon={() => (
-                        <span style={{ width: 15, height: 15, display: "inline-block", borderLeft: `2px solid ${pathname === subPath ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}` }} />
+                        <span style={{ width: 15, height: 15, display: "inline-block", borderLeft: `2px solid ${pathname.startsWith(subPath) ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}` }} />
                       )}
                       isRail={false}
                       indent
