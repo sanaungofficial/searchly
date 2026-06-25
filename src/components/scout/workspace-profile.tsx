@@ -9,6 +9,11 @@ import {
   type OnboardingFinishPayload,
 } from "@/lib/onboarding-finish";
 import {
+  parseProfileLocation,
+  profileAboutSectionUrl,
+  profileAssetsUrl,
+} from "@/lib/workspace-urls";
+import {
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
 } from "./workspace-data";
@@ -2338,13 +2343,8 @@ export function WorkspaceProfile() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const page: PageTab =
-    pathname === "/profile/dream-role" ? "dreamrole" :
-    pathname === "/profile/learning-path" ? "learning" :
-    pathname === "/profile/assets" ? "assets" :
-    pathname === "/profile/preferences" ? "preferences" :
-    pathname === "/profile/linkedin" ? "linkedin" :
-    "about";
+  const profileLoc = parseProfileLocation(pathname);
+  const page = profileLoc.page;
   const setPage = (tab: PageTab) => {
     if (tab === "about") router.push("/profile");
     else if (tab === "dreamrole") router.push("/profile/dream-role");
@@ -2376,6 +2376,15 @@ export function WorkspaceProfile() {
   const { openPricing } = useWorkspace();
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
+  const openResumeEditor = (assetId: string) => {
+    setEditorAssetId(assetId);
+    router.push(profileAssetsUrl(assetId));
+  };
+  const closeResumeEditor = () => {
+    setEditorAssetId(null);
+    setOnboardingFinish(null);
+    router.push("/profile/assets");
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
   const reparseAttempted = useRef(false);
@@ -2569,6 +2578,22 @@ export function WorkspaceProfile() {
   }, [page]);
 
   useEffect(() => {
+    if (profileLoc.assetId) {
+      setEditorAssetId(profileLoc.assetId);
+      return;
+    }
+    if (page === "assets") {
+      setEditorAssetId(null);
+    }
+  }, [profileLoc.assetId, page]);
+
+  useEffect(() => {
+    if (profileLoc.aboutSection) {
+      setActiveSection(profileLoc.aboutSection);
+    }
+  }, [profileLoc.aboutSection]);
+
+  useEffect(() => {
     if (page !== "assets" || searchParams.get("open") !== "primary") return;
 
     const payload = readOnboardingFinishPayload();
@@ -2583,7 +2608,7 @@ export function WorkspaceProfile() {
     setEditorAssetId(assetToOpen);
     if (payload) clearOnboardingFinishPayload();
 
-    router.replace("/profile/assets");
+    router.replace(profileAssetsUrl(assetToOpen));
   }, [page, searchParams, assets, router, onboardingFinish]);
 
   const handlePersonalSave = async (patch: Omit<Partial<UserProfile>, "parsedData"> & { parsedData?: Partial<ParsedData> }) => {
@@ -2654,7 +2679,7 @@ export function WorkspaceProfile() {
           setProfile((p) => p ? { ...p, resumeUrl: data.url } : p);
         }
         refreshAssets();
-        if (data.asset?.id) setEditorAssetId(data.asset.id);
+        if (data.asset?.id) openResumeEditor(data.asset.id);
         setReadbackNudge(true);
         setTimeout(() => setReadbackNudge(false), 8000);
       }
@@ -2682,7 +2707,7 @@ export function WorkspaceProfile() {
   };
 
   const goToSection = (section: AboutSection) => {
-    if (page !== "about") router.push("/profile");
+    router.push(profileAboutSectionUrl(section));
     setActiveSection(section);
     // Wait for render if switching from another page, then scroll
     setTimeout(() => {
@@ -3008,7 +3033,7 @@ export function WorkspaceProfile() {
                 {resumeUploadError}
               </p>
             )}
-            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={setEditorAssetId} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
+            <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
           </>
         )}
 
@@ -3020,10 +3045,7 @@ export function WorkspaceProfile() {
       <ProfileResumeEditor
         open={!!editorAssetId}
         assetId={editorAssetId}
-        onClose={() => {
-          setEditorAssetId(null);
-          setOnboardingFinish(null);
-        }}
+        onClose={closeResumeEditor}
         onUpdated={() => {
           refreshAssets();
           fetch("/api/profile")

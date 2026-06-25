@@ -1,0 +1,10 @@
+{
+  "plugins": {
+    "stripe": {
+      "enabled": true
+    },
+    "bright-data": {
+      "enabled": true
+    }
+  }
+}
