@@ -3,12 +3,13 @@ import { isHirebaseConfigured } from "@/lib/hirebase";
 import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
 import {
+  fetchRecommendedFromProfileRoles,
   fetchRecommendedFromTrackedCompanies,
   fetchRecommendedViaResumeVSearch,
 } from "@/lib/recommended-jobs-fallback";
 import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
-import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
-import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
+import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
+import { mergeParsedWithReadback, normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { NextResponse } from "next/server";
@@ -34,15 +35,35 @@ async function parseRecommendedFilters(request: Request): Promise<{
   }
 }
 
-async function respondWithTrackedFallback(input: {
+function profileHasResumeSignal(input: {
+  resumeAssetUrl: string | null;
+  profileResumeUrl: string | null | undefined;
+  resumeText: string;
+  parsedData: ParsedResumeData | null;
+}): boolean {
+  if (input.resumeAssetUrl || input.profileResumeUrl) return true;
+  if (input.resumeText.trim().length >= 40) return true;
+  return (input.parsedData?.workExperience?.length ?? 0) > 0;
+}
+
+function profileHasRoleSignal(targetRoles: string[], filters: VectorSearchFilters): boolean {
+  return targetRoles.length > 0 || (filters.jobTitles?.length ?? 0) > 0;
+}
+
+type FallbackBundle = {
+  matchMode: "tracked" | "profile_roles";
+  companyCount?: number;
+  trackedWithMatches?: number;
+  notice?: string;
+};
+
+async function loadTrackedSources(input: {
   dbUserId: string;
   targetRoles: string[];
   filters: VectorSearchFilters;
-  resumeText: string;
   preferCache: boolean;
-  artifactReEmbedded?: boolean;
 }) {
-  const result = await fetchRecommendedFromTrackedCompanies({
+  let result = await fetchRecommendedFromTrackedCompanies({
     userId: input.dbUserId,
     profileTargetRoles: input.targetRoles,
     filters: input.filters,
@@ -50,27 +71,97 @@ async function respondWithTrackedFallback(input: {
     preferCache: input.preferCache,
   });
 
-  if (!result.sources.length) {
-    return null;
+  if (!result.sources.length && input.preferCache) {
+    result = await fetchRecommendedFromTrackedCompanies({
+      userId: input.dbUserId,
+      profileTargetRoles: input.targetRoles,
+      filters: input.filters,
+      maxJobs: VECTOR_SEARCH_RESULTS_MAX,
+      preferCache: false,
+    });
   }
 
-  const jobs = await enrichRecommendedSources(result.sources, input.resumeText, {
-    heuristicOnly: !process.env.ANTHROPIC_API_KEY,
+  return result;
+}
+
+async function respondWithFallbacks(input: {
+  dbUserId: string;
+  targetRoles: string[];
+  filters: VectorSearchFilters;
+  resumeText: string;
+  preferCache: boolean;
+  semanticQuery: string;
+  artifactReEmbedded?: boolean;
+  resumeMatchUnavailable?: boolean;
+}) {
+  const tracked = await loadTrackedSources({
+    dbUserId: input.dbUserId,
+    targetRoles: input.targetRoles,
+    filters: input.filters,
+    preferCache: input.preferCache,
   });
 
-  return NextResponse.json({
-    jobs,
-    totalCount: jobs.length,
-    page: 1,
-    limit: VECTOR_SEARCH_RESULTS_MAX,
-    totalPages: 1,
-    matchMode: "tracked" as const,
-    companyCount: result.companyCount,
-    trackedWithMatches: result.trackedWithMatches,
-    filtersApplied: input.filters,
-    artifactReEmbedded: input.artifactReEmbedded,
-    resumeVSearch: false,
+  if (tracked.sources.length) {
+    const jobs = await enrichRecommendedSources(tracked.sources, input.resumeText, {
+      heuristicOnly: !process.env.ANTHROPIC_API_KEY,
+    });
+
+    const meta: FallbackBundle = {
+      matchMode: "tracked",
+      companyCount: tracked.companyCount,
+      trackedWithMatches: tracked.trackedWithMatches,
+    };
+    if (input.resumeMatchUnavailable) {
+      meta.notice =
+        tracked.companyCount === 0
+          ? undefined
+          : "Resume matching is unavailable — showing open roles at your tracked companies.";
+    }
+
+    return NextResponse.json({
+      jobs,
+      totalCount: jobs.length,
+      page: 1,
+      limit: VECTOR_SEARCH_RESULTS_MAX,
+      totalPages: 1,
+      matchMode: meta.matchMode,
+      companyCount: meta.companyCount,
+      trackedWithMatches: meta.trackedWithMatches,
+      filtersApplied: input.filters,
+      artifactReEmbedded: input.artifactReEmbedded,
+      resumeVSearch: false,
+      notice: meta.notice,
+    });
+  }
+
+  const profileRoles = await fetchRecommendedFromProfileRoles({
+    profileTargetRoles: input.targetRoles,
+    filters: input.filters,
+    semanticQuery: input.semanticQuery || undefined,
+    maxJobs: VECTOR_SEARCH_RESULTS_MAX,
   });
+
+  if (profileRoles.sources.length) {
+    const jobs = await enrichRecommendedSources(profileRoles.sources, input.resumeText, {
+      heuristicOnly: !process.env.ANTHROPIC_API_KEY,
+    });
+
+    return NextResponse.json({
+      jobs,
+      totalCount: jobs.length,
+      page: 1,
+      limit: VECTOR_SEARCH_RESULTS_MAX,
+      totalPages: 1,
+      matchMode: "profile_roles" as const,
+      filtersApplied: input.filters,
+      artifactReEmbedded: input.artifactReEmbedded,
+      resumeVSearch: false,
+      notice:
+        "Showing roles that match your target titles. Track companies on the Companies page for tighter, resume-aware matches.",
+    });
+  }
+
+  return null;
 }
 
 async function handleRecommended(request: Request) {
@@ -104,51 +195,72 @@ async function handleRecommended(request: Request) {
     targetSalary: typeof profile?.targetSalary === "number" ? profile.targetSalary : null,
   });
 
-  const primaryAsset = await prisma.userAsset.findFirst({
-    where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
+  const resumeAsset = await findResumeAssetForUser(dbUser.id);
+  const hasResumeSignal = profileHasResumeSignal({
+    resumeAssetUrl: resumeAsset?.url ?? null,
+    profileResumeUrl: profile?.resumeUrl,
+    resumeText,
+    parsedData,
   });
-  const hasResumeFile = !!(primaryAsset?.url || profile?.resumeUrl);
+  const hasRoleSignal = profileHasRoleSignal(targetRoles, searchFilters);
 
   const artifact = await ensureHirebaseArtifactForUser(dbUser.id);
-  if (!artifact.artifactId) {
-    if (hasResumeFile || artifact.embedFailed) {
-      const fallback = await respondWithTrackedFallback({
-        dbUserId: dbUser.id,
-        targetRoles,
-        filters: searchFilters,
-        resumeText,
-        preferCache,
-        artifactReEmbedded: artifact.reEmbedded,
-      });
-      if (fallback) return fallback;
-    }
+  const resumeMatchUnavailable = !artifact.artifactId;
 
-    if (!hasResumeFile) {
+  const fallbackInput = {
+    dbUserId: dbUser.id,
+    targetRoles,
+    filters: searchFilters,
+    resumeText,
+    preferCache,
+    semanticQuery,
+    artifactReEmbedded: artifact.reEmbedded,
+    resumeMatchUnavailable,
+  };
+
+  if (!artifact.artifactId) {
+    const fallback = await respondWithFallbacks(fallbackInput);
+    if (fallback) return fallback;
+
+    if (!hasResumeSignal && !hasRoleSignal) {
       return NextResponse.json(
         {
-          error: "Upload a resume from Profile → Assets to see personalized recommendations.",
+          error: "Add target roles in your profile or upload a resume to see recommendations.",
           needsResume: true,
-          needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
+          needsProfile: true,
+          hint: "Set target roles under Profile → About, or upload a resume under Profile → Assets.",
         },
         { status: 404 },
       );
     }
 
-    const fallback = await respondWithTrackedFallback({
+    const trackedOnly = await loadTrackedSources({
       dbUserId: dbUser.id,
       targetRoles,
       filters: searchFilters,
-      resumeText,
-      preferCache,
-      artifactReEmbedded: artifact.reEmbedded,
+      preferCache: false,
     });
-    if (fallback) return fallback;
+
+    if (trackedOnly.companyCount === 0) {
+      return NextResponse.json(
+        {
+          error: "Track companies on the Companies page to see recommended roles at those employers.",
+          needsCompanies: true,
+          needsResume: !hasResumeSignal,
+          hint: "Add dream employers on Companies, then refresh matching roles here.",
+        },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json(
       {
-        error: "No roles found at your tracked companies — try tracking more companies or broadening filters.",
+        error:
+          "No matching roles yet — refresh job scans on your tracked companies or broaden filters.",
         needsResume: false,
-        needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
+        needsCompanies: false,
+        companyCount: trackedOnly.companyCount,
+        hint: "Open a tracked company and run Refresh roles, then try again.",
       },
       { status: 404 },
     );
@@ -167,14 +279,7 @@ async function handleRecommended(request: Request) {
     const needsCompanies = result.companyCount === 0;
 
     if (!result.sources.length) {
-      const fallback = await respondWithTrackedFallback({
-        dbUserId: dbUser.id,
-        targetRoles,
-        filters: searchFilters,
-        resumeText,
-        preferCache,
-        artifactReEmbedded: artifact.reEmbedded,
-      });
+      const fallback = await respondWithFallbacks(fallbackInput);
       if (fallback) return fallback;
 
       return NextResponse.json(
@@ -185,10 +290,13 @@ async function handleRecommended(request: Request) {
               ? "No resume-matched roles at your tracked companies for this search — try different keywords or filters."
               : "No resume-matched roles at your tracked companies — try broadening filters or track more companies.",
           needsCompanies,
-          needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
+          needsProfile: !hasRoleSignal,
           needsResume: false,
           companyCount: result.companyCount,
           artifactReEmbedded: artifact.reEmbedded,
+          hint: needsCompanies
+            ? "Add employers on the Companies page first."
+            : "Refresh roles on tracked companies or loosen filters.",
         },
         { status: 404 },
       );
@@ -212,14 +320,7 @@ async function handleRecommended(request: Request) {
       resumeVSearch: true,
     });
   } catch (err) {
-    const fallback = await respondWithTrackedFallback({
-      dbUserId: dbUser.id,
-      targetRoles,
-      filters: searchFilters,
-      resumeText,
-      preferCache,
-      artifactReEmbedded: artifact.reEmbedded,
-    });
+    const fallback = await respondWithFallbacks(fallbackInput);
     if (fallback) return fallback;
 
     const msg = formatApiErrorMessage(err, "Could not load recommended jobs.");

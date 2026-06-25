@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import type { HirebaseJob } from "@/lib/hirebase";
-import { fetchHirebaseMatchingJobs, fetchHirebaseSummarySearch, fetchHirebaseVectorJobs, mapHirebaseJob } from "@/lib/hirebase";
+import {
+  fetchHirebaseMatchingJobs,
+  fetchHirebaseRoleMatchingJobs,
+  fetchHirebaseSummarySearch,
+  fetchHirebaseVectorJobs,
+  mapHirebaseJob,
+} from "@/lib/hirebase";
 import type { CachedJob } from "@/lib/cached-job";
 import { normalizeJobUrl } from "@/lib/cached-job";
 import { parseJobsCache } from "@/lib/company-jobs-scan";
@@ -315,6 +321,60 @@ function buildVSearchFilters(
     },
     query: semanticQuery?.trim() || undefined,
   };
+}
+
+/**
+ * Role-based job search when resume vector match or tracked-company cache is unavailable.
+ * Uses Hirebase `/v2/jobs/search` with profile target roles (no resume artifact).
+ */
+export async function fetchRecommendedFromProfileRoles(input: {
+  profileTargetRoles: string[];
+  filters?: VectorSearchFilters;
+  semanticQuery?: string;
+  maxJobs?: number;
+}): Promise<{ sources: RecommendedJobSource[] }> {
+  const maxJobs = Math.min(input.maxJobs ?? VECTOR_SEARCH_RESULTS_MAX, VECTOR_SEARCH_RESULTS_MAX);
+  const filters = input.filters;
+  const roleBase = filters?.jobTitles?.length
+    ? filters.jobTitles.slice(0, 20)
+    : input.profileTargetRoles;
+
+  const semanticQuery = input.semanticQuery?.trim();
+  const matchRoles =
+    roleBase.length > 0
+      ? roleBase
+      : semanticQuery
+        ? semanticQuery.split(/\s+/).filter((w) => w.length >= 3).slice(0, 5)
+        : [];
+
+  if (!matchRoles.length) {
+    return { sources: [] };
+  }
+
+  try {
+    const result = await fetchHirebaseRoleMatchingJobs({
+      matchRoles,
+      semanticQuery: semanticQuery || undefined,
+      filters: {
+        ...filters,
+        limit: maxJobs,
+        page: filters?.page ?? 1,
+      },
+    });
+
+    const sources: RecommendedJobSource[] = [];
+    for (let i = 0; i < result.rawJobs.length; i++) {
+      const raw = result.rawJobs[i];
+      const cached = result.jobs[i] ?? mapHirebaseJob(raw);
+      const companyName = result.companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company";
+      sources.push({ cached, companyName, raw });
+      if (sources.length >= maxJobs) break;
+    }
+
+    return { sources: applyListingFiltersToSources(sources, filters) };
+  } catch {
+    return { sources: [] };
+  }
 }
 
 /**

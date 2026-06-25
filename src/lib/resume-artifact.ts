@@ -14,6 +14,20 @@ function artifactFromParsed(parsed: ParsedResumeData | null): string | null {
   return parsed?.hirebaseArtifactId?.trim() || null;
 }
 
+/** Primary resume asset, or most recent upload if none marked primary. */
+export async function findResumeAssetForUser(userId: string) {
+  return (
+    (await prisma.userAsset.findFirst({
+      where: { userId, type: "RESUME", isPrimary: true },
+      orderBy: { createdAt: "desc" },
+    })) ??
+    (await prisma.userAsset.findFirst({
+      where: { userId, type: "RESUME" },
+      orderBy: { createdAt: "desc" },
+    }))
+  );
+}
+
 async function persistParsedData(userId: string, assetId: string, parsed: ParsedResumeData, resumeText: string) {
   await prisma.userAsset.update({
     where: { id: assetId },
@@ -35,10 +49,7 @@ export async function ensureHirebaseArtifactForUser(userId: string): Promise<{
   embedFailed?: boolean;
 }> {
   const profile = await prisma.profile.findUnique({ where: { userId } });
-  const primaryAsset = await prisma.userAsset.findFirst({
-    where: { userId, type: "RESUME", isPrimary: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const primaryAsset = await findResumeAssetForUser(userId);
 
   let parsed =
     normalizeParsedResumeData(primaryAsset?.parsedData) ??
