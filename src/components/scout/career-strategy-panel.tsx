@@ -185,7 +185,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
 
   async function handleGenerate() {
     if (!profile.resumeUrl) {
-      setError("Upload a resume on the Assets tab first.");
+      setError("Upload a resume on the Resumes tab first.");
       return;
     }
     setGenerating(true);

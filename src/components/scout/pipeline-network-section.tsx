@@ -512,7 +512,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
           <ScoutLabel>Premium recruiter network{internalView ? " · internal" : ""}</ScoutLabel>
         </div>
         <ScoutDisplayTitle size={36} style={{ marginBottom: 10 }}>
-          Network roles
+          In-Network Roles
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
           Shared privately through Top Echelon Big Biller — not public job boards. Each role is scored against your profile, same as Open Roles.
@@ -522,7 +522,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 12, marginBottom: 12 }}>
           <div>
-            <ScoutLabel>Network roles</ScoutLabel>
+            <ScoutLabel>In-Network Roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               {internalView
                 ? "Full internal view — fee, guarantee, status, and agency filters available. Sorted by profile match."

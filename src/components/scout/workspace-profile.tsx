@@ -1014,7 +1014,7 @@ function DreamRoleTab({
                       }}
                     >
                       {resumeAssets.length === 0 ? (
-                        <option value="">Upload a resume in Assets</option>
+                        <option value="">Upload a resume in Resumes</option>
                       ) : (
                         resumeAssets.map((asset) => (
                           <option key={asset.id} value={asset.id}>
@@ -1120,7 +1120,7 @@ function DreamRoleTab({
                                   ))}
                                 </div>
                                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#B0A898", marginTop: 8, fontStyle: "italic", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                                  <span>Add to skills if you already have it, or obtain it to track learning in Upskilling.</span>
+                                  <span>Add to skills if you already have it, or obtain it to track learning in Upskill.</span>
                                   <ScoreExplainerPopover variant="upskill-recommendations" />
                                 </p>
                               </div>
@@ -1880,7 +1880,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
     <div style={{ paddingBottom: 40 }}>
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", marginBottom: 20, gap: isMobile ? 14 : 0 }}>
         <div>
-          <ScoutLabel>Resume assets</ScoutLabel>
+          <ScoutLabel>Resumes</ScoutLabel>
           <ScoutDisplayTitle size={22} style={{ marginTop: 8, marginBottom: 6 }}>Your files</ScoutDisplayTitle>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
             {resumes.length} of {MAX_SLOTS} slots used
@@ -2870,8 +2870,8 @@ export function WorkspaceProfile() {
     { id: "linkedin", label: "LinkedIn" },
     { id: "dreamrole", label: isMobile ? "Roles" : "Target Roles" },
     { id: "strategy", label: isMobile ? "Strategy" : "Career Strategy" },
-    { id: "learning", label: "Upskilling" },
-    { id: "assets", label: "Assets" },
+    { id: "learning", label: "Upskill" },
+    { id: "assets", label: "Resumes" },
     { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
   ];
 
@@ -2897,7 +2897,7 @@ export function WorkspaceProfile() {
             style={{ marginBottom: 16, background: "rgba(26,58,47,0.06)", borderColor: color.forest }}
           >
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, margin: 0, lineHeight: 1.5 }}>
-              Added &ldquo;{upskillToast}&rdquo; to Upskilling — view it under Skills to obtain.
+              Added &ldquo;{upskillToast}&rdquo; to Upskill — view it under Skills to obtain.
             </p>
           </ScoutBox>
         )}
