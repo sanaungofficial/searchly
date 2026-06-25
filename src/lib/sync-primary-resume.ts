@@ -11,6 +11,14 @@ export async function syncPrimaryResumeToProfile(userId: string) {
   if (!primary) return;
 
   const parsed = normalizeParsedResumeData(primary.parsedData);
+  const existing = await prisma.profile.findUnique({
+    where: { userId },
+    select: { linkedinUrl: true },
+  });
+  const linkedinPatch =
+    parsed?.linkedinUrl && !existing?.linkedinUrl?.trim()
+      ? { linkedinUrl: parsed.linkedinUrl }
+      : {};
 
   await prisma.profile.upsert({
     where: { userId },
@@ -19,6 +27,7 @@ export async function syncPrimaryResumeToProfile(userId: string) {
       resumeText: primary.resumeText,
       parsedData: parsed ? (parsed as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       summary: parsed?.summary ?? null,
+      ...linkedinPatch,
     },
     create: {
       userId,
@@ -26,6 +35,7 @@ export async function syncPrimaryResumeToProfile(userId: string) {
       resumeText: primary.resumeText ?? undefined,
       parsedData: parsed ?? undefined,
       summary: parsed?.summary ?? undefined,
+      linkedinUrl: parsed?.linkedinUrl ?? undefined,
       targetRoles: [],
       priorities: [],
     },

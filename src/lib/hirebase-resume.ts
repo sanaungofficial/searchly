@@ -1,4 +1,5 @@
 import {
+  coalesceWorkExperience,
   emptyParsedResumeData,
   normalizeParsedResumeData,
   parsedResumeToText,
@@ -202,26 +203,28 @@ export function mapHirebaseResumeToParsedData(
 
   const flatSkills = skillGroups.flatMap((group) => group.skills);
 
-  const workExperience = (resume.work_experience ?? [])
-    .map((entry, index) => {
-      const title = asTrimmed(entry.title);
-      const company = asTrimmed(entry.company);
-      if (!title && !company) return null;
-      const bullets = [...(entry.responsibilities ?? []), ...(entry.achievements ?? [])]
-        .map((line) => line.trim())
-        .filter(Boolean);
-      const jobLocation = asTrimmed(entry.location);
-      return {
-        id: `exp_${index}`,
-        title: title || "Role",
-        company: company || "Company",
-        location: jobLocation,
-        from: asTrimmed(entry.start_date),
-        to: asTrimmed(entry.end_date),
-        bullets,
-      };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  const workExperience = coalesceWorkExperience(
+    (resume.work_experience ?? [])
+      .map((entry, index) => {
+        const title = asTrimmed(entry.title);
+        const company = asTrimmed(entry.company);
+        if (!title && !company) return null;
+        const bullets = [...(entry.responsibilities ?? []), ...(entry.achievements ?? [])]
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const jobLocation = asTrimmed(entry.location);
+        return {
+          id: `exp_${index}`,
+          title: title || "Role",
+          company: company || "Company",
+          location: jobLocation,
+          from: asTrimmed(entry.start_date),
+          to: asTrimmed(entry.end_date),
+          bullets,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+  );
 
   const education = (resume.education ?? [])
     .map((entry, index) => {
