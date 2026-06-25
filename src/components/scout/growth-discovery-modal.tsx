@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DISCOVERY_BLOCKERS, type DiscoveryBlocker } from "@/lib/discovery-lead";
 
-export type GrowthDiscoveryTrigger = "sidebar_help" | "low_match" | "interview" | "dashboard" | "readback";
+export type GrowthDiscoveryTrigger =
+  | "sidebar_help"
+  | "dashboard_schedule"
+  | "low_match"
+  | "interview"
+  | "dashboard"
+  | "readback";
 
 type ProfilePrefill = {
   name: string;
@@ -117,6 +123,13 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
   const targetRoleLabel =
     profile?.targetRoles?.length ? profile.targetRoles.slice(0, 2).join(", ") : null;
 
+  const isSchedule = trigger === "dashboard_schedule";
+  const title = isSchedule ? "Schedule a call with our team" : "Stuck on the search?";
+  const subtitle = isSchedule
+    ? "A Kimchi strategist can walk through your goals — 20 minutes, no pitch deck. We'll pull context from your profile."
+    : "A Second Ladder strategist can help — 20 minutes, no pitch deck. We'll pull context from your profile.";
+  const submitLabel = isSchedule ? "Request a call →" : "Request a call →";
+
   if (!mounted) return null;
 
   return createPortal(
@@ -210,7 +223,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
                 lineHeight: 1.3,
               }}
             >
-              Stuck on the search?
+              {title}
             </p>
             <p
               style={{
@@ -221,7 +234,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
                 marginBottom: 20,
               }}
             >
-              A Second Ladder strategist can help — 20 minutes, no pitch deck. We&apos;ll pull context from your profile.
+              {subtitle}
             </p>
 
             {!loadingProfile && profile && (
@@ -356,7 +369,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
                   marginBottom: 10,
                 }}
               >
-                {submitting ? "Sending…" : "Request a call →"}
+                {submitting ? "Sending…" : submitLabel}
               </button>
               <button
                 type="button"
