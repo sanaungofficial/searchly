@@ -752,7 +752,9 @@ function DreamRoleTab({
           typeof data.error === "string"
             ? data.error === "AI not configured"
               ? "Full AI analysis needs production — we could not parse your resume for a preview."
-              : data.error
+              : data.code
+                ? `${data.error} (${data.code})`
+                : data.error
             : `Analysis failed (${res.status}). Tap to retry.`;
         setAnalysisErrors((prev) => ({ ...prev, [role]: message }));
         if (stored) {
