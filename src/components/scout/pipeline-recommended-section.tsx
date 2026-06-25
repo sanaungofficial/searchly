@@ -341,6 +341,29 @@ function JobFiltersGrid({
       </FilterField>
       <FilterField label="Posted after">
         <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
+        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "4px 0 0", lineHeight: 1.4 }}>
+          Leave empty to include all posts in our index — not just recent ones.
+        </p>
+      </FilterField>
+      <FilterField label="Salary from ($)">
+        <input
+          type="number"
+          style={inputStyle}
+          value={form.salaryFrom}
+          onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))}
+          placeholder="150000"
+          min={0}
+        />
+      </FilterField>
+      <FilterField label="Salary to ($)">
+        <input
+          type="number"
+          style={inputStyle}
+          value={form.salaryTo}
+          onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))}
+          placeholder="250000"
+          min={0}
+        />
       </FilterField>
 
       <FilterSectionHeader
@@ -732,7 +755,14 @@ export function PipelineRecommendedSection({
         }
         const base = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
         defaultFormRef.current = base;
-        setForm({ ...base, semanticQuery: loadScopedSemanticQuery() });
+        const empty = filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS);
+        setForm({
+          ...empty,
+          semanticQuery: loadScopedSemanticQuery(),
+          locationCity: base.locationCity,
+          locationRegion: base.locationRegion,
+          locationCountry: base.locationCountry,
+        });
         setProfileSuggestedLabels(data.labels ?? describeActiveFilters(data.filters));
         setDefaultsLoaded(true);
       })
@@ -813,6 +843,13 @@ export function PipelineRecommendedSection({
     if (next.has(value)) next.delete(value);
     else next.add(value);
     return next;
+  };
+
+  const applyProfileSuggestions = () => {
+    const suggested = defaultFormRef.current;
+    if (!suggested) return;
+    setForm({ ...suggested, semanticQuery: form.semanticQuery });
+    setShowFilters(true);
   };
 
   const applyFilters = (filtersForm = form) => {
@@ -947,8 +984,16 @@ export function PipelineRecommendedSection({
 
         {showFilters && profileSuggestedLabels.length > 0 && !hasSearchFilters && (
           <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: "0 0 8px" }}>
-              Suggested from your profile (click Apply filters to use)
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: 0 }}>
+                Suggested from your profile
+              </p>
+              <ScoutSecondaryBtn onClick={applyProfileSuggestions} style={{ padding: "4px 10px", fontSize: T.label }}>
+                Apply suggestions
+              </ScoutSecondaryBtn>
+            </div>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "0 0 8px", lineHeight: 1.45 }}>
+              Optional — edit salary and dates below before you search. Clear &quot;Posted after&quot; to see all indexed roles.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {profileSuggestedLabels.map((label) => (
@@ -998,6 +1043,13 @@ export function PipelineRecommendedSection({
         {revalidating && jobs.length > 0 && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
             Updating recommendations…
+          </p>
+        )}
+        {(loading || revalidating) && (
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
+            {jobs.length > 0
+              ? "Still loading — you can switch tabs; results update here when ready."
+              : "Loading recommendations — feel free to leave and come back. Results save automatically for this session."}
           </p>
         )}
       </ScoutBox>
