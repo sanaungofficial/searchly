@@ -416,10 +416,11 @@ export function CompanySumbleIntelPanel({
           <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0 }}>
             {data.teams.map((team) => {
               const attrs = team.attributes;
-              if (!attrs?.name) return null;
+              const teamName = team.name?.trim() || attrs?.name?.trim();
+              if (!teamName) return null;
               return (
                 <li
-                  key={team.team_id ?? attrs.name}
+                  key={team.team_id ?? teamName}
                   style={{ padding: "8px 0", borderBottom: border.line }}
                 >
                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}>
@@ -436,11 +437,11 @@ export function CompanySumbleIntelPanel({
                           textDecoration: "none",
                         }}
                       >
-                        {attrs.name} ↗
+                        {teamName} ↗
                       </a>
                     ) : (
                       <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, fontWeight: 600 }}>
-                        {attrs.name}
+                        {teamName}
                       </span>
                     )}
                     <span style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted }}>

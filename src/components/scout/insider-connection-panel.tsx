@@ -1,17 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
-import type { ParsedResumeData } from "@/lib/resume-parse";
-import type { JobInsiderConnectionsBundle, InsiderConnectionPerson } from "@/lib/sumble-job-contacts-service";
+import type {
+  JobHiringTeam,
+  JobInsiderConnectionsBundle,
+  InsiderConnectionPerson,
+} from "@/lib/sumble-job-contacts-service";
 import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
 import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
-import { fontSans, color, surface, border, displayTitleStyle } from "@/lib/typography";
+import { fontSans, fontMono, color, surface, border, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutSecondaryBtn } from "./scout-box";
 
 const sans = fontSans;
 const line = border.line;
-const mint = "#1A3A2F";
 
 function IconPeople() {
   return (
@@ -60,10 +62,16 @@ function PersonRow({ person }: { person: InsiderConnectionPerson }) {
         {person.jobLevel && (
           <span style={{ fontFamily: sans, fontSize: 12, color: color.muted }}>{person.jobLevel}</span>
         )}
+        {person.confidenceScore != null && (
+          <span style={{ fontFamily: fontMono, fontSize: 11, color: color.mutedLight }}>
+            {Math.round(person.confidenceScore * 100)}% match
+          </span>
+        )}
       </div>
       {person.jobTitle && (
         <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "4px 0 0", lineHeight: 1.4 }}>
           {person.jobTitle}
+          {person.jobFunction ? ` · ${person.jobFunction}` : ""}
         </p>
       )}
     </li>
@@ -82,7 +90,7 @@ function PeopleList({
   return (
     <div
       style={{
-        flex: "1 1 0",
+        flex: "1 1 280px",
         minWidth: 0,
         background: surface.card,
         border: line,
@@ -96,12 +104,65 @@ function PeopleList({
       </div>
       <div style={{ padding: "12px 14px", flex: 1 }}>
         {people.length ? (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>{people.map((p) => <PersonRow key={`${p.personId}-${p.name}`} person={p} />)}</ul>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {people.map((p) => (
+              <PersonRow key={`${p.bucket}-${p.personId}-${p.name}`} person={p} />
+            ))}
+          </ul>
         ) : (
           <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", margin: 0, lineHeight: 1.5 }}>{emptyHint}</p>
         )}
       </div>
     </div>
+  );
+}
+
+function TeamSection({ team, companyName }: { team: JobHiringTeam; companyName: string }) {
+  return (
+    <ScoutBox padding="14px 16px" style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+        <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 700, color: color.ink, margin: 0 }}>
+          {team.teamName} at {companyName}
+        </p>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {team.jobsCount != null && (
+            <span style={{ fontFamily: fontMono, fontSize: 12, color: color.muted }}>
+              {team.jobsCount.toLocaleString()} open roles
+            </span>
+          )}
+          {team.sumbleUrl && (
+            <a
+              href={team.sumbleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, color: color.forest, textDecoration: "none" }}
+            >
+              Sumble ↗
+            </a>
+          )}
+        </div>
+      </div>
+      {team.people.length ? (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {team.people.map((p) => (
+            <PersonRow key={`team-${team.teamId}-${p.personId}-${p.name}`} person={p} />
+          ))}
+        </ul>
+      ) : (
+        <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: 0 }}>
+          No team members returned yet — try refreshing or check Sumble for this org.
+        </p>
+      )}
+    </ScoutBox>
+  );
+}
+
+function hasContactData(data: JobInsiderConnectionsBundle | null): boolean {
+  if (!data) return false;
+  return (
+    data.hiringManagers.length > 0 ||
+    data.orgPeople.length > 0 ||
+    data.hiringTeams.some((t) => t.people.length > 0)
   );
 }
 
@@ -125,36 +186,6 @@ export function InsiderConnectionPanel({
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [revealedEmail, setRevealedEmail] = useState<string | null>(null);
 
-  const [resumeContext, setResumeContext] = useState<ParsedResumeData | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/profile", { signal: AbortSignal.timeout(15000) });
-        const body = await res.json().catch(() => null);
-        if (!cancelled && res.ok && body?.parsedData) {
-          setResumeContext(body.parsedData as ParsedResumeData);
-        }
-      } catch {
-        // optional
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const previousEmployers = useMemo(() => {
-    const companies = resumeContext?.workExperience?.map((w) => w.company.trim()).filter(Boolean) ?? [];
-    return [...new Set(companies)].slice(0, 2);
-  }, [resumeContext]);
-
-  const schools = useMemo(() => {
-    const names = resumeContext?.education?.map((e) => e.school.trim()).filter(Boolean) ?? [];
-    return [...new Set(names)].slice(0, 2);
-  }, [resumeContext]);
-
   const load = useCallback(
     async (options?: { fetch?: boolean; refresh?: boolean }) => {
       const fetch = options?.fetch ?? false;
@@ -172,8 +203,8 @@ export function InsiderConnectionPanel({
         const res = await fetch(`/api/jobs/insider-connections?${params}`);
         const body = (await res.json()) as JobInsiderConnectionsBundle;
         setData(body);
-        setRequiresLoad(body.requiresLoad ?? !body.hiringManagers.length);
-        if (body.error && !body.hiringManagers.length && !body.orgPeople.length && !body.requiresLoad) {
+        setRequiresLoad(body.requiresLoad ?? !hasContactData(body));
+        if (body.error && !hasContactData(body) && !body.requiresLoad) {
           setError(body.error);
         } else {
           setError(body.error ?? null);
@@ -238,21 +269,28 @@ export function InsiderConnectionPanel({
     ? `Email reveal · ~${SUMBLE_ESTIMATED_COSTS.emailReveal} Sumble credits`
     : "Email reveals — Pro feature";
 
-  if (requiresLoad && !data?.hiringManagers.length && !data?.orgPeople.length) {
+  const roleLabel = data?.titleMapping?.jobFunction ?? null;
+  const levelLabel = data?.titleMapping?.jobLevel ?? null;
+
+  if (requiresLoad && !hasContactData(data)) {
     return (
       <ScoutBox padding="20px 22px" style={{ marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <span style={{ color: color.forest, display: "flex" }}><IconPeople /></span>
-          <h3 style={displayTitleStyle(18)}>Insider Connection @{companyName}</h3>
+          <h3 style={displayTitleStyle(18)}>Hiring team · {companyName}</h3>
         </div>
         <SumbleLoadPrompt
-          title="Hiring contacts"
-          description={`Load likely hiring managers and key people at ${companyName} for "${jobTitle || "this role"}". Nothing loads automatically.`}
+          title="Find the hiring team"
+          description={
+            jobTitle
+              ? `Map "${jobTitle}" to a Sumble job function, then load hiring managers, teammates, and LinkedIn profiles at ${companyName}. One click — cached 24 hours.`
+              : `Load hiring managers and team members at ${companyName}. Add a job title for better matching.`
+          }
           estimatedCredits={data?.estimatedCredits ?? SUMBLE_ESTIMATED_COSTS.jobContacts}
           creditsRemaining={data?.creditsRemaining}
           loading={loading}
           onLoad={() => void load({ fetch: true })}
-          loadLabel="Load contacts"
+          loadLabel="Load hiring team"
         />
       </ScoutBox>
     );
@@ -260,13 +298,24 @@ export function InsiderConnectionPanel({
 
   const hiring = data?.hiringManagers ?? [];
   const orgPeople = data?.orgPeople ?? [];
+  const teams = data?.hiringTeams ?? [];
 
   return (
     <ScoutBox padding="20px 22px" style={{ marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ color: color.forest, display: "flex" }}><IconPeople /></span>
-          <h3 style={displayTitleStyle(18)}>Insider Connection @{companyName}</h3>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <span style={{ color: color.forest, display: "flex" }}><IconPeople /></span>
+            <h3 style={displayTitleStyle(18)}>Hiring team · {companyName}</h3>
+          </div>
+          {roleLabel && (
+            <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: 0, lineHeight: 1.5 }}>
+              Mapped from {jobTitle ? `"${jobTitle}"` : "this role"} →{" "}
+              <strong style={{ color: color.forest, fontWeight: 600 }}>{roleLabel}</strong>
+              {levelLabel ? ` · ${levelLabel}` : ""}
+              {data?.titleMapping?.source === "sumble" ? " (Sumble title lookup)" : ""}
+            </p>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
           {!subLoading && (
@@ -281,49 +330,46 @@ export function InsiderConnectionPanel({
       </div>
 
       <p style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", lineHeight: 1.6, margin: "0 0 18px" }}>
-        Likely hiring managers and people at this company from Sumble.{" "}
-        <strong style={{ fontWeight: 600 }}>Reach out via email for higher response rates.</strong>
+        Found via Sumble from the job posting and org teams. Use LinkedIn links for outreach — email lookup below (~10 credits each).
       </p>
 
       {error && (
         <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "0 0 14px" }}>{error}</p>
       )}
 
+      {teams.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          {teams.map((team) => (
+            <TeamSection key={`${team.teamId}-${team.teamName}`} team={team} companyName={companyName} />
+          ))}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
         <PeopleList
           title="Likely hiring managers"
           people={hiring}
-          emptyHint={jobTitle ? `No related people found for "${jobTitle}" yet.` : "Add a job title to improve matching."}
+          emptyHint={jobTitle ? `No hiring managers linked to this posting yet.` : "Add a job title to match the posting."}
         />
         <PeopleList
-          title="Key people at company"
+          title={roleLabel ? `More ${roleLabel} at ${companyName}` : "People in this function"}
           people={orgPeople}
-          emptyHint="No people matched for your target roles yet."
-        />
-        <PeopleList
-          title={previousEmployers.length ? "Alumni connections" : "Your network"}
-          people={[]}
-          emptyHint={
-            previousEmployers.length
-              ? `Alumni from ${previousEmployers.join(" / ")} — use email lookup below for specific LinkedIn profiles.`
-              : schools.length
-                ? `Classmates from ${schools.join(" / ")} — use email lookup for specific profiles.`
-                : "Upload your resume to personalize connection hints."
-          }
+          emptyHint={roleLabel ? `No additional ${roleLabel} contacts returned.` : "No people matched for this function."}
         />
       </div>
 
       {data?.sumbleJobUrl && (
         <p style={{ fontFamily: sans, fontSize: 12, color: color.muted, margin: "0 0 14px" }}>
           <a href={data.sumbleJobUrl} target="_blank" rel="noopener noreferrer" style={{ color: color.forest }}>
-            View matched job on Sumble ↗
+            View matched job posting on Sumble ↗
           </a>
-          {data.creditsRemaining != null ? ` · ${data.creditsRemaining.toLocaleString()} credits left` : ""}
+          {data.creditsUsed ? ` · Used ${data.creditsUsed} credits` : ""}
+          {data.creditsRemaining != null ? ` · ${data.creditsRemaining.toLocaleString()} left` : ""}
         </p>
       )}
 
       <div>
-        <p style={displayTitleStyle(15, { margin: "0 0 10px" })}>Find Any Email</p>
+        <p style={displayTitleStyle(15, { margin: "0 0 10px" })}>Find work email</p>
         <form onSubmit={handleFindEmail} style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
           <input
             type="url"
@@ -332,7 +378,7 @@ export function InsiderConnectionPanel({
               setLinkedinUrl(e.target.value);
               if (lookupMessage) setLookupMessage(null);
             }}
-            placeholder="Paste LinkedIn profile URL to reveal work email (~10 credits)"
+            placeholder="Paste a LinkedIn profile URL from above (~10 credits)"
             style={{
               flex: 1,
               minWidth: 0,

@@ -94,8 +94,17 @@ export type SumbleTeamAttributes = {
 
 export type SumbleTeamRow = {
   team_id?: number | null;
+  name?: string | null;
   sumble_url?: string | null;
   attributes?: SumbleTeamAttributes | null;
+  related_people?: SumbleTeamRelatedPersonRow[] | null;
+};
+
+export type SumbleTeamRelatedPersonRow = {
+  person_id?: number | null;
+  sumble_url?: string | null;
+  confidence?: { score?: number | null } | null;
+  attributes?: SumblePersonAttributes | null;
 };
 
 export type SumbleDashboardSignal = SumbleSignal & {
@@ -534,7 +543,7 @@ export async function fetchSumbleTeamsAtOrganization(input: {
       order_by_column: "jobs_count",
       order_by_direction: "DESC",
       select: {
-        attributes: ["name", "jobs_count", "people_count", "technology_list"],
+        attributes: ["jobs_count", "job_function_list", "technology_list"],
       },
     }),
   });
@@ -542,6 +551,75 @@ export async function fetchSumbleTeamsAtOrganization(input: {
   return {
     teams: data.teams ?? [],
     total: data.total ?? 0,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+    sourceDataUrl: (data as { source_data_url?: string | null }).source_data_url ?? null,
+  };
+}
+
+export type SumbleTeamWithPeople = {
+  teamId: number | null;
+  teamName: string;
+  sumbleUrl: string | null;
+  jobsCount: number | null;
+  relatedPeople: SumbleTeamRelatedPersonRow[];
+};
+
+/** Teams at an org filtered by job function, with related people for networking. */
+export async function fetchSumbleTeamsForJobFunction(input: {
+  organizationId: number;
+  jobFunctionTerm: string;
+  teamsLimit?: number;
+  peoplePerTeam?: number;
+}): Promise<{
+  teams: SumbleTeamWithPeople[];
+  creditsUsed: number;
+  creditsRemaining: number | null;
+  sourceDataUrl: string | null;
+}> {
+  const term = input.jobFunctionTerm.trim();
+  if (!term) throw new Error("Job function term is required.");
+
+  const teamsLimit = Math.max(1, Math.min(input.teamsLimit ?? 2, 3));
+  const peoplePerTeam = Math.max(1, Math.min(input.peoplePerTeam ?? 5, 8));
+
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/teams", {
+    method: "POST",
+    body: JSON.stringify({
+      filter: {
+        organization_ids: [input.organizationId],
+        query: { query: jobFunctionQuery(term) },
+      },
+      limit: teamsLimit,
+      order_by_column: "jobs_count",
+      order_by_direction: "DESC",
+      select: {
+        attributes: ["jobs_count", "job_function_list"],
+        related_people: {
+          attributes: ["name", "linkedin_url", "job_title", "job_level", "job_function"],
+          max_per_team: peoplePerTeam,
+        },
+      },
+    }),
+  });
+
+  const teams = (data.teams ?? [])
+    .map((row) => {
+      const teamRow = row as SumbleTeamRow;
+      const name = teamRow.name?.trim() || teamRow.attributes?.name?.trim();
+      if (!name) return null;
+      return {
+        teamId: teamRow.team_id ?? null,
+        teamName: name,
+        sumbleUrl: teamRow.sumble_url ?? null,
+        jobsCount: teamRow.attributes?.jobs_count ?? null,
+        relatedPeople: teamRow.related_people ?? [],
+      };
+    })
+    .filter(Boolean) as SumbleTeamWithPeople[];
+
+  return {
+    teams,
     creditsUsed: data.credits_used ?? 0,
     creditsRemaining: data.credits_remaining ?? null,
     sourceDataUrl: (data as { source_data_url?: string | null }).source_data_url ?? null,
