@@ -20,6 +20,8 @@ type JoinPayload = {
   authToken: string;
   userName: string;
   role: string;
+  isHost?: boolean;
+  canHost?: boolean;
   session: { id: number; title: string; host: string; isLive: boolean };
 };
 
@@ -162,7 +164,10 @@ function LiveConference({
     );
   }
 
-  const isHost = joinPayload.role === "host" || joinPayload.role.includes("broadcaster");
+  const isHost =
+    joinPayload.isHost ??
+    joinPayload.role === "host" ||
+    joinPayload.role.includes("broadcaster");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
@@ -258,9 +263,11 @@ const secondaryBtnStyle: React.CSSProperties = {
 export function LiveRoomClient({
   sessionId,
   sessionMeta,
+  joinAsGuest = false,
 }: {
-  sessionId: number;
+  sessionId: string;
   sessionMeta: LiveSession;
+  joinAsGuest?: boolean;
 }) {
   const router = useRouter();
   const [joinPayload, setJoinPayload] = useState<JoinPayload | null>(null);
@@ -274,7 +281,10 @@ export function LiveRoomClient({
         const res = await fetch("/api/live/join", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({
+          sessionId: sessionMeta.legacyNumericId != null ? String(sessionMeta.legacyNumericId) : sessionId,
+          ...(joinAsGuest ? { intent: "guest" } : {}),
+        }),
         });
         const data = (await res.json().catch(() => ({}))) as JoinPayload & { error?: string };
         if (!res.ok) {
@@ -293,6 +303,8 @@ export function LiveRoomClient({
             authToken,
             userName: String(data.userName ?? "Guest"),
             role: String(data.role ?? "guest"),
+            isHost: data.isHost,
+            canHost: data.canHost,
           });
         }
       } catch (e) {
@@ -304,7 +316,7 @@ export function LiveRoomClient({
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, joinAsGuest]);
 
   const goBack = useCallback(() => {
     router.push("/live");

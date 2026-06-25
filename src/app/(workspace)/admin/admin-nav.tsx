@@ -13,6 +13,7 @@ export function AdminNav() {
     { label: "Prompts", href: "/admin/prompts" },
     { label: "Company scans", href: "/admin/company-scans" },
     { label: "Bookings", href: "/admin/bookings" },
+    { label: "Live", href: "/admin/live" },
   ];
 
   return (
