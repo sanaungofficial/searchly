@@ -7,9 +7,26 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const status = await getTopEchelonSyncStatus();
+  const hasEmail = !!process.env.TOPECHELON_EMAIL?.trim();
+  const hasPassword = !!process.env.TOPECHELON_PASSWORD?.trim();
+  const missingEnv: string[] = [];
+  if (!hasEmail) missingEnv.push("TOPECHELON_EMAIL");
+  if (!hasPassword) missingEnv.push("TOPECHELON_PASSWORD");
+
   return NextResponse.json({
     ...status,
-    configured: !!(process.env.TOPECHELON_EMAIL && process.env.TOPECHELON_PASSWORD),
+    configured: hasEmail && hasPassword,
+    hasEmail,
+    hasPassword,
+    missingEnv,
+    emailHint: hasEmail ? maskEmail(process.env.TOPECHELON_EMAIL!) : null,
     searchId: process.env.TOPECHELON_SEARCH_ID ?? null,
   });
+}
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "•••";
+  const shown = local.length <= 2 ? local[0] ?? "?" : `${local.slice(0, 2)}…`;
+  return `${shown}@${domain}`;
 }
