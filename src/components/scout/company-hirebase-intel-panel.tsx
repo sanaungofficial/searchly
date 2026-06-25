@@ -11,7 +11,8 @@ import {
   TrendCompareRow,
   WindowPicker,
 } from "@/components/scout/market-analytics-ui";
-import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox, ScoutLabel } from "./scout-box";
+import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
 import { fontSans, color, type as T } from "@/lib/typography";
 import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
 
@@ -90,6 +91,9 @@ export function CompanyHirebaseIntelPanel({
   if (loading && !insight) {
     return (
       <ScoutBox padding="14px 16px">
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+          <IntelRefreshButton onClick={() => void load(true)} disabled={loading} />
+        </div>
         <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
           Loading Hirebase analytics…
         </p>
@@ -100,8 +104,10 @@ export function CompanyHirebaseIntelPanel({
   if (error && !insight) {
     return (
       <ScoutBox padding="14px 16px">
-        <ScoutLabel>Hirebase analytics</ScoutLabel>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.5 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+          <IntelRefreshButton onClick={() => void load(true)} disabled={loading} />
+        </div>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
           {error}
         </p>
       </ScoutBox>
@@ -126,9 +132,7 @@ export function CompanyHirebaseIntelPanel({
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <WindowPicker value={days} onChange={setDays} />
-          <ScoutSecondaryBtn onClick={() => load(true)} disabled={loading} style={{ minHeight: 36 }}>
-            Refresh
-          </ScoutSecondaryBtn>
+          <IntelRefreshButton onClick={() => void load(true)} disabled={loading} />
         </div>
       </div>
 

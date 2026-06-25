@@ -1,6 +1,24 @@
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+import { hostnameFromUrl } from "@/lib/company-domain";
 
 const SUMBLE_BASE = "https://api.sumble.com/v6";
+
+const ORG_LOOKUP_ATTRIBUTES = [
+  "id",
+  "name",
+  "slug",
+  "url",
+  "employee_count",
+  "industry",
+  "jobs_count",
+  "teams_count",
+  "headquarters_country",
+  "sumble_score",
+  "sumble_url",
+  "funding_total_raised",
+  "funding_last_round_type",
+  "funding_last_round_date",
+] as const;
 
 export type SumbleOrganizationAttributes = {
   id?: number | null;
@@ -141,6 +159,47 @@ export function sumbleJobFunctionTerm(role: string): string {
   return r;
 }
 
+function normalizeSumbleDomain(domain?: string | null): string | null {
+  const raw = domain?.trim();
+  if (!raw) return null;
+  return hostnameFromUrl(raw) ?? raw.replace(/^www\./i, "");
+}
+
+function organizationMatched(row: SumbleOrganizationRow | null | undefined): boolean {
+  const attrs = row?.attributes;
+  if (!attrs) return false;
+  return (
+    attrs.id != null ||
+    !!attrs.name?.trim() ||
+    attrs.employee_count != null ||
+    attrs.jobs_count != null
+  );
+}
+
+function buildOrgLookupAttempts(input: {
+  domain?: string | null;
+  name?: string | null;
+  slug?: string | null;
+}): Record<string, string>[] {
+  const name = input.name?.trim() || null;
+  const domain = normalizeSumbleDomain(input.domain);
+  const slug = input.slug?.trim() || null;
+  const attempts: Record<string, string>[] = [];
+
+  if (slug) attempts.push({ slug });
+  if (domain) attempts.push({ url: domain });
+  if (name && domain) attempts.push({ name, url: domain });
+  if (name) attempts.push({ name });
+
+  const seen = new Set<string>();
+  return attempts.filter((attempt) => {
+    const key = JSON.stringify(attempt);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export async function fetchSumbleOrganization(input: {
   domain?: string | null;
   name?: string | null;
@@ -151,11 +210,8 @@ export async function fetchSumbleOrganization(input: {
   creditsUsed: number;
   creditsRemaining: number | null;
 }> {
-  const orgInput: Record<string, string> = {};
-  if (input.slug?.trim()) orgInput.slug = input.slug.trim();
-  else if (input.domain?.trim()) orgInput.url = input.domain.trim();
-  else if (input.name?.trim()) orgInput.name = input.name.trim();
-  else throw new Error("Organization domain, name, or slug is required.");
+  const attempts = buildOrgLookupAttempts(input);
+  if (!attempts.length) throw new Error("Organization domain, name, or slug is required.");
 
   const entities = (input.jobFunctionTerms ?? ["Product Management"]).slice(0, 3).map((term) => ({
     type: "job_function" as const,
@@ -163,42 +219,31 @@ export async function fetchSumbleOrganization(input: {
     metrics: ["job_post_count", "people_count", "job_post_count_growth_1y"],
   }));
 
-  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/organizations", {
-    method: "POST",
-    body: JSON.stringify({
-      organizations: [orgInput],
-      select: {
-        attributes: [
-          "employee_count",
-          "industry",
-          "jobs_count",
-          "teams_count",
-          "headquarters_country",
-          "sumble_score",
-          "sumble_url",
-          "funding_total_raised",
-          "funding_last_round_type",
-          "funding_last_round_date",
-        ],
-        entities,
-      },
-    }),
-  });
+  let creditsUsed = 0;
+  let creditsRemaining: number | null = null;
 
-  const organization = data.organizations?.[0] ?? null;
-  if (!organization?.attributes?.id && !organization?.attributes?.name) {
-    return {
-      organization: null,
-      creditsUsed: data.credits_used ?? 0,
-      creditsRemaining: data.credits_remaining ?? null,
-    };
+  for (const orgInput of attempts) {
+    const data = await sumbleFetch<SumbleEnvelope<unknown>>("/organizations", {
+      method: "POST",
+      body: JSON.stringify({
+        organizations: [orgInput],
+        select: {
+          attributes: [...ORG_LOOKUP_ATTRIBUTES],
+          entities,
+        },
+      }),
+    });
+
+    creditsUsed += data.credits_used ?? 0;
+    creditsRemaining = data.credits_remaining ?? creditsRemaining;
+
+    const organization = data.organizations?.[0] ?? null;
+    if (organizationMatched(organization) || data.matched_count === 1) {
+      return { organization, creditsUsed, creditsRemaining };
+    }
   }
 
-  return {
-    organization,
-    creditsUsed: data.credits_used ?? 0,
-    creditsRemaining: data.credits_remaining ?? null,
-  };
+  return { organization: null, creditsUsed, creditsRemaining };
 }
 
 export async function fetchSumbleOrganizationSignals(organizationId: number): Promise<{
