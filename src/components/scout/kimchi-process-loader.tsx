@@ -69,6 +69,18 @@ export const KIMCHI_LOADER_PRESETS = {
     hint: "It usually takes about 10–20 seconds.",
     durationSec: 18,
   },
+  strategyIntake: {
+    emoji: "📋",
+    title: "Parsing intake notes…",
+    hint: "Extracting profile fields from your notes.",
+    durationSec: 12,
+  },
+  careerStrategy: {
+    emoji: "📊",
+    title: "Building your career strategy…",
+    hint: "This is a full strategy document — it can take 30–90 seconds.",
+    durationSec: 75,
+  },
 } as const;
 
 export type KimchiLoaderPreset = keyof typeof KIMCHI_LOADER_PRESETS;

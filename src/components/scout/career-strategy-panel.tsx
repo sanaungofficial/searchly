@@ -13,6 +13,7 @@ import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, T } from "@/lib/typography";
 
@@ -149,6 +150,16 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       .catch(() => {});
   }, [loadStrategy]);
 
+  async function saveIntakeNotes() {
+    const res = await fetch("/api/ai/career-strategy", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intakeNotes: intakeNotes.trim() }),
+    });
+    const data = await readResponseJson(res);
+    if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to save intake notes"));
+  }
+
   async function handleGenerate() {
     if (!profile.resumeUrl) {
       setError("Upload a resume on the Assets tab first.");
@@ -158,7 +169,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     setError(null);
     try {
       if (intakeNotes.trim()) {
-        await onPatchProfile({ strategyIntakeNotes: intakeNotes.trim() });
+        await saveIntakeNotes();
       }
       const res = await fetch("/api/ai/career-strategy", { method: "POST" });
       const data = await readResponseJson(res);
@@ -206,7 +217,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     setParsing(true);
     setError(null);
     try {
-      await onPatchProfile({ strategyIntakeNotes: intakeNotes.trim() });
+      await saveIntakeNotes();
       const res = await fetch("/api/ai/strategy-intake", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -306,13 +317,23 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           style={{ ...textareaStyle, minHeight: 140 }}
         />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-          <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || !intakeNotes.trim()}>
+          <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || generating || !intakeNotes.trim()}>
             {parsing ? "Parsing…" : "Parse & review profile updates"}
           </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={handleGenerate} disabled={generating}>
+          <ScoutPrimaryBtn onClick={handleGenerate} disabled={generating || parsing}>
             {generating ? "Generating…" : hasDocument ? "Regenerate strategy" : "Generate strategy"}
           </ScoutPrimaryBtn>
         </div>
+        {parsing && (
+          <div style={{ marginTop: 16 }}>
+            <KimchiProcessLoader preset="strategyIntake" variant="inline" />
+          </div>
+        )}
+        {generating && (
+          <div style={{ marginTop: 16 }}>
+            <KimchiProcessLoader preset="careerStrategy" variant="inline" />
+          </div>
+        )}
         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
           Strategy generation uses 1 AI credit and only runs when you click the button above.
         </p>
@@ -431,6 +452,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
 
         {loading ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading…</p>
+        ) : generating ? (
+          <KimchiProcessLoader preset="careerStrategy" variant="centered" />
         ) : !hasDocument ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
             No strategy yet. Paste intake notes and click Generate strategy.

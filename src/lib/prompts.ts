@@ -525,7 +525,9 @@ Generate a comprehensive strategy as JSON with this exact structure (all string 
   }
 }
 
-Be specific, honest, and executive-level. Use metrics from the resume. Include 4-6 readiness categories and 3 positioning angles when possible.`,
+Be specific, honest, and executive-level. Use metrics from the resume. Include 4-6 readiness categories and 3 positioning angles when possible.
+
+Respond with ONLY the JSON object — no markdown code fences, no commentary before or after.`,
 
   STRATEGY_INTAKE_PARSE: `You are parsing client intake notes from an external career coaching form into structured profile fields for Kimchi.
 

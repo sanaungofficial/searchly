@@ -231,6 +231,42 @@ export function diffStrategySnapshot(
   return changes;
 }
 
+/** Pull the outermost JSON object from model text (handles fences and preamble). */
+export function extractJsonObject(text: string): string {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced?.[1] ?? trimmed).trim();
+
+  const start = candidate.indexOf("{");
+  if (start === -1) throw new Error("No JSON found");
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < candidate.length; i++) {
+    const c = candidate[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (c === "{") depth++;
+    if (c === "}") {
+      depth--;
+      if (depth === 0) return candidate.slice(start, i + 1);
+    }
+  }
+  throw new Error("Incomplete JSON");
+}
+
 export function normalizeStrategyDocument(raw: unknown): CareerStrategyDocument {
   if (!raw || typeof raw !== "object") return { ...EMPTY_STRATEGY };
   const d = raw as Partial<CareerStrategyDocument>;
@@ -269,15 +305,11 @@ export function normalizeStrategyDocument(raw: unknown): CareerStrategyDocument 
 }
 
 export function parseStrategyJson(text: string): CareerStrategyDocument {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found");
-  return normalizeStrategyDocument(JSON.parse(jsonMatch[0]));
+  return normalizeStrategyDocument(JSON.parse(extractJsonObject(text)));
 }
 
 export function parseIntakeJson(text: string): IntakeParseResult {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found");
-  const parsed = JSON.parse(jsonMatch[0]) as IntakeParseResult;
+  const parsed = JSON.parse(extractJsonObject(text)) as IntakeParseResult;
   return {
     proposed: parsed.proposed ?? {},
     summary: parsed.summary ?? "",
