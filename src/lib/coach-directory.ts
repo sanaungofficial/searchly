@@ -1,5 +1,6 @@
 /** Server-side filtering and sorting for coach directory queries. */
 
+import { normalizeCompanySlug } from "@/lib/company-catalog";
 import type { CoachDirectoryFilters, CoachFeaturedPreset, CoachSpotlightBadge } from "./coach-types";
 
 type CoachRow = {
@@ -30,8 +31,10 @@ type CoachRow = {
 
 export function parseCoachDirectoryFilters(searchParams: URLSearchParams): CoachDirectoryFilters {
   const sort = searchParams.get("sort");
-  const rateMin = searchParams.get("rateMin");
-  const rateMax = searchParams.get("rateMax");
+  const rateMinRaw = searchParams.get("rateMin");
+  const rateMaxRaw = searchParams.get("rateMax");
+  const rateMinNum = rateMinRaw ? Number(rateMinRaw) : undefined;
+  const rateMaxNum = rateMaxRaw ? Number(rateMaxRaw) : undefined;
 
   return {
     category: searchParams.get("category") ?? undefined,
@@ -39,8 +42,8 @@ export function parseCoachDirectoryFilters(searchParams: URLSearchParams): Coach
     firm: searchParams.get("firm") ?? undefined,
     specialty: searchParams.get("specialty") ?? undefined,
     specialization: searchParams.get("specialization") ?? undefined,
-    rateMin: rateMin ? Number(rateMin) : undefined,
-    rateMax: rateMax ? Number(rateMax) : undefined,
+    rateMin: rateMinNum != null && Number.isFinite(rateMinNum) ? rateMinNum : undefined,
+    rateMax: rateMaxNum != null && Number.isFinite(rateMaxNum) ? rateMaxNum : undefined,
     featuredOnly: searchParams.get("featured") === "1",
     professionalOnly: searchParams.get("professional") === "1",
     sort:
@@ -73,8 +76,12 @@ export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDi
     list = list.filter((c) => c.featured);
   }
   if (filters.firm) {
+    const firmSlug = normalizeCompanySlug(filters.firm);
     list = list.filter(
-      (c) => c.firms.includes(filters.firm!) || c.currentCompany === filters.firm,
+      (c) =>
+        c.firms.some((f) => normalizeCompanySlug(f) === firmSlug || f === filters.firm) ||
+        (c.currentCompany &&
+          (normalizeCompanySlug(c.currentCompany) === firmSlug || c.currentCompany === filters.firm)),
     );
   }
   if (filters.specialty) {
@@ -84,10 +91,10 @@ export function filterCoaches<T extends CoachRow>(coaches: T[], filters: CoachDi
     list = list.filter((c) => c.clientSpecializations.includes(filters.specialization!));
   }
   if (filters.rateMin != null) {
-    list = list.filter((c) => c.hourlyRate != null && c.hourlyRate >= filters.rateMin!);
+    list = list.filter((c) => c.hourlyRate == null || c.hourlyRate >= filters.rateMin!);
   }
   if (filters.rateMax != null) {
-    list = list.filter((c) => c.hourlyRate != null && c.hourlyRate <= filters.rateMax!);
+    list = list.filter((c) => c.hourlyRate == null || c.hourlyRate <= filters.rateMax!);
   }
   if (filters.q) {
     const q = filters.q.toLowerCase();
