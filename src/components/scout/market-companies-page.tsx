@@ -13,6 +13,7 @@ import {
   WindowPicker,
 } from "@/components/scout/market-analytics-ui";
 import { ScoutBox, ScoutLabel } from "@/components/scout/scout-box";
+import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
 
 export function MarketCompaniesPage() {
@@ -42,11 +43,7 @@ export function MarketCompaniesPage() {
       {!requiresLoad && <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />}
 
       {loading && !insight && (
-        <ScoutBox padding="20px 22px">
-          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
-            Loading employer rankings…
-          </p>
-        </ScoutBox>
+        <KimchiProcessLoader preset="marketIntel" title="Loading employer rankings…" variant="inline" />
       )}
 
       {!loading && error && !insight && (

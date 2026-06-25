@@ -9,6 +9,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 
 interface MatchData {
   score: number;
@@ -708,28 +709,7 @@ export function ResumeMatchDrawer({
           {/* ── STEP 1 ── */}
           {step === 1 && (
             <>
-              {loading && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingTop: 80,
-                    gap: 12,
-                  }}
-                >
-                  <p
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: 14,
-                      color: "var(--scout-muted)",
-                    }}
-                  >
-                    Analyzing your resume against this role…
-                  </p>
-                </div>
-              )}
+              {loading && <KimchiProcessLoader preset="jobMatch" variant="centered" />}
 
               {error && (
                 <div style={{ paddingTop: 20 }}>
@@ -1533,89 +1513,7 @@ export function ResumeMatchDrawer({
           {step === 3 && (
             <>
               {/* Loading state */}
-              {aligning && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: 400,
-                  }}
-                >
-                  <div
-                    style={{
-                      maxWidth: 440,
-                      width: "100%",
-                      background: "#FFFFFF",
-                      border: "1px solid rgba(0,0,0,0.08)",
-                      borderRadius: 0,
-                      padding: "48px 40px",
-                      textAlign: "center",
-                      boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 36,
-                        marginBottom: 24,
-                        lineHeight: 1,
-                        animation: "pulse-star 1.6s ease-in-out infinite",
-                      }}
-                    >
-                      ✨
-                    </div>
-                    <style>{`
-                      @keyframes pulse-star {
-                        0%, 100% { opacity: 1; transform: scale(1); }
-                        50% { opacity: 0.7; transform: scale(0.92); }
-                      }
-                      @keyframes loading-bar {
-                        from { width: 0% }
-                        to { width: 92% }
-                      }
-                    `}</style>
-                    <div
-                      style={{
-                        height: 3,
-                        background: "rgba(0,0,0,0.06)",
-                        borderRadius: 2,
-                        marginBottom: 28,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: "100%",
-                          background: "#1A3A2F",
-                          borderRadius: 2,
-                          animation: "loading-bar 18s ease-out forwards",
-                        }}
-                      />
-                    </div>
-                    <p
-                      style={{
-                        fontFamily: fontSans,
-                        fontSize: 17,
-                        fontWeight: 700,
-                        color: "#1A1A1A",
-                        marginBottom: 10,
-                      }}
-                    >
-                      Finalizing Your New Resume...
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: fontSans,
-                        fontSize: 14,
-                        color: "var(--scout-muted)",
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      ⓘ It usually takes about 10–20 seconds to complete.
-                    </p>
-                  </div>
-                </div>
-              )}
+              {aligning && <KimchiProcessLoader preset="resumeTailor" variant="centered" />}
 
               {/* Error state */}
               {!aligning && generateError && (

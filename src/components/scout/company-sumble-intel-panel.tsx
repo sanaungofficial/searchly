@@ -7,6 +7,7 @@ import type { CompanySumbleIntelBundle, CompanySumbleBriefBundle } from "@/lib/s
 import { SUMBLE_ESTIMATED_COSTS } from "@/lib/sumble-credits";
 import { IntelRefreshButton } from "@/components/scout/intel-refresh-button";
 import { SumbleLoadPrompt } from "@/components/scout/market-analytics-ui";
+import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, type as T } from "@/lib/typography";
 
@@ -255,9 +256,7 @@ export function CompanySumbleIntelPanel({
     return (
       <ScoutBox padding="14px 16px">
         <PanelHeader loading={loading} onRefresh={() => void load({ fetch: true, refresh: true })} />
-        <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
-          Loading Sumble intelligence…
-        </p>
+        <KimchiProcessLoader preset="marketIntel" title="Loading Sumble intelligence…" variant="inline" />
       </ScoutBox>
     );
   }

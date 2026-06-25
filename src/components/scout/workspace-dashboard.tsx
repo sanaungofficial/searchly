@@ -10,6 +10,7 @@ import { GrowthWelcomeModal } from "@/components/scout/growth-welcome-modal";
 import { type KanbanCard } from "./workspace-data";
 import { PlusIcon, RefreshIcon } from "./workspace-icons";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import type { MarketInsightsPayload } from "@/hooks/useMarketInsights";
 import { windowInsight } from "@/hooks/useMarketInsights";
@@ -444,19 +445,8 @@ export function WorkspaceDashboard() {
           </div>
 
           {addJobLoading && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-              <div
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "#1A3A2F",
-                  animation: "pulse 1s ease infinite",
-                }}
-              />
-              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest }}>
-                Kimchi is analyzing this listing…
-              </p>
+            <div style={{ marginTop: 12 }}>
+              <KimchiProcessLoader preset="jobParse" variant="inline" />
             </div>
           )}
 
