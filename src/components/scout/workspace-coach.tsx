@@ -302,6 +302,16 @@ export function WorkspaceCoach() {
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
+  const [showSubmittedBanner, setShowSubmittedBanner] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("onboarding") === "submitted") {
+      setShowSubmittedBanner(true);
+      window.history.replaceState({}, "", "/clients");
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/coach/clients")
@@ -442,6 +452,13 @@ export function WorkspaceCoach() {
 
   return (
     <WorkspacePageShell label="Coach portal" title={tab === "clients" ? "Clients" : "My Profile"}>
+      {showSubmittedBanner && (
+        <div style={{ background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.25)", padding: "12px 16px", marginBottom: 20 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "#047857", fontFamily: fontSans }}>
+            Profile submitted for review. We&apos;ll notify you when your coach listing is approved.
+          </p>
+        </div>
+      )}
       {tabs}
 
       {tab === "profile" ? (
