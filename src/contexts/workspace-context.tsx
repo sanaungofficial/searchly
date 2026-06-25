@@ -34,11 +34,13 @@ interface WorkspaceContextValue {
   setDrawerTool: (t: DrawerTool) => void;
   chatOpen: boolean;
   setChatOpen: (open: boolean) => void;
-  chatView: "tools" | "chat";
-  setChatView: (view: "tools" | "chat") => void;
+  chatView: "tools" | "chat" | "coach";
+  setChatView: (view: "tools" | "chat" | "coach") => void;
   chatPulse: boolean;
   fitChatNonce: number;
   openFitChat: (jobId: number) => void;
+  coachChatNonce: number;
+  openProfileCoach: () => void;
   notifOpen: boolean;
   setNotifOpen: React.Dispatch<React.SetStateAction<boolean>>;
   notifRead: Record<number, boolean>;
@@ -75,6 +77,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [chatView, setChatView] = useState<"tools" | "chat">("tools");
   const [chatPulse, setChatPulse] = useState(false);
   const [fitChatNonce, setFitChatNonce] = useState(0);
+  const [coachChatNonce, setCoachChatNonce] = useState(0);
   const [pricingOpen, setPricingOpen] = useState(false);
   const [impersonation, setImpersonation] = useState<ImpersonationState>({ active: false });
   const [actingUserId, setActingUserId] = useState<string | null>(() => {
@@ -94,6 +97,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setChatPulse(true);
     setFitChatNonce((n) => n + 1);
     window.setTimeout(() => setChatPulse(false), 2400);
+  }, []);
+
+  const openProfileCoach = useCallback(() => {
+    setChatView("coach");
+    setChatOpen(true);
+    setCoachChatNonce((n) => n + 1);
   }, []);
 
   const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage, removeJob } =
@@ -194,6 +203,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         chatPulse,
         fitChatNonce,
         openFitChat,
+        coachChatNonce,
+        openProfileCoach,
         notifOpen,
         setNotifOpen,
         notifRead,

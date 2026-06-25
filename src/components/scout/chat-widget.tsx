@@ -96,13 +96,17 @@ export function ChatWidget() {
     fitChatNonce,
     openFitChat,
     openPricing,
+    coachChatNonce,
+    openProfileCoach,
   } = useWorkspace();
 
   const isMobile = useIsMobile();
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [coachMessages, setCoachMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
+  const [coachStreaming, setCoachStreaming] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [chatJobId, setChatJobId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -117,6 +121,23 @@ export function ChatWidget() {
   const currentJob = effectiveJobId !== null ? kanbanCards.find((c) => c.id === effectiveJobId) : null;
   const needsJobPicker = chatView === "tools" && drawerCardId === null && kanbanCards.length > 0;
   const hasJobs = kanbanCards.length > 0;
+
+  const resetCoachChat = useCallback(() => {
+    setCoachMessages([
+      {
+        role: "assistant",
+        content:
+          "I'm your profile coach. Paste client intake notes, ask how to update their profile, or get help organizing search strategy fields. Profile updates require your approval in the Career Strategy tab.",
+      },
+    ]);
+    setInput("");
+  }, []);
+
+  useEffect(() => {
+    if (chatOpen && chatView === "coach") {
+      resetCoachChat();
+    }
+  }, [coachChatNonce, chatOpen, chatView, resetCoachChat]);
 
   const resetFitChat = useCallback((job: KanbanCard) => {
     setChatJobId(job.id);
@@ -169,6 +190,64 @@ export function ChatWidget() {
   const handleToolClick = (tool: DrawerTool) => {
     if (effectiveJobId !== null) {
       handleOpenTool(effectiveJobId, tool);
+    }
+  };
+
+  const sendCoachMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || coachStreaming) return;
+
+    const nextMessages: ChatMessage[] = [...coachMessages, { role: "user", content: trimmed }];
+    setCoachMessages([...nextMessages, { role: "assistant", content: "" }]);
+    setInput("");
+    setCoachStreaming(true);
+
+    try {
+      const res = await fetch("/api/ai/profile-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 402) {
+          notifyCreditsChanged();
+          setShowUpgrade(true);
+          setCoachMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+        setCoachMessages((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: "Something went wrong. Try again." };
+          return copy;
+        });
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No stream");
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        const snapshot = accumulated;
+        setCoachMessages((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: snapshot };
+          return copy;
+        });
+      }
+      notifyCreditsChanged();
+    } catch {
+      setCoachMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout. Check your connection." };
+        return copy;
+      });
+    } finally {
+      setCoachStreaming(false);
     }
   };
 
@@ -255,10 +334,10 @@ export function ChatWidget() {
     }
   };
 
-  const panelWidth = isMobile ? "calc(100vw - 24px)" : chatView === "chat" ? 380 : 320;
+  const panelWidth = isMobile ? "calc(100vw - 24px)" : chatView === "chat" || chatView === "coach" ? 380 : 320;
   const panelHeight = isMobile
     ? "min(70vh, calc(100vh - env(safe-area-inset-bottom) - 96px))"
-    : chatView === "chat"
+    : chatView === "chat" || chatView === "coach"
       ? "min(640px, calc(100vh - 120px))"
       : undefined;
 
@@ -343,12 +422,12 @@ export function ChatWidget() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14, color: "#E8D5A3" }}>✦</span>
                 <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#E8D5A3" }}>
-                  {chatView === "chat" ? "Scout" : "AI Tools"}
+                  {chatView === "chat" ? "Scout" : chatView === "coach" ? "Profile Coach" : "AI Tools"}
                 </span>
-                {chatView === "chat" && <CreditCostBadge />}
+                {(chatView === "chat" || chatView === "coach") && <CreditCostBadge />}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {chatView === "chat" && (
+                {(chatView === "chat" || chatView === "coach") && (
                   <button
                     onClick={() => setChatView("tools")}
                     style={{
@@ -410,7 +489,83 @@ export function ChatWidget() {
               </div>
             </div>
 
-            {chatView === "chat" ? (
+            {chatView === "coach" ? (
+              <>
+                <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 8px" }}>
+                  {coachMessages.map((m, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        marginBottom: 10,
+                        display: "flex",
+                        justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <div
+                        style={{
+                          maxWidth: "88%",
+                          padding: "10px 12px",
+                          borderRadius: 0,
+                          background: m.role === "user" ? "#1A3A2F" : "rgba(26,58,47,0.06)",
+                          color: m.role === "user" ? "#FFFDF9" : "#1A1A1A",
+                          fontFamily: sans,
+                          fontSize: 14,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        <ChatMessageBody role={m.role} content={m.content} streaming={coachStreaming && i === coachMessages.length - 1} />
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+                <div style={{ padding: "10px 14px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <textarea
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          sendCoachMessage(input);
+                        }
+                      }}
+                      placeholder="Paste intake notes or ask about profile updates…"
+                      rows={2}
+                      style={{
+                        flex: 1,
+                        resize: "none",
+                        padding: "8px 10px",
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        borderRadius: 0,
+                        fontFamily: sans,
+                        fontSize: 14,
+                      }}
+                    />
+                    <button
+                      onClick={() => sendCoachMessage(input)}
+                      disabled={coachStreaming || !input.trim()}
+                      style={{
+                        alignSelf: "flex-end",
+                        padding: "8px 12px",
+                        background: "#1A3A2F",
+                        color: "#E8D5A3",
+                        border: "none",
+                        borderRadius: 0,
+                        cursor: coachStreaming ? "default" : "pointer",
+                        fontFamily: sans,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        opacity: coachStreaming || !input.trim() ? 0.5 : 1,
+                      }}
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : chatView === "chat" ? (
               <>
                 {currentJob && (
                   <div
@@ -679,6 +834,13 @@ export function ChatWidget() {
                     subtitle="Chat about strengths & gaps"
                     disabled={!currentJob}
                     onClick={() => handleToolClick("fit")}
+                  />
+                  <ToolButton
+                    icon="📋"
+                    title="Profile coach"
+                    subtitle="Parse intake notes & update profile"
+                    disabled={false}
+                    onClick={() => openProfileCoach()}
                   />
                 </div>
 
