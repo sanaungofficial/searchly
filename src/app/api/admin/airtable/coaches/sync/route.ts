@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   try {
     const summary = await runAirtableCoachSync({
       limit: typeof body.limit === "number" && body.limit > 0 ? body.limit : undefined,
-      refreshPhotos: body.refreshPhotos === true,
+      refreshPhotos: body.refreshPhotos !== false,
     });
     await recordAirtableSyncResult(true, summary);
     return NextResponse.json({ ok: true, summary });

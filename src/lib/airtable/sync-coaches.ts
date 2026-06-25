@@ -1,6 +1,6 @@
 import { CoachStatus } from "@prisma/client";
 import { listAirtableCoachRecords } from "@/lib/airtable/client";
-import { persistCoachPhotoFromAttachment } from "@/lib/airtable/coach-photo";
+import { persistCoachPhotoFromAttachment, shouldUploadCoachPhoto } from "@/lib/airtable/coach-photo";
 import { mapAirtableRecordToCoach } from "@/lib/airtable/field-map";
 import type { AirtableSyncSummary } from "@/lib/airtable/types";
 import { coachProfileSlug } from "@/lib/coach-slug";
@@ -69,7 +69,7 @@ export async function runAirtableCoachSync(
     const mapped = mapAirtableRecordToCoach(record);
     if (!mapped) {
       summary.skipped += 1;
-      summary.errors.push(`Record ${record.id}: missing display name`);
+      summary.errors.push(`Record ${record.id}: not in sync filter (status must be contract sent, onboarding email sent, or active)`);
       continue;
     }
 
@@ -99,10 +99,9 @@ export async function runAirtableCoachSync(
         });
 
         if (mapped.photoAttachment) {
-          const shouldUpload =
-            options.refreshPhotos ||
-            !updated.photoUrl ||
-            updated.photoUrl.includes("airtableusercontent.com");
+          const shouldUpload = shouldUploadCoachPhoto(updated.photoUrl, {
+            forceRefresh: options.refreshPhotos,
+          });
 
           if (shouldUpload) {
             const photoUrl = await persistCoachPhotoFromAttachment(

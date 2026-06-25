@@ -24,6 +24,8 @@ type SyncStatus = {
   viewId: string;
   pushEnabled: boolean;
   tableName: string | null;
+  syncStatuses?: string[];
+  expectedCoachCount?: number;
   airtableFields: Array<{ name: string; type: string }> | null;
 };
 
@@ -96,7 +98,7 @@ export function AirtableCoachesSyncPanel() {
   const [forbidden, setForbidden] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [limit, setLimit] = useState("");
-  const [refreshPhotos, setRefreshPhotos] = useState(false);
+  const [refreshPhotos, setRefreshPhotos] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastSummary, setLastSummary] = useState<SyncSummary | null>(null);
@@ -179,11 +181,10 @@ export function AirtableCoachesSyncPanel() {
     <ScoutBox padding={24}>
       <ScoutLabel>Airtable coaches</ScoutLabel>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
-        Import coach profiles from your <strong>MBB/Big 4 Mentors</strong> Airtable table (field mapping verified via Airtable MCP). Re-syncing updates existing rows by Airtable record ID — no duplicates.
+        Syncs only the <strong>~20 coaches</strong> in your filtered Airtable view (Status: contract sent, onboarding email sent, or active). Re-sync updates existing Kimchi rows by Airtable record ID and backfills missing profile photos to Supabase.
         {status?.pushEnabled
           ? " Kimchi coach profile edits are pushed back to Airtable when linked."
           : " Set AIRTABLE_SYNC_PUSH=true to push Kimchi edits back to Airtable."}
-        {" "}Automated sync on Vercel uses <code style={{ fontFamily: fontMono }}>AIRTABLE_API_KEY</code> (MCP auth is for Cursor only).
       </p>
 
       {forbidden && (
@@ -225,7 +226,11 @@ export function AirtableCoachesSyncPanel() {
           </div>
           {status.tableName && (
             <p style={{ fontFamily: fontMono, fontSize: T.caption, color: color.muted, margin: "0 0 16px" }}>
-              Table: {status.tableName} · base {status.baseId}
+              Table: {status.tableName} · view {status.viewId}
+              {status.syncStatuses?.length
+                ? ` · Status: ${status.syncStatuses.join(", ")}`
+                : ""}
+              {status.expectedCoachCount ? ` · ~${status.expectedCoachCount} coaches` : ""}
             </p>
           )}
         </>
@@ -270,7 +275,7 @@ export function AirtableCoachesSyncPanel() {
               onChange={(e) => setRefreshPhotos(e.target.checked)}
               disabled={!status?.configured}
             />
-            Re-download all photos
+            Re-download photos (default: backfill missing / non-Kimchi URLs)
           </label>
         </div>
       </div>
@@ -296,7 +301,7 @@ export function AirtableCoachesSyncPanel() {
           {lastSummary.durationMs}ms
         </p>
       )}
-      {lastSummary?.errors?.length > 0 && (
+      {lastSummary && lastSummary.errors && lastSummary.errors.length > 0 && (
         <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", margin: "8px 0 0", lineHeight: 1.5 }}>
           {lastSummary.errors.slice(0, 3).join(" · ")}
         </p>

@@ -17,11 +17,19 @@ function extFromFilename(filename?: string): string | null {
   return match[1].replace("jpeg", "jpg");
 }
 
-function isKimchiHostedPhoto(url: string | null | undefined): boolean {
-  if (!url) return false;
+function isKimchiHostedCoachPhoto(url: string | null | undefined): boolean {
+  if (!url?.trim()) return false;
   const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (supabaseHost && url.startsWith(supabaseHost)) return true;
   return url.includes("/storage/v1/object/public/avatars/");
+}
+
+export function shouldUploadCoachPhoto(
+  photoUrl: string | null | undefined,
+  options?: { forceRefresh?: boolean }
+): boolean {
+  if (options?.forceRefresh) return true;
+  return !isKimchiHostedCoachPhoto(photoUrl);
 }
 
 export async function persistCoachPhotoFromAttachment(
@@ -30,7 +38,7 @@ export async function persistCoachPhotoFromAttachment(
   existingPhotoUrl?: string | null,
   options?: { forceRefresh?: boolean }
 ): Promise<string | null> {
-  if (!options?.forceRefresh && isKimchiHostedPhoto(existingPhotoUrl)) {
+  if (!options?.forceRefresh && isKimchiHostedCoachPhoto(existingPhotoUrl)) {
     return existingPhotoUrl ?? null;
   }
 

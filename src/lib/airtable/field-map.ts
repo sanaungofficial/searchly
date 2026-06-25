@@ -1,3 +1,4 @@
+import { isAllowedAirtableCoachSyncStatus } from "@/lib/airtable/sync-config";
 import type { AirtableAttachment, AirtableRecord, MappedCoachFromAirtable } from "@/lib/airtable/types";
 
 /**
@@ -100,7 +101,9 @@ function parseCoachStatus(value: unknown): "ACTIVE" | "PENDING" | "INACTIVE" {
   const str = asString(value)?.toLowerCase();
   if (!str) return "ACTIVE";
   if (["inactive", "hidden", "archived", "disabled", "off"].some((k) => str.includes(k))) return "INACTIVE";
-  if (["pending", "review", "draft"].some((k) => str.includes(k))) return "PENDING";
+  // Curated Airtable pipeline coaches — show in /coaching directory
+  if (str === "active" || str === "contract sent" || str === "onboarding email sent") return "ACTIVE";
+  if (["pending", "review", "draft", "new", "interested"].some((k) => str.includes(k))) return "PENDING";
   return "ACTIVE";
 }
 
@@ -131,6 +134,9 @@ function resolveDisplayName(fields: Record<string, unknown>): string | null {
 
 export function mapAirtableRecordToCoach(record: AirtableRecord): MappedCoachFromAirtable | null {
   const fields = record.fields;
+  const airtableStatus = pickField(fields, FIELD_ALIASES.status);
+  if (!isAllowedAirtableCoachSyncStatus(airtableStatus)) return null;
+
   const displayName = resolveDisplayName(fields);
   if (!displayName) return null;
 

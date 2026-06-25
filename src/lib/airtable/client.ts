@@ -1,3 +1,7 @@
+import {
+  AIRTABLE_COACH_SYNC_FILTER_FORMULA,
+  AIRTABLE_COACHES_VIEW_ID,
+} from "@/lib/airtable/sync-config";
 import type { AirtableListResponse, AirtableRecord } from "@/lib/airtable/types";
 
 const AIRTABLE_API = "https://api.airtable.com/v0";
@@ -6,7 +10,7 @@ export function getAirtableCredentials() {
   const apiKey = process.env.AIRTABLE_API_KEY?.trim();
   const baseId = process.env.AIRTABLE_BASE_ID?.trim() || "apph4HTjhekSdaxv9";
   const tableId = process.env.AIRTABLE_COACHES_TABLE_ID?.trim() || "tblnl8cmFBBynOwg0";
-  const viewId = process.env.AIRTABLE_COACHES_VIEW_ID?.trim() || "viwWT4NLjApfCSy6m";
+  const viewId = process.env.AIRTABLE_COACHES_VIEW_ID?.trim() || AIRTABLE_COACHES_VIEW_ID;
 
   if (!apiKey) return null;
 
@@ -42,6 +46,7 @@ export async function listAirtableCoachRecords(options?: { maxRecords?: number }
   do {
     const params = new URLSearchParams();
     if (creds.viewId) params.set("view", creds.viewId);
+    params.set("filterByFormula", AIRTABLE_COACH_SYNC_FILTER_FORMULA);
     if (offset) params.set("offset", offset);
     if (options?.maxRecords) {
       params.set("maxRecords", String(options.maxRecords));

@@ -7,6 +7,10 @@ import {
 } from "@/lib/airtable/client";
 import { getFieldAliasMap } from "@/lib/airtable/field-map";
 import { getAirtableSyncStatus } from "@/lib/airtable/sync-state";
+import {
+  AIRTABLE_COACH_SYNC_STATUSES,
+  AIRTABLE_COACHES_VIEW_ID,
+} from "@/lib/airtable/sync-config";
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -25,9 +29,11 @@ export async function GET() {
     missingEnv,
     baseId: creds?.baseId ?? process.env.AIRTABLE_BASE_ID ?? "apph4HTjhekSdaxv9",
     tableId: creds?.tableId ?? process.env.AIRTABLE_COACHES_TABLE_ID ?? "tblnl8cmFBBynOwg0",
-    viewId: creds?.viewId ?? process.env.AIRTABLE_COACHES_VIEW_ID ?? "viwWT4NLjApfCSy6m",
+    viewId: creds?.viewId ?? process.env.AIRTABLE_COACHES_VIEW_ID ?? AIRTABLE_COACHES_VIEW_ID,
     pushEnabled: isAirtablePushEnabled(),
     tableName: schema?.tableName ?? null,
+    syncStatuses: [...AIRTABLE_COACH_SYNC_STATUSES],
+    expectedCoachCount: 20,
     airtableFields: schema?.fields?.map((f) => ({ name: f.name, type: f.type })) ?? null,
     fieldAliases: getFieldAliasMap(),
   });
