@@ -1,4 +1,4 @@
-/** In-process TTL cache for Hirebase insights — shared cohort keys (not per-user). */
+/** In-process TTL cache for market insights — shared cohort keys (not per-user). */
 
 const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 

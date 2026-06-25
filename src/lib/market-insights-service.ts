@@ -1,9 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import type { HirebaseInsightsResponse } from "@/lib/hirebase-insights";
 import {
-  buildMarketHeadline,
   fetchHirebaseCompanyInsights,
-  fetchHirebaseMarketInsights,
-  type HirebaseInsightsResponse,
   type MarketInsightsFilters,
 } from "@/lib/hirebase-insights";
 import {
@@ -15,20 +13,25 @@ import {
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { resolveHirebaseCompanySlug } from "@/lib/hirebase";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
+import { isSumbleConfigured, sumbleJobFunctionTerm } from "@/lib/sumble";
+import { buildSumbleMarketHeadline, buildSumbleMarketWindows } from "@/lib/sumble-market";
 
 export const MARKET_WINDOW_OPTIONS = [7, 30, 90, 180] as const;
 export type MarketWindow = (typeof MARKET_WINDOW_OPTIONS)[number];
 
 export type MarketInsightsBundle = {
   configured: boolean;
+  dataSource: "sumble" | "none";
   targetRoles: string[];
   roleLabel: string;
   windows: Record<string, HirebaseInsightsResponse>;
   primaryDays: number;
   headline: string;
   generatedAt: string | null;
+  /** @deprecated use dataSource — kept for client compat */
   hirebaseCached: boolean;
   serverCached: boolean;
+  creditsRemaining: number | null;
   error?: string;
 };
 
@@ -56,6 +59,11 @@ function defaultTitles(titles: string[]): string[] {
   return ["Product Manager"];
 }
 
+function jobFunctionTermsFromRoles(roles: string[]): string[] {
+  const terms = roles.map(sumbleJobFunctionTerm);
+  return [...new Set(terms)].slice(0, 3);
+}
+
 async function loadTargetRoles(userId: string): Promise<string[]> {
   const profile = await prisma.profile.findUnique({
     where: { userId },
@@ -64,30 +72,18 @@ async function loadTargetRoles(userId: string): Promise<string[]> {
   return (profile?.targetRoles ?? []).map((r) => r.trim()).filter(Boolean);
 }
 
-async function fetchWindowInsights(
-  filters: MarketInsightsFilters,
-  forceRefresh: boolean
-): Promise<{ data: HirebaseInsightsResponse; serverCached: boolean }> {
-  const key = insightsCacheKey("market", filters);
-  if (!forceRefresh) {
-    const hit = getInsightsCached<HirebaseInsightsResponse>(key);
-    if (hit) return { data: hit, serverCached: true };
-  }
-
-  const data = await fetchHirebaseMarketInsights(filters);
-  setInsightsCached(key, data, INSIGHTS_CACHE_TTL_MS);
-  return { data, serverCached: false };
-}
-
 export async function getMarketInsightsBundle(input: {
   userId: string;
   primaryDays?: number;
   compareWindows?: number[];
   forceRefresh?: boolean;
 }): Promise<MarketInsightsBundle> {
-  const configured = isHirebaseConfigured();
+  const configured = isSumbleConfigured();
   const targetRoles = await loadTargetRoles(input.userId);
   const titles = defaultTitles(targetRoles);
+  const jobFunctionTerms = jobFunctionTermsFromRoles(
+    targetRoles.length ? targetRoles : ["Product Manager"]
+  );
   const roleLabel = roleLabelFromTitles(titles);
   const primaryDays = input.primaryDays ?? 30;
   const compareWindows = input.compareWindows ?? [7, 30, 90];
@@ -96,6 +92,7 @@ export async function getMarketInsightsBundle(input: {
   if (!configured) {
     return {
       configured: false,
+      dataSource: "none",
       targetRoles: titles,
       roleLabel,
       windows: {},
@@ -104,45 +101,53 @@ export async function getMarketInsightsBundle(input: {
       generatedAt: null,
       hirebaseCached: false,
       serverCached: false,
-      error: "Hirebase is not configured on this environment.",
+      creditsRemaining: null,
+      error: "Sumble is not configured on this environment.",
     };
   }
 
-  try {
-    const windows: Record<string, HirebaseInsightsResponse> = {};
-    let anyServerCached = true;
-    let hirebaseCached = false;
+  const cacheKey = insightsCacheKey("sumble-market", {
+    userId: input.userId,
+    jobFunctionTerms,
+    windows: windowsToFetch,
+  });
 
-    await Promise.all(
-      windowsToFetch.map(async (days) => {
-        const filters: MarketInsightsFilters = {
-          job_titles: titles,
-          days_ago: days,
-        };
-        const { data, serverCached } = await fetchWindowInsights(filters, input.forceRefresh ?? false);
-        windows[String(days)] = data;
-        if (!serverCached) anyServerCached = false;
-        if (data.cached) hirebaseCached = true;
-      })
-    );
+  if (!input.forceRefresh) {
+    const hit = getInsightsCached<Omit<MarketInsightsBundle, "serverCached">>(cacheKey);
+    if (hit) return { ...hit, serverCached: true };
+  }
+
+  try {
+    const { windows, creditsUsed, creditsRemaining } = await buildSumbleMarketWindows({
+      jobFunctionTerms,
+      windows: windowsToFetch,
+      forceRefresh: input.forceRefresh,
+    });
 
     const primary = windows[String(primaryDays)] ?? windows[String(windowsToFetch[0])];
-    const generatedAt = primary?.generated_at ?? null;
+    const generatedAt = primary?.generated_at ?? new Date().toISOString();
 
-    return {
+    const bundle: MarketInsightsBundle = {
       configured: true,
+      dataSource: "sumble",
       targetRoles: titles,
       roleLabel,
       windows,
       primaryDays,
-      headline: primary ? buildMarketHeadline(primary, roleLabel, primaryDays) : "",
+      headline: primary ? buildSumbleMarketHeadline(primary, roleLabel, primaryDays) : "",
       generatedAt,
-      hirebaseCached,
-      serverCached: anyServerCached,
+      hirebaseCached: false,
+      serverCached: false,
+      creditsRemaining,
     };
+
+    setInsightsCached(cacheKey, { ...bundle, serverCached: false }, INSIGHTS_CACHE_TTL_MS);
+    void creditsUsed;
+    return bundle;
   } catch (err) {
     return {
       configured: true,
+      dataSource: "sumble",
       targetRoles: titles,
       roleLabel,
       windows: {},
@@ -151,6 +156,7 @@ export async function getMarketInsightsBundle(input: {
       generatedAt: null,
       hirebaseCached: false,
       serverCached: false,
+      creditsRemaining: null,
       error: err instanceof Error ? err.message : "Failed to load market insights.",
     };
   }
