@@ -72,7 +72,7 @@ function heuristicMatch(
   }
   if (!reasons.length) {
     reasons.push(
-      "This role surfaced from your tracked companies and target titles — open the posting to confirm fit.",
+      "This role surfaced from your profile and target titles — open the posting to confirm fit.",
     );
   }
 
