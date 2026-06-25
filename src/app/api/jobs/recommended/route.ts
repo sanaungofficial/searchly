@@ -3,8 +3,8 @@ import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import {
   generateRecommendedJobsForUser,
   hasProfileSignals,
-  isDefaultRecommendedFilters,
 } from "@/lib/recommended-jobs-engine";
+import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
 import {
   RECOMMENDED_MATCH_SCORE_FLOOR,
   utcSnapshotDate,
@@ -146,10 +146,10 @@ async function handleRecommended(request: Request) {
     if (!result?.jobs.length) {
       return NextResponse.json(
         {
-          error: "No roles scored 80+ yet — broaden your target roles or check back after the daily refresh.",
+          error: "No matching roles found — add target roles, upload a resume, or track companies, then refresh.",
           needsProfile: targetRoles.length === 0,
-          hint: "We refresh recommendations daily. Try adjusting filters or tracking more companies for a ranking boost.",
-          scoreFloor: RECOMMENDED_MATCH_SCORE_FLOOR,
+          hint: "Try Refresh for a live Hirebase pull, or broaden filters if you have any applied.",
+          matchMode: result?.matchMode,
         },
         { status: 404 },
       );

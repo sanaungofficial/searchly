@@ -14,6 +14,7 @@ export function applyRecommendedScoreFloor(
   jobs: VectorMatchedJob[],
   floor = RECOMMENDED_MATCH_SCORE_FLOOR,
 ): VectorMatchedJob[] {
+  if (floor <= 0) return jobs;
   return jobs.filter((j) => j.matchScore >= floor);
 }
 

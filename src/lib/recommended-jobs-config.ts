@@ -1,7 +1,7 @@
-/** Minimum Kimchi match score to show in recommended feed (product floor). */
-export const RECOMMENDED_MATCH_SCORE_FLOOR = 80;
+/** Minimum match score to show in feed — 0 = disabled (show all pulled results). */
+export const RECOMMENDED_MATCH_SCORE_FLOOR = 0;
 
-/** Over-fetch before 80+ score floor so enough jobs survive filtering. */
+/** Over-fetch before optional score floor so enough jobs survive filtering. */
 export const RECOMMENDED_FETCH_POOL = 60;
 
 /** Max jobs stored per user snapshot / API response. */

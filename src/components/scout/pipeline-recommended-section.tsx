@@ -981,7 +981,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Personalized roles scored 80+ against your profile — watchlist employers rank first. Refreshed daily; use Refresh for a live pull (rate-limited).
+              Roles matched to your profile from Hirebase — watchlist employers rank first. Refreshed daily; use Refresh for a live pull (rate-limited).
             </p>
             {snapshotMeta?.generatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
