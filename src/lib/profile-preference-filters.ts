@@ -22,9 +22,11 @@ export function profilePreferencesToFilters(profile: {
   targetSalary?: string | null;
   employmentStatus?: string | null;
   jobTimeline?: string | null;
+  profileLocation?: string | null;
 }): VectorSearchFilters {
   const out: VectorSearchFilters = {};
   const priorities = (profile.priorities ?? []).map((p) => p.toLowerCase());
+  void profile.profileLocation; // location handled via post-filter + UI search filters
 
   const locationTypes: string[] = [];
   if (priorities.some((p) => p.includes("remote"))) locationTypes.push("Remote");
@@ -78,6 +80,7 @@ export function mergeProfileAndRequestFilters(
     salaryFrom: requestFilters.salaryFrom ?? profilePrefs.salaryFrom,
     salaryTo: requestFilters.salaryTo ?? profilePrefs.salaryTo,
     datePostedFrom: requestFilters.datePostedFrom ?? profilePrefs.datePostedFrom,
+    locations: requestFilters.locations?.length ? requestFilters.locations : profilePrefs.locations,
     jobTitles: requestFilters.jobTitles?.length
       ? requestFilters.jobTitles
       : profilePrefs.jobTitles,

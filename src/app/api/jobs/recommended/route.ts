@@ -148,8 +148,9 @@ async function handleRecommended(request: Request) {
         {
           error: "No matching roles found — add target roles, upload a resume, or track companies, then refresh.",
           needsProfile: targetRoles.length === 0,
-          hint: "Try Refresh for a live Hirebase pull, or broaden filters if you have any applied.",
+          hint: "Try Refresh for a live Hirebase pull, or open Filters to broaden location and other criteria.",
           matchMode: result?.matchMode,
+          effectiveFilters: result?.effectiveFilters,
         },
         { status: 404 },
       );
@@ -178,7 +179,8 @@ async function handleRecommended(request: Request) {
       matchMode: result.matchMode,
       companyCount: result.companyCount,
       trackedWithMatches: result.trackedWithMatches,
-      filtersApplied: searchFilters,
+      filtersApplied: result.effectiveFilters ?? searchFilters,
+      effectiveFilters: result.effectiveFilters ?? searchFilters,
       artifactReEmbedded: result.artifactReEmbedded,
       resumeVSearch: result.resumeVSearch,
       notice: result.notice,

@@ -42,6 +42,15 @@ export async function GET() {
       skillGoals: normalizeSkillGoals(profile?.skillGoals),
       upskillProgress: normalizeUpskillProgress(profile?.upskillProgress),
       targetRoleSettings: normalizeTargetRoleSettings(profile?.targetRoleSettings),
+      targetMarket: profile?.targetMarket || null,
+      relocationOpenness: profile?.relocationOpenness || null,
+      workAuthorization: profile?.workAuthorization || null,
+      securityClearance: profile?.securityClearance || null,
+      searchDuration: profile?.searchDuration || null,
+      positioningStatement: profile?.positioningStatement || null,
+      strategyIntakeNotes: profile?.strategyIntakeNotes || null,
+      strategyUpdatedAt: profile?.strategyUpdatedAt?.toISOString() || null,
+      hasStrategy: !!profile?.strategyData,
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
         : undefined,
@@ -57,7 +66,7 @@ export async function PATCH(request: Request) {
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary } = body;
+  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary, targetMarket, relocationOpenness, workAuthorization, securityClearance, searchDuration, positioningStatement, strategyIntakeNotes } = body;
 
   if (name !== undefined) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name } });
@@ -80,6 +89,13 @@ export async function PATCH(request: Request) {
   if (skillGoals !== undefined) profileUpdate.skillGoals = skillGoals;
   if (upskillProgress !== undefined) profileUpdate.upskillProgress = upskillProgress;
   if (targetRoleSettings !== undefined) profileUpdate.targetRoleSettings = targetRoleSettings;
+  if (targetMarket !== undefined) profileUpdate.targetMarket = targetMarket;
+  if (relocationOpenness !== undefined) profileUpdate.relocationOpenness = relocationOpenness;
+  if (workAuthorization !== undefined) profileUpdate.workAuthorization = workAuthorization;
+  if (securityClearance !== undefined) profileUpdate.securityClearance = securityClearance;
+  if (searchDuration !== undefined) profileUpdate.searchDuration = searchDuration;
+  if (positioningStatement !== undefined) profileUpdate.positioningStatement = positioningStatement;
+  if (strategyIntakeNotes !== undefined) profileUpdate.strategyIntakeNotes = strategyIntakeNotes;
 
   if (Object.keys(profileUpdate).length > 0) {
     await upsertProfileFields(dbUser.id, profileUpdate);

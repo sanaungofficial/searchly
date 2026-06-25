@@ -23,6 +23,77 @@ function formatFee(fee: string | number | null | undefined, feeType: string | nu
   return base;
 }
 
+function coerceCompensationInt(value: number | null | undefined): number | null {
+  if (value == null || Number.isNaN(value)) return null;
+  return Math.round(value);
+}
+
+/** Stable TE job id for upsert — prefer numeric API id over detail UUID. */
+export function resolveNetworkJobExternalId(job: TopEchelonNetworkJobRaw): string {
+  if (typeof job.id === "number") return String(job.id);
+  if (typeof job.id === "string" && /^\d+$/.test(job.id)) return job.id;
+
+  const networkId = (job.networkId ?? job.network_id) as string | undefined;
+  if (networkId) {
+    const suffix = networkId.match(/-(\d+)$/);
+    if (suffix?.[1]) return suffix[1];
+  }
+
+  for (const key of ["job_id", "jobId", "network_job_id", "networkJobId"]) {
+    const value = job[key];
+    if (typeof value === "number") return String(value);
+    if (typeof value === "string" && /^\d+$/.test(value)) return value;
+  }
+
+  return String(job.id);
+}
+
+function companyNameFromWebsite(website: string | null | undefined): string | null {
+  if (!website?.trim()) return null;
+  try {
+    const host = new URL(website).hostname.replace(/^www\./i, "");
+    const label = host.split(".")[0];
+    if (!label) return null;
+    return label.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  } catch {
+    return null;
+  }
+}
+
+/** Prisma-safe row for NetworkJob upsert (no display-only or unknown columns). */
+export function toNetworkJobDbRecord(job: TopEchelonNetworkJobRaw) {
+  const mapped = mapTopEchelonNetworkJob(job);
+  const companyName =
+    mapped.companyName ??
+    mapped.agencyName ??
+    companyNameFromWebsite(mapped.agencyWebsite);
+
+  return {
+    externalId: resolveNetworkJobExternalId(job),
+    networkId: mapped.networkId,
+    positionTitle: mapped.positionTitle,
+    companyName,
+    city: mapped.city,
+    state: mapped.state,
+    location: mapped.location,
+    minimumCompensation: coerceCompensationInt(mapped.minimumCompensation),
+    maximumCompensation: coerceCompensationInt(mapped.maximumCompensation),
+    fee: mapped.fee,
+    feeType: mapped.feeType,
+    jobType: mapped.jobType,
+    remoteOption: mapped.remoteOption,
+    description: mapped.description,
+    comments: mapped.comments,
+    networkStatus: mapped.networkStatus,
+    recruiterName: mapped.recruiterName,
+    recruiterId: mapped.recruiterId,
+    topEchelonUrl: mapped.topEchelonUrl,
+    sharedAt: mapped.sharedAt,
+    raw: mapped.raw,
+    syncedAt: mapped.syncedAt,
+  };
+}
+
 export function mapTopEchelonNetworkJob(job: TopEchelonNetworkJobRaw) {
   const city = job.city ?? null;
   const state = stateAbbrev(job.state);
@@ -33,7 +104,7 @@ export function mapTopEchelonNetworkJob(job: TopEchelonNetworkJobRaw) {
   const minComp = (job.minimumCompensation ?? job.minimum_compensation) as number | null | undefined;
   const maxComp = (job.maximumCompensation ?? job.maximum_compensation) as number | null | undefined;
   const feeType = (job.feeType ?? job.fee_type ?? null) as string | null;
-  const externalId = String(job.id);
+  const externalId = resolveNetworkJobExternalId(job);
   const descriptionHtml = (job.description ?? null) as string | null;
   const commentsHtml = (job.comments ?? null) as string | null;
 

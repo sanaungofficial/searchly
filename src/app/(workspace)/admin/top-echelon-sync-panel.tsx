@@ -165,7 +165,7 @@ export function TopEchelonSyncPanel() {
 
       setAwaitingMfa(false);
       setLastSummary(data.summary ?? null);
-      setMessage(`Synced ${data.summary?.upserted ?? 0} network jobs. Check Opportunities → In-Network.`);
+      setMessage(`Synced ${data.summary?.upserted ?? 0} network jobs. Check Opportunities → Network.`);
       setMfaCode("");
       await loadStatus();
     } catch {

@@ -7,7 +7,7 @@ import {
   TopEchelonMfaRequiredError,
   TopEchelonSessionExpiredError,
 } from "@/lib/topechelon/errors";
-import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
+import { mapTopEchelonNetworkJob, toNetworkJobDbRecord } from "@/lib/topechelon/map-network-job";
 import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
 import {
   loadTopEchelonSession,
@@ -110,15 +110,20 @@ export async function runTopEchelonSync(
 
   const jobs = options.listOnly
     ? listJobs
-    : await mapWithConcurrency(listJobs, DETAIL_CONCURRENCY, async (row) =>
-        client.fetchNetworkJobDetail(String(row.id)).catch(() => row)
-      );
+    : await mapWithConcurrency(listJobs, DETAIL_CONCURRENCY, async (row) => {
+        const detail = await client.fetchNetworkJobDetail(String(row.id)).catch(() => row);
+        return {
+          ...detail,
+          id: row.id,
+          network_id: detail.network_id ?? detail.networkId ?? row.network_id ?? row.networkId,
+          networkId: detail.networkId ?? detail.network_id ?? row.networkId ?? row.network_id,
+        };
+      });
 
   let upserted = 0;
 
   for (const job of jobs) {
-    const mapped = mapTopEchelonNetworkJob(job);
-    const { _display: _ignored, ...dbFields } = mapped;
+    const dbFields = toNetworkJobDbRecord(job);
     const recruiterRecordId = await upsertNetworkRecruiter(job);
 
     await prisma.networkJob.upsert({

@@ -15,12 +15,19 @@ import {
 import { cachedJobToMeta } from "@/lib/cached-job";
 import {
   filterRoleListings,
-  mergeRoleListings,
   roleListingToVectorMatchedJob,
+  vectorJobToRoleListing,
   type RoleListing,
-  type StageFilter,
 } from "@/lib/role-listings";
-import { STAGE_COLORS, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
+import { normalizeJobUrl } from "@/lib/cached-job";
+import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
+import {
+  describeActiveFilters,
+  HIREBASE_FILTER_COUNTRIES,
+  HIREBASE_FILTER_US_STATES,
+  locationFieldsFromProfileString,
+} from "@/lib/recommended-filter-utils";
+import type { KanbanCard } from "./workspace-data";
 import {
   filtersCacheKey,
   isCacheFresh,
@@ -53,15 +60,63 @@ type JobsApiResponse = {
   snapshotDate?: string;
   scoreFloor?: number;
   retryAfterMs?: number;
+  filtersApplied?: VectorSearchFilters;
+  effectiveFilters?: VectorSearchFilters;
 };
 
 const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
 
-const COMMON_COUNTRIES = ["United States", "Canada", "United Kingdom", "Germany", "France", "Australia", "India", "Singapore"];
-
-const US_STATES = [
-  "California", "New York", "Texas", "Washington", "Massachusetts", "Illinois", "Colorado", "Georgia", "Florida", "Virginia",
-];
+function ActiveFiltersBar({
+  labels,
+  onClear,
+}: {
+  labels: string[];
+  onClear?: () => void;
+}) {
+  if (!labels.length) return null;
+  return (
+    <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px", letterSpacing: "0.04em" }}>
+        Active search filters
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: onClear ? 8 : 0 }}>
+        {labels.map((label) => (
+          <span
+            key={label}
+            style={{
+              padding: "3px 8px",
+              border: border.line,
+              fontFamily: fontSans,
+              fontSize: T.label,
+              color: color.ink,
+              background: surface.card,
+            }}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      {onClear && (
+        <button
+          type="button"
+          onClick={onClear}
+          style={{
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            fontFamily: fontSans,
+            fontSize: T.label,
+            color: color.muted,
+            textDecoration: "underline",
+            cursor: "pointer",
+          }}
+        >
+          Clear search filters
+        </button>
+      )}
+    </div>
+  );
+}
 
 function MatchScoreBadge({ score, label }: { score: number; label: string }) {
   const style = matchScoreStyle(score);
@@ -351,7 +406,7 @@ function JobFiltersGrid({
           value={form.locationRegion}
           onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
           listId="recommended-region-suggestions"
-          options={US_STATES}
+          options={HIREBASE_FILTER_US_STATES}
           placeholder="California"
         />
       </FilterField>
@@ -360,7 +415,7 @@ function JobFiltersGrid({
           value={form.locationCountry}
           onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
           listId="recommended-country-suggestions"
-          options={COMMON_COUNTRIES}
+          options={[...HIREBASE_FILTER_COUNTRIES]}
           placeholder="United States"
         />
       </FilterField>
@@ -479,102 +534,22 @@ export function buildRecommendedProspectCard(
   };
 }
 
-function StageDropdown({
-  stage,
-  onChange,
-}: {
-  stage: KanbanStage;
-  onChange: (s: KanbanStage) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const stageColor = STAGE_COLORS[stage];
-  return (
-    <div style={{ position: "relative", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        style={{
-          padding: "6px 14px",
-          background: surface.card,
-          border: border.line,
-          borderRadius: 0,
-          fontFamily: fontSans,
-          fontSize: T.caption,
-          fontWeight: 600,
-          color: stageColor,
-          cursor: "pointer",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: stageColor, flexShrink: 0 }} />
-        {STAGE_LABELS[stage]} ▾
-      </button>
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              right: 0,
-              marginTop: 4,
-              background: surface.card,
-              border: border.line,
-              boxShadow: "3px 3px 0 rgba(17,17,17,0.06)",
-              zIndex: 100,
-              minWidth: 150,
-            }}
-          >
-            {(["saved", "applied", "interview", "offer", "closed"] as KanbanStage[]).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  onChange(s);
-                  setOpen(false);
-                }}
-                style={{
-                  width: "100%",
-                  padding: "8px 14px",
-                  background: s === stage ? `${STAGE_COLORS[s]}10` : "transparent",
-                  border: "none",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: s === stage ? 600 : 500,
-                  color: s === stage ? STAGE_COLORS[s] : color.ink,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                {STAGE_LABELS[s]}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
+function recommendedDedupeKey(job: VectorMatchedJob): string {
+  return normalizeJobUrl(job.url) ?? `${job.companyName.trim()}:${job.title.trim()}`.toLowerCase();
 }
 
-function UnifiedRoleResultsList({
+function RecommendedResultsList({
   listings,
   savingKey,
   onOpenRecommended,
-  onOpenPipeline,
   onSaveJob,
-  onChangeStage,
   setSavingKey,
   emptyMessage,
 }: {
   listings: RoleListing[];
   savingKey: string | null;
   onOpenRecommended: (job: VectorMatchedJob) => void;
-  onOpenPipeline: (cardId: number) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  onChangeStage: (cardId: number, stage: KanbanStage) => void;
   setSavingKey: (key: string | null) => void;
   emptyMessage: string;
 }) {
@@ -589,29 +564,19 @@ function UnifiedRoleResultsList({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {listings.map((row) => {
-        const inPipeline = row.pipelineCardId != null;
-        const matchJob = row.matchScore != null && row.matchScore > 0 ? roleListingToVectorMatchedJob(row) : null;
-        const score = matchScoreStyle(row.matchScore ?? 0);
-        const borderColor = inPipeline && row.stage ? STAGE_COLORS[row.stage] : score.accent;
-
-        const handleOpen = () => {
-          if (inPipeline && row.pipelineCardId != null) {
-            onOpenPipeline(row.pipelineCardId);
-          } else {
-            onOpenRecommended(roleListingToVectorMatchedJob(row));
-          }
-        };
+        const matchJob = roleListingToVectorMatchedJob(row);
+        const score = matchScoreStyle(matchJob.matchScore);
 
         return (
-          <ScoutBox key={row.dedupeKey} stack padding={18} style={{ borderTop: `2px solid ${borderColor}` }}>
+          <ScoutBox key={row.dedupeKey} stack padding={18} style={{ borderTop: `2px solid ${score.accent}` }}>
             <div
               role="button"
               tabIndex={0}
-              onClick={handleOpen}
+              onClick={() => onOpenRecommended(matchJob)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  handleOpen();
+                  onOpenRecommended(matchJob);
                 }
               }}
               style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
@@ -624,95 +589,66 @@ function UnifiedRoleResultsList({
                     <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 8px" }}>
                       {row.companyName}
                       {row.location ? ` · ${row.location}` : ""}
-                      {inPipeline && row.days != null ? ` · ${row.days === 0 ? "Today" : `${row.days}d ago`}` : ""}
                     </p>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {inPipeline && row.stage ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "2px 8px",
+                          border: border.line,
+                          fontFamily: fontSans,
+                          fontSize: T.label,
+                          fontWeight: 600,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: score.accent,
+                          background: score.bgSubtle,
+                        }}
+                      >
+                        Recommended
+                      </span>
+                      {row.isTrackedCompany && (
                         <span
                           style={{
                             display: "inline-block",
                             padding: "2px 8px",
-                            border: border.line,
+                            border: border.lineStrong,
                             fontFamily: fontSans,
                             fontSize: T.label,
                             fontWeight: 600,
                             letterSpacing: "0.06em",
                             textTransform: "uppercase",
-                            color: STAGE_COLORS[row.stage],
-                            background: `${STAGE_COLORS[row.stage]}14`,
+                            color: color.forest,
+                            background: "rgba(26,58,47,0.08)",
                           }}
                         >
-                          {STAGE_LABELS[row.stage]}
+                          Watchlist
                         </span>
-                      ) : (
-                        <>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 8px",
-                              border: border.line,
-                              fontFamily: fontSans,
-                              fontSize: T.label,
-                              fontWeight: 600,
-                              letterSpacing: "0.06em",
-                              textTransform: "uppercase",
-                              color: score.accent,
-                              background: score.bgSubtle,
-                            }}
-                          >
-                            Recommended
-                          </span>
-                          {row.isTrackedCompany && (
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "2px 8px",
-                                border: border.lineStrong,
-                                fontFamily: fontSans,
-                                fontSize: T.label,
-                                fontWeight: 600,
-                                letterSpacing: "0.06em",
-                                textTransform: "uppercase",
-                                color: color.forest,
-                                background: "rgba(26,58,47,0.08)",
-                              }}
-                            >
-                              Watchlist
-                            </span>
-                          )}
-                        </>
                       )}
                     </div>
                   </div>
-                  {matchJob && matchJob.matchScore > 0 && (
+                  {matchJob.matchScore > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                       <ScoreExplainerPopover variant="vector-match" align="right" />
                       <MatchScoreBadge score={matchJob.matchScore} label={matchJob.matchLabel} />
                     </div>
                   )}
                 </div>
-                {matchJob && matchJob.matchScore > 0 && <MatchFitCallout job={matchJob} />}
+                {matchJob.matchScore > 0 && <MatchFitCallout job={matchJob} />}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap", alignItems: "center" }}>
-              {inPipeline && row.pipelineCardId != null && row.stage ? (
-                <StageDropdown
-                  stage={row.stage}
-                  onChange={(s) => onChangeStage(row.pipelineCardId!, s)}
-                />
-              ) : (
-                <ScoutPrimaryBtn
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const saveKey = row.dedupeKey;
-                    setSavingKey(saveKey);
-                    onSaveJob(roleListingToVectorMatchedJob(row)).finally(() => setSavingKey(null));
-                  }}
-                  disabled={savingKey === row.dedupeKey}
-                >
-                  {savingKey === row.dedupeKey ? "Saving…" : "Save to pipeline"}
-                </ScoutPrimaryBtn>
-              )}
+              <ScoutPrimaryBtn
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const saveKey = row.dedupeKey;
+                  setSavingKey(saveKey);
+                  onSaveJob(matchJob).finally(() => setSavingKey(null));
+                }}
+                disabled={savingKey === row.dedupeKey}
+              >
+                {savingKey === row.dedupeKey ? "Saving…" : "Save to pipeline"}
+              </ScoutPrimaryBtn>
               {row.url && (
                 <a
                   href={row.url}
@@ -734,22 +670,20 @@ function UnifiedRoleResultsList({
 
 export function PipelineRecommendedSection({
   pipelineCards,
-  stageFilter,
-  onStageFilterChange,
   onOpenJob,
-  onOpenPipeline,
   onSaveJob,
-  onChangeStage,
   actingUserId,
+  locationPrefs,
+  preferencesRefreshKey = 0,
 }: {
+  /** Used only to hide roles already saved to the pipeline. */
   pipelineCards: KanbanCard[];
-  stageFilter: StageFilter;
-  onStageFilterChange: (filter: StageFilter) => void;
   onOpenJob: (job: VectorMatchedJob) => void;
-  onOpenPipeline: (cardId: number) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
-  onChangeStage: (cardId: number, stage: KanbanStage) => void;
   actingUserId?: string | null;
+  locationPrefs?: RecommendationPreferencesState | null;
+  /** Increment to refetch after inline preference changes. */
+  preferencesRefreshKey?: number;
 }) {
   const isMobile = useIsMobile();
   const [form, setForm] = useState(() => ({
@@ -771,11 +705,16 @@ export function PipelineRecommendedSection({
   const [snapshotMeta, setSnapshotMeta] = useState<{ fromSnapshot: boolean; generatedAt?: string } | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
+  const [activeFilterLabels, setActiveFilterLabels] = useState<string[]>([]);
+  const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
+  const [defaultsLoaded, setDefaultsLoaded] = useState(false);
 
   const mountedRef = useRef(false);
   const fetchGenRef = useRef(0);
+  const defaultFormRef = useRef<FilterForm | null>(null);
 
   const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
+  const hasSearchFilters = activeFilterLabels.length > 0;
 
   const fetchRecommended = useCallback(
     async (filtersForm: FilterForm, options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
@@ -822,6 +761,11 @@ export function PipelineRecommendedSection({
           const msg = isEmbedNoise ? null : data.hint ? `${rawMsg} ${data.hint}` : rawMsg;
           setError(msg);
           setNotice(null);
+          const applied = data.effectiveFilters ?? data.filtersApplied;
+          if (applied) {
+            setActiveFilterLabels(describeActiveFilters(applied));
+          }
+          if (msg) setShowFilters(true);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -834,6 +778,8 @@ export function PipelineRecommendedSection({
           setJobs(nextJobs);
           setError(null);
           setNotice(data.notice?.trim() || null);
+          const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
+          setActiveFilterLabels(describeActiveFilters(applied));
           setSnapshotMeta({
             fromSnapshot: data.fromSnapshot === true,
             generatedAt: data.generatedAt,
@@ -863,6 +809,34 @@ export function PipelineRecommendedSection({
   );
 
   useEffect(() => {
+    void fetch("/api/jobs/recommended/defaults")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { filters?: VectorSearchFilters; labels?: string[] } | null) => {
+        if (!data?.filters) {
+          setDefaultsLoaded(true);
+          return;
+        }
+        const base = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
+        defaultFormRef.current = base;
+        setForm((prev) => ({ ...base, semanticQuery: prev.semanticQuery || loadStoredSemanticQuery() }));
+        setProfileSuggestedLabels(data.labels ?? describeActiveFilters(data.filters));
+        setDefaultsLoaded(true);
+      })
+      .catch(() => setDefaultsLoaded(true));
+  }, [actingUserId]);
+
+  useEffect(() => {
+    if (!locationPrefs?.location?.trim()) return;
+    const fields = locationFieldsFromProfileString(locationPrefs.location);
+    setForm((f) => ({
+      ...f,
+      locationCity: fields.city,
+      locationRegion: fields.region,
+      locationCountry: fields.country,
+    }));
+  }, [locationPrefs?.location]);
+
+  useEffect(() => {
     fetch("/api/companies")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Array<{ name?: string }>) => {
@@ -884,15 +858,16 @@ export function PipelineRecommendedSection({
   }, [actingUserId]);
 
   useEffect(() => {
-    if (mountedRef.current) return;
+    if (mountedRef.current || !defaultsLoaded) return;
     mountedRef.current = true;
 
-    const defaultForm: FilterForm = {
+    // Default daily feed: no custom filters sent to the API (profile location is post-filter only).
+    const feedForm: FilterForm = {
       ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
       semanticQuery: "",
     };
-    const defaultFilters = formToFilters(defaultForm, 1);
-    const cacheKey = filtersCacheKey(defaultFilters);
+    const feedFilters = formToFilters(feedForm, 1);
+    const cacheKey = filtersCacheKey(feedFilters);
     const cached = readRecommendedCache(cacheKey);
 
     if (cached?.jobs?.length) {
@@ -900,7 +875,7 @@ export function PipelineRecommendedSection({
       setHasLoadedOnce(true);
       setLoading(false);
       if (isCacheFresh(cached)) return;
-      void fetchRecommended(defaultForm, { background: true, preferCache: true });
+      void fetchRecommended(feedForm, { background: true, preferCache: true });
       return;
     }
 
@@ -912,8 +887,21 @@ export function PipelineRecommendedSection({
       return;
     }
 
-    void fetchRecommended(defaultForm, { preferCache: true });
-  }, [fetchRecommended, actingUserId]);
+    void fetchRecommended(feedForm, { preferCache: true });
+  }, [fetchRecommended, actingUserId, defaultsLoaded]);
+
+  useEffect(() => {
+    if (preferencesRefreshKey <= 0) return;
+    const defaultForm: FilterForm = {
+      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+      semanticQuery: appliedForm.semanticQuery,
+    };
+    void fetchRecommended(defaultForm, {
+      forceRefresh: true,
+      preferCache: false,
+      background: jobs.length > 0,
+    });
+  }, [preferencesRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps -- refresh only on key bump
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
@@ -948,29 +936,49 @@ export function PipelineRecommendedSection({
     });
   };
 
-  const showInitialSkeleton = loading && !hasLoadedOnce && !jobs.length && !pipelineCards.length;
+  const showInitialSkeleton = loading && !hasLoadedOnce && !jobs.length;
 
-  const mergedListings = useMemo(
-    () => mergeRoleListings(jobs, pipelineCards),
-    [jobs, pipelineCards],
+  const savedKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const card of pipelineCards) {
+      const ext = card as KanbanCard & { _url?: string };
+      const key = normalizeJobUrl(ext._url) ?? `${card.company.trim()}:${card.role.trim()}`.toLowerCase();
+      keys.add(key);
+    }
+    return keys;
+  }, [pipelineCards]);
+
+  const clearSearchFilters = () => {
+    const reset: FilterForm = defaultFormRef.current ?? {
+      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+      semanticQuery: "",
+    };
+    setForm({ ...reset, semanticQuery: "" });
+    setAppliedForm(reset);
+    setShowFilters(true);
+    void fetchRecommended(reset, { forceRefresh: true, preferCache: false });
+  };
+
+  const recommendedListings = useMemo(
+    () =>
+      jobs
+        .filter((job) => !savedKeys.has(recommendedDedupeKey(job)))
+        .map((job) => vectorJobToRoleListing(job)),
+    [jobs, savedKeys],
   );
 
   const filteredListings = useMemo(
-    () => filterRoleListings(mergedListings, formToFilters(appliedForm, 1), stageFilter),
-    [mergedListings, appliedForm, stageFilter],
+    () => filterRoleListings(recommendedListings, formToFilters(appliedForm, 1), "all"),
+    [recommendedListings, appliedForm],
   );
 
   const emptyMessage = error
-    ? pipelineCards.length
-      ? "No new recommended roles — your pipeline jobs are shown below."
-      : "Fix the issue above, then refresh."
+    ? "Fix the issue above, then refresh."
     : hasActiveSearch
       ? "No roles matched your search — try different keywords or broaden filters."
-      : stageFilter !== "all"
-        ? `No roles in ${STAGE_LABELS[stageFilter]} match these filters.`
-        : jobs.length === 0 && pipelineCards.length > 0
-          ? "No new recommendations right now — your pipeline jobs are shown below."
-          : "No roles match these filters — try broadening filters, add jobs from URLs, or refresh on Companies.";
+      : recommendedListings.length === 0 && jobs.length > 0
+        ? "You have saved all current recommendations — check back after the daily refresh."
+        : "No recommendations right now — add target roles or a resume under Profile, then refresh.";
 
   return (
     <div>
@@ -981,7 +989,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles matched to your profile from Hirebase — watchlist employers rank first. Refreshed daily; use Refresh for a live pull (rate-limited).
+              Fresh roles matched to your profile from Hirebase — remote and local to your area. Save any role to track it in your pipeline.
             </p>
             {snapshotMeta?.generatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
@@ -1019,9 +1027,42 @@ export function PipelineRecommendedSection({
           />
         </FilterField>
 
-        {showFilters && (
-          <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} trackedCompanyNames={trackedCompanyNames} />
+        {showFilters && profileSuggestedLabels.length > 0 && !hasSearchFilters && (
+          <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: "0 0 8px" }}>
+              Suggested from your profile (click Apply filters to use)
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {profileSuggestedLabels.map((label) => (
+                <span
+                  key={label}
+                  style={{
+                    padding: "3px 8px",
+                    border: border.line,
+                    fontFamily: fontSans,
+                    fontSize: T.label,
+                    color: color.muted,
+                    background: surface.card,
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
+
+        {showFilters && (
+          <>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "12px 0 0", lineHeight: 1.5 }}>
+              These are the same Hirebase filters used on the backend — adjust city, state, country, work arrangement, and more, then Apply.
+              Match preferences (top) control remote/relocation scope on the default feed.
+            </p>
+            <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} trackedCompanyNames={trackedCompanyNames} />
+          </>
+        )}
+
+        <ActiveFiltersBar labels={activeFilterLabels} onClear={hasSearchFilters ? clearSearchFilters : undefined} />
 
         {error && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
@@ -1041,36 +1082,6 @@ export function PipelineRecommendedSection({
             Updating recommendations…
           </p>
         )}
-
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 16, paddingTop: 14, borderTop: border.line }}>
-          <span style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, alignSelf: "center", marginRight: 4 }}>
-            Stage
-          </span>
-          {(
-            [
-              ["all", "All roles"],
-              ["saved", STAGE_LABELS.saved],
-              ["applied", STAGE_LABELS.applied],
-              ["interview", STAGE_LABELS.interview],
-              ["offer", STAGE_LABELS.offer],
-              ["closed", STAGE_LABELS.closed],
-            ] as [StageFilter, string][]
-          ).map(([id, label]) => {
-            const active = stageFilter === id;
-            const count =
-              id === "all"
-                ? mergedListings.length
-                : pipelineCards.filter((c) => c.stage === id).length;
-            return (
-              <ChipToggle
-                key={id}
-                label={count > 0 ? `${label} (${count})` : label}
-                active={active}
-                onClick={() => onStageFilterChange(id)}
-              />
-            );
-          })}
-        </div>
       </ScoutBox>
 
       {showInitialSkeleton && (
@@ -1078,13 +1089,11 @@ export function PipelineRecommendedSection({
       )}
 
       {!showInitialSkeleton && (
-        <UnifiedRoleResultsList
+        <RecommendedResultsList
           listings={filteredListings}
           savingKey={savingKey}
           onOpenRecommended={onOpenJob}
-          onOpenPipeline={onOpenPipeline}
           onSaveJob={onSaveJob}
-          onChangeStage={onChangeStage}
           setSavingKey={setSavingKey}
           emptyMessage={emptyMessage}
         />

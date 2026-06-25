@@ -127,7 +127,7 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
 }
 
 export type ProfileLocation = {
-  page: "about" | "dreamrole" | "learning" | "assets" | "preferences" | "linkedin";
+  page: "about" | "dreamrole" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
   aboutSection?: AboutSectionSlug;
   assetId?: string;
 };
@@ -137,6 +137,7 @@ export function parseProfileLocation(pathname: string): ProfileLocation {
   if (pathname === "/profile/learning-path") return { page: "learning" };
   if (pathname === "/profile/preferences") return { page: "preferences" };
   if (pathname === "/profile/linkedin") return { page: "linkedin" };
+  if (pathname === "/profile/career-strategy") return { page: "strategy" };
 
   if (pathname.startsWith("/profile/assets/") && pathname !== "/profile/assets") {
     const assetId = decodeURIComponent(pathname.slice("/profile/assets/".length).split("/")[0] ?? "");

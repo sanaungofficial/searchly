@@ -9,6 +9,7 @@ export const FREE_DAILY_LIMITS: Record<PlanCreditFeature, number | null> = {
   SCOUT: 4,
   INSIDER: 2,
   READBACK: 2,
+  STRATEGY: 2,
 };
 
 function todayKey() {
@@ -120,6 +121,7 @@ export async function getAllFeatureCredits(userId: string, unlimited: boolean) {
     "SCOUT",
     "INSIDER",
     "READBACK",
+    "STRATEGY",
   ];
   return Promise.all(features.map((f) => getFeatureCreditStatus(userId, f, unlimited)));
 }
@@ -132,4 +134,5 @@ export const ROUTE_FEATURE_MAP = {
   scout: "SCOUT" as PlanCreditFeature,
   insider: "INSIDER" as PlanCreditFeature,
   readback: "READBACK" as PlanCreditFeature,
+  strategy: "STRATEGY" as PlanCreditFeature,
 };
