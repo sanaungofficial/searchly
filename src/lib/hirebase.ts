@@ -1,6 +1,7 @@
 import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
+import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
@@ -13,19 +14,26 @@ type HirebaseCompanyData = {
   size_range?: { min?: number; max?: number } | null;
   industries?: string[];
   subindustries?: string[];
+  services?: string[];
+  type?: string | null;
+  is_recruiting_agency?: boolean | null;
+  is_3rd_party_agency?: boolean | null;
 };
 
 export type HirebaseJob = {
   _id?: string;
   job_title?: string;
+  job_title_raw?: string;
   title?: string;
   application_link?: string;
   job_categories?: string[];
   locations?: Array<{ city?: string; region?: string; country?: string }>;
   location_type?: string;
+  location_raw?: string | null;
   company_name?: string;
   company_slug?: string;
   company_link?: string;
+  company_logo?: string | null;
   job_board?: string;
   job_board_link?: string;
   job_slug?: string;
@@ -34,7 +42,7 @@ export type HirebaseJob = {
   job_type?: string | null;
   experience_level?: string | null;
   yoe_range?: { min?: number; max?: number } | null;
-  salary_range?: { min?: number; max?: number; currency?: string } | null;
+  salary_range?: { min?: number; max?: number; currency?: string; period?: string } | null;
   requirements_summary?: string | null;
   skills?: string[];
   technologies?: string[];
@@ -43,6 +51,9 @@ export type HirebaseJob = {
   team?: string | null;
   date_posted?: string | null;
   visa_sponsored?: boolean | null;
+  offers_equity?: boolean | null;
+  recruiter_agency?: boolean | null;
+  language?: string | null;
   company_data?: HirebaseCompanyData | null;
 };
 
@@ -214,6 +225,8 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
       ? summaryParagraphFromText(description!)
       : requirementsSummary ?? (description ? description.slice(0, 420) : null),
     companySummary: job.company_data?.description_summary?.trim() || null,
+    industries: job.company_data?.industries?.length ? job.company_data.industries : undefined,
+    subindustries: job.company_data?.subindustries?.length ? job.company_data.subindustries : undefined,
     jobType: job.job_type ?? null,
     remote: remoteFromLocationType(job.location_type),
     seniority: job.experience_level ?? null,
@@ -703,8 +716,10 @@ function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
 export type HirebaseVSearchInput = VectorSearchFilters & {
   /** Hirebase resume embed artifact from onboarding / resume upload. */
   artifactId: string;
-  /** Optional natural-language focus from the Recommended search box. */
+  /** Optional natural-language focus — omit for pure resume matching. */
   query?: string;
+  /** Hirebase allows up to 100/page; we fetch extra when post-filtering to tracked companies. */
+  fetchLimit?: number;
 };
 
 type HirebaseVSearchResponse = PaginatedJobs;
@@ -716,7 +731,7 @@ function assignIfPresent(body: Record<string, unknown>, key: string, value: unkn
   body[key] = value;
 }
 
-/** Resume-based job search via `/v2/jobs/vsearch` (search_type=resume + optional query). */
+/** Resume-based job search via `POST /v2/jobs/vsearch` (`search_type=resume`, `artifact_id` required). */
 export async function fetchHirebaseVectorJobs(
   input: HirebaseVSearchInput
 ): Promise<{
@@ -735,16 +750,20 @@ export async function fetchHirebaseVectorJobs(
 
   const optionalQuery = input.query?.trim() ? trimVSearchQuery(input.query.trim()) : undefined;
 
-  const limit = Math.max(1, Math.min(input.limit ?? 20, 20));
   const page = Math.max(1, input.page ?? 1);
+  const responseLimit = Math.max(1, Math.min(input.limit ?? 20, VECTOR_SEARCH_RESULTS_MAX));
+  const fetchLimit = Math.max(
+    responseLimit,
+    Math.min(input.fetchLimit ?? responseLimit, 100),
+  );
 
   const body: Record<string, unknown> = {
     search_type: "resume",
     artifact_id: artifactId,
-    limit,
+    limit: fetchLimit,
     page,
     accuracy: input.accuracy ?? 0.35,
-    top_k: input.topK ?? limit,
+    top_k: input.topK ?? fetchLimit,
   };
 
   if (optionalQuery) body.query = optionalQuery;
@@ -786,7 +805,7 @@ export async function fetchHirebaseVectorJobs(
     signal: AbortSignal.timeout(60000),
   });
 
-  const rawJobs = dedupeHirebaseJobs(data.jobs ?? []);
+  const rawJobs = dedupeHirebaseJobs(data.jobs ?? []).slice(0, responseLimit);
   const jobs = rawJobs.map(mapHirebaseJob);
   const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
 
@@ -796,7 +815,7 @@ export async function fetchHirebaseVectorJobs(
     companyNames,
     totalCount: data.total_count ?? jobs.length,
     page: data.page ?? page,
-    limit: data.limit ?? limit,
+    limit: responseLimit,
     totalPages: data.total_pages ?? 1,
   };
 }

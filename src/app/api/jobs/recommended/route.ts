@@ -2,11 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { parseVectorSearchFilters } from "@/lib/jobs-search-filters";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
-import {
-  fetchRecommendedFromTrackedCompanies,
-  fetchSemanticSearchOnTrackedCompanies,
-} from "@/lib/recommended-jobs-fallback";
+import { fetchRecommendedViaResumeVSearch } from "@/lib/recommended-jobs-fallback";
 import { profileTextForMatchReasons, trimVSearchQuery } from "@/lib/profile-vsearch-query";
+import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
@@ -43,7 +41,7 @@ async function handleRecommended(request: Request) {
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
-  const { filters, preferCache, forceRefresh } = await parseRecommendedFilters(request);
+  const { filters } = await parseRecommendedFilters(request);
   const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
   const searchFilters = semanticQuery ? { ...filters, semanticQuery } : filters;
 
@@ -61,74 +59,56 @@ async function handleRecommended(request: Request) {
     priorities: profile?.priorities ?? [],
     employmentStatus: profile?.employmentStatus,
     jobTimeline: profile?.jobTimeline,
-    targetSalary: profile?.targetSalary,
+    targetSalary: typeof profile?.targetSalary === "number" ? profile.targetSalary : null,
   });
 
+  const artifact = await ensureHirebaseArtifactForUser(dbUser.id);
+  if (!artifact.artifactId) {
+    return NextResponse.json(
+      {
+        error:
+          artifact.error ??
+          "Upload a resume first — we need a Hirebase embed artifact to match jobs to your background.",
+        needsResume: true,
+        needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
+      },
+      { status: 404 },
+    );
+  }
+
   try {
-    let matchMode: "company_roles" | "semantic_scoped" | "semantic_global" = "company_roles";
-    let companyCount = 0;
-    let trackedWithMatches = 0;
-    let needsCompanies = false;
-
-    if (semanticQuery) {
-      const searchResult = await fetchSemanticSearchOnTrackedCompanies({
-        userId: dbUser.id,
-        profileTargetRoles: targetRoles,
-        query: semanticQuery,
-        filters: searchFilters,
-      });
-      matchMode = searchResult.scoped ? "semantic_scoped" : "semantic_global";
-
-      if (!searchResult.sources.length) {
-        return NextResponse.json(
-          {
-            error: searchResult.scoped
-              ? "No jobs matched your search at your tracked companies. Try different keywords or track more companies."
-              : "No jobs matched your search. Try a shorter phrase.",
-          },
-          { status: 404 },
-        );
-      }
-
-      const jobs = await enrichRecommendedSources(searchResult.sources, resumeText, { heuristicOnly: true });
-      return NextResponse.json({
-        jobs,
-        totalCount: jobs.length,
-        page: 1,
-        limit: VECTOR_SEARCH_RESULTS_MAX,
-        totalPages: 1,
-        matchMode,
-        filtersApplied: searchFilters,
-      });
-    }
-
-    const result = await fetchRecommendedFromTrackedCompanies({
+    const result = await fetchRecommendedViaResumeVSearch({
       userId: dbUser.id,
+      artifactId: artifact.artifactId,
       profileTargetRoles: targetRoles,
       filters: searchFilters,
+      semanticQuery: semanticQuery || undefined,
       maxJobs: VECTOR_SEARCH_RESULTS_MAX,
-      preferCache: preferCache && !forceRefresh,
     });
 
-    companyCount = result.companyCount;
-    trackedWithMatches = result.trackedWithMatches;
-    needsCompanies = result.companyCount === 0;
+    const needsCompanies = result.companyCount === 0;
 
     if (!result.sources.length) {
       return NextResponse.json(
         {
           error: needsCompanies
             ? "Track companies on the Companies page to see recommended roles."
-            : "No matching roles with these filters — try broadening filters or refresh matching roles on Companies.",
+            : semanticQuery
+              ? "No resume-matched roles at your tracked companies for this search — try different keywords or filters."
+              : "No resume-matched roles at your tracked companies — try broadening filters or track more companies.",
           needsCompanies,
           needsProfile: targetRoles.length === 0 && !filters.jobTitles?.length,
-          companyCount,
+          needsResume: false,
+          companyCount: result.companyCount,
+          artifactReEmbedded: artifact.reEmbedded,
         },
         { status: 404 },
       );
     }
 
-    const jobs = await enrichRecommendedSources(result.sources, resumeText, { heuristicOnly: true });
+    const jobs = await enrichRecommendedSources(result.sources, resumeText, {
+      heuristicOnly: !process.env.ANTHROPIC_API_KEY,
+    });
 
     return NextResponse.json({
       jobs,
@@ -136,10 +116,12 @@ async function handleRecommended(request: Request) {
       page: 1,
       limit: VECTOR_SEARCH_RESULTS_MAX,
       totalPages: 1,
-      matchMode,
-      companyCount,
-      trackedWithMatches,
+      matchMode: "resume" as const,
+      companyCount: result.companyCount,
+      trackedWithMatches: result.trackedWithMatches,
       filtersApplied: searchFilters,
+      artifactReEmbedded: artifact.reEmbedded,
+      resumeVSearch: true,
     });
   } catch (err) {
     const msg = formatApiErrorMessage(err, "Could not load recommended jobs.");
@@ -147,7 +129,7 @@ async function handleRecommended(request: Request) {
   }
 }
 
-/** Matching roles at tracked companies — optional keyword search in the same endpoint. */
+/** Resume-matched roles at tracked companies via Hirebase `/v2/jobs/vsearch`. */
 export async function GET(request: Request) {
   return handleRecommended(request);
 }

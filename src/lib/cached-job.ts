@@ -22,6 +22,8 @@ export type CachedJob = {
   benefits?: string[];
   requiredQualifications?: string[];
   tags?: string[];
+  industries?: string[];
+  subindustries?: string[];
   datePosted?: string | null;
   team?: string | null;
   educationLevel?: string | null;
