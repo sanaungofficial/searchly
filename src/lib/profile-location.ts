@@ -136,30 +136,13 @@ export function relocationScopeFromPriorities(priorities: string[]): RelocationS
   return "local";
 }
 
-export function profileLocationToHirebaseFilters(input: {
+export function profileLocationToHirebaseFilters(_input: {
   profileLocation?: string | null;
   priorities?: string[];
 }): HirebaseLocationFilter[] {
-  const parsed = parseProfileLocationString(input.profileLocation);
-  if (!parsed) return [];
-
-  const scope = relocationScopeFromPriorities(input.priorities ?? []);
-  if (scope === "international") return [];
-
-  if (scope === "domestic") {
-    if (parsed.country) return [{ country: parsed.country }];
-    if (parsed.region && US_COUNTRY_ALIASES.has(normalizeToken(parsed.country ?? "United States"))) {
-      return [{ country: "United States" }];
-    }
-    return parsed.region ? [{ region: parsed.region, country: parsed.country ?? "United States" }] : [];
-  }
-
-  // Local — bias search toward home region without excluding remote (post-filter keeps remote).
-  const filter: HirebaseLocationFilter = {};
-  if (parsed.city) filter.city = parsed.city;
-  if (parsed.region) filter.region = parsed.region;
-  if (parsed.country) filter.country = parsed.country;
-  return Object.keys(filter).length ? [filter] : [];
+  // Location preference is enforced in post-filter only — city/region on the Hirebase
+  // API is too strict and often returns zero matches before we can rank results.
+  return [];
 }
 
 function jobLocationParts(cached: CachedJob, raw?: HirebaseJob): ParsedProfileLocation {

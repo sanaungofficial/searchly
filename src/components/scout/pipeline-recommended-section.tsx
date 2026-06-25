@@ -20,8 +20,13 @@ import {
   type RoleListing,
 } from "@/lib/role-listings";
 import { normalizeJobUrl } from "@/lib/cached-job";
-import { jobMatchesLocationPreference } from "@/lib/profile-location";
 import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
+import {
+  describeActiveFilters,
+  HIREBASE_FILTER_COUNTRIES,
+  HIREBASE_FILTER_US_STATES,
+  locationFieldsFromProfileString,
+} from "@/lib/recommended-filter-utils";
 import type { KanbanCard } from "./workspace-data";
 import {
   filtersCacheKey,
@@ -55,15 +60,63 @@ type JobsApiResponse = {
   snapshotDate?: string;
   scoreFloor?: number;
   retryAfterMs?: number;
+  filtersApplied?: VectorSearchFilters;
+  effectiveFilters?: VectorSearchFilters;
 };
 
 const SEMANTIC_QUERY_STORAGE_KEY = "kimchi_pipeline_semantic_query";
 
-const COMMON_COUNTRIES = ["United States", "Canada", "United Kingdom", "Germany", "France", "Australia", "India", "Singapore"];
-
-const US_STATES = [
-  "California", "New York", "Texas", "Washington", "Massachusetts", "Illinois", "Colorado", "Georgia", "Florida", "Virginia",
-];
+function ActiveFiltersBar({
+  labels,
+  onClear,
+}: {
+  labels: string[];
+  onClear?: () => void;
+}) {
+  if (!labels.length) return null;
+  return (
+    <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
+      <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px", letterSpacing: "0.04em" }}>
+        Active search filters
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: onClear ? 8 : 0 }}>
+        {labels.map((label) => (
+          <span
+            key={label}
+            style={{
+              padding: "3px 8px",
+              border: border.line,
+              fontFamily: fontSans,
+              fontSize: T.label,
+              color: color.ink,
+              background: surface.card,
+            }}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      {onClear && (
+        <button
+          type="button"
+          onClick={onClear}
+          style={{
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            fontFamily: fontSans,
+            fontSize: T.label,
+            color: color.muted,
+            textDecoration: "underline",
+            cursor: "pointer",
+          }}
+        >
+          Clear search filters
+        </button>
+      )}
+    </div>
+  );
+}
 
 function MatchScoreBadge({ score, label }: { score: number; label: string }) {
   const style = matchScoreStyle(score);
@@ -353,7 +406,7 @@ function JobFiltersGrid({
           value={form.locationRegion}
           onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
           listId="recommended-region-suggestions"
-          options={US_STATES}
+          options={HIREBASE_FILTER_US_STATES}
           placeholder="California"
         />
       </FilterField>
@@ -362,7 +415,7 @@ function JobFiltersGrid({
           value={form.locationCountry}
           onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
           listId="recommended-country-suggestions"
-          options={COMMON_COUNTRIES}
+          options={[...HIREBASE_FILTER_COUNTRIES]}
           placeholder="United States"
         />
       </FilterField>
@@ -652,11 +705,16 @@ export function PipelineRecommendedSection({
   const [snapshotMeta, setSnapshotMeta] = useState<{ fromSnapshot: boolean; generatedAt?: string } | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [trackedCompanyNames, setTrackedCompanyNames] = useState<string[]>([]);
+  const [activeFilterLabels, setActiveFilterLabels] = useState<string[]>([]);
+  const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
+  const [defaultsLoaded, setDefaultsLoaded] = useState(false);
 
   const mountedRef = useRef(false);
   const fetchGenRef = useRef(0);
+  const defaultFormRef = useRef<FilterForm | null>(null);
 
   const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
+  const hasSearchFilters = activeFilterLabels.length > 0;
 
   const fetchRecommended = useCallback(
     async (filtersForm: FilterForm, options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
@@ -703,6 +761,11 @@ export function PipelineRecommendedSection({
           const msg = isEmbedNoise ? null : data.hint ? `${rawMsg} ${data.hint}` : rawMsg;
           setError(msg);
           setNotice(null);
+          const applied = data.effectiveFilters ?? data.filtersApplied;
+          if (applied) {
+            setActiveFilterLabels(describeActiveFilters(applied));
+          }
+          if (msg) setShowFilters(true);
           if (!background) setJobs([]);
           writeRecommendedCache({
             jobs: [],
@@ -715,6 +778,8 @@ export function PipelineRecommendedSection({
           setJobs(nextJobs);
           setError(null);
           setNotice(data.notice?.trim() || null);
+          const applied = data.effectiveFilters ?? data.filtersApplied ?? filters;
+          setActiveFilterLabels(describeActiveFilters(applied));
           setSnapshotMeta({
             fromSnapshot: data.fromSnapshot === true,
             generatedAt: data.generatedAt,
@@ -744,6 +809,34 @@ export function PipelineRecommendedSection({
   );
 
   useEffect(() => {
+    void fetch("/api/jobs/recommended/defaults")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { filters?: VectorSearchFilters; labels?: string[] } | null) => {
+        if (!data?.filters) {
+          setDefaultsLoaded(true);
+          return;
+        }
+        const base = filtersToForm({ ...DEFAULT_VECTOR_SEARCH_FILTERS, ...data.filters });
+        defaultFormRef.current = base;
+        setForm((prev) => ({ ...base, semanticQuery: prev.semanticQuery || loadStoredSemanticQuery() }));
+        setProfileSuggestedLabels(data.labels ?? describeActiveFilters(data.filters));
+        setDefaultsLoaded(true);
+      })
+      .catch(() => setDefaultsLoaded(true));
+  }, [actingUserId]);
+
+  useEffect(() => {
+    if (!locationPrefs?.location?.trim()) return;
+    const fields = locationFieldsFromProfileString(locationPrefs.location);
+    setForm((f) => ({
+      ...f,
+      locationCity: fields.city,
+      locationRegion: fields.region,
+      locationCountry: fields.country,
+    }));
+  }, [locationPrefs?.location]);
+
+  useEffect(() => {
     fetch("/api/companies")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Array<{ name?: string }>) => {
@@ -765,10 +858,10 @@ export function PipelineRecommendedSection({
   }, [actingUserId]);
 
   useEffect(() => {
-    if (mountedRef.current) return;
+    if (mountedRef.current || !defaultsLoaded) return;
     mountedRef.current = true;
 
-    const defaultForm: FilterForm = {
+    const defaultForm: FilterForm = defaultFormRef.current ?? {
       ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
       semanticQuery: "",
     };
@@ -794,7 +887,7 @@ export function PipelineRecommendedSection({
     }
 
     void fetchRecommended(defaultForm, { preferCache: true });
-  }, [fetchRecommended, actingUserId]);
+  }, [fetchRecommended, actingUserId, defaultsLoaded]);
 
   useEffect(() => {
     if (preferencesRefreshKey <= 0) return;
@@ -854,18 +947,24 @@ export function PipelineRecommendedSection({
     return keys;
   }, [pipelineCards]);
 
-  const recommendedListings = useMemo(() => {
-    const profileLocation = locationPrefs?.location?.trim() || null;
-    const priorities = locationPrefs?.priorities ?? [];
+  const clearSearchFilters = () => {
+    const reset: FilterForm = defaultFormRef.current ?? {
+      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+      semanticQuery: "",
+    };
+    setForm({ ...reset, semanticQuery: "" });
+    setAppliedForm(reset);
+    setShowFilters(true);
+    void fetchRecommended(reset, { forceRefresh: true, preferCache: false });
+  };
 
-    return jobs
-      .filter((job) => {
-        if (!profileLocation) return true;
-        return jobMatchesLocationPreference(job, undefined, { profileLocation, priorities });
-      })
-      .filter((job) => !savedKeys.has(recommendedDedupeKey(job)))
-      .map((job) => vectorJobToRoleListing(job));
-  }, [jobs, savedKeys, locationPrefs]);
+  const recommendedListings = useMemo(
+    () =>
+      jobs
+        .filter((job) => !savedKeys.has(recommendedDedupeKey(job)))
+        .map((job) => vectorJobToRoleListing(job)),
+    [jobs, savedKeys],
+  );
 
   const filteredListings = useMemo(
     () => filterRoleListings(recommendedListings, formToFilters(appliedForm, 1), "all"),
@@ -927,9 +1026,42 @@ export function PipelineRecommendedSection({
           />
         </FilterField>
 
-        {showFilters && (
-          <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} trackedCompanyNames={trackedCompanyNames} />
+        {showFilters && profileSuggestedLabels.length > 0 && !hasSearchFilters && (
+          <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: "0 0 8px" }}>
+              Suggested from your profile (click Apply filters to use)
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {profileSuggestedLabels.map((label) => (
+                <span
+                  key={label}
+                  style={{
+                    padding: "3px 8px",
+                    border: border.line,
+                    fontFamily: fontSans,
+                    fontSize: T.label,
+                    color: color.muted,
+                    background: surface.card,
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
+
+        {showFilters && (
+          <>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "12px 0 0", lineHeight: 1.5 }}>
+              These are the same Hirebase filters used on the backend — adjust city, state, country, work arrangement, and more, then Apply.
+              Match preferences (top) control remote/relocation scope on the default feed.
+            </p>
+            <JobFiltersGrid form={form} setForm={setForm} toggleSet={toggleSet} trackedCompanyNames={trackedCompanyNames} />
+          </>
+        )}
+
+        <ActiveFiltersBar labels={activeFilterLabels} onClear={hasSearchFilters ? clearSearchFilters : undefined} />
 
         {error && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
