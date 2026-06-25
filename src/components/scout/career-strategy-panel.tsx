@@ -149,6 +149,16 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       .catch(() => {});
   }, [loadStrategy]);
 
+  async function saveIntakeNotes() {
+    const res = await fetch("/api/ai/career-strategy", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intakeNotes: intakeNotes.trim() }),
+    });
+    const data = await readResponseJson(res);
+    if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Failed to save intake notes"));
+  }
+
   async function handleGenerate() {
     if (!profile.resumeUrl) {
       setError("Upload a resume on the Assets tab first.");
@@ -158,7 +168,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     setError(null);
     try {
       if (intakeNotes.trim()) {
-        await onPatchProfile({ strategyIntakeNotes: intakeNotes.trim() });
+        await saveIntakeNotes();
       }
       const res = await fetch("/api/ai/career-strategy", { method: "POST" });
       const data = await readResponseJson(res);
@@ -206,7 +216,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     setParsing(true);
     setError(null);
     try {
-      await onPatchProfile({ strategyIntakeNotes: intakeNotes.trim() });
+      await saveIntakeNotes();
       const res = await fetch("/api/ai/strategy-intake", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -4,6 +4,7 @@ import { logAiUsage } from "@/lib/ai-cost";
 import { anthropicErrorResponse } from "@/lib/anthropic-errors";
 import { fillIntakePrompt } from "@/lib/career-strategy-context";
 import { parseIntakeJson } from "@/lib/career-strategy";
+import { ensureProfileRow } from "@/lib/profile-write";
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
 
     const quotaError = await requireAiQuota(quotaUser, "STRATEGY");
     if (quotaError) return quotaError;
+
+    await ensureProfileRow(dbUser.id);
 
     const user = await prisma.user.findUnique({
       where: { id: dbUser.id },

@@ -10,7 +10,7 @@ import {
   parseStrategyJson,
   type StrategySourceSnapshot,
 } from "@/lib/career-strategy";
-import { upsertProfileFields } from "@/lib/profile-write";
+import { upsertProfileFields, ensureProfileRow } from "@/lib/profile-write";
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
@@ -102,6 +102,8 @@ export async function POST(request: Request) {
     const acting = await getActingUser(request);
     const { dbUser } = acting;
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    await ensureProfileRow(dbUser.id);
 
     const bundle = await loadProfileBundle(dbUser.id);
     if (!bundle) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
