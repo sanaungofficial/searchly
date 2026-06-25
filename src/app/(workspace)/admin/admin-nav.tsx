@@ -9,6 +9,7 @@ export function AdminNav() {
   const tabs = [
     { label: "Dashboard", href: "/admin" },
     { label: "Clients", href: "/admin/clients" },
+    { label: "My Profile", href: "/admin/profile" },
     { label: "Prompts", href: "/admin/prompts" },
     { label: "Company scans", href: "/admin/company-scans" },
     { label: "Bookings", href: "/admin/bookings" },

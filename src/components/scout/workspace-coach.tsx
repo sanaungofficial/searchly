@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { CoachProfileTab } from "./coach-profile-tab";
 import { ScoutBox } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
@@ -40,30 +41,6 @@ type Client = {
   _count: { jobs: number; tailoredResumes: number };
 };
 
-type CoachProfile = {
-  id: string;
-  displayName: string;
-  email: string | null;
-  headline: string | null;
-  bio: string | null;
-  currentRole: string | null;
-  currentCompany: string | null;
-  location: string | null;
-  linkedinUrl: string | null;
-  lelandUrl: string | null;
-  photoUrl: string | null;
-  firms: string[];
-  schools: string[];
-  specialties: string[];
-  industries: string[];
-  hourlyRate: number | null;
-  category: string | null;
-  calLink: string | null;
-  nylasGrantId?: string | null;
-  nylasSchedulerConfigId?: string | null;
-  nylasSchedulerSlug?: string | null;
-};
-
 const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
   SAVED:        { bg: "rgba(160,152,144,0.12)", color: "#78716c" },
   APPLYING:     { bg: "rgba(37,99,235,0.08)",   color: "#2563eb" },
@@ -73,29 +50,6 @@ const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
   OFFER:        { bg: "rgba(5,150,105,0.1)",    color: "#059669" },
   REJECTED:     { bg: "rgba(220,38,38,0.08)",   color: "#dc2626" },
   WITHDRAWN:    { bg: "rgba(160,152,144,0.1)",  color: "#78716c" },
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  fontSize: 14,
-  background: "#fff",
-  border: "1px solid rgba(26,58,47,0.12)",
-  borderRadius: 0,
-  padding: "9px 12px",
-  outline: "none",
-  fontFamily: fontSans,
-  boxSizing: "border-box",
-  color: "#1a1a1a",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 12,
-  color: "var(--scout-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.8px",
-  fontFamily: fontMono,
-  marginBottom: 5,
 };
 
 function StageBadge({ stage }: { stage: JobStage }) {
@@ -113,237 +67,6 @@ function formatDate(s: string) {
 
 function activeStage(stage: JobStage) {
   return !["REJECTED", "WITHDRAWN", "SAVED"].includes(stage);
-}
-
-function TagInput({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
-  const [input, setInput] = useState("");
-  function add() {
-    const t = input.trim();
-    if (t && !value.includes(t)) onChange([...value, t]);
-    setInput("");
-  }
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-        {value.map((t) => (
-          <span key={t} style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(26,58,47,0.08)", borderRadius: 0, padding: "2px 8px", fontSize: 13, color: "#1a3a2f" }}>
-            {t}
-            <button onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
-          </span>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          placeholder={placeholder ?? "Type and press Enter"}
-          style={{ ...inputStyle, flex: 1 }}
-        />
-        <button onClick={add} style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid rgba(26,58,47,0.15)", background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a3a2f", fontFamily: fontSans }}>Add</button>
-      </div>
-    </div>
-  );
-}
-
-function MyProfileTab() {
-  const [profile, setProfile] = useState<CoachProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState<Partial<CoachProfile>>({});
-  const [nylasStatus, setNylasStatus] = useState<{
-    configured: boolean;
-    connected: boolean;
-    configurationId: string | null;
-  } | null>(null);
-
-  useEffect(() => {
-    fetch("/api/coach/profile")
-      .then((r) => r.json())
-      .then((d) => {
-        setProfile(d);
-        if (d) setForm(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-
-    fetch("/api/nylas/status")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setNylasStatus(d); })
-      .catch(() => {});
-  }, []);
-
-  function field(key: keyof CoachProfile) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm((f) => ({ ...f, [key]: e.target.value }));
-  }
-
-  async function save() {
-    if (!profile) return;
-    setSaving(true);
-    const r = await fetch("/api/coach/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (r.ok) {
-      const updated = await r.json();
-      setProfile(updated);
-      setForm(updated);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    }
-    setSaving(false);
-  }
-
-  if (loading) return <p style={{ color: "var(--scout-muted)", fontSize: 14, padding: "40px 0" }}>Loading…</p>;
-  if (!profile) return (
-    <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: 24 }}>
-      <p style={{ fontSize: 14, color: "var(--scout-muted)" }}>No coach profile found linked to your account. Contact an admin to get set up.</p>
-    </div>
-  );
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 60 }}>
-      {/* Basic info */}
-      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>Basic Info</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Display Name *</label>
-            <input value={form.displayName ?? ""} onChange={field("displayName")} style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Location</label>
-            <input value={form.location ?? ""} onChange={field("location")} placeholder="City, State" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Current Role</label>
-            <input value={form.currentRole ?? ""} onChange={field("currentRole")} style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Current Company</label>
-            <input value={form.currentCompany ?? ""} onChange={field("currentCompany")} style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Hourly Rate ($)</label>
-            <input type="number" value={form.hourlyRate ?? ""} onChange={field("hourlyRate")} placeholder="200" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Photo URL</label>
-            <input value={form.photoUrl ?? ""} onChange={field("photoUrl")} placeholder="https://…" style={inputStyle} />
-          </div>
-        </div>
-      </div>
-
-      {/* Headline & bio */}
-      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>About</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Headline</label>
-            <input value={form.headline ?? ""} onChange={field("headline")} placeholder="One-line description of your coaching" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Bio</label>
-            <textarea
-              value={form.bio ?? ""}
-              onChange={field("bio")}
-              rows={5}
-              placeholder="Tell candidates about your background and what you help with…"
-              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Calendar booking (Nylas) */}
-      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 8 }}>Calendar booking</p>
-        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.6, margin: "0 0 16px" }}>
-          Connect Google or Outlook so seekers can book sessions inside Kimchi. Your external Cal.com link still works as a fallback.
-        </p>
-        {nylasStatus?.connected ? (
-          <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
-            Calendar connected — in-app booking is enabled.
-          </p>
-        ) : nylasStatus?.configured === false ? (
-          <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0 }}>
-            Nylas is not configured on this environment yet.
-          </p>
-        ) : (
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <a
-              href="/api/nylas/connect?provider=google"
-              style={{ padding: "10px 18px", background: color.forest, color: color.gold, textDecoration: "none", fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}
-            >
-              Connect Google Calendar
-            </a>
-            <a
-              href="/api/nylas/connect?provider=microsoft"
-              style={{ padding: "10px 18px", border: "1px solid rgba(26,58,47,0.2)", color: color.forest, textDecoration: "none", fontFamily: fontSans, fontSize: 14, fontWeight: 600, background: "#fff" }}
-            >
-              Connect Outlook
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Links */}
-      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>Links</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <div>
-            <label style={labelStyle}>LinkedIn URL</label>
-            <input value={form.linkedinUrl ?? ""} onChange={field("linkedinUrl")} placeholder="https://linkedin.com/in/…" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Booking link (Cal.com / Calendly)</label>
-            <input value={form.calLink ?? ""} onChange={field("calLink")} placeholder="https://cal.com/your-name" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Leland URL</label>
-            <input value={form.lelandUrl ?? ""} onChange={field("lelandUrl")} placeholder="https://leland.com/…" style={inputStyle} />
-          </div>
-        </div>
-      </div>
-
-      {/* Tags */}
-      <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "20px 24px" }}>
-        <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 16 }}>Background & Expertise</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <label style={labelStyle}>Firms (MBB, Big 4, etc.)</label>
-            <TagInput value={form.firms ?? []} onChange={(v) => setForm((f) => ({ ...f, firms: v }))} placeholder="e.g. McKinsey" />
-          </div>
-          <div>
-            <label style={labelStyle}>Schools</label>
-            <TagInput value={form.schools ?? []} onChange={(v) => setForm((f) => ({ ...f, schools: v }))} placeholder="e.g. Wharton MBA" />
-          </div>
-          <div>
-            <label style={labelStyle}>Specialties</label>
-            <TagInput value={form.specialties ?? []} onChange={(v) => setForm((f) => ({ ...f, specialties: v }))} placeholder="e.g. Interview Prep" />
-          </div>
-          <div>
-            <label style={labelStyle}>Industries</label>
-            <TagInput value={form.industries ?? []} onChange={(v) => setForm((f) => ({ ...f, industries: v }))} placeholder="e.g. Tech" />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          onClick={save}
-          disabled={saving}
-          style={{ padding: "10px 24px", background: saving ? "#d4c9b8" : color.forest, color: color.gold, border: "none", borderRadius: 0, fontSize: 14, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: fontSans }}
-        >
-          {saving ? "Saving…" : "Save Changes"}
-        </button>
-        {saved && <p style={{ fontSize: 13, color: "#2d7a50", fontFamily: fontSans }}>Saved ✓</p>}
-      </div>
-    </div>
-  );
 }
 
 export function WorkspaceCoach() {
@@ -526,7 +249,7 @@ export function WorkspaceCoach() {
       {tabs}
 
       {tab === "profile" ? (
-        <MyProfileTab />
+        <CoachProfileTab />
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
