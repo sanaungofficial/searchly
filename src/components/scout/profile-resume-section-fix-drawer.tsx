@@ -86,6 +86,7 @@ export function ResumeSectionFixDrawer({
   suggestions = [],
   suggestionsLoading = false,
   onApplySuggestion,
+  emptyMessage,
 }: {
   open: boolean;
   sectionId: ResumeSectionId | string | null;
@@ -97,6 +98,7 @@ export function ResumeSectionFixDrawer({
   suggestions?: { id: string; label: string; text: string }[];
   suggestionsLoading?: boolean;
   onApplySuggestion?: (text: string) => void;
+  emptyMessage?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const [activeIssueId, setActiveIssueId] = useState<string>("overall");
@@ -249,7 +251,9 @@ export function ResumeSectionFixDrawer({
             )}
 
             {issues.length === 0 && !suggestionsLoading && suggestions.length === 0 ? (
-              <p style={{ fontSize: 14, color: JR.muted }}>No specific issues for this section yet. Run analysis for tailored feedback.</p>
+              <p style={{ fontSize: 14, color: JR.muted, lineHeight: 1.55 }}>
+                {emptyMessage ?? "No specific issues for this section yet. Run analysis for tailored feedback."}
+              </p>
             ) : (
               issues.map((issue) => {
                 const sev = severityLabel(issue.severity);

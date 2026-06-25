@@ -740,6 +740,7 @@ export function PipelineRecommendedSection({
   onOpenPipeline,
   onSaveJob,
   onChangeStage,
+  actingUserId,
 }: {
   pipelineCards: KanbanCard[];
   stageFilter: StageFilter;
@@ -748,6 +749,7 @@ export function PipelineRecommendedSection({
   onOpenPipeline: (cardId: number) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
   onChangeStage: (cardId: number, stage: KanbanStage) => void;
+  actingUserId?: string | null;
 }) {
   const isMobile = useIsMobile();
   const [form, setForm] = useState(() => ({
@@ -845,9 +847,9 @@ export function PipelineRecommendedSection({
           });
         }
         setHasLoadedOnce(true);
-      } catch {
+      } catch (err) {
         if (gen !== fetchGenRef.current) return;
-        setError("Network error — try again.");
+        setError(formatApiErrorMessage(err, "Could not load recommended jobs — try Refresh."));
         if (!background) setJobs([]);
         setHasLoadedOnce(true);
       } finally {
@@ -870,7 +872,16 @@ export function PipelineRecommendedSection({
       .catch(() => {
         /* optional suggestions */
       });
-  }, []);
+  }, [actingUserId]);
+
+  useEffect(() => {
+    mountedRef.current = false;
+    setJobs([]);
+    setHasLoadedOnce(false);
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+  }, [actingUserId]);
 
   useEffect(() => {
     if (mountedRef.current) return;
@@ -902,7 +913,7 @@ export function PipelineRecommendedSection({
     }
 
     void fetchRecommended(defaultForm, { preferCache: true });
-  }, [fetchRecommended]);
+  }, [fetchRecommended, actingUserId]);
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);

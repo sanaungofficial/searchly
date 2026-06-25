@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
+import type { HirebaseCompanyProfile } from "@/lib/hirebase";
+import type { CompanyEnrichmentCache } from "@/lib/hirebase-company-sync";
 import { fontSans, color, surface, border, type as T } from "@/lib/typography";
 
 function formatEmployeeRange(min?: number | null, max?: number | null): string | null {
@@ -64,16 +67,30 @@ export function CompanyHirebaseProfilePanel({
   companyName,
   website,
   slugHint,
+  trackedId,
+  initialProfile,
+  onEnrichmentSaved,
 }: {
   companyName: string;
   website?: string | null;
   slugHint?: string | null;
+  trackedId?: string | null;
+  initialProfile?: HirebaseCompanyProfile | null;
+  onEnrichmentSaved?: (enrichment: CompanyEnrichmentCache) => void;
 }) {
   const { data, loading } = useHirebaseCompanyProfile({
     companyName,
     website,
     slugHint,
+    trackedId,
+    initialProfile,
   });
+
+  useEffect(() => {
+    if (data?.enrichment && data.cached === false && onEnrichmentSaved) {
+      onEnrichmentSaved(data.enrichment);
+    }
+  }, [data, onEnrichmentSaved]);
 
   const profile = data?.profile;
   const enrichment = data?.enrichment;

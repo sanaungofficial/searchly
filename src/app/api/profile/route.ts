@@ -22,6 +22,7 @@ export async function GET() {
     );
 
     return NextResponse.json({
+      userId: dbUser.id,
       name: dbUser.name || authUser.email.split("@")[0] || "You",
       email: dbUser.email,
       avatarUrl: dbUser.avatarUrl || null,

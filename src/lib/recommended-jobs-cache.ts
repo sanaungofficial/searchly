@@ -1,4 +1,5 @@
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
+import { getActingUserScope } from "@/lib/client-session";
 
 export const RECOMMENDED_CACHE_TTL_MS = 15 * 60 * 1000;
 
@@ -20,7 +21,8 @@ export function filtersCacheKey(filters: VectorSearchFilters): string {
 }
 
 function storageKey(filtersKey: string): string {
-  return `${CACHE_PREFIX}:${filtersKey}`;
+  const scope = typeof window !== "undefined" ? getActingUserScope() : "self";
+  return `${CACHE_PREFIX}:${scope}:${filtersKey}`;
 }
 
 export function readRecommendedCache(filtersKey: string): RecommendedCacheEntry | null {

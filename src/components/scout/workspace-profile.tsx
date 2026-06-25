@@ -55,7 +55,6 @@ import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
-import { CreditsStatusBar } from "./credits-display";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
@@ -466,6 +465,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
                 value={entry.school}
                 orgRef={entry.schoolRef}
                 placeholder="Search schools…"
+                hintLabel="school"
                 showLogo={false}
                 logoSize={40}
                 onChange={(name, ref) => updateSchool(entry.id, name, ref)}
@@ -552,6 +552,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
                   value={entry.company}
                   orgRef={entry.companyRef}
                   placeholder="Search companies…"
+                  hintLabel="company"
                   onChange={(name, ref) => updateCompany(entry.id, name, ref)}
                   inputStyle={{ width: "100%", padding: "8px 12px", fontSize: 14, border: "1px solid #E5DDD0", background: "#FFFDF9" }}
                 />
@@ -2358,9 +2359,9 @@ function CareerPreferencesPanel({ profile, onSave }: {
 type PageTab = "dreamrole" | "about" | "learning" | "assets" | "preferences" | "linkedin";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
-const ABOUT_SECTIONS: AboutSection[] = ["personal", "education", "experience", "skills"];
-const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", education: "Education", experience: "Work experience", skills: "Skills" };
-const ABOUT_NUM: Record<AboutSection, string> = { personal: "01", education: "02", experience: "03", skills: "04" };
+const ABOUT_SECTIONS: AboutSection[] = ["personal", "experience", "education", "skills"];
+const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", experience: "Work experience", education: "Education", skills: "Skills" };
+const ABOUT_NUM: Record<AboutSection, string> = { personal: "01", experience: "02", education: "03", skills: "04" };
 
 function AboutSectionCard({
   section,
@@ -2998,7 +2999,6 @@ export function WorkspaceProfile() {
           <div style={{ paddingBottom: 40 }}>
             {showReadback && (
               <div style={{ marginBottom: isMobile ? 16 : 20 }}>
-                <CreditsStatusBar onUpgrade={openPricing} />
                 <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded />
               </div>
             )}
@@ -3037,20 +3037,20 @@ export function WorkspaceProfile() {
             <div style={{
               flex: 1,
               minWidth: 0,
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              display: "flex",
+              flexDirection: "column",
               gap: 12,
             }}>
             <AboutSectionCard section="personal" stack sectionRef={(el) => { sectionRefs.current.personal = el; }} padding={sectionCardPad}>
               <PersonalTab profile={profile} onSave={handlePersonalSave} />
             </AboutSectionCard>
+            <AboutSectionCard section="experience" sectionRef={(el) => { sectionRefs.current.experience = el; }} padding={sectionCardPad}>
+              <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
+            </AboutSectionCard>
             <AboutSectionCard section="education" sectionRef={(el) => { sectionRefs.current.education = el; }} padding={sectionCardPad}>
               <EducationTab entries={education} onSave={handleEducationSave} />
             </AboutSectionCard>
-            <AboutSectionCard section="experience" gridColumn={isMobile ? undefined : "1 / -1"} sectionRef={(el) => { sectionRefs.current.experience = el; }} padding={sectionCardPad}>
-              <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
-            </AboutSectionCard>
-            <AboutSectionCard section="skills" gridColumn={isMobile ? undefined : "1 / -1"} sectionRef={(el) => { sectionRefs.current.skills = el; }} padding={sectionCardPad}>
+            <AboutSectionCard section="skills" sectionRef={(el) => { sectionRefs.current.skills = el; }} padding={sectionCardPad}>
               <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
             </AboutSectionCard>
             </div>

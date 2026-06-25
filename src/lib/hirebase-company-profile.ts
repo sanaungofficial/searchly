@@ -5,5 +5,6 @@ export type HirebaseCompanyProfileResponse = {
   configured: boolean;
   profile: HirebaseCompanyProfile | null;
   enrichment: CompanyEnrichmentCache | null;
+  cached?: boolean;
   error?: string;
 };

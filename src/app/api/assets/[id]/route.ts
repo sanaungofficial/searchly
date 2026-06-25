@@ -1,26 +1,17 @@
-import { createClient } from "@/utils/supabase/server";
+import { getActingUser } from "@/lib/acting-user";
+import { getOwnedAssetForActingUser } from "@/lib/owned-asset";
 import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
-import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-async function getOwnedAsset(id: string, email: string) {
-  const dbUser = await prisma.user.findUnique({ where: { email } });
-  if (!dbUser) return null;
-  const hydrated = await hydrateResumeAsset(id, dbUser.id);
-  if (!hydrated) return null;
-  return { dbUser, asset: hydrated };
-}
-
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { authUser } = await getActingUser(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const owned = await getOwnedAsset(id, user.email!);
+  const owned = await getOwnedAssetForActingUser(id, request);
   if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { dbUser, asset } = owned;
@@ -39,17 +30,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     createdAt: asset.createdAt,
     updatedAt: asset.updatedAt,
     profileName: dbUser.name,
-    profileEmail: user.email,
+    profileEmail: dbUser.email,
   });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { authUser } = await getActingUser(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const owned = await getOwnedAsset(id, user.email!);
+  const owned = await getOwnedAssetForActingUser(id, request);
   if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await request.json();

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { HirebaseCompanyProfile } from "@/lib/hirebase";
 import type { HirebaseCompanyProfileResponse } from "@/lib/hirebase-company-profile";
+import { enrichmentFromHirebaseProfile } from "@/lib/hirebase-company-sync";
 
 type State = {
   data: HirebaseCompanyProfileResponse | null;
@@ -12,10 +14,25 @@ export function useHirebaseCompanyProfile(input: {
   companyName: string;
   website?: string | null;
   slugHint?: string | null;
+  trackedId?: string | null;
+  initialProfile?: HirebaseCompanyProfile | null;
   enabled?: boolean;
 }) {
-  const { companyName, website, slugHint, enabled = true } = input;
-  const [state, setState] = useState<State>({ data: null, loading: false });
+  const { companyName, website, slugHint, trackedId, initialProfile, enabled = true } = input;
+  const [state, setState] = useState<State>(() => {
+    if (initialProfile) {
+      return {
+        data: {
+          configured: true,
+          profile: initialProfile,
+          enrichment: enrichmentFromHirebaseProfile(initialProfile),
+          cached: true,
+        },
+        loading: false,
+      };
+    }
+    return { data: null, loading: false };
+  });
 
   const load = useCallback(async () => {
     const name = companyName.trim();
@@ -24,11 +41,25 @@ export function useHirebaseCompanyProfile(input: {
       return;
     }
 
+    if (initialProfile) {
+      setState({
+        data: {
+          configured: true,
+          profile: initialProfile,
+          enrichment: enrichmentFromHirebaseProfile(initialProfile),
+          cached: true,
+        },
+        loading: false,
+      });
+      return;
+    }
+
     setState((prev) => ({ ...prev, loading: true }));
     try {
       const params = new URLSearchParams({ company: name });
       if (website?.trim()) params.set("website", website.trim());
       if (slugHint?.trim()) params.set("slug", slugHint.trim());
+      if (trackedId?.trim()) params.set("trackedId", trackedId.trim());
 
       const res = await fetch(`/api/companies/hirebase-profile?${params}`, {
         signal: AbortSignal.timeout(20000),
@@ -58,11 +89,11 @@ export function useHirebaseCompanyProfile(input: {
         loading: false,
       });
     }
-  }, [companyName, website, slugHint, enabled]);
+  }, [companyName, website, slugHint, trackedId, initialProfile, enabled]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   return { ...state, reload: load };
-}
+};

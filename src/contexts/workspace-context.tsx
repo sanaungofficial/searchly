@@ -7,6 +7,7 @@ import { INITIAL_KANBAN_CARDS, NOTIFICATIONS } from "@/components/scout/workspac
 import { useJobs } from "@/hooks/useJobs";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import { ImpersonationBanner, type ImpersonationState } from "@/components/admin/impersonation-banner";
+import { setActingUserScope, getActingUserScope } from "@/lib/client-session";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -48,6 +49,8 @@ interface WorkspaceContextValue {
   pricingOpen: boolean;
   openPricing: () => void;
   closePricing: () => void;
+  actingUserId: string | null;
+  isImpersonating: boolean;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -74,6 +77,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [fitChatNonce, setFitChatNonce] = useState(0);
   const [pricingOpen, setPricingOpen] = useState(false);
   const [impersonation, setImpersonation] = useState<ImpersonationState>({ active: false });
+  const [actingUserId, setActingUserId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const scope = getActingUserScope();
+    return scope !== "self" ? scope : null;
+  });
 
   const openPricing = useCallback(() => setPricingOpen(true), []);
   const closePricing = useCallback(() => setPricingOpen(false), []);
@@ -89,7 +97,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage, removeJob } =
-    useJobs(INITIAL_KANBAN_CARDS);
+    useJobs(INITIAL_KANBAN_CARDS, actingUserId ?? undefined);
 
   const notifUnreadCount = NOTIFICATIONS.filter((n) => !notifRead[n.id] && n.unread).length;
 
@@ -105,6 +113,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       let dbAvatarUrl: string | null = null;
       let profileName: string | null = null;
       let profileEmail: string | null = null;
+      let impersonating = false;
       try {
         const res = await fetch("/api/profile");
         if (res.ok) {
@@ -113,14 +122,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           dbAvatarUrl = data?.avatarUrl ?? null;
           profileName = data?.name ?? null;
           profileEmail = data?.email ?? null;
-          if (data?.impersonating?.active) {
+          impersonating = !!data?.impersonating?.active;
+          if (impersonating) {
             setImpersonation({
               active: true,
               name: data.impersonating.name,
               email: data.impersonating.email,
             });
+            setActingUserId(data.impersonating.userId ?? data.userId ?? null);
+            setActingUserScope(data.impersonating.userId ?? data.userId ?? null);
           } else {
             setImpersonation({ active: false });
+            setActingUserId(data.userId ?? null);
+            setActingUserScope(data.userId ?? null);
           }
         }
       } catch {}
@@ -136,9 +150,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {}
       setUser({
-        name: profileName ?? authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? null,
-        email: profileEmail ?? authUser.email!,
-        avatarUrl: dbAvatarUrl ?? authUser.user_metadata?.avatar_url ?? null,
+        name:
+          profileName ??
+          (impersonating ? null : authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? null),
+        email: profileEmail ?? (impersonating ? "" : authUser.email!),
+        avatarUrl: dbAvatarUrl ?? (impersonating ? null : authUser.user_metadata?.avatar_url ?? null),
         headline,
       });
       setAuthChecked(true);
@@ -188,6 +204,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         pricingOpen,
         openPricing,
         closePricing,
+        actingUserId,
+        isImpersonating: impersonation.active,
       }}
     >
       <ImpersonationBanner state={impersonation} />
