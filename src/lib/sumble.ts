@@ -83,6 +83,25 @@ export type SumblePersonRow = {
   attributes?: SumblePersonAttributes | null;
 };
 
+export type SumbleTeamAttributes = {
+  name?: string | null;
+  jobs_count?: number | null;
+  people_count?: number | null;
+  technology_list?: string[] | null;
+};
+
+export type SumbleTeamRow = {
+  team_id?: number | null;
+  sumble_url?: string | null;
+  attributes?: SumbleTeamAttributes | null;
+};
+
+export type SumbleDashboardSignal = SumbleSignal & {
+  companyName: string;
+  companyDomain: string | null;
+  trackedId: string | null;
+};
+
 type SumbleEnvelope<T> = {
   id?: string;
   credits_used?: number;
@@ -92,6 +111,7 @@ type SumbleEnvelope<T> = {
   people?: SumblePersonRow[];
   matched_count?: number | null;
   total?: number;
+  teams?: SumbleTeamRow[];
 };
 
 export function isSumbleConfigured(): boolean {
@@ -205,6 +225,7 @@ export async function fetchSumbleOrganization(input: {
   name?: string | null;
   slug?: string | null;
   jobFunctionTerms?: string[];
+  includeRoleMetrics?: boolean;
 }): Promise<{
   organization: SumbleOrganizationRow | null;
   creditsUsed: number;
@@ -213,11 +234,14 @@ export async function fetchSumbleOrganization(input: {
   const attempts = buildOrgLookupAttempts(input);
   if (!attempts.length) throw new Error("Organization domain, name, or slug is required.");
 
-  const entities = (input.jobFunctionTerms ?? ["Product Management"]).slice(0, 3).map((term) => ({
-    type: "job_function" as const,
-    term,
-    metrics: ["job_post_count", "people_count", "job_post_count_growth_1y"],
-  }));
+  const includeRoleMetrics = input.includeRoleMetrics !== false;
+  const entities = includeRoleMetrics
+    ? (input.jobFunctionTerms ?? ["Product Management"]).slice(0, 3).map((term) => ({
+        type: "job_function" as const,
+        term,
+        metrics: ["job_post_count", "people_count", "job_post_count_growth_1y", "team_count"],
+      }))
+    : [];
 
   let creditsUsed = 0;
   let creditsRemaining: number | null = null;
@@ -246,6 +270,32 @@ export async function fetchSumbleOrganization(input: {
   return { organization: null, creditsUsed, creditsRemaining };
 }
 
+/** Lightweight org resolve — id/name only, no role metrics (1 credit typical). */
+export async function fetchSumbleOrganizationMatch(input: {
+  domain?: string | null;
+  name?: string | null;
+}): Promise<{
+  organizationId: number | null;
+  organizationName: string | null;
+  sumbleUrl: string | null;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+}> {
+  const result = await fetchSumbleOrganization({
+    ...input,
+    includeRoleMetrics: false,
+    jobFunctionTerms: [],
+  });
+  const attrs = result.organization?.attributes;
+  return {
+    organizationId: attrs?.id ?? null,
+    organizationName: attrs?.name ?? null,
+    sumbleUrl: attrs?.sumble_url ?? null,
+    creditsUsed: result.creditsUsed,
+    creditsRemaining: result.creditsRemaining,
+  };
+}
+
 export async function fetchSumbleOrganizationSignals(organizationId: number): Promise<{
   signals: SumbleSignal[];
   creditsUsed: number;
@@ -266,8 +316,88 @@ export async function fetchSumbleOrganizationSignals(organizationId: number): Pr
 export async function fetchSumblePeopleAtOrganization(input: {
   organizationId: number;
   limit?: number;
+  jobFunctionTerms?: string[];
 }): Promise<{
   people: SumblePersonRow[];
+  total: number;
+  creditsUsed: number;
+  creditsRemaining: number | null;
+  sourceDataUrl: string | null;
+  filteredByRole: boolean;
+}> {
+  const limit = Math.max(1, Math.min(input.limit ?? 5, 10));
+  const primaryRole = input.jobFunctionTerms?.[0]?.trim();
+
+  const buildFilter = (withRoleQuery: boolean) => {
+    const filter: Record<string, unknown> = { organization_ids: [input.organizationId] };
+    if (withRoleQuery && primaryRole) {
+      filter.query = { query: `job_function EQ '${primaryRole.replace(/'/g, "\\'")}'` };
+    }
+    return filter;
+  };
+
+  const runPeopleSearch = async (withRoleQuery: boolean) => {
+    const data = await sumbleFetch<SumbleEnvelope<unknown>>("/people", {
+      method: "POST",
+      body: JSON.stringify({
+        filter: buildFilter(withRoleQuery),
+        limit: withRoleQuery ? limit : Math.min(limit * 4, 25),
+        order_by_column: "job_level",
+        order_by_direction: "DESC",
+        select: {
+          attributes: ["name", "job_title", "linkedin_url", "job_level", "job_function"],
+        },
+      }),
+    });
+    return data;
+  };
+
+  let filteredByRole = false;
+  let data: SumbleEnvelope<unknown>;
+
+  if (primaryRole) {
+    try {
+      data = await runPeopleSearch(true);
+      filteredByRole = true;
+    } catch {
+      data = await runPeopleSearch(false);
+      filteredByRole = false;
+    }
+  } else {
+    data = await runPeopleSearch(false);
+  }
+
+  let people = data.people ?? [];
+
+  if (primaryRole && !filteredByRole && people.length) {
+    const roleLower = primaryRole.toLowerCase();
+    const roleFiltered = people.filter((row) => {
+      const fn = row.attributes?.job_function?.trim().toLowerCase();
+      return fn === roleLower || fn?.includes(roleLower) || roleLower.includes(fn ?? "");
+    });
+    if (roleFiltered.length) {
+      people = roleFiltered;
+      filteredByRole = true;
+    }
+  }
+
+  people = people.slice(0, limit);
+
+  return {
+    people,
+    total: data.total ?? people.length,
+    creditsUsed: data.credits_used ?? 0,
+    creditsRemaining: data.credits_remaining ?? null,
+    sourceDataUrl: (data as { source_data_url?: string | null }).source_data_url ?? null,
+    filteredByRole,
+  };
+}
+
+export async function fetchSumbleTeamsAtOrganization(input: {
+  organizationId: number;
+  limit?: number;
+}): Promise<{
+  teams: SumbleTeamRow[];
   total: number;
   creditsUsed: number;
   creditsRemaining: number | null;
@@ -275,21 +405,21 @@ export async function fetchSumblePeopleAtOrganization(input: {
 }> {
   const limit = Math.max(1, Math.min(input.limit ?? 5, 10));
 
-  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/people", {
+  const data = await sumbleFetch<SumbleEnvelope<unknown>>("/teams", {
     method: "POST",
     body: JSON.stringify({
       filter: { organization_ids: [input.organizationId] },
       limit,
-      order_by_column: "job_level",
+      order_by_column: "jobs_count",
       order_by_direction: "DESC",
       select: {
-        attributes: ["name", "job_title", "linkedin_url", "job_level", "job_function"],
+        attributes: ["name", "jobs_count", "people_count", "technology_list"],
       },
     }),
   });
 
   return {
-    people: data.people ?? [],
+    teams: data.teams ?? [],
     total: data.total ?? 0,
     creditsUsed: data.credits_used ?? 0,
     creditsRemaining: data.credits_remaining ?? null,
