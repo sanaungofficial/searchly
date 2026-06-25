@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
-import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
 import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
@@ -984,14 +983,6 @@ function CompanyDrawer({
                 )}
               </div>
             )}
-          </DrawerSection>
-
-          <DrawerSection title="Job market insights">
-            <CompanyHirebaseIntelPanel
-              trackedId={company.id}
-              companyName={company.name}
-              slugHint={hirebaseSlugHint(company, intel)}
-            />
           </DrawerSection>
 
           {/* Notes */}
