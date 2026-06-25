@@ -6,6 +6,10 @@ import { ensureDbUser } from "@/lib/ensure-db-user";
 import { mergeTrackedWithIntel, resolveCompanyIntelFromInput } from "@/lib/company-intel";
 import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import { scanTrackedCompanyMatches, trackedCompanyNeedsScan } from "@/lib/company-jobs-scan";
+import {
+  hydrateIntelFromHirebase,
+  normalizeWebsiteUrl,
+} from "@/lib/hirebase-company-sync";
 
 async function findExistingWatchlistCompany(
   userId: string,
@@ -129,22 +133,44 @@ export async function POST(request: Request) {
 
     const catalogEntry = catalogSlug ? getCatalogCompany(catalogSlug) : undefined;
 
+    let hydratedIntel = intel;
+    if (intel) {
+      hydratedIntel = await hydrateIntelFromHirebase(intel, {
+        slugHint: catalogSlug ?? intel.slug,
+        website: website ?? intel.website,
+        force: true,
+      });
+    }
+
+    const enrichmentIndustry =
+      hydratedIntel?.enrichmentCache &&
+      typeof hydratedIntel.enrichmentCache === "object" &&
+      !Array.isArray(hydratedIntel.enrichmentCache)
+        ? ((hydratedIntel.enrichmentCache as { industry?: string | null }).industry ?? null)
+        : null;
+    const enrichmentWebsite =
+      hydratedIntel?.enrichmentCache &&
+      typeof hydratedIntel.enrichmentCache === "object" &&
+      !Array.isArray(hydratedIntel.enrichmentCache)
+        ? normalizeWebsiteUrl((hydratedIntel.enrichmentCache as { websiteUrl?: string | null }).websiteUrl)
+        : null;
+
     const company = await prisma.trackedCompany.create({
       data: {
         userId: dbUser.id,
-        companyIntelId: intel?.id ?? null,
-        name: intel?.name ?? name.trim(),
-        website: website ?? intel?.website ?? null,
-        careersUrl: careersUrl ?? intel?.careersUrl ?? null,
+        companyIntelId: hydratedIntel?.id ?? null,
+        name: hydratedIntel?.name ?? name.trim(),
+        website: website ?? hydratedIntel?.website ?? enrichmentWebsite ?? null,
+        careersUrl: careersUrl ?? hydratedIntel?.careersUrl ?? null,
         notes: notes ?? null,
-        type: type ?? catalogEntry?.type ?? null,
+        type: type ?? enrichmentIndustry ?? catalogEntry?.type ?? null,
         hqLocation: hqLocation ?? null,
         priority: priority ?? null,
         cultureMission: cultureMission ?? null,
         candidateEdge: candidateEdge ?? null,
         targetRoles: targetRoles ?? null,
-        enrichmentCache: intel?.enrichmentCache ?? undefined,
-        enrichmentFetchedAt: intel?.enrichmentFetchedAt ?? null,
+        enrichmentCache: hydratedIntel?.enrichmentCache ?? undefined,
+        enrichmentFetchedAt: hydratedIntel?.enrichmentFetchedAt ?? null,
       },
     });
 

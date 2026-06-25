@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CompanyLogo } from "@/components/scout/company-logo";
+import { CompanyHirebaseIntelPanel } from "@/components/scout/company-hirebase-intel-panel";
+import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
@@ -61,6 +63,14 @@ function hirebaseSlugFromEnrichment(raw: EnrichmentCache | null): string | null 
   if (!raw) return null;
   const hb = (raw as EnrichmentCache & { hirebase?: { slug?: string } }).hirebase;
   return hb?.slug?.trim() || null;
+}
+
+function hirebaseSlugHint(company: TrackedCompany, intel: EnrichmentCache | null): string | null {
+  return (
+    hirebaseSlugFromEnrichment(intel) ??
+    hirebaseMeta(company)?.slug ??
+    ((company.jobsCache as JobsCache | null)?.hirebase_slug ?? null)
+  );
 }
 
 function enrichmentWebsite(company: TrackedCompany): string | null {
@@ -825,23 +835,12 @@ function CompanyDrawer({
 }) {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [enriching, setEnriching] = useState(false);
-  const [enrichError, setEnrichError] = useState<string | null>(null);
   const cache = company.jobsCache as JobsCache | null;
   const jobs = cache?.jobs ?? [];
   const intel = company.enrichmentCache as EnrichmentCache | null;
   const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
   const canScan = matchRoles.length > 0;
   const matchingJobs = jobs;
-
-  async function handleEnrich() {
-    setEnriching(true); setEnrichError(null);
-    try {
-      const res = await fetch(`/api/companies/${company.id}/enrich`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) { setEnrichError(humanizeApiError(data.error, res.status)); } else { onRefreshed(data); }
-    } catch { setEnrichError("Network error — couldn't enrich company."); } finally { setEnriching(false); }
-  }
 
   async function handleScan() {
     if (!matchRoles.length) {
@@ -918,81 +917,12 @@ function CompanyDrawer({
         {/* Body */}
         <div style={{ flex: 1, minHeight: 0, padding: isMobile ? "16px 16px 24px" : "20px 24px 32px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
 
-          {/* Company Intel */}
-          <DrawerSection title="Company Intel">
-            {!intel ? (
-              <div>
-                <ScoutPrimaryBtn onClick={handleEnrich} disabled={enriching}>{enriching ? "Researching…" : "✦ Enrich with AI"}</ScoutPrimaryBtn>
-                {enrichError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
-                <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 6 }}>Pulls company overview, funding, leadership, and recent news from AI.</div>
-              </div>
-            ) : (
-              <div>
-                {/* Description */}
-                {intel.description && <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.6, margin: "0 0 14px 0" }}>{intel.description}</p>}
-
-                {/* Quick stats row */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-                  {intel.founded && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>📅 Founded {intel.founded}</span>}
-                  {intel.headquarters && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>📍 {intel.headquarters}</span>}
-                  {intel.employeeCount && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>👥 {intel.employeeCount}</span>}
-                  {intel.industry && <span style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.stone, fontFamily: fontSans }}>{intel.industry}</span>}
-                  {intel.glassdoorRating && <span style={{ background: "rgba(26,58,47,0.08)", border: border.line, borderRadius: 0, padding: "3px 8px", fontSize: 14, color: color.forest, fontFamily: fontSans, fontWeight: 600 }}>★ {intel.glassdoorRating} Glassdoor</span>}
-                </div>
-
-                {/* Funding */}
-                {(intel.fundingStage || intel.totalFunding || (intel.keyInvestors?.length > 0)) && (
-                  <div style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "10px 14px", marginBottom: 14 }}>
-                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Funding</div>
-                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                      {intel.fundingStage && <div><div style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)" }}>Stage</div><div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-ui)" }}>{intel.fundingStage}</div></div>}
-                      {intel.totalFunding && <div><div style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)" }}>Total</div><div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-ui)" }}>{intel.totalFunding}</div></div>}
-                      {intel.keyInvestors?.length > 0 && <div><div style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)" }}>Investors</div><div style={{ fontSize: 14, color: "#374151", fontFamily: "var(--font-ui)" }}>{intel.keyInvestors.join(", ")}</div></div>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Leadership */}
-                {intel.leadership?.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Leadership</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {intel.leadership.map((l, i) => (
-                        <div key={i} style={{ background: surface.card, border: border.line, borderRadius: 0, padding: "7px 12px", minWidth: 120 }}>
-                          <div style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink }}>{l.name}</div>
-                          <div style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>{l.title}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recent News */}
-                {intel.recentNews?.length > 0 && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Recent News</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {intel.recentNews.map((n, i) => (
-                        <div key={i} style={{ background: surface.inset, border: border.line, borderRadius: 0, padding: "8px 12px" }}>
-                          <div style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 500, color: color.ink }}>{n.title}</div>
-                          <div style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginTop: 2 }}>{n.summary} <span style={{ color: color.mutedLight }}>· {n.date}</span></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Re-enrich */}
-                <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={handleEnrich} disabled={enriching} style={{ fontSize: 14, color: color.muted, background: "none", border: border.line, borderRadius: 0, padding: "3px 10px", cursor: enriching ? "not-allowed" : "pointer", fontFamily: fontSans }}>
-                    {enriching ? "Refreshing…" : "↻ Refresh intel"}
-                  </button>
-                  {company.enrichmentFetchedAt && <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Updated {timeAgo(company.enrichmentFetchedAt)}</span>}
-                </div>
-                {enrichError && <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", marginTop: 6 }}>{enrichError}</div>}
-                <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#d1d5db", marginTop: 6 }}>AI-generated · may not reflect latest data</div>
-              </div>
-            )}
+          <DrawerSection title="Company information">
+            <CompanyHirebaseProfilePanel
+              companyName={company.name}
+              website={company.website ?? enrichmentWebsite(company)}
+              slugHint={hirebaseSlugHint(company, intel)}
+            />
           </DrawerSection>
 
           {/* Matching roles */}
@@ -1054,6 +984,14 @@ function CompanyDrawer({
                 )}
               </div>
             )}
+          </DrawerSection>
+
+          <DrawerSection title="Job market insights">
+            <CompanyHirebaseIntelPanel
+              trackedId={company.id}
+              companyName={company.name}
+              slugHint={hirebaseSlugHint(company, intel)}
+            />
           </DrawerSection>
 
           {/* Notes */}
@@ -1392,6 +1330,7 @@ export function WorkspaceCompanies({
         </ScoutBox>
         )
       )}
+
 
       {/* Company detail drawer */}
       {selectedCompany && (

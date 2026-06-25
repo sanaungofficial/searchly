@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { CompanyIntel } from "@prisma/client";
 import { TOP_50_CATALOG, type CatalogCompany } from "@/lib/company-catalog";
 import { findOrCreateCompanyIntel } from "@/lib/company-intel";
 import {
@@ -56,7 +57,7 @@ function formatEmployeeRange(range: HirebaseCompanyProfile["size_range"]): strin
   return null;
 }
 
-function normalizeWebsiteUrl(link: string | null): string | null {
+export function normalizeWebsiteUrl(link: string | null | undefined): string | null {
   if (!link?.trim()) return null;
   const trimmed = link.trim();
   if (trimmed.startsWith("http")) return trimmed;
@@ -88,6 +89,36 @@ export function getHirebaseMetaFromEnrichment(raw: unknown): HirebaseEnrichmentM
   const hirebase = (raw as CompanyEnrichmentCache).hirebase;
   if (!hirebase?.slug) return null;
   return hirebase;
+}
+
+/** Fetch Hirebase company profile and persist on shared CompanyIntel row. */
+export async function hydrateIntelFromHirebase(
+  intel: CompanyIntel,
+  input?: { slugHint?: string | null; website?: string | null; force?: boolean },
+): Promise<CompanyIntel> {
+  if (!isHirebaseConfigured()) return intel;
+  if (!input?.force && getHirebaseMetaFromEnrichment(intel.enrichmentCache)) return intel;
+
+  try {
+    const profile = await fetchHirebaseCompanyProfile({
+      companyName: intel.name,
+      slugHint: input?.slugHint ?? intel.slug,
+      website: input?.website ?? intel.website,
+    });
+    const enrichment = enrichmentFromHirebaseProfile(profile);
+    return prisma.companyIntel.update({
+      where: { id: intel.id },
+      data: {
+        name: profile.company_name || intel.name,
+        website: normalizeWebsiteUrl(profile.company_link) ?? intel.website,
+        enrichmentCache: enrichment,
+        enrichmentFetchedAt: new Date(),
+      },
+    });
+  } catch (err) {
+    console.error("[hydrateIntelFromHirebase]", err);
+    return intel;
+  }
 }
 
 export async function syncHirebaseCompanyFromCatalog(
