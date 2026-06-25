@@ -121,3 +121,11 @@ export function enrichCoachesWithMatch<T extends CoachMatchInput>(
     .map((coach) => enrichCoachWithMatch(coach, profileText, targetRoles))
     .sort((a, b) => b.matchScore - a.matchScore);
 }
+
+export function topMatchedCoach<T extends CoachMatchInput & CoachMatchFields>(
+  coaches: T[],
+): T | null {
+  const scored = coaches.filter((coach) => coach.matchScore > 0);
+  if (!scored.length) return null;
+  return [...scored].sort((a, b) => b.matchScore - a.matchScore)[0] ?? null;
+}

@@ -1,3 +1,4 @@
+import { clearCoachMatchCache } from "@/lib/coach-match-cache";
 import { clearRecommendedCache } from "@/lib/recommended-jobs-cache";
 
 const ACTING_USER_KEY = "kimchi_acting_user_id";
@@ -66,4 +67,5 @@ export function saveScopedNetworkSearch(query: string): void {
 
 export function clearClientSessionCaches(): void {
   clearRecommendedCache();
+  clearCoachMatchCache();
 }

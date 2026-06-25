@@ -26,7 +26,7 @@ export function WorkspacePageShell({
   children,
   maxWidth = 1120,
 }: Props) {
-  const pad = isMobile ? "16px 16px 0" : "20px 32px 0";
+  const pad = isMobile ? "20px 16px 48px" : "32px 36px 48px";
   const barTitle = mobileBarTitle ?? label;
 
   return (
