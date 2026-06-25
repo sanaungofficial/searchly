@@ -5,11 +5,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ coa
   const { coachProfileId } = await params;
   const profile = await prisma.coachProfile.findUnique({
     where: { id: coachProfileId },
-    select: { id: true, displayName: true, photoUrl: true, category: true, headline: true, status: true },
+    select: {
+      id: true,
+      displayName: true,
+      photoUrl: true,
+      category: true,
+      headline: true,
+      bio: true,
+      status: true,
+      currentRole: true,
+      currentCompany: true,
+      location: true,
+      linkedinUrl: true,
+      specialties: true,
+      industries: true,
+      firms: true,
+      schools: true,
+    },
   });
   if (!profile) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
 
-  return NextResponse.json(profile);
+  const vouchCount = await prisma.coachVouch.count({ where: { coachProfileId: profile.id } });
+
+  return NextResponse.json({ ...profile, vouchCount });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ coachProfileId: string }> }) {
@@ -40,5 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ coa
     data: { coachProfileId: profile.id, authorName, authorEmail, relationship, message },
   });
 
-  return NextResponse.json({ ok: true, id: vouch.id });
+  const vouchCount = await prisma.coachVouch.count({ where: { coachProfileId: profile.id } });
+
+  return NextResponse.json({ ok: true, id: vouch.id, vouchCount });
 }
