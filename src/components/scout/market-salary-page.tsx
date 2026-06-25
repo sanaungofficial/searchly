@@ -12,6 +12,7 @@ import {
   WindowPicker,
 } from "@/components/scout/market-analytics-ui";
 import { ScoutBox } from "@/components/scout/scout-box";
+import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { fontSans, color, type as T } from "@/lib/typography";
 
 export function MarketSalaryPage() {
@@ -40,11 +41,7 @@ export function MarketSalaryPage() {
       {!requiresLoad && <InsightsMetaRow payload={data} onRefresh={refresh} loading={loading} />}
 
       {loading && !insight && (
-        <ScoutBox padding="20px 22px">
-          <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.forest, margin: 0 }}>
-            Loading salary data…
-          </p>
-        </ScoutBox>
+        <KimchiProcessLoader preset="marketIntel" title="Loading salary data…" variant="inline" />
       )}
 
       {!loading && error && !insight && (

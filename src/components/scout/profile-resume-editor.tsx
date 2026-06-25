@@ -20,6 +20,7 @@ import {
 } from "./profile-resume-analysis-report";
 import { JobrightResumeDocument, JobrightScorePill } from "./profile-resume-jobright-document";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ResumeMatchPanel } from "./profile-resume-match-panel";
 import { getSectionFixIssues, ResumeSectionFixDrawer } from "./profile-resume-section-fix-drawer";
 import {
@@ -515,10 +516,11 @@ export function ProfileResumeEditor({
         <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
           <div className="resume-print-center" style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px 12px" : "24px 32px", display: "flex", flexDirection: "column", alignItems: "center", background: JR.bg }}>
             {loading || reparsing ? (
-              <div style={{ marginTop: 80, textAlign: "center", color: JR.muted }}>
-                <Loader2 size={28} style={{ animation: "spin 1s linear infinite", marginBottom: 12 }} />
-                <p style={{ fontSize: 14 }}>{reparsing ? "Parsing resume structure…" : "Loading resume…"}</p>
-              </div>
+              <KimchiProcessLoader
+                preset="resumeUpload"
+                title={reparsing ? "Parsing resume structure…" : "Loading your resume…"}
+                variant="centered"
+              />
             ) : (
               <JobrightResumeDocument data={parsedData} onChange={queueSave} onFixSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "all" })} onImpactSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "impact" })} onOpenAiAnalysis={() => setReportOpen(true)} score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} sectionMatches={sectionMatches} entryMatches={entryMatches} />
             )}

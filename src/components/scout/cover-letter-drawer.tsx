@@ -7,6 +7,7 @@ import { fontSans, drawerType as DT } from "@/lib/typography";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
+import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 
 interface CoverLetterDrawerProps {
   jobTitle: string;
@@ -327,16 +328,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, onClo
           >
             <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
               {loading ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                  <div style={{
-                    width: 36, height: 36,
-                    border: "2.5px solid rgba(0,0,0,0.1)",
-                    borderTopColor: "#1C3A2F",
-                    borderRadius: "50%",
-                    animation: "spin 0.8s linear infinite",
-                  }} />
-                  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-                </div>
+                <KimchiProcessLoader preset="coverLetter" variant="centered" />
               ) : error && !letter ? (
                 <div style={{ color: "#C4574A", fontFamily: fontSans, fontSize: 13, paddingTop: 40 }}>
                   {error === "No resume found"

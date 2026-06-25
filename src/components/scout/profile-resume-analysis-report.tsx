@@ -1,9 +1,10 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
-import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { JR } from "./profile-resume-editor-panels";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import type { ReportIssue } from "./profile-resume-editor-panels";
 import type { ResumeSectionId } from "@/lib/resume-parse";
 
@@ -222,10 +223,7 @@ export function ResumeAnalysisReportDrawer({
 
         <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
           {loading ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, color: JR.muted, padding: "40px 0", justifyContent: "center" }}>
-              <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-              <span>Generating report…</span>
-            </div>
+            <KimchiProcessLoader preset="resumeAnalysis" variant="centered" />
           ) : error ? (
             <div style={{ padding: 20, textAlign: "center" }}>
               <p style={{ fontSize: 14, color: JR.muted, marginBottom: 12 }}>{error}</p>

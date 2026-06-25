@@ -32,6 +32,7 @@ import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scou
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
+import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { isLowQualityMatchReason, matchScoreStyle } from "@/lib/match-score";
 
 type JobsApiResponse = {
@@ -398,23 +399,11 @@ function JobFiltersGrid({
   );
 }
 
-function RecommendedLoadingSkeleton({ message }: { message: string }) {
+function RecommendedLoadingSkeleton() {
   const barWidths = ["72%", "58%", "84%", "64%"];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <ScoutBox style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
-        <div
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: color.forest,
-            animation: "pulse 1.2s ease-in-out infinite",
-            flexShrink: 0,
-          }}
-        />
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>{message}</p>
-      </ScoutBox>
+      <KimchiProcessLoader preset="recommendations" variant="inline" />
       {[0, 1, 2].map((card) => (
         <ScoutBox key={card} padding={18}>
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -1027,7 +1016,7 @@ export function PipelineRecommendedSection({
       </ScoutBox>
 
       {showInitialSkeleton && (
-        <RecommendedLoadingSkeleton message="Finding matching roles at your companies — give it a second…" />
+        <RecommendedLoadingSkeleton />
       )}
 
       {!showInitialSkeleton && (

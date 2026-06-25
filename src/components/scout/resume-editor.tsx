@@ -8,6 +8,7 @@ import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono } from "@/lib/typography";
 
 interface ResumeSection {
@@ -638,7 +639,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             {fitOpen && (
               <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 0 }}>
                 {fitLoading ? (
-                  <p style={{ fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>Analyzing your fit for this role…</p>
+                  <KimchiProcessLoader preset="jobMatch" variant="inline" />
                 ) : fitAnalysis ? (
                   <>
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 8 }}>
@@ -719,12 +720,11 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           className="resume-print-center"
         >
           {loading ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, marginTop: 80 }}>
-              <Loader2 size={28} style={{ color: "var(--scout-muted)", animation: "spin 1s linear infinite" }} />
-              <p style={{ fontSize: 14, color: "#6B6258" }}>
-                Tailoring your resume for {jobTitle}{company ? ` at ${company}` : ""}…
-              </p>
-            </div>
+            <KimchiProcessLoader
+              preset="resumeTailor"
+              title={`Tailoring your resume for ${jobTitle}${company ? ` at ${company}` : ""}…`}
+              variant="centered"
+            />
           ) : activeSections.length === 0 ? (
             <div style={{ textAlign: "center", marginTop: 80, color: "var(--scout-muted)" }}>
               <p style={{ fontSize: 14 }}>No resume content yet.</p>

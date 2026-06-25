@@ -24,6 +24,7 @@ import {
 } from "./icons";
 import { KimchiBySecondLadder } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 
 /* ──────────────────────────────────────────────────────────────
    Types
@@ -731,29 +732,8 @@ export function ScreenLinkedIn({
 
       {/* Analyzing state */}
       {liSubmitting && (
-        <div className="anim-fade-in" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div
-            className="anim-spin"
-            style={{
-              width: 16,
-              height: 16,
-              border: "1.5px solid rgba(26,58,47,0.2)",
-              borderTopColor: "#1A3A2F",
-              borderRadius: "50%",
-              flexShrink: 0,
-            }}
-          />
-          <p
-            className="anim-pulse"
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 16,
-              fontWeight: 400,
-              color: "#52493F",
-            }}
-          >
-            Analyzing your background…
-          </p>
+        <div className="anim-fade-in">
+          <KimchiProcessLoader preset="onboardingBackground" variant="inline" />
         </div>
       )}
 

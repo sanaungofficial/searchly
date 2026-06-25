@@ -7,6 +7,7 @@ import {
 } from "@/lib/linkedin-profile";
 import { useCompactLayout } from "@/hooks/use-compact-layout";
 import { LinkedInGenerateLoader } from "./linkedin-generate-loader";
+import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { ScoutBox, ScoutDisplayTitle, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface } from "@/lib/typography";
 import { JobrightScorePill } from "./profile-resume-jobright-document";
@@ -711,6 +712,23 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={onPhotoFileChange("cover")} />
       <input ref={profileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={onPhotoFileChange("profile")} />
       <LinkedInGenerateLoader active={generating} />
+      {importing && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 199,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            background: "rgba(247,245,242,0.72)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <KimchiProcessLoader preset="linkedInImport" variant="card" />
+        </div>
+      )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ minWidth: 0, flex: "1 1 220px" }}>
