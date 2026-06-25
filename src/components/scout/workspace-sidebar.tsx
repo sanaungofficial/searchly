@@ -363,9 +363,9 @@ export function WorkspaceSidebar({
           flexDirection: "column",
           flexShrink: 0,
           borderRight: "1px solid rgba(232,213,163,0.08)",
-          height: "100vh",
+          height: isMobile ? "100dvh" : "100vh",
           transition: "width 0.22s ease, transform 0.22s ease",
-          overflow: isMobile ? "hidden" : "visible",
+          overflow: "hidden",
           ...(isMobile
             ? {
                 position: "fixed",
@@ -420,7 +420,7 @@ export function WorkspaceSidebar({
         )}
 
         {/* ── Header ── */}
-        <div style={{ padding: isRail ? "20px 0 16px" : "26px 22px 20px" }}>
+        <div style={{ padding: isRail ? "20px 0 16px" : "26px 22px 20px", flexShrink: 0 }}>
           {!IS_PROD && !isRail && (
             <button
               onClick={() => router.push("/onboarding")}
@@ -527,7 +527,17 @@ export function WorkspaceSidebar({
           )}
         </div>
 
-        {/* ── Nav items ── */}
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* ── Nav items (scrollable on mobile) ── */}
+        <div
+          style={{
+            flex: isMobile ? 1 : undefined,
+            minHeight: isMobile ? 0 : undefined,
+            overflowY: isMobile ? "auto" : "visible",
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: isMobile ? 8 : 0,
+          }}
+        >
         <div style={{ padding: isRail ? "0 8px" : "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
           {isAdmin && (
             <SidebarNavButton
@@ -609,20 +619,81 @@ export function WorkspaceSidebar({
           )}
         </div>
 
-        <div style={{ flex: 1 }} />
-
-        {/* ── Credits (+ upgrade for free users) ── */}
-        {showCredits && credits && !isRail && (
+        {isMobile && showCredits && credits && !isRail && (
           <CreditsSidebarBlock credits={credits} unlimitedAi={unlimitedAi} onUpgrade={openPricing} />
         )}
-        {showCredits && credits && isRail && (
+
+        {isMobile && !isRail && (
+          <div style={{ padding: "0 14px 12px" }}>
+            <button
+              type="button"
+              onClick={() => setReferEarnOpen(true)}
+              data-offer="referral"
+              data-trigger="sidebar_refer_earn"
+              style={{
+                display: "block",
+                width: "100%",
+                background: "rgba(74,139,106,0.12)",
+                border: "1px solid rgba(74,139,106,0.25)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.2px" }}>
+                🎁 Refer & Earn →
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.45)", lineHeight: 1.5 }}>
+                Invite friends or share on LinkedIn to earn extra rewards!
+              </p>
+            </button>
+          </div>
+        )}
+
+        {isMobile && !isRail && (
+          <div style={{ padding: "0 14px 12px" }}>
+            <button
+              type="button"
+              onClick={() => setDiscoveryOpen(true)}
+              data-offer="discovery"
+              data-trigger="sidebar_help"
+              style={{
+                display: "block",
+                width: "100%",
+                background: "rgba(255,255,255,0.04)",
+                border: SIDEBAR_LINE,
+                borderRadius: 0,
+                padding: "10px 14px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 600, color: "rgba(232,213,163,0.55)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                Need help?
+              </p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "rgba(232,213,163,0.85)" }}>
+                Talk to our team →
+              </p>
+            </button>
+          </div>
+        )}
+        </div>
+
+        {!isMobile && <div style={{ flex: 1 }} />}
+
+        {/* ── Credits (+ upgrade for free users) ── */}
+        {!isMobile && showCredits && credits && !isRail && (
+          <CreditsSidebarBlock credits={credits} unlimitedAi={unlimitedAi} onUpgrade={openPricing} />
+        )}
+        {!isMobile && showCredits && credits && isRail && (
           <div style={{ padding: "0 0 8px", textAlign: "center" }} title={unlimitedAi ? `${credits.used} used this month · unlimited` : `${credits.remaining} credits left`}>
             <CreditsMeter credits={credits} compact unlimitedAi={unlimitedAi} />
           </div>
         )}
 
         {/* ── Refer & Earn ── */}
-        {!isRail && (
+        {!isMobile && !isRail && (
           <div style={{ padding: "0 14px 12px" }}>
             <button
               type="button"
@@ -651,7 +722,7 @@ export function WorkspaceSidebar({
         )}
 
         {/* ── Talk to team (above user badge) ── */}
-        {!isRail ? (
+        {!isMobile && !isRail ? (
           <div style={{ padding: "0 14px 12px" }}>
             <button
               type="button"
@@ -677,7 +748,7 @@ export function WorkspaceSidebar({
               </p>
             </button>
           </div>
-        ) : (
+        ) : !isMobile ? (
           <button
             type="button"
             onClick={() => setDiscoveryOpen(true)}
@@ -701,14 +772,14 @@ export function WorkspaceSidebar({
           >
             ✉
           </button>
-        )}
+        ) : null}
 
-        {/* ── User badge ── */}
+        {/* ── User badge — pinned on mobile so account settings is always reachable ── */}
         <button
           onClick={() => setSettingsOpen(true)}
           title={isRail ? (user?.name ?? user?.email ?? "Account") : undefined}
           style={{
-            padding: isRail ? "12px 0 18px" : "14px 18px 20px",
+            padding: isRail ? "12px 0 18px" : isMobile ? "14px 18px max(16px, env(safe-area-inset-bottom))" : "14px 18px 20px",
             borderTop: SIDEBAR_LINE,
             borderLeft: "none",
             borderRight: "none",
@@ -717,14 +788,16 @@ export function WorkspaceSidebar({
             alignItems: "center",
             justifyContent: isRail ? "center" : "flex-start",
             gap: 10,
-            background: "none",
+            background: SIDEBAR_FOREST,
             cursor: "pointer",
             width: "100%",
             textAlign: "left",
             transition: "background 0.15s",
+            flexShrink: 0,
+            boxSizing: "border-box",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.05)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = isMobile ? SIDEBAR_FOREST : "rgba(232,213,163,0.05)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = SIDEBAR_FOREST)}
           aria-label="Account settings"
         >
           {user?.avatarUrl ? (
@@ -755,6 +828,7 @@ export function WorkspaceSidebar({
             </>
           )}
         </button>
+        </div>
 
         {settingsOpen && user && (
           <UserSettingsModal
