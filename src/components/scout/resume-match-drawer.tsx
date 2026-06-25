@@ -10,23 +10,20 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import {
+  BigScoreGauge,
+  IndustryTag,
+  MatchComparisonRow,
+  MatchKeywordTag,
+  ResumeSelectDropdown,
+  SmallScoreGauge,
+  scoreColor,
+  type MatchData,
+  type ResumeAssetOption,
+  type RowStatus,
+} from "./job-match-ui";
 
-interface MatchData {
-  score: number;
-  scoreLabel: string;
-  jobTitle: string;
-  resumeTitle: string;
-  jobTitleMatch?: boolean;
-  yoeRequired: string;
-  yoeCandidate: string;
-  yoeMatch: boolean;
-  industries: string[];
-  industryMatch: boolean;
-  keywords: { text: string; matched: boolean }[];
-  summaryNote: string;
-}
-
-export type { MatchData };
+export type { MatchData } from "./job-match-ui";
 
 interface TailoredData {
   tailoredText: string;
@@ -48,12 +45,12 @@ interface ResumeMatchDrawerProps {
   description: string;
   jobId?: string;
   initialMatchData?: MatchData | null;
+  initialAssetId?: string | null;
   onClose: () => void;
   onTailorResume: () => void;
 }
 
 type Step = 1 | 2 | 3;
-type RowStatus = "ok" | "fail" | "warn" | "neutral";
 
 const STEPS = [
   { n: 1 as Step, label: "See Your Difference" },
@@ -112,173 +109,6 @@ function Stepper({ step }: { step: Step }) {
           )}
         </div>
       ))}
-    </div>
-  );
-}
-
-function BigScoreGauge({ score }: { score: number }) {
-  const color =
-    score >= 8 ? "#1A3A2F" : score >= 6 ? "#C4A86A" : score >= 4 ? "#C4574A" : "#9B3A2A";
-  const label =
-    score >= 8 ? "Strong" : score >= 6 ? "Good" : score >= 4 ? "Fair" : "Poor";
-  const r = 58;
-  const circ = 2 * Math.PI * r;
-  const pct = Math.min(score / 10, 1);
-  const arcLen = circ * 0.5 * pct;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <div style={{ position: "relative", width: 140, height: 76, overflow: "hidden" }}>
-        <svg
-          width="140"
-          height="140"
-          viewBox="0 0 130 130"
-          style={{ position: "absolute", top: 0, left: 0, transform: "rotate(180deg)" }}
-        >
-          <defs>
-            <linearGradient id="gauge-bg-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#C4574A" stopOpacity="0.25" />
-              <stop offset="45%" stopColor="#C4A86A" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#1A3A2F" stopOpacity="0.25" />
-            </linearGradient>
-          </defs>
-          <circle
-            cx="65" cy="65" r={r}
-            stroke="url(#gauge-bg-grad)" strokeWidth="14" fill="none"
-            strokeDasharray={`${circ * 0.5} ${circ * 0.5}`}
-            strokeLinecap="round"
-          />
-          <circle
-            cx="65" cy="65" r={r}
-            stroke={color} strokeWidth="14" fill="none"
-            strokeDasharray={`${arcLen} ${circ - arcLen}`}
-            strokeLinecap="round"
-          />
-        </svg>
-        <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <span style={{ fontFamily: fontMono, fontSize: 32, fontWeight: 700, color, lineHeight: 1 }}>
-            {score.toFixed(1)}
-          </span>
-        </div>
-      </div>
-      <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color, letterSpacing: "0.5px" }}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function SmallScoreGauge({ score }: { score: number }) {
-  const color =
-    score >= 8 ? "#1A3A2F" : score >= 6 ? "#C4A86A" : score >= 4 ? "#C4574A" : "#9B3A2A";
-  const label =
-    score >= 8 ? "Strong" : score >= 6 ? "Good" : score >= 4 ? "Fair" : "Poor";
-  const r = 32;
-  const circ = 2 * Math.PI * r;
-  const pct = Math.min(score / 10, 1);
-  const arcLen = circ * 0.5 * pct;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-      <div style={{ position: "relative", width: 76, height: 40, overflow: "hidden" }}>
-        <svg
-          width="76"
-          height="76"
-          viewBox="0 0 76 76"
-          style={{ position: "absolute", top: 0, left: 0, transform: "rotate(180deg)" }}
-        >
-          <circle cx="38" cy="38" r={r} stroke="rgba(0,0,0,0.07)" strokeWidth="8" fill="none"
-            strokeDasharray={`${circ * 0.5} ${circ * 0.5}`} strokeLinecap="round" />
-          <circle cx="38" cy="38" r={r} stroke={color} strokeWidth="8" fill="none"
-            strokeDasharray={`${arcLen} ${circ - arcLen}`} strokeLinecap="round" />
-        </svg>
-        <div style={{ position: "absolute", bottom: 1, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontFamily: fontMono, fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>
-            {score.toFixed(1)}
-          </span>
-        </div>
-      </div>
-      <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color }}>
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  left,
-  right,
-  status,
-}: {
-  label: string;
-  left: React.ReactNode;
-  right: React.ReactNode;
-  status: RowStatus;
-}) {
-  const icon = status === "ok" ? "✓" : status === "fail" ? "✗" : status === "warn" ? "!" : "–";
-  const iconColor =
-    status === "ok" ? "#3D7A5B"
-    : status === "fail" ? "#B84040"
-    : status === "warn" ? "#B88A30"
-    : "var(--scout-muted)";
-  const iconBg =
-    status === "ok" ? "rgba(61,122,91,0.13)"
-    : status === "fail" ? "rgba(184,64,64,0.12)"
-    : status === "warn" ? "rgba(184,138,48,0.12)"
-    : "rgba(0,0,0,0.05)";
-  const rowBg =
-    status === "ok" ? "rgba(74,139,106,0.045)"
-    : status === "fail" ? "rgba(196,87,74,0.045)"
-    : status === "warn" ? "rgba(196,168,106,0.04)"
-    : "transparent";
-  const leftBorderColor =
-    status === "ok" ? "#1A3A2F"
-    : status === "fail" ? "#C4574A"
-    : status === "warn" ? "#C4A86A"
-    : "transparent";
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "148px 30px 1fr 1fr",
-        gap: 12,
-        alignItems: "start",
-        padding: "13px 16px",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
-        background: rowBg,
-        borderLeft: status !== "neutral" ? `3px solid ${leftBorderColor}` : "3px solid transparent",
-      }}
-    >
-      <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 500, color: "#52493F" }}>
-        {label}
-      </span>
-      <div
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: "50%",
-          background: iconBg,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: fontSans,
-          fontSize: 14,
-          fontWeight: 700,
-          color: iconColor,
-          flexShrink: 0,
-          marginTop: 1,
-        }}
-      >
-        {icon}
-      </div>
-      <div style={{ fontFamily: fontSans, fontSize: 14, color: "#1A1A1A", lineHeight: 1.55 }}>
-        {left}
-      </div>
-      <div style={{ fontFamily: fontSans, fontSize: 14, color: "#52493F", lineHeight: 1.55 }}>
-        {right}
-      </div>
     </div>
   );
 }
@@ -350,6 +180,7 @@ export function ResumeMatchDrawer({
   description,
   jobId,
   initialMatchData,
+  initialAssetId,
   onClose,
   onTailorResume,
 }: ResumeMatchDrawerProps) {
@@ -364,7 +195,8 @@ export function ResumeMatchDrawer({
   const [customKeywords, setCustomKeywords] = useState<string[]>([]);
   const [newKw, setNewKw] = useState("");
   const [mounted, setMounted] = useState(false);
-  const [resumeAssets, setResumeAssets] = useState<ResumeAsset[]>([]);
+  const [resumeAssets, setResumeAssets] = useState<ResumeAssetOption[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(initialAssetId ?? null);
   const [selectedSections, setSelectedSections] = useState<Set<string>>(
     new Set(["summary", "skills", "work_experience"])
   );
@@ -388,37 +220,34 @@ export function ResumeMatchDrawer({
   useEffect(() => {
     fetch("/api/assets")
       .then((r) => r.json())
-      .then((assets: ResumeAsset[]) => {
-        if (Array.isArray(assets)) {
-          setResumeAssets(
-            assets.filter(
-              (a: ResumeAsset & { type?: string }) =>
-                (a as ResumeAsset & { type?: string }).type === "RESUME"
-            )
-          );
+      .then((assets: Array<ResumeAsset & { type?: string }>) => {
+        if (!Array.isArray(assets)) return;
+        const resumes = assets
+          .filter((a) => a.type === "RESUME")
+          .map((a) => ({ id: a.id, name: a.name, isPrimary: a.isPrimary }));
+        setResumeAssets(resumes);
+        if (!selectedResumeId && resumes.length) {
+          const primary = resumes.find((r) => r.isPrimary) ?? resumes[0];
+          setSelectedResumeId(primary.id);
         }
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- init resume list once
   }, []);
 
-  function generate(overrideDesc?: string) {
+  const activeResumeId =
+    selectedResumeId ?? resumeAssets.find((a) => a.isPrimary)?.id ?? resumeAssets[0]?.id ?? null;
+
+  function generate(overrideDesc?: string, assetId = activeResumeId) {
     setHasRequestedAnalysis(true);
     setLoading(true);
     setError(null);
     setData(null);
+    const desc =
+      overrideDesc !== undefined ? overrideDesc : description || undefined;
     const body = jobId
-      ? {
-          jobId,
-          jobTitle,
-          company,
-          description:
-            overrideDesc !== undefined ? overrideDesc : description || undefined,
-        }
-      : {
-          jobTitle,
-          company,
-          description: overrideDesc !== undefined ? overrideDesc : description,
-        };
+      ? { jobId, jobTitle, company, description: desc, assetId: assetId ?? undefined }
+      : { jobTitle, company, description: desc ?? "", assetId: assetId ?? undefined };
     fetch("/api/ai/job-match", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -576,14 +405,19 @@ export function ResumeMatchDrawer({
     );
   }
 
-  const scoreColor =
-    data && data.score >= 8
-      ? "#1A3A2F"
-      : data && data.score >= 6
-      ? "#C4A86A"
-      : "#C4574A";
+  const headlineScoreColor = data ? scoreColor(data.score) : color.forest;
 
-  const primaryResume = resumeAssets.find((a) => a.isPrimary) ?? resumeAssets[0];
+  const selectedResume =
+    resumeAssets.find((a) => a.id === activeResumeId) ??
+    resumeAssets.find((a) => a.isPrimary) ??
+    resumeAssets[0];
+
+  function handleResumeChange(assetId: string) {
+    setSelectedResumeId(assetId);
+    if (hasRequestedAnalysis || initialMatchData) {
+      generate(undefined, assetId);
+    }
+  }
 
   if (!mounted) return null;
 
@@ -845,7 +679,7 @@ export function ResumeMatchDrawer({
                             }}
                           >
                             Your Resume is a{" "}
-                            <span style={{ color: scoreColor }}>
+                            <span style={{ color: headlineScoreColor }}>
                               {data.scoreLabel}
                             </span>{" "}
                             Match
@@ -915,7 +749,7 @@ export function ResumeMatchDrawer({
                         </div>
                       </div>
 
-                      {data.score < 6 && (
+                      {data.score < 6 && !proUser && (
                         <GrowthMatchOffer
                           isPro={proUser}
                           onUpgrade={openPricing}
@@ -967,75 +801,68 @@ export function ResumeMatchDrawer({
                           >
                             Job Requires
                           </span>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                             <span
                               style={{
                                 fontFamily: fontSans,
                                 fontSize: 14,
-                                fontWeight: 600,
-                                color: "var(--scout-muted)",
+                                fontWeight: 700,
+                                color: color.muted,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.06em",
                               }}
                             >
                               Your Resume
                             </span>
-                            {primaryResume && (
-                              <span
-                                style={{
-                                  fontSize: 14,
-                                  fontFamily: fontSans,
-                                  color: "#1A3A2F",
-                                  fontWeight: 500,
-                                  background: "rgba(26,58,47,0.07)",
-                                  padding: "1px 6px",
-                                  borderRadius: 0,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  maxWidth: 120,
-                                }}
-                                title={primaryResume.name}
-                              >
-                                {primaryResume.name
-                                  .replace(/\.[^.]+$/, "")
-                                  .replace(/-/g, " ")
-                                  .slice(0, 18)}
-                                …
-                              </span>
+                            {resumeAssets.length > 0 && activeResumeId && (
+                              <ResumeSelectDropdown
+                                assets={resumeAssets}
+                                value={activeResumeId}
+                                onChange={handleResumeChange}
+                                compact
+                              />
                             )}
                           </div>
                         </div>
 
-                        <Row
+                        <MatchComparisonRow
+                          label="Overview"
+                          left={
+                            <div>
+                              <p style={{ margin: "0 0 4px", fontWeight: 700, color: color.ink }}>{company}</p>
+                              <p style={{ margin: 0, color: color.muted }}>{data.jobTitle}</p>
+                            </div>
+                          }
+                          right={
+                            selectedResume ? (
+                              <p style={{ margin: 0, fontWeight: 600, color: color.ink }}>
+                                {selectedResume.name.replace(/\.[^.]+$/, "")}
+                              </p>
+                            ) : (
+                              "—"
+                            )
+                          }
+                          status="neutral"
+                        />
+
+                        <MatchComparisonRow
                           label="Job Title"
                           left={data.jobTitle}
                           right={data.resumeTitle}
                           status={jobTitleMatch ? "ok" : "fail"}
                         />
-                        <Row
-                          label="Experience"
+                        <MatchComparisonRow
+                          label="Years of Experience"
                           left={data.yoeRequired}
                           right={data.yoeCandidate}
                           status={data.yoeMatch ? "ok" : "warn"}
                         />
-                        <Row
+                        <MatchComparisonRow
                           label="Industry Experience"
                           left={
                             <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                              {data.industries.slice(0, 4).map((ind) => (
-                                <span
-                                  key={ind}
-                                  style={{
-                                    padding: "2px 7px",
-                                    background: "rgba(0,0,0,0.05)",
-                                    borderRadius: 0,
-                                    fontSize: 14,
-                                    fontFamily: fontSans,
-                                  }}
-                                >
-                                  {ind}
-                                </span>
+                              {data.industries.slice(0, 6).map((ind) => (
+                                <IndustryTag key={ind} label={ind} matched={data.industryMatch} />
                               ))}
                             </span>
                           }
@@ -1046,34 +873,12 @@ export function ResumeMatchDrawer({
                           }
                           status={data.industryMatch ? "ok" : "warn"}
                         />
-                        <Row
+                        <MatchComparisonRow
                           label={`Job Keywords (${matchedKwCount}/${totalKwCount})`}
                           left={
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingTop: 2 }}>
                               {data.keywords.map((kw) => (
-                                <span
-                                  key={kw.text}
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 3,
-                                    padding: "3px 8px",
-                                    borderRadius: 0,
-                                    fontFamily: fontSans,
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    background: kw.matched
-                                      ? "rgba(74,139,106,0.1)"
-                                      : "rgba(196,87,74,0.07)",
-                                    color: kw.matched ? "#1C3A2F" : "#7A2A20",
-                                    border: `1px solid ${kw.matched ? "rgba(74,139,106,0.2)" : "rgba(196,87,74,0.15)"}`,
-                                  }}
-                                >
-                                  <span style={{ fontSize: 14, fontWeight: 700 }}>
-                                    {kw.matched ? "✓" : "✗"}
-                                  </span>
-                                  {kw.text}
-                                </span>
+                                <MatchKeywordTag key={kw.text} text={kw.text} matched={kw.matched} />
                               ))}
                               {customKeywords.map((kw) => (
                                 <span
@@ -1202,7 +1007,7 @@ export function ResumeMatchDrawer({
                           }
                           status={kwStatus}
                         />
-                        <Row
+                        <MatchComparisonRow
                           label="Summary"
                           left={
                             <span style={{ color: "#52493F", fontStyle: "italic" }}>
@@ -1213,6 +1018,10 @@ export function ResumeMatchDrawer({
                           status={summaryStatus}
                         />
                       </div>
+
+                      {proUser && (
+                        <GrowthMatchOffer isPro onUpgrade={openPricing} />
+                      )}
                     </>
                   );
                 })()}

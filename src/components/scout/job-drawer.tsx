@@ -25,6 +25,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox, ScoutLabel } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
+import { JobMatchScorePanel } from "./job-match-score-panel";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -335,19 +336,6 @@ function SectionTitle({ icon, children }: { icon?: React.ReactNode; children: Re
   );
 }
 
-function MatchBar({ label, pct }: { label: string; pct: number }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-        <span style={{ fontFamily: sans, fontSize: 13, color: "#5C534A" }}>{label}</span>
-        <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 600, color: mint }}>{pct}%</span>
-      </div>
-      <div style={{ height: 6, borderRadius: 0, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: mint, borderRadius: 0 }} />
-      </div>
-    </div>
-  );
-}
 
 function parseBullets(text: string | null | undefined): string[] {
   if (!text) return [];
@@ -616,60 +604,6 @@ function daysLabel(days: number): string {
   if (days === 0) return "Today";
   if (days === 1) return "1 day ago";
   return `${days} days ago`;
-}
-
-function MatchScoreCard({ fit, onRunMatch, fullWidth }: { fit: number; onRunMatch?: () => void; fullWidth?: boolean }) {
-  const fitColor = fit >= 85 ? mint : fit >= 70 ? "#C4A86A" : "var(--scout-muted)";
-  const label = fit >= 85 ? "STRONG MATCH" : fit >= 70 ? "GOOD MATCH" : "FAIR MATCH";
-  const exp = fit;
-  const skill = Math.max(0, Math.min(100, fit - 4));
-  const industry = Math.max(0, Math.min(100, fit - 8));
-
-  if (fit <= 0) {
-    return (
-      <div style={{ background: surface.card, borderRadius: 0, padding: "20px 22px", minWidth: fullWidth ? undefined : 220, width: fullWidth ? "100%" : undefined, border: line, boxSizing: "border-box" }}>
-        <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>
-          <ScoreExplainerLabel variant="job-match">Match score</ScoreExplainerLabel>
-        </p>
-        <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", lineHeight: 1.5, marginBottom: 14 }}>See how well your resume fits this role.</p>
-        {onRunMatch && (
-          <button
-            onClick={onRunMatch}
-            style={{ width: "100%", padding: "11px 14px", minHeight: fullWidth ? 44 : undefined, background: color.forest, color: color.gold, border: "none", borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-          >
-            Analyze match
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ background: surface.card, borderRadius: 0, padding: "20px 22px", minWidth: fullWidth ? undefined : 220, width: fullWidth ? "100%" : undefined, border: line, boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-        <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
-          <svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: "rotate(-90deg)" }}>
-            <circle cx="32" cy="32" r="26" stroke="rgba(0,0,0,0.08)" strokeWidth="6" fill="none" />
-            <circle cx="32" cy="32" r="26" stroke={fitColor} strokeWidth="6" fill="none" strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 26 * fit / 100} ${2 * Math.PI * 26}`} />
-          </svg>
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: mono, fontSize: 16, fontWeight: 700, color: fitColor }}>{fit}%</span>
-          </div>
-        </div>
-        <div>
-          <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 700, color: fitColor, letterSpacing: "0.4px", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
-            {label}
-            <ScoreExplainerPopover variant="job-match" align="right" />
-          </p>
-          <p style={{ fontFamily: sans, fontSize: 14, color: "#8A8278", margin: "3px 0 0" }}>vs. your profile</p>
-        </div>
-      </div>
-      <MatchBar label="Experience Level" pct={exp} />
-      <MatchBar label="Skills" pct={skill} />
-      <MatchBar label="Industry Exp." pct={industry} />
-    </div>
-  );
 }
 
 function AiToolCard({
@@ -1050,7 +984,15 @@ export function JobDrawer({
                     {expLevel && <MetaRow icon={<IconBriefcase />} label={expLevel} />}
                   </div>
                 </div>
-                <MatchScoreCard fit={displayFit} onRunMatch={canRunMatch ? () => setMatchDrawerOpen(true) : undefined} fullWidth={isMobile} />
+                <JobMatchScorePanel
+                  vectorFit={displayFit}
+                  jobTitle={card.role}
+                  company={card.company}
+                  description={jobDescription}
+                  jobId={dbId}
+                  onRunFullMatch={canRunMatch ? () => setMatchDrawerOpen(true) : undefined}
+                  fullWidth={isMobile}
+                />
               </div>
             </div>
 
@@ -1537,6 +1479,7 @@ export function JobDrawer({
             }
             return null;
           })()}
+          initialAssetId={null}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
             if (dbId) setResumeEditorOpen(true);
