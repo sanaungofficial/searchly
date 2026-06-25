@@ -20,6 +20,8 @@ import {
   type RoleListing,
 } from "@/lib/role-listings";
 import { normalizeJobUrl } from "@/lib/cached-job";
+import { jobMatchesLocationPreference } from "@/lib/profile-location";
+import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
 import type { KanbanCard } from "./workspace-data";
 import {
   filtersCacheKey,
@@ -618,12 +620,17 @@ export function PipelineRecommendedSection({
   onOpenJob,
   onSaveJob,
   actingUserId,
+  locationPrefs,
+  preferencesRefreshKey = 0,
 }: {
   /** Used only to hide roles already saved to the pipeline. */
   pipelineCards: KanbanCard[];
   onOpenJob: (job: VectorMatchedJob) => void;
   onSaveJob: (job: VectorMatchedJob) => Promise<void>;
   actingUserId?: string | null;
+  locationPrefs?: RecommendationPreferencesState | null;
+  /** Increment to refetch after inline preference changes. */
+  preferencesRefreshKey?: number;
 }) {
   const isMobile = useIsMobile();
   const [form, setForm] = useState(() => ({
@@ -789,6 +796,19 @@ export function PipelineRecommendedSection({
     void fetchRecommended(defaultForm, { preferCache: true });
   }, [fetchRecommended, actingUserId]);
 
+  useEffect(() => {
+    if (preferencesRefreshKey <= 0) return;
+    const defaultForm: FilterForm = {
+      ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
+      semanticQuery: appliedForm.semanticQuery,
+    };
+    void fetchRecommended(defaultForm, {
+      forceRefresh: true,
+      preferCache: false,
+      background: jobs.length > 0,
+    });
+  }, [preferencesRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps -- refresh only on key bump
+
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);
     if (next.has(value)) next.delete(value);
@@ -834,13 +854,18 @@ export function PipelineRecommendedSection({
     return keys;
   }, [pipelineCards]);
 
-  const recommendedListings = useMemo(
-    () =>
-      jobs
-        .filter((job) => !savedKeys.has(recommendedDedupeKey(job)))
-        .map((job) => vectorJobToRoleListing(job)),
-    [jobs, savedKeys],
-  );
+  const recommendedListings = useMemo(() => {
+    const profileLocation = locationPrefs?.location?.trim() || null;
+    const priorities = locationPrefs?.priorities ?? [];
+
+    return jobs
+      .filter((job) => {
+        if (!profileLocation) return true;
+        return jobMatchesLocationPreference(job, undefined, { profileLocation, priorities });
+      })
+      .filter((job) => !savedKeys.has(recommendedDedupeKey(job)))
+      .map((job) => vectorJobToRoleListing(job));
+  }, [jobs, savedKeys, locationPrefs]);
 
   const filteredListings = useMemo(
     () => filterRoleListings(recommendedListings, formToFilters(appliedForm, 1), "all"),
