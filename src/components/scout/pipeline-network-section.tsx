@@ -6,16 +6,13 @@ import type { NetworkJobListing } from "@/lib/network-job-display";
 import { SEED_NETWORK_JOBS, previewPlainText } from "@/lib/network-job-display";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
-  COMPENSATION_BAND_LABELS,
   createEmptyNetworkJobFilterForm,
   buildNetworkJobFilterSuggestions,
   countActiveNetworkFilterFields,
   filterNetworkJobsFromForm,
-  toggleFilterSet,
   type NetworkJobFilterForm,
   type NetworkJobFilterSuggestions,
 } from "@/lib/network-job-filters";
-import type { CompensationBand } from "@/lib/network-job-format";
 import { CompanyLogo } from "./company-logo";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -92,33 +89,6 @@ function DatalistInput({
   );
 }
 
-function ChipToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: "5px 10px",
-        border: active ? border.lineStrong : border.line,
-        background: active ? surface.inset : surface.card,
-        color: active ? color.forest : color.muted,
-        fontFamily: fontSans,
-        fontSize: T.label,
-        fontWeight: active ? 600 : 500,
-        cursor: "pointer",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-function formatFeeTypeLabel(value: string): string {
-  if (value === "percentage") return "Percentage fee";
-  if (value === "flat") return "Flat fee";
-  return value;
-}
-
 function NetworkJobFiltersGrid({
   form,
   setForm,
@@ -185,13 +155,64 @@ function NetworkJobFiltersGrid({
         <input type="number" style={inputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} placeholder="100000" />
       </FilterField>
       <FilterField label="Compensation to ($)">
-        <input type="number" style={inputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} placeholder="250000" />
+        <input type="number" style={inputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} placeholder="250000 or 30 for hourly" />
+      </FilterField>
+
+      <FilterSectionHeader
+        title="Narrow further"
+        hint="Type or pick from suggestions — partial matches work. Use compensation from/to for pay range instead of bands."
+      />
+
+      <FilterField label="Job type">
+        <DatalistInput
+          value={form.jobType}
+          onChange={(jobType) => setForm((f) => ({ ...f, jobType }))}
+          listId="network-job-type-suggestions"
+          options={suggestions.jobTypes}
+          placeholder="Full-time, Contract"
+        />
+      </FilterField>
+      <FilterField label="Work arrangement">
+        <DatalistInput
+          value={form.remoteOption}
+          onChange={(remoteOption) => setForm((f) => ({ ...f, remoteOption }))}
+          listId="network-remote-suggestions"
+          options={suggestions.remoteOptions}
+          placeholder="Remote, Hybrid, On-site"
+        />
       </FilterField>
 
       {internalView && (
         <>
+          <FilterField label="Recruiting agency">
+            <DatalistInput
+              value={form.agencyName}
+              onChange={(agencyName) => setForm((f) => ({ ...f, agencyName }))}
+              listId="network-agency-suggestions"
+              options={suggestions.agencies}
+              placeholder="Start typing an agency name…"
+            />
+          </FilterField>
+          <FilterField label="Network status">
+            <DatalistInput
+              value={form.networkStatus}
+              onChange={(networkStatus) => setForm((f) => ({ ...f, networkStatus }))}
+              listId="network-status-suggestions"
+              options={suggestions.statuses}
+              placeholder="Active, On hold"
+            />
+          </FilterField>
           <FilterField label="Placement fee">
             <input style={inputStyle} value={form.feeQuery} onChange={(e) => setForm((f) => ({ ...f, feeQuery: e.target.value }))} placeholder="20%, $20000 flat" />
+          </FilterField>
+          <FilterField label="Fee type">
+            <DatalistInput
+              value={form.feeType}
+              onChange={(feeType) => setForm((f) => ({ ...f, feeType }))}
+              listId="network-fee-type-suggestions"
+              options={suggestions.feeTypes}
+              placeholder="percentage, flat"
+            />
           </FilterField>
           <FilterField label="Guarantee">
             <DatalistInput
@@ -204,78 +225,6 @@ function NetworkJobFiltersGrid({
           </FilterField>
         </>
       )}
-
-      <FilterSectionHeader
-        title="Select options"
-        hint="Tap to toggle fixed categories. Combine with the fields above, then Apply filters."
-      />
-
-      <div style={{ gridColumn: "1 / -1" }}>
-        <FilterField label="Job type">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {suggestions.jobTypes.map((t) => (
-              <ChipToggle key={t} label={t} active={form.jobTypes.has(t)} onClick={() => setForm((f) => ({ ...f, jobTypes: toggleFilterSet(f.jobTypes, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-
-        <FilterField label="Work arrangement">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {suggestions.remoteOptions.map((t) => (
-              <ChipToggle key={t} label={t} active={form.remoteOptions.has(t)} onClick={() => setForm((f) => ({ ...f, remoteOptions: toggleFilterSet(f.remoteOptions, t) }))} />
-            ))}
-          </div>
-        </FilterField>
-
-        <FilterField label="Compensation band">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {suggestions.compensationBands.map((band) => (
-              <ChipToggle
-                key={band}
-                label={COMPENSATION_BAND_LABELS[band]}
-                active={form.compensationBands.has(band)}
-                onClick={() => setForm((f) => ({ ...f, compensationBands: toggleFilterSet(f.compensationBands, band) }))}
-              />
-            ))}
-          </div>
-        </FilterField>
-
-        {internalView && (
-          <>
-            <FilterField label="Network status">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {suggestions.statuses.map((t) => (
-                  <ChipToggle key={t} label={t} active={form.networkStatuses.has(t)} onClick={() => setForm((f) => ({ ...f, networkStatuses: toggleFilterSet(f.networkStatuses, t) }))} />
-                ))}
-              </div>
-            </FilterField>
-
-            <FilterField label="Fee type">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {suggestions.feeTypes.map((t) => (
-                  <ChipToggle key={t} label={formatFeeTypeLabel(t)} active={form.feeTypes.has(t)} onClick={() => setForm((f) => ({ ...f, feeTypes: toggleFilterSet(f.feeTypes, t) }))} />
-                ))}
-              </div>
-            </FilterField>
-
-            <FilterField label="Guarantee period">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {suggestions.guarantees.map((t) => (
-                  <ChipToggle key={t} label={t} active={form.guarantees.has(t)} onClick={() => setForm((f) => ({ ...f, guarantees: toggleFilterSet(f.guarantees, t) }))} />
-                ))}
-              </div>
-            </FilterField>
-
-            <FilterField label="Recruiting agency">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {suggestions.agencies.map((t) => (
-                  <ChipToggle key={t} label={t} active={form.agencies.has(t)} onClick={() => setForm((f) => ({ ...f, agencies: toggleFilterSet(f.agencies, t) }))} />
-                ))}
-              </div>
-            </FilterField>
-          </>
-        )}
-      </div>
     </div>
   );
 }
@@ -293,7 +242,7 @@ function NetworkJobCard({
   onSave?: () => void;
   saving?: boolean;
 }) {
-  const company = job.companyName ?? job.recruiter?.agencyName ?? "Confidential employer";
+  const company = job.agencyName ?? job.companyName ?? job.recruiter?.agencyName ?? "Recruiting firm";
   const summary = previewPlainText(job.description);
   const shareLabel = job.sharedAt
     ? job.sharedAtRelative
@@ -315,7 +264,7 @@ function NetworkJobCard({
         }}
         style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
       >
-        <CompanyLogo name={company} size={44} />
+        <CompanyLogo name={company} website={job.agencyWebsite} logoUrl={job.agencyLogoUrl} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
             <span
@@ -454,16 +403,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob }: PipelineNetwork
   const hasActiveSearch = Boolean(appliedForm.search.trim());
 
   const applyFilters = (nextForm = form) => {
-    setAppliedForm({
-      ...nextForm,
-      networkStatuses: new Set(nextForm.networkStatuses),
-      jobTypes: new Set(nextForm.jobTypes),
-      remoteOptions: new Set(nextForm.remoteOptions),
-      compensationBands: new Set(nextForm.compensationBands),
-      feeTypes: new Set(nextForm.feeTypes),
-      guarantees: new Set(nextForm.guarantees),
-      agencies: new Set(nextForm.agencies),
-    });
+    setAppliedForm({ ...nextForm });
   };
 
   const clearFilters = () => {

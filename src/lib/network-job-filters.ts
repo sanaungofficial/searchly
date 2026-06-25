@@ -1,5 +1,3 @@
-import type { CompensationBand } from "@/lib/network-job-format";
-import { COMPENSATION_BAND_LABELS } from "@/lib/network-job-format";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 
 function splitInputList(value: string): string[] {
@@ -11,21 +9,19 @@ export type NetworkJobFilterForm = {
   jobTitles: string;
   keywords: string;
   companyName: string;
+  agencyName: string;
   industries: string;
   locationCity: string;
   locationState: string;
   sharedAfter: string;
   salaryFrom: string;
   salaryTo: string;
+  jobType: string;
+  remoteOption: string;
+  networkStatus: string;
   feeQuery: string;
   guaranteeQuery: string;
-  networkStatuses: Set<string>;
-  jobTypes: Set<string>;
-  remoteOptions: Set<string>;
-  compensationBands: Set<CompensationBand>;
-  feeTypes: Set<string>;
-  guarantees: Set<string>;
-  agencies: Set<string>;
+  feeType: string;
 };
 
 export function createEmptyNetworkJobFilterForm(): NetworkJobFilterForm {
@@ -34,21 +30,19 @@ export function createEmptyNetworkJobFilterForm(): NetworkJobFilterForm {
     jobTitles: "",
     keywords: "",
     companyName: "",
+    agencyName: "",
     industries: "",
     locationCity: "",
     locationState: "",
     sharedAfter: "",
     salaryFrom: "",
     salaryTo: "",
+    jobType: "",
+    remoteOption: "",
+    networkStatus: "",
     feeQuery: "",
     guaranteeQuery: "",
-    networkStatuses: new Set(),
-    jobTypes: new Set(),
-    remoteOptions: new Set(),
-    compensationBands: new Set(),
-    feeTypes: new Set(),
-    guarantees: new Set(),
-    agencies: new Set(),
+    feeType: "",
   };
 }
 
@@ -57,16 +51,15 @@ export const EMPTY_NETWORK_JOB_FILTER_FORM: NetworkJobFilterForm = createEmptyNe
 
 export type NetworkJobFilterSuggestions = {
   companies: string[];
+  agencies: string[];
   industries: string[];
   cities: string[];
   states: string[];
   statuses: string[];
   jobTypes: string[];
   remoteOptions: string[];
-  compensationBands: CompensationBand[];
   feeTypes: string[];
   guarantees: string[];
-  agencies: string[];
 };
 
 function uniqueSorted(values: Array<string | null | undefined>): string[] {
@@ -78,18 +71,15 @@ function uniqueSorted(values: Array<string | null | undefined>): string[] {
 export function buildNetworkJobFilterSuggestions(jobs: NetworkJobListing[]): NetworkJobFilterSuggestions {
   return {
     companies: uniqueSorted(jobs.map((j) => j.companyName)),
+    agencies: uniqueSorted(jobs.map((j) => j.agencyName ?? j.recruiter?.agencyName)),
     industries: uniqueSorted(jobs.flatMap((j) => j.industries)),
     cities: uniqueSorted(jobs.map((j) => j.city)),
     states: uniqueSorted(jobs.map((j) => j.state)),
     statuses: uniqueSorted(jobs.map((j) => j.networkStatusLabel ?? j.networkStatus)),
     jobTypes: uniqueSorted(jobs.map((j) => j.jobType)),
     remoteOptions: uniqueSorted(jobs.map((j) => j.remoteOption)),
-    compensationBands: uniqueSorted(
-      jobs.map((j) => j.compensationBand).filter(Boolean) as CompensationBand[]
-    ) as CompensationBand[],
     feeTypes: uniqueSorted(jobs.map((j) => j.feeType)),
     guarantees: uniqueSorted(jobs.map((j) => j.guaranteeLabel ?? j.guarantee)),
-    agencies: uniqueSorted(jobs.map((j) => j.recruiter?.agencyName)),
   };
 }
 
@@ -97,6 +87,7 @@ function jobHaystack(job: NetworkJobListing, internalView: boolean): string {
   const parts = [
     job.positionTitle,
     job.companyName,
+    job.agencyName,
     job.location,
     job.city,
     job.state,
@@ -137,10 +128,11 @@ function matchesList(values: string[], haystack: string): boolean {
   return values.some((v) => haystack.includes(v.toLowerCase()));
 }
 
-function matchesSet<T extends string>(selected: Set<T>, value: string | null | undefined): boolean {
-  if (selected.size === 0) return true;
+function matchesContains(value: string | null | undefined, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
   if (!value) return false;
-  return selected.has(value as T);
+  return value.toLowerCase().includes(q);
 }
 
 function parseNumberInput(value: string): number | null {
@@ -170,8 +162,14 @@ export function filterNetworkJobsFromForm(
 
     if (form.companyName.trim()) {
       const q = form.companyName.trim().toLowerCase();
-      const companyHay = [job.companyName, job.recruiter?.agencyName].filter(Boolean).join(" ").toLowerCase();
+      const companyHay = [job.companyName, job.agencyName].filter(Boolean).join(" ").toLowerCase();
       if (!companyHay.includes(q)) return false;
+    }
+
+    if (form.agencyName.trim()) {
+      const q = form.agencyName.trim().toLowerCase();
+      const agencyHay = [job.agencyName, job.recruiter?.agencyName].filter(Boolean).join(" ").toLowerCase();
+      if (!agencyHay.includes(q)) return false;
     }
 
     const industryTerms = splitInputList(form.industries);
@@ -205,15 +203,12 @@ export function filterNetworkJobsFromForm(
     if (salaryFrom != null && compTop != null && compTop < salaryFrom) return false;
     if (salaryTo != null && compBottom != null && compBottom > salaryTo) return false;
 
-    if (!matchesSet(form.jobTypes, job.jobType)) return false;
-    if (!matchesSet(form.remoteOptions, job.remoteOption)) return false;
-    if (!matchesSet(form.compensationBands, job.compensationBand)) return false;
+    if (!matchesContains(job.jobType, form.jobType)) return false;
+    if (!matchesContains(job.remoteOption, form.remoteOption)) return false;
 
     if (internalView) {
-      if (!matchesSet(form.networkStatuses, job.networkStatusLabel ?? job.networkStatus)) return false;
-      if (!matchesSet(form.agencies, job.recruiter?.agencyName ?? null)) return false;
-      if (!matchesSet(form.feeTypes, job.feeType)) return false;
-      if (!matchesSet(form.guarantees, job.guaranteeLabel ?? job.guarantee)) return false;
+      if (!matchesContains(job.networkStatusLabel ?? job.networkStatus, form.networkStatus)) return false;
+      if (!matchesContains(job.feeType, form.feeType)) return false;
 
       if (form.feeQuery.trim()) {
         const q = form.feeQuery.trim().toLowerCase();
@@ -233,37 +228,31 @@ export function filterNetworkJobsFromForm(
 
 export function countActiveNetworkFilterFields(form: NetworkJobFilterForm, internalView: boolean): number {
   let n = 0;
-  if (form.search.trim()) n += 1;
-  if (form.jobTitles.trim()) n += 1;
-  if (form.keywords.trim()) n += 1;
-  if (form.companyName.trim()) n += 1;
-  if (form.industries.trim()) n += 1;
-  if (form.locationCity.trim()) n += 1;
-  if (form.locationState.trim()) n += 1;
-  if (form.sharedAfter.trim()) n += 1;
-  if (form.salaryFrom.trim()) n += 1;
-  if (form.salaryTo.trim()) n += 1;
-  n += form.jobTypes.size;
-  n += form.remoteOptions.size;
-  n += form.compensationBands.size;
+  const textFields: (keyof NetworkJobFilterForm)[] = [
+    "search",
+    "jobTitles",
+    "keywords",
+    "companyName",
+    "agencyName",
+    "industries",
+    "locationCity",
+    "locationState",
+    "sharedAfter",
+    "salaryFrom",
+    "salaryTo",
+    "jobType",
+    "remoteOption",
+  ];
+  for (const key of textFields) {
+    if (form[key].trim()) n += 1;
+  }
 
   if (internalView) {
-    n += form.networkStatuses.size;
-    n += form.agencies.size;
-    n += form.feeTypes.size;
-    n += form.guarantees.size;
+    if (form.networkStatus.trim()) n += 1;
+    if (form.feeType.trim()) n += 1;
     if (form.feeQuery.trim()) n += 1;
     if (form.guaranteeQuery.trim()) n += 1;
   }
 
   return n;
 }
-
-export function toggleFilterSet<T extends string>(set: Set<T>, value: T): Set<T> {
-  const next = new Set(set);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  return next;
-}
-
-export { COMPENSATION_BAND_LABELS };

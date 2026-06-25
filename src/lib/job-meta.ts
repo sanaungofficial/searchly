@@ -38,6 +38,9 @@ export interface JobMeta {
     networkStatus: string | null;
     /** When false, hide fee, guarantee, TE ids, and admin block in drawer. */
     internalView?: boolean;
+    agencyName?: string | null;
+    agencyWebsite?: string | null;
+    agencyLogoUrl?: string | null;
     adminDetails: Array<{ label: string; value: string }>;
     recruiter: {
       id: string;

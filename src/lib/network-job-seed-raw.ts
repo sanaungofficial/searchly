@@ -7,7 +7,7 @@ import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
   {
     id: 2755901,
-    uuid: "a1b2c3d4-e5f6-4789-a012-275590100001",
+    uuid: "454d6247-c343-41ee-98a8-7f92bdc0270a",
     network_id: "BU82-2755901",
     position_title: "Phlebotomist 5288",
     city: "Liverpool",
@@ -33,6 +33,7 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
     },
     agency_detail: {
       name: "BU82 Recruiting",
+      website: "https://bu82recruiting.com",
     },
     guarantee: null,
     guarantee_period: null,
@@ -40,7 +41,6 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
   },
   {
     id: 2755376,
-    uuid: "b2c3d4e5-f6a7-4890-b123-275537600002",
     network_id: "NJ142-2755376",
     position_title: "Key Account Manager",
     city: "Sacramento",
@@ -66,6 +66,7 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
     },
     agency_detail: {
       name: "NJ142 Search Partners",
+      website: "https://nj142search.com",
     },
     guarantee: "90 days",
     guarantee_period: 90,
@@ -73,7 +74,6 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
   },
   {
     id: 2755899,
-    uuid: "c3d4e5f6-a7b8-4901-c234-275589900003",
     network_id: "AH98-2755899",
     position_title: "Attorney – Creditors' Rights / Litigation REMOTE",
     city: "San Diego",
@@ -99,6 +99,7 @@ export const SEED_RAW_NETWORK_JOBS: TopEchelonNetworkJobRaw[] = [
     },
     agency_detail: {
       name: "AH98 Legal Search",
+      website: "https://ah98legal.com",
     },
     guarantee: "90 days",
     guarantee_period: 90,

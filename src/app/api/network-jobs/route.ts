@@ -5,6 +5,7 @@ import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 
 function rowToListing(row: {
   externalId: string;
+  topEchelonUrl: string | null;
   raw: unknown;
   recruiterRecord: {
     externalId: string;
@@ -17,6 +18,7 @@ function rowToListing(row: {
   } | null;
 }): NetworkJobListing {
   const listing = interpretNetworkJob(row.raw as TopEchelonNetworkJobRaw);
+  if (row.topEchelonUrl) listing.topEchelonUrl = row.topEchelonUrl;
   if (row.recruiterRecord) {
     listing.recruiter = {
       id: row.recruiterRecord.externalId,

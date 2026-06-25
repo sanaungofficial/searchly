@@ -17,46 +17,90 @@ export const COMPENSATION_BAND_LABELS: Record<CompensationBand, string> = {
   "200k_plus": "$200K+",
 };
 
+function readPayType(raw: { compensation_type?: unknown; pay_type?: unknown; salary_type?: unknown }): string | null {
+  for (const key of ["compensation_type", "pay_type", "salary_type"] as const) {
+    const value = raw[key];
+    if (typeof value === "string" && value.trim()) return value.trim().toLowerCase();
+  }
+  return null;
+}
+
 export function inferCompensationType(
   min: number | null | undefined,
   max: number | null | undefined,
-  jobType: string | null
+  jobType: string | null,
+  payTypeHint?: string | null
 ): CompensationType {
+  if (payTypeHint) {
+    if (/hour|hr|hourly/.test(payTypeHint)) return "hourly";
+    if (/salary|annual|year|yr/.test(payTypeHint)) return "salary";
+  }
+
   const values = [min, max].filter((v): v is number => v != null);
   if (values.length === 0) return null;
+
   const peak = Math.max(...values);
+  const job = jobType?.toLowerCase() ?? "";
+
+  if (job.includes("contract") && peak <= 500) return "hourly";
   if (peak > 0 && peak < 500) return "hourly";
-  if (jobType?.toLowerCase().includes("contract") && peak < 500) return "hourly";
   return "salary";
+}
+
+function formatHourlyAmount(n: number): string {
+  const rounded = Math.round(n * 100) / 100;
+  const display = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+  return `$${display}/hr`;
+}
+
+function formatSalaryAmount(n: number): string {
+  if (n >= 1000) return `$${Math.round(n / 1000)}K`;
+  return `$${n.toLocaleString()}`;
 }
 
 export function formatCompensationLabel(
   min: number | null | undefined,
   max: number | null | undefined,
-  jobType: string | null
+  jobType: string | null,
+  payTypeHint?: string | null
 ): string | null {
   if (min == null && max == null) return null;
 
-  const type = inferCompensationType(min, max, jobType);
-  const fmtHourly = (n: number) => `$${n.toFixed(2)}/hr`;
-  const fmtSalary = (n: number) => {
-    if (n >= 1000) return `$${Math.round(n / 1000)}K`;
-    return `$${n.toLocaleString()}`;
-  };
-  const fmt = type === "hourly" ? fmtHourly : fmtSalary;
+  const type = inferCompensationType(min, max, jobType, payTypeHint);
+  const fmt = type === "hourly" ? formatHourlyAmount : formatSalaryAmount;
 
   if (min != null && max != null && min !== max) return `${fmt(min)} – ${fmt(max)}`;
   return fmt(min ?? max!);
 }
 
+export function formatCompensationFromRaw(
+  raw: {
+    minimum_compensation?: number | null;
+    minimumCompensation?: number | null;
+    maximum_compensation?: number | null;
+    maximumCompensation?: number | null;
+    job_type?: string | null;
+    jobType?: string | null;
+    compensation_type?: unknown;
+    pay_type?: unknown;
+    salary_type?: unknown;
+  }
+): string | null {
+  const min = (raw.minimum_compensation ?? raw.minimumCompensation) as number | null | undefined;
+  const max = (raw.maximum_compensation ?? raw.maximumCompensation) as number | null | undefined;
+  const jobType = ((raw.job_type ?? raw.jobType) as string | null) ?? null;
+  return formatCompensationLabel(min, max, jobType, readPayType(raw));
+}
+
 export function compensationBand(
   min: number | null | undefined,
   max: number | null | undefined,
-  jobType: string | null
+  jobType: string | null,
+  payTypeHint?: string | null
 ): CompensationBand | null {
   if (min == null && max == null) return null;
 
-  const type = inferCompensationType(min, max, jobType);
+  const type = inferCompensationType(min, max, jobType, payTypeHint);
   if (type === "hourly") return "hourly";
 
   const lo = min ?? max ?? 0;
