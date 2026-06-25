@@ -861,12 +861,13 @@ export function PipelineRecommendedSection({
     if (mountedRef.current || !defaultsLoaded) return;
     mountedRef.current = true;
 
-    const defaultForm: FilterForm = defaultFormRef.current ?? {
+    // Default daily feed: no custom filters sent to the API (profile location is post-filter only).
+    const feedForm: FilterForm = {
       ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
       semanticQuery: "",
     };
-    const defaultFilters = formToFilters(defaultForm, 1);
-    const cacheKey = filtersCacheKey(defaultFilters);
+    const feedFilters = formToFilters(feedForm, 1);
+    const cacheKey = filtersCacheKey(feedFilters);
     const cached = readRecommendedCache(cacheKey);
 
     if (cached?.jobs?.length) {
@@ -874,7 +875,7 @@ export function PipelineRecommendedSection({
       setHasLoadedOnce(true);
       setLoading(false);
       if (isCacheFresh(cached)) return;
-      void fetchRecommended(defaultForm, { background: true, preferCache: true });
+      void fetchRecommended(feedForm, { background: true, preferCache: true });
       return;
     }
 
@@ -886,7 +887,7 @@ export function PipelineRecommendedSection({
       return;
     }
 
-    void fetchRecommended(defaultForm, { preferCache: true });
+    void fetchRecommended(feedForm, { preferCache: true });
   }, [fetchRecommended, actingUserId, defaultsLoaded]);
 
   useEffect(() => {
