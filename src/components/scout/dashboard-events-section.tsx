@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LIVE_SESSIONS } from "@/lib/live-sessions";
+import type { LiveSessionView } from "@/lib/live-session-types";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, type as T } from "@/lib/typography";
@@ -16,15 +16,28 @@ const DASHBOARD_EVENT_LIMIT = 3;
 export function DashboardEventsSection({ isMobile }: Props) {
   const router = useRouter();
   const [interestOpen, setInterestOpen] = useState(false);
+  const [allSessions, setAllSessions] = useState<LiveSessionView[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const sessions = useMemo(() => {
-    const live = LIVE_SESSIONS.filter((s) => s.isLive);
-    const upcoming = LIVE_SESSIONS.filter((s) => !s.isLive).slice(0, DASHBOARD_EVENT_LIMIT);
-    const combined = [...live, ...upcoming].slice(0, DASHBOARD_EVENT_LIMIT);
-    return combined;
+  useEffect(() => {
+    fetch("/api/live/sessions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d?.sessions)) setAllSessions(d.sessions);
+      })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, []);
 
-  const showInterestCta = sessions.length === 0;
+  const sessions = useMemo(() => {
+    const live = allSessions.filter((s) => s.isLive);
+    const upcoming = allSessions
+      .filter((s) => !s.isLive && s.status !== "ENDED" && s.status !== "CANCELLED")
+      .slice(0, DASHBOARD_EVENT_LIMIT);
+    return [...live, ...upcoming].slice(0, DASHBOARD_EVENT_LIMIT);
+  }, [allSessions]);
+
+  const showInterestCta = loaded && sessions.length === 0;
 
   return (
     <>
@@ -54,7 +67,7 @@ export function DashboardEventsSection({ isMobile }: Props) {
           </button>
         </div>
 
-        {showInterestCta ? (
+        {!loaded ? null : showInterestCta ? (
           <ScoutBox padding={isMobile ? "24px 20px" : "28px 24px"} style={{ textAlign: "center" }}>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.6, margin: "0 0 16px" }}>
               No live sessions on the calendar right now. Tell us what topics you&apos;d like to see.
