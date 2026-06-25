@@ -8,6 +8,7 @@ import {
   getNylasConfig,
   isNylasConfigured,
   nylasProfileReturnUrl,
+  resolveKimchiAppUrl,
   signNylasState,
 } from "@/lib/nylas";
 
@@ -54,14 +55,13 @@ async function getCoachProfileForUser() {
 }
 
 export async function GET(req: NextRequest) {
-  const cfg = getNylasConfig();
-  const fallback = cfg?.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
+  const appUrl = resolveKimchiAppUrl(req);
   const ctx = await getCoachProfileForUser();
   const returnRole = ctx?.dbUser.role === UserRole.COACH ? "COACH" : "ADMIN";
 
   if (!isNylasConfigured()) {
     return NextResponse.redirect(
-      nylasProfileReturnUrl(fallback, returnRole, { nylas: "error", reason: "config" }),
+      nylasProfileReturnUrl(appUrl, returnRole, { nylas: "error", reason: "config" }),
     );
   }
 
@@ -69,16 +69,30 @@ export async function GET(req: NextRequest) {
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
   const state = signNylasState({ coachProfileId: ctx.profile.id, ts: Date.now() });
-  const url = await createNylasAuthUrl({
-    provider,
-    state,
-    loginHint: ctx.profile.email ?? ctx.dbUser.email,
-  });
 
-  return NextResponse.redirect(url);
+  try {
+    const url = await createNylasAuthUrl({
+      provider,
+      state,
+      loginHint: ctx.profile.email ?? ctx.dbUser.email,
+      appUrl,
+    });
+    return NextResponse.redirect(url);
+  } catch (err) {
+    console.error("[nylas/connect]", err);
+    const message = err instanceof Error ? err.message : "Nylas connect failed";
+    const reason = message.includes("RedirectURI") || message.includes("redirect")
+      ? "redirect"
+      : "setup";
+    return NextResponse.redirect(
+      nylasProfileReturnUrl(appUrl, returnRole, { nylas: "error", reason }),
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
+  const appUrl = resolveKimchiAppUrl(req);
+
   if (!isNylasConfigured()) {
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
@@ -89,11 +103,20 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as { provider?: string };
   const provider = body.provider === "microsoft" ? "microsoft" : "google";
   const state = signNylasState({ coachProfileId: ctx.profile.id, ts: Date.now() });
-  const url = await createNylasAuthUrl({
-    provider,
-    state,
-    loginHint: ctx.profile.email ?? ctx.dbUser.email,
-  });
 
-  return NextResponse.json({ url });
+  try {
+    const url = await createNylasAuthUrl({
+      provider,
+      state,
+      loginHint: ctx.profile.email ?? ctx.dbUser.email,
+      appUrl,
+    });
+    return NextResponse.json({ url });
+  } catch (err) {
+    console.error("[nylas/connect]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Nylas connect failed" },
+      { status: 502 },
+    );
+  }
 }

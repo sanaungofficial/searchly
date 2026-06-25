@@ -226,6 +226,8 @@ export function CoachProfileTab({
         auth: "Calendar authorization was cancelled or failed.",
         state: "Session expired — please try connecting again.",
         profile: "Coach profile not found.",
+        redirect:
+          "OAuth redirect URI mismatch. In Nylas → Hosted Authentication, add https://app.kimchi.so/api/nylas/callback",
         setup: "Connected, but scheduler setup failed. Try again or contact support.",
       };
       setNylasNotice({

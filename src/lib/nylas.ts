@@ -10,7 +10,7 @@ export type NylasConfig = {
   webhookSecret?: string;
 };
 
-export function getNylasConfig(): NylasConfig | null {
+export function getNylasConfig(appUrlOverride?: string): NylasConfig | null {
   const apiKey = process.env.NYLAS_API_KEY?.trim();
   const clientId = process.env.NYLAS_CLIENT_ID?.trim();
   if (!apiKey || !clientId) return null;
@@ -19,9 +19,26 @@ export function getNylasConfig(): NylasConfig | null {
     apiKey,
     clientId,
     apiUri: process.env.NYLAS_API_URI?.trim() || DEFAULT_API_URI,
-    appUrl: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.kimchi.so",
+    appUrl: appUrlOverride?.replace(/\/$/, "") || resolveKimchiAppUrl(),
     webhookSecret: process.env.NYLAS_WEBHOOK_SECRET?.trim(),
   };
+}
+
+/** Prefer the live request host so OAuth redirect URIs match Nylas dashboard (app.kimchi.so). */
+export function resolveKimchiAppUrl(req?: { headers: Headers; nextUrl?: { origin: string } }): string {
+  if (req) {
+    const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "")
+      .split(",")[0]
+      .trim();
+    const proto = req.headers.get("x-forwarded-proto") ?? "https";
+    if (host) return `${proto}://${host}`.replace(/\/$/, "");
+    if (req.nextUrl?.origin) return req.nextUrl.origin.replace(/\/$/, "");
+  }
+
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (envUrl && envUrl.includes("kimchi.so")) return envUrl.replace(/\/$/, "");
+
+  return "https://app.kimchi.so";
 }
 
 export function nylasRedirectUri(appUrl: string): string {
@@ -106,8 +123,9 @@ export async function createNylasAuthUrl(params: {
   provider: "google" | "microsoft";
   state: string;
   loginHint?: string;
+  appUrl?: string;
 }): Promise<string> {
-  const cfg = getNylasConfig();
+  const cfg = getNylasConfig(params.appUrl);
   if (!cfg) throw new Error("Nylas is not configured");
 
   const payload = {
@@ -141,8 +159,8 @@ export type NylasTokenResponse = {
   };
 };
 
-export async function exchangeNylasCode(code: string): Promise<{ grantId: string; email?: string }> {
-  const cfg = getNylasConfig();
+export async function exchangeNylasCode(code: string, appUrl?: string): Promise<{ grantId: string; email?: string }> {
+  const cfg = getNylasConfig(appUrl);
   if (!cfg) throw new Error("Nylas is not configured");
 
   const res = await nylasFetch<NylasTokenResponse>("/v3/connect/token", {
