@@ -900,7 +900,7 @@ export function WorkspaceDashboard() {
               </ScoutBox>
             )}
 
-            {watchlistError && !watchlistSignals?.signals?.length && !watchlistRequiresLoad && (
+            {watchlistError && !watchlistSignals?.signals?.length && (
               <ScoutBox padding="14px 18px">
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.5 }}>
                   {watchlistError}
