@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import { CompanyLogo } from "@/components/scout/company-logo";
-import { CompanySumbleIntelPanel } from "@/components/scout/company-sumble-intel-panel";
-import { CompanySumbleBriefPanel } from "@/components/scout/company-sumble-brief-panel";
-import { getSumbleBriefFromEnrichment, mergeSumbleBriefIntoEnrichment } from "@/lib/sumble-brief-cache";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
@@ -1060,25 +1056,6 @@ function CompanyDrawer({
             )}
           </DrawerSection>
 
-          <DrawerSection title="Sumble intelligence">
-            <CompanySumbleIntelPanel
-              trackedId={company.id}
-              companyName={company.name}
-              website={company.website ?? enrichmentWebsite(intel)}
-            />
-            <CompanySumbleBriefPanel
-              companyId={company.id}
-              companyName={company.name}
-              initialBrief={getSumbleBriefFromEnrichment(company.enrichmentCache)}
-              onBriefUpdated={(brief) => {
-                onRefreshed({
-                  ...company,
-                  enrichmentCache: mergeSumbleBriefIntoEnrichment(company.enrichmentCache, brief) as EnrichmentCache,
-                });
-              }}
-            />
-          </DrawerSection>
-
           {/* Notes */}
           <DrawerSection title="Notes">
             <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px" }}>
@@ -1125,56 +1102,6 @@ function CompanyDrawer({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-function SumbleWatchlistSyncButton({ companiesCount }: { companiesCount: number }) {
-  const isMobile = useIsMobile();
-  const [syncing, setSyncing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function handleSync() {
-    if (companiesCount === 0) {
-      setMessage("Add companies to your watchlist first.");
-      return;
-    }
-    setSyncing(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/sumble/watchlist-sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ load: true }),
-      });
-      const body = await res.json();
-      if (body.listUrl && body.organizationsAdded != null) {
-        setMessage(`Synced ${body.organizationsAdded} orgs to Sumble list.`);
-      } else {
-        setMessage(body.error ?? "Sync failed.");
-      }
-    } catch {
-      setMessage("Network error during sync.");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "stretch" : "flex-end", gap: 4 }}>
-      <ScoutSecondaryBtn
-        onClick={() => void handleSync()}
-        disabled={syncing || companiesCount === 0}
-        style={{ minHeight: 44 }}
-        title="Creates or updates a Kimchi Watchlist in Sumble"
-      >
-        {syncing ? "Syncing…" : "Sync to Sumble list"}
-      </ScoutSecondaryBtn>
-      {message && (
-        <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, maxWidth: 220, textAlign: "right" }}>
-          {message}
-        </span>
-      )}
-    </div>
-  );
-}
-
 export function WorkspaceCompanies({
   onOpenProspectJob,
   selectedCompanyId = null,
@@ -1185,10 +1112,6 @@ export function WorkspaceCompanies({
   onCompanySelect?: (id: string | null) => void;
 }) {
   const isMobile = useIsMobile();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const intelSlug = searchParams.get("intel");
-  const intelName = searchParams.get("name");
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1370,7 +1293,6 @@ export function WorkspaceCompanies({
           >
             {showAdd ? "Cancel" : "+ Track company"}
           </ScoutSecondaryBtn>
-          <SumbleWatchlistSyncButton companiesCount={companies.length} />
         </div>
       </div>
 
@@ -1469,61 +1391,6 @@ export function WorkspaceCompanies({
           </table>
         </ScoutBox>
         )
-      )}
-
-      {intelSlug && !selectedCompany && (
-        <>
-          <div
-            onClick={() => router.replace("/opportunities/companies")}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 200 }}
-          />
-          <div
-            style={{
-              position: "fixed",
-              top: isMobile ? 0 : 8,
-              right: isMobile ? 0 : 8,
-              bottom: isMobile ? 0 : 8,
-              left: isMobile ? 0 : undefined,
-              width: isMobile ? "100%" : DRAWER_WIDTH,
-              maxWidth: isMobile ? "100%" : "calc(100vw - 16px)",
-              background: surface.inset,
-              border: isMobile ? "none" : border.lineStrong,
-              zIndex: 201,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div
-              style={{
-                padding: isMobile ? "14px 16px" : "20px 24px",
-                borderBottom: border.line,
-                background: surface.card,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <ScoutDisplayTitle size={isMobile ? 20 : 24}>{intelName || intelSlug}</ScoutDisplayTitle>
-              <button
-                type="button"
-                onClick={() => router.replace("/opportunities/companies")}
-                style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer" }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
-              <DrawerSection title="Sumble intelligence">
-                <CompanySumbleIntelPanel
-                  companyName={intelName || intelSlug}
-                  website={intelSlug.includes(".") ? intelSlug : undefined}
-                />
-              </DrawerSection>
-            </div>
-          </div>
-        </>
       )}
 
       {/* Company detail drawer */}
