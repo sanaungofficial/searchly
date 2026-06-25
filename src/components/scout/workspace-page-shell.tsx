@@ -6,12 +6,14 @@ import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
 import { color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Props = {
-  label: string;
-  title: ReactNode;
+  label?: string;
+  title?: ReactNode;
   subtitle?: ReactNode;
   isMobile?: boolean;
   /** Short title for mobile top bar (defaults to label) */
   mobileBarTitle?: string;
+  /** Omit label + title chrome — content only (Dashboard staff sub-tabs). */
+  compact?: boolean;
   children: ReactNode;
   /** Optional max content width; omit for full-width layout (matches Opportunities). */
   maxWidth?: number;
@@ -26,9 +28,18 @@ export function WorkspacePageShell({
   mobileBarTitle,
   children,
   maxWidth,
+  compact = false,
 }: Props) {
   const pad = isMobile ? "20px 16px 48px" : "32px 36px 48px";
   const barTitle = mobileBarTitle ?? label;
+
+  if (compact) {
+    return (
+      <div style={{ width: "100%", boxSizing: "border-box" }}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div

@@ -5,7 +5,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkspaceProfileTabBar, type ProfileTabItem } from "@/components/scout/workspace-profile-tab-bar";
 import { isStaffPortalRole } from "@/lib/staff-portal";
-import { surface } from "@/lib/typography";
+import { border, surface } from "@/lib/typography";
 
 const STAFF_TABS: ProfileTabItem[] = [
   { id: "home", label: "Dashboard", href: "/dashboard" },
@@ -46,12 +46,19 @@ export function DashboardCoachShell({ children }: Props) {
         background: surface.page,
       }}
     >
-      <div style={{ padding: `${isMobile ? 12 : 16}px ${horizontalPad}px 0`, flexShrink: 0 }}>
+      <div
+        style={{
+          padding: `${isMobile ? 12 : 16}px ${horizontalPad}px ${isMobile ? 12 : 16}px`,
+          flexShrink: 0,
+          borderBottom: border.line,
+        }}
+      >
         <WorkspaceProfileTabBar
           tabs={STAFF_TABS}
           activeHref={activeHref}
           onNavigate={(href) => router.push(href)}
           isMobile={isMobile}
+          variant="pills"
         />
       </div>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>

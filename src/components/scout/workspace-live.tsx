@@ -17,7 +17,7 @@ function sessionRouteId(s: LiveSessionRow): string {
   return liveSessionRouteId(s);
 }
 
-export function WorkspaceLive() {
+export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState<LiveFilter>("all");
@@ -137,6 +137,9 @@ export function WorkspaceLive() {
   };
 
   if (loading && sessions.length === 0) {
+    if (embedded) {
+      return <p style={{ fontFamily: fontSans, color: color.muted }}>Loading sessions…</p>;
+    }
     return (
       <WorkspacePageShell isMobile={isMobile} label="Live with Second Ladder" mobileBarTitle="Live" title="Real sessions, real coaches.">
         <p style={{ fontFamily: fontSans, color: color.muted }}>Loading sessions…</p>
@@ -144,13 +147,8 @@ export function WorkspaceLive() {
     );
   }
 
-  return (
-    <WorkspacePageShell
-      isMobile={isMobile}
-      label="Live with Second Ladder"
-      mobileBarTitle="Live"
-      title="Real sessions, real coaches."
-    >
+  const body = (
+    <>
         {error && (
           <p style={{ fontFamily: fontSans, color: "#C4574A", marginBottom: 16 }}>{error}</p>
         )}
@@ -263,6 +261,26 @@ export function WorkspaceLive() {
           );
           })}
         </div>
+    </>
+  );
+
+  if (embedded) {
+    const pad = isMobile ? "16px" : "28px";
+    return (
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ padding: `0 ${pad} ${pad}` }}>{body}</div>
+      </div>
+    );
+  }
+
+  return (
+    <WorkspacePageShell
+      isMobile={isMobile}
+      label="Live with Second Ladder"
+      mobileBarTitle="Live"
+      title="Real sessions, real coaches."
+    >
+      {body}
     </WorkspacePageShell>
   );
 }

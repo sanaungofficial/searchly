@@ -135,8 +135,8 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
     if (embedded) {
       return (
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-          <div style={{ padding: `0 ${embeddedPad} 32px`, maxWidth: 960 }}>
-            <WorkspacePageShell label="Coach portal" title={title}>
+          <div style={{ padding: `0 ${embeddedPad} 32px` }}>
+            <WorkspacePageShell compact title="">
               {onboardingBanner}
               {content}
             </WorkspacePageShell>
