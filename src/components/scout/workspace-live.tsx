@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { LIVE_SESSIONS } from "./workspace-data";
 import { ScoutBox, ScoutPrimaryBtn } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
@@ -10,8 +11,13 @@ import { border, color, fontSans, type as T } from "@/lib/typography";
 type LiveFilter = "all" | "live" | "week";
 
 export function WorkspaceLive() {
+  const router = useRouter();
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState<LiveFilter>("all");
+
+  const openSession = (sessionId: number) => {
+    router.push(`/live/${sessionId}`);
+  };
 
   const filters: [LiveFilter, string][] = [
     ["all", "All sessions"],
@@ -162,6 +168,7 @@ export function WorkspaceLive() {
             </div>
           </div>
           <ScoutPrimaryBtn
+            onClick={() => openSession(weekly.id)}
             style={{
               background: weekly.accentColor,
               color: weekly.bgColor,
@@ -294,6 +301,7 @@ export function WorkspaceLive() {
                     {s.isLive ? `${s.registered} watching` : `${s.registered} registered`}
                   </span>
                   <ScoutPrimaryBtn
+                    onClick={() => openSession(s.id)}
                     style={{
                       padding: "6px 14px",
                       background: s.isLive ? "#C4574A" : color.forest,
