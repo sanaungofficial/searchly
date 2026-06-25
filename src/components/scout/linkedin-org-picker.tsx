@@ -48,6 +48,7 @@ type Props = {
   inputStyle?: React.CSSProperties;
   logoSize?: number;
   showLogo?: boolean;
+  hintLabel?: string;
 };
 
 export function LinkedInOrgPicker({
@@ -60,34 +61,40 @@ export function LinkedInOrgPicker({
   inputStyle,
   logoSize = 48,
   showLogo = true,
+  hintLabel = "company",
 }: Props) {
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<OrgSuggestItem[]>([]);
   const [picked, setPicked] = useState<OrgSuggestItem | null>(null);
+  const [searching, setSearching] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  const needsMatch = Boolean(value.trim()) && !orgRef?.logoUrl && !picked?.logoUrl;
+
   useEffect(() => {
+    if (!open) return;
     if (!value.trim()) {
       setSuggestions([]);
-      setOpen(false);
-      setPicked(null);
       return;
     }
+    setSearching(true);
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/companies/suggest?q=${encodeURIComponent(value.trim())}`);
         if (res.ok) {
           const data: OrgSuggestItem[] = await res.json();
           setSuggestions(data);
-          const keepClosed = picked && picked.name.toLowerCase() === value.trim().toLowerCase();
-          setOpen(!keepClosed && data.length > 0);
+        } else {
+          setSuggestions([]);
         }
       } catch {
-        /* ignore */
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
       }
     }, 200);
     return () => clearTimeout(timer);
-  }, [value, picked]);
+  }, [value, open]);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -105,6 +112,10 @@ export function LinkedInOrgPicker({
     setPicked(item);
     onChange(item.name, suggestToOrgRef(item));
     setOpen(false);
+  }
+
+  function openSearch() {
+    setOpen(true);
   }
 
   return (
@@ -125,16 +136,33 @@ export function LinkedInOrgPicker({
           onChange={(e) => {
             onChange(e.target.value, null);
             setPicked(null);
-            setOpen(true);
           }}
-          onFocus={() => {
-            onFocus?.();
-            if (!picked && suggestions.length > 0) setOpen(true);
-          }}
+          onFocus={() => onFocus?.()}
           onBlur={() => onBlur?.()}
           style={inputStyle}
         />
-        {open && suggestions.length > 0 && (
+        {needsMatch && !open && (
+          <p style={{ margin: "6px 0 0", fontFamily: "system-ui, sans-serif", fontSize: 12, color: "rgba(0,0,0,0.55)", lineHeight: 1.4 }}>
+            No logo yet —{" "}
+            <button
+              type="button"
+              onClick={openSearch}
+              style={{
+                padding: 0,
+                border: "none",
+                background: "none",
+                color: "#0a66c2",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                fontSize: "inherit",
+              }}
+            >
+              search for this {hintLabel}
+            </button>
+          </p>
+        )}
+        {open && (
           <div
             style={{
               position: "absolute",
@@ -149,6 +177,9 @@ export function LinkedInOrgPicker({
               overflowY: "auto",
             }}
           >
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid #f3f2ef", fontSize: 12, color: "rgba(0,0,0,0.55)" }}>
+              {searching ? "Searching…" : suggestions.length ? "Pick a match to add the logo" : "No matches — keep typing or use the name as entered"}
+            </div>
             {suggestions.map((item) => (
               <button
                 key={`${item.catalogSlug}-${item.id ?? item.source}`}

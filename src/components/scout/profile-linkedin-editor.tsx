@@ -14,7 +14,6 @@ import { JobrightScorePill } from "./profile-resume-jobright-document";
 import { ResumeAnalysisReportDrawer, buildFullReport } from "./profile-resume-analysis-report";
 import { ResumeSectionFixDrawer, type SectionFixIssue } from "./profile-resume-section-fix-drawer";
 import {
-  getLinkedInSectionFixIssues,
   linkedInAnalysisToReport,
   linkedInExperienceEntryScores,
   findPriorityLinkedInSection,
@@ -47,7 +46,6 @@ type FixSectionState = {
   sectionId: LinkedInSectionId;
   entryId?: string;
   entryLabel?: string;
-  mode: "fix" | "impact";
 } | null;
 
 const liField: React.CSSProperties = {
@@ -120,55 +118,36 @@ const entryMenuBtnStyle = (disabled: boolean): React.CSSProperties => ({
   opacity: disabled ? 0.45 : 1,
 });
 
-function LiSectionActions({ onFix, onImpact }: { onFix: () => void; onImpact: () => void }) {
+function LiSectionActions({ onImprove }: { onImprove: () => void }) {
   return (
-    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-      <button
-        type="button"
-        onClick={onImpact}
-        style={{
-          padding: "4px 10px",
-          fontSize: 11,
-          fontWeight: 600,
-          borderRadius: 4,
-          border: `1px solid ${LI.border}`,
-          background: LI.card,
-          color: LI.muted,
-          cursor: "pointer",
-        }}
-      >
-        Impact
-      </button>
-      <button
-        type="button"
-        onClick={onFix}
-        style={{
-          padding: "4px 12px",
-          fontSize: 11,
-          fontWeight: 700,
-          borderRadius: 4,
-          border: "none",
-          background: LI.blue,
-          color: "#fff",
-          cursor: "pointer",
-        }}
-      >
-        Fix
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onImprove}
+      style={{
+        padding: "4px 12px",
+        fontSize: 11,
+        fontWeight: 700,
+        borderRadius: 4,
+        border: "none",
+        background: LI.blue,
+        color: "#fff",
+        cursor: "pointer",
+        flexShrink: 0,
+      }}
+    >
+      Improve
+    </button>
   );
 }
 
 function LiSectionHeader({
   title,
-  onFix,
-  onImpact,
+  onImprove,
   onAdd,
   addLabel,
 }: {
   title: string;
-  onFix: () => void;
-  onImpact: () => void;
+  onImprove: () => void;
   onAdd?: () => void;
   addLabel?: string;
 }) {
@@ -194,7 +173,7 @@ function LiSectionHeader({
             {addLabel ?? "+ Add"}
           </button>
         )}
-        <LiSectionActions onFix={onFix} onImpact={onImpact} />
+        <LiSectionActions onImprove={onImprove} />
       </div>
     </div>
   );
@@ -521,17 +500,15 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     }
   };
 
-  const openFix = (
+  const openImprove = (
     sectionId: LinkedInSectionId,
-    options?: { entryId?: string; entryLabel?: string; mode?: "fix" | "impact" },
+    options?: { entryId?: string; entryLabel?: string },
   ) => {
-    const mode = options?.mode ?? "fix";
     const entryId = options?.entryId;
     const entryLabel = options?.entryLabel;
-    setFixSection({ sectionId, entryId, entryLabel, mode });
+    setFixSection({ sectionId, entryId, entryLabel });
     setFixSuggestions([]);
     setFixSuggestIssues([]);
-    if (mode === "impact") return;
 
     setFixSuggestionsLoading(true);
     void fetch("/api/profile/linkedin-draft/section-suggest", {
@@ -689,21 +666,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const experienceScores = draft ? linkedInExperienceEntryScores(draft) : [];
   const scoreByEntryId = new Map(experienceScores.map((s) => [s.entryId, s]));
 
-  const reportSectionIssues = fixSection
-    ? getLinkedInSectionFixIssues(
-        fixSection.sectionId,
-        { ...analysisReport, highlights: fullReport.highlights, issues: fullReport.issues },
-        fixSection.mode === "impact" ? "impact" : "all",
-      )
-    : [];
-
-  const fixIssues: SectionFixIssue[] = !fixSection
-    ? []
-    : fixSection.mode === "impact"
-      ? reportSectionIssues
-      : fixSuggestIssues.length > 0
-        ? fixSuggestIssues
-        : reportSectionIssues;
+  const fixIssues: SectionFixIssue[] = fixSuggestIssues;
 
   return (
     <div style={{ paddingBottom: 48, minWidth: 0, width: "100%", position: "relative" }}>
@@ -842,7 +805,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 </div>
                 <h3 style={{ fontFamily: "system-ui, sans-serif", fontSize: stackLayout ? 20 : 24, fontWeight: 600, color: LI.text, margin: "12px 0 4px" }}>{name}</h3>
 
-                <LiSectionHeader title="Headline" onFix={() => openFix("headline")} onImpact={() => openFix("headline", { mode: "impact" })} />
+                <LiSectionHeader title="Headline" onImprove={() => openImprove("headline")} />
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: LI.muted, margin: "0 0 6px" }}>{draft.headline.length}/120</p>
                 <textarea
                   value={draft.headline}
@@ -864,7 +827,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             </div>
 
             <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-              <LiSectionHeader title="About" onFix={() => openFix("about")} onImpact={() => openFix("about", { mode: "impact" })} />
+              <LiSectionHeader title="About" onImprove={() => openImprove("about")} />
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: LI.muted, margin: "0 0 8px" }}>{draft.about.length}/2600</p>
               <textarea
                 value={draft.about}
@@ -881,8 +844,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 title="Experience"
                 addLabel="+ Add role"
                 onAdd={() => { addExperience(); saveCurrentDraft(); }}
-                onFix={() => openFix("experience")}
-                onImpact={() => openFix("experience", { mode: "impact" })}
+                onImprove={() => openImprove("experience")}
               />
               {draft.experience.length === 0 && (
                 <p style={{ fontFamily: "system-ui", fontSize: 14, color: LI.muted, margin: "0 0 12px" }}>
@@ -964,6 +926,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                         value={exp.company}
                         orgRef={exp.companyRef}
                         placeholder="Company name"
+                        hintLabel="company"
                         showLogo={false}
                         onChange={(name, ref) =>
                           patchDraft((d) => ({
@@ -1065,7 +1028,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                       <button
                         type="button"
                         onClick={() =>
-                          openFix("experience", {
+                          openImprove("experience", {
                             entryId: exp.id,
                             entryLabel: exp.title ? `${exp.title}${exp.company ? ` at ${exp.company}` : ""}` : exp.company,
                           })
@@ -1096,8 +1059,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 title="Education"
                 addLabel="+ Add school"
                 onAdd={() => { addEducation(); saveCurrentDraft(); }}
-                onFix={() => openFix("education")}
-                onImpact={() => openFix("education", { mode: "impact" })}
+                onImprove={() => openImprove("education")}
               />
               {draft.education.length === 0 && (
                 <p style={{ fontFamily: "system-ui", fontSize: 14, color: LI.muted, margin: "0 0 12px" }}>
@@ -1128,6 +1090,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                             value={edu.school}
                             orgRef={edu.schoolRef}
                             placeholder="School or university"
+                            hintLabel="school"
                             showLogo={false}
                             onChange={(name, ref) =>
                               patchDraft((d) => ({
@@ -1210,7 +1173,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             </div>
 
             <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-              <LiSectionHeader title="Skills" onFix={() => openFix("skills")} onImpact={() => openFix("skills", { mode: "impact" })} />
+              <LiSectionHeader title="Skills" onImprove={() => openImprove("skills")} />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 {draft.skills.map((skill) => (
                   <span key={skill} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "system-ui", fontSize: 14, fontWeight: 600, color: LI.muted, background: "#eef3f8", padding: "6px 10px 6px 14px", borderRadius: 16 }}>
@@ -1392,7 +1355,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         error={analysisLoading ? undefined : analysis?.error && !fullReport.issues.length ? analysis.error : undefined}
         onBeginImprovements={() => {
           setReportOpen(false);
-          openFix(findPriorityLinkedInSection(analysisReport));
+          openImprove(findPriorityLinkedInSection(analysisReport));
         }}
         onRefresh={() => void loadAnalysis(true)}
         aiUnavailable={!!analysis?.error && fullReport.issues.length > 0}
@@ -1403,10 +1366,15 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         entryLabel={fixSection?.entryLabel}
         sectionTitle={fixSection ? LINKEDIN_SECTION_TITLES[fixSection.sectionId] : undefined}
         issues={fixIssues}
-        drawerMode={fixSection?.mode ?? "fix"}
+        drawerMode="fix"
         suggestions={fixSuggestions}
         suggestionsLoading={fixSuggestionsLoading}
         onApplySuggestion={applyFixSuggestion}
+        emptyMessage={
+          !fixSuggestionsLoading && fixSuggestions.length === 0
+            ? "No rewrites yet — edit the field in the editor, or try Improve again when AI is available."
+            : undefined
+        }
         onClose={() => {
           setFixSection(null);
           setFixSuggestions([]);
