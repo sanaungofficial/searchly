@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CoachProfileTab } from "./coach-profile-tab";
+import { CoachBookingsTab } from "./coach-bookings-tab";
 import { ScoutBox } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
-type CoachTab = "clients" | "profile";
+type CoachTab = "clients" | "profile" | "bookings";
 
 type JobStage = "SAVED" | "APPLYING" | "APPLIED" | "SCREENING" | "INTERVIEWING" | "OFFER" | "REJECTED" | "WITHDRAWN";
 
@@ -83,6 +84,7 @@ export function WorkspaceCoach() {
   useEffect(() => {
     const urlTab = searchParams.get("tab");
     if (urlTab === "profile") setTab("profile");
+    if (urlTab === "bookings") setTab("bookings");
   }, [searchParams]);
 
   useEffect(() => {
@@ -113,6 +115,7 @@ export function WorkspaceCoach() {
     <WorkspaceSegmentTabs
       tabs={[
         { id: "clients" as const, label: "Clients" },
+        { id: "bookings" as const, label: "Bookings" },
         { id: "profile" as const, label: "My Profile" },
       ]}
       active={tab}
@@ -235,7 +238,7 @@ export function WorkspaceCoach() {
   }
 
   return (
-    <WorkspacePageShell label="Coach portal" title={tab === "clients" ? "Clients" : "My Profile"}>
+    <WorkspacePageShell label="Coach portal" title={tab === "clients" ? "Clients" : tab === "bookings" ? "Bookings" : "My Profile"}>
       {onboardingPhase === "vouches" && (
         <div style={{ background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)", padding: "12px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, color: "#92400e", fontFamily: fontSans }}>
@@ -250,6 +253,8 @@ export function WorkspaceCoach() {
 
       {tab === "profile" ? (
         <CoachProfileTab />
+      ) : tab === "bookings" ? (
+        <CoachBookingsTab />
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>

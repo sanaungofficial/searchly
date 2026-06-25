@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { CoachBookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  sendBookingCancelledEmail,
+  sendBookingCoachNotificationEmail,
+  sendBookingGuestConfirmationEmail,
+} from "@/lib/booking-emails";
+import {
   getNylasConfig,
   isNylasConfigured,
   parseBookingWebhookPayload,
@@ -33,7 +38,7 @@ async function upsertBookingFromWebhook(
   payload: ReturnType<typeof parseBookingWebhookPayload>,
   raw: unknown,
 ) {
-  if (!payload.configId && !payload.grantId) return;
+  if (!payload.configId && !payload.grantId) return null;
 
   const coach = await prisma.coachProfile.findFirst({
     where: {
@@ -42,9 +47,9 @@ async function upsertBookingFromWebhook(
         ...(payload.grantId ? [{ nylasGrantId: payload.grantId }] : []),
       ],
     },
-    select: { id: true },
+    select: { id: true, displayName: true, email: true },
   });
-  if (!coach) return;
+  if (!coach) return null;
 
   const status: CoachBookingStatus =
     type === "booking.cancelled"
@@ -55,17 +60,17 @@ async function upsertBookingFromWebhook(
           ? CoachBookingStatus.PENDING
           : CoachBookingStatus.CONFIRMED;
 
-  if (!payload.startAt || !payload.endAt) return;
+  if (!payload.startAt || !payload.endAt) return null;
 
-  const lookup = payload.nylasBookingId
-    ? { nylasBookingId: payload.nylasBookingId }
+  const lookup = payload.bookingId
+    ? { nylasBookingId: payload.bookingId }
     : payload.bookingRef
       ? { nylasBookingRef: payload.bookingRef }
       : null;
 
   const data = {
     coachProfileId: coach.id,
-    nylasBookingId: payload.nylasBookingId ?? null,
+    nylasBookingId: payload.bookingId ?? null,
     nylasBookingRef: payload.bookingRef ?? null,
     nylasConfigId: payload.configId ?? null,
     nylasEventId: payload.eventId ?? null,
@@ -79,15 +84,33 @@ async function upsertBookingFromWebhook(
     rawPayload: raw as object,
   };
 
+  let isNew = false;
+
   if (lookup) {
     const existing = await prisma.coachBooking.findFirst({ where: lookup });
     if (existing) {
       await prisma.coachBooking.update({ where: { id: existing.id }, data });
-      return;
+    } else {
+      await prisma.coachBooking.create({ data });
+      isNew = true;
     }
+  } else {
+    await prisma.coachBooking.create({ data });
+    isNew = true;
   }
 
-  await prisma.coachBooking.create({ data });
+  return {
+    isNew,
+    type,
+    coachName: coach.displayName,
+    coachEmail: coach.email,
+    guestName: payload.guestName,
+    guestEmail: payload.guestEmail,
+    title: payload.title,
+    startAt: payload.startAt.toISOString(),
+    endAt: payload.endAt.toISOString(),
+    bookingRef: payload.bookingRef,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -120,7 +143,41 @@ export async function POST(req: NextRequest) {
     type === "booking.cancelled"
   ) {
     const parsed = parseBookingWebhookPayload(body.data ?? {});
-    await upsertBookingFromWebhook(type, parsed, body);
+    const result = await upsertBookingFromWebhook(type, parsed, body);
+
+    if (result?.guestEmail) {
+      const emailPayload = {
+        guestEmail: result.guestEmail,
+        guestName: result.guestName,
+        coachName: result.coachName,
+        title: result.title,
+        startAt: result.startAt,
+        endAt: result.endAt,
+        bookingRef: result.bookingRef,
+      };
+
+      if (type === "booking.cancelled") {
+        sendBookingCancelledEmail(emailPayload).catch((err) => console.error("[nylas/webhook] cancel email", err));
+      } else if (
+        (type === "booking.created" || type === "booking.pending") &&
+        result.isNew
+      ) {
+        sendBookingGuestConfirmationEmail(emailPayload).catch((err) =>
+          console.error("[nylas/webhook] guest email", err),
+        );
+        if (result.coachEmail) {
+          sendBookingCoachNotificationEmail({
+            coachEmail: result.coachEmail,
+            coachName: result.coachName,
+            guestName: result.guestName,
+            guestEmail: result.guestEmail,
+            title: result.title,
+            startAt: result.startAt,
+            endAt: result.endAt,
+          }).catch((err) => console.error("[nylas/webhook] coach email", err));
+        }
+      }
+    }
   }
 
   return NextResponse.json({ ok: true });

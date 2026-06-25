@@ -209,40 +209,50 @@ export type NylasSchedulerConfig = {
   slug?: string;
 };
 
-export async function createCoachSchedulerConfig(params: {
+export type CoachSchedulerParams = {
   grantId: string;
   coachName: string;
   coachEmail: string;
   slug: string;
-}): Promise<{ configId: string; slug?: string }> {
+  durationMinutes?: number;
+};
+
+function schedulerConfigBody(params: CoachSchedulerParams) {
   const appBase = nylasOAuthAppUrl();
+  const duration = params.durationMinutes ?? 30;
+  return {
+    requires_session_auth: false,
+    slug: params.slug,
+    participants: [
+      {
+        name: params.coachName,
+        email: params.coachEmail,
+        is_organizer: true,
+        availability: { calendar_ids: ["primary"] },
+        booking: { calendar_id: "primary" },
+      },
+    ],
+    availability: { duration_minutes: duration },
+    event_booking: {
+      title: `Coaching session with ${params.coachName}`,
+      description: "Book a 1:1 coaching session via Kimchi.",
+    },
+    scheduler: {
+      rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
+      cancellation_url: `${appBase}/coaching/cancel/:booking_ref`,
+    },
+  };
+}
+
+export async function createCoachSchedulerConfig(
+  params: CoachSchedulerParams,
+): Promise<{ configId: string; slug?: string }> {
   const res = await nylasFetch<{ data?: NylasSchedulerConfig } & NylasSchedulerConfig>(
     `/v3/grants/${params.grantId}/scheduling/configurations`,
     {
       method: "POST",
       grantId: params.grantId,
-      body: {
-        requires_session_auth: false,
-        slug: params.slug,
-        participants: [
-          {
-            name: params.coachName,
-            email: params.coachEmail,
-            is_organizer: true,
-            availability: { calendar_ids: ["primary"] },
-            booking: { calendar_id: "primary" },
-          },
-        ],
-        availability: { duration_minutes: 30 },
-        event_booking: {
-          title: `Coaching session with ${params.coachName}`,
-          description: "Book a 1:1 coaching session via Kimchi.",
-        },
-        scheduler: {
-          rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
-          cancellation_url: `${appBase}/coaching/cancel/:booking_ref`,
-        },
-      },
+      body: schedulerConfigBody(params),
     },
   );
 
@@ -250,6 +260,47 @@ export async function createCoachSchedulerConfig(params: {
   const configId = data.id ?? data.ID;
   if (!configId) throw new Error("Nylas did not return scheduler configuration id");
   return { configId, slug: data.slug ?? params.slug };
+}
+
+export async function updateCoachSchedulerConfig(
+  params: CoachSchedulerParams & { configId: string },
+): Promise<void> {
+  await nylasFetch(`/v3/grants/${params.grantId}/scheduling/configurations/${params.configId}`, {
+    method: "PUT",
+    grantId: params.grantId,
+    body: schedulerConfigBody(params),
+  });
+}
+
+/** Create scheduler when grant exists but configId is missing (OAuth ok, setup failed). */
+export async function ensureCoachSchedulerConfig(params: {
+  grantId: string;
+  configId: string | null;
+  coachName: string;
+  coachEmail: string;
+  slug: string;
+  durationMinutes?: number;
+}): Promise<{ configId: string; slug?: string; created: boolean }> {
+  if (params.configId) {
+    await updateCoachSchedulerConfig({
+      grantId: params.grantId,
+      configId: params.configId,
+      coachName: params.coachName,
+      coachEmail: params.coachEmail,
+      slug: params.slug,
+      durationMinutes: params.durationMinutes,
+    });
+    return { configId: params.configId, created: false };
+  }
+
+  const created = await createCoachSchedulerConfig({
+    grantId: params.grantId,
+    coachName: params.coachName,
+    coachEmail: params.coachEmail,
+    slug: params.slug,
+    durationMinutes: params.durationMinutes,
+  });
+  return { ...created, created: true };
 }
 
 export function signNylasState(payload: { coachProfileId: string; ts: number; returnAppUrl?: string }): string {

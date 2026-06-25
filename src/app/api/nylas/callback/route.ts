@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { UserRole } from "@prisma/client";
+import { CoachStatus, UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
 import {
   clearNylasOAuthCookie,
@@ -104,6 +104,7 @@ export async function GET(req: NextRequest) {
       coachName: profile.displayName,
       coachEmail,
       slug: schedulerSlug,
+      durationMinutes: profile.schedulerDurationMinutes ?? 30,
     });
 
     await prisma.coachProfile.update({
@@ -112,6 +113,7 @@ export async function GET(req: NextRequest) {
         nylasGrantId: grantId,
         nylasSchedulerConfigId: configId,
         nylasSchedulerSlug: hostedSlug ?? schedulerSlug,
+        ...(returnRole === "ADMIN" ? { status: CoachStatus.ACTIVE } : {}),
         ...(slug !== profile.slug ? { slug } : {}),
       },
     });

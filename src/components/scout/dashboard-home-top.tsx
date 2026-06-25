@@ -64,6 +64,7 @@ function shortBio(profile: ProfileData | null): string | null {
 
 type BookedCoach = {
   bookingId: string;
+  nylasBookingRef: string | null;
   startAt: string;
   endAt: string;
   status: string;
@@ -652,6 +653,45 @@ export function DashboardHomeTop({ isMobile }: Props) {
           >
             View coach →
           </ScoutSecondaryBtn>
+          {bookedCoach.nylasBookingRef && new Date(bookedCoach.startAt) >= new Date() && (
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", width: isMobile ? "100%" : undefined }}>
+              <button
+                type="button"
+                onClick={() => router.push(`/coaching/reschedule/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: 600,
+                  color: color.forest,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                Reschedule
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/coaching/cancel/${encodeURIComponent(bookedCoach.nylasBookingRef!)}`)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  color: color.muted,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 3,
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
 

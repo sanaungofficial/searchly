@@ -26,6 +26,7 @@ type CoachProfile = {
   nylasGrantId?: string | null;
   nylasSchedulerConfigId?: string | null;
   nylasSchedulerSlug?: string | null;
+  schedulerDurationMinutes?: number;
 };
 
 const inputStyle: React.CSSProperties = {
@@ -157,6 +158,7 @@ export function CoachProfileTab({
     configurationId: string | null;
   } | null>(null);
   const [nylasNotice, setNylasNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [retryingScheduler, setRetryingScheduler] = useState(false);
 
   async function loadProfile() {
     const r = await fetch("/api/coach/profile");
@@ -246,6 +248,32 @@ export function CoachProfileTab({
       });
     }
   }, [searchParams]);
+
+  async function retryScheduler() {
+    setRetryingScheduler(true);
+    setNylasNotice(null);
+    try {
+      const r = await fetch("/api/nylas/retry-scheduler", { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) {
+        setNylasNotice({ type: "error", message: d.error ?? "Scheduler setup failed." });
+        return;
+      }
+      await loadProfile();
+      await refreshNylasStatus();
+      setNylasNotice({
+        type: "success",
+        message: d.created ? "Scheduler created — in-app booking is enabled." : "Scheduler updated.",
+      });
+    } catch {
+      setNylasNotice({ type: "error", message: "Scheduler setup failed. Please try again." });
+    } finally {
+      setRetryingScheduler(false);
+    }
+  }
+
+  const calendarConnected = Boolean(form.nylasGrantId);
+  const schedulerReady = Boolean(form.nylasGrantId && form.nylasSchedulerConfigId);
 
   function field(key: keyof CoachProfile) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -442,10 +470,33 @@ export function CoachProfileTab({
           Connect Google or Outlook so seekers can book sessions inside Kimchi. Gmail and calendar access is managed
           through Nylas — your external Cal.com link still works as a fallback.
         </p>
-        {nylasStatus?.connected ? (
+        {schedulerReady ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
             Calendar connected — in-app booking is enabled.
           </p>
+        ) : calendarConnected ? (
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontFamily: fontSans, fontSize: 14, color: "#b45309", margin: "0 0 10px" }}>
+              Calendar connected, but booking setup did not finish. Retry without reconnecting OAuth.
+            </p>
+            <button
+              type="button"
+              onClick={retryScheduler}
+              disabled={retryingScheduler}
+              style={{
+                padding: "10px 18px",
+                background: retryingScheduler ? "#d4c9b8" : color.forest,
+                color: color.gold,
+                border: "none",
+                fontFamily: fontSans,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: retryingScheduler ? "default" : "pointer",
+              }}
+            >
+              {retryingScheduler ? "Setting up…" : "Retry scheduler setup"}
+            </button>
+          </div>
         ) : nylasStatus?.configured === false ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: 0 }}>
             Nylas is not configured on this environment yet.
@@ -483,6 +534,27 @@ export function CoachProfileTab({
             </a>
           </div>
         )}
+
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(26,58,47,0.08)" }}>
+          <label style={labelStyle}>Session duration (minutes)</label>
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 8px", lineHeight: 1.5 }}>
+            Default length for new bookings. Save changes after updating — syncs to your Nylas scheduler when connected.
+          </p>
+          <input
+            type="number"
+            min={15}
+            max={120}
+            step={15}
+            value={form.schedulerDurationMinutes ?? 30}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                schedulerDurationMinutes: Math.min(120, Math.max(15, Number(e.target.value) || 30)),
+              }))
+            }
+            style={{ ...inputStyle, maxWidth: 120 }}
+          />
+        </div>
       </div>
 
       <div
