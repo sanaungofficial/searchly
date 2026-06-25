@@ -7,6 +7,7 @@ import { upsertProfileFields } from "@/lib/profile-write";
 import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
+import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
 
 export async function GET() {
   try {
@@ -51,6 +52,7 @@ export async function GET() {
       strategyIntakeNotes: profile?.strategyIntakeNotes || null,
       strategyUpdatedAt: profile?.strategyUpdatedAt?.toISOString() || null,
       hasStrategy: !!profile?.strategyData,
+      dashboardGoals: normalizeDashboardGoals(profile?.dashboardGoals),
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
         : undefined,
@@ -66,7 +68,7 @@ export async function PATCH(request: Request) {
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary, targetMarket, relocationOpenness, workAuthorization, securityClearance, searchDuration, positioningStatement, strategyIntakeNotes } = body;
+  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary, targetMarket, relocationOpenness, workAuthorization, securityClearance, searchDuration, positioningStatement, strategyIntakeNotes, dashboardGoals } = body;
 
   if (name !== undefined) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name } });
@@ -96,6 +98,7 @@ export async function PATCH(request: Request) {
   if (searchDuration !== undefined) profileUpdate.searchDuration = searchDuration;
   if (positioningStatement !== undefined) profileUpdate.positioningStatement = positioningStatement;
   if (strategyIntakeNotes !== undefined) profileUpdate.strategyIntakeNotes = strategyIntakeNotes;
+  if (dashboardGoals !== undefined) profileUpdate.dashboardGoals = normalizeDashboardGoals(dashboardGoals);
 
   if (Object.keys(profileUpdate).length > 0) {
     await upsertProfileFields(dbUser.id, profileUpdate);
