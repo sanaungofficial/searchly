@@ -7,7 +7,8 @@ import {
   buildStrategySnapshot,
   diffStrategySnapshot,
   normalizeStrategyDocument,
-  parseStrategyJson,
+  parseStrategyFromAi,
+  salvagePartialStrategyJson,
   type StrategySourceSnapshot,
 } from "@/lib/career-strategy";
 import { upsertProfileFields, ensureProfileRow } from "@/lib/profile-write";
@@ -60,6 +61,7 @@ function strategyReadResponse(
   return {
     document: hasDocument ? normalizeStrategyDocument(profile.strategyData) : null,
     hasDocument,
+    isPartial: !!storedSnapshot?.isPartialGeneration,
     intakeNotes: profile.strategyIntakeNotes ?? "",
     updatedAt: profile.strategyUpdatedAt?.toISOString() ?? null,
     profileChanges,
@@ -82,6 +84,7 @@ export async function GET(request: Request) {
         updatedAt: null,
         profileChanges: [],
         isStale: false,
+        isPartial: false,
       });
     }
 
@@ -148,16 +151,19 @@ export async function POST(request: Request) {
     }
 
     try {
-      const document = parseStrategyJson(content.text);
+      const { document, isPartial } = parseStrategyFromAi(content.text);
       const now = new Date();
-      const snapshot = buildStrategySnapshot({
-        profile: {
-          ...profile,
-          targetRoles: profile.targetRoles ?? [],
-          priorities: profile.priorities ?? [],
-        },
-        trackedCompanyNames: trackedCompanies.map((c) => c.name),
-      });
+      const snapshot: StrategySourceSnapshot = {
+        ...buildStrategySnapshot({
+          profile: {
+            ...profile,
+            targetRoles: profile.targetRoles ?? [],
+            priorities: profile.priorities ?? [],
+          },
+          trackedCompanyNames: trackedCompanies.map((c) => c.name),
+        }),
+        isPartialGeneration: isPartial || undefined,
+      };
 
       await upsertProfileFields(dbUser.id, {
         strategyData: document,
@@ -181,8 +187,55 @@ export async function POST(request: Request) {
         ),
         document,
         updatedAt: now.toISOString(),
+        isPartial,
+        warning: isPartial
+          ? "Generation was cut short — review the sections below, then regenerate when ready for the full document."
+          : undefined,
       });
     } catch (parseErr) {
+      const salvaged = salvagePartialStrategyJson(content.text);
+      if (salvaged) {
+        const now = new Date();
+        const snapshot: StrategySourceSnapshot = {
+          ...buildStrategySnapshot({
+            profile: {
+              ...profile,
+              targetRoles: profile.targetRoles ?? [],
+              priorities: profile.priorities ?? [],
+            },
+            trackedCompanyNames: trackedCompanies.map((c) => c.name),
+          }),
+          isPartialGeneration: true,
+        };
+
+        await upsertProfileFields(dbUser.id, {
+          strategyData: salvaged,
+          strategyUpdatedAt: now,
+          strategySourceSnapshot: snapshot,
+          positioningStatement:
+            profile.positioningStatement ||
+            salvaged.positioningStrategy.positioningStatement ||
+            undefined,
+        });
+
+        return NextResponse.json({
+          ...strategyReadResponse(
+            {
+              ...profile,
+              strategyData: salvaged,
+              strategyUpdatedAt: now,
+              strategySourceSnapshot: snapshot,
+            },
+            trackedCompanies,
+          ),
+          document: salvaged,
+          updatedAt: now.toISOString(),
+          isPartial: true,
+          warning:
+            "Generation was cut short — we saved what was generated so you can review it without using another credit.",
+        });
+      }
+
       const truncated = message.stop_reason === "max_tokens";
       console.error("[career-strategy POST] parse failed", {
         stopReason: message.stop_reason,

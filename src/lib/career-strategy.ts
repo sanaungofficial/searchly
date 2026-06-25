@@ -90,6 +90,8 @@ export type StrategySourceSnapshot = {
   readbackUpdatedAt: string | null;
   intakeNotesHash: string | null;
   trackedCompanyNames: string[];
+  /** Set when AI output was truncated but salvaged for review */
+  isPartialGeneration?: boolean;
 };
 
 export type StrategyProfileFields = {
@@ -265,6 +267,94 @@ export function extractJsonObject(text: string): string {
     }
   }
   throw new Error("Incomplete JSON");
+}
+
+function scanUnclosedJsonStructure(jsonFragment: string): ("{" | "[")[] {
+  const stack: ("{" | "[")[] = [];
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < jsonFragment.length; i++) {
+    const c = jsonFragment[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (c === "{") stack.push("{");
+    else if (c === "[") stack.push("[");
+    else if (c === "}" && stack[stack.length - 1] === "{") stack.pop();
+    else if (c === "]" && stack[stack.length - 1] === "[") stack.pop();
+  }
+  return stack;
+}
+
+function endsInsideJsonString(text: string): boolean {
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') inString = !inString;
+  }
+  return inString;
+}
+
+function strategyHasContent(doc: CareerStrategyDocument): boolean {
+  return !!(
+    doc.executiveSummary.trim() ||
+    doc.positioningStrategy.coreDirective.trim() ||
+    doc.placementReadiness.categories.length ||
+    doc.pathForward.summary.trim()
+  );
+}
+
+/** Best-effort parse when model output was truncated mid-JSON. */
+export function salvagePartialStrategyJson(text: string): CareerStrategyDocument | null {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let candidate = (fenced?.[1] ?? trimmed).trim();
+  const start = candidate.indexOf("{");
+  if (start === -1) return null;
+  candidate = candidate.slice(start);
+
+  if (endsInsideJsonString(candidate)) candidate += '"';
+
+  const unclosed = scanUnclosedJsonStructure(candidate);
+  for (let i = unclosed.length - 1; i >= 0; i--) {
+    candidate += unclosed[i] === "{" ? "}" : "]";
+  }
+
+  try {
+    const doc = normalizeStrategyDocument(JSON.parse(candidate));
+    return strategyHasContent(doc) ? doc : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseStrategyFromAi(text: string): { document: CareerStrategyDocument; isPartial: boolean } {
+  try {
+    return { document: parseStrategyJson(text), isPartial: false };
+  } catch {
+    const salvaged = salvagePartialStrategyJson(text);
+    if (salvaged) return { document: salvaged, isPartial: true };
+    throw new Error("Failed to parse strategy response");
+  }
 }
 
 export function normalizeStrategyDocument(raw: unknown): CareerStrategyDocument {

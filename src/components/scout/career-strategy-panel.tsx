@@ -112,6 +112,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
   const [profileChanges, setProfileChanges] = useState<string[]>([]);
   const [isStale, setIsStale] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [isPartial, setIsPartial] = useState(false);
+  const [partialWarning, setPartialWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [companies, setCompanies] = useState<TrackedCompanyRow[]>([]);
   const [editMode, setEditMode] = useState(false);
@@ -131,6 +133,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         if (data.updatedAt) setUpdatedAt(String(data.updatedAt));
         setProfileChanges((data.profileChanges as string[]) ?? []);
         setIsStale(!!data.isStale);
+        setIsPartial(!!data.isPartial);
+        setPartialWarning(null);
       }
     } catch (e) {
       setError(formatApiErrorMessage(e, "Failed to load strategy"));
@@ -167,6 +171,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
     }
     setGenerating(true);
     setError(null);
+    setPartialWarning(null);
     try {
       if (intakeNotes.trim()) {
         await saveIntakeNotes();
@@ -183,6 +188,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       setUpdatedAt(data.updatedAt ? String(data.updatedAt) : null);
       setProfileChanges([]);
       setIsStale(false);
+      setIsPartial(!!data.isPartial);
+      if (data.warning) setPartialWarning(String(data.warning));
       notifyCreditsChanged();
     } catch (e) {
       setError(formatApiErrorMessage(e, "Generation failed"));
@@ -289,6 +296,21 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {isPartial && (
+        <ScoutBox padding={16} style={{ background: "rgba(200, 120, 40, 0.08)", borderColor: "rgba(200, 120, 40, 0.35)" }}>
+          <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, margin: "0 0 6px" }}>
+            Partial strategy saved
+          </p>
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
+            {partialWarning ??
+              "Generation was cut short. Review the sections below — regenerate only when you want the full document (uses 1 credit)."}
+          </p>
+          <ScoutSecondaryBtn onClick={handleGenerate} disabled={generating}>
+            {generating ? "Regenerating…" : "Regenerate full strategy"}
+          </ScoutSecondaryBtn>
+        </ScoutBox>
+      )}
+
       {isStale && profileChanges.length > 0 && (
         <ScoutBox padding={16} style={{ background: "rgba(200, 120, 40, 0.08)", borderColor: "rgba(200, 120, 40, 0.35)" }}>
           <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, margin: "0 0 6px" }}>
