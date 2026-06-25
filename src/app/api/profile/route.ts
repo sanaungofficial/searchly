@@ -4,6 +4,7 @@ import { normalizeRoleAnalysesMap } from "@/lib/role-gap";
 import { normalizeSkillGoals, normalizeUpskillProgress } from "@/lib/upskill-programs";
 import { normalizeTargetRoleSettings } from "@/lib/target-role-settings";
 import { upsertProfileFields } from "@/lib/profile-write";
+import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 
@@ -27,6 +28,7 @@ export async function GET() {
       resumeUrl: profile?.resumeUrl || null,
       linkedinUrl: profile?.linkedinUrl || null,
       headline: profile?.headline || null,
+      summary: profile?.summary || null,
       targetRoles: profile?.targetRoles || [],
       parsedData,
       employmentStatus: profile?.employmentStatus || null,
@@ -54,7 +56,7 @@ export async function PATCH(request: Request) {
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings } = body;
+  const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary } = body;
 
   if (name !== undefined) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name } });
@@ -62,6 +64,7 @@ export async function PATCH(request: Request) {
 
   const profileUpdate: Record<string, unknown> = {};
   if (headline !== undefined) profileUpdate.headline = headline;
+  if (summary !== undefined) profileUpdate.summary = summary;
   if (linkedinUrl !== undefined) profileUpdate.linkedinUrl = linkedinUrl;
   if (targetRoles !== undefined) profileUpdate.targetRoles = targetRoles;
   if (parsedData !== undefined) profileUpdate.parsedData = parsedData;
@@ -79,6 +82,20 @@ export async function PATCH(request: Request) {
 
   if (Object.keys(profileUpdate).length > 0) {
     await upsertProfileFields(dbUser.id, profileUpdate);
+  }
+
+  const shouldSyncLinkedIn =
+    parsedData !== undefined ||
+    headline !== undefined ||
+    summary !== undefined ||
+    targetRoles !== undefined;
+
+  if (shouldSyncLinkedIn) {
+    try {
+      await refreshLinkedInDraftFromAbout(dbUser.id);
+    } catch (err) {
+      console.error("[profile PATCH linkedin sync]", err);
+    }
   }
 
   return NextResponse.json({ ok: true });

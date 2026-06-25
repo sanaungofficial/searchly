@@ -52,6 +52,9 @@ interface AISuggestion {
 import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
+import { LinkedInOrgPicker } from "./linkedin-org-picker";
+import { CompanyLogo } from "./company-logo";
+import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
 import { CreditsStatusBar } from "./credits-display";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
@@ -70,6 +73,7 @@ interface EducationEntry {
   field?: string | null;
   from?: string | null;
   to?: string | null;
+  schoolRef?: LinkedInOrgRef | null;
 }
 
 interface WorkEntry {
@@ -77,9 +81,22 @@ interface WorkEntry {
   company: string;
   title: string;
   description?: string | null;
+  location?: string | null;
   from?: string | null;
   to?: string | null;
   bullets: string[];
+  companyRef?: LinkedInOrgRef | null;
+}
+
+interface ParsedData {
+  name?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  website?: string | null;
+  summary?: string | null;
+  education: EducationEntry[];
+  workExperience: WorkEntry[];
+  skills: string[];
 }
 
 interface UserAssetRow {
@@ -92,22 +109,13 @@ interface UserAssetRow {
   updatedAt: string;
 }
 
-interface ParsedData {
-  name?: string | null;
-  phone?: string | null;
-  location?: string | null;
-  website?: string | null;
-  education: EducationEntry[];
-  workExperience: WorkEntry[];
-  skills: string[];
-}
-
 interface UserProfile {
   name: string;
   email: string | null;
   resumeUrl: string | null;
   linkedinUrl: string | null;
   headline: string | null;
+  summary?: string | null;
   targetRoles: string[];
   parsedData: ParsedData | null;
   employmentStatus: string | null;
@@ -314,6 +322,7 @@ function PersonalTab({ profile, onSave }: {
   const [location, setLocation] = useState(profile.parsedData?.location || "");
   const [website, setWebsite] = useState(profile.parsedData?.website || "");
   const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl || "");
+  const [summary, setSummary] = useState(profile.parsedData?.summary || profile.summary || "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -322,17 +331,30 @@ function PersonalTab({ profile, onSave }: {
     setLocation(profile.parsedData?.location || "");
     setWebsite(profile.parsedData?.website || "");
     setLinkedinUrl(profile.linkedinUrl || "");
+    setSummary(profile.parsedData?.summary || profile.summary || "");
   }, [
     profile.name,
     profile.linkedinUrl,
+    profile.summary,
     profile.parsedData?.phone,
     profile.parsedData?.location,
     profile.parsedData?.website,
+    profile.parsedData?.summary,
   ]);
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({ name, linkedinUrl: linkedinUrl || null, parsedData: { phone: phone || null, location: location || null, website: website || null } as Partial<ParsedData> });
+    await onSave({
+      name,
+      linkedinUrl: linkedinUrl || null,
+      summary: summary.trim() || null,
+      parsedData: {
+        phone: phone || null,
+        location: location || null,
+        website: website || null,
+        summary: summary.trim() || null,
+      } as Partial<ParsedData>,
+    });
     setSaving(false);
     setEditing(false);
   };
@@ -357,6 +379,16 @@ function PersonalTab({ profile, onSave }: {
                 className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
             </div>
           ))}
+          <div>
+            <label className="block text-xs text-[var(--scout-muted)] mb-1">Professional summary</label>
+            <textarea
+              rows={5}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="Your About story — this is the source of truth for your LinkedIn About section."
+              className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-y"
+            />
+          </div>
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving}
               className="min-h-11 px-4 py-2 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">
@@ -391,13 +423,17 @@ function PersonalTab({ profile, onSave }: {
               )}
             </div>
           ))}
+          {(summary || profile.parsedData?.summary || profile.summary) && (
+            <div className="pt-3 border-t border-[#E5DDD0]">
+              <p className="text-xs text-[var(--scout-muted)] mb-1">Professional summary</p>
+              <p className="text-sm text-[#52493F] leading-relaxed whitespace-pre-wrap">{summary || profile.parsedData?.summary || profile.summary}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
-
-// ─── Tab: Education ───────────────────────────────────────────────────────────
 
 function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: (entries: EducationEntry[]) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
@@ -408,10 +444,12 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
     if (!editing) setList(entries);
   }, [entries, editing]);
 
-  const addEntry = () => setList((p) => [...p, { id: `edu_${Date.now()}`, school: "", degree: "", field: "", from: "", to: "" }]);
+  const addEntry = () => setList((p) => [...p, { id: `edu_${Date.now()}`, school: "", degree: "", field: "", from: "", to: "", schoolRef: null }]);
   const removeEntry = (id: string) => setList((p) => p.filter((e) => e.id !== id));
   const updateEntry = (id: string, key: keyof EducationEntry, value: string) =>
     setList((p) => p.map((e) => e.id === id ? { ...e, [key]: value } : e));
+  const updateSchool = (id: string, name: string, ref: LinkedInOrgRef | null) =>
+    setList((p) => p.map((e) => e.id === id ? { ...e, school: name, schoolRef: ref } : e));
   const handleSave = async () => { setSaving(true); await onSave(list); setSaving(false); setEditing(false); };
 
   if (editing) return (
@@ -422,7 +460,16 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
           <div key={entry.id} className="rounded-none border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div><label className="block text-xs text-[var(--scout-muted)] mb-1">School</label>
-              <input value={entry.school} onChange={(e) => updateEntry(entry.id, "school", e.target.value)} className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+              <LinkedInOrgPicker
+                value={entry.school}
+                orgRef={entry.schoolRef}
+                placeholder="Search schools…"
+                showLogo={false}
+                logoSize={40}
+                onChange={(name, ref) => updateSchool(entry.id, name, ref)}
+                inputStyle={{ width: "100%", padding: "8px 12px", fontSize: 14, border: "1px solid #E5DDD0", background: "#FFFDF9" }}
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Degree</label>
                 <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
@@ -453,13 +500,10 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
         <EmptyState message="No education history" sub="Resume upload auto-fills this. Kimchi uses it to verify your credentials when scoring job fit." />
       ) : (
         <div className="space-y-4">
-          {entries.map((entry, i) => (
-            <div key={entry.id} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-none bg-[#E8D5A3] mt-1 shrink-0" />
-                {i < entries.length - 1 && <div className="w-px flex-1 bg-[#E5DDD0] mt-1" />}
-              </div>
-              <div className="pb-4">
+          {entries.map((entry) => (
+            <div key={entry.id} className="flex gap-3 items-start">
+              <CompanyLogo name={entry.schoolRef?.name || entry.school} logoUrl={entry.schoolRef?.logoUrl} website={entry.schoolRef?.website} size={40} />
+              <div className="pb-4 flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[#1C3A2F]">{entry.school}</p>
                 <p className="text-xs text-[#52493F] mt-0.5">{entry.degree}{entry.field ? `, ${entry.field}` : ""}</p>
                 {formatDateRange(entry.from, entry.to) && <p className="text-xs text-[var(--scout-muted)] mt-0.5">{formatDateRange(entry.from, entry.to)}</p>}
@@ -483,10 +527,12 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
     if (!editing) setList(entries);
   }, [entries, editing]);
 
-  const addEntry = () => setList((p) => [...p, { id: `exp_${Date.now()}`, company: "", title: "", description: "", from: "", to: "", bullets: [] }]);
+  const addEntry = () => setList((p) => [...p, { id: `exp_${Date.now()}`, company: "", title: "", description: "", from: "", to: "", bullets: [], companyRef: null, location: "" }]);
   const removeEntry = (id: string) => setList((p) => p.filter((e) => e.id !== id));
   const updateEntry = (id: string, key: keyof WorkEntry, value: string) =>
     setList((p) => p.map((e) => e.id === id ? { ...e, [key]: value } : e));
+  const updateCompany = (id: string, name: string, ref: LinkedInOrgRef | null) =>
+    setList((p) => p.map((e) => e.id === id ? { ...e, company: name, companyRef: ref } : e));
   const updateBullets = (id: string, value: string) =>
     setList((p) => p.map((e) => e.id === id ? { ...e, bullets: value.split("\n").filter(Boolean) } : e));
   const handleSave = async () => { setSaving(true); await onSave(list); setSaving(false); setEditing(false); };
@@ -500,7 +546,14 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Company</label>
-                <input value={entry.company} onChange={(e) => updateEntry(entry.id, "company", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <LinkedInOrgPicker
+                  value={entry.company}
+                  orgRef={entry.companyRef}
+                  placeholder="Search companies…"
+                  onChange={(name, ref) => updateCompany(entry.id, name, ref)}
+                  inputStyle={{ width: "100%", padding: "8px 12px", fontSize: 14, border: "1px solid #E5DDD0", background: "#FFFDF9" }}
+                />
+              </div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Title</label>
                 <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
@@ -530,13 +583,10 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
         <EmptyState message="No work experience" sub="Resume upload auto-fills this. Kimchi scores job fit based on your background and years of experience." />
       ) : (
         <div className="space-y-5">
-          {entries.map((entry, i) => (
-            <div key={entry.id} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-none bg-[#1C3A2F] mt-1 shrink-0" />
-                {i < entries.length - 1 && <div className="w-px flex-1 bg-[#E5DDD0] mt-1" />}
-              </div>
-              <div className="pb-5 flex-1">
+          {entries.map((entry) => (
+            <div key={entry.id} className="flex gap-3 items-start">
+              <CompanyLogo name={entry.companyRef?.name || entry.company} logoUrl={entry.companyRef?.logoUrl} website={entry.companyRef?.website} size={40} />
+              <div className="pb-5 flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-[#1C3A2F]">{entry.title}</p>

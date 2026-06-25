@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import {
-  buildLinkedInDraftHeuristic,
   normalizeLinkedInDraft,
   parseLinkedInDraftFromModel,
 } from "@/lib/linkedin-profile";
+import { syncLinkedInDraftFromAbout } from "@/lib/profile-linkedin-sync";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
@@ -50,7 +50,7 @@ export async function POST() {
   const sourceAssetId = primary?.id ?? null;
   const existingDraft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
 
-  let draft = null as ReturnType<typeof normalizeLinkedInDraft>;
+  let aiDraft = null as ReturnType<typeof normalizeLinkedInDraft>;
   let provider: "claude" | "heuristic" = "heuristic";
 
   const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
@@ -70,8 +70,8 @@ export async function POST() {
       });
 
       const text = message.content[0]?.type === "text" ? message.content[0].text : "";
-      draft = parseLinkedInDraftFromModel(text);
-      if (draft) {
+      aiDraft = parseLinkedInDraftFromModel(text);
+      if (aiDraft) {
         provider = "claude";
         logAiUsage(dbUser.id, "FIT_ANALYSIS", MODEL, message.usage.input_tokens, message.usage.output_tokens);
       }
@@ -80,13 +80,21 @@ export async function POST() {
     }
   }
 
-  if (!draft) {
-    draft = buildLinkedInDraftHeuristic({ resume, name, targetRoles, sourceAssetId });
-    provider = "heuristic";
-  } else {
+  let draft = syncLinkedInDraftFromAbout({
+    parsed: resume,
+    name,
+    targetRoles,
+    headline: aiDraft?.headline || dbUser.profile?.headline,
+    summary: aiDraft?.about || dbUser.profile?.summary || resume.summary,
+    existingDraft,
+    sourceAssetId,
+  });
+
+  if (aiDraft) {
     draft = {
       ...draft,
-      sourceAssetId,
+      headline: aiDraft.headline || draft.headline,
+      about: aiDraft.about || draft.about,
       generatedAt: new Date().toISOString(),
     };
   }
