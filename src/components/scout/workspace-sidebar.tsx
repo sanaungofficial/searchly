@@ -15,7 +15,6 @@ import {
 } from "./workspace-icons";
 import { NOTIFICATIONS, LIVE_SESSIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
-import { GrowthDiscoveryModal } from "./growth-discovery-modal";
 import { ReferEarnModal } from "./refer-earn-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -277,7 +276,6 @@ export function WorkspaceSidebar({
   const { openPricing } = useWorkspace();
   const showUpgrade = !subLoading && !unlimitedAi;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [referEarnOpen, setReferEarnOpen] = useState(false);
   const hasLiveNow = LIVE_SESSIONS.some((s) => s.isLive);
@@ -339,11 +337,6 @@ export function WorkspaceSidebar({
 
   const openReferEarn = () => {
     setReferEarnOpen(true);
-    closeSidebarOnMobile();
-  };
-
-  const openDiscovery = () => {
-    setDiscoveryOpen(true);
     closeSidebarOnMobile();
   };
 
@@ -689,33 +682,6 @@ export function WorkspaceSidebar({
           </div>
         )}
 
-        {isMobile && !isRail && (
-          <div style={{ padding: "0 14px 12px" }}>
-            <button
-              type="button"
-              onClick={openDiscovery}
-              data-offer="discovery"
-              data-trigger="sidebar_help"
-              style={{
-                display: "block",
-                width: "100%",
-                background: "rgba(255,255,255,0.04)",
-                border: SIDEBAR_LINE,
-                borderRadius: 0,
-                padding: "10px 14px",
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 600, color: "rgba(232,213,163,0.55)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Need help?
-              </p>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "rgba(232,213,163,0.85)" }}>
-                Talk to our team →
-              </p>
-            </button>
-          </div>
-        )}
         </div>
 
         {!isMobile && <div style={{ flex: 1 }} />}
@@ -758,59 +724,6 @@ export function WorkspaceSidebar({
             </button>
           </div>
         )}
-
-        {/* ── Talk to team (above user badge) ── */}
-        {!isMobile && !isRail ? (
-          <div style={{ padding: "0 14px 12px" }}>
-            <button
-              type="button"
-              onClick={openDiscovery}
-              data-offer="discovery"
-              data-trigger="sidebar_help"
-              style={{
-                display: "block",
-                width: "100%",
-                background: "rgba(255,255,255,0.04)",
-                border: SIDEBAR_LINE,
-                borderRadius: 0,
-                padding: "10px 14px",
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 600, color: "rgba(232,213,163,0.55)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Need help?
-              </p>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "rgba(232,213,163,0.85)" }}>
-                Talk to our team →
-              </p>
-            </button>
-          </div>
-        ) : !isMobile ? (
-          <button
-            type="button"
-            onClick={openDiscovery}
-            title="Talk to our team"
-            data-offer="discovery"
-            data-trigger="sidebar_help"
-            style={{
-              margin: "0 auto 8px",
-              width: 36,
-              height: 36,
-              borderRadius: 0,
-              border: SIDEBAR_LINE,
-              background: "rgba(255,255,255,0.04)",
-              color: "rgba(232,213,163,0.7)",
-              fontSize: 16,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            ✉
-          </button>
-        ) : null}
 
         {/* ── User badge — pinned on mobile so account settings is always reachable ── */}
         <button
@@ -874,13 +787,6 @@ export function WorkspaceSidebar({
             onClose={() => setSettingsOpen(false)}
             onSignOut={() => { setSettingsOpen(false); handleSignOut(); }}
             onAvatarChange={updateAvatarUrl}
-          />
-        )}
-
-        {discoveryOpen && (
-          <GrowthDiscoveryModal
-            trigger="sidebar_help"
-            onClose={() => setDiscoveryOpen(false)}
           />
         )}
 
