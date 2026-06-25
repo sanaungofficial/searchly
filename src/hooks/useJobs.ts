@@ -69,11 +69,12 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
   } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _meta?: JobMeta };
 }
 
-export function useJobs(fallback: KanbanCard[]) {
+export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
   const [cards, setCards] = useState<KanbanCard[]>(fallback);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    setLoaded(false);
     fetch("/api/jobs")
       .then((r) => r.json())
       .then((jobs: DbJob[]) => {
@@ -83,7 +84,7 @@ export function useJobs(fallback: KanbanCard[]) {
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
-  }, []);
+  }, [reloadKey]);
 
   const addJob = useCallback(async (company: string, role: string, url?: string, meta?: JobMeta) => {
     const notes = meta ? JSON.stringify(meta) : undefined;

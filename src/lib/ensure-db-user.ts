@@ -1,8 +1,12 @@
 import type { User } from "@prisma/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
 
-export async function ensureDbUser(supabase: SupabaseClient): Promise<User | null> {
+export async function ensureDbUser(supabase: SupabaseClient, request?: Request): Promise<User | null> {
+  const acting = await getActingUser(request);
+  if (acting.dbUser) return acting.dbUser;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
