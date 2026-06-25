@@ -3,6 +3,7 @@ import { SubscriptionStatus, UserRole } from "@prisma/client";
 import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { UsersTable } from "./users-table";
 import { TopEchelonSyncPanel } from "./top-echelon-sync-panel";
+import { AdminUsagePanel } from "@/components/admin/admin-usage-panel";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "@/components/scout/scout-box";
 import { color, displayTitleStyle, fontMono, type as T } from "@/lib/typography";
 import { adminSectionLabel } from "./admin-styles";
@@ -193,6 +194,8 @@ export default async function AdminPage() {
           <StatCard label="Canceled" value={data.subCounts.canceled} />
         </div>
       </section>
+
+      <AdminUsagePanel />
 
       <section>
         <h2 className={adminSectionLabel}>Integrations</h2>
