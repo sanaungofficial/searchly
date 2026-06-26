@@ -323,14 +323,21 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
               </div>
             </div>
           )}
-          {showAdminLinks && coach.slug && (
+          {showAdminLinks && (
             <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-              <Link href={`/coaching/coach/${coach.slug}`} style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>
-                Public profile →
-              </Link>
-              {coach.nylasSchedulerSlug && (
+              {coach.slug && (
+                <Link href={`/coaching/coach/${coach.slug}`} style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>
+                  Public profile →
+                </Link>
+              )}
+              {coach.slug && coach.nylasSchedulerSlug && (
                 <Link href={`/coaching/coach/${coach.slug}`} style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>
                   Scheduler link →
+                </Link>
+              )}
+              {coachId && (
+                <Link href={`/admin/purchases?coachId=${encodeURIComponent(coachId)}`} style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>
+                  Package purchases →
                 </Link>
               )}
             </div>

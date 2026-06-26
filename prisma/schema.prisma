@@ -49,6 +49,7 @@ model User {
   coachAssignmentsMade CoachClientAssignment[] @relation("CoachAssignmentAdmin")
   coachBookings        CoachBooking[]       @relation("CoachBookingGuest")
   coachBookingComms    CoachBookingCommunication[] @relation("CoachBookingComms")
+  coachPurchases       CoachPurchase[]      @relation("CoachPurchaseBuyer")
   liveSessionRegistrations LiveSessionRegistration[]
   liveSessionEvents      LiveSessionEvent[]
   emailGrant           UserEmailGrant?
@@ -290,6 +291,7 @@ model CoachProfile {
   liveSessions   LiveSession[]
   pricingPackages CoachPricingPackage[]
   bulkDiscounts   CoachBulkDiscount[]
+  purchases       CoachPurchase[]
 
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -316,8 +318,69 @@ model CoachPricingPackage {
   sortOrder      Int          @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  purchases      CoachPurchase[]
 
   @@index([coachProfileId])
+}
+
+enum CoachPurchaseStatus {
+  PENDING
+  PAID
+  REFUNDED
+  PARTIALLY_REFUNDED
+  FAILED
+  CANCELED
+}
+
+enum CoachPurchaseLeadSource {
+  MARKETPLACE
+  SALES_ASSISTED
+  COACH_REFERRAL
+  DIRECT_LINK
+}
+
+model CoachPurchase {
+  id               String                  @id @default(cuid())
+  coachProfileId   String
+  coachProfile     CoachProfile            @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  buyerUserId      String?
+  buyer            User?                   @relation("CoachPurchaseBuyer", fields: [buyerUserId], references: [id], onDelete: SetNull)
+  packageId        String?
+  package          CoachPricingPackage?    @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  /// Snapshot at checkout time
+  packageTitle     String
+  packageHours     Int
+  packageHoursMax  Int?
+
+  amountCents      Int
+  platformFeeCents Int
+  stripeFeeCents   Int                     @default(0)
+  coachPayoutCents Int
+  currency         String                  @default("usd")
+
+  hoursGranted     Int
+  hoursRemaining   Int
+
+  status           CoachPurchaseStatus     @default(PENDING)
+  leadSource       CoachPurchaseLeadSource @default(MARKETPLACE)
+  salesAssisted    Boolean                 @default(false)
+
+  buyerEmail       String?
+  buyerName        String?
+
+  stripeCheckoutSessionId String?          @unique
+  stripePaymentIntentId   String?          @unique
+
+  paidAt           DateTime?
+  refundedAt       DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@index([coachProfileId])
+  @@index([buyerUserId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model CoachBulkDiscount {
