@@ -1,6 +1,7 @@
 import { clearCoachMatchCache } from "@/lib/coach-match-cache";
 import { clearNetworkJobsCache } from "@/lib/network-jobs-cache";
 import { clearRecommendedCache } from "@/lib/recommended-jobs-cache";
+import { readClientUserIdFromBrowserSearch } from "@/lib/workspace-urls";
 
 const ACTING_USER_KEY = "kimchi_acting_user_id";
 const ADMIN_REVIEW_CLIENT_KEY = "kimchi_admin_review_client_id";
@@ -54,7 +55,11 @@ export function setActingUserScope(userId: string | null): void {
 
 export function getActingUserScope(): string {
   if (typeof window === "undefined") return "self";
-  return sessionStorage.getItem(ACTING_USER_KEY) ?? "self";
+  const scoped =
+    sessionStorage.getItem(ACTING_USER_KEY) ??
+    sessionStorage.getItem(ADMIN_REVIEW_CLIENT_KEY) ??
+    readClientUserIdFromBrowserSearch();
+  return scoped ?? "self";
 }
 
 function scopedStorageKey(prefix: string): string {

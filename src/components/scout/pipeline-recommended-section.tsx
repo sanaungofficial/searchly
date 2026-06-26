@@ -41,6 +41,7 @@ import {
   readRecommendedCache,
   writeRecommendedCache,
   clearRecommendedCacheForKey,
+  clearRecommendedCache,
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
 import { compareRecommendedMatchScore } from "@/lib/recommended-jobs-ranking";
@@ -765,7 +766,7 @@ export function PipelineRecommendedSection({
   actingUserId?: string | null;
 }) {
   const isMobile = useIsMobile();
-  const { withClientScope } = useWorkspace();
+  const { withClientScope, isAdminReviewing } = useWorkspace();
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadScopedSemanticQuery(),
@@ -792,6 +793,7 @@ export function PipelineRecommendedSection({
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
 
   const mountedRef = useRef(false);
+  const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
   const fetchGenRef = useRef(0);
   const defaultFormRef = useRef<FilterForm | null>(null);
 
@@ -943,14 +945,18 @@ export function PipelineRecommendedSection({
   }, [actingUserId, withClientScope]);
 
   useEffect(() => {
+    const prev = prevActingUserIdRef.current;
+    prevActingUserIdRef.current = actingUserId ?? null;
+    if (prev === undefined) return;
+
     mountedRef.current = false;
     setDefaultsLoaded(false);
     defaultFormRef.current = null;
-    const cached = readDefaultFeedCache();
-    setJobs(cached?.jobs ?? []);
-    setHasLoadedOnce(Boolean(cached));
-    setLoading(!cached);
-    setError(cached?.error ?? null);
+    clearRecommendedCache();
+    setJobs([]);
+    setHasLoadedOnce(false);
+    setLoading(true);
+    setError(null);
     setNotice(null);
     setActiveFilterLabels([]);
     setProfileSuggestedLabels([]);
@@ -964,9 +970,13 @@ export function PipelineRecommendedSection({
     mountedRef.current = true;
 
     const feedForm = defaultFeedForm();
-    const cacheKey = defaultFeedCacheKey();
-    const cached = readRecommendedCache(cacheKey);
 
+    if (isAdminReviewing) {
+      void fetchRecommended(feedForm, { preferCache: false, forceRefresh: true });
+      return;
+    }
+
+    const cached = readRecommendedCache(defaultFeedCacheKey());
     if (cached) {
       setJobs(cached.jobs);
       setError(cached.error ?? null);
@@ -976,7 +986,7 @@ export function PipelineRecommendedSection({
     }
 
     void fetchRecommended(feedForm, { preferCache: false });
-  }, [fetchRecommended, actingUserId, defaultsLoaded]);
+  }, [fetchRecommended, actingUserId, defaultsLoaded, isAdminReviewing]);
 
   const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
     const location = profileLocationFromForm(filtersForm);
@@ -1032,15 +1042,7 @@ export function PipelineRecommendedSection({
       cacheKey === defaultFeedCacheKey() && !filtersForm.semanticQuery.trim();
 
     if (isDefaultFeed) {
-      const cached = readRecommendedCache(cacheKey);
-      if (cached) {
-        setJobs(cached.jobs);
-        setError(cached.error ?? null);
-        setHasLoadedOnce(true);
-        setLoading(false);
-        return;
-      }
-      void fetchRecommended(filtersForm, { preferCache: false });
+      void fetchRecommended(filtersForm, { preferCache: false, forceRefresh: isAdminReviewing });
       return;
     }
 
