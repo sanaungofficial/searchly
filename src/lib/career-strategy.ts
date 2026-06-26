@@ -1,5 +1,7 @@
 /** Career Strategy document stored in Profile.strategyData (editable narrative sections). */
 
+import { mergeIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
+
 export type ReadinessScore = "Strong" | "Moderate" | "At Risk" | "High Risk" | "Good";
 
 export interface CareerStrategyDocument {
@@ -169,12 +171,21 @@ export type IntakeContextFields = {
   recentTitle?: string;
 };
 
+export type SuggestedTrackedCompanyInput = {
+  name: string;
+  priority?: string | null;
+  notes?: string | null;
+  candidateEdge?: string | null;
+};
+
 export type IntakeParseResult = {
   proposed: StrategyProfileFields;
   summary: string;
   fieldsFound: string[];
   /** Dream employers to add to Companies watchlist (not profile columns). */
   suggestedDreamCompanies?: string[];
+  /** Rich target company rows with priority, notes, and candidate edge. */
+  suggestedTrackedCompanies?: SuggestedTrackedCompanyInput[];
   /** Rich intake details kept for strategy generation (also stored in strategyIntakeNotes). */
   intakeContext?: IntakeContextFields;
 };
@@ -460,11 +471,13 @@ export function parseStrategyJson(text: string): CareerStrategyDocument {
 
 export function parseIntakeJson(text: string): IntakeParseResult {
   const parsed = JSON.parse(extractJsonObject(text)) as IntakeParseResult;
+  const tracked = mergeIntakeTrackedCompanies(parsed);
   return {
     proposed: parsed.proposed ?? {},
     summary: parsed.summary ?? "",
     fieldsFound: parsed.fieldsFound ?? [],
-    suggestedDreamCompanies: (parsed.suggestedDreamCompanies ?? []).filter(Boolean),
+    suggestedDreamCompanies: tracked.map((c) => c.name),
+    suggestedTrackedCompanies: tracked,
     intakeContext: parsed.intakeContext ?? {},
   };
 }

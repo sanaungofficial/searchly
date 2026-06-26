@@ -10,6 +10,7 @@ import {
   type StrategyProfileFields,
   type StrategyVersion,
 } from "@/lib/career-strategy";
+import { mergeIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
@@ -348,38 +349,47 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
   }
 
   async function applyParsedFields() {
-    if (!parseResult?.proposed) return;
-    const patch: Record<string, unknown> = { ...parseResult.proposed };
-    if (patch.name) {
-      await onPatchProfile({ name: patch.name });
-      delete patch.name;
-    }
-    await onPatchProfile(patch);
+    if (!parseResult) return;
+    setError(null);
+    try {
+      const patch: Record<string, unknown> = { ...(parseResult.proposed ?? {}) };
+      if (Object.keys(patch).length > 0) {
+        if (patch.name) {
+          await onPatchProfile({ name: patch.name });
+          delete patch.name;
+        }
+        if (Object.keys(patch).length > 0) {
+          await onPatchProfile(patch);
+        }
+      }
 
-    const dreamCompanies = parseResult.suggestedDreamCompanies ?? [];
-    if (dreamCompanies.length > 0) {
-      await Promise.all(
-        dreamCompanies.slice(0, 20).map((name) =>
-          fetch("/api/companies", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: name.trim(), priority: "high" }),
-          }).catch(() => null),
-        ),
-      );
-    }
+      const trackedCompanies = mergeIntakeTrackedCompanies(parseResult);
+      if (trackedCompanies.length > 0) {
+        const res = await fetch("/api/companies/intake-apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ suggestedTrackedCompanies: trackedCompanies }),
+        });
+        const data = await readResponseJson(res);
+        if (!res.ok) {
+          throw new Error(formatApiErrorMessage(data.error, "Failed to add target companies"));
+        }
+      }
 
-    setShowApplyModal(false);
-    setParseResult(null);
-    await loadStrategy();
-    if (dreamCompanies.length > 0) {
-      fetch("/api/companies")
-        .then((r) => r.json())
-        .then((d) => {
-          if (Array.isArray(d)) setCompanies(d);
-          else if (d.companies) setCompanies(d.companies);
-        })
-        .catch(() => {});
+      setShowApplyModal(false);
+      setParseResult(null);
+      await loadStrategy();
+      if (trackedCompanies.length > 0) {
+        fetch("/api/companies")
+          .then((r) => r.json())
+          .then((d) => {
+            if (Array.isArray(d)) setCompanies(d);
+            else if (d.companies) setCompanies(d.companies);
+          })
+          .catch(() => {});
+      }
+    } catch (e) {
+      setError(formatApiErrorMessage(e, "Failed to apply profile updates"));
     }
   }
 
@@ -473,7 +483,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           Client intake notes
         </p>
         <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
-          Paste answers from your external intake form. Parse to update profile fields (with your approval), then generate the strategy doc.
+          Paste answers from your external intake form, target companies list, or career strategy doc. Parse to update profile fields and target companies (with your approval), then generate the strategy doc.
         </p>
         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 10px" }}>
           Full onboarding forms are supported — paste everything. Credentials and passwords are ignored and never stored.
@@ -796,15 +806,15 @@ function ApplyProfileModal({
   const contextEntries = Object.entries(result.intakeContext ?? {}).filter(
     ([, v]) => v != null && String(v).trim() !== "",
   );
-  const dreamCompanies = result.suggestedDreamCompanies ?? [];
-  const canApply = entries.length > 0 || dreamCompanies.length > 0;
+  const trackedCompanies = mergeIntakeTrackedCompanies(result);
+  const canApply = entries.length > 0 || trackedCompanies.length > 0;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div style={{ background: "#FFFDF9", maxWidth: 560, width: "100%", maxHeight: "80vh", overflow: "auto", padding: 24, border: border.lineStrong }}>
         <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 8px", color: color.forest }}>Review profile updates</h3>
         <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 16px" }}>{result.summary}</p>
-        {entries.length === 0 && contextEntries.length === 0 && dreamCompanies.length === 0 ? (
+        {entries.length === 0 && contextEntries.length === 0 && trackedCompanies.length === 0 ? (
           <p style={{ fontFamily: fontSans, fontSize: 14 }}>No structured fields found. Try adding more detail to the intake notes.</p>
         ) : (
           <>
@@ -837,12 +847,37 @@ function ApplyProfileModal({
                 </table>
               </>
             )}
-            {dreamCompanies.length > 0 && (
-              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, margin: "0 0 16px" }}>
-                <strong>{dreamCompanies.length} dream companies</strong> will be added to the watchlist on apply:{" "}
-                {dreamCompanies.slice(0, 8).join(", ")}
-                {dreamCompanies.length > 8 ? ` +${dreamCompanies.length - 8} more` : ""}
-              </p>
+            {trackedCompanies.length > 0 && (
+              <>
+                <p style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, margin: "0 0 8px" }}>
+                  <strong>{trackedCompanies.length} target companies</strong> will be added or updated on apply.
+                </p>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13, marginBottom: 16 }}>
+                  <thead>
+                    <tr style={{ borderBottom: border.line }}>
+                      <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Company</th>
+                      <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Priority</th>
+                      <th style={{ textAlign: "left", padding: "6px 8px", color: color.muted, fontWeight: 600 }}>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trackedCompanies.slice(0, 12).map((c) => (
+                      <tr key={c.name} style={{ borderBottom: border.line }}>
+                        <td style={{ padding: "8px", verticalAlign: "top" }}>{c.name}</td>
+                        <td style={{ padding: "8px", color: color.muted, verticalAlign: "top" }}>{c.priority ?? "—"}</td>
+                        <td style={{ padding: "8px", color: color.muted, verticalAlign: "top" }}>
+                          {c.notes ?? c.candidateEdge ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {trackedCompanies.length > 12 && (
+                  <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 16px" }}>
+                    +{trackedCompanies.length - 12} more companies
+                  </p>
+                )}
+              </>
             )}
           </>
         )}
