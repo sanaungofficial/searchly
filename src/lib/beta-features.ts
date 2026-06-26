@@ -1,4 +1,4 @@
-/** Live sessions, Coaching, Network — full access on dev; prod admins only; prod users see coming soon. */
+/** Live sessions, Coaching, Network — admin-only in nav and page access. */
 
 export type BetaFeatureId = "live" | "coaching" | "network";
 
@@ -40,12 +40,12 @@ export function isProductionEnv(): boolean {
   return appUrl.includes("app.kimchi.so");
 }
 
-/** Dev/preview: everyone. Production: admins only. */
+/** Admins only — Live, Coaching, and Network are not shown to regular users. */
 export function canAccessBetaFeatures(isAdmin: boolean): boolean {
-  return !isProductionEnv() || isAdmin;
+  return isAdmin;
 }
 
 /** Whether Live / Coaching / Network appear in the sidebar. */
 export function shouldShowBetaNav(isAdmin: boolean): boolean {
-  return canAccessBetaFeatures(isAdmin);
+  return isAdmin;
 }

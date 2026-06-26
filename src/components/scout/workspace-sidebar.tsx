@@ -59,17 +59,11 @@ const SIDEBAR_GOLD_FAINT = "rgba(232,213,163,0.38)";
 const SIDEBAR_LINE = "1px solid rgba(232,213,163,0.14)";
 const SIDEBAR_LINE_ACTIVE = "1px solid rgba(232,213,163,0.35)";
 
-const NAV_SEARCH: NavItem[] = [
+const NAV_MAIN: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
+  { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
 ];
-
-const NAV_PROFILE: NavItem = {
-  id: "profile",
-  label: "Profile",
-  path: "/profile",
-  Icon: ProfileIcon,
-};
 
 const NAV_COMMUNITY: NavItem[] = [
   { id: "live", label: BETA_FEATURES.live.navLabel, path: "/live", Icon: LiveIcon },
@@ -578,8 +572,7 @@ export function WorkspaceSidebar({
           )}
 
 
-          <SidebarSectionLabel isRail={isRail}>Search</SidebarSectionLabel>
-          {NAV_SEARCH.map(({ id, label, path, Icon }) => (
+          {NAV_MAIN.map(({ id, label, path, Icon }) => (
             <React.Fragment key={id}>
               <SidebarNavButton
                 active={isActive(path)}
@@ -588,6 +581,7 @@ export function WorkspaceSidebar({
                 Icon={Icon}
                 isRail={isRail}
                 badge={id === "opportunities" ? activePipelineCount : undefined}
+                showIncompleteDot={id === "profile" && profileIncomplete}
               />
               {id === "opportunities" && !isRail && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 2 }}>
@@ -608,16 +602,6 @@ export function WorkspaceSidebar({
               )}
             </React.Fragment>
           ))}
-
-          <SidebarSectionLabel isRail={isRail}>You</SidebarSectionLabel>
-          <SidebarNavButton
-            active={isActive(NAV_PROFILE.path)}
-            onClick={() => navigate(NAV_PROFILE.path)}
-            label={NAV_PROFILE.label}
-            Icon={NAV_PROFILE.Icon}
-            isRail={isRail}
-            showIncompleteDot={profileIncomplete}
-          />
 
           {showCommunityNav && (
             <>
