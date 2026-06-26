@@ -21,6 +21,7 @@ import { isStaffPortalRole } from "@/lib/staff-portal";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
+import { MyCoachesPanel } from "@/components/scout/my-coaches-panel";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
 import { DashboardAddGoalModal } from "@/components/scout/dashboard-add-goal-modal";
@@ -707,6 +708,15 @@ export function DashboardHomeTop({ isMobile }: Props) {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {!isStaffPortal && (
+        <div style={{ ...CARD, padding: isMobile ? "16px 18px" : "18px 22px" }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            My coaches
+          </p>
+          <MyCoachesPanel compact />
         </div>
       )}
 

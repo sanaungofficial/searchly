@@ -16,6 +16,7 @@ import {
   processUserEventWebhook,
   processUserMessageWebhook,
 } from "@/lib/job-email-agent";
+import { resolveGuestUserId } from "@/lib/coach-hub";
 
 export async function GET(req: NextRequest) {
   const challenge = req.nextUrl.searchParams.get("challenge");
@@ -72,8 +73,11 @@ async function upsertBookingFromWebhook(
       ? { nylasBookingRef: payload.bookingRef }
       : null;
 
+  const userId = await resolveGuestUserId(payload.guestEmail);
+
   const data = {
     coachProfileId: coach.id,
+    userId,
     nylasBookingId: payload.bookingId ?? null,
     nylasBookingRef: payload.bookingRef ?? null,
     nylasConfigId: payload.configId ?? null,
@@ -89,23 +93,30 @@ async function upsertBookingFromWebhook(
   };
 
   let isNew = false;
+  let bookingId: string;
 
   if (lookup) {
     const existing = await prisma.coachBooking.findFirst({ where: lookup });
     if (existing) {
-      await prisma.coachBooking.update({ where: { id: existing.id }, data });
+      const updated = await prisma.coachBooking.update({ where: { id: existing.id }, data });
+      bookingId = updated.id;
     } else {
-      await prisma.coachBooking.create({ data });
+      const created = await prisma.coachBooking.create({ data });
+      bookingId = created.id;
       isNew = true;
     }
   } else {
-    await prisma.coachBooking.create({ data });
+    const created = await prisma.coachBooking.create({ data });
+    bookingId = created.id;
     isNew = true;
   }
 
   return {
     isNew,
     type,
+    bookingId,
+    coachProfileId: coach.id,
+    clientUserId: userId,
     coachName: coach.displayName,
     coachEmail: coach.email,
     guestName: payload.guestName,
@@ -174,6 +185,9 @@ export async function POST(req: NextRequest) {
 
     if (result?.guestEmail) {
       const emailPayload = {
+        coachProfileId: result.coachProfileId,
+        bookingId: result.bookingId,
+        clientUserId: result.clientUserId,
         guestEmail: result.guestEmail,
         guestName: result.guestName,
         coachName: result.coachName,
@@ -194,13 +208,8 @@ export async function POST(req: NextRequest) {
         );
         if (result.coachEmail) {
           sendBookingCoachNotificationEmail({
+            ...emailPayload,
             coachEmail: result.coachEmail,
-            coachName: result.coachName,
-            guestName: result.guestName,
-            guestEmail: result.guestEmail,
-            title: result.title,
-            startAt: result.startAt,
-            endAt: result.endAt,
           }).catch((err) => console.error("[nylas/webhook] coach email", err));
         }
       }

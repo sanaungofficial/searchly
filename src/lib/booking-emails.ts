@@ -1,6 +1,8 @@
 import { resend } from "@/lib/email";
 import { formatBookingWhen } from "@/lib/booking-display";
 import { nylasOAuthAppUrl } from "@/lib/nylas";
+import { logBookingCommunication } from "@/lib/booking-communications";
+import { CoachBookingCommAudience, CoachBookingCommType } from "@prisma/client";
 
 function escapeHtml(value: string) {
   return value
@@ -39,6 +41,9 @@ function emailShell(title: string, bodyHtml: string) {
 }
 
 export async function sendBookingGuestConfirmationEmail(params: {
+  coachProfileId: string;
+  bookingId?: string | null;
+  clientUserId?: string | null;
   guestEmail: string;
   guestName?: string | null;
   coachName: string;
@@ -53,6 +58,7 @@ export async function sendBookingGuestConfirmationEmail(params: {
   const name = params.guestName?.trim() || "there";
   const ref = params.bookingRef;
   const base = appBase();
+  const subject = `Confirmed: ${params.title ?? `Session with ${params.coachName}`}`;
 
   const actions = ref
     ? `<p style="margin:24px 0 0;font-size:14px;color:#52493F;line-height:1.7;">
@@ -65,7 +71,7 @@ export async function sendBookingGuestConfirmationEmail(params: {
   await resend.emails.send({
     from: "Kimchi <hello@kimchi.so>",
     to: params.guestEmail,
-    subject: `Confirmed: ${params.title ?? `Session with ${params.coachName}`}`,
+    subject,
     html: emailShell(
       `You're booked, ${escapeHtml(name.split(" ")[0] ?? name)}.`,
       `<p style="margin:0 0 12px;font-size:15px;color:#52493F;line-height:1.7;">
@@ -78,9 +84,24 @@ export async function sendBookingGuestConfirmationEmail(params: {
         <p style="margin:24px 0 0;font-size:14px;color:#6B6258;">A calendar invite should arrive separately from your coach's calendar.</p>`,
     ),
   });
+
+  await logBookingCommunication({
+    bookingId: params.bookingId,
+    coachProfileId: params.coachProfileId,
+    clientUserId: params.clientUserId,
+    guestEmail: params.guestEmail,
+    type: CoachBookingCommType.GUEST_CONFIRMATION,
+    audience: CoachBookingCommAudience.GUEST,
+    recipientEmail: params.guestEmail,
+    subject,
+    bodyPreview: `Session confirmed with ${params.coachName} on ${date}.`,
+  }).catch((err) => console.error("[booking-emails] log guest confirmation", err));
 }
 
 export async function sendBookingCoachNotificationEmail(params: {
+  coachProfileId: string;
+  bookingId?: string | null;
+  clientUserId?: string | null;
   coachEmail: string;
   coachName: string;
   guestName?: string | null;
@@ -94,11 +115,12 @@ export async function sendBookingCoachNotificationEmail(params: {
   const { date, time } = formatBookingWhen(params.startAt, params.endAt);
   const guest = params.guestName?.trim() || params.guestEmail || "A seeker";
   const base = appBase();
+  const subject = `New booking: ${guest}`;
 
   await resend.emails.send({
     from: "Kimchi <hello@kimchi.so>",
     to: params.coachEmail,
-    subject: `New booking: ${guest}`,
+    subject,
     html: emailShell(
       "New coaching session booked",
       `<p style="margin:0 0 12px;font-size:15px;color:#52493F;line-height:1.7;">
@@ -108,15 +130,30 @@ export async function sendBookingCoachNotificationEmail(params: {
           <strong>${escapeHtml(date)}</strong><br />${escapeHtml(time)}
         </p>
         <p style="margin:24px 0 0;">
-          <a href="${base}/clients?tab=bookings" style="display:inline-block;padding:12px 20px;background:#1C3A2F;color:#F2EDE3;text-decoration:none;font-size:14px;font-weight:600;border-radius:10px;">
+          <a href="${base}/dashboard/clients" style="display:inline-block;padding:12px 20px;background:#1C3A2F;color:#F2EDE3;text-decoration:none;font-size:14px;font-weight:600;border-radius:10px;">
             View in Kimchi →
           </a>
         </p>`,
     ),
   });
+
+  await logBookingCommunication({
+    bookingId: params.bookingId,
+    coachProfileId: params.coachProfileId,
+    clientUserId: params.clientUserId,
+    guestEmail: params.guestEmail,
+    type: CoachBookingCommType.COACH_NOTIFICATION,
+    audience: CoachBookingCommAudience.COACH,
+    recipientEmail: params.coachEmail,
+    subject,
+    bodyPreview: `${guest} booked a session for ${date}.`,
+  }).catch((err) => console.error("[booking-emails] log coach notification", err));
 }
 
 export async function sendBookingCancelledEmail(params: {
+  coachProfileId: string;
+  bookingId?: string | null;
+  clientUserId?: string | null;
   guestEmail: string;
   guestName?: string | null;
   coachName: string;
@@ -127,11 +164,12 @@ export async function sendBookingCancelledEmail(params: {
 
   const { date, time } = formatBookingWhen(params.startAt, params.endAt);
   const name = params.guestName?.trim() || "there";
+  const subject = `Cancelled: session with ${params.coachName}`;
 
   await resend.emails.send({
     from: "Kimchi <hello@kimchi.so>",
     to: params.guestEmail,
-    subject: `Cancelled: session with ${params.coachName}`,
+    subject,
     html: emailShell(
       "Session cancelled",
       `<p style="margin:0;font-size:15px;color:#52493F;line-height:1.7;">
@@ -140,4 +178,16 @@ export async function sendBookingCancelledEmail(params: {
         </p>`,
     ),
   });
+
+  await logBookingCommunication({
+    bookingId: params.bookingId,
+    coachProfileId: params.coachProfileId,
+    clientUserId: params.clientUserId,
+    guestEmail: params.guestEmail,
+    type: CoachBookingCommType.CANCELLATION,
+    audience: CoachBookingCommAudience.GUEST,
+    recipientEmail: params.guestEmail,
+    subject,
+    bodyPreview: `Session with ${params.coachName} on ${date} was cancelled.`,
+  }).catch((err) => console.error("[booking-emails] log cancellation", err));
 }

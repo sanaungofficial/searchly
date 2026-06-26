@@ -45,6 +45,8 @@ model User {
   digestSettings       UserDigestSettings?
   coachReviews         CoachReview[]
   coachFollows         CoachFollow[]
+  coachBookings        CoachBooking[]       @relation("CoachBookingGuest")
+  coachBookingComms    CoachBookingCommunication[] @relation("CoachBookingComms")
   liveSessionRegistrations LiveSessionRegistration[]
   liveSessionEvents      LiveSessionEvent[]
   emailGrant           UserEmailGrant?
@@ -261,6 +263,7 @@ model CoachProfile {
   reviews        CoachReview[]
   followers      CoachFollow[]
   bookings       CoachBooking[]
+  communications CoachBookingCommunication[]
   liveSessions   LiveSession[]
 
   createdAt      DateTime    @default(now())
@@ -278,6 +281,8 @@ model CoachBooking {
   id              String             @id @default(cuid())
   coachProfileId  String
   coachProfile    CoachProfile       @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?              @relation("CoachBookingGuest", fields: [userId], references: [id], onDelete: SetNull)
 
   nylasBookingId  String?            @unique
   nylasBookingRef String?            @unique
@@ -291,12 +296,49 @@ model CoachBooking {
   endAt           DateTime
   status          CoachBookingStatus @default(CONFIRMED)
   rawPayload      Json?
+  communications  CoachBookingCommunication[]
 
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
   @@index([coachProfileId])
+  @@index([userId])
+  @@index([guestEmail])
   @@index([startAt])
+}
+
+enum CoachBookingCommType {
+  GUEST_CONFIRMATION
+  COACH_NOTIFICATION
+  CANCELLATION
+  SESSION_BOOKED
+  SESSION_RESCHEDULED
+}
+
+enum CoachBookingCommAudience {
+  GUEST
+  COACH
+}
+
+/// Booking-related emails and session lifecycle events (Option A communications).
+model CoachBookingCommunication {
+  id             String                   @id @default(cuid())
+  bookingId      String?
+  booking        CoachBooking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  coachProfileId String
+  coachProfile   CoachProfile             @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  clientUserId   String?
+  clientUser     User?                    @relation("CoachBookingComms", fields: [clientUserId], references: [id], onDelete: SetNull)
+  type           CoachBookingCommType
+  audience       CoachBookingCommAudience
+  recipientEmail String
+  subject        String
+  bodyPreview    String?
+  createdAt      DateTime                 @default(now())
+
+  @@index([coachProfileId, createdAt])
+  @@index([clientUserId, createdAt])
+  @@index([bookingId])
 }
 
 enum LiveSessionStatus {
