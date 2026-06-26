@@ -51,10 +51,12 @@ function heuristicMatch(
   const keywordScore = Math.round(fallback.score * 10);
   const baseScore = Math.round(rankScore * 0.55 + keywordScore * 0.45);
   const jobTitle = job.job_title ?? cached.title ?? "";
+  const jobCategories = [...(cached.tags ?? []), ...(job.job_categories ?? [])];
   const { matchScore, adjustment } = applyRoleTitlePreferenceToScore(
     baseScore,
     jobTitle,
     roleTitlePreferences ?? {},
+    jobCategories,
   );
 
   const reasons: string[] = [];

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { adjustMatchScoreForRoleTitlePreferences, jobTitleMatchesRolePattern } from "./role-title-preferences";
+import {
+  adjustMatchScoreForRoleTitlePreferences,
+  jobCategoryMatchesPattern,
+  jobTitleMatchesRolePattern,
+  PRIORITIZED_ROLE_TITLE_BOOST,
+  TARGET_ROLE_TITLE_BOOST,
+} from "./role-title-preferences";
 
 describe("jobTitleMatchesRolePattern", () => {
   it("matches exact deprioritized phrases", () => {
@@ -28,6 +34,37 @@ describe("jobTitleMatchesRolePattern", () => {
       { deprioritizedRoles: ["Product Manager"] },
     );
     expect(deprioritizedMatch).toBe("Product Manager");
+    expect(netAdjustment).toBeLessThan(0);
+  });
+});
+
+describe("prioritized roles and categories", () => {
+  it("prioritized role boost beats target role boost", () => {
+    const { boost, prioritizedMatch, preferredMatch } = adjustMatchScoreForRoleTitlePreferences(
+      "Commercial Product Lead",
+      {
+        targetRoles: ["Commercial Product Lead"],
+        prioritizedRoles: ["Commercial Product Lead"],
+      },
+    );
+    expect(boost).toBe(PRIORITIZED_ROLE_TITLE_BOOST);
+    expect(prioritizedMatch).toBe("Commercial Product Lead");
+    expect(preferredMatch).toBe("Commercial Product Lead");
+    expect(PRIORITIZED_ROLE_TITLE_BOOST).toBeGreaterThan(TARGET_ROLE_TITLE_BOOST);
+  });
+
+  it("matches hirebase category buckets", () => {
+    expect(jobCategoryMatchesPattern(["Sales Jobs", "Full Time"], "Sales Jobs")).toBe(true);
+    expect(jobCategoryMatchesPattern(["Product Jobs"], "Sales Jobs")).toBe(false);
+  });
+
+  it("applies category deprioritize penalty", () => {
+    const { netAdjustment, deprioritizedCategoryMatch } = adjustMatchScoreForRoleTitlePreferences(
+      "Account Executive",
+      { deprioritizedCategories: ["Sales Jobs"] },
+      ["Sales Jobs"],
+    );
+    expect(deprioritizedCategoryMatch).toBe("Sales Jobs");
     expect(netAdjustment).toBeLessThan(0);
   });
 });
