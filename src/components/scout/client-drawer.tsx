@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
+import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-assignment-section";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -43,11 +44,13 @@ export function ClientDetailBody({
   onViewAsClient,
   startingUserId,
   showViewAsClient,
+  onClientUpdated,
 }: {
   client: AdminClient;
   onViewAsClient?: (userId: string) => void;
   startingUserId?: string | null;
   showViewAsClient?: boolean;
+  onClientUpdated?: (client: AdminClient) => void;
 }) {
   const activeJobs = client.jobs.filter((j) => activeStage(j.stage));
   const appliedJobs = client.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
@@ -161,6 +164,10 @@ export function ClientDetailBody({
         </div>
       )}
 
+      {onClientUpdated && (
+        <ClientCoachAssignmentSection client={client} onUpdated={onClientUpdated} />
+      )}
+
       <div style={{ background: surface.card, border: border.line, overflow: "hidden" }}>
         <div style={{ padding: "14px 20px", borderBottom: border.line }}>
           <p style={{ fontSize: 12, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, margin: 0 }}>
@@ -219,9 +226,10 @@ type DrawerProps = {
   onViewAsClient?: (userId: string) => void;
   startingUserId?: string | null;
   showViewAsClient?: boolean;
+  onClientUpdated?: (client: AdminClient) => void;
 };
 
-export function ClientDrawer({ client, onClose, onViewAsClient, startingUserId, showViewAsClient }: DrawerProps) {
+export function ClientDrawer({ client, onClose, onViewAsClient, startingUserId, showViewAsClient, onClientUpdated }: DrawerProps) {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
   const displayName = client.name ?? client.email.split("@")[0];
@@ -310,6 +318,7 @@ export function ClientDrawer({ client, onClose, onViewAsClient, startingUserId, 
             onViewAsClient={onViewAsClient}
             startingUserId={startingUserId}
             showViewAsClient={showViewAsClient}
+            onClientUpdated={onClientUpdated}
           />
         </div>
       </div>

@@ -19,6 +19,7 @@ export type CoachListItem = {
   category: string | null;
   featured: boolean;
   isProfessionalCoach: boolean;
+  isInternal?: boolean;
   avgRating: number | null;
   reviewCount: number;
   followerCount: number;
@@ -33,6 +34,7 @@ export type CoachListItem = {
   matchedSkills?: string[];
   spotlightBadge?: CoachSpotlightBadge | null;
   isFollowing?: boolean;
+  isInternal?: boolean;
 };
 
 export type CoachSpotlightBadge = "featured" | "new" | "top-rated" | "rising";

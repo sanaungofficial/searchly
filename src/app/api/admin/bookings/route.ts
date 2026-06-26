@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     bookings: bookings.map((b) => ({
       id: b.id,
       coachProfileId: b.coachProfileId,
+      coachProfileId: b.coachProfileId,
       coachName: b.coachProfile.displayName,
       coachSlug: b.coachProfile.slug,
       coachEmail: b.coachProfile.email,

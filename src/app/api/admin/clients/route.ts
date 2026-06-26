@@ -76,6 +76,22 @@ export async function GET() {
         take: 50,
       },
       _count: { select: { jobs: true, tailoredResumes: true } },
+      coachAssignments: {
+        include: {
+          coachProfile: {
+            select: {
+              id: true,
+              displayName: true,
+              slug: true,
+              photoUrl: true,
+              headline: true,
+              isInternal: true,
+              nylasSchedulerConfigId: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
+import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { BookingsList } from "@/components/scout/bookings-list";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, fontMono, fontSans, type as T } from "@/lib/typography";
@@ -18,6 +19,8 @@ type ClientCoachRow = {
   upcomingCount: number;
   lastSessionAt: string | null;
   nextSessionAt: string | null;
+  isInternal?: boolean;
+  isAssigned?: boolean;
   upcomingBookings: Array<{
     id: string;
     coachName: string;
@@ -112,13 +115,17 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
             >
               <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={compact ? 40 : 48} />
               <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontFamily: fontSans, fontSize: compact ? 15 : 16, fontWeight: 600 }}>{coach.displayName}</p>
+                <p style={{ margin: 0, fontFamily: fontSans, fontSize: compact ? 15 : 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {coach.displayName}
+                  {coach.isInternal && <InternalCoachBadge compact />}
+                </p>
                 {coach.headline && (
                   <p style={{ margin: "2px 0 0", fontFamily: fontSans, fontSize: 12, color: color.muted }}>{coach.headline}</p>
                 )}
                 <p style={{ margin: "6px 0 0", fontFamily: fontMono, fontSize: 11, color: color.stone }}>
-                  {coach.sessionCount} session{coach.sessionCount === 1 ? "" : "s"}
-                  {coach.upcomingCount > 0 ? ` · ${coach.upcomingCount} upcoming` : ""}
+                  {coach.isAssigned && coach.sessionCount === 0
+                    ? "Assigned Kimchi coach — book your first session"
+                    : `${coach.sessionCount} session${coach.sessionCount === 1 ? "" : "s"}${coach.upcomingCount > 0 ? ` · ${coach.upcomingCount} upcoming` : ""}`}
                 </p>
               </div>
               <span style={{ fontFamily: fontSans, fontSize: 12, color: color.forest }}>{expanded ? "Hide" : "View"}</span>

@@ -81,6 +81,16 @@ type BookedCoach = {
   };
 };
 
+type AssignedCoach = {
+  coachProfileId: string;
+  displayName: string;
+  slug: string | null;
+  photoUrl: string | null;
+  headline: string | null;
+  isInternal: boolean;
+  hasNylasBooking: boolean;
+};
+
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
   const { openPricing, userRole } = useWorkspace();
@@ -96,6 +106,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [editTargetMonth, setEditTargetMonth] = useState("");
   const [bookedCoach, setBookedCoach] = useState<BookedCoach | null>(null);
+  const [assignedCoach, setAssignedCoach] = useState<AssignedCoach | null>(null);
   const [bookingLoading, setBookingLoading] = useState(true);
   const [pendingSync, setPendingSync] = useState<ReturnType<typeof profileNeedsSyncForGoal>>(null);
   const [syncSaving, setSyncSaving] = useState(false);
@@ -145,12 +156,21 @@ export function DashboardHomeTop({ isMobile }: Props) {
   useEffect(() => {
     if (isStaffPortal) {
       setBookedCoach(null);
+      setAssignedCoach(null);
       setBookingLoading(false);
       return;
     }
 
     setBookingLoading(true);
-    fetch("/api/bookings/me?upcoming=true&limit=1")
+    const assignedPromise = fetch("/api/coaching/assigned-coaches")
+      .then((r) => (r.ok ? r.json() : { coaches: [] }))
+      .then((d) => {
+        const first = d.coaches?.[0];
+        setAssignedCoach(first ?? null);
+      })
+      .catch(() => setAssignedCoach(null));
+
+    const bookingPromise = fetch("/api/bookings/me?upcoming=true&limit=1")
       .then((r) => (r.ok ? r.json() : null))
       .then(async (d) => {
         let row = d?.bookings?.[0];
@@ -179,7 +199,9 @@ export function DashboardHomeTop({ isMobile }: Props) {
           },
         });
       })
-      .catch(() => setBookedCoach(null))
+      .catch(() => setBookedCoach(null));
+
+    Promise.all([assignedPromise, bookingPromise])
       .finally(() => setBookingLoading(false));
   }, [isStaffPortal]);
 
@@ -614,7 +636,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const rightColumn = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
       {/* Coach status — seekers only */}
-      {!isStaffPortal && !bookingLoading && !bookedCoach && (
+      {!isStaffPortal && !bookingLoading && !bookedCoach && !assignedCoach && (
         <div
           style={{
             ...CARD,
@@ -633,6 +655,40 @@ export function DashboardHomeTop({ isMobile }: Props) {
           <ScoutSecondaryBtn onClick={() => router.push("/coaching")} style={{ minHeight: 40, flexShrink: 0 }}>
             Browse coaches
           </ScoutSecondaryBtn>
+        </div>
+      )}
+
+      {!isStaffPortal && !bookingLoading && !bookedCoach && assignedCoach && (
+        <div
+          style={{
+            ...CARD,
+            padding: isMobile ? "16px 18px" : "18px 22px",
+            display: "flex",
+            alignItems: isMobile ? "flex-start" : "center",
+            gap: 14,
+            flexDirection: isMobile ? "column" : "row",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
+            <CoachAvatar name={assignedCoach.displayName} photoUrl={assignedCoach.photoUrl} size={48} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
+                Your Kimchi coach
+              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
+                {assignedCoach.displayName}
+              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+                {assignedCoach.headline?.slice(0, 100) ?? "Book your intro call to get started."}
+              </p>
+            </div>
+          </div>
+          <ScoutPrimaryBtn
+            onClick={() => openCoachProfile(assignedCoach.slug, assignedCoach.coachProfileId)}
+            style={{ minHeight: 40, flexShrink: 0, width: isMobile ? "100%" : undefined }}
+          >
+            {assignedCoach.hasNylasBooking ? "Book with coach →" : "View coach →"}
+          </ScoutPrimaryBtn>
         </div>
       )}
 

@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BookingDetailDrawer } from "@/components/admin/booking-detail-drawer";
+import { CoachHubDrawer } from "@/components/admin/coach-hub-drawer";
+import { GuestHubDrawer } from "@/components/admin/guest-hub-drawer";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type BookingRow = {
   id: string;
+  coachProfileId: string;
   coachName: string;
   coachSlug: string | null;
   guestName: string | null;
@@ -15,6 +19,12 @@ type BookingRow = {
   startAt: string;
   endAt: string;
   status: string;
+};
+
+type GuestPreview = {
+  userId: string | null;
+  email: string;
+  name: string | null;
 };
 
 function formatWhen(start: string, end: string) {
@@ -29,6 +39,9 @@ export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [guestHub, setGuestHub] = useState<GuestPreview | null>(null);
+  const [coachHubId, setCoachHubId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/bookings")
@@ -46,8 +59,7 @@ export default function AdminBookingsPage() {
       <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Bookings</h1>
 
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 20px" }}>
-        Coaching sessions booked through Nylas Scheduler. Register webhooks in the Nylas dashboard pointing to{" "}
-        <code>/api/webhooks/nylas</code>.
+        Coaching sessions booked through Nylas Scheduler. Click a row for details, guest hub, or coach hub.
       </p>
 
       {loading && <p style={{ fontFamily: fontSans, color: color.muted }}>Loading bookings…</p>}
@@ -86,15 +98,22 @@ export default function AdminBookingsPage() {
           {bookings.map((b) => {
             const when = formatWhen(b.startAt, b.endAt);
             return (
-              <div
+              <button
                 key={b.id}
+                type="button"
+                onClick={() => setSelectedBookingId(b.id)}
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1.2fr 1fr 1fr 1fr 100px",
                   gap: 12,
                   padding: "14px 16px",
-                  borderBottom: border.line,
                   alignItems: "start",
+                  width: "100%",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: border.line,
+                  cursor: "pointer",
+                  textAlign: "left",
                 }}
               >
                 <div>
@@ -126,10 +145,43 @@ export default function AdminBookingsPage() {
                 >
                   {b.status.toLowerCase()}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
+      )}
+
+      {selectedBookingId && (
+        <BookingDetailDrawer
+          bookingId={selectedBookingId}
+          onClose={() => setSelectedBookingId(null)}
+          onOpenGuestHub={(guest) => {
+            setSelectedBookingId(null);
+            setGuestHub(guest);
+          }}
+          onOpenCoachHub={(coachId) => {
+            setSelectedBookingId(null);
+            setCoachHubId(coachId);
+          }}
+        />
+      )}
+
+      {guestHub && (
+        <GuestHubDrawer
+          guest={guestHub}
+          onClose={() => setGuestHub(null)}
+          onOpenCoachHub={(coachId) => {
+            setGuestHub(null);
+            setCoachHubId(coachId);
+          }}
+        />
+      )}
+
+      {coachHubId && (
+        <CoachHubDrawer
+          coachId={coachHubId}
+          onClose={() => setCoachHubId(null)}
+        />
       )}
     </div>
   );

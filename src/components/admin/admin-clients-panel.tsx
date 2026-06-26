@@ -44,6 +44,20 @@ export type AdminClient = {
   } | null;
   jobs: ClientJob[];
   _count: { jobs: number; tailoredResumes: number };
+  coachAssignments?: Array<{
+    id: string;
+    notes: string | null;
+    createdAt: string;
+    coachProfile: {
+      id: string;
+      displayName: string;
+      slug: string | null;
+      photoUrl: string | null;
+      headline: string | null;
+      isInternal: boolean;
+      nylasSchedulerConfigId: string | null;
+    };
+  }>;
 };
 
 const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
@@ -609,6 +623,10 @@ export function AdminClientsPanel({
           onViewAsClient={onViewAsClient}
           startingUserId={startingUserId}
           showViewAsClient={!!onViewAsClient}
+          onClientUpdated={(updated) => {
+            setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+            setSelected(updated);
+          }}
         />
       )}
     </div>
