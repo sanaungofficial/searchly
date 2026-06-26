@@ -881,7 +881,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
 
         {loading ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading…</p>
-        ) : !hasViewableDocument && !isGenerating && !uploadedStrategyFile ? (
+        ) : !hasViewableDocument && !isGenerating && uploadedStrategyFiles.length === 0 ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
             Upload a strategy file above{isAdmin ? ", or use client intake notes to generate one with Kimchi" : ""}.
           </p>
