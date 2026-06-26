@@ -1,3 +1,4 @@
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 import { prisma } from "@/lib/prisma";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
@@ -7,7 +8,6 @@ import {
 } from "@/lib/linkedin-analysis";
 import { normalizeLinkedInDraft, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import { parseJsonFromModel } from "@/lib/resume-parse";
-import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
 function sectionSlice(
@@ -52,17 +52,12 @@ function sectionSlice(
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const resolved = await resolveProfileApiSubject(request);
+  if ("error" in resolved) return resolved.error;
+  const { dbUser } = resolved;
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
-  const draft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+  const draft = normalizeLinkedInDraft(profile?.linkedInDraft ?? null);
   if (!draft) return NextResponse.json({ error: "No LinkedIn draft" }, { status: 404 });
 
   const body = await request.json().catch(() => ({}));
@@ -73,7 +68,7 @@ export async function POST(request: Request) {
   const entryId = typeof body.entryId === "string" ? body.entryId : undefined;
   const entryLabel = typeof body.entryLabel === "string" ? body.entryLabel : undefined;
   const draftSlice = sectionSlice(draft, sectionId, entryId, entryLabel);
-  const targetRoles = (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
+  const targetRoles = (profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
 
   if (!isKimchiAiConfigured()) {
     return NextResponse.json({

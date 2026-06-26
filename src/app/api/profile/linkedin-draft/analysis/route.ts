@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 import { prisma } from "@/lib/prisma";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
@@ -14,23 +14,18 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const force = searchParams.get("force") === "true";
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const resolved = await resolveProfileApiSubject(request);
+  if ("error" in resolved) return resolved.error;
+  const { dbUser } = resolved;
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
-  const draft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+  const draft = normalizeLinkedInDraft(profile?.linkedInDraft ?? null);
   if (!draft) {
     return NextResponse.json({ error: "No LinkedIn draft to analyze" }, { status: 404 });
   }
 
-  const cached = normalizeLinkedInAnalysis(dbUser.profile?.linkedInDraftAnalysis ?? null);
-  const cachedAt = dbUser.profile?.linkedInDraftAnalysisUpdatedAt;
+  const cached = normalizeLinkedInAnalysis(profile?.linkedInDraftAnalysis ?? null);
+  const cachedAt = profile?.linkedInDraftAnalysisUpdatedAt;
 
   if (!force && cached && cachedAt) {
     return NextResponse.json({

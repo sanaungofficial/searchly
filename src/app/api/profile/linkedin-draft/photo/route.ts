@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 import { prisma } from "@/lib/prisma";
-import { normalizeLinkedInDraft } from "@/lib/linkedin-profile";
 import { NextResponse } from "next/server";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -8,6 +8,10 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
+    const resolved = await resolveProfileApiSubject(request);
+    if ("error" in resolved) return resolved.error;
+    const { dbUser } = resolved;
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,7 +33,7 @@ export async function POST(request: Request) {
 
     const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
     const filename = type === "profile" ? `linkedin-profile.${ext}` : `linkedin-cover.${ext}`;
-    const path = `${user.id}/${filename}`;
+    const path = `${dbUser.id}/${filename}`;
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")
@@ -42,15 +46,11 @@ export async function POST(request: Request) {
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
     const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-    // Optionally sync profile photo to user avatar for app-wide consistency
     if (type === "profile") {
-      const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-      if (dbUser) {
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: { avatarUrl: publicUrl },
-        });
-      }
+      await prisma.user.update({
+        where: { id: dbUser.id },
+        data: { avatarUrl: publicUrl },
+      });
     }
 
     return NextResponse.json({ url: publicUrl, type });
