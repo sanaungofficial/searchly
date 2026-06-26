@@ -30,6 +30,7 @@ export function JobMatchScorePanel({
   jobId,
   onRunFullMatch,
   onMatchChange,
+  onAnalyzeControlsChange,
   fullWidth,
 }: {
   vectorFit: number;
@@ -39,6 +40,13 @@ export function JobMatchScorePanel({
   jobId?: string | null;
   onRunFullMatch?: () => void;
   onMatchChange?: (data: MatchData | null, assetId: string | null, loading: boolean, resumeName: string | null) => void;
+  onAnalyzeControlsChange?: (controls: {
+    run: () => void;
+    canAnalyze: boolean;
+    loading: boolean;
+    hasAiMatch: boolean;
+    selectedId: string | null;
+  }) => void;
   fullWidth?: boolean;
 }) {
   const [assets, setAssets] = useState<ResumeAssetOption[]>([]);
@@ -131,9 +139,8 @@ export function JobMatchScorePanel({
   const handleResumeChange = useCallback(
     (assetId: string) => {
       setSelectedId(assetId);
-      void fetchMatch(assetId);
     },
-    [fetchMatch],
+    [],
   );
 
   const handleAnalyze = useCallback(() => {
@@ -146,6 +153,16 @@ export function JobMatchScorePanel({
   useEffect(() => {
     onMatchChange?.(aiMatch, selectedId, loading, selectedResumeName);
   }, [aiMatch, selectedId, loading, selectedResumeName, onMatchChange]);
+
+  useEffect(() => {
+    onAnalyzeControlsChange?.({
+      run: handleAnalyze,
+      canAnalyze,
+      loading,
+      hasAiMatch: Boolean(aiMatch),
+      selectedId,
+    });
+  }, [handleAnalyze, canAnalyze, loading, aiMatch, selectedId, onAnalyzeControlsChange]);
 
   const displayScore = aiMatch?.score ?? (vectorFit > 0 ? vectorFit / 10 : 0);
   const headlineColor = displayScore > 0 ? scoreColor(displayScore) : color.muted;
@@ -203,7 +220,7 @@ export function JobMatchScorePanel({
             <ScoreExplainerPopover variant={aiMatch ? "job-match" : "vector-match"} align="right" />
           </p>
           <p style={{ fontFamily: sans, fontSize: 13, color: "#8A8278", margin: 0 }}>
-            {aiMatch ? "For selected resume · uses AI" : "Free estimate — analyze for AI score"}
+            {aiMatch ? "AI analysis for selected resume" : "Based on your profile"}
           </p>
           {assets.length > 0 && selectedId && (
             <div style={{ marginTop: 10 }}>
@@ -235,28 +252,6 @@ export function JobMatchScorePanel({
           <MatchBreakdownBar label="Skills" pct={breakdown.skills} />
           <MatchBreakdownBar label="Industry Exp." pct={breakdown.industry} />
         </>
-      )}
-
-      {!aiMatch && !loading && canAnalyze && selectedId && (
-        <button
-          type="button"
-          onClick={handleAnalyze}
-          style={{
-            width: "100%",
-            marginTop: 12,
-            padding: "11px 14px",
-            background: color.forest,
-            color: color.gold,
-            border: "none",
-            borderRadius: "var(--scout-radius)",
-            fontFamily: sans,
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Analyze with AI
-        </button>
       )}
 
       {onRunFullMatch && (
