@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         destination: "/dashboard",
         permanent: false,
       },
+      {
+        source: "/opportunities/inbox",
+        destination: "/inbox",
+        permanent: false,
+      },
     ];
   },
   /* config options here */

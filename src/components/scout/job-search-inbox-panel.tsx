@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontMono, fontSans, type as T } from "@/lib/typography";
+import { INBOX_PATH } from "@/lib/workspace-urls";
 
 type InboxStatus = {
   configured: boolean;
@@ -70,7 +71,7 @@ export function JobSearchInboxPanel() {
     if (inbox === "connected") {
       setNotice({
         type: "success",
-        message: "Job-search inbox connected — Kimchi will watch for application updates.",
+        message: "Inbox connected — Kimchi will watch for application updates.",
       });
       load().catch(() => {});
     } else if (inbox === "error") {
@@ -134,14 +135,14 @@ export function JobSearchInboxPanel() {
 
       <ScoutBox padding={20}>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 8px" }}>
-          Job-search inbox agent
+          Inbox agent
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.65 }}>
-          Create a dedicated Gmail for your job search, connect it here, and manage mail in{" "}
-          <Link href="/opportunities/inbox" style={{ color: color.forest, fontWeight: 600 }}>
-            Opportunities → Email
+          Connect the Gmail or Outlook account you use for applications. Manage mail in{" "}
+          <Link href={INBOX_PATH} style={{ color: color.forest, fontWeight: 600 }}>
+            Inbox
           </Link>
-          . Kimchi will read application emails and calendar invites to keep your pipeline updated.
+          . Kimchi prioritizes job-related messages and suggests pipeline updates — you stay in control.
         </p>
 
         {status?.connected ? (
@@ -186,18 +187,18 @@ export function JobSearchInboxPanel() {
             onChange={(e) => updateSettings({ enabled: e.target.checked })}
           />
           <span style={{ fontFamily: fontSans, fontSize: 14, color: color.ink }}>
-            Watch my job-search inbox & calendar
+            Watch my inbox & calendar
           </span>
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
           <input
             type="checkbox"
-            checked={status?.autoApplyUpdates ?? true}
+            checked={status?.autoApplyUpdates ?? false}
             disabled={saving || !status?.agentEnabled}
             onChange={(e) => updateSettings({ autoApplyUpdates: e.target.checked })}
           />
           <span style={{ fontFamily: fontSans, fontSize: 14, color: color.ink }}>
-            Automatically update pipeline stages when confidence is high
+            Apply pipeline updates without review
           </span>
         </label>
       </ScoutBox>

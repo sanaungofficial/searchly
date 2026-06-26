@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   await ensureJobAgentSettings(dbUser.id);
 
   const returnTo = req.nextUrl.searchParams.get("returnTo");
-  const returnPath = returnTo === "opportunities" ? "/opportunities/inbox" : "/profile/preferences";
+  const returnPath =
+    returnTo === "inbox" || returnTo === "opportunities" ? "/inbox" : "/profile/preferences";
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
   const oauthPayload = {

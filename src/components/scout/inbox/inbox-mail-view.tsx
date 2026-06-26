@@ -198,7 +198,7 @@ export function InboxMailView({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Analyze failed");
       if (!data.activity) {
-        onNotice({ type: "success", text: "No job-search signal in this message." });
+        onNotice({ type: "success", text: "No job-related signal in this message." });
       } else {
         onNotice({ type: "success", text: "Message analyzed." });
         setDetail(await loadDetail(selectedId));
@@ -206,7 +206,11 @@ export function InboxMailView({
         setMessages(rows.messages);
       }
     } catch (e) {
-      onNotice({ type: "error", text: e instanceof Error ? e.message : "Analyze failed." });
+      const msg = e instanceof Error ? e.message : "Analyze failed.";
+      onNotice({
+        type: "error",
+        text: msg.includes("AI is not available") ? "Classification needs production AI." : msg,
+      });
     } finally {
       setAnalyzing(false);
     }
@@ -288,6 +292,11 @@ export function InboxMailView({
             background: surface.card,
           }}
         />
+        {!search.trim() && (
+          <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+            Job-related messages appear first. All mail stays visible.
+          </p>
+        )}
       </div>
 
       <div style={{ display: "flex", flex: 1, minHeight: isMobile ? 420 : 520 }}>

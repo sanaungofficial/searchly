@@ -12,6 +12,16 @@ export function OpportunitiesIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/* Inbox — envelope */
+export function InboxIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" {...props}>
+      <rect x="1.5" y="3.5" width="12" height="8.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M1.5 4.5L7.5 8.5L13.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* Profile — person */
 export function ProfileIcon(props: SVGProps<SVGSVGElement>) {
   return (

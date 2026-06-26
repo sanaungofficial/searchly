@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { color, fontSans, type as T } from "@/lib/typography";
+import { INBOX_PATH } from "@/lib/workspace-urls";
 
 type Activity = {
   id: string;
@@ -44,8 +45,8 @@ export function JobAgentActivityBanner() {
             {a.suggestedStage && a.status === "PENDING_REVIEW" ? (
               <>
                 {" "}
-                <Link href="/opportunities/inbox?mode=agent" style={{ color: color.forest, fontWeight: 600 }}>
-                  Review in Email →
+                <Link href={`${INBOX_PATH}?mode=agent`} style={{ color: color.forest, fontWeight: 600 }}>
+                  Review in Inbox →
                 </Link>
               </>
             ) : null}

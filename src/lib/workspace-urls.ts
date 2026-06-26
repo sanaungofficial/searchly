@@ -12,6 +12,8 @@ export type OpportunitiesNavItem = {
   match: (pathname: string) => boolean;
 };
 
+export const INBOX_PATH = "/inbox";
+
 export const OPPORTUNITIES_NAV: OpportunitiesNavItem[] = [
   {
     id: "pipeline",
@@ -25,16 +27,14 @@ export const OPPORTUNITIES_NAV: OpportunitiesNavItem[] = [
     path: "/opportunities/network",
     match: (p) => p.startsWith("/opportunities/network"),
   },
-  {
-    id: "inbox",
-    label: "Email",
-    path: "/opportunities/inbox",
-    match: (p) => p.startsWith("/opportunities/inbox"),
-  },
 ];
 
 export function matchOpportunitiesNavPath(pathname: string): boolean {
   return pathname.startsWith("/opportunities");
+}
+
+export function matchInboxPath(pathname: string): boolean {
+  return pathname === INBOX_PATH || pathname.startsWith(`${INBOX_PATH}/`);
 }
 
 const JOB_TOOLS = new Set(["resume", "cover", "fit"]);

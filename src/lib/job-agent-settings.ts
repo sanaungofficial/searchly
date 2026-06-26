@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function ensureJobAgentSettings(userId: string) {
   return prisma.userJobAgentSettings.upsert({
     where: { userId },
-    create: { userId, enabled: true, autoApplyUpdates: true },
+    create: { userId, enabled: true, autoApplyUpdates: false },
     update: {},
   });
 }

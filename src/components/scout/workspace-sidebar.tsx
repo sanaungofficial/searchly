@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   DashboardIcon,
   OpportunitiesIcon,
+  InboxIcon,
   ProfileIcon,
   CoachingIcon,
   BellIcon,
@@ -23,7 +24,7 @@ import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
 import { BETA_FEATURES, isProductionEnv } from "@/lib/beta-features";
 import { sidebarTheme as S } from "@/lib/sidebar-theme";
-import { matchOpportunitiesNavPath, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
+import { matchInboxPath, matchOpportunitiesNavPath, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -650,6 +651,14 @@ export function WorkspaceSidebar({
             pathname={pathname}
             onNavigate={navigate}
             badge={activePipelineCount}
+          />
+
+          <SidebarNavButton
+            active={matchInboxPath(pathname)}
+            onClick={() => navigate("/inbox")}
+            label="Inbox"
+            Icon={InboxIcon}
+            isRail={isRail}
           />
 
           {NAV_MAIN.map(({ id, label, path, Icon }) => (

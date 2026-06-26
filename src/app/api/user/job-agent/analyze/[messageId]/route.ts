@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { analyzeMessageForUser } from "@/lib/job-email-agent";
+import { isKimchiAiConfigured } from "@/lib/llm";
 import { isNylasConfigured } from "@/lib/nylas";
 import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mes
 
   if (!isNylasConfigured()) {
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
+  }
+
+  if (!isKimchiAiConfigured()) {
+    return NextResponse.json({ error: "AI is not available in this environment." }, { status: 503 });
   }
 
   const grant = await getUserEmailGrant(dbUser.id);

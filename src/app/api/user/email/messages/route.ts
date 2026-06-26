@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
+import { sortMessagesByJobRelevance } from "@/lib/inbox-job-priority";
 import { isNylasConfigured } from "@/lib/nylas";
 import { listMessages, serializeMessageSummary } from "@/lib/nylas-inbox";
 import { getUserEmailGrant } from "@/lib/user-email-server";
@@ -42,20 +43,31 @@ export async function GET(req: NextRequest) {
       activities.filter((a) => a.nylasMessageId).map((a) => [a.nylasMessageId!, a]),
     );
 
+    const serialized = messages.map((m) => ({
+      ...serializeMessageSummary(m),
+      activity: activityByMessageId[m.id]
+        ? {
+            id: activityByMessageId[m.id].id,
+            signal: activityByMessageId[m.id].signal,
+            status: activityByMessageId[m.id].status,
+            suggestedStage: activityByMessageId[m.id].suggestedStage,
+            confidence: activityByMessageId[m.id].confidence,
+            job: activityByMessageId[m.id].job,
+          }
+        : null,
+    }));
+
+    const ordered = q
+      ? serialized
+      : sortMessagesByJobRelevance(
+          serialized.map((m) => ({
+            ...m,
+            hasAgentActivity: Boolean(m.activity),
+          })),
+        );
+
     return NextResponse.json({
-      messages: messages.map((m) => ({
-        ...serializeMessageSummary(m),
-        activity: activityByMessageId[m.id]
-          ? {
-              id: activityByMessageId[m.id].id,
-              signal: activityByMessageId[m.id].signal,
-              status: activityByMessageId[m.id].status,
-              suggestedStage: activityByMessageId[m.id].suggestedStage,
-              confidence: activityByMessageId[m.id].confidence,
-              job: activityByMessageId[m.id].job,
-            }
-          : null,
-      })),
+      messages: ordered,
       nextCursor,
     });
   } catch (err) {

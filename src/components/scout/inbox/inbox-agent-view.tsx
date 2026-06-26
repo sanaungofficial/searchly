@@ -4,8 +4,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontMono, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { pipelineJobUrl } from "@/lib/workspace-urls";
 import type { ActivitySummary, CalendarEventRow, InboxStatus, InterviewPrep, PipelineJob } from "./inbox-types";
 import { signalLabel } from "./inbox-types";
+
+type FollowUpSuggestion = {
+  jobId: string;
+  company: string;
+  role: string;
+  stage: string;
+  daysQuiet: number;
+  suggestion: string;
+  lastMessageId: string | null;
+};
 
 type AgentFilter = "pending" | "applied" | "all";
 
@@ -40,22 +51,26 @@ export function InboxAgentView({
   const [prep, setPrep] = useState<InterviewPrep | null>(null);
   const [prepLoading, setPrepLoading] = useState(false);
   const [linkJobFor, setLinkJobFor] = useState<string | null>(null);
+  const [followUps, setFollowUps] = useState<FollowUpSuggestion[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const statusParam =
         filter === "pending" ? "PENDING_REVIEW" : filter === "applied" ? "APPLIED" : "";
-      const [actRes, evRes, jobsRes] = await Promise.all([
+      const [actRes, evRes, jobsRes, followRes] = await Promise.all([
         fetch(`/api/user/job-agent/activity?limit=40${statusParam ? `&status=${statusParam}` : ""}`),
         fetch("/api/user/email/events"),
         fetch("/api/jobs"),
+        fetch("/api/user/job-agent/follow-ups"),
       ]);
       const actData = actRes.ok ? await actRes.json() : { activities: [] };
       const evData = evRes.ok ? await evRes.json() : { events: [] };
       const jobsData = jobsRes.ok ? await jobsRes.json() : [];
+      const followData = followRes.ok ? await followRes.json() : { suggestions: [] };
       setActivities(actData.activities ?? []);
       setEvents(evData.events ?? []);
+      setFollowUps(followData.suggestions ?? []);
       setJobs(
         (Array.isArray(jobsData) ? jobsData : []).map((j: PipelineJob) => ({
           id: j.id,
@@ -339,9 +354,38 @@ export function InboxAgentView({
               disabled={savingSettings || !status.agentEnabled}
               onChange={(e) => onSettingsChange({ autoApplyUpdates: e.target.checked })}
             />
-            <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.ink }}>Auto-apply high confidence</span>
+            <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.ink }}>Apply updates without review</span>
           </label>
         </div>
+
+        {followUps.length > 0 && (
+          <div style={{ padding: "14px 16px", borderBottom: border.line }}>
+            <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
+              Suggested follow-ups
+            </p>
+            <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5 }}>
+              Linked to pipeline roles — optional, draft-only.
+            </p>
+            {followUps.map((fu) => (
+              <div key={fu.jobId} style={{ padding: "10px 0", borderBottom: border.line }}>
+                <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink }}>
+                  {fu.company} — {fu.role}
+                </p>
+                <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
+                  {fu.suggestion}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  <ScoutSecondaryBtn onClick={() => { window.location.href = pipelineJobUrl(fu.jobId); }}>
+                    View job
+                  </ScoutSecondaryBtn>
+                  {fu.lastMessageId && (
+                    <ScoutSecondaryBtn onClick={() => onOpenMail(fu.lastMessageId!)}>Open thread</ScoutSecondaryBtn>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ padding: "14px 16px" }}>
           <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>

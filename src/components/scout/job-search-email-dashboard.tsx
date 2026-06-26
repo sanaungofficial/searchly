@@ -8,6 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { InboxAgentView } from "./inbox/inbox-agent-view";
 import { InboxMailView } from "./inbox/inbox-mail-view";
 import type { ComposeState, InboxMode, InboxStatus } from "./inbox/inbox-types";
+import { INBOX_PATH } from "@/lib/workspace-urls";
 
 export function JobSearchEmailDashboard() {
   const isMobile = useIsMobile();
@@ -59,15 +60,15 @@ export function JobSearchEmailDashboard() {
     const inbox = searchParams.get("inbox");
     const reason = searchParams.get("reason");
     if (inbox === "connected") {
-      setNotice({ type: "success", text: "Gmail connected — you can read and send from here." });
-      router.replace("/opportunities/inbox");
+      setNotice({ type: "success", text: "Inbox connected — you can read and send from here." });
+      router.replace(INBOX_PATH);
       bootstrap().catch(() => {});
     } else if (inbox === "error") {
       setNotice({
         type: "error",
-        text: reason === "denied" ? "Connection cancelled." : "Could not connect Gmail.",
+        text: reason === "denied" ? "Connection cancelled." : "Could not connect your inbox.",
       });
-      router.replace("/opportunities/inbox");
+      router.replace(INBOX_PATH);
     }
   }, [searchParams, router, bootstrap]);
 
@@ -125,14 +126,14 @@ export function JobSearchEmailDashboard() {
 
   function switchMode(next: InboxMode) {
     setMode(next);
-    const url = next === "agent" ? "/opportunities/inbox?mode=agent" : "/opportunities/inbox";
+    const url = next === "agent" ? `${INBOX_PATH}?mode=agent` : INBOX_PATH;
     router.replace(url);
   }
 
   function openMailFromAgent(messageId: string) {
     setOpenMessageId(messageId);
     setMode("mail");
-    router.replace(`/opportunities/inbox?messageId=${encodeURIComponent(messageId)}`);
+    router.replace(`${INBOX_PATH}?messageId=${encodeURIComponent(messageId)}`);
   }
 
   if (loading) {
@@ -157,14 +158,19 @@ export function JobSearchEmailDashboard() {
     return (
       <ScoutBox padding={isMobile ? "20px 16px" : "28px 24px"} style={{ marginTop: 16, maxWidth: 560 }}>
         <h2 style={{ fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
-          Job-search inbox
+          Inbox
         </h2>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: "0 0 20px" }}>
-          Connect Gmail to read recruiter mail, reply from Kimchi, and let the agent track application updates.
+          Connect Gmail or Outlook to read mail in Kimchi. The agent surfaces job-related messages first — nothing is hidden.
         </p>
-        <ScoutPrimaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=opportunities&provider=google"; }}>
-          Connect Gmail
-        </ScoutPrimaryBtn>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <ScoutPrimaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=google"; }}>
+            Connect Gmail
+          </ScoutPrimaryBtn>
+          <ScoutSecondaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=microsoft"; }}>
+            Connect Outlook
+          </ScoutSecondaryBtn>
+        </div>
       </ScoutBox>
     );
   }
@@ -178,8 +184,11 @@ export function JobSearchEmailDashboard() {
     <ScoutBox flat padding="0" style={{ marginTop: 16, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: isMobile ? "14px 16px" : "16px 20px", borderBottom: border.line, background: surface.page }}>
         <div>
-          <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest }}>Job-search inbox</h2>
-          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>{status.email} · Gmail</p>
+          <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest }}>Inbox</h2>
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+            {status.email}
+            {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
+          </p>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <div style={{ display: "flex", border: border.line, borderRadius: "var(--scout-radius)", overflow: "hidden" }}>
