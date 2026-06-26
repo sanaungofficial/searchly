@@ -2560,7 +2560,7 @@ export function WorkspaceProfile() {
   const [readbackNudge, setReadbackNudge] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const { openPricing, user, showAdminClientTools } = useWorkspace();
+  const { openPricing, user, showAdminUi } = useWorkspace();
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
   const openResumeEditor = (assetId: string) => {
@@ -3321,7 +3321,7 @@ export function WorkspaceProfile() {
                 <CareerStrategyPanel
                   profile={profile}
                   isMobile={isMobile}
-                  isAdmin={showAdminClientTools}
+                  isAdmin={showAdminUi}
                   onPatchProfile={async (patch) => {
                     await patchProfile(patch);
                     setProfile((p) => (p ? { ...p, ...patch } as UserProfile : p));
