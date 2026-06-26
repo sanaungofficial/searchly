@@ -4,13 +4,24 @@
 **Owner:** Platform comms agent  
 **North star:** When new jobs match me, I hear about it. When a coach I follow hosts a webinar, I get email + SMS. Coaches can shout out to people who opted in — compliantly.
 
-**Providers (decided):** Email → Resend · SMS → Twilio (new)
+**Providers (decided):** Email → Resend · SMS → **Plivo** (new)
+
+### Why Plivo (San decision)
+
+| | Plivo (chosen) | Twilio (passed) |
+|--|----------------|-----------------|
+| US SMS base rate | ~$0.005–0.008/msg + carrier fees | ~$0.008/msg + carrier fees |
+| API style | Twilio-compatible patterns | Reference standard |
+| Kimchi fit | Cheaper at webinar/coach blast volume; SDK in repo | More ecosystem, ~2× SMS cost |
+| A2P 10DLC | Required (same as any US CPaaS) | Required |
+
+Resend stays — already integrated, verified domain, best DX for Next.js email.
 
 ---
 
 ## 1. Outbound email audit (today)
 
-All sends use `Kimchi <hello@kimchi.so>` via Resend unless noted. No Twilio/SMS exists yet.
+All sends use `Kimchi <hello@kimchi.so>` via Resend unless noted. Plivo SMS layer scaffolded in `src/lib/comms/` (not wired to live registration yet).
 
 | Product | Template / function | Trigger | Recipient | Opt-out | Prod / staging gates |
 |--------|---------------------|---------|-----------|---------|----------------------|
@@ -97,7 +108,7 @@ Three separate `emailShell` implementations: `email.ts`, `live-session-emails.ts
 
 1. **Explicit opt-in** — unchecked by default; separate from email where possible.
 2. **Consent record** — phone, timestamp, IP/user-agent, consent text version, channel scope.
-3. **STOP handling** — Twilio inbound webhook → set `smsOptIn=false`, log event.
+3. **STOP handling** — Plivo inbound webhook → `/api/webhooks/plivo` → set `smsOptIn=false`, log event.
 4. **Help text** — "Reply STOP to unsubscribe. Msg&data rates may apply."
 5. **Allowlist on dev** — `SMS_ALLOWLIST=+1...` mirroring digest pattern.
 
@@ -114,7 +125,7 @@ Phone today exists only in `Profile.parsedData.phone` (resume parse). v1 needs f
 
 - SMS and email from **Kimchi** infrastructure.
 - Coach name in **from-display** / body: e.g. `"Kimchi · Maya Chen" <hello@kimchi.so>` and SMS prefix `"Maya Chen via Kimchi: …"`.
-- Not coach-branded Twilio numbers in v1.
+- Not coach-branded Plivo numbers in v1.
 
 ---
 
@@ -124,7 +135,7 @@ Phone today exists only in `Profile.parsedData.phone` (resume parse). v1 needs f
 src/lib/comms/
   index.ts           — public API
   send-email.ts      — Resend wrapper, allowlist, idempotency key
-  send-sms.ts        — Twilio Messaging Service wrapper
+  send-sms.ts        — Plivo SMS wrapper (Messaging Application + source number)
   templates/         — shared emailShell, SMS body builders
   allowlist.ts       — digest + SMS + live email gates
   idempotency.ts     — dedupe cron retries (sessionId + userId + template)
@@ -145,7 +156,7 @@ Extend data model rather than Resend Audiences for v1 (auditable, TCPA-friendly)
 |------|------|-------|
 | Immediate | Registration confirm, coach shoutout (small batch) | In-request or fire-and-forget with log |
 | Cron | Digest daily, live reminders, live-now fan-out | Existing Vercel crons |
-| Webhook | Twilio STOP/HELP | New `/api/webhooks/twilio` |
+| Webhook | Plivo STOP/HELP | `/api/webhooks/plivo` |
 
 ### Idempotency (critical for SMS)
 
@@ -194,7 +205,7 @@ model CommunicationLog {
   recipient       String   // email or E.164
   status          CommunicationStatus   // QUEUED | SENT | FAILED | SKIPPED
   idempotencyKey  String?  @unique
-  providerId      String?  // Resend/Twilio message id
+  providerId      String?  // Resend/Plivo message id
   errorMessage    String?
   metadata        Json?
   createdAt       DateTime @default(now())
@@ -224,11 +235,11 @@ model CommunicationLog {
 1. Unified `src/lib/comms/` email sender + shared template shell
 2. Job digest — safe live rollout (allowlist → live), admin metrics, unsubscribe ↔ settings verified
 3. Live registration — phone + SMS opt-in fields on form + API
-4. Twilio integration — register confirm SMS, 1h reminder SMS, live-now SMS (opt-in only)
+4. Plivo integration — register confirm SMS, 1h reminder SMS, live-now SMS (opt-in only)
 5. Profile — phone + SMS webinar toggle (sync with registration opt-in)
 6. Coach shoutout MVP — pick session → compose → email + SMS to **opted-in registrants**
 7. `CommunicationLog` + idempotency for cron paths
-8. Twilio STOP webhook
+8. Plivo STOP webhook (`/api/webhooks/plivo` — scaffolded; persistence pending schema)
 
 ### P1 — fast follow
 
@@ -241,7 +252,7 @@ model CommunicationLog {
 
 - Instant job-match notify (event hook from Opportunities agent)
 - Resend Broadcasts for large lists
-- Phone verify via `TWILIO_VERIFY`
+- Phone verify via Plivo Verify API
 - Per-coach send analytics
 
 ### Out of scope v1
@@ -262,15 +273,20 @@ model CommunicationLog {
 - [ ] `DIGEST_UNSUBSCRIBE_SECRET` (prod — do not rely on `CRON_SECRET` fallback)
 - [ ] Decide: `DIGEST_EMAIL_LIVE=true` on prod vs allowlist on dev
 
-### Twilio (new)
+### Plivo (new — chosen over Twilio for ~40% lower US SMS cost)
 
-- [ ] Create Twilio account / subaccount for Kimchi
-- [ ] **Messaging Service** with US long code or toll-free
-- [ ] **A2P 10DLC** registration (US marketing/notification at scale — allow 2–4 weeks)
-- [ ] Env: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`
-- [ ] Optional: `TWILIO_VERIFY` for phone confirmation on profile
-- [ ] Inbound webhook URL for STOP → `/api/webhooks/twilio`
-- [ ] `SMS_ALLOWLIST` on dev/preview
+- [ ] Create Plivo account for Kimchi
+- [ ] Buy a US long code or toll-free number capable of SMS
+- [ ] Create a **Messaging Application**; set Message URL → `https://app.kimchi.so/api/webhooks/plivo`
+- [ ] Assign the application to your Plivo number
+- [ ] **A2P 10DLC** brand + campaign registration (US — required regardless of provider)
+- [ ] Env on Vercel (preview + production):
+  - `PLIVO_AUTH_ID`
+  - `PLIVO_AUTH_TOKEN`
+  - `PLIVO_SOURCE_NUMBER` (E.164, e.g. `+14155551234`)
+  - `SMS_LIVE=true` (prod) or `SMS_ALLOWLIST=+1...` (dev/staging)
+- [ ] Optional: Plivo Verify for phone confirmation on profile
+- [ ] Admin test: `POST /api/admin/sms-test` with `{ "to": "+1..." }`
 
 ### Cron / secrets (existing)
 
@@ -313,7 +329,7 @@ model CommunicationLog {
 
 1. Unify email sending — shared templates, `emailShell`, delivery logging  
 2. Job digest — enable live mode safely, admin metrics, unsubscribe ↔ settings sync  
-3. Live session SMS — phone + `smsOptIn` on registration; Twilio on register / reminder / live  
+3. Live session SMS — phone + `smsOptIn` on registration; Plivo on register / reminder / live  
 4. Communication preferences API + Profile/Settings UI  
 5. Coach shoutout MVP — session → compose → opted-in registrants (email + SMS)  
 6. Rate limits, idempotency, admin error visibility  
