@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
@@ -28,6 +29,10 @@ type CoachProfile = {
   nylasSchedulerConfigId?: string | null;
   nylasSchedulerSlug?: string | null;
   schedulerDurationMinutes?: number;
+  schedulerTimezone?: string | null;
+  schedulerOpenHourStart?: string | null;
+  schedulerOpenHourEnd?: string | null;
+  schedulerOpenDays?: number[];
 };
 
 const inputStyle: React.CSSProperties = {
@@ -479,9 +484,26 @@ export function CoachProfileTab({
           through Nylas — your external Cal.com link still works as a fallback.
         </p>
         {schedulerReady ? (
-          <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
-            Calendar connected — in-app booking is enabled.
-          </p>
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
+              Calendar connected — in-app booking is enabled.
+            </p>
+            <Link
+              href="/dashboard/availability"
+              style={{
+                display: "inline-block",
+                padding: "10px 18px",
+                background: color.forest,
+                color: color.gold,
+                fontFamily: fontSans,
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Edit availability
+            </Link>
+          </div>
         ) : calendarConnected ? (
           <div style={{ marginBottom: 12 }}>
             <p style={{ fontFamily: fontSans, fontSize: 14, color: "#b45309", margin: "0 0 10px" }}>
@@ -512,7 +534,7 @@ export function CoachProfileTab({
         ) : (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <a
-              href="/api/nylas/connect?provider=google"
+              href="/api/nylas/connect?provider=google&returnPath=%2Fdashboard%2Favailability"
               style={{
                 padding: "10px 18px",
                 background: color.forest,
@@ -526,7 +548,7 @@ export function CoachProfileTab({
               Connect Google Calendar
             </a>
             <a
-              href="/api/nylas/connect?provider=microsoft"
+              href="/api/nylas/connect?provider=microsoft&returnPath=%2Fdashboard%2Favailability"
               style={{
                 padding: "10px 18px",
                 border: "1px solid rgba(26,58,47,0.2)",
@@ -543,26 +565,6 @@ export function CoachProfileTab({
           </div>
         )}
 
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(26,58,47,0.08)" }}>
-          <label style={labelStyle}>Session duration (minutes)</label>
-          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 8px", lineHeight: 1.5 }}>
-            Default length for new bookings. Save changes after updating — syncs to your Nylas scheduler when connected.
-          </p>
-          <input
-            type="number"
-            min={15}
-            max={120}
-            step={15}
-            value={form.schedulerDurationMinutes ?? 30}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                schedulerDurationMinutes: Math.min(120, Math.max(15, Number(e.target.value) || 30)),
-              }))
-            }
-            style={{ ...inputStyle, maxWidth: 120 }}
-          />
-        </div>
       </div>
 
       <div

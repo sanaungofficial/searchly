@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { pushCoachProfileToAirtable } from "@/lib/airtable/push-coach";
+import { parseSchedulerAvailabilityPatch, schedulerAvailabilityChanged } from "@/lib/coach-scheduler-settings";
+import { syncCoachSchedulerFromProfile } from "@/lib/coach-scheduler-sync";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
@@ -24,6 +26,7 @@ function coachData(body: Record<string, unknown>) {
   if (body.category !== undefined) d.category = (body.category as string) || null;
   if (body.featured !== undefined) d.featured = body.featured;
   if (body.status !== undefined) d.status = body.status as CoachStatus;
+  Object.assign(d, parseSchedulerAvailabilityPatch(body));
   return d;
 }
 
@@ -33,6 +36,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
   const coach = await prisma.coachProfile.update({ where: { id }, data: coachData(body) });
+
+  if (schedulerAvailabilityChanged(body) && coach.nylasGrantId) {
+    try {
+      await syncCoachSchedulerFromProfile(coach.id);
+    } catch (err) {
+      console.error("[admin/coaches] scheduler sync", err);
+    }
+  }
 
   if (coach.airtableId) {
     try {

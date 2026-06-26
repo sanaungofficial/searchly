@@ -1,4 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import type { SchedulerDayHours } from "@/lib/coach-scheduler-settings";
+import { buildNylasOpenHoursBlocks } from "@/lib/coach-scheduler-settings";
 import type { NextRequest, NextResponse } from "next/server";
 import { isStaffPortalRole } from "@/lib/staff-portal";
 
@@ -147,6 +149,61 @@ export type NylasAuthUrlResponse = {
   url?: string;
 };
 
+const MICROSOFT_EMAIL_SUFFIXES = [
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "office365.com",
+  "outlook.co.uk",
+];
+
+function emailDomain(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 0) return "";
+  return email.slice(at + 1).trim().toLowerCase();
+}
+
+export function emailDomainLooksMicrosoft(email: string): boolean {
+  const domain = emailDomain(email);
+  if (!domain) return false;
+  return (
+    MICROSOFT_EMAIL_SUFFIXES.includes(domain) ||
+    domain.includes("onmicrosoft.com") ||
+    domain.endsWith(".onmicrosoft.com")
+  );
+}
+
+/** Skip login_hint when it would steer Nylas to the wrong provider (e.g. Gmail hint on Outlook connect). */
+export function loginHintForNylasProvider(
+  email: string | undefined,
+  provider: "google" | "microsoft",
+): string | undefined {
+  if (!email?.trim()) return undefined;
+  const domain = emailDomain(email);
+  if (!domain) return undefined;
+
+  if (provider === "google") {
+    if (domain === "gmail.com" || domain === "googlemail.com" || domain.endsWith(".edu")) {
+      return email.trim();
+    }
+    // Custom Google Workspace domains are common — still pass hint for Google button.
+    if (!MICROSOFT_EMAIL_SUFFIXES.includes(domain) && !domain.includes("onmicrosoft.com")) {
+      return email.trim();
+    }
+    return undefined;
+  }
+
+  if (
+    MICROSOFT_EMAIL_SUFFIXES.includes(domain) ||
+    domain.includes("onmicrosoft.com") ||
+    domain.endsWith(".onmicrosoft.com")
+  ) {
+    return email.trim();
+  }
+  return undefined;
+}
+
 /** Build the documented GET /v3/connect/auth URL (browser redirect). */
 export function buildNylasAuthUrl(params: {
   provider: "google" | "microsoft";
@@ -166,14 +223,17 @@ export function buildNylasAuthUrl(params: {
     access_type: "offline",
     provider: params.provider,
     state: params.state,
-    prompt: "detect",
   });
-  if (params.loginHint) query.set("login_hint", params.loginHint);
+
+  const loginHint = loginHintForNylasProvider(params.loginHint, params.provider);
+  if (loginHint) query.set("login_hint", loginHint);
+
   if (params.inboxAccess) {
-    query.set(
-      "scope",
-      "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly",
-    );
+    const scope =
+      params.provider === "microsoft"
+        ? "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read"
+        : "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly";
+    query.set("scope", scope);
   }
 
   return `${cfg.apiUri}/v3/connect/auth?${query.toString()}`;
@@ -233,11 +293,37 @@ export type CoachSchedulerParams = {
   coachEmail: string;
   slug: string;
   durationMinutes?: number;
+  timezone?: string;
+  openHourStart?: string;
+  openHourEnd?: string;
+  openDays?: number[];
+  weeklyHours?: SchedulerDayHours[];
+  bufferMinutes?: number;
+  minBookingNoticeMinutes?: number;
+  availabilityNotes?: string | null;
+  blackoutDates?: string[];
 };
 
 function schedulerConfigBody(params: CoachSchedulerParams) {
   const appBase = nylasOAuthAppUrl();
   const duration = params.durationMinutes ?? 30;
+  const timezone = params.timezone ?? "America/New_York";
+  const weekly =
+    params.weeklyHours ??
+    (params.openDays
+      ? [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+          day,
+          enabled: (params.openDays ?? []).includes(day),
+          start: params.openHourStart ?? "09:00",
+          end: params.openHourEnd ?? "17:00",
+        }))
+      : []);
+  const blackoutDates = params.blackoutDates ?? [];
+  const openHoursBlocks = buildNylasOpenHoursBlocks(weekly, timezone, blackoutDates);
+  const bufferMinutes = params.bufferMinutes ?? 0;
+  const descriptionParts = ["Book a 1:1 coaching session via Kimchi."];
+  if (params.availabilityNotes) descriptionParts.push(params.availabilityNotes);
+
   return {
     requires_session_auth: false,
     slug: params.slug,
@@ -246,18 +332,30 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
         name: params.coachName,
         email: params.coachEmail,
         is_organizer: true,
+        timezone,
         availability: { calendar_ids: ["primary"] },
         booking: { calendar_id: "primary" },
       },
     ],
-    availability: { duration_minutes: duration },
+    availability: {
+      duration_minutes: duration,
+      availability_rules: {
+        default_open_hours: openHoursBlocks,
+        ...(bufferMinutes > 0
+          ? { buffer: { before: 0, after: bufferMinutes } }
+          : {}),
+      },
+    },
     event_booking: {
       title: `Coaching session with ${params.coachName}`,
-      description: "Book a 1:1 coaching session via Kimchi.",
+      description: descriptionParts.join("\n\n"),
+      timezone,
     },
     scheduler: {
       rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
       cancellation_url: `${appBase}/coaching/cancel/:booking_ref`,
+      min_booking_notice: params.minBookingNoticeMinutes ?? 1440,
+      available_days_in_future: 60,
     },
   };
 }
@@ -291,13 +389,8 @@ export async function updateCoachSchedulerConfig(
 }
 
 /** Create scheduler when grant exists but configId is missing (OAuth ok, setup failed). */
-export async function ensureCoachSchedulerConfig(params: {
-  grantId: string;
+export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & {
   configId: string | null;
-  coachName: string;
-  coachEmail: string;
-  slug: string;
-  durationMinutes?: number;
 }): Promise<{ configId: string; slug?: string; created: boolean }> {
   if (params.configId) {
     await updateCoachSchedulerConfig({
@@ -307,6 +400,15 @@ export async function ensureCoachSchedulerConfig(params: {
       coachEmail: params.coachEmail,
       slug: params.slug,
       durationMinutes: params.durationMinutes,
+      timezone: params.timezone,
+      openHourStart: params.openHourStart,
+      openHourEnd: params.openHourEnd,
+      openDays: params.openDays,
+      weeklyHours: params.weeklyHours,
+      bufferMinutes: params.bufferMinutes,
+      minBookingNoticeMinutes: params.minBookingNoticeMinutes,
+      availabilityNotes: params.availabilityNotes,
+      blackoutDates: params.blackoutDates,
     });
     return { configId: params.configId, created: false };
   }
@@ -317,6 +419,15 @@ export async function ensureCoachSchedulerConfig(params: {
     coachEmail: params.coachEmail,
     slug: params.slug,
     durationMinutes: params.durationMinutes,
+    timezone: params.timezone,
+    openHourStart: params.openHourStart,
+    openHourEnd: params.openHourEnd,
+    openDays: params.openDays,
+    weeklyHours: params.weeklyHours,
+    bufferMinutes: params.bufferMinutes,
+    minBookingNoticeMinutes: params.minBookingNoticeMinutes,
+    availabilityNotes: params.availabilityNotes,
+    blackoutDates: params.blackoutDates,
   });
   return { ...created, created: true };
 }
@@ -554,16 +665,12 @@ export async function getSchedulerAvailability(params: {
   configurationId: string;
   startTime: number;
   endTime: number;
-  durationMinutes?: number;
 }): Promise<NylasTimeSlot[]> {
   const query = new URLSearchParams({
     configuration_id: params.configurationId,
     start_time: String(params.startTime),
     end_time: String(params.endTime),
   });
-  if (params.durationMinutes) {
-    query.set("duration_minutes", String(params.durationMinutes));
-  }
 
   const res = await nylasFetch<NylasAvailabilityResponse>(`/v3/scheduling/availability?${query.toString()}`);
   const slots = res.data?.time_slots ?? res.time_slots ?? [];

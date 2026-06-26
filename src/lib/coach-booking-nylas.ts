@@ -22,20 +22,17 @@ export async function fetchCoachAvailabilitySlots(params: {
   configurationId: string;
   startTime: number;
   endTime: number;
-  durationMinutes: number;
 }): Promise<CoachBookingSlot[]> {
   const slots = await getSchedulerAvailability({
     configurationId: params.configurationId,
     startTime: params.startTime,
     endTime: params.endTime,
-    durationMinutes: params.durationMinutes,
   });
   return slotsFromNylas(slots);
 }
 
 export async function findNextCoachSlot(params: {
   configurationId: string;
-  durationMinutes: number;
   lookaheadDays?: number;
 }): Promise<CoachBookingSlot | null> {
   const now = Math.floor(Date.now() / 1000);
@@ -44,7 +41,6 @@ export async function findNextCoachSlot(params: {
     configurationId: params.configurationId,
     startTime: now,
     endTime: end,
-    durationMinutes: params.durationMinutes,
   });
   return slots[0] ?? null;
 }

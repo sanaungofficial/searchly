@@ -8,6 +8,7 @@ import { BookingsList } from "@/components/scout/bookings-list";
 import { ScoutBox } from "@/components/scout/scout-box";
 import type { HubBooking, HubCommunication, CoachClientSummary, CoachHubStats } from "@/lib/coach-hub";
 import { bookingStatusColor, formatBookingWhen } from "@/lib/booking-display";
+import { emailDomainLooksMicrosoft } from "@/lib/nylas";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type CoachInfo = {
@@ -21,6 +22,11 @@ type CoachInfo = {
   calendarConnected: boolean;
   schedulerReady?: boolean;
   nylasSchedulerSlug?: string | null;
+  schedulerTimezone?: string | null;
+  schedulerOpenHourStart?: string | null;
+  schedulerOpenHourEnd?: string | null;
+  schedulerOpenDays?: number[];
+  schedulerDurationMinutes?: number;
 };
 
 type HubPayload = {
@@ -225,8 +231,12 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                 Calendar (Nylas)
               </p>
               <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: 12, color: color.muted, lineHeight: 1.45 }}>
-                Connect on behalf of this coach. Sign in with <strong>their</strong> Google or Outlook account when prompted
-                {coach.email ? ` (${coach.email})` : ""}.
+                Connect on behalf of this coach. For Outlook, sign in with their Microsoft work or personal account
+                {coach.email && emailDomainLooksMicrosoft(coach.email)
+                  ? ` (${coach.email})`
+                  : coach.email
+                    ? " — use their Outlook/Microsoft email, not the Gmail on file"
+                    : ""}.
               </p>
               {coach.schedulerReady ? (
                 <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: 13, color: color.forest }}>
@@ -289,6 +299,24 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                   >
                     {retryingScheduler ? "Setting up scheduler…" : "Retry scheduler setup"}
                   </button>
+                )}
+                {coach.calendarConnected && coach.schedulerReady && coachId && (
+                  <Link
+                    href={`/admin/coaches/${coachId}/availability`}
+                    style={{
+                      display: "block",
+                      marginTop: 12,
+                      paddingTop: 12,
+                      borderTop: border.line,
+                      fontFamily: fontSans,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: color.forest,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Edit availability →
+                  </Link>
                 )}
               </div>
             </div>

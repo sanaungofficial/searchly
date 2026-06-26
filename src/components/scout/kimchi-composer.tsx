@@ -16,40 +16,21 @@ export type KimchiVoiceProps = {
   onTalkAgain?: () => void;
 };
 
-export function KimchiVoiceStrip({ voice }: { voice: KimchiVoiceProps }) {
-  const lines = voice.transcriptLines ?? [];
-  const active =
-    voice.orbState === "live" ||
-    voice.orbState === "listening" ||
-    voice.orbState === "speaking" ||
-    voice.orbState === "thinking" ||
-    voice.orbState === "connecting";
-
-  if (!active && lines.length === 0 && !voice.error && voice.orbState !== "done") {
-    return null;
-  }
+export function KimchiVoiceComposerFooter({ voice }: { voice: KimchiVoiceProps }) {
+  if (voice.orbState !== "done" && !voice.error) return null;
 
   return (
-    <div className="kimchi-voice-strip">
-      {lines.slice(-6).map((line, index) => (
-        <div
-          key={`${line.role}-${index}-${line.content.slice(0, 16)}`}
-          className={line.role === "Kimchi" ? "kimchi-voice-strip__line kimchi-voice-strip__line--agent" : "kimchi-voice-strip__line"}
-        >
-          <span className="kimchi-voice-strip__label">{line.role}</span>
-          <p>{line.content}</p>
-        </div>
-      ))}
+    <>
       {voice.orbState === "done" && voice.onTalkAgain && (
-        <button type="button" className="kimchi-voice-strip__again" onClick={voice.onTalkAgain}>
+        <button type="button" className="kimchi-voice-footer__again" onClick={voice.onTalkAgain}>
           Talk again
         </button>
       )}
       {voice.error && voice.orbState !== "done" && (
-        <p className="kimchi-voice-strip__error">{voice.error}</p>
+        <p className="kimchi-voice-footer__error">{voice.error}</p>
       )}
       <KimchiComposerStyles />
-    </div>
+    </>
   );
 }
 
@@ -121,48 +102,10 @@ export function KimchiComposerRow({
 function KimchiComposerStyles() {
   return (
     <style>{`
-      .kimchi-voice-strip {
-        flex-shrink: 0;
-        max-height: 140px;
-        overflow-y: auto;
-        padding: 10px 14px;
-        background: rgba(238, 245, 242, 0.95);
-        border-bottom: 1px solid rgba(26, 58, 47, 0.08);
-      }
-
-      .kimchi-voice-strip__line {
-        margin-bottom: 8px;
-      }
-
-      .kimchi-voice-strip__line:last-child {
-        margin-bottom: 0;
-      }
-
-      .kimchi-voice-strip__label {
+      .kimchi-voice-footer__again {
         display: block;
-        font-family: ${sans};
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(26, 58, 47, 0.5);
-        margin-bottom: 2px;
-      }
-
-      .kimchi-voice-strip__line--agent .kimchi-voice-strip__label {
-        color: rgba(61, 170, 156, 0.85);
-      }
-
-      .kimchi-voice-strip__line p {
-        margin: 0;
-        font-family: ${sans};
-        font-size: 13px;
-        line-height: 1.45;
-        color: #1A3A2F;
-      }
-
-      .kimchi-voice-strip__again {
-        margin-top: 8px;
+        width: 100%;
+        margin: 0 0 8px;
         background: none;
         border: none;
         padding: 0;
@@ -170,11 +113,12 @@ function KimchiComposerStyles() {
         font-size: 12px;
         color: rgba(26, 58, 47, 0.65);
         cursor: pointer;
+        text-align: left;
         text-decoration: underline;
       }
 
-      .kimchi-voice-strip__error {
-        margin: 8px 0 0;
+      .kimchi-voice-footer__error {
+        margin: 0 0 8px;
         font-family: ${sans};
         font-size: 12px;
         color: #9B3A2A;
