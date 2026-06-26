@@ -23,6 +23,7 @@ import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
 import { BETA_FEATURES, isProductionEnv } from "@/lib/beta-features";
 import { sidebarTheme as S } from "@/lib/sidebar-theme";
+import { matchOpportunitiesNavPath, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -52,7 +53,6 @@ const IS_PROD = isProductionEnv();
 
 const NAV_MAIN: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
-  { id: "opportunities", label: "Opportunities", path: "/opportunities/pipeline", Icon: OpportunitiesIcon },
   {
     id: "coaching",
     label: BETA_FEATURES.coaching.navLabel,
@@ -188,6 +188,122 @@ function SidebarNavButton({
   );
 }
 
+function SidebarNavSubButton({
+  active,
+  onClick,
+  label,
+  isRail,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  isRail: boolean;
+}) {
+  if (isRail) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "8px 14px 8px 38px",
+        borderRadius: "var(--scout-radius)",
+        cursor: "pointer",
+        background: active ? S.bgActive : "transparent",
+        border: S.border,
+        borderColor: active ? "rgba(232,213,163,0.42)" : "transparent",
+        display: "flex",
+        alignItems: "center",
+        textAlign: "left",
+        width: "100%",
+        boxSizing: "border-box",
+        transition: "background 0.15s, border-color 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = S.bgHover;
+          e.currentTarget.style.borderColor = "rgba(232, 213, 163, 0.22)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.borderColor = "transparent";
+        }
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 14,
+          fontWeight: active ? 600 : 500,
+          color: active ? S.textActive : S.text,
+        }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function SidebarOpportunitiesNav({
+  isRail,
+  pathname,
+  onNavigate,
+  badge,
+}: {
+  isRail: boolean;
+  pathname: string;
+  onNavigate: (path: string) => void;
+  badge?: number;
+}) {
+  const opportunitiesActive = matchOpportunitiesNavPath(pathname);
+  const [expanded, setExpanded] = useState(opportunitiesActive);
+
+  useEffect(() => {
+    if (opportunitiesActive) setExpanded(true);
+  }, [opportunitiesActive]);
+
+  const onParentClick = () => {
+    if (isRail) {
+      onNavigate("/opportunities/pipeline");
+      return;
+    }
+    if (!expanded) {
+      setExpanded(true);
+      onNavigate("/opportunities/pipeline");
+      return;
+    }
+    setExpanded((prev) => !prev);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <SidebarNavButton
+        active={opportunitiesActive}
+        onClick={onParentClick}
+        label="Opportunities"
+        Icon={OpportunitiesIcon}
+        isRail={isRail}
+        badge={badge}
+      />
+      {!isRail && expanded && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {OPPORTUNITIES_NAV.map(({ id, label, path, match }) => (
+            <SidebarNavSubButton
+              key={id}
+              active={match(pathname)}
+              onClick={() => onNavigate(path)}
+              label={label}
+              isRail={isRail}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function initials(name: string | null, email: string) {
   if (name) {
     const parts = name.trim().split(" ");
@@ -261,7 +377,6 @@ export function WorkspaceSidebar({
   };
 
   const isActive = (path: string) => {
-    if (path.startsWith("/opportunities")) return pathname.startsWith("/opportunities");
     if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     if (path === "/coaching") return pathname.startsWith("/coaching");
     return pathname === path;
@@ -529,6 +644,12 @@ export function WorkspaceSidebar({
             />
           )}
 
+          <SidebarOpportunitiesNav
+            isRail={isRail}
+            pathname={pathname}
+            onNavigate={navigate}
+            badge={activePipelineCount}
+          />
 
           {NAV_MAIN.map(({ id, label, path, Icon }) => (
             <SidebarNavButton
@@ -538,7 +659,7 @@ export function WorkspaceSidebar({
               label={label}
               Icon={Icon}
               isRail={isRail}
-              badge={id === "opportunities" ? activePipelineCount : undefined}
+              badge={undefined}
               showIncompleteDot={id === "profile" && profileIncomplete}
             />
           ))}

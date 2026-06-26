@@ -45,7 +45,7 @@ export function JobAgentActivityBanner() {
               <>
                 {" "}
                 <Link href="/opportunities/inbox?mode=agent" style={{ color: color.forest, fontWeight: 600 }}>
-                  Review in Inbox →
+                  Review in Email →
                 </Link>
               </>
             ) : null}

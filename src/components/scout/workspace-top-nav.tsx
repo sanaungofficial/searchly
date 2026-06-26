@@ -11,6 +11,7 @@ import { canAccessBetaFeature } from "@/lib/beta-features";
 import { isStaffPortalRole, STAFF_DASHBOARD_NAV } from "@/lib/staff-portal";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
+import { matchOpportunitiesNavPath, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
 
 export const TOP_NAV_HEIGHT = 64;
 export const TOP_NAV_HEIGHT_MOBILE = 56;
@@ -56,8 +57,13 @@ function buildNavLinks(isAdmin: boolean, isStaffPortal: boolean): NavLink[] {
   links.push({
     id: "opportunities",
     label: "Opportunities",
-    path: "/opportunities",
-    match: (p) => p.startsWith("/opportunities"),
+    path: "/opportunities/pipeline",
+    match: matchOpportunitiesNavPath,
+    children: OPPORTUNITIES_NAV.map(({ label, path, match }) => ({
+      label,
+      path,
+      match,
+    })),
   });
   if (canAccessBetaFeature("coaching", isAdmin)) {
     links.push({

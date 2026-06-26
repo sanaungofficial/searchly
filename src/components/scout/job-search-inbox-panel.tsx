@@ -139,7 +139,7 @@ export function JobSearchInboxPanel() {
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.65 }}>
           Create a dedicated Gmail for your job search, connect it here, and manage mail in{" "}
           <Link href="/opportunities/inbox" style={{ color: color.forest, fontWeight: 600 }}>
-            Opportunities → Inbox
+            Opportunities → Email
           </Link>
           . Kimchi will read application emails and calendar invites to keep your pipeline updated.
         </p>
