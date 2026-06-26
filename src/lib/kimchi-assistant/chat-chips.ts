@@ -1,4 +1,8 @@
-import type { AssistantContextPayload, AssistantSuggestion } from "@/lib/kimchi-assistant/types";
+import type {
+  AssistantContextPayload,
+  AssistantProfileGaps,
+  AssistantSuggestion,
+} from "@/lib/kimchi-assistant/types";
 
 export type ChipAction =
   | { type: "chat"; prompt: string }
@@ -16,13 +20,51 @@ export type ChatChip = {
   prompt: string;
 };
 
+export type ChipTone = "violet" | "sky" | "amber" | "mint" | "rose" | "neutral";
+
 export type AssistantChip = {
   id: string;
   label: string;
   hint?: string;
   variant: "action" | "chat";
+  tone?: ChipTone;
   action: ChipAction;
 };
+
+export const CHIP_PAGE_GUIDANCE: Record<string, string> = {
+  "/profile/assets":
+    "Taking you to **Profile → Assets**. Upload your master resume or edit the one you have — Kimchi tailors from this for every application.",
+  "/profile/career-strategy":
+    "Opening **Career strategy**. Review your goals doc or generate a new one — that's the north star for your search.",
+  "/profile/learning-path":
+    "Opening **Upskill**. Pick a course or next step for the skill you queued.",
+  "/opportunities/pipeline":
+    "Opening your **pipeline**. Add roles you're tracking or move cards forward as things progress.",
+  "/inbox":
+    "Opening **Inbox**. Connect email if you haven't — Kimchi can summarize recruiter threads and draft replies.",
+};
+
+export function chipNavigateHref(chip: AssistantChip): string | null {
+  switch (chip.action.type) {
+    case "navigate":
+      return chip.action.href;
+    case "open_strategy":
+      return "/profile/career-strategy";
+    case "open_resume":
+      return "/profile/assets";
+    default:
+      return null;
+  }
+}
+
+export function guidanceForChip(chip: AssistantChip): string | null {
+  const href = chipNavigateHref(chip);
+  if (href && CHIP_PAGE_GUIDANCE[href]) return CHIP_PAGE_GUIDANCE[href];
+  if (chip.action.type === "add_skill") {
+    return `Added **${chip.action.skill}** to your Upskill path — pick a course or next step on that page.`;
+  }
+  return chip.hint ?? null;
+}
 
 export const NEW_THREAD_TITLE = "New thread";
 
@@ -31,6 +73,7 @@ const GENERIC_CHAT_STARTERS: AssistantChip[] = [
     id: "plan-search",
     label: "Plan my job search",
     variant: "chat",
+    tone: "mint",
     action: {
       type: "chat",
       prompt: "Help me plan my job search for the next two weeks — what should I prioritize?",
@@ -40,6 +83,7 @@ const GENERIC_CHAT_STARTERS: AssistantChip[] = [
     id: "focus-week",
     label: "What should I focus on?",
     variant: "chat",
+    tone: "rose",
     action: {
       type: "chat",
       prompt: "Given everything you know about me, what should I focus on this week?",
@@ -49,6 +93,7 @@ const GENERIC_CHAT_STARTERS: AssistantChip[] = [
     id: "pipeline-review",
     label: "Review my pipeline",
     variant: "chat",
+    tone: "neutral",
     action: {
       type: "chat",
       prompt: "Walk me through my pipeline — what's strong, what's stale, and what am I missing?",
@@ -62,31 +107,45 @@ const DEFAULT_ACTIONS: AssistantChip[] = [
     label: "Build career strategy",
     hint: "Turn your goals into a strategy doc",
     variant: "action",
+    tone: "violet",
     action: { type: "open_strategy" },
   },
   {
     id: "resume",
     label: "Work on my resume",
-    hint: "Open the resume editor",
+    hint: "Upload or edit your master resume",
     variant: "action",
-    action: { type: "open_resume" },
+    tone: "sky",
+    action: { type: "navigate", href: "/profile/assets" },
   },
   {
     id: "upskill",
     label: "Add a skill to learn",
     hint: "Queue it on your Upskill path",
     variant: "action",
+    tone: "amber",
     action: { type: "add_skill", skill: "SQL" },
   },
 ];
 
 function suggestionToActionChip(s: AssistantSuggestion): AssistantChip | null {
+  if (s.id === "create-strategy") {
+    return {
+      id: s.id,
+      label: "Create your strategy",
+      hint: s.detail,
+      variant: "action",
+      tone: "violet",
+      action: { type: "open_strategy" },
+    };
+  }
   if (s.id === "upload-resume") {
     return {
       id: s.id,
       label: "Upload resume",
       hint: s.detail,
       variant: "action",
+      tone: "sky",
       action: { type: "navigate", href: "/profile/assets" },
     };
   }
@@ -162,7 +221,12 @@ export function buildStarterActions(ctx: AssistantContextPayload | null): Assist
     .filter(Boolean) as AssistantChip[];
 
   const seen = new Set(fromContext.map((c) => c.id));
-  const extras = DEFAULT_ACTIONS.filter((c) => !seen.has(c.id));
+  const extras = DEFAULT_ACTIONS.filter((c) => {
+    if (seen.has(c.id)) return false;
+    if (c.id === "strategy" && ctx?.profileGaps?.hasStrategyDoc) return false;
+    if (c.id === "strategy" && seen.has("create-strategy")) return false;
+    return true;
+  });
   return [...fromContext, ...extras].slice(0, 4);
 }
 
@@ -211,9 +275,10 @@ const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
     chips: [
       {
         id: "open-resume",
-        label: "Open resume editor",
+        label: "Open resume & assets",
         variant: "action",
-        action: { type: "open_resume" },
+        tone: "sky",
+        action: { type: "navigate", href: "/profile/assets" },
       },
       {
         id: "resume-bullet",
@@ -228,8 +293,9 @@ const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
     chips: [
       {
         id: "open-strategy",
-        label: "Build strategy doc",
+        label: "Create your strategy",
         variant: "action",
+        tone: "violet",
         action: { type: "open_strategy" },
       },
       {
@@ -297,18 +363,165 @@ const FALLBACK_DRILLDOWNS: AssistantChip[] = [
   },
 ];
 
+export function formatThreadForFollowUps(
+  messages: Array<{ role: string; content: string }>,
+  maxTurns = 10,
+): string {
+  return messages
+    .slice(-maxTurns)
+    .map((m) => {
+      const speaker = m.role === "user" ? "User" : "Kimchi";
+      return `${speaker}: ${m.content.trim().slice(0, 700)}`;
+    })
+    .join("\n\n");
+}
+
+export function formatThreadForCopy(
+  messages: Array<{ kind?: string; role?: string; content?: string }>,
+): string {
+  return messages
+    .filter((m) => (!m.kind || m.kind === "text") && m.content?.trim() && !isFailedAssistantReply(m.content))
+    .map((m) => {
+      const speaker = m.role === "user" ? "You" : "Kimchi";
+      return `${speaker}: ${m.content!.trim()}`;
+    })
+    .join("\n\n");
+}
+
+const ALLOWED_NAV_ROUTES = [
+  "/profile/assets",
+  "/profile/career-strategy",
+  "/profile/learning-path",
+  "/profile",
+  "/inbox",
+  "/opportunities/pipeline",
+];
+
+function isAllowedNavigateHref(href: string): boolean {
+  const path = href.split("?")[0] ?? href;
+  if (ALLOWED_NAV_ROUTES.includes(path)) return true;
+  if (path.startsWith("/opportunities/pipeline/")) return true;
+  return false;
+}
+
+const VALID_TONES = new Set<ChipTone>(["violet", "sky", "amber", "mint", "rose", "neutral"]);
+
+type AiFollowUpChip = {
+  id?: string;
+  label?: string;
+  variant?: string;
+  tone?: string;
+  actionType?: string;
+  href?: string;
+  prompt?: string;
+  skill?: string;
+};
+
+export function parseAiFollowUpChips(raw: unknown): AssistantChip[] {
+  const chips = (raw as { chips?: AiFollowUpChip[] })?.chips;
+  if (!Array.isArray(chips)) return [];
+
+  const out: AssistantChip[] = [];
+  for (let i = 0; i < chips.length; i++) {
+    const c = chips[i];
+    if (!c?.label?.trim()) continue;
+
+    const label = c.label.trim().slice(0, 48);
+    const id = (c.id || `ai-${i}`).slice(0, 64);
+    const variant = c.variant === "action" ? "action" : "chat";
+    const tone = VALID_TONES.has(c.tone as ChipTone)
+      ? (c.tone as ChipTone)
+      : variant === "action"
+        ? "violet"
+        : "neutral";
+
+    let action: ChipAction | null = null;
+    const actionType = c.actionType ?? (variant === "chat" ? "chat" : "navigate");
+
+    switch (actionType) {
+      case "navigate":
+        if (c.href && isAllowedNavigateHref(c.href)) {
+          action = { type: "navigate", href: c.href.split("?")[0] ?? c.href };
+        }
+        break;
+      case "open_strategy":
+        action = { type: "open_strategy" };
+        break;
+      case "generate_strategy":
+        action = { type: "generate_strategy" };
+        break;
+      case "open_resume":
+        action = { type: "navigate", href: "/profile/assets" };
+        break;
+      case "add_skill":
+        action = { type: "add_skill", skill: (c.skill || "SQL").trim().slice(0, 40) };
+        break;
+      case "chat":
+        if (c.prompt?.trim()) {
+          action = { type: "chat", prompt: c.prompt.trim().slice(0, 400) };
+        } else {
+          action = { type: "chat", prompt: label };
+        }
+        break;
+      default:
+        break;
+    }
+
+    if (!action) continue;
+    out.push({ id, label, variant, tone, action });
+    if (out.length >= 5) break;
+  }
+
+  return out;
+}
+
 export function buildFollowUpChips(params: {
   userMessage: string;
   assistantMessage: string;
+  threadContext?: string;
+  profileGaps?: AssistantProfileGaps;
 }): AssistantChip[] {
-  const combined = `${params.userMessage}\n${params.assistantMessage}`;
+  const combined = [params.threadContext, params.userMessage, params.assistantMessage]
+    .filter(Boolean)
+    .join("\n");
   const out: AssistantChip[] = [];
   const usedLabels = new Set<string>();
+
+  if (
+    params.profileGaps &&
+    !params.profileGaps.hasStrategyDoc &&
+    /strategy|career plan|north star|goals doc|priorit|timeline|focus on/i.test(combined)
+  ) {
+    out.push({
+      id: "create-strategy",
+      label: "Create your strategy",
+      variant: "action",
+      tone: "violet",
+      action: { type: "open_strategy" },
+    });
+    usedLabels.add("Create your strategy");
+  }
+
+  if (
+    params.profileGaps &&
+    !params.profileGaps.hasResume &&
+    /resume|bullet|position|CV|curriculum/i.test(combined)
+  ) {
+    out.push({
+      id: "open-resume-gap",
+      label: "Upload your resume",
+      variant: "action",
+      tone: "sky",
+      action: { type: "navigate", href: "/profile/assets" },
+    });
+    usedLabels.add("Upload your resume");
+  }
 
   for (const rule of TOPIC_RULES) {
     if (!rule.match.test(combined)) continue;
     for (const chip of rule.chips) {
       if (usedLabels.has(chip.label)) continue;
+      if (chip.id === "open-strategy" && params.profileGaps?.hasStrategyDoc) continue;
       usedLabels.add(chip.label);
       out.push(chip);
       if (out.length >= 5) return out;
@@ -347,6 +560,12 @@ export function legacyToChips(chips: ChatChip[]): AssistantChip[] {
 
 export const WELCOME_MESSAGE =
   "Hey — pick an action below or ask me anything about your search.";
+
+export function isFailedAssistantReply(text: string): boolean {
+  return /couldn't generate|didn't get a reply|Something went wrong|hit a snag|isn't available in this environment|That didn't work|Couldn't reach Kimchi/i.test(
+    text,
+  );
+}
 
 export function isWelcomeOnlyThread(
   messages: Array<{ kind?: string; role?: string; content?: string }>,

@@ -45,7 +45,7 @@ async function streamInto(
 }
 
 export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, resumeAssetId, onClose, onLetterSaved }: CoverLetterDrawerProps) {
-  const { user, openPricing } = useWorkspace();
+  const { user, openPricing, withClientScope } = useWorkspace();
   const [letter, setLetter] = useState<string | null>(initialLetter?.trim() || null);
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
@@ -69,7 +69,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
   }, [resumeAssetId]);
 
   useEffect(() => {
-    fetch("/api/assets")
+    fetch(withClientScope("/api/assets"))
       .then((r) => r.json())
       .then((rows: Array<{ id: string; type?: string; isPrimary?: boolean }>) => {
         if (!Array.isArray(rows)) return;
@@ -80,12 +80,12 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps -- init resume picker once
-  }, []);
+  }, [withClientScope]);
 
   const persistLetter = useCallback(
     (text: string) => {
       if (!jobId || !text.trim()) return;
-      void fetch(`/api/jobs/${jobId}`, {
+      void fetch(withClientScope(`/api/jobs/${jobId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ coverLetter: text }),
@@ -95,7 +95,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
         })
         .catch(() => {});
     },
-    [jobId, onLetterSaved],
+    [jobId, onLetterSaved, withClientScope],
   );
 
   useEffect(() => {

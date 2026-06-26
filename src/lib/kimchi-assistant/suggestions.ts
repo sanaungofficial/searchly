@@ -1,7 +1,18 @@
 import type { Job, Profile } from "@prisma/client";
+import { normalizeStrategyDocument } from "@/lib/career-strategy";
 import { jobStageLabel } from "@/lib/kimchi-assistant/stages";
 import type { AssistantPageHint, AssistantSuggestion } from "@/lib/kimchi-assistant/types";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
+
+export function profileHasStrategyDoc(profile: Profile | null): boolean {
+  if (!profile?.strategyData) return false;
+  try {
+    const doc = normalizeStrategyDocument(profile.strategyData);
+    return !!doc.executiveSummary?.trim();
+  } catch {
+    return false;
+  }
+}
 
 type JobRow = Pick<Job, "id" | "company" | "role" | "stage" | "updatedAt" | "appliedAt" | "fitAnalysis">;
 
@@ -28,12 +39,23 @@ export function buildAssistantSuggestions(
 ): AssistantSuggestion[] {
   const out: AssistantSuggestion[] = [];
 
+  if (!profileHasStrategyDoc(profile)) {
+    out.push({
+      id: "create-strategy",
+      title: "Create your career strategy",
+      detail: "Turn what we know about you into a goals doc Kimchi can anchor advice to.",
+      route: "/profile/career-strategy",
+      priority: 88,
+      kind: "profile",
+    });
+  }
+
   if (!profile?.resumeText?.trim()) {
     out.push({
       id: "upload-resume",
       title: "Upload your resume",
       detail: "Kimchi needs a resume to give honest fit takes and tailor apps.",
-      route: "/profile",
+      route: "/profile/assets",
       priority: 90,
     });
   }

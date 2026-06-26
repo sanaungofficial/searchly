@@ -12,7 +12,7 @@ import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import { fontSans } from "@/lib/typography";
 
 const sans = fontSans;
-const DRAWER_WIDTH = "min(560px, calc(100vw - 16px))";
+const DRAWER_WIDTH = "min(720px, calc(100vw - 24px))";
 
 function launcherBottom(isMobile: boolean): string {
   return isMobile ? "max(16px, env(safe-area-inset-bottom))" : "24px";
@@ -108,9 +108,9 @@ export function KimchiAssistant() {
         createPortal(
           <>
             <div
-              className="kimchi-drawer-backdrop"
+              className={`kimchi-drawer-backdrop${isMobile ? "" : " kimchi-drawer-backdrop--companion"}`}
               style={{ opacity: visible ? 1 : 0 }}
-              onClick={closePanel}
+              onClick={isMobile ? closePanel : undefined}
               aria-hidden
             />
             <div
@@ -180,7 +180,6 @@ export function KimchiAssistant() {
                 voiceUnavailable={voiceConfigured === false}
                 threads={threads}
                 onNavigate={(href) => {
-                  closePanel();
                   router.push(href);
                 }}
               />
@@ -213,16 +212,21 @@ function KimchiAssistantStyles() {
         transition: opacity 0.28s ease;
         cursor: pointer;
       }
+      .kimchi-drawer-backdrop--companion {
+        background: transparent;
+        pointer-events: none;
+        cursor: default;
+      }
       .kimchi-drawer {
         position: fixed;
         right: 0;
         top: 0;
         bottom: 0;
         z-index: 201;
-        background: #FFFFFF;
+        background: #FAFAF8;
         display: flex;
         flex-direction: column;
-        box-shadow: -8px 0 40px rgba(26, 58, 47, 0.18);
+        box-shadow: -12px 0 48px rgba(26, 58, 47, 0.12);
         transition: transform 0.28s cubic-bezier(0.32, 0, 0.16, 1);
         overflow: hidden;
       }
@@ -231,8 +235,9 @@ function KimchiAssistantStyles() {
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        padding: 12px 14px;
-        background: #1A3A2F;
+        padding: 14px 18px;
+        background: #FFFFFF;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
         flex-shrink: 0;
       }
       .kimchi-drawer__topbar-left {
@@ -242,30 +247,30 @@ function KimchiAssistantStyles() {
         min-width: 0;
         flex: 1;
       }
-      .kimchi-drawer__star { color: #E8D5A3; font-size: 14px; flex-shrink: 0; }
+      .kimchi-drawer__star { color: #E8913A; font-size: 16px; flex-shrink: 0; }
       .kimchi-drawer__thread-btn {
         display: flex;
         align-items: center;
         gap: 6px;
         min-width: 0;
-        padding: 4px 8px;
-        border: 1px solid rgba(232, 213, 163, 0.2);
-        border-radius: var(--scout-radius);
-        background: rgba(255,255,255,0.06);
+        padding: 6px 10px;
+        border: 1px solid rgba(26, 58, 47, 0.1);
+        border-radius: 10px;
+        background: #FAFAF8;
         cursor: pointer;
       }
       .kimchi-drawer__name {
         font-family: ${sans};
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
-        color: #E8D5A3;
+        color: #1A1A1A;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 240px;
+        max-width: 360px;
       }
       .kimchi-drawer__chev {
-        color: rgba(232, 213, 163, 0.65);
+        color: rgba(26, 58, 47, 0.45);
         font-size: 10px;
       }
       .kimchi-drawer__topbar-actions {
@@ -275,13 +280,13 @@ function KimchiAssistantStyles() {
         flex-shrink: 0;
       }
       .kimchi-drawer__new {
-        width: 32px;
-        height: 32px;
+        width: 34px;
+        height: 34px;
         padding: 0;
-        border: 1px solid rgba(232, 213, 163, 0.25);
-        border-radius: var(--scout-radius);
-        background: transparent;
-        color: #E8D5A3;
+        border: 1px solid rgba(26, 58, 47, 0.12);
+        border-radius: 10px;
+        background: #fff;
+        color: #1A3A2F;
         font-family: ${sans};
         font-size: 20px;
         font-weight: 400;
@@ -289,11 +294,12 @@ function KimchiAssistantStyles() {
         cursor: pointer;
       }
       .kimchi-drawer__close {
-        width: 30px;
-        height: 30px;
-        border: 1px solid rgba(232, 213, 163, 0.18);
-        background: transparent;
-        color: rgba(232, 213, 163, 0.72);
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(26, 58, 47, 0.1);
+        border-radius: 10px;
+        background: #fff;
+        color: rgba(26, 58, 47, 0.55);
         font-size: 20px;
         cursor: pointer;
       }

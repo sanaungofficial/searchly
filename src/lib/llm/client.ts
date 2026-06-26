@@ -138,16 +138,44 @@ export function kimchiStreamTextWithTools(params: {
   const body = base.body;
   if (!body) return base;
 
+  const encoder = new TextEncoder();
+
   const stream = new ReadableStream({
     async start(controller) {
-      const reader = body.getReader();
+      let streamedAny = false;
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) controller.enqueue(value);
+        for await (const chunk of result.textStream) {
+          if (!chunk) continue;
+          streamedAny = true;
+          controller.enqueue(encoder.encode(chunk));
         }
-        const steps = await result.steps;
+
+        const [finalText, steps] = await Promise.all([result.text, result.steps]);
+        const trimmedFinal = (finalText ?? "").trim();
+
+        if (!streamedAny && trimmedFinal) {
+          controller.enqueue(encoder.encode(trimmedFinal));
+          streamedAny = true;
+        }
+
+        if (!streamedAny) {
+          let navigateReason: string | null = null;
+          for (const step of steps) {
+            for (const tr of step.toolResults ?? []) {
+              if (tr.toolName === "open_app_page") {
+                const payload = tr.output as { reason?: string | null } | undefined;
+                navigateReason = payload?.reason ?? null;
+              }
+            }
+          }
+          controller.enqueue(
+            encoder.encode(
+              navigateReason?.trim() ||
+                "I hit a snag generating a reply. Try sending that again — or tap a button below to keep going.",
+            ),
+          );
+        }
+
         let navigateRoute: string | null = null;
         for (const step of steps) {
           for (const tr of step.toolResults ?? []) {
@@ -157,8 +185,14 @@ export function kimchiStreamTextWithTools(params: {
           }
         }
         if (navigateRoute) {
-          controller.enqueue(new TextEncoder().encode(`\n<!--kimchi-nav:${navigateRoute}-->`));
+          controller.enqueue(encoder.encode(`\n<!--kimchi-nav:${navigateRoute}-->`));
         }
+      } catch {
+        controller.enqueue(
+          encoder.encode(
+            "Something went wrong on my end. Try your message again, or use the buttons below.",
+          ),
+        );
       } finally {
         controller.close();
       }

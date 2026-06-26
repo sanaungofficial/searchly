@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { fetchHirebaseJobById } from "@/lib/hirebase";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
 import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ prospectId: string }> }
 ) {
   const supabase = await createClient();
@@ -39,7 +39,7 @@ export async function GET(
     const result = await fetchHirebaseJobById(decoded.hirebaseId);
     if (!result) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-    const { dbUser } = await getActingUser();
+    const { dbUser } = await resolveScopedDbUser(request);
     let match:
       | {
           matchScore: number;

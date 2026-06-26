@@ -6,11 +6,11 @@ import { mergeTrackedWithIntel } from "@/lib/company-intel";
 import { scanTrackedCompanyMatches } from "@/lib/company-jobs-scan";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient();
-  const dbUser = await ensureDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase, request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

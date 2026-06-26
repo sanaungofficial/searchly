@@ -147,6 +147,7 @@ export function ChatWidget({
     coachPrepCoach,
     coachPrepNonce,
     openCoachPrepChat,
+    withClientScope,
   } = useWorkspace();
 
   const isMobile = useIsMobile();
@@ -180,7 +181,7 @@ export function ChatWidget({
 
   useEffect(() => {
     if (!unified || !chatOpen) return;
-    void fetch(`/api/assistant/context${assistantQuery()}`, { cache: "no-store" })
+    void fetch(withClientScope(`/api/assistant/context${assistantQuery()}`), { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.suggestions && Array.isArray(data.suggestions)) {
@@ -188,7 +189,7 @@ export function ChatWidget({
         }
       })
       .catch(() => {});
-  }, [unified, chatOpen, assistantQuery]);
+  }, [unified, chatOpen, assistantQuery, withClientScope]);
 
   const effectiveJobId = chatView === "chat" && chatJobId !== null
     ? chatJobId

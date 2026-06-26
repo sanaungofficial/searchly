@@ -51,6 +51,13 @@ export type AssistantInboxSnapshot = {
 
 export type AssistantRoleMode = "seeker" | "coach" | "admin";
 
+export type AssistantProfileGaps = {
+  hasStrategyDoc: boolean;
+  hasResume: boolean;
+  hasPipelineJobs: boolean;
+  emailConnected: boolean;
+};
+
 export type AssistantContextPayload = {
   roleMode: AssistantRoleMode;
   summary: string;
@@ -60,6 +67,7 @@ export type AssistantContextPayload = {
   knowsYouSnippet: string;
   pageHint: string;
   creditsHint: string;
+  profileGaps: AssistantProfileGaps;
   suggestions: AssistantSuggestion[];
   inbox: AssistantInboxSnapshot;
   generatedAt: string;

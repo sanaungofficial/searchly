@@ -10,6 +10,19 @@ import {
   mailUpdateJobStage,
 } from "@/lib/kimchi-assistant/mail/executor";
 
+const MAIL_TOOL_PATTERN =
+  /\b(inbox|email|e-mail|recruiter|reply|replies|send(?:ing)?|calendar|interview schedule|follow[- ]?up email|draft(?:ing)?|nylas|mailbox|unread|message thread)\b/i;
+
+/** Only attach mail tools when the user is clearly asking about inbox/calendar — keeps general chat fast. */
+export function wantsMailTools(messages: Array<{ role: string; content: string }>): boolean {
+  const recentUser = messages
+    .filter((m) => m.role === "user")
+    .slice(-2)
+    .map((m) => m.content)
+    .join("\n");
+  return MAIL_TOOL_PATTERN.test(recentUser);
+}
+
 export function buildKimchiMailTools(userId: string) {
   return {
     list_recent_emails: tool({
