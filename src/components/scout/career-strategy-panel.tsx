@@ -20,6 +20,7 @@ import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { StrategyFormattedView } from "./strategy-formatted-view";
 import { UserAssetsList, type UserAssetListItem } from "./user-assets-list";
+import { UploadDocumentModal } from "./upload-document-modal";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -195,8 +196,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
   const [showCompleteBanner, setShowCompleteBanner] = useState(false);
   const [uploadedStrategyFiles, setUploadedStrategyFiles] = useState<StrategyFileAsset[]>([]);
   const [strategyFileUploading, setStrategyFileUploading] = useState(false);
+  const [showStrategyUploadModal, setShowStrategyUploadModal] = useState(false);
   const [applySuccess, setApplySuccess] = useState<string | null>(null);
-  const strategyFileInputRef = useRef<HTMLInputElement>(null);
   const generationStatusRef = useRef<StrategyGenerationStatus>(null);
 
   const isGenerating = generationStatus === "running";
@@ -490,9 +491,22 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       refreshStrategyAssets();
     } catch (e) {
       setError(formatApiErrorMessage(e, "Failed to upload strategy file"));
+      throw e;
     } finally {
       setStrategyFileUploading(false);
     }
+  }
+
+  async function handleStrategyFilesSelected(files: File[]) {
+    if (!files.length) return;
+    for (const file of files) {
+      try {
+        await handleStrategyFileUpload(file);
+      } catch {
+        return;
+      }
+    }
+    setShowStrategyUploadModal(false);
   }
 
   async function handleRemoveStrategyFile(id: string) {
@@ -720,25 +734,6 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
           </div>
         </div>
 
-        <input
-          ref={strategyFileInputRef}
-          type="file"
-          accept={STRATEGY_FILE_ACCEPT}
-          multiple
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const files = e.target.files;
-            if (files?.length) {
-              void (async () => {
-                for (const file of Array.from(files)) {
-                  await handleStrategyFileUpload(file);
-                }
-              })();
-            }
-            e.target.value = "";
-          }}
-        />
-
         <UserAssetsList
           assets={uploadedStrategyFiles}
           types={["JOB_SEARCH_STRATEGY"]}
@@ -747,8 +742,23 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
           emptyMessage="No strategy documents uploaded yet."
           uploadLabel="+ Add strategy document"
           uploading={strategyFileUploading}
-          onUpload={() => strategyFileInputRef.current?.click()}
+          onUpload={() => setShowStrategyUploadModal(true)}
           onDelete={(id) => void handleRemoveStrategyFile(id)}
+        />
+
+        <UploadDocumentModal
+          open={showStrategyUploadModal}
+          onClose={() => {
+            if (!strategyFileUploading) setShowStrategyUploadModal(false);
+          }}
+          onFilesSelected={(files) => void handleStrategyFilesSelected(files)}
+          uploading={strategyFileUploading}
+          accept={STRATEGY_FILE_ACCEPT}
+          multiple
+          label="Strategy document"
+          title="Upload a strategy document"
+          hint="PDF or Word format · max 10MB · add multiple files if needed"
+          dropHint="Drop strategy documents here"
         />
 
         <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "12px 0 0" }}>
