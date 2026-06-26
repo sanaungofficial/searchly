@@ -986,3 +986,19 @@ export async function fetchHirebaseJobsSearch(
     ctx,
   );
 }
+
+type HirebaseCategoryListResponse = {
+  categories?: string[];
+};
+
+/** Official Hirebase category list — same values accepted by job search filters. */
+export async function fetchHirebaseJobCategoryList(
+  ctx?: { userId?: string | null },
+): Promise<string[]> {
+  const data = await hirebaseFetch<HirebaseCategoryListResponse>(
+    "/v2/jobs/data/categories",
+    { method: "GET", signal: AbortSignal.timeout(15000) },
+    ctx,
+  );
+  return (data.categories ?? []).map((c) => c.trim()).filter(Boolean);
+}

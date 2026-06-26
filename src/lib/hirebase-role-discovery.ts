@@ -1,5 +1,6 @@
 import { roleSearchKeywords } from "@/lib/job-match";
 import {
+  fetchHirebaseJobCategoryList,
   fetchHirebaseJobsSearch,
   fetchHirebaseSummarySearch,
   isHirebaseConfigured,
@@ -138,13 +139,23 @@ export async function expandHirebaseRelatedRoleTitles(input: {
 let cachedCategories: { at: number; values: string[] } | null = null;
 const CATEGORY_CACHE_MS = 1000 * 60 * 60 * 6;
 
-/** Aggregate Hirebase job category labels from recent indexed jobs. */
+/** Hirebase official category list (`GET /v2/jobs/data/categories`), with fallbacks. */
 export async function fetchHirebaseJobCategories(userId?: string | null): Promise<string[]> {
   if (!isHirebaseConfigured()) return FALLBACK_JOB_CATEGORIES;
 
   const now = Date.now();
   if (cachedCategories && now - cachedCategories.at < CATEGORY_CACHE_MS) {
     return cachedCategories.values;
+  }
+
+  try {
+    const official = await fetchHirebaseJobCategoryList({ userId });
+    if (official.length) {
+      cachedCategories = { at: now, values: official };
+      return official;
+    }
+  } catch {
+    /* fall through to job-search sampling */
   }
 
   const body = {
@@ -172,7 +183,7 @@ export async function fetchHirebaseJobCategories(userId?: string | null): Promis
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([label]) => label);
 
-  const merged = [...new Set([...values, ...FALLBACK_JOB_CATEGORIES])];
+  const merged = values.length ? values : FALLBACK_JOB_CATEGORIES;
   cachedCategories = { at: now, values: merged };
   return merged;
 }
