@@ -5,14 +5,15 @@ import {
   extensionPreflightResponse,
   withExtensionCors,
 } from "@/lib/extension-api";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 
 // GET /api/jobs — list all jobs for current user
 export async function GET(request: Request) {
   const preflight = extensionPreflightResponse(request);
   if (preflight) return preflight;
 
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return withExtensionCors(request, error);
   if (!dbUser) {
     return withExtensionCors(
       request,
@@ -33,7 +34,8 @@ export async function POST(request: Request) {
   const preflight = extensionPreflightResponse(request);
   if (preflight) return preflight;
 
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return withExtensionCors(request, error);
   if (!dbUser) {
     return withExtensionCors(
       request,

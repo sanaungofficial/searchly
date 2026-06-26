@@ -1,14 +1,27 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { INITIAL_KANBAN_CARDS, NOTIFICATIONS } from "@/components/scout/workspace-data";
 import { useJobs } from "@/hooks/useJobs";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import { ImpersonationBanner, type ImpersonationState } from "@/components/admin/impersonation-banner";
+import { AdminClientReviewBanner } from "@/components/admin/admin-client-review-banner";
 import { isStaffPortalRole } from "@/lib/staff-portal";
-import { setActingUserScope, getActingUserScope, loadStaffDashboardView, saveStaffDashboardView, type StaffDashboardView } from "@/lib/client-session";
+import {
+  setActingUserScope,
+  getActingUserScope,
+  loadStaffDashboardView,
+  saveStaffDashboardView,
+  type StaffDashboardView,
+  getAdminReviewClientId,
+  getAdminReviewMeta,
+  setAdminReviewClient,
+  clearAdminReviewClient,
+  type AdminReviewMeta,
+} from "@/lib/client-session";
+import { parseAdminClientProfilePath, withClientUserId } from "@/lib/workspace-urls";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -83,6 +96,12 @@ interface WorkspaceContextValue {
   showSeekerDashboard: boolean;
   /** True when staff is in expert workspace mode on dashboard. */
   showExpertDashboard: boolean;
+  /** Admin reviewing a client without impersonating — persists across pages. */
+  adminReviewClientId: string | null;
+  adminReviewClient: AdminReviewMeta | null;
+  isAdminReviewing: boolean;
+  /** Append clientUserId to API paths when admin-reviewing (impersonation uses cookie). */
+  withClientScope: (path: string) => string;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -95,6 +114,7 @@ export function useWorkspace() {
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<WorkspaceUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState("USER");
@@ -120,6 +140,33 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   });
   const [staffDashboardView, setStaffDashboardViewState] = useState<StaffDashboardView>("seeker");
   const [staffUserId, setStaffUserId] = useState<string | null>(null);
+  const [adminReviewClientId, setAdminReviewClientIdState] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : getAdminReviewClientId(),
+  );
+  const [adminReviewClient, setAdminReviewClientMeta] = useState<AdminReviewMeta | null>(() =>
+    typeof window === "undefined" ? null : getAdminReviewMeta(),
+  );
+
+  const setAdminReviewClientId = useCallback((id: string | null, meta?: AdminReviewMeta) => {
+    setAdminReviewClientIdState(id);
+    if (id) {
+      setAdminReviewClient(id, meta);
+      setActingUserScope(id);
+      setAdminReviewClientMeta(meta ?? getAdminReviewMeta());
+    } else {
+      clearAdminReviewClient();
+      setAdminReviewClientMeta(null);
+    }
+  }, []);
+
+  const withClientScope = useCallback(
+    (path: string) => {
+      if (impersonation.active) return path;
+      if (adminReviewClientId) return withClientUserId(path, adminReviewClientId);
+      return path;
+    },
+    [impersonation.active, adminReviewClientId],
+  );
 
   const setStaffDashboardView = useCallback((view: StaffDashboardView) => {
     setStaffDashboardViewState(view);
@@ -155,8 +202,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     window.setTimeout(() => setChatPulse(false), 2400);
   }, []);
 
+  const jobsReloadKey = impersonation.active ? actingUserId : adminReviewClientId ?? actingUserId;
   const { cards: kanbanCards, setCards: setKanbanCards, addJob, updateStage, removeJob } =
-    useJobs(INITIAL_KANBAN_CARDS, actingUserId ?? undefined);
+    useJobs(
+      INITIAL_KANBAN_CARDS,
+      jobsReloadKey ?? undefined,
+      impersonation.active ? null : adminReviewClientId,
+    );
 
   const notifUnreadCount = NOTIFICATIONS.filter((n) => !notifRead[n.id] && n.unread).length;
 
@@ -167,10 +219,31 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [staffUserId, impersonation.active]);
 
   const isStaffPortal = isStaffPortalRole(userRole);
+  const isAdminReviewing = Boolean(adminReviewClientId) && !impersonation.active;
   const showSeekerDashboard =
-    !isStaffPortal || impersonation.active || staffDashboardView === "seeker";
+    !isStaffPortal || impersonation.active || isAdminReviewing || staffDashboardView === "seeker";
   const showExpertDashboard =
-    isStaffPortal && !impersonation.active && staffDashboardView === "expert";
+    isStaffPortal && !impersonation.active && !isAdminReviewing && staffDashboardView === "expert";
+
+  useEffect(() => {
+    const fromUrl = parseAdminClientProfilePath(pathname);
+    if (fromUrl?.clientId && fromUrl.clientId !== adminReviewClientId) {
+      setAdminReviewClientId(fromUrl.clientId);
+    }
+  }, [pathname, adminReviewClientId, setAdminReviewClientId]);
+
+  useEffect(() => {
+    if (!adminReviewClientId || impersonation.active) return;
+    fetch(withClientUserId("/api/profile", adminReviewClientId), { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data || data.error) return;
+        const meta = { name: data.name as string | null, email: data.email as string | null };
+        setAdminReviewClientMeta(meta);
+        setAdminReviewClient(adminReviewClientId, meta);
+      })
+      .catch(() => {});
+  }, [adminReviewClientId, impersonation.active]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -204,8 +277,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             setActingUserScope(data.impersonating.userId ?? data.userId ?? null);
           } else {
             setImpersonation({ active: false });
-            setActingUserId(data.userId ?? null);
-            setActingUserScope(data.userId ?? null);
+            const reviewId = getAdminReviewClientId();
+            if (reviewId) {
+              setAdminReviewClientIdState(reviewId);
+              setActingUserId(reviewId);
+              setActingUserScope(reviewId);
+            } else {
+              setActingUserId(data.userId ?? null);
+              setActingUserScope(data.userId ?? null);
+            }
           }
         } else if (res.status === 401) {
           setAuthChecked(true);
@@ -312,6 +392,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setStaffDashboardView,
         showSeekerDashboard,
         showExpertDashboard,
+        adminReviewClientId,
+        adminReviewClient,
+        isAdminReviewing,
+        withClientScope,
       }}
     >
       <div
@@ -323,6 +407,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         }}
       >
         <ImpersonationBanner state={impersonation} />
+        {isAdminReviewing && adminReviewClientId && (
+          <AdminClientReviewBanner
+            clientId={adminReviewClientId}
+            name={adminReviewClient?.name}
+            email={adminReviewClient?.email}
+          />
+        )}
         {children}
       </div>
     </WorkspaceContext.Provider>

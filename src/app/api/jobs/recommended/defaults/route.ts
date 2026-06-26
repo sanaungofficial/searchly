@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { profileDerivedSearchFilters, describeActiveFilters } from "@/lib/recommended-filter-utils";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { prisma } from "@/lib/prisma";
 
 /** Default Hirebase search filters derived from profile — for pre-filling the Filters panel. */
-export async function GET() {
-  const { dbUser } = await getActingUser();
+export async function GET(request: Request) {
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });

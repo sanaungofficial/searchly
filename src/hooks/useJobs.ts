@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import type { JobMeta } from "@/lib/job-meta";
+import { withClientUserId } from "@/lib/workspace-urls";
 
 export type { JobMeta };
 
@@ -72,13 +73,14 @@ function dbJobToKanban(job: DbJob, index: number): KanbanCard {
   } as KanbanCard & { _dbId: string; _url?: string; _userNotes?: string; _companyLinkedinUrl?: string; _coverLetter?: string; _fitAnalysis?: string; _meta?: JobMeta };
 }
 
-export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
+export function useJobs(fallback: KanbanCard[], reloadKey?: string, adminReviewClientId?: string | null) {
   const [cards, setCards] = useState<KanbanCard[]>(fallback);
   const [loaded, setLoaded] = useState(false);
+  const jobsUrl = adminReviewClientId ? withClientUserId("/api/jobs", adminReviewClientId) : "/api/jobs";
 
   useEffect(() => {
     setLoaded(false);
-    fetch("/api/jobs")
+    fetch(jobsUrl)
       .then((r) => r.json())
       .then((jobs: DbJob[]) => {
         if (Array.isArray(jobs)) {
@@ -87,11 +89,16 @@ export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
-  }, [reloadKey]);
+  }, [reloadKey, jobsUrl]);
+
+  const scopeJobPath = useCallback(
+    (path: string) => (adminReviewClientId ? withClientUserId(path, adminReviewClientId) : path),
+    [adminReviewClientId],
+  );
 
   const addJob = useCallback(async (company: string, role: string, url?: string, meta?: JobMeta) => {
     const notes = meta ? JSON.stringify(meta) : undefined;
-    const res = await fetch("/api/jobs", {
+    const res = await fetch(scopeJobPath("/api/jobs"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ company, role, url, notes }),
@@ -108,7 +115,7 @@ export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
     const vectorFit = meta?.vectorMatch?.matchScore;
     if (vectorFit != null && job.id) {
       const fit = Math.min(100, Math.round(vectorFit));
-      fetch(`/api/jobs/${job.id}`, {
+      fetch(scopeJobPath(`/api/jobs/${job.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fitAnalysis: JSON.stringify({ score: fit / 10, source: "hirebase_vector" }) }),
@@ -120,25 +127,25 @@ export function useJobs(fallback: KanbanCard[], reloadKey?: string) {
     }
 
     return { id: job.id, cardId };
-  }, []);
+  }, [scopeJobPath]);
 
   const updateStage = useCallback(async (cardId: number, stage: KanbanStage) => {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, stage } : c)));
     const card = cards.find((c) => c.id === cardId) as (KanbanCard & { _dbId?: string }) | undefined;
     if (!card?._dbId) return;
-    await fetch(`/api/jobs/${card._dbId}`, {
+    await fetch(scopeJobPath(`/api/jobs/${card._dbId}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage: KANBAN_TO_DB[stage] }),
     });
-  }, [cards]);
+  }, [cards, scopeJobPath]);
 
   const removeJob = useCallback(async (cardId: number) => {
     const card = cards.find((c) => c.id === cardId) as (KanbanCard & { _dbId?: string }) | undefined;
     setCards((prev) => prev.filter((c) => c.id !== cardId));
     if (!card?._dbId) return;
-    await fetch(`/api/jobs/${card._dbId}`, { method: "DELETE" });
-  }, [cards]);
+    await fetch(scopeJobPath(`/api/jobs/${card._dbId}`), { method: "DELETE" });
+  }, [cards, scopeJobPath]);
 
   return { cards, setCards, addJob, updateStage, removeJob, loaded };
 }

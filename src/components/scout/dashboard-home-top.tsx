@@ -89,7 +89,8 @@ type AssignedCoach = {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { openPricing, userRole, isImpersonating, showSeekerDashboard, showExpertDashboard } = useWorkspace();
+  const { openPricing, userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope } =
+    useWorkspace();
   const isStaffPortal = isStaffPortalRole(userRole);
   const showClientCoachUi = showSeekerDashboard;
   const { isPro, loading: subLoading } = useSubscription();
@@ -117,7 +118,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const loadProfile = useCallback(() => {
     setLoading(true);
-    fetch("/api/profile")
+    fetch(withClientScope("/api/profile"))
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data || data.error) return;
@@ -134,7 +135,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
     loadProfile();
@@ -243,7 +244,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const persistGoals = async (next: DashboardGoal[]) => {
     setSaving(true);
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetch(withClientScope("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dashboardGoals: next }),
@@ -324,7 +325,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
     if (!pendingSync) return;
     setSyncSaving(true);
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetch(withClientScope("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [pendingSync.field]: pendingSync.suggestedValue }),

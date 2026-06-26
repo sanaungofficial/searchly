@@ -21,6 +21,9 @@ export function matchStaffDashboardNavPath(pathname: string, itemPath: string): 
 
 /** True when the URL is an expert-workspace route (not the shared /dashboard home). */
 export function isExpertPortalPath(pathname: string): boolean {
+  if (pathname.startsWith("/dashboard/clients/") && pathname.includes("/profile")) {
+    return false;
+  }
   return STAFF_DASHBOARD_NAV.some(
     (item) => item.path !== "/dashboard" && pathname.startsWith(item.path),
   );
