@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -13,8 +13,11 @@ import {
   ScreenAboutYouPreferences,
   ScreenSetup,
   DemoNextButton,
+  OnboardingProcessingBanner,
+  fetchReadbackWithRetry,
   type Screen,
   type ReadBackData,
+  type ReadBackStatus,
   type SetupStep,
   type SetupStepStatus,
   type OnboardingCompanyPick,
@@ -81,11 +84,11 @@ function saveTargetRoles(roles: string[]): Promise<void> {
 }
 
 const INITIAL_SETUP_STEPS: SetupStep[] = [
-  { id: "profile", label: "Saving your profile", status: "pending" },
-  { id: "linkedin", label: "Importing your LinkedIn profile", status: "pending" },
-  { id: "resume", label: "Building your base resume", status: "pending" },
-  { id: "analysis", label: "Running your resume review", status: "pending" },
-  { id: "companies", label: "Scanning your companies for matching roles", status: "pending" },
+  { id: "profile", label: "Saving your answers", status: "pending" },
+  { id: "linkedin", label: "Pulling in your LinkedIn", status: "pending" },
+  { id: "resume", label: "Building your resume profile", status: "pending" },
+  { id: "analysis", label: "Running a quick resume review", status: "pending" },
+  { id: "companies", label: "Scanning your dream companies", status: "pending" },
 ];
 
 export default function OnboardingPage() {
@@ -106,11 +109,15 @@ export default function OnboardingPage() {
   const [screen, setScreen] = useState<Screen>(0);
   const [resumeFilename, setResumeFilename] = useState<string | null>(null);
   const [resumeUploaded, setResumeUploaded] = useState(false);
+  const [resumeUploading, setResumeUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [liInput, setLiInput] = useState("");
   const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<OnboardingCompanyPick[]>([]);
   const [readbackRoleSuggestions, setReadbackRoleSuggestions] = useState<string[]>([]);
+  const [readbackData, setReadbackData] = useState<ReadBackData | null>(null);
+  const [readbackStatus, setReadbackStatus] = useState<ReadBackStatus>("idle");
+  const readbackStartedRef = useRef(false);
   const [careerMotivation, setCareerMotivation] = useState("");
   const [jobTimeline, setJobTimeline] = useState("");
   const [currentSalary, setCurrentSalary] = useState("");
@@ -135,28 +142,63 @@ export default function OnboardingPage() {
     attribution,
   };
 
-  const processFile = useCallback(async (file: File | undefined | null) => {
-    if (!file) return;
-    setResumeFilename(file.name);
-    setResumeUploaded(false);
-    setResumeError(false);
-    try {
+  const applyReadbackRoles = useCallback((data: ReadBackData | null) => {
+    if (!data?.targetRoles?.length) return;
+    const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 3);
+    setReadbackRoleSuggestions(roles);
+    setSelectedTitles((prev) => (prev.length ? prev : roles));
+  }, []);
+
+  const startBackgroundReadback = useCallback(() => {
+    if (readbackStartedRef.current) return;
+    readbackStartedRef.current = true;
+    setReadbackStatus("loading");
+
+    void fetchReadbackWithRetry().then((result) => {
+      if (result) {
+        setReadbackData(result);
+        setReadbackStatus("ready");
+        applyReadbackRoles(result);
+      } else {
+        setReadbackStatus("pending");
+      }
+    });
+  }, [applyReadbackRoles]);
+
+  const processFile = useCallback(
+    (file: File | undefined | null) => {
+      if (!file) return;
+      setResumeFilename(file.name);
+      setResumeUploaded(false);
+      setResumeUploading(true);
+      setResumeError(false);
+
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/resume", { method: "POST", body: formData });
-      if (res.ok) {
-        setResumeUploaded(true);
-        if (liInput.trim()) await saveLinkedIn(liInput);
-        goTo(1);
-      } else {
-        setResumeError(true);
-        setResumeFilename(null);
-      }
-    } catch {
-      setResumeError(true);
-      setResumeFilename(null);
-    }
-  }, [goTo, liInput]);
+
+      void fetch("/api/resume", { method: "POST", body: formData })
+        .then(async (res) => {
+          if (res.ok) {
+            setResumeUploaded(true);
+            if (liInput.trim()) await saveLinkedIn(liInput);
+            startBackgroundReadback();
+          } else {
+            setResumeError(true);
+            setResumeFilename(null);
+            readbackStartedRef.current = false;
+          }
+        })
+        .catch(() => {
+          setResumeError(true);
+          setResumeFilename(null);
+          readbackStartedRef.current = false;
+        })
+        .finally(() => {
+          setResumeUploading(false);
+        });
+    },
+    [liInput, startBackgroundReadback],
+  );
 
   const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
@@ -184,40 +226,68 @@ export default function OnboardingPage() {
     setLiInput(value);
   };
 
-  const onWelcomeContinue = useCallback(() => {
-    if (!resumeUploaded) return;
+  const goToAboutYou = useCallback(() => {
     if (liInput.trim()) void saveLinkedIn(liInput);
     goTo(1);
-  }, [liInput, resumeUploaded, goTo]);
-
-  const onLinkedInOnly = useCallback(() => {
-    void saveLinkedIn(liInput);
-    goTo(2);
   }, [liInput, goTo]);
 
-  const onLIKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter") return;
-    if (resumeUploaded) onWelcomeContinue();
-    else if (liInput.trim()) onLinkedInOnly();
-  }, [resumeUploaded, liInput, onWelcomeContinue, onLinkedInOnly]);
+  const onWelcomeContinue = useCallback(() => {
+    if (!resumeFilename || resumeError) return;
+    goToAboutYou();
+  }, [resumeFilename, resumeError, goToAboutYou]);
 
-  const onSkipProfile = useCallback(() => goTo(2), [goTo]);
+  const onLinkedInOnly = useCallback(() => {
+    setReadbackStatus("skipped");
+    goToAboutYou();
+  }, [goToAboutYou]);
+
+  const onLIKey = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== "Enter") return;
+      if (resumeFilename && !resumeError) onWelcomeContinue();
+      else if (liInput.trim()) onLinkedInOnly();
+    },
+    [resumeFilename, resumeError, liInput, onWelcomeContinue, onLinkedInOnly],
+  );
+
+  const onSkipProfile = useCallback(() => {
+    setReadbackStatus("skipped");
+    goTo(1);
+  }, [goTo]);
+
+  const hasResumeTrack = !!(resumeFilename || resumeUploaded || resumeUploading);
 
   useEffect(() => {
-    if (screen !== 2 || readbackRoleSuggestions.length > 0) return;
-    fetch("/api/ai/readback")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data?.targetRoles)) {
-          setReadbackRoleSuggestions(
-            data.targetRoles
-              .map((r: { role?: string }) => r.role?.trim())
-              .filter(Boolean) as string[]
-          );
-        }
-      })
-      .catch(() => {});
-  }, [screen, readbackRoleSuggestions.length]);
+    if (screen !== 3) return;
+    if (!hasResumeTrack) {
+      setReadbackStatus((s) => (s === "idle" ? "skipped" : s));
+      return;
+    }
+    if (readbackStatus === "idle") {
+      startBackgroundReadback();
+    }
+  }, [screen, hasResumeTrack, readbackStatus, startBackgroundReadback]);
+
+  useEffect(() => {
+    if (screen !== 3 || readbackStatus !== "pending" || readbackData) return;
+
+    const poll = () => {
+      void fetch("/api/ai/readback", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.picture && Array.isArray(d.strengths)) {
+            const payload = d as ReadBackData;
+            setReadbackData(payload);
+            setReadbackStatus("ready");
+            applyReadbackRoles(payload);
+          }
+        })
+        .catch(() => {});
+    };
+
+    const id = window.setInterval(poll, 5000);
+    return () => window.clearInterval(id);
+  }, [screen, readbackStatus, readbackData, applyReadbackRoles]);
 
   const onAddTargetRole = useCallback((title: string) => {
     setSelectedTitles((prev) => {
@@ -230,29 +300,52 @@ export default function OnboardingPage() {
     setSelectedTitles((prev) => prev.filter((t) => t !== title));
   }, []);
 
-  const onReadBackConfirm = useCallback((data: ReadBackData | null) => {
-    if (data?.targetRoles?.length) {
-      const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 3);
-      setReadbackRoleSuggestions(roles);
-      setSelectedTitles((prev) => (prev.length ? prev : roles));
-    }
-    goTo(2);
-  }, [goTo]);
+  const onReadBackConfirm = useCallback(
+    (data: ReadBackData | null) => {
+      applyReadbackRoles(data);
+      goTo(4);
+    },
+    [applyReadbackRoles, goTo],
+  );
 
-  const onReadBackSkip = useCallback(() => goTo(2), [goTo]);
+  const onReadBackSkip = useCallback(() => goTo(4), [goTo]);
 
   const onReadBackRefine = useCallback(() => {
+    readbackStartedRef.current = false;
+    setReadbackData(null);
+    setReadbackStatus("idle");
     goTo(0);
   }, [goTo]);
 
+  const goToReadbackOrRoles = useCallback(() => {
+    if (hasResumeTrack && readbackStatus !== "skipped") goTo(3);
+    else goTo(4);
+  }, [hasResumeTrack, readbackStatus, goTo]);
+
+  const onAboutSearchContinue = useCallback(() => goTo(2), [goTo]);
+
+  const onAboutSearchSkip = useCallback(() => {
+    goToReadbackOrRoles();
+  }, [goToReadbackOrRoles]);
+
+  const onAboutPrefsContinue = useCallback(async () => {
+    await saveAboutYou(aboutYouFields);
+    goToReadbackOrRoles();
+  }, [aboutYouFields, goToReadbackOrRoles]);
+
+  const onAboutPrefsSkip = useCallback(async () => {
+    await saveAboutYou(aboutYouFields);
+    goToReadbackOrRoles();
+  }, [aboutYouFields, goToReadbackOrRoles]);
+
   const onRolesContinue = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(3);
+    goTo(5);
   }, [selectedTitles, goTo]);
 
   const onRolesSkip = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(3);
+    goTo(5);
   }, [selectedTitles, goTo]);
 
   const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
@@ -268,14 +361,9 @@ export default function OnboardingPage() {
     setSelectedCompanies((prev) => prev.filter((c) => c.catalogSlug !== catalogSlug));
   }, []);
 
-  const onCompaniesContinue = useCallback(() => goTo(4), [goTo]);
-  const onCompaniesSkip = useCallback(() => goTo(4), [goTo]);
-
   const onTogglePriority = useCallback((p: string) => {
-    setPriorities((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
+    setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }, []);
-
-  const goToPreferences = useCallback(() => goTo(5), [goTo]);
 
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
@@ -383,7 +471,12 @@ export default function OnboardingPage() {
     router,
   ]);
 
-  const finishOnboarding = useCallback(() => {
+  const onCompaniesContinue = useCallback(() => {
+    saveAboutYou(aboutYouFields).catch(() => {});
+    void runFinishSetup();
+  }, [aboutYouFields, runFinishSetup]);
+
+  const onCompaniesSkip = useCallback(() => {
     saveAboutYou(aboutYouFields).catch(() => {});
     void runFinishSetup();
   }, [aboutYouFields, runFinishSetup]);
@@ -391,7 +484,10 @@ export default function OnboardingPage() {
   const demoAdvance = () => {
     if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
-      window.setTimeout(() => setResumeUploaded(true), 1300);
+      window.setTimeout(() => {
+        setResumeUploaded(true);
+        startBackgroundReadback();
+      }, 1300);
     } else if (screen === 1) {
       goTo(2);
     } else if (screen === 2) {
@@ -408,13 +504,16 @@ export default function OnboardingPage() {
   if (!authChecked) {
     return (
       <div className="onboarding-loading" role="status" aria-live="polite">
+        <span style={{ fontSize: 40, lineHeight: 1 }} aria-hidden="true">🥬</span>
         <div className="onboarding-loading__spinner" aria-hidden="true" />
-        <span>Loading…</span>
+        <span>One sec…</span>
       </div>
     );
   }
 
   const headerScreen = screen === 6 ? 5 : screen;
+  const showProcessingBanner =
+    screen >= 1 && screen <= 2 && (resumeUploading || readbackStatus === "loading");
 
   return (
     <div style={{ background: "#F7F5F2" }}>
@@ -428,10 +527,17 @@ export default function OnboardingPage() {
       <div className="onboarding-shell">
         <ScoutHeader screen={headerScreen} />
         <div className="onboarding-content">
+          {showProcessingBanner && (
+            <OnboardingProcessingBanner
+              resumeUploading={resumeUploading}
+              readbackLoading={readbackStatus === "loading"}
+            />
+          )}
           {screen === 0 && (
             <ScreenWelcome
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
+              resumeUploading={resumeUploading}
               resumeError={resumeError}
               isDragging={isDragging}
               liInput={liInput}
@@ -448,43 +554,16 @@ export default function OnboardingPage() {
             />
           )}
           {screen === 1 && (
-            <ScreenReadBack
-              onConfirm={onReadBackConfirm}
-              onRefine={onReadBackRefine}
-              onSkip={onReadBackSkip}
-            />
-          )}
-          {screen === 2 && (
-            <ScreenTargetRoles
-              selectedTitles={selectedTitles}
-              suggestedTitles={readbackRoleSuggestions}
-              onAddTitle={onAddTargetRole}
-              onRemoveTitle={onRemoveTargetRole}
-              onContinue={onRolesContinue}
-              onSkip={onRolesSkip}
-            />
-          )}
-          {screen === 3 && (
-            <ScreenTargetCompanies
-              selectedCompanies={selectedCompanies}
-              targetRoles={selectedTitles}
-              onAddCompany={onAddTargetCompany}
-              onRemoveCompany={onRemoveTargetCompany}
-              onContinue={onCompaniesContinue}
-              onSkip={onCompaniesSkip}
-            />
-          )}
-          {screen === 4 && (
             <ScreenAboutYouSearch
               careerMotivation={careerMotivation}
               jobTimeline={jobTimeline}
               onCareerMotivationChange={setCareerMotivation}
               onJobTimelineChange={setJobTimeline}
-              onContinue={goToPreferences}
-              onSkip={finishOnboarding}
+              onContinue={onAboutSearchContinue}
+              onSkip={onAboutSearchSkip}
             />
           )}
-          {screen === 5 && (
+          {screen === 2 && (
             <ScreenAboutYouPreferences
               jobTimeline={jobTimeline}
               currentSalary={currentSalary}
@@ -495,8 +574,37 @@ export default function OnboardingPage() {
               onTargetSalaryChange={setTargetSalary}
               onTogglePriority={onTogglePriority}
               onAttributionChange={setAttribution}
-              onContinue={finishOnboarding}
-              onSkip={finishOnboarding}
+              onContinue={onAboutPrefsContinue}
+              onSkip={onAboutPrefsSkip}
+            />
+          )}
+          {screen === 3 && (
+            <ScreenReadBack
+              data={readbackData}
+              status={readbackStatus}
+              onConfirm={onReadBackConfirm}
+              onRefine={onReadBackRefine}
+              onSkip={onReadBackSkip}
+            />
+          )}
+          {screen === 4 && (
+            <ScreenTargetRoles
+              selectedTitles={selectedTitles}
+              suggestedTitles={readbackRoleSuggestions}
+              onAddTitle={onAddTargetRole}
+              onRemoveTitle={onRemoveTargetRole}
+              onContinue={onRolesContinue}
+              onSkip={onRolesSkip}
+            />
+          )}
+          {screen === 5 && (
+            <ScreenTargetCompanies
+              selectedCompanies={selectedCompanies}
+              targetRoles={selectedTitles}
+              onAddCompany={onAddTargetCompany}
+              onRemoveCompany={onRemoveTargetCompany}
+              onContinue={onCompaniesContinue}
+              onSkip={onCompaniesSkip}
             />
           )}
           {screen === 6 && <ScreenSetup steps={setupSteps} />}
