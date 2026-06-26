@@ -916,7 +916,7 @@ export function PipelineRecommendedSection({
       })
       .catch(() => setDefaultsLoaded(true));
 
-    void fetch("/api/profile")
+    void fetch(withClientScope("/api/profile"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { parsedData?: { location?: string | null }; priorities?: string[] } | null) => {
         if (!data) return;
@@ -928,10 +928,10 @@ export function PipelineRecommendedSection({
         });
       })
       .catch(() => {});
-  }, [actingUserId]);
+  }, [actingUserId, withClientScope]);
 
   useEffect(() => {
-    fetch("/api/companies")
+    fetch(withClientScope("/api/companies"))
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Array<{ name?: string }>) => {
         const names = [...new Set((Array.isArray(data) ? data : []).map((c) => c.name?.trim()).filter(Boolean) as string[])].sort();
@@ -940,7 +940,7 @@ export function PipelineRecommendedSection({
       .catch(() => {
         /* optional suggestions */
       });
-  }, [actingUserId]);
+  }, [actingUserId, withClientScope]);
 
   useEffect(() => {
     mountedRef.current = false;
@@ -987,7 +987,7 @@ export function PipelineRecommendedSection({
       JSON.stringify([...priorities].sort()) === JSON.stringify([...profileBaseline.priorities].sort());
     if (unchanged) return;
 
-    const profileRes = await fetch("/api/profile");
+    const profileRes = await fetch(withClientScope("/api/profile"));
     const profile = (await profileRes.json().catch(() => ({}))) as {
       parsedData?: Record<string, unknown> | null;
     };
@@ -997,13 +997,13 @@ export function PipelineRecommendedSection({
       ...(profile.parsedData && typeof profile.parsedData === "object" ? profile.parsedData : {}),
       location: location.trim() || null,
     };
-    await fetch("/api/profile", {
+    await fetch(withClientScope("/api/profile"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ parsedData, priorities }),
     });
     setProfileBaseline({ location: location.trim(), priorities: [...priorities] });
-  }, [profileBaseline]);
+  }, [profileBaseline, withClientScope]);
 
   const toggleSet = (set: Set<string>, value: string) => {
     const next = new Set(set);

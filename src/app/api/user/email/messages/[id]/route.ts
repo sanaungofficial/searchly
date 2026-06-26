@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import {
@@ -19,7 +19,8 @@ async function loadGrant(userId: string) {
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { dbUser } = await getActingUser();
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {
@@ -64,7 +65,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { dbUser } = await getActingUser();
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {

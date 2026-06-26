@@ -1,4 +1,4 @@
-import { getActingUser } from "@/lib/acting-user";
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 import { enrichNetworkJobsWithMatch } from "@/lib/network-job-match";
 import {
   canViewNetworkJobInternalFromSession,
@@ -37,11 +37,13 @@ function buildNetworkMatchProfileText(input: {
 
 export async function GET(request: Request) {
   const { jobs, source } = await loadNetworkJobListings();
-  const { dbUser, realDbUser, isImpersonating } = await getActingUser(request);
+  const resolved = await resolveProfileApiSubject(request);
+  if ("error" in resolved) return resolved.error;
+  const { dbUser, acting } = resolved;
   const internalView = canViewNetworkJobInternalFromSession(
-    realDbUser,
-    realDbUser?.role === "ADMIN",
-    isImpersonating,
+    acting.realDbUser,
+    acting.realDbUser?.role === "ADMIN",
+    acting.isImpersonating,
   );
   const visibleJobs = internalView ? jobs : jobs.map((job) => sanitizeNetworkJobListing(job, false));
 

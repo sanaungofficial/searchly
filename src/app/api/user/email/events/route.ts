@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { fetchUpcomingEvents, formatMessageDate } from "@/lib/nylas-inbox";
 import { isNylasConfigured } from "@/lib/nylas";
 import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
-  const { dbUser } = await getActingUser();
+export async function GET(request: Request) {
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {
