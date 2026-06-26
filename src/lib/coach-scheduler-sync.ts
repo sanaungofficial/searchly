@@ -3,6 +3,7 @@ import { coachProfileSlug } from "@/lib/coach-slug";
 import { schedulerAvailabilityFromProfile } from "@/lib/coach-scheduler-settings";
 import {
   ensureCoachSchedulerConfig,
+  getNylasGrantEmail,
   isNylasConfigured,
   schedulerSlugForCoach,
   updateCoachSchedulerConfig,
@@ -15,6 +16,7 @@ const schedulerProfileSelect = {
   email: true,
   slug: true,
   nylasGrantId: true,
+  nylasGrantEmail: true,
   nylasSchedulerConfigId: true,
   nylasSchedulerSlug: true,
   schedulerDurationMinutes: true,
@@ -36,6 +38,7 @@ type CoachSchedulerProfile = {
   email: string | null;
   slug: string | null;
   nylasGrantId: string | null;
+  nylasGrantEmail?: string | null;
   nylasSchedulerConfigId: string | null;
   nylasSchedulerSlug: string | null;
   schedulerTimezone?: string | null;
@@ -51,15 +54,36 @@ type CoachSchedulerProfile = {
   schedulerBlackoutDates?: unknown;
 };
 
-function schedulerParamsFromSettings(
+async function resolveParticipantEmail(profile: CoachSchedulerProfile): Promise<string> {
+  if (profile.nylasGrantEmail?.trim()) return profile.nylasGrantEmail.trim();
+  if (!profile.nylasGrantId) return profile.email?.trim() ?? "";
+
+  const fromGrant = await getNylasGrantEmail(profile.nylasGrantId);
+  if (fromGrant) {
+    await prisma.coachProfile.update({
+      where: { id: profile.id },
+      data: { nylasGrantEmail: fromGrant },
+    });
+    return fromGrant;
+  }
+
+  return profile.email?.trim() ?? "";
+}
+
+async function schedulerParamsFromSettings(
   profile: CoachSchedulerProfile,
   schedulerSlug: string,
   settings: ReturnType<typeof schedulerAvailabilityFromProfile>,
-): CoachSchedulerParams {
+): Promise<CoachSchedulerParams> {
+  const coachEmail = await resolveParticipantEmail(profile);
+  if (!coachEmail) {
+    throw new Error("Calendar grant email missing — reconnect Google or Outlook for this coach.");
+  }
+
   return {
     grantId: profile.nylasGrantId!,
     coachName: profile.displayName,
-    coachEmail: profile.email ?? "",
+    coachEmail,
     slug: schedulerSlug,
     durationMinutes: settings.durationMinutes,
     timezone: settings.timezone,
@@ -87,10 +111,11 @@ export async function syncCoachSchedulerFromProfile(profileId: string) {
   const slug = profile.slug ?? coachProfileSlug(profile.displayName, profile.id);
   const schedulerSlug = profile.nylasSchedulerSlug ?? schedulerSlugForCoach(slug, profile.id);
   const settings = schedulerAvailabilityFromProfile(profile);
+  const params = await schedulerParamsFromSettings(profile, schedulerSlug, settings);
 
   const result = await ensureCoachSchedulerConfig({
     configId: profile.nylasSchedulerConfigId,
-    ...schedulerParamsFromSettings(profile, schedulerSlug, settings),
+    ...params,
   });
 
   if (result.created || result.configId !== profile.nylasSchedulerConfigId) {
@@ -113,12 +138,16 @@ export async function prepareCoachSchedulerForAvailability(
 ) {
   if (!isNylasConfigured() || !profile.nylasGrantId || !profile.nylasSchedulerConfigId) return;
 
+  const storedDuration = profile.schedulerDurationMinutes ?? 30;
+  if (durationMinutes === storedDuration) return;
+
   const slug = profile.slug ?? coachProfileSlug(profile.displayName, profile.id);
   const schedulerSlug = profile.nylasSchedulerSlug ?? schedulerSlugForCoach(slug, profile.id);
   const settings = schedulerAvailabilityFromProfile(profile, { durationMinutes });
+  const params = await schedulerParamsFromSettings(profile, schedulerSlug, settings);
 
   await updateCoachSchedulerConfig({
-    ...schedulerParamsFromSettings(profile, schedulerSlug, settings),
+    ...params,
     configId: profile.nylasSchedulerConfigId,
   });
 }

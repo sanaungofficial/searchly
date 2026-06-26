@@ -256,6 +256,7 @@ model CoachProfile {
   slug                  String?  @unique
   calLink               String?
   nylasGrantId          String?  @unique
+  nylasGrantEmail       String?
   nylasSchedulerConfigId String? @unique
   nylasSchedulerSlug    String?
   schedulerDurationMinutes Int   @default(30)
