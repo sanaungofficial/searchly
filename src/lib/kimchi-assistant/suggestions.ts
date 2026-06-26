@@ -41,8 +41,8 @@ export function buildAssistantSuggestions(
   if (jobs.length === 0) {
     out.push({
       id: "add-jobs",
-      title: "Add jobs to your pipeline",
-      detail: "Save a few targets so Kimchi can prioritize follow-ups and fit checks.",
+      title: "Save jobs you're tracking",
+      detail: "Add roles you're interested in so Kimchi can suggest follow-ups and prep.",
       route: "/opportunities/pipeline",
       priority: 85,
     });
@@ -97,8 +97,8 @@ export function buildAssistantSuggestions(
   if (!profile?.readbackData) {
     out.push({
       id: "finish-readback",
-      title: "Finish your profile readback",
-      detail: "A clear readback helps Kimchi sound like they actually know your search.",
+      title: "Finish your profile summary",
+      detail: "A clear summary helps Kimchi give advice that sounds like they know you.",
       route: "/profile",
       priority: 60,
     });

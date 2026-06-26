@@ -2,6 +2,10 @@ import type { Profile, User } from "@prisma/client";
 import { hasUnlimitedAiAccess } from "@/lib/ai-guard";
 import { buildStrategyPromptContext } from "@/lib/career-strategy-context";
 import { buildAssistantSuggestions } from "@/lib/kimchi-assistant/suggestions";
+import {
+  inboxSuggestionsFromSnapshot,
+  loadInboxSnapshot,
+} from "@/lib/kimchi-assistant/inbox-suggestions";
 import { jobStageLabel } from "@/lib/kimchi-assistant/stages";
 import type {
   AssistantContextPayload,
@@ -65,6 +69,8 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
 
   const scoutCredits = await getFeatureCreditStatus(user.id, "SCOUT", unlimited);
 
+  const inbox = await loadInboxSnapshot(user.id);
+
   const strategy = profile
     ? buildStrategyPromptContext({
         user,
@@ -100,7 +106,11 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
       ? "Credits: check plan."
       : `Scout credits remaining today: ${scoutCredits.remaining} of ${scoutCredits.dailyLimit ?? "?"}.`;
 
-  const suggestions = buildAssistantSuggestions(jobs, profile, pageHint);
+  const pipelineSuggestions = buildAssistantSuggestions(jobs, profile, pageHint);
+  const inboxSuggestions = inboxSuggestionsFromSnapshot(inbox);
+  const suggestions = [...inboxSuggestions, ...pipelineSuggestions]
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 8);
 
   const summaryParts = [
     `${jobs.length} job${jobs.length === 1 ? "" : "s"} in pipeline`,
@@ -116,6 +126,7 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
     pageHint: formatPageHint(pageHint),
     creditsHint,
     suggestions,
+    inbox,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -135,17 +146,27 @@ export function formatAssistantContextForPrompt(ctx: AssistantContextPayload): s
           .join("\n")}`
       : "";
 
+  const inboxBlock =
+    ctx.inbox.pendingCount > 0
+      ? `\nInbox (${ctx.inbox.pendingCount} to review): ${ctx.inbox.activities
+          .slice(0, 5)
+          .map((a) => a.title || a.snippet || a.companyGuess)
+          .filter(Boolean)
+          .join("; ")}`
+      : "";
+
   return `${roleLine}
 
 Search context:
 ${ctx.strategySnippet}
 
-Pipeline:
+Applications:
 ${ctx.pipelineSnippet}
+${inboxBlock}
 
 ${ctx.pageHint}
 ${ctx.creditsHint}
 ${suggestionBlock}
 
-You can call open_ui_route to send them to a screen when the UI is the best next step. You can call suggest_next_actions to refresh suggestions. v1 is read-only — you cannot change their data yet; say what you'd update and they'll do it in the app.`;
+You can call open_ui_route to send them to a screen when helpful. You can call suggest_next_actions to refresh suggestions. v1 is read-only for data changes — describe what you'd update and offer next steps.`;
 }

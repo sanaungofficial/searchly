@@ -1,6 +1,7 @@
 import type { AgentSettingsObject } from "@deepgram/agents";
-import { buildWorkspaceVoicePrompt } from "@/lib/kimchi-assistant/prompts";
+import { buildPresetVoicePrompt } from "@/lib/kimchi-assistant/prompts";
 import type { AssistantContextPayload } from "@/lib/kimchi-assistant/types";
+import { isVoicePresetId, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import { WORKSPACE_READ_TOOLS } from "@/lib/kimchi-assistant/tools/registry";
 
 /**
@@ -117,9 +118,10 @@ Never ask for passwords, SSN, or login credentials.`;
 
 export function buildWorkspaceVoiceAgentSettings(
   assistantContext?: AssistantContextPayload | null,
+  presetId: VoicePresetId = "general",
 ): AgentSettingsObject {
   const prompt = assistantContext
-    ? buildWorkspaceVoicePrompt(assistantContext)
+    ? buildPresetVoicePrompt(presetId, assistantContext)
     : WORKSPACE_VOICE_FALLBACK_PROMPT;
 
   return {
@@ -132,4 +134,8 @@ export function buildWorkspaceVoiceAgentSettings(
     },
     speak: VOICE_AGENT_SPEAK,
   } as AgentSettingsObject;
+}
+
+export function resolveVoicePresetId(raw: string | null): VoicePresetId {
+  return raw && isVoicePresetId(raw) ? raw : "general";
 }

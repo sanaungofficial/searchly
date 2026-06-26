@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { ChatWidget } from "@/components/scout/chat-widget";
+import { KimchiChatPanel } from "@/components/scout/kimchi-chat-panel";
 import { VoiceOrb } from "@/components/voice/voice-orb";
-import { useVoiceAgentSession } from "@/hooks/use-voice-agent-session";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 
@@ -15,11 +14,10 @@ function launcherBottom(isMobile: boolean): string {
 
 export function KimchiAssistant() {
   const isMobile = useIsMobile();
-  const router = useRouter();
   const pathname = usePathname();
-  const { chatOpen, setChatOpen, setChatView, chatPulse, kanbanCards, drawerCardId, chatView } =
-    useWorkspace();
+  const { chatOpen, setChatOpen, chatPulse, kanbanCards, drawerCardId, chatView } = useWorkspace();
   const [panelOpen, setPanelOpen] = useState(false);
+  const [voiceConfigured, setVoiceConfigured] = useState<boolean | null>(null);
 
   const pageHint = useMemo((): AssistantPageHint => {
     const drawerJob =
@@ -34,64 +32,34 @@ export function KimchiAssistant() {
     };
   }, [pathname, drawerCardId, kanbanCards, chatView]);
 
-  const {
-    available,
-    agentSettings,
-    orbState,
-    error,
-    transcriptLines,
-    audioLevel,
-    sessionActive,
-    toggleSession,
-    resetSession,
-  } = useVoiceAgentSession({
-    context: "workspace",
-    pageHint,
-    onNavigate: (route) => {
-      router.push(route);
-    },
-  });
+  useEffect(() => {
+    void fetch("/api/voice/agent/config?context=workspace", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setVoiceConfigured(!!d?.agentAvailable))
+      .catch(() => setVoiceConfigured(false));
+  }, []);
 
   useEffect(() => {
-    if (chatOpen) {
-      setPanelOpen(true);
-    }
+    if (chatOpen) setPanelOpen(true);
   }, [chatOpen]);
 
-  if (available === false) {
-    return <ChatWidget hideLauncher={false} voiceUnavailable />;
-  }
-
-  const right = isMobile ? "16px" : "24px";
   const bottom = launcherBottom(isMobile);
+  const right = isMobile ? "16px" : "24px";
 
   const closePanel = () => {
     setPanelOpen(false);
     setChatOpen(false);
-    if (sessionActive) resetSession();
   };
 
   const openPanel = () => {
     setPanelOpen(true);
     setChatOpen(true);
-    setChatView((view) => (view === "chat" || view === "coach" || view === "coach-prep" ? view : "tools"));
   };
 
-  const voiceProps = {
-    orbState: available === null ? ("connecting" as const) : orbState,
-    audioLevel,
-    onOrbClick: toggleSession,
-    disabled: available !== true || !agentSettings,
-    transcriptLines,
-    error,
-    onTalkAgain: resetSession,
-  };
-
-  return (
-    <>
-      <KimchiAssistantStyles />
-
-      {!panelOpen && (
+  if (!panelOpen) {
+    return (
+      <>
+        <KimchiAssistantStyles />
         <div
           className="kimchi-assistant-launcher"
           style={{
@@ -100,34 +68,28 @@ export function KimchiAssistant() {
             animation: chatPulse ? "kimchiOrbPulse 1.2s ease-in-out 2" : undefined,
           }}
         >
-          <VoiceOrb
-            variant="float"
-            state={available === null ? "connecting" : "idle"}
-            onClick={openPanel}
-            disabled={available !== true}
-            bounce
-          />
+          <VoiceOrb variant="float" state="idle" onClick={openPanel} bounce />
         </div>
-      )}
+      </>
+    );
+  }
 
-      {panelOpen && (
-        <>
-          <button type="button" className="kimchi-assistant-backdrop" aria-label="Close Kimchi" onClick={closePanel} />
-          <div className="kimchi-assistant-panel" style={{ bottom, right }}>
-            <div className="kimchi-assistant-panel__topbar">
-              <div className="kimchi-assistant-panel__brand">
-                <span className="kimchi-assistant-panel__star">✦</span>
-                <span className="kimchi-assistant-panel__name">Kimchi</span>
-              </div>
-              <button type="button" className="kimchi-assistant-panel__close" onClick={closePanel} aria-label="Close">
-                ×
-              </button>
-            </div>
-
-            <ChatWidget embedded unified hideLauncher voice={voiceProps} pageHint={pageHint} />
+  return (
+    <>
+      <KimchiAssistantStyles />
+      <button type="button" className="kimchi-assistant-backdrop" aria-label="Close Kimchi" onClick={closePanel} />
+      <div className="kimchi-assistant-panel" style={{ bottom, right }}>
+        <div className="kimchi-assistant-panel__topbar">
+          <div className="kimchi-assistant-panel__brand">
+            <span className="kimchi-assistant-panel__star">✦</span>
+            <span className="kimchi-assistant-panel__name">Kimchi</span>
           </div>
-        </>
-      )}
+          <button type="button" className="kimchi-assistant-panel__close" onClick={closePanel} aria-label="Close">
+            ×
+          </button>
+        </div>
+        <KimchiChatPanel pageHint={pageHint} voiceUnavailable={voiceConfigured === false} />
+      </div>
     </>
   );
 }
@@ -141,12 +103,10 @@ function KimchiAssistantStyles() {
         pointer-events: auto;
         filter: drop-shadow(0 8px 24px rgba(26, 58, 47, 0.28));
       }
-
       @keyframes kimchiOrbPulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.06); }
       }
-
       .kimchi-assistant-backdrop {
         position: fixed;
         inset: 0;
@@ -156,12 +116,11 @@ function KimchiAssistantStyles() {
         background: rgba(15, 24, 20, 0.18);
         cursor: pointer;
       }
-
       .kimchi-assistant-panel {
         position: fixed;
         z-index: 95;
-        width: min(720px, calc(100vw - 32px));
-        height: min(680px, calc(100vh - 120px));
+        width: min(420px, calc(100vw - 32px));
+        height: min(640px, calc(100vh - 120px));
         overflow: hidden;
         background: #FFFFFF;
         border: 1.5px solid rgba(26, 58, 47, 0.12);
@@ -169,7 +128,6 @@ function KimchiAssistantStyles() {
         display: flex;
         flex-direction: column;
       }
-
       .kimchi-assistant-panel__topbar {
         display: flex;
         align-items: center;
@@ -179,44 +137,26 @@ function KimchiAssistantStyles() {
         background: #1A3A2F;
         flex-shrink: 0;
       }
-
       .kimchi-assistant-panel__brand {
         display: flex;
         align-items: center;
         gap: 8px;
-        min-width: 0;
       }
-
-      .kimchi-assistant-panel__star {
-        color: #E8D5A3;
-        font-size: 14px;
-        line-height: 1;
-      }
-
+      .kimchi-assistant-panel__star { color: #E8D5A3; font-size: 14px; }
       .kimchi-assistant-panel__name {
         font-family: var(--font-ui);
         font-size: 13px;
         font-weight: 600;
         color: #E8D5A3;
       }
-
       .kimchi-assistant-panel__close {
-        flex-shrink: 0;
         width: 30px;
         height: 30px;
         border: 1px solid rgba(232, 213, 163, 0.18);
         background: transparent;
         color: rgba(232, 213, 163, 0.72);
         font-size: 20px;
-        line-height: 1;
         cursor: pointer;
-      }
-
-      .kimchi-assistant-panel > div:last-child {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
       }
     `}</style>
   );

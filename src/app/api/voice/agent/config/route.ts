@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildOnboardingVoiceAgentSettings,
   buildWorkspaceVoiceAgentSettings,
+  resolveVoicePresetId,
 } from "@/lib/voice-agent-config";
 import { NextResponse } from "next/server";
 
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const context = searchParams.get("context") === "onboarding" ? "onboarding" : "workspace";
   const pageHint = parsePageHint(searchParams);
+  const voicePreset = resolveVoicePresetId(searchParams.get("preset"));
 
   let assistantContext = null;
   if (context === "workspace" && deepgramConfigured()) {
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
       agent: deepgramConfigured()
         ? context === "onboarding"
           ? buildOnboardingVoiceAgentSettings()
-          : buildWorkspaceVoiceAgentSettings(assistantContext)
+          : buildWorkspaceVoiceAgentSettings(assistantContext, voicePreset)
         : null,
       assistantSummary: assistantContext?.summary ?? null,
     },

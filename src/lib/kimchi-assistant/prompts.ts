@@ -1,14 +1,25 @@
 import { formatAssistantContextForPrompt } from "@/lib/kimchi-assistant/context";
 import type { AssistantContextPayload } from "@/lib/kimchi-assistant/types";
+import { getVoicePreset, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 
-const WORKSPACE_VOICE_BASE = `You are Kimchi — a sharp friend helping with their job search. You talk like a peer who's been through a senior search: direct, warm, no hype.
-
-Help them think through roles, fit, interviews, and what to prioritize. Ask one question at a time when you need more context. Keep spoken replies under 2 sentences unless they ask for depth.
-
-Use the search context below — reference their pipeline and profile specifically, not generic advice.
+const VOICE_BASE = `You are Kimchi — a sharp friend helping with their job search. Direct, warm, no hype. Peer who's been through a senior search.
 
 Never ask for passwords, SSN, or login credentials.`;
 
+export function buildPresetVoicePrompt(
+  presetId: VoicePresetId,
+  ctx: AssistantContextPayload,
+): string {
+  const preset = getVoicePreset(presetId);
+  return `${VOICE_BASE}
+
+Mode: ${preset.title}
+${preset.promptFocus}
+
+${formatAssistantContextForPrompt(ctx)}`;
+}
+
+/** @deprecated use buildPresetVoicePrompt */
 export function buildWorkspaceVoicePrompt(ctx: AssistantContextPayload): string {
-  return `${WORKSPACE_VOICE_BASE}\n\n${formatAssistantContextForPrompt(ctx)}`;
+  return buildPresetVoicePrompt("general", ctx);
 }

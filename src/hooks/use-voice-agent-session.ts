@@ -27,6 +27,7 @@ export type VoiceAgentSessionResult = {
 type UseVoiceAgentSessionOptions = {
   context?: VoiceAgentContext;
   disabled?: boolean;
+  voicePresetId?: string;
   pageHint?: AssistantPageHint;
   onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
   onComplete?: (result: VoiceAgentSessionResult) => void;
@@ -81,6 +82,7 @@ async function fetchVoiceAgentToken(): Promise<string> {
 export function useVoiceAgentSession({
   context = "workspace",
   disabled,
+  voicePresetId = "general",
   pageHint,
   onFieldUpdate,
   onComplete,
@@ -113,16 +115,17 @@ export function useVoiceAgentSession({
   }, []);
 
   useEffect(() => {
-    void fetch(`/api/voice/agent/config?context=${context}${pageHintQuery(pageHint)}`, {
-      cache: "no-store",
-    })
+    void fetch(
+      `/api/voice/agent/config?context=${context}&preset=${encodeURIComponent(voicePresetId)}${pageHintQuery(pageHint)}`,
+      { cache: "no-store" },
+    )
       .then((res) => res.json())
       .then((data) => {
         setAvailable(!!data?.agentAvailable);
         setAgentSettings(data?.agent ?? null);
       })
       .catch(() => setAvailable(false));
-  }, [context, pageHint?.pathname, pageHint?.jobDbId, pageHint?.jobRole, pageHint?.chatView]);
+  }, [context, voicePresetId, pageHint?.pathname, pageHint?.jobDbId, pageHint?.jobRole, pageHint?.chatView]);
 
   const stopVisualizer = useCallback(() => {
     if (rafRef.current) {
