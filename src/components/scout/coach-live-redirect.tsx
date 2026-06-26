@@ -12,7 +12,7 @@ export function CoachLiveRedirect({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isStaff) {
-      router.replace("/dashboard/ops?section=live");
+      router.replace("/dashboard/inbox?section=live");
     }
   }, [isStaff, router]);
 

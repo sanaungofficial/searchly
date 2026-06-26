@@ -43,7 +43,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           Expert workspace
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-          Your client requests, offerings, and ops — switch back to job seeker view anytime from the header.
+          Your session requests, client roster, offerings, and reviews — switch back to job seeker view anytime from the header.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {EXPERT_WORKSPACE_NAV.map((item) => (
@@ -84,7 +84,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
       <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.ink, margin: 0 }}>Upcoming sessions</p>
-          <Link href="/dashboard/ops?section=bookings" style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>
+          <Link href="/dashboard/inbox" style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>
             All bookings →
           </Link>
         </div>
@@ -109,7 +109,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           </div>
         )}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-          <Link href="/dashboard/ops?section=clients" style={{ textDecoration: "none" }}>
+          <Link href="/dashboard/clients" style={{ textDecoration: "none" }}>
             <ScoutPrimaryBtn type="button">View clients</ScoutPrimaryBtn>
           </Link>
           <Link href="/dashboard/inbox" style={{ textDecoration: "none" }}>

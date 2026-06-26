@@ -1,4 +1,4 @@
-/** Coaches and admins share the Dashboard staff portal (expert workspace). */
+/** Coaches and admins share the expert workspace (Inbox, Clients, Offerings, Reviews). */
 export function isStaffPortalRole(role: string | null | undefined): boolean {
   return role === "COACH" || role === "ADMIN";
 }
@@ -6,9 +6,9 @@ export function isStaffPortalRole(role: string | null | undefined): boolean {
 /** Leland-style expert workspace — left sidebar + top Expert dashboard dropdown. */
 export const EXPERT_WORKSPACE_NAV = [
   { id: "inbox", label: "Inbox", path: "/dashboard/inbox" },
+  { id: "clients", label: "Clients", path: "/dashboard/clients" },
   { id: "offerings", label: "Offerings", path: "/dashboard/offerings" },
   { id: "reviews", label: "Reviews", path: "/dashboard/reviews" },
-  { id: "ops", label: "Ops Tools", path: "/dashboard/ops" },
 ] as const;
 
 export type ExpertWorkspaceNavId = (typeof EXPERT_WORKSPACE_NAV)[number]["id"];
