@@ -60,6 +60,8 @@ import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { CareerStrategyPanel } from "./career-strategy-panel";
+import { UserAssetsList } from "./user-assets-list";
+import { assetTypeLabel } from "@/lib/asset-types";
 import { CareerPreferencesPanel, type CareerPrefPatch } from "./career-preferences-panel";
 import { JobSearchInboxPanel } from "./job-search-inbox-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
@@ -2031,7 +2033,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   );
 }
 
-function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading, onOpenPricing }: {
+function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading, onOpenPricing, onUploadDocument, documentUploading }: {
   assets: UserAssetRow[];
   uploading: boolean;
   onUpload: (file: File) => void;
@@ -2041,13 +2043,21 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
   suggestions: AISuggestion[];
   suggestionsLoading: boolean;
   onOpenPricing: () => void;
+  onUploadDocument?: (file: File, type: "JOB_SEARCH_STRATEGY" | "COVER_LETTER" | "OTHER") => void;
+  documentUploading?: boolean;
 }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [docFilter, setDocFilter] = useState<"all" | UserAssetRow["type"]>("all");
+  const strategyInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const MAX_SLOTS = 5;
 
   const resumes = assets.filter((a) => a.type === "RESUME");
+  const otherDocs = assets.filter((a) => a.type !== "RESUME");
+  const filteredOther =
+    docFilter === "all" ? otherDocs : otherDocs.filter((a) => a.type === docFilter);
 
   const renderResumeMenu = (r: UserAssetRow) => (
     <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
@@ -2097,10 +2107,10 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
     <div style={{ paddingBottom: 40 }}>
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", marginBottom: 20, gap: isMobile ? 14 : 0 }}>
         <div>
-          <ScoutLabel>Resumes</ScoutLabel>
-          <ScoutDisplayTitle size={22} style={{ marginTop: 8, marginBottom: 6 }}>Your files</ScoutDisplayTitle>
+          <ScoutLabel>Documents</ScoutLabel>
+          <ScoutDisplayTitle size={22} style={{ marginTop: 8, marginBottom: 6 }}>Your file library</ScoutDisplayTitle>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-            {resumes.length} of {MAX_SLOTS} slots used
+            Resumes, strategy docs, and cover letters — tagged by type in one place.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
@@ -2138,6 +2148,9 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
       </div>
 
       {/* Resume list */}
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 12px" }}>
+        {resumes.length} of {MAX_SLOTS} resume slots used
+      </p>
       {isMobile ? (
         <ScoutBox padding={0} style={{ overflow: "hidden" }}>
           {resumes.length === 0 ? (
@@ -2304,6 +2317,80 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
       </ScoutBox>
       )}
 
+      {(otherDocs.length > 0 || onUploadDocument) && (
+        <ScoutBox padding={isMobile ? 16 : 22} style={{ marginTop: 24 }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+            <div>
+              <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
+                Strategy & other documents
+              </p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                {otherDocs.length} document{otherDocs.length === 1 ? "" : "s"} · resumes above have their own slots ({resumes.length}/{MAX_SLOTS})
+              </p>
+            </div>
+            {onUploadDocument && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <input ref={strategyInputRef} type="file" accept=".pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={(e) => {
+                  const files = e.target.files;
+                  if (files) Array.from(files).forEach((f) => onUploadDocument(f, "JOB_SEARCH_STRATEGY"));
+                  e.target.value = "";
+                }} />
+                <input ref={coverInputRef} type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: "none" }} onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onUploadDocument(f, "COVER_LETTER");
+                  e.target.value = "";
+                }} />
+                <ScoutSecondaryBtn onClick={() => strategyInputRef.current?.click()} disabled={documentUploading}>
+                  + Strategy doc
+                </ScoutSecondaryBtn>
+                <ScoutSecondaryBtn onClick={() => coverInputRef.current?.click()} disabled={documentUploading}>
+                  + Cover letter
+                </ScoutSecondaryBtn>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            {(["all", "JOB_SEARCH_STRATEGY", "COVER_LETTER", "OTHER"] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setDocFilter(key)}
+                style={{
+                  padding: "6px 12px",
+                  border: border.line,
+                  background: docFilter === key ? "rgba(26,58,47,0.08)" : surface.card,
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: docFilter === key ? 600 : 500,
+                  color: docFilter === key ? color.forest : color.muted,
+                  cursor: "pointer",
+                }}
+              >
+                {key === "all" ? "All" : assetTypeLabel(key)}
+              </button>
+            ))}
+          </div>
+
+          <UserAssetsList
+            assets={filteredOther.map((a) => ({
+              id: a.id,
+              type: a.type,
+              name: a.name,
+              url: a.url,
+              createdAt: a.createdAt,
+              isPrimary: a.isPrimary,
+              targetJobTitle: a.targetJobTitle,
+              parseStatus: a.parseStatus,
+            }))}
+            showTypeBadge
+            isMobile={isMobile}
+            emptyMessage="No strategy or cover letter files yet — use the buttons above to add one."
+            onDelete={onDelete}
+          />
+        </ScoutBox>
+      )}
+
       {showUploadModal && (
         <UploadResumeModal
           onClose={() => setShowUploadModal(false)}
@@ -2462,6 +2549,7 @@ export function WorkspaceProfile() {
   const legacyMigratedRef = useRef(false);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [documentUploading, setDocumentUploading] = useState(false);
   const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
   const [assets, setAssets] = useState<UserAssetRow[]>([]);
   const [readback, setReadback] = useState<ReadbackData | null>(null);
@@ -2472,7 +2560,7 @@ export function WorkspaceProfile() {
   const [readbackNudge, setReadbackNudge] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const { openPricing, user, showAdminUi } = useWorkspace();
+  const { openPricing, user, showAdminClientTools } = useWorkspace();
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
   const openResumeEditor = (assetId: string) => {
@@ -2819,6 +2907,23 @@ export function WorkspaceProfile() {
     },
     onCancel: handleAssetDelete,
   });
+
+  const handleDocumentUpload = async (file: File, type: "JOB_SEARCH_STRATEGY" | "COVER_LETTER" | "OTHER") => {
+    setDocumentUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("type", type);
+      const res = await fetch("/api/assets/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      refreshAssets();
+    } catch {
+      // silent — user can retry
+    } finally {
+      setDocumentUploading(false);
+    }
+  };
 
   const handleResumeUpload = async (file: File) => {
     setResumeUploading(true);
@@ -3216,7 +3321,7 @@ export function WorkspaceProfile() {
                 <CareerStrategyPanel
                   profile={profile}
                   isMobile={isMobile}
-                  isAdmin={showAdminUi}
+                  isAdmin={showAdminClientTools}
                   onPatchProfile={async (patch) => {
                     await patchProfile(patch);
                     setProfile((p) => (p ? { ...p, ...patch } as UserProfile : p));
@@ -3246,7 +3351,7 @@ export function WorkspaceProfile() {
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
             )}
             {page === "assets" && profile && (
-              <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
+              <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} onUploadDocument={handleDocumentUpload} documentUploading={documentUploading} />
             )}
 
             {page === "linkedin" && (

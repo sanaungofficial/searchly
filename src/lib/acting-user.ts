@@ -71,7 +71,7 @@ export function quotaUserFor(result: ActingUserResult): User | null {
   return result.realDbUser ?? result.dbUser;
 }
 
-/** Admin-only client tooling (intake notes, admin nav) — hidden while impersonating. */
+/** Admin-only client tooling (intake notes, parse) — allowed while impersonating a client. */
 export function canAccessAdminClientTools(result: ActingUserResult): boolean {
-  return result.realDbUser?.role === "ADMIN" && !result.isImpersonating;
+  return result.realDbUser?.role === "ADMIN";
 }
