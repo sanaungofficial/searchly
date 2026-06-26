@@ -95,9 +95,16 @@ export const PROMPT_META: Record<string, PromptMeta> = {
   KIMCHI_INBOX_TRIAGE: {
     label: "Inbox email triage",
     description:
-      "Classifies job-search emails when the user clicks Scan inbox or when auto-triage on chat open is enabled in AI settings.",
+      "Classifies job-search emails when the user clicks Check email or when auto-triage on chat open is enabled in AI settings.",
     category: "Kimchi Assistant",
     variables: ["pipeline", "from", "subject", "snippet"],
+  },
+  KIMCHI_FOR_YOU: {
+    label: "Kimchi For You (welcome chips)",
+    description:
+      "Generates 3–4 personalized action chips when Kimchi opens — must cite specific facts from the user context (pipeline, strategy, profile).",
+    category: "Kimchi Assistant",
+    variables: ["contextBlock", "profileGaps", "summary"],
   },
   COVER_LETTER_FULL: {
     label: "Cover Letter (Full)",
@@ -496,6 +503,40 @@ Pipeline:
 From: {{from}}
 Subject: {{subject}}
 Snippet: {{snippet}}`,
+
+  KIMCHI_FOR_YOU: `You are Kimchi, a job search command center. The user just opened chat. Using ONLY the context below, suggest 3–4 specific next moves that prove you know them.
+
+Return ONLY valid JSON:
+{
+  "opener": "One warm sentence referencing something specific from their data (company, role, strategy target, or gap). Max 120 chars.",
+  "chips": [
+    {
+      "id": "unique-id",
+      "label": "2–6 words, specific (e.g. Follow up on Stripe PM)",
+      "variant": "action" | "chat",
+      "tone": "violet" | "sky" | "amber" | "mint" | "rose" | "neutral",
+      "actionType": "chat" | "navigate" | "open_strategy" | "open_resume" | "add_skill",
+      "href": "/opportunities/pipeline",
+      "prompt": "only when actionType is chat — reference their actual data",
+      "skill": "only when actionType is add_skill"
+    }
+  ]
+}
+
+Rules:
+- Every chip must reference something in the context (company name, role, missing doc, inbox item).
+- Prefer action chips when they should DO something now.
+- Allowed href: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /inbox, /opportunities/pipeline
+- Do NOT invent employers, coaches, or jobs not listed below.
+- If pipeline is empty, suggest setup actions (strategy, resume, add jobs).
+
+Summary: {{summary}}
+
+Profile gaps:
+{{profileGaps}}
+
+Full context:
+{{contextBlock}}`,
 
   COVER_LETTER_FULL: `${KIMCHI_VOICE}
 

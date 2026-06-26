@@ -218,11 +218,13 @@ export function KimchiStarterSection({
   actions,
   chatChips,
   knowsYou,
+  loading,
   onActivate,
 }: {
   actions: AssistantChip[];
   chatChips: AssistantChip[];
   knowsYou?: KnowsYouPreview | null;
+  loading?: boolean;
   onActivate: (chip: AssistantChip) => void;
 }) {
   const chips = [...actions, ...chatChips].filter(
@@ -233,7 +235,7 @@ export function KimchiStarterSection({
     <div className="kimchi-starter">
       {knowsYou && (
         <div className="kimchi-knows-you">
-          <p className="kimchi-knows-you__label">Kimchi knows you</p>
+          <p className="kimchi-knows-you__label">What Kimchi knows about you</p>
           <p className="kimchi-knows-you__headline">{knowsYou.headline}</p>
           {knowsYou.details.map((detail) => (
             <p key={detail} className="kimchi-knows-you__detail">
@@ -241,6 +243,9 @@ export function KimchiStarterSection({
             </p>
           ))}
         </div>
+      )}
+      {loading && chips.length === 0 && (
+        <p className="kimchi-starter__loading">Personalizing what to focus on…</p>
       )}
       {chips.length > 0 && (
         <KimchiAssistantChipRow chips={chips} layout="inline" emphasis="cta" onActivate={onActivate} />
@@ -292,6 +297,13 @@ function KimchiStarterStyles() {
       }
       .kimchi-knows-you__detail + .kimchi-knows-you__detail {
         margin-top: 2px;
+      }
+      .kimchi-starter__loading {
+        margin: 0 0 8px;
+        font-family: ${sans};
+        font-size: 12px;
+        color: rgba(26, 58, 47, 0.55);
+        font-style: italic;
       }
     `}</style>
   );

@@ -109,9 +109,9 @@ export function KimchiAssistant() {
         createPortal(
           <>
             <div
-              className={`kimchi-drawer-backdrop${isMobile ? "" : " kimchi-drawer-backdrop--companion"}`}
+              className="kimchi-drawer-backdrop"
               style={{ opacity: visible ? 1 : 0 }}
-              onClick={isMobile ? closePanel : undefined}
+              onClick={closePanel}
               aria-hidden
             />
             <div
@@ -183,14 +183,9 @@ function KimchiAssistantStyles() {
         position: fixed;
         inset: 0;
         z-index: 200;
-        background: rgba(15, 24, 20, 0.35);
+        background: rgba(15, 24, 20, 0.2);
         transition: opacity 0.28s ease;
         cursor: pointer;
-      }
-      .kimchi-drawer-backdrop--companion {
-        background: transparent;
-        pointer-events: none;
-        cursor: default;
       }
       .kimchi-drawer {
         position: fixed;
