@@ -1,4 +1,4 @@
-/** Live sessions, Coaching, Network — full access on dev; prod admins only; prod users see coming soon. */
+/** Live sessions, Coaching, Network — sidebar and page access vary by feature. */
 
 export type BetaFeatureId = "live" | "coaching" | "network";
 
@@ -40,29 +40,20 @@ export function isProductionEnv(): boolean {
   return appUrl.includes("app.kimchi.so");
 }
 
-/** Dev/preview: everyone. Production: coaching is live; live/network admins only. */
+/** Page-level access for Live / Coaching / Network routes. */
 export function canAccessBetaFeature(feature: BetaFeatureId, isAdmin: boolean): boolean {
-  if (!isProductionEnv()) return true;
+  if (feature === "network") return isAdmin;
+  if (!isProductionEnv()) return isAdmin;
   if (feature === "coaching") return true;
   return isAdmin;
 }
 
-/** Dev/preview: everyone. Production: admins only (legacy — prefer per-feature). */
-export function canAccessBetaFeatures(isAdmin: boolean): boolean {
-  return !isProductionEnv() || isAdmin;
-}
-
-/** Whether the Community nav group should appear in the sidebar. */
+/** Community nav (Live, Coaching, Network) — admins only in the sidebar. */
 export function shouldShowCommunityNav(isAdmin: boolean): boolean {
-  if (!isProductionEnv()) return true;
-  return (
-    canAccessBetaFeature("live", isAdmin) ||
-    canAccessBetaFeature("coaching", isAdmin) ||
-    canAccessBetaFeature("network", isAdmin)
-  );
+  return isAdmin;
 }
 
-/** Whether Live / Coaching / Network appear in the sidebar (all items — filter per feature in nav). */
+/** @deprecated Use shouldShowCommunityNav */
 export function shouldShowBetaNav(isAdmin: boolean): boolean {
   return shouldShowCommunityNav(isAdmin);
 }
