@@ -92,19 +92,12 @@ export function getJobFreshness(datePosted: string | null | undefined): JobFresh
   const relative = formatRelativeHours(hoursSince);
   const absolute = absolutePostedLabel(date);
 
-  const levelHint =
-    level === "fresh"
-      ? "Apply now — best odds in the first 48 hours"
-      : level === "warm"
-        ? "Still worth applying — past the ideal 48-hour window"
-        : "Stale — response rate drops sharply after 72 hours";
-
   return {
     level,
     hoursSince,
     daysSince,
     cardLabel: `Posted ${relative}`,
-    detailLabel: `${absolute} · ${relative} · ${levelHint}`,
+    detailLabel: `${absolute} · ${relative}`,
     sortRank: sortRankForLevel(level),
     isStale: level === "stale",
   };

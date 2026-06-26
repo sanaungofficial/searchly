@@ -46,8 +46,9 @@ export function MatchScoreBadge({ score, label }: { score: number; label: string
   );
 }
 
-/** Small label under score badges — AI vs instant heuristic. */
+/** Small label under score badges — only shown after AI analysis. */
 export function ScoreSourceHint({ usesAi = false }: { usesAi?: boolean }) {
+  if (!usesAi) return null;
   return (
     <span
       style={{
@@ -59,7 +60,7 @@ export function ScoreSourceHint({ usesAi = false }: { usesAi?: boolean }) {
         textTransform: "uppercase",
       }}
     >
-      {usesAi ? "uses AI" : "free estimate"}
+      uses AI
     </span>
   );
 }
@@ -135,7 +136,7 @@ export function CoachFitAssessment({
           textTransform: "uppercase",
         }}
       >
-        Fit assessment
+        Alignment check
       </p>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px", lineHeight: 1.45 }}>
         {coachFitAssessmentSummary(job.matchScore, job.matchLabel)}
@@ -209,12 +210,11 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
           textTransform: "uppercase",
         }}
       >
-        Why you&apos;re a good fit
+        Alignment check
       </p>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         <span style={{ fontWeight: 600, color: score.accent }}>{job.matchLabel}</span>
-        {" "}· {job.matchScore}/100 from your profile ·{" "}
-        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>free estimate</span>
+        {" "}· {job.matchScore}/100 from your profile
       </p>
       <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
         {reasons.map((reason) => (
@@ -288,12 +288,10 @@ export function CoachMatchSection({ job }: { job: MatchScoreDisplayJob }) {
           textTransform: "uppercase",
         }}
       >
-        <ScoreExplainerLabel variant="coach-match">Fit assessment</ScoreExplainerLabel>
+        <ScoreExplainerLabel variant="coach-match">Alignment check</ScoreExplainerLabel>
       </p>
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         {tierLine}
-        {" · "}
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>free estimate</span>
       </p>
       <ul style={{ margin: 0, paddingLeft: 20, fontFamily: fontSans, fontSize: 14, color: color.ink, lineHeight: 1.55 }}>
         {reasons.map((reason) => (
