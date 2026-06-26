@@ -322,7 +322,7 @@ export async function ensureCoachSchedulerConfig(params: {
 }
 
 export type NylasOAuthStatePayload =
-  | { kind: "coach"; coachProfileId: string; ts: number; returnAppUrl?: string }
+  | { kind: "coach"; coachProfileId: string; ts: number; returnAppUrl?: string; returnPath?: string }
   | { kind: "user"; userId: string; ts: number; returnAppUrl?: string };
 
 export type NylasOAuthState = { coachProfileId: string; ts: number; returnAppUrl?: string };
@@ -356,6 +356,7 @@ export function verifyNylasOAuthState(state: string): NylasOAuthStatePayload | n
       userId?: string;
       ts?: number;
       returnAppUrl?: string;
+      returnPath?: string;
     };
     if (!parsed.ts || Date.now() - parsed.ts > 1000 * 60 * 60) return null;
 
@@ -374,6 +375,7 @@ export function verifyNylasOAuthState(state: string): NylasOAuthStatePayload | n
         coachProfileId: parsed.coachProfileId,
         ts: parsed.ts,
         ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
+        ...(parsed.returnPath ? { returnPath: parsed.returnPath } : {}),
       };
     }
 

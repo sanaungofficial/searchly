@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
     coach: {
       ...coach,
       calendarConnected: Boolean(coach.nylasGrantId),
+      schedulerReady: Boolean(coach.nylasGrantId && coach.nylasSchedulerConfigId),
     },
     stats,
     clients,

@@ -13,6 +13,7 @@ export default function AdminCoachDetailPage({ params }: { params: Promise<{ coa
       <CoachHubPanel
         apiPath={`/api/admin/coach-hub?coachId=${encodeURIComponent(coachId)}`}
         mode="admin"
+        coachId={coachId}
         backHref="/admin/coaches"
         showAdminLinks
       />

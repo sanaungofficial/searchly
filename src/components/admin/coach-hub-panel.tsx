@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { BookingsList } from "@/components/scout/bookings-list";
 import { ScoutBox } from "@/components/scout/scout-box";
@@ -19,6 +19,7 @@ type CoachInfo = {
   headline: string | null;
   status?: string;
   calendarConnected: boolean;
+  schedulerReady?: boolean;
   nylasSchedulerSlug?: string | null;
 };
 
@@ -34,6 +35,7 @@ type HubPayload = {
 type Props = {
   apiPath: string;
   mode: "admin" | "coach";
+  coachId?: string;
   backHref?: string;
   showAdminLinks?: boolean;
 };
@@ -68,12 +70,46 @@ function commLabel(type: HubCommunication["type"]) {
   }
 }
 
-export function CoachHubPanel({ apiPath, mode, backHref, showAdminLinks = false }: Props) {
+export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks = false }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<HubPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<CoachClientSummary | null>(null);
+  const [retryingScheduler, setRetryingScheduler] = useState(false);
+  const [nylasNotice, setNylasNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  useEffect(() => {
+    const nylas = searchParams.get("nylas");
+    const reason = searchParams.get("reason");
+    const detail = searchParams.get("detail");
+    if (!nylas) return;
+
+    if (nylas === "connected") {
+      setNylasNotice({
+        type: "success",
+        message: "Calendar connected — in-app booking is enabled for this coach.",
+      });
+    } else if (nylas === "error") {
+      const messages: Record<string, string> = {
+        config: "Nylas is not configured on this environment.",
+        auth: "Calendar authorization was cancelled or failed.",
+        denied: "Calendar access was denied.",
+        redirect: "OAuth redirect URI mismatch — check Nylas dashboard.",
+        setup: "Connected, but scheduler setup failed. Try retry below.",
+        profile: "Coach profile not found after OAuth.",
+        state: "OAuth state expired — try connecting again.",
+      };
+      let message = messages[reason ?? ""] ?? "Calendar connection failed.";
+      if (detail) message += ` (${detail})`;
+      setNylasNotice({ type: "error", message });
+    }
+
+    if (coachId) {
+      router.replace(`/admin/coaches/${coachId}`, { scroll: false });
+    }
+  }, [searchParams, coachId, router]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -98,6 +134,29 @@ export function CoachHubPanel({ apiPath, mode, backHref, showAdminLinks = false 
 
   const filteredClients = useMemo(() => data?.clients ?? [], [data]);
 
+  async function retryScheduler() {
+    if (!coachId) return;
+    setRetryingScheduler(true);
+    setNylasNotice(null);
+    try {
+      const r = await fetch(`/api/admin/coaches/${coachId}/nylas/retry-scheduler`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? "Scheduler setup failed");
+      setNylasNotice({
+        type: "success",
+        message: d.created ? "Scheduler created for this coach." : "Scheduler settings updated.",
+      });
+      load();
+    } catch (e) {
+      setNylasNotice({
+        type: "error",
+        message: e instanceof Error ? e.message : "Scheduler setup failed",
+      });
+    } finally {
+      setRetryingScheduler(false);
+    }
+  }
+
   if (loading && !data) {
     return <p style={{ fontFamily: fontSans, color: color.muted, padding: "24px 0" }}>Loading coach hub…</p>;
   }
@@ -110,6 +169,21 @@ export function CoachHubPanel({ apiPath, mode, backHref, showAdminLinks = false 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {nylasNotice && (
+        <div
+          style={{
+            padding: "12px 16px",
+            border: border.line,
+            background: nylasNotice.type === "success" ? "rgba(45,122,80,0.08)" : "rgba(220,38,38,0.06)",
+            fontFamily: fontSans,
+            fontSize: 14,
+            color: nylasNotice.type === "success" ? color.forest : "#b45309",
+          }}
+        >
+          {nylasNotice.message}
+        </div>
+      )}
+
       {backHref && (
         <button
           type="button"
@@ -145,6 +219,80 @@ export function CoachHubPanel({ apiPath, mode, backHref, showAdminLinks = false 
               </p>
             )}
           </div>
+          {mode === "admin" && coachId && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: border.line }}>
+              <p style={{ margin: "0 0 8px", fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
+                Calendar (Nylas)
+              </p>
+              <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: 12, color: color.muted, lineHeight: 1.45 }}>
+                Connect on behalf of this coach. Sign in with <strong>their</strong> Google or Outlook account when prompted
+                {coach.email ? ` (${coach.email})` : ""}.
+              </p>
+              {coach.schedulerReady ? (
+                <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: 13, color: color.forest }}>
+                  Scheduler ready — seekers can book in-app.
+                </p>
+              ) : coach.calendarConnected ? (
+                <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: 13, color: "#b45309" }}>
+                  Calendar linked but booking setup incomplete.
+                </p>
+              ) : null}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <a
+                  href={`/api/admin/coaches/${coachId}/nylas/connect?provider=google`}
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    padding: "10px 14px",
+                    background: color.forest,
+                    color: color.gold,
+                    fontFamily: fontSans,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    border: border.lineStrong,
+                  }}
+                >
+                  {coach.calendarConnected ? "Reconnect Google Calendar" : "Connect Google Calendar"}
+                </a>
+                <a
+                  href={`/api/admin/coaches/${coachId}/nylas/connect?provider=microsoft`}
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    padding: "10px 14px",
+                    background: "#fff",
+                    color: color.stone,
+                    fontFamily: fontSans,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    border: border.line,
+                  }}
+                >
+                  {coach.calendarConnected ? "Reconnect Outlook" : "Connect Outlook"}
+                </a>
+                {coach.calendarConnected && !coach.schedulerReady && (
+                  <button
+                    type="button"
+                    onClick={retryScheduler}
+                    disabled={retryingScheduler}
+                    style={{
+                      padding: "10px 14px",
+                      background: "#fff",
+                      border: border.line,
+                      fontFamily: fontSans,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: retryingScheduler ? "wait" : "pointer",
+                    }}
+                  >
+                    {retryingScheduler ? "Setting up scheduler…" : "Retry scheduler setup"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           {showAdminLinks && coach.slug && (
             <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
               <Link href={`/coaching/coach/${coach.slug}`} style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>

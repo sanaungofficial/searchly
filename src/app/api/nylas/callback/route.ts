@@ -47,6 +47,17 @@ export async function GET(req: NextRequest) {
   }
 
   async function redirectCoach(params: Record<string, string>) {
+    const returnAppUrl = (parsedEarly?.returnAppUrl ?? appUrl).replace(/\/$/, "");
+    if (parsedEarly?.kind === "coach" && parsedEarly.returnPath) {
+      const path = parsedEarly.returnPath.startsWith("/")
+        ? parsedEarly.returnPath
+        : `/${parsedEarly.returnPath}`;
+      const qs = new URLSearchParams(params).toString();
+      const response = NextResponse.redirect(`${returnAppUrl}${path}${qs ? `?${qs}` : ""}`);
+      clearNylasOAuthCookie(response);
+      return response;
+    }
+
     const role = parsedEarly?.kind === "coach"
       ? await profileOwnerRole(parsedEarly.coachProfileId)
       : UserRole.ADMIN;
