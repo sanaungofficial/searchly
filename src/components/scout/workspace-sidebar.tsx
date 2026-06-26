@@ -21,6 +21,7 @@ import { KimchiBySecondLadder } from "./scout-box";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
 import { isProductionEnv } from "@/lib/beta-features";
+import { sidebarTheme as S } from "@/lib/sidebar-theme";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -47,13 +48,6 @@ interface NavItem {
 }
 
 const IS_PROD = isProductionEnv();
-
-const SIDEBAR_FOREST = "#1A3A2F";
-const SIDEBAR_GOLD = "#E8D5A3";
-const SIDEBAR_GOLD_DIM = "rgba(232,213,163,0.48)";
-const SIDEBAR_GOLD_FAINT = "rgba(232,213,163,0.38)";
-const SIDEBAR_LINE = "1px solid rgba(232,213,163,0.14)";
-const SIDEBAR_LINE_ACTIVE = "1px solid rgba(232,213,163,0.35)";
 
 const NAV_MAIN: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
@@ -89,9 +83,9 @@ function SidebarNavButton({
         padding: isRail ? "10px 0" : "10px 14px",
         borderRadius: 0,
         cursor: "pointer",
-        background: active ? "rgba(232,213,163,0.12)" : "transparent",
-        border: SIDEBAR_LINE,
-        borderColor: active ? "rgba(232,213,163,0.35)" : "transparent",
+        background: active ? S.bgActive : "transparent",
+        border: S.border,
+        borderColor: active ? "rgba(232,213,163,0.42)" : "transparent",
         display: "flex",
         alignItems: "center",
         justifyContent: isRail ? "center" : "flex-start",
@@ -103,8 +97,8 @@ function SidebarNavButton({
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          e.currentTarget.style.background = "rgba(232,213,163,0.06)";
-          e.currentTarget.style.borderColor = "rgba(232,213,163,0.12)";
+          e.currentTarget.style.background = S.bgHover;
+          e.currentTarget.style.borderColor = "rgba(232, 213, 163, 0.22)";
         }
       }}
       onMouseLeave={(e) => {
@@ -118,7 +112,7 @@ function SidebarNavButton({
         style={{
           position: "relative",
           display: "inline-flex",
-          color: active ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT,
+          color: active ? S.iconActive : S.icon,
           flexShrink: 0,
         }}
       >
@@ -132,7 +126,7 @@ function SidebarNavButton({
               width: 6,
               height: 6,
               background: "#C4574A",
-              border: `1.5px solid ${SIDEBAR_FOREST}`,
+              border: `1.5px solid ${S.bg}`,
               animation: "pulse 1.5s ease infinite",
             }}
           />
@@ -146,7 +140,7 @@ function SidebarNavButton({
               width: 6,
               height: 6,
               background: "#C4A86A",
-              border: `1.5px solid ${SIDEBAR_FOREST}`,
+              border: `1.5px solid ${S.bg}`,
             }}
           />
         )}
@@ -157,8 +151,8 @@ function SidebarNavButton({
             style={{
               fontFamily: "var(--font-ui)",
               fontSize: 15,
-              fontWeight: active ? 600 : 400,
-              color: active ? SIDEBAR_GOLD : SIDEBAR_GOLD_DIM,
+              fontWeight: active ? 600 : 500,
+              color: active ? S.textActive : S.text,
               flex: 1,
               minWidth: 0,
             }}
@@ -171,10 +165,10 @@ function SidebarNavButton({
                 fontFamily: "var(--font-mono-ui)",
                 fontSize: 11,
                 fontWeight: 600,
-                color: SIDEBAR_FOREST,
-                background: SIDEBAR_GOLD,
+                color: S.bg,
+                background: S.gold,
                 padding: "2px 7px",
-                border: SIDEBAR_LINE_ACTIVE,
+                border: S.borderStrong,
                 flexShrink: 0,
               }}
             >
@@ -323,7 +317,7 @@ export function WorkspaceSidebar({
       <div
         style={{
           width: sidebarWidth,
-          background: SIDEBAR_FOREST,
+          background: S.bg,
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
@@ -358,14 +352,14 @@ export function WorkspaceSidebar({
               width: 16,
               height: 48,
               borderRadius: 0,
-              background: SIDEBAR_FOREST,
+              background: S.bg,
               border: "1px solid rgba(232,213,163,0.2)",
               borderLeft: "none",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "rgba(232,213,163,0.6)",
+              color: S.iconMuted,
               transition: "background 0.15s, color 0.15s, width 0.15s",
               boxShadow: "3px 0 10px rgba(0,0,0,0.2)",
             }}
@@ -375,8 +369,8 @@ export function WorkspaceSidebar({
               e.currentTarget.style.width = "20px";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = SIDEBAR_FOREST;
-              e.currentTarget.style.color = "rgba(232,213,163,0.6)";
+              e.currentTarget.style.background = S.bg;
+              e.currentTarget.style.color = S.iconMuted;
               e.currentTarget.style.width = "16px";
             }}
           >
@@ -400,7 +394,7 @@ export function WorkspaceSidebar({
                 cursor: "pointer",
                 fontFamily: "var(--font-ui)",
                 fontSize: 12,
-                color: "rgba(232,213,163,0.75)",
+                color: S.text,
                 letterSpacing: "0.4px",
                 padding: 0,
               }}
@@ -418,11 +412,11 @@ export function WorkspaceSidebar({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  border: SIDEBAR_LINE,
+                  border: S.border,
                   fontFamily: "var(--font-display)",
                   fontSize: 16,
                   fontWeight: 500,
-                  color: SIDEBAR_GOLD,
+                  color: S.gold,
                 }}
                 title="Kimchi"
               >
@@ -436,16 +430,16 @@ export function WorkspaceSidebar({
                   padding: 6,
                   borderRadius: 0,
                   background: "none",
-                  border: SIDEBAR_LINE,
-                  color: "rgba(232,213,163,0.65)",
+                  border: S.border,
+                  color: S.iconMuted,
                   transition: "background 0.15s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = S.bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
               >
                 <BellIcon />
                 {notifUnreadCount > 0 && (
-                  <div style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, background: "#C4574A", border: `1.5px solid ${SIDEBAR_FOREST}` }} />
+                  <div style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, background: "#C4574A", border: `1.5px solid ${S.bg}` }} />
                 )}
               </button>
             </div>
@@ -457,8 +451,8 @@ export function WorkspaceSidebar({
                 </div>
                 <KimchiBySecondLadder
                   fontSize={12}
-                  color="rgba(232,213,163,0.42)"
-                  brandColor="rgba(232,213,163,0.72)"
+                  color={S.textMuted}
+                  brandColor={S.text}
                   marginTop={3}
                 />
               </div>
@@ -467,8 +461,8 @@ export function WorkspaceSidebar({
                   <button
                     onClick={onToggle}
                     title="Close menu"
-                    style={{ cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: SIDEBAR_LINE, color: "rgba(232,213,163,0.65)", lineHeight: 1, transition: "background 0.15s" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
+                    style={{ cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: S.border, color: S.iconMuted, lineHeight: 1, transition: "background 0.15s" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = S.bgHover)}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                   >
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -478,8 +472,8 @@ export function WorkspaceSidebar({
                 )}
                 <button
                   onClick={onToggleNotif}
-                  style={{ position: "relative", cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: SIDEBAR_LINE, color: "rgba(232,213,163,0.65)", transition: "background 0.15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(232,213,163,0.1)")}
+                  style={{ position: "relative", cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: S.border, color: S.iconMuted, transition: "background 0.15s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = S.bgHover)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                 >
                   <BellIcon />
@@ -512,7 +506,7 @@ export function WorkspaceSidebar({
               isRail={isRail}
               Icon={() => (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke={pathname === "/admin" ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}
+                  stroke={pathname === "/admin" ? S.iconActive : S.iconMuted}
                   strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
                 >
                   <rect x="3" y="3" width="7" height="7" rx="0" />
@@ -564,7 +558,7 @@ export function WorkspaceSidebar({
               <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.2px" }}>
                 🎁 Refer & Earn →
               </p>
-              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.45)", lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 12, color: S.textSubtle, lineHeight: 1.5 }}>
                 Invite friends or share on LinkedIn to earn extra rewards!
               </p>
             </button>
@@ -607,7 +601,7 @@ export function WorkspaceSidebar({
               <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#E8D5A3", letterSpacing: "0.2px" }}>
                 🎁 Refer & Earn →
               </p>
-              <p style={{ margin: 0, fontSize: 12, color: "rgba(232,213,163,0.45)", lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 12, color: S.textSubtle, lineHeight: 1.5 }}>
                 Invite friends or share on LinkedIn to earn extra rewards!
               </p>
             </button>
@@ -620,7 +614,7 @@ export function WorkspaceSidebar({
           title={isRail ? (user?.name ?? user?.email ?? "Account") : undefined}
           style={{
             padding: isRail ? "12px 0 18px" : isMobile ? "14px 18px max(16px, env(safe-area-inset-bottom))" : "14px 18px 20px",
-            borderTop: SIDEBAR_LINE,
+            borderTop: S.border,
             borderLeft: "none",
             borderRight: "none",
             borderBottom: "none",
@@ -628,7 +622,7 @@ export function WorkspaceSidebar({
             alignItems: "center",
             justifyContent: isRail ? "center" : "flex-start",
             gap: 10,
-            background: SIDEBAR_FOREST,
+            background: S.bg,
             cursor: "pointer",
             width: "100%",
             textAlign: "left",
@@ -636,15 +630,15 @@ export function WorkspaceSidebar({
             flexShrink: 0,
             boxSizing: "border-box",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = isMobile ? SIDEBAR_FOREST : "rgba(232,213,163,0.05)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = SIDEBAR_FOREST)}
+          onMouseEnter={(e) => (e.currentTarget.style.background = isMobile ? S.bg : S.bgHover)}
+          onMouseLeave={(e) => (e.currentTarget.style.background = S.bg)}
           aria-label="Account settings"
         >
           {user?.avatarUrl ? (
             <img src={user.avatarUrl} alt={user.name ?? ""} style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
           ) : (
             <div style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(232,213,163,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "rgba(232,213,163,0.8)" }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: S.text }}>
                 {user ? initials(user.name, user.email) : "?"}
               </span>
             </div>
@@ -652,16 +646,16 @@ export function WorkspaceSidebar({
           {!isRail && (
             <>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 400, color: "rgba(232,213,163,0.65)", marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: S.textActive, marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {user?.name ?? user?.email?.split("@")[0] ?? "Account"}
                 </p>
                 {user?.headline && (
-                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 400, color: "rgba(232,213,163,0.28)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 400, color: S.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {user.headline}
                   </p>
                 )}
               </div>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(232,213,163,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={S.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>

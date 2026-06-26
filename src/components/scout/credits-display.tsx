@@ -13,6 +13,7 @@ import {
   creditsUsageSubtitle,
   useCredits,
 } from "@/hooks/useCredits";
+import { sidebarTheme as S } from "@/lib/sidebar-theme";
 
 type Props = {
   credits: CreditBalance;
@@ -34,7 +35,7 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
           fontFamily: "var(--font-ui)",
           fontSize: 11,
           fontWeight: 600,
-          color: exhausted ? "#C4574A" : "rgba(232,213,163,0.65)",
+          color: exhausted ? "#C4574A" : S.textMuted,
         }}
       >
         {unlimitedAi ? credits.used : credits.remaining}
@@ -45,10 +46,10 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: exhausted ? "#C4574A" : "#E8D5A3", letterSpacing: "0.2px" }}>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: exhausted ? "#C4574A" : S.text, letterSpacing: "0.2px" }}>
           {unlimitedAi ? "Unlimited AI" : exhausted ? "No credits left" : `${credits.remaining} credit${credits.remaining === 1 ? "" : "s"} left`}
         </p>
-        <span style={{ fontSize: 11, color: "rgba(232,213,163,0.35)" }}>
+        <span style={{ fontSize: 11, color: S.textSubtle }}>
           {unlimitedAi ? creditsUsageCount(credits, true) : `${credits.used}/${credits.limit} used`}
         </span>
       </div>
@@ -57,7 +58,7 @@ export function CreditsMeter({ credits, compact = false, unlimitedAi = false }: 
           <div style={{ height: "100%", width: `${100 - pct}%`, background: barColor, transition: "width 0.3s ease" }} />
         </div>
       )}
-      <p style={{ margin: 0, fontSize: 11, color: "rgba(232,213,163,0.35)", lineHeight: 1.45 }}>
+      <p style={{ margin: 0, fontSize: 11, color: S.textSubtle, lineHeight: 1.45 }}>
         {creditsUsageSubtitle(credits, unlimitedAi)}
       </p>
     </div>
@@ -124,7 +125,7 @@ export function CreditsSidebarBlock({
             textAlign: "center",
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(232,213,163,0.55)" }}>Upgrade for unlimited →</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted }}>Upgrade for unlimited →</span>
         </button>
       ) : (
         <Link
@@ -141,7 +142,7 @@ export function CreditsSidebarBlock({
             textAlign: "center",
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(232,213,163,0.55)" }}>Upgrade for unlimited →</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted }}>Upgrade for unlimited →</span>
         </Link>
       ))}
     </div>
