@@ -49,6 +49,8 @@ model User {
   coachAssignmentsMade CoachClientAssignment[] @relation("CoachAssignmentAdmin")
   coachSharedDocumentsReceived CoachSharedDocument[] @relation("CoachSharedDocsClient")
   coachSharedDocumentsUploaded CoachSharedDocument[] @relation("CoachSharedDocsUploader")
+  coachClientSessionNotesReceived CoachClientSessionNote[] @relation("CoachSessionNotesClient")
+  coachClientSessionNotesAuthored CoachClientSessionNote[] @relation("CoachSessionNotesAuthor")
   coachBookings        CoachBooking[]       @relation("CoachBookingGuest")
   coachBookingComms    CoachBookingCommunication[] @relation("CoachBookingComms")
   coachPurchases       CoachPurchase[]      @relation("CoachPurchaseBuyer")
@@ -304,6 +306,7 @@ model CoachProfile {
   followers      CoachFollow[]
   clientAssignments CoachClientAssignment[]
   sharedDocuments   CoachSharedDocument[]
+  clientSessionNotes CoachClientSessionNote[]
   bookings       CoachBooking[]
   communications CoachBookingCommunication[]
   liveSessions   LiveSession[]
@@ -443,6 +446,7 @@ model CoachBooking {
   status          CoachBookingStatus @default(CONFIRMED)
   rawPayload      Json?
   communications  CoachBookingCommunication[]
+  sessionNotes    CoachClientSessionNote[]
 
   reminder24hSentAt DateTime?
   reminder1hSentAt  DateTime?
@@ -689,6 +693,26 @@ model CoachSharedDocument {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([clientUserId])
+  @@index([coachProfileId, clientUserId])
+}
+
+/// Text-only session notes and homework from expert to client (no file required).
+model CoachClientSessionNote {
+  id              String        @id @default(cuid())
+  coachProfileId  String
+  coachProfile    CoachProfile  @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  clientUserId    String
+  clientUser      User          @relation("CoachSessionNotesClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User          @relation("CoachSessionNotesAuthor", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  coachBookingId  String?
+  coachBooking    CoachBooking? @relation(fields: [coachBookingId], references: [id], onDelete: SetNull)
+  sessionNotes    String?
+  homework        String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([clientUserId])
   @@index([coachProfileId, clientUserId])

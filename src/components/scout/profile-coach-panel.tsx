@@ -6,6 +6,7 @@ import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { CoachDrawer } from "@/components/scout/coach-drawer";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
+import { ClientCoachSessionNotes } from "@/components/scout/client-coach-session-notes";
 import { MyCoachesPanel } from "@/components/scout/my-coaches-panel";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -157,6 +158,11 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
                       </p>
                     )}
                     <ClientCoachSharedDocuments
+                      coachProfileId={coach.coachProfileId}
+                      coachName={coach.displayName}
+                      compact
+                    />
+                    <ClientCoachSessionNotes
                       coachProfileId={coach.coachProfileId}
                       coachName={coach.displayName}
                       compact

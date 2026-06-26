@@ -158,7 +158,7 @@ export function BookingDetailDrawer({ bookingId, onClose, onOpenGuestHub, onOpen
                         onClick={() => onOpenCoachHub(booking.coachProfileId)}
                         style={{ background: "none", border: "none", padding: 0, color: color.forest, cursor: "pointer", fontFamily: fontSans, fontSize: 13, textDecoration: "underline" }}
                       >
-                        Coach hub →
+                        Expert hub →
                       </button>
                     )}
                     {booking.coachSlug && (

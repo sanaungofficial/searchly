@@ -42,7 +42,7 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
   const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
   const [tab, setTab] = useState<TabId>((searchParams.get("tab") as TabId) || "overview");
-  const displayName = coachPreview?.displayName ?? "Coach hub";
+  const displayName = coachPreview?.displayName ?? "Expert hub";
 
   useEffect(() => {
     const t = requestAnimationFrame(() => setVisible(true));

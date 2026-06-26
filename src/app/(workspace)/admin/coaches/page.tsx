@@ -66,18 +66,18 @@ function AdminCoachesInner() {
 
   return (
     <div>
-      <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Coaches</h1>
+      <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Experts</h1>
 
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 20px", maxWidth: 720 }}>
-        Coach hub — clients, Kimchi-booked sessions, and booking communications in one view. Sessions come from Nylas Scheduler webhooks only.
+        Expert hub — clients, Kimchi-booked sessions, and booking communications in one view. Sessions come from Nylas Scheduler webhooks only.
       </p>
 
-      {loading && <p style={{ fontFamily: fontSans, color: color.muted }}>Loading coaches…</p>}
+      {loading && <p style={{ fontFamily: fontSans, color: color.muted }}>Loading experts…</p>}
       {error && <p style={{ fontFamily: fontSans, color: "#dc2626" }}>{error}</p>}
 
       {!loading && !error && coaches.length === 0 && (
         <ScoutBox padding={24}>
-          <p style={{ fontFamily: fontSans, fontSize: 15, color: color.muted, margin: 0 }}>No coaches yet.</p>
+          <p style={{ fontFamily: fontSans, fontSize: 15, color: color.muted, margin: 0 }}>No experts yet.</p>
         </ScoutBox>
       )}
 
@@ -164,8 +164,8 @@ export default function AdminCoachesPage() {
     <Suspense
       fallback={
         <div>
-          <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Coaches</h1>
-          <p style={{ fontFamily: fontSans, color: color.muted }}>Loading coaches…</p>
+          <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Experts</h1>
+          <p style={{ fontFamily: fontSans, color: color.muted }}>Loading experts…</p>
         </div>
       }
     >

@@ -5,7 +5,8 @@ import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, fontSans } from "@/lib/typography";
 
 type Props = {
-  coachId: string;
+  /** Omit when the logged-in expert views their own inbox (e.g. centralized /inbox). */
+  coachId?: string;
   embedded?: boolean;
 };
 
@@ -28,7 +29,8 @@ export function CoachInboxPanel({ coachId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/coach/email/messages?coachId=${encodeURIComponent(coachId)}&limit=25`);
+      const qs = coachId ? `coachId=${encodeURIComponent(coachId)}&` : "";
+      const res = await fetch(`/api/coach/email/messages?${qs}limit=25`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not load inbox");
       setMessages(data.messages ?? []);
@@ -56,7 +58,7 @@ export function CoachInboxPanel({ coachId }: Props) {
           {error}
         </p>
         <p style={{ margin: "12px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
-          Connect calendar with email sync enabled from the Availability tab to view coach mail here.
+          Connect calendar with email sync enabled from the Availability tab to view expert mail here.
         </p>
       </ScoutBox>
     );
@@ -66,7 +68,7 @@ export function CoachInboxPanel({ coachId }: Props) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <p style={{ margin: 0, fontFamily: fontSans, fontSize: 16, fontWeight: 600, color: color.forest }}>
-          Coach inbox
+          Expert inbox
         </p>
         {email && (
           <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>{email}</p>

@@ -148,7 +148,7 @@ export default async function AdminPage() {
             sub={pct(data.roleCounts.USER, data.totalUsers)}
           />
           <StatCard
-            label="Coaches"
+            label="Experts"
             value={data.roleCounts.COACH}
             sub={pct(data.roleCounts.COACH, data.totalUsers)}
             accent="#2563eb"

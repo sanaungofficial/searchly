@@ -5,6 +5,7 @@ import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-assignment-section";
 import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-documents-panel";
+import { CoachClientSessionNotesPanel } from "@/components/scout/coach-client-session-notes-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -180,6 +181,15 @@ export function ClientDetailBody({
       )}
 
       <CoachSharedDocumentsPanel
+        clientUserId={client.id}
+        mode="admin"
+        assignedCoaches={(client.coachAssignments ?? []).map((a) => ({
+          coachProfileId: a.coachProfile.id,
+          displayName: a.coachProfile.displayName,
+        }))}
+      />
+
+      <CoachClientSessionNotesPanel
         clientUserId={client.id}
         mode="admin"
         assignedCoaches={(client.coachAssignments ?? []).map((a) => ({

@@ -22,6 +22,7 @@ import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { MyCoachesPanel } from "@/components/scout/my-coaches-panel";
+import { ExpertDashboardOverview } from "@/components/scout/expert-dashboard-overview";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
 import { DashboardAddGoalModal } from "@/components/scout/dashboard-add-goal-modal";
@@ -93,9 +94,9 @@ type AssignedCoach = {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { openPricing, userRole, isImpersonating } = useWorkspace();
+  const { openPricing, userRole, isImpersonating, showSeekerDashboard, showExpertDashboard } = useWorkspace();
   const isStaffPortal = isStaffPortalRole(userRole);
-  const showClientCoachUi = !isStaffPortal || isImpersonating;
+  const showClientCoachUi = showSeekerDashboard;
   const { isPro, loading: subLoading } = useSubscription();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -796,13 +797,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       )}
 
-      {!showClientCoachUi && (
-        <div style={{ ...CARD, padding: isMobile ? "16px 18px" : "18px 22px" }}>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            My coaches
-          </p>
-          <MyCoachesPanel compact />
-        </div>
+      {!showClientCoachUi && showExpertDashboard && (
+        <ExpertDashboardOverview isMobile={isMobile} />
       )}
 
       {/* Recommendation nudge */}

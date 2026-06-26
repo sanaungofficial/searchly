@@ -2,19 +2,36 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CoachInboxPanel } from "@/components/admin/coach-inbox-panel";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { isStaffPortalRole } from "@/lib/staff-portal";
 import { InboxInsightsDrawer } from "./inbox/inbox-insights-drawer";
 import { InboxMailView } from "./inbox/inbox-mail-view";
 import type { ActivitySummary, ComposeState, InboxStatus, PipelineJob } from "./inbox/inbox-types";
 import { fetchInboxInsights, type FollowUpSuggestion } from "@/lib/inbox-insights-api";
 import { INBOX_PATH } from "@/lib/workspace-urls";
 
+type InboxMode = "job-search" | "expert";
+
+type ExpertInboxStatus = {
+  configured: boolean;
+  emailSyncEnabled: boolean;
+  grantEmail: string | null;
+  connected: boolean;
+};
+
 export function JobSearchEmailDashboard() {
   const isMobile = useIsMobile();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const [inboxMode, setInboxMode] = useState<InboxMode>(
+    searchParams.get("mode") === "expert" ? "expert" : "job-search",
+  );
+  const [isStaff, setIsStaff] = useState(false);
+  const [expertStatus, setExpertStatus] = useState<ExpertInboxStatus | null>(null);
 
   const [status, setStatus] = useState<InboxStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,17 +55,38 @@ export function JobSearchEmailDashboard() {
     return stRes.json() as Promise<InboxStatus>;
   }, []);
 
+  const loadExpertStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/nylas/status");
+      if (!res.ok) return null;
+      return res.json() as Promise<ExpertInboxStatus>;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const bootstrap = useCallback(async () => {
     setLoading(true);
     try {
-      const st = await loadStatus();
+      const [st, roleRes] = await Promise.all([
+        loadStatus(),
+        fetch("/api/staff/role").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
       setStatus(st);
+      const staff = isStaffPortalRole(roleRes?.role);
+      setIsStaff(staff);
+      if (staff) {
+        const expert = await loadExpertStatus();
+        setExpertStatus(expert);
+      } else {
+        setExpertStatus(null);
+      }
     } catch {
       setNotice({ type: "error", text: "Could not load inbox status." });
     } finally {
       setLoading(false);
     }
-  }, [loadStatus]);
+  }, [loadStatus, loadExpertStatus]);
 
   const loadInsights = useCallback(async () => {
     setInsightsLoading(true);
@@ -162,6 +200,24 @@ export function JobSearchEmailDashboard() {
     router.replace(`${INBOX_PATH}?messageId=${encodeURIComponent(messageId)}`);
   }
 
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "expert" || mode === "job-search") {
+      setInboxMode(mode);
+    }
+  }, [searchParams]);
+
+  function selectInboxMode(mode: InboxMode) {
+    setInboxMode(mode);
+    const params = new URLSearchParams(searchParams.toString());
+    if (mode === "expert") params.set("mode", "expert");
+    else params.delete("mode");
+    const qs = params.toString();
+    router.replace(qs ? `${INBOX_PATH}?${qs}` : INBOX_PATH, { scroll: false });
+  }
+
+  const showExpertInboxTab = isStaff && Boolean(expertStatus?.emailSyncEnabled);
+
   if (loading) {
     return (
       <ScoutBox padding="24px" style={{ marginTop: 16 }}>
@@ -170,7 +226,24 @@ export function JobSearchEmailDashboard() {
     );
   }
 
-  if (!status?.configured) {
+  if (showExpertInboxTab && inboxMode === "expert") {
+    return (
+      <ScoutBox flat padding="0" style={{ marginTop: 16, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <InboxModeHeader
+          isMobile={isMobile}
+          inboxMode={inboxMode}
+          showExpertInboxTab={showExpertInboxTab}
+          onSelectMode={selectInboxMode}
+          subtitle={expertStatus?.grantEmail ?? undefined}
+        />
+        <div style={{ padding: isMobile ? "16px" : "20px", flex: 1, overflow: "auto" }}>
+          <CoachInboxPanel />
+        </div>
+      </ScoutBox>
+    );
+  }
+
+  if (!status?.configured && !showExpertInboxTab) {
     return (
       <ScoutBox padding="24px" style={{ marginTop: 16, maxWidth: 560 }}>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: 0 }}>
@@ -180,23 +253,33 @@ export function JobSearchEmailDashboard() {
     );
   }
 
-  if (!status.connected) {
+  if (!status?.connected && !(showExpertInboxTab && inboxMode === "expert")) {
     return (
-      <ScoutBox padding={isMobile ? "20px 16px" : "28px 24px"} style={{ marginTop: 16, maxWidth: 560 }}>
-        <h2 style={{ fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
-          Inbox
-        </h2>
-        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: "0 0 20px" }}>
-          Connect Gmail or Outlook. Kimchi reads your mail, suggests roles to save, and surfaces follow-ups — you stay in control.
-        </p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <ScoutPrimaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=google"; }}>
-            Connect Gmail
-          </ScoutPrimaryBtn>
-          <ScoutSecondaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=microsoft"; }}>
-            Connect Outlook
-          </ScoutSecondaryBtn>
-        </div>
+      <ScoutBox flat padding="0" style={{ marginTop: 16, maxWidth: 640 }}>
+        {showExpertInboxTab && (
+          <InboxModeHeader
+            isMobile={isMobile}
+            inboxMode={inboxMode}
+            showExpertInboxTab={showExpertInboxTab}
+            onSelectMode={selectInboxMode}
+          />
+        )}
+        <ScoutBox padding={isMobile ? "20px 16px" : "28px 24px"} flat>
+          <h2 style={{ fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
+            Inbox
+          </h2>
+          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: "0 0 20px" }}>
+            Connect Gmail or Outlook. Kimchi reads your mail, suggests roles to save, and surfaces follow-ups — you stay in control.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <ScoutPrimaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=google"; }}>
+              Connect Gmail
+            </ScoutPrimaryBtn>
+            <ScoutSecondaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=microsoft"; }}>
+              Connect Outlook
+            </ScoutSecondaryBtn>
+          </div>
+        </ScoutBox>
       </ScoutBox>
     );
   }
@@ -204,19 +287,23 @@ export function JobSearchEmailDashboard() {
   return (
     <>
       <ScoutBox flat padding="0" style={{ marginTop: 16, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: isMobile ? "14px 16px" : "16px 20px", borderBottom: border.line, background: surface.page }}>
-          <div>
-            <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest }}>Inbox</h2>
-            <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-              {status.email}
-              {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
-            </p>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <ScoutPrimaryBtn onClick={() => setCompose({ open: true, to: "", subject: "", body: "" })}>Compose</ScoutPrimaryBtn>
-            <ScoutSecondaryBtn onClick={handleSync} disabled={syncing}>{syncing ? "Syncing…" : "Sync mail"}</ScoutSecondaryBtn>
-          </div>
-        </div>
+        <InboxModeHeader
+          isMobile={isMobile}
+          inboxMode={inboxMode}
+          showExpertInboxTab={showExpertInboxTab}
+          onSelectMode={selectInboxMode}
+          subtitle={
+            status.email
+              ? `${status.email}${status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}`
+              : undefined
+          }
+          actions={
+            <>
+              <ScoutPrimaryBtn onClick={() => setCompose({ open: true, to: "", subject: "", body: "" })}>Compose</ScoutPrimaryBtn>
+              <ScoutSecondaryBtn onClick={handleSync} disabled={syncing}>{syncing ? "Syncing…" : "Sync mail"}</ScoutSecondaryBtn>
+            </>
+          }
+        />
 
         {notice && (
           <div style={{ padding: "10px 16px", fontFamily: fontSans, fontSize: T.caption, color: notice.type === "success" ? color.forest : "#C4574A", background: notice.type === "success" ? "rgba(42,107,74,0.08)" : "rgba(196,87,74,0.08)", borderBottom: border.line }}>
@@ -260,5 +347,80 @@ export function JobSearchEmailDashboard() {
         onAction={handleInsightAction}
       />
     </>
+  );
+}
+
+function InboxModeHeader({
+  isMobile,
+  inboxMode,
+  showExpertInboxTab,
+  onSelectMode,
+  subtitle,
+  actions,
+}: {
+  isMobile: boolean;
+  inboxMode: InboxMode;
+  showExpertInboxTab: boolean;
+  onSelectMode: (mode: InboxMode) => void;
+  subtitle?: string;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: isMobile ? "14px 16px" : "16px 20px",
+        borderBottom: border.line,
+        background: surface.page,
+      }}
+    >
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: subtitle ? 4 : 0 }}>
+          <h2 style={{ margin: 0, fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest }}>Inbox</h2>
+          {showExpertInboxTab && (
+            <div style={{ display: "flex", border: border.line, borderRadius: 999, overflow: "hidden" }}>
+              {(
+                [
+                  { id: "job-search" as const, label: "Job search" },
+                  { id: "expert" as const, label: "Expert" },
+                ] as const
+              ).map(({ id, label }) => {
+                const active = inboxMode === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onSelectMode(id)}
+                    aria-pressed={active}
+                    style={{
+                      border: "none",
+                      background: active ? color.forest : "transparent",
+                      color: active ? "#fff" : color.muted,
+                      fontFamily: fontSans,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {subtitle && (
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>{subtitle}</p>
+        )}
+      </div>
+      {actions && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>{actions}</div>
+      )}
+    </div>
   );
 }
