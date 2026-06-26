@@ -539,3 +539,78 @@ export function parseBookingWebhookPayload(data: {
     guestEmail: guest?.email,
   };
 }
+
+export type NylasTimeSlot = { start_time: number; end_time: number };
+
+type NylasAvailabilityResponse = {
+  data?: { time_slots?: NylasTimeSlot[] };
+  time_slots?: NylasTimeSlot[];
+};
+
+/** List bookable slots for a scheduler configuration (Kimchi booking UI). */
+export async function getSchedulerAvailability(params: {
+  configurationId: string;
+  startTime: number;
+  endTime: number;
+  durationMinutes?: number;
+}): Promise<NylasTimeSlot[]> {
+  const query = new URLSearchParams({
+    configuration_id: params.configurationId,
+    start_time: String(params.startTime),
+    end_time: String(params.endTime),
+  });
+  if (params.durationMinutes) {
+    query.set("duration_minutes", String(params.durationMinutes));
+  }
+
+  const res = await nylasFetch<NylasAvailabilityResponse>(`/v3/scheduling/availability?${query.toString()}`);
+  const slots = res.data?.time_slots ?? res.time_slots ?? [];
+  return slots.filter((s) => s.start_time && s.end_time);
+}
+
+export type NylasBookingCreateResponse = {
+  data?: {
+    booking_id?: string;
+    booking_ref?: string;
+    event_id?: string;
+    title?: string;
+  };
+  booking_id?: string;
+  booking_ref?: string;
+  event_id?: string;
+  title?: string;
+};
+
+/** Confirm a booking against a scheduler configuration. */
+export async function createSchedulerBooking(params: {
+  configurationId: string;
+  startTime: number;
+  endTime: number;
+  guestName: string;
+  guestEmail: string;
+  timezone?: string;
+}): Promise<{
+  bookingId?: string;
+  bookingRef?: string;
+  eventId?: string;
+  title?: string;
+}> {
+  const query = new URLSearchParams({ configuration_id: params.configurationId });
+  const res = await nylasFetch<NylasBookingCreateResponse>(`/v3/scheduling/bookings?${query.toString()}`, {
+    method: "POST",
+    body: {
+      start_time: params.startTime,
+      end_time: params.endTime,
+      guest: { name: params.guestName, email: params.guestEmail },
+      ...(params.timezone ? { timezone: params.timezone } : {}),
+    },
+  });
+
+  const data = res.data ?? res;
+  return {
+    bookingId: data.booking_id,
+    bookingRef: data.booking_ref,
+    eventId: data.event_id,
+    title: data.title,
+  };
+}
