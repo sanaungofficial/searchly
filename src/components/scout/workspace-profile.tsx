@@ -45,6 +45,7 @@ import {
   type UpskillProgram,
   type UpskillProgressMap,
 } from "@/lib/upskill-programs";
+import { allMatchableSkills, reconcileSkillsToolsFields } from "@/lib/skills-tools";
 import {
   buildResumeFingerprint,
   getStoredRoleAnalysis,
@@ -125,6 +126,7 @@ interface ParsedData {
   education: EducationEntry[];
   workExperience: WorkEntry[];
   skills: string[];
+  tools?: string[];
 }
 
 interface UserAssetRow {
@@ -339,7 +341,10 @@ async function migrateLegacyProfileData(
   const fingerprint = buildResumeFingerprint(
     null,
     userProfile.resumeUrl,
-    userProfile.parsedData?.skills ?? [],
+    allMatchableSkills({
+      skills: userProfile.parsedData?.skills ?? [],
+      tools: userProfile.parsedData?.tools ?? [],
+    }),
   );
   let migratedAnalyses = { ...roleAnalyses };
   for (const role of roles) {
@@ -430,7 +435,7 @@ function profileCompleteness(p: UserProfile): number {
   if (p.resumeUrl) score += 2;
   if ((p.parsedData?.education || []).length > 0) score++;
   if ((p.parsedData?.workExperience || []).length > 0) score++;
-  if ((p.parsedData?.skills || []).length > 0) score++;
+  if ((p.parsedData?.skills || []).length > 0 || (p.parsedData?.tools || []).length > 0) score++;
   if (p.jobTimeline) score++;
   if (p.targetSalary) score++;
   if ((p.priorities || []).length > 0) score++;
@@ -787,24 +792,51 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
 
 // ─── Tab: Skills (real data) ──────────────────────────────────────────────────
 
-function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
+function SkillsTab({
+  skills,
+  tools,
+  onSave,
+  skillGoals,
+  onGraduate,
+}: {
   skills: string[];
-  onSave: (skills: string[]) => Promise<void>;
+  tools: string[];
+  onSave: (skills: string[], tools: string[]) => Promise<void>;
   skillGoals: SkillGoal[];
   onGraduate: (skill: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
-  const [list, setList] = useState<string[]>(skills);
-  const [input, setInput] = useState("");
+  const [skillList, setSkillList] = useState<string[]>(skills);
+  const [toolList, setToolList] = useState<string[]>(tools);
+  const [skillInput, setSkillInput] = useState("");
+  const [toolInput, setToolInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [graduating, setGraduating] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!editing) setList(skills);
-  }, [skills, editing]);
+    if (!editing) {
+      setSkillList(skills);
+      setToolList(tools);
+    }
+  }, [skills, tools, editing]);
 
-  const addSkill = () => { const v = input.trim(); if (v && !list.includes(v)) setList((p) => [...p, v]); setInput(""); };
-  const handleSave = async () => { setSaving(true); await onSave(list); setSaving(false); setEditing(false); };
+  const addSkill = () => {
+    const v = skillInput.trim();
+    if (v && !skillList.includes(v)) setSkillList((p) => [...p, v]);
+    setSkillInput("");
+  };
+  const addTool = () => {
+    const v = toolInput.trim();
+    if (v && !toolList.includes(v)) setToolList((p) => [...p, v]);
+    setToolInput("");
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(skillList, toolList);
+    setSaving(false);
+    setEditing(false);
+  };
 
   const handleGraduate = async (skill: string) => {
     setGraduating(skill);
@@ -812,40 +844,120 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
     setGraduating(null);
   };
 
+  const hasAny = skills.length > 0 || tools.length > 0 || skillGoals.length > 0;
+
   return (
     <div>
-      <SectionHeader title="Skills" onEdit={() => setEditing(!editing)} />
-      {!editing && skills.length === 0 && skillGoals.length === 0 && (
-        <EmptyState message="No skills yet" sub="Add them here or upload a resume — we use skills to score fit on target roles." />
+      <SectionHeader title="Skills & tools" onEdit={() => setEditing(!editing)} />
+      {!editing && !hasAny && (
+        <EmptyState
+          message="No skills or tools yet"
+          sub="Add functional skills and your tech stack here, or upload a resume — we use both for target role fit."
+        />
       )}
       {editing ? (
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <input value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
-              placeholder="Add a skill and press Enter"
-              className="flex-1 px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
-            <button onClick={addSkill} className="px-3 py-2 text-xs bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90">Add</button>
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide" style={{ fontSize: 13, letterSpacing: "0.06em" }}>
+              Skills
+            </p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", margin: "0 0 8px", lineHeight: 1.5 }}>
+              Leadership, domain expertise, and capabilities — not software or languages.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addSkill();
+                  }
+                }}
+                placeholder="Add a skill and press Enter"
+                className="flex-1 px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]"
+              />
+              <button onClick={addSkill} className="px-3 py-2 text-xs bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90">
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {skillList.map((s) => (
+                <SkillChip key={s} label={s} onRemove={() => setSkillList((p) => p.filter((x) => x !== s))} />
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {list.map((s) => <SkillChip key={s} label={s} onRemove={() => setList((p) => p.filter((x) => x !== s))} />)}
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide" style={{ fontSize: 13, letterSpacing: "0.06em" }}>
+              Tools & tech stack
+            </p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--scout-muted)", margin: "0 0 8px", lineHeight: 1.5 }}>
+              Software, platforms, programming languages, and frameworks.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={toolInput}
+                onChange={(e) => setToolInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTool();
+                  }
+                }}
+                placeholder="Add a tool and press Enter"
+                className="flex-1 px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]"
+              />
+              <button onClick={addTool} className="px-3 py-2 text-xs bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90">
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {toolList.map((s) => (
+                <SkillChip key={s} label={s} onRemove={() => setToolList((p) => p.filter((x) => x !== s))} />
+              ))}
+            </div>
           </div>
+
           <div className="flex gap-2 pt-1">
-            <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-[var(--scout-radius)]">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90 disabled:opacity-50">
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => {
+                setSkillList(skills);
+                setToolList(tools);
+                setEditing(false);
+              }}
+              className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-[var(--scout-radius)]"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       ) : (
-        skills.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide mb-2" style={{ fontSize: 14, letterSpacing: "1px" }}>My skills</p>
-            <div className="flex flex-wrap gap-2">{skills.map((s) => <SkillChip key={s} label={s} />)}</div>
-          </div>
-        )
+        <>
+          {skills.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide mb-2" style={{ fontSize: 14, letterSpacing: "1px" }}>
+                Skills
+              </p>
+              <div className="flex flex-wrap gap-2">{skills.map((s) => <SkillChip key={s} label={s} />)}</div>
+            </div>
+          )}
+          {tools.length > 0 && (
+            <div style={{ marginTop: skills.length > 0 ? 20 : 0 }}>
+              <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide mb-2" style={{ fontSize: 14, letterSpacing: "1px" }}>
+                Tools & tech stack
+              </p>
+              <div className="flex flex-wrap gap-2">{tools.map((s) => <SkillChip key={s} label={s} />)}</div>
+            </div>
+          )}
+        </>
       )}
 
       {!editing && skillGoals.length > 0 && (
-        <div style={{ marginTop: skills.length > 0 ? 24 : 0 }}>
+        <div style={{ marginTop: skills.length > 0 || tools.length > 0 ? 24 : 0 }}>
           <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide mb-3" style={{ fontSize: 14, letterSpacing: "1px" }}>Working on</p>
           <div className="space-y-2">
             {skillGoals.map((g) => (
@@ -2593,7 +2705,7 @@ type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "experience", "education", "skills"];
 const ABOUT_STACK_ORDER: AboutSection[] = ["experience", "personal", "education", "skills"];
-const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", experience: "Work experience", education: "Education", skills: "Skills" };
+const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", experience: "Work experience", education: "Education", skills: "Skills & tools" };
 const ABOUT_NUM: Record<AboutSection, string> = { personal: "01", experience: "02", education: "03", skills: "04" };
 
 type ProfileMissingItem = { label: string; points: number; action: () => void };
@@ -2613,7 +2725,9 @@ function profileMissingItems(
   if (!p.linkedinUrl) missing.push({ label: "Link your LinkedIn", points: 1, action: () => actions.goToSection("personal") });
   if (!(p.parsedData?.education || []).length) missing.push({ label: "Add education history", points: 1, action: () => actions.goToSection("education") });
   if (!(p.parsedData?.workExperience || []).length) missing.push({ label: "Add work experience", points: 1, action: () => actions.goToSection("experience") });
-  if (!(p.parsedData?.skills || []).length) missing.push({ label: "Add your skills", points: 1, action: () => actions.goToSection("skills") });
+  if (!(p.parsedData?.skills || []).length && !(p.parsedData?.tools || []).length) {
+    missing.push({ label: "Add your skills & tools", points: 1, action: () => actions.goToSection("skills") });
+  }
   if (!p.jobTimeline) missing.push({ label: "Set your job timeline", points: 1, action: actions.goToPreferences });
   if (!p.targetSalary) missing.push({ label: "Set your target salary", points: 1, action: actions.goToPreferences });
   if (!(p.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: actions.goToPreferences });
@@ -2856,8 +2970,11 @@ export function WorkspaceProfile() {
 
   const addSkillToPortfolio = async (skill: string) => {
     const currentSkills = profile?.parsedData?.skills || [];
-    if (currentSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) return;
-    await handleSkillsSave([...currentSkills, skill]);
+    const currentTools = profile?.parsedData?.tools || [];
+    if (allMatchableSkills({ skills: currentSkills, tools: currentTools }).some((s) => s.toLowerCase() === skill.toLowerCase())) {
+      return;
+    }
+    await handleSkillsToolsSave([...currentSkills, skill], currentTools);
   };
 
   const hasSkillGoal = (skill: string, role: string) =>
@@ -2980,22 +3097,29 @@ export function WorkspaceProfile() {
     setProfile((p) => p ? { ...p, parsedData: newParsedData } : p);
   };
 
-  const handleSkillsSave = async (skills: string[]) => {
+  const handleSkillsToolsSave = async (skills: string[], tools: string[]) => {
     if (!profile) return;
-    const newParsedData = { ...(profile.parsedData || { education: [], workExperience: [] }), skills };
+    const reconciled = reconcileSkillsToolsFields({ skills, tools });
+    const newParsedData = {
+      ...(profile.parsedData || { education: [], workExperience: [] }),
+      skills: reconciled.skills,
+      tools: reconciled.tools,
+      skillGroups: reconciled.skillGroups,
+    };
     await patchProfile({ parsedData: newParsedData });
-    setProfile((p) => p ? { ...p, parsedData: newParsedData } : p);
+    setProfile((p) => (p ? { ...p, parsedData: newParsedData } : p));
   };
 
   const handleCareerPrefSave = async (patch: CareerPrefPatch) => {
     await patchProfile(patch as Record<string, unknown>);
-    setProfile((p) => p ? { ...p, ...patch } : p);
+    setProfile((p) => (p ? { ...p, ...patch } : p));
   };
 
   const graduateSkill = async (skill: string) => {
     const currentSkills = profile?.parsedData?.skills || [];
-    if (!currentSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) {
-      await handleSkillsSave([...currentSkills, skill]);
+    const currentTools = profile?.parsedData?.tools || [];
+    if (!allMatchableSkills({ skills: currentSkills, tools: currentTools }).some((s) => s.toLowerCase() === skill.toLowerCase())) {
+      await handleSkillsToolsSave([...currentSkills, skill], currentTools);
     }
     setSkillGoals((prev) => {
       const next = prev.filter((g) => g.skill.toLowerCase() !== skill.toLowerCase());
@@ -3107,6 +3231,8 @@ export function WorkspaceProfile() {
   const education = pd?.education || [];
   const workExperience = pd?.workExperience || [];
   const skills = pd?.skills || [];
+  const tools = pd?.tools || [];
+  const matchableSkills = allMatchableSkills({ skills, tools });
   const highlightSkill = searchParams.get("skill");
   const resumeAssets = assets.filter((a) => a.type === "RESUME");
 
@@ -3168,7 +3294,7 @@ export function WorkspaceProfile() {
       case "skills":
         return (
           <AboutSectionCard key={s} section="skills" sectionRef={(el) => { sectionRefs.current.skills = el; }} padding={sectionCardPad}>
-            <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
+            <SkillsTab skills={skills} tools={tools} onSave={handleSkillsToolsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
           </AboutSectionCard>
         );
     }
@@ -3408,7 +3534,7 @@ export function WorkspaceProfile() {
                 setDeprioritizedCategories={setDeprioritizedCategories}
                 onDeprioritizedCategoriesSave={(list) => patchProfile({ deprioritizedCategories: list })}
                 resumeAssets={resumeAssets}
-                userSkills={skills}
+                userSkills={matchableSkills}
                 skillGoals={skillGoals}
                 roleAnalyses={roleAnalyses}
                 targetRoleSettings={targetRoleSettings}

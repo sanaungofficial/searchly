@@ -19,6 +19,13 @@ import {
 } from "@dnd-kit/sortable";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import {
+  patchFromSkillGroups,
+  SKILLS_GROUP_LABEL,
+  skillGroupsForEditor,
+  TOOLS_GROUP_LABEL,
+  isToolsGroupLabel,
+} from "@/lib/skills-tools";
+import {
   DEFAULT_SECTION_ORDER,
   type ParsedCertificationEntry,
   type ParsedEducationEntry,
@@ -50,7 +57,7 @@ export const JR = {
 
 const SECTION_LABELS: Record<ResumeSectionId, string> = {
   summary: "Professional Summary",
-  skills: "Skills",
+  skills: "Skills & tools",
   experience: "Experience",
   education: "Education",
   certifications: "Certifications",
@@ -356,11 +363,11 @@ export function SectionsPanel({
     patch({ education: arrayMove(data.education, oldIndex, newIndex) });
   }
 
-  const skillGroups = data.skillGroups.length
-    ? data.skillGroups
-    : data.skills.length
-      ? [{ id: "skills_0", label: "Skills", skills: data.skills }]
-      : [];
+  function patchSkillGroups(nextGroups: ParsedSkillGroup[]) {
+    patch(patchFromSkillGroups(nextGroups));
+  }
+
+  const skillGroups = skillGroupsForEditor(data);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: JR.panel, borderLeft: `1px solid ${JR.border}` }}>
@@ -405,48 +412,52 @@ export function SectionsPanel({
                   value={g.label}
                   placeholder="Group label"
                   onChange={(e) =>
-                    patch({
-                      skillGroups: skillGroups.map((row) => (row.id === g.id ? { ...row, label: e.target.value } : row)),
-                      skills: [],
-                    })
+                    patchSkillGroups(skillGroups.map((row) => (row.id === g.id ? { ...row, label: e.target.value } : row)))
                   }
                 />
                 <input
                   style={{ ...inputStyle, marginTop: 8 }}
                   value={g.skills.join(", ")}
-                  placeholder="Skills (comma-separated)"
+                  placeholder={isToolsGroupLabel(g.label) ? "Tools (comma-separated)" : "Skills (comma-separated)"}
                   onChange={(e) =>
-                    patch({
-                      skillGroups: skillGroups.map((row) =>
+                    patchSkillGroups(
+                      skillGroups.map((row) =>
                         row.id === g.id
                           ? { ...row, skills: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) }
                           : row,
                       ),
-                      skills: [],
-                    })
+                    )
                   }
                 />
                 <button
                   type="button"
-                  onClick={() => patch({ skillGroups: skillGroups.filter((row) => row.id !== g.id) })}
+                  onClick={() => patchSkillGroups(skillGroups.filter((row) => row.id !== g.id))}
                   style={{ background: "none", border: "none", color: JR.urgent, fontSize: 12, cursor: "pointer", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}
                 >
                   <Trash2 size={12} /> Remove group
                 </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={() =>
-                patch({
-                  skillGroups: [...skillGroups, { id: `sg_${Date.now()}`, label: "Skills", skills: [] }],
-                  skills: [],
-                })
-              }
-              style={{ ...inputStyle, borderStyle: "dashed", background: JR.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-            >
-              <Plus size={14} /> Add skill group
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() =>
+                  patchSkillGroups([...skillGroups, { id: `sg_${Date.now()}`, label: SKILLS_GROUP_LABEL, skills: [] }])
+                }
+                style={{ ...inputStyle, borderStyle: "dashed", background: JR.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1 }}
+              >
+                <Plus size={14} /> Add skills group
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  patchSkillGroups([...skillGroups, { id: `sg_${Date.now()}`, label: TOOLS_GROUP_LABEL, skills: [] }])
+                }
+                style={{ ...inputStyle, borderStyle: "dashed", background: JR.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1 }}
+              >
+                <Plus size={14} /> Add tools group
+              </button>
+            </div>
           </div>
         )}
 
@@ -577,11 +588,7 @@ function CertEditor({ entry, onChange, onRemove }: { entry: ParsedCertificationE
 
 export function ResumePreview({ data }: { data: ParsedResumeData }) {
   const sectionOrder = data.sectionOrder?.length ? data.sectionOrder : DEFAULT_SECTION_ORDER;
-  const skillGroups = data.skillGroups.length
-    ? data.skillGroups
-    : data.skills.length
-      ? [{ id: "skills_0", label: "Skills", skills: data.skills }]
-      : [];
+  const skillGroups = skillGroupsForEditor(data);
 
   function formatDateRange(from?: string | null, to?: string | null) {
     if (!from && !to) return null;

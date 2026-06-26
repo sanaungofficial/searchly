@@ -3,6 +3,7 @@ import {
   emptyParsedResumeData,
   normalizeParsedResumeData,
   parsedResumeToText,
+  reconcileParsedSkillsTools,
   type ParsedResumeData,
 } from "@/lib/resume-parse";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
@@ -245,7 +246,7 @@ export function mapHirebaseResumeToParsedData(
     })
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
-  const parsed: ParsedResumeData = {
+  const parsed: ParsedResumeData = reconcileParsedSkillsTools({
     ...emptyParsedResumeData(),
     name: asTrimmed(personal?.full_name),
     email: asTrimmed(personal?.email),
@@ -260,9 +261,9 @@ export function mapHirebaseResumeToParsedData(
     education,
     certifications: mapCertifications(resume.certifications),
     hirebaseArtifactId: artifactId ?? null,
-  };
+  });
 
-  return normalizeParsedResumeData(parsed) ?? parsed;
+  return parsed;
 }
 
 function extractArtifactId(body: HirebaseEmbedResponse): string | null {

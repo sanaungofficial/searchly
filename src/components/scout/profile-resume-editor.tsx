@@ -7,6 +7,7 @@ import {
   emptyParsedResumeData,
   hasResumeBodyContent,
   resumeCompleteness,
+  reconcileParsedSkillsTools,
   sectionTextBlob,
   type ParsedResumeData,
   type ResumeSectionId,
@@ -353,8 +354,13 @@ export function ProfileResumeEditor({
     if (sectionId === "summary") {
       next = { ...next, summary: text };
     } else if (sectionId === "skills") {
-      const skills = text.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
-      next = { ...next, skills, skillGroups: skills.length ? [{ id: "skills_0", label: "Skills", skills }] : [] };
+      const items = text.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+      next = reconcileParsedSkillsTools({
+        ...next,
+        skills: items,
+        tools: next.tools ?? [],
+        skillGroups: [],
+      });
     } else if (sectionId === "experience") {
       const bullets = text.split("\n").map((l) => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
       if (entryId || entryLabel) {

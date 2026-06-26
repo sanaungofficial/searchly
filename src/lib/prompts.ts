@@ -115,6 +115,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
       "summary",
       "workArrangement",
       "declaredSkills",
+      "declaredTools",
       "experienceSummary",
       "readbackPicture",
       "readbackStrengths",
@@ -154,7 +155,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     label: "Profile Improvement Suggestions",
     description: "Generates 5-7 specific improvement suggestions for resume, LinkedIn, and skills.",
     category: "Profile",
-    variables: ["resumeSlice", "linkedinUrl", "headline", "skills", "targetRoles"],
+    variables: ["resumeSlice", "linkedinUrl", "headline", "skills", "tools", "targetRoles"],
   },
   LINKEDIN_DRAFT: {
     label: "LinkedIn Profile Draft",
@@ -540,6 +541,7 @@ Suggested roles: {{readbackSuggestedRoles}}
 
 EXPERIENCE SUMMARY: {{experienceSummary}}
 SKILLS: {{declaredSkills}}
+TOOLS & TECH: {{declaredTools}}
 
 WATCHLIST (reference — do not list as target companies section):
 {{trackedCompaniesSummary}}
@@ -768,6 +770,7 @@ Resume:
 LinkedIn URL: {{linkedinUrl}}
 Headline: {{headline}}
 Skills listed: {{skills}}
+Tools & tech: {{tools}}
 Target roles: {{targetRoles}}
 
 Generate 5-7 specific suggestions based on actual content from their profile above. Not generic advice.
@@ -868,9 +871,11 @@ Return ONLY the JSON array, no other text.`,
       "bullets": ["achievement or responsibility bullet point"]
     }
   ],
-  "skills": ["skill1", "skill2"],
+  "skills": ["stakeholder management", "operating model design"],
+  "tools": ["SQL", "Python", "Excel"],
   "skillGroups": [
-    { "id": "sg_0", "label": "Technical Skills", "skills": ["skill1", "skill2"] }
+    { "id": "sg_0", "label": "Skills", "skills": ["stakeholder management", "operating model design"] },
+    { "id": "sg_1", "label": "Tools & tech stack", "skills": ["SQL", "Python", "Excel"] }
   ],
   "certifications": [
     { "id": "cert_0", "name": "certification name", "issuer": "issuer or null", "date": "YYYY-MM or null" }
@@ -884,7 +889,10 @@ Rules:
 - NEVER create a separate workExperience entry for an individual bullet or achievement line
 - If a line is a responsibility under a role, it belongs in that role's bullets array — not as its own job
 - Include all jobs, education entries, and certifications
-- Extract every skill mentioned; group into skillGroups when the resume uses categories
+- Extract every skill and tool mentioned
+- "skills" = functional/soft skills (leadership, strategy, communication, domain expertise stated as capabilities)
+- "tools" = software, platforms, programming languages, frameworks, databases, and technical tools
+- Group into skillGroups with labels "Skills" and/or "Tools & tech stack" when the resume uses categories
 - Return ONLY the JSON object, nothing else`,
 
   LINKEDIN_DRAFT: `${KIMCHI_VOICE}

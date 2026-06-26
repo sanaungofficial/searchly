@@ -13,6 +13,7 @@ export function buildStrategyPromptContext(input: StrategyContextInput): Record<
   const parsed = (profile.parsedData ?? {}) as {
     location?: string;
     skills?: string[];
+    tools?: string[];
     workExperience?: { title?: string; company?: string }[];
   };
 
@@ -64,6 +65,7 @@ export function buildStrategyPromptContext(input: StrategyContextInput): Record<
     summary: profile.summary ?? "Not set",
     workArrangement: workArrangement.join(", ") || "Not specified",
     declaredSkills: (parsed.skills ?? []).slice(0, 40).join(", ") || "Not listed",
+    declaredTools: (parsed.tools ?? []).slice(0, 40).join(", ") || "Not listed",
     experienceSummary: experienceSummary || "Not available",
     readbackPicture: readback?.picture ?? "",
     readbackStrengths: (readback?.strengths ?? []).join("; "),
