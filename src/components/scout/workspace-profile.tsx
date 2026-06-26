@@ -17,13 +17,13 @@ import {
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
 import {
   parseProfileLocation,
-  profileAboutSectionUrl,
-  profileAssetsUrl,
-  profileLearningPathUrl,
-  profileTargetCompaniesUrl,
+  profileBasePath,
+  profileTabPath,
   pipelineProspectUrl,
   prospectPathId,
 } from "@/lib/workspace-urls";
+import { withClientUserId } from "@/lib/admin-client-subject";
+import { AdminClientProfileBanner } from "@/components/admin/admin-client-profile-banner";
 import type { CachedJob } from "@/lib/cached-job";
 import { writeProspectJobCache } from "@/lib/prospect-jobs-cache";
 import { WorkspaceCompanies } from "./workspace-companies";
@@ -1013,6 +1013,7 @@ function DreamRoleTab({
   onGoToUpskill,
   onClearUpskillPrompt,
   onInitRoleSettings,
+  clientUserId,
 }: {
   dreamList: string[];
   setDreamList: (l: string[]) => void;
@@ -1042,6 +1043,7 @@ function DreamRoleTab({
   onGoToUpskill: (skill: string) => void;
   onClearUpskillPrompt?: () => void;
   onInitRoleSettings: (role: string) => void;
+  clientUserId?: string;
 }) {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysisView | "loading" | "error">>({});
@@ -1112,7 +1114,7 @@ function DreamRoleTab({
       const params = new URLSearchParams({ role });
       if (force) params.set("force", "true");
       if (assetId) params.set("assetId", assetId);
-      const res = await fetch(`/api/ai/role-gap?${params.toString()}`);
+      const res = await fetch(withClientUserId(`/api/ai/role-gap?${params.toString()}`, clientUserId));
       const data = await res.json().catch(() => ({}));
       if (res.status === 402) {
         notifyCreditsChanged();
@@ -2768,17 +2770,12 @@ export function WorkspaceProfile() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const profileLoc = parseProfileLocation(pathname);
+  const clientId = profileLoc.clientId;
+  const profileBase = profileBasePath(clientId);
+  const api = (path: string) => withClientUserId(path, clientId);
   const page = profileLoc.page;
   const setPage = (tab: PageTab) => {
-    if (tab === "about") router.push("/profile");
-    else if (tab === "dreamrole") router.push("/profile/dream-role");
-    else if (tab === "targetcompanies") router.push("/profile/target-companies");
-    else if (tab === "learning") router.push("/profile/learning-path");
-    else if (tab === "assets") router.push("/profile/assets");
-    else if (tab === "preferences") router.push("/profile/preferences");
-    else if (tab === "linkedin") router.push("/profile/linkedin");
-    else if (tab === "strategy") router.push("/profile/career-strategy");
-    else if (tab === "coach") router.push("/profile/coach");
+    router.push(profileTabPath(profileBase, tab));
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2811,12 +2808,12 @@ export function WorkspaceProfile() {
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
   const openResumeEditor = (assetId: string) => {
     setEditorAssetId(assetId);
-    router.push(profileAssetsUrl(assetId));
+    router.push(profileTabPath(profileBase, "assets", { assetId }));
   };
   const closeResumeEditor = () => {
     setEditorAssetId(null);
     setOnboardingFinish(null);
-    router.push("/profile/assets");
+    router.push(profileTabPath(profileBase, "assets"));
   };
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
@@ -2829,7 +2826,8 @@ export function WorkspaceProfile() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/profile")
+    setLoading(true);
+    fetch(api("/api/profile"), { cache: "no-store" })
       .then(async (r) => {
         const text = await r.text();
         if (!text) return { error: "Empty response" };
@@ -2863,12 +2861,12 @@ export function WorkspaceProfile() {
       .catch(() => {})
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clientId]);
 
   useEffect(() => {
     if (!profile?.resumeUrl) return;
     setReadbackLoading(true);
-    fetch("/api/ai/readback")
+    fetch(api("/api/ai/readback"))
       .then((r) => r.json())
       .then((data) => { if (!data.error) setReadback(data); })
       .catch(() => {})
@@ -2879,7 +2877,7 @@ export function WorkspaceProfile() {
   const refreshReadback = () => {
     if (!profile?.resumeUrl) return;
     setReadbackLoading(true);
-    fetch("/api/ai/readback?force=true")
+    fetch(api("/api/ai/readback?force=true"))
       .then(async (r) => {
         if (r.status === 402) {
           notifyCreditsChanged();
@@ -2899,7 +2897,7 @@ export function WorkspaceProfile() {
   useEffect(() => {
     if (!profile?.resumeUrl) return;
     setSuggestionsLoading(true);
-    fetch("/api/ai/profile-suggestions")
+    fetch(api("/api/ai/profile-suggestions"))
       .then((r) => r.json())
       .then((data) => { if (data.suggestions) setProfileSuggestions(data.suggestions); })
       .catch(() => {})
@@ -2910,7 +2908,7 @@ export function WorkspaceProfile() {
   const refreshProfileSuggestions = () => {
     if (!profile?.resumeUrl) return;
     setSuggestionsLoading(true);
-    fetch("/api/ai/profile-suggestions?force=true")
+    fetch(api("/api/ai/profile-suggestions?force=true"))
       .then(async (r) => {
         if (r.status === 402) {
           notifyCreditsChanged();
@@ -2928,7 +2926,7 @@ export function WorkspaceProfile() {
   };
 
   const patchProfile = async (patch: Record<string, unknown>) => {
-    await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
+    await fetch(api("/api/profile"), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }).catch(() => {});
   };
 
   const handleRoleAnalysisUpdate = (role: string, analysis: StoredRoleAnalysis) => {
@@ -2946,7 +2944,7 @@ export function WorkspaceProfile() {
       void patchProfile({ roleAnalyses: next });
       return next;
     });
-    void fetch(`/api/ai/role-gap?role=${encodeURIComponent(role)}`, { method: "DELETE" }).catch(() => {});
+    void fetch(api(`/api/ai/role-gap?role=${encodeURIComponent(role)}`), { method: "DELETE" }).catch(() => {});
   };
 
   const handleTargetRoleSettingsChange = (role: string, resumeAssetId: string | null) => {
@@ -2993,7 +2991,7 @@ export function WorkspaceProfile() {
 
   const goToUpskill = (skill: string) => {
     setUpskillPrompt(null);
-    router.push(profileLearningPathUrl(skill));
+    router.push(profileTabPath(profileBase, "learning", { skill }));
   };
 
   const openCompanyProspectJob = useCallback((companyName: string, job: CachedJob) => {
@@ -3030,7 +3028,7 @@ export function WorkspaceProfile() {
   };
 
   const refreshAssets = () => {
-    fetch("/api/assets")
+    fetch(api("/api/assets"))
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setAssets(data); })
       .catch(() => {});
@@ -3072,7 +3070,7 @@ export function WorkspaceProfile() {
     setEditorAssetId(assetToOpen);
     if (payload) clearOnboardingFinishPayload();
 
-    router.replace(profileAssetsUrl(assetToOpen));
+    router.replace(profileTabPath(profileBase, "assets", { assetId: assetToOpen }));
   }, [page, searchParams, assets, router, onboardingFinish]);
 
   const handlePersonalSave = async (patch: Omit<Partial<UserProfile>, "parsedData"> & { parsedData?: Partial<ParsedData> }) => {
@@ -3131,9 +3129,9 @@ export function WorkspaceProfile() {
   const handleAssetDelete = async (id: string) => {
     setAssets((prev) => prev.filter((a) => a.id !== id));
     try {
-      const res = await fetch(`/api/assets?id=${id}`, { method: "DELETE" });
+      const res = await fetch(api(`/api/assets?id=${id}`), { method: "DELETE" });
       if (res.ok) {
-        const profileRes = await fetch("/api/profile");
+        const profileRes = await fetch(api("/api/profile"));
         const profileData = await profileRes.json();
         if (!profileData.error) setProfile(profileData);
       } else {
@@ -3146,7 +3144,7 @@ export function WorkspaceProfile() {
 
   const refreshProfileAfterResume = useCallback(() => {
     refreshAssets();
-    fetch("/api/profile")
+    fetch(api("/api/profile"))
       .then((r) => r.json())
       .then((data) => {
         if (!data.error) {
@@ -3157,7 +3155,7 @@ export function WorkspaceProfile() {
       .catch(() => {});
     setReadbackNudge(true);
     setTimeout(() => setReadbackNudge(false), 8000);
-  }, []);
+  }, [clientId]);
 
   const uploadFlow = useResumeUploadFlow({
     onComplete: refreshProfileAfterResume,
@@ -3174,7 +3172,7 @@ export function WorkspaceProfile() {
       const form = new FormData();
       form.append("file", file);
       form.append("type", type);
-      const res = await fetch("/api/assets/upload", { method: "POST", body: form });
+      const res = await fetch(api("/api/assets/upload"), { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       refreshAssets();
@@ -3191,7 +3189,7 @@ export function WorkspaceProfile() {
     const form = new FormData();
     form.append("file", file);
     try {
-      const res = await fetch("/api/resume", { method: "POST", body: form });
+      const res = await fetch(api("/api/resume"), { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) {
         setResumeUploadError(data.error || "Upload failed — try again.");
@@ -3214,7 +3212,7 @@ export function WorkspaceProfile() {
   };
 
   const goToSection = (section: AboutSection) => {
-    router.push(profileAboutSectionUrl(section));
+    router.push(profileTabPath(profileBase, "about", { aboutSection: section }));
     setActiveSection(section);
     // Wait for render if switching from another page, then scroll
     setTimeout(() => {
@@ -3342,6 +3340,13 @@ export function WorkspaceProfile() {
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
+      {clientId && (
+        <AdminClientProfileBanner
+          name={profile?.name}
+          email={profile?.email}
+          onBack={() => router.push("/dashboard/clients")}
+        />
+      )}
       <WorkspaceScroll ref={scrollRef}>
         <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH }}>
         {upskillPrompt && page !== "learning" && page !== "dreamrole" && (
@@ -3546,6 +3551,7 @@ export function WorkspaceProfile() {
                 onGoToUpskill={goToUpskill}
                 onClearUpskillPrompt={() => setUpskillPrompt(null)}
                 onInitRoleSettings={initRoleSettings}
+                clientUserId={clientId}
               />
             )}
 
@@ -3554,7 +3560,7 @@ export function WorkspaceProfile() {
                 embeddedInProfile
                 onOpenProspectJob={openCompanyProspectJob}
                 selectedCompanyId={profileLoc.companyId ?? null}
-                onCompanySelect={(id) => router.push(profileTargetCompaniesUrl(id))}
+                onCompanySelect={(id) => router.push(profileTabPath(profileBase, "targetcompanies", { companyId: id }))}
               />
             )}
 
@@ -3595,7 +3601,8 @@ export function WorkspaceProfile() {
                 <CareerStrategyPanel
                   profile={profile}
                   isMobile={isMobile}
-                  isAdmin={showAdminUi}
+                  isAdmin={showAdminUi || !!clientId}
+                  clientUserId={clientId}
                   onPatchProfile={async (patch) => {
                     await patchProfile(patch);
                     setProfile((p) => (p ? { ...p, ...patch } as UserProfile : p));
@@ -3641,7 +3648,7 @@ export function WorkspaceProfile() {
         onClose={closeResumeEditor}
         onUpdated={() => {
           refreshAssets();
-          fetch("/api/profile")
+          fetch(api("/api/profile"))
             .then((r) => r.json())
             .then((data) => { if (!data.error) setProfile(data); })
             .catch(() => {});

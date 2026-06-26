@@ -4,9 +4,14 @@ import { Prisma } from "@prisma/client";
 import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
+import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 
-export async function GET() {
-  const { dbUser } = await getActingUser();
+export async function GET(request: Request) {
+  const acting = await getActingUser(request);
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const dbUser = resolved.subject;
   if (!dbUser) return NextResponse.json([], { status: 200 });
 
   let assets = await prisma.userAsset.findMany({
@@ -48,8 +53,14 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
-  const { authUser, dbUser } = await getActingUser(request);
+  const acting = await getActingUser(request);
+  const { authUser } = acting;
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const dbUser = resolved.subject;
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const supabase = await createClient();

@@ -14,6 +14,7 @@ import { heuristicRoleGapAnalysis } from "@/lib/role-gap-heuristic";
 import { ensureAssetResumeParsed } from "@/lib/ensure-asset-resume";
 import { upsertProfileFields } from "@/lib/profile-write";
 import { getActingUser } from "@/lib/acting-user";
+import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { allMatchableSkills } from "@/lib/skills-tools";
 import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
@@ -157,8 +158,13 @@ export async function GET(request: Request) {
   if (!role) return NextResponse.json({ error: "role required" }, { status: 400 });
 
   try {
-    const { authUser, dbUser } = await getActingUser();
-    if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const acting = await getActingUser(request);
+    if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const clientUserId = readClientUserIdFromRequest(request);
+    const resolved = await resolveAdminClientSubject(acting, clientUserId);
+    if (resolved.error) return resolved.error;
+    const dbUser = resolved.subject;
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const dbUserWithSub = await prisma.user.findUnique({
@@ -238,8 +244,13 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { authUser, dbUser } = await getActingUser();
-  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const acting = await getActingUser(request);
+  if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const dbUser = resolved.subject;
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const { searchParams } = new URL(request.url);

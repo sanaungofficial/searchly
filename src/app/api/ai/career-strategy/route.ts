@@ -1,4 +1,5 @@
 import { getActingUser, quotaUserFor, canAccessAdminClientTools } from "@/lib/acting-user";
+import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { anthropicErrorResponse } from "@/lib/anthropic-errors";
 import {
@@ -78,7 +79,12 @@ function strategyReadResponse(
 export async function GET(request: Request) {
   try {
     const acting = await getActingUser(request);
-    const { dbUser } = acting;
+    if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const clientUserId = readClientUserIdFromRequest(request);
+    const resolved = await resolveAdminClientSubject(acting, clientUserId);
+    if (resolved.error) return resolved.error;
+    const dbUser = resolved.subject;
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const includeIntakeNotes = canAccessAdminClientTools(acting);
@@ -116,11 +122,16 @@ export async function POST(request: Request) {
     }
 
     const acting = await getActingUser(request);
-    const { dbUser } = acting;
-    if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!canAccessAdminClientTools(acting)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const clientUserId = readClientUserIdFromRequest(request);
+    const resolved = await resolveAdminClientSubject(acting, clientUserId);
+    if (resolved.error) return resolved.error;
+    const dbUser = resolved.subject;
+    if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await ensureProfileRow(dbUser.id);
 
@@ -182,7 +193,12 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const acting = await getActingUser(request);
-  const { dbUser } = acting;
+  if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const dbUser = resolved.subject;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();

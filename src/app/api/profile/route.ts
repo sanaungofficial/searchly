@@ -8,13 +8,19 @@ import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { invalidateRecommendedSnapshotForUser } from "@/lib/recommended-jobs-snapshot";
 import { NextResponse } from "next/server";
 import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
+import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const acting = await getActingUser();
-    const { authUser, dbUser, isImpersonating } = acting;
+    const acting = await getActingUser(request);
+    const { authUser, isImpersonating } = acting;
     if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const clientUserId = readClientUserIdFromRequest(request);
+    const resolved = await resolveAdminClientSubject(acting, clientUserId);
+    if (resolved.error) return resolved.error;
+    const dbUser = resolved.subject;
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const includeIntakeNotes = canAccessAdminClientTools(acting);
@@ -61,6 +67,7 @@ export async function GET() {
       strategyUpdatedAt: profile?.strategyUpdatedAt?.toISOString() || null,
       hasStrategy: !!profile?.strategyData,
       dashboardGoals: normalizeDashboardGoals(profile?.dashboardGoals),
+      adminReview: clientUserId ? { clientId: dbUser.id, name: dbUser.name, email: dbUser.email } : undefined,
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
         : undefined,
@@ -72,9 +79,14 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const acting = await getActingUser();
-  const { authUser, dbUser } = acting;
+  const acting = await getActingUser(request);
+  const { authUser } = acting;
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const dbUser = resolved.subject;
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
   const { name, headline, linkedinUrl, targetRoles, prioritizedRoles, prioritizedCategories, deprioritizedRoles, deprioritizedCategories, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary, targetMarket, relocationOpenness, workAuthorization, securityClearance, searchDuration, positioningStatement, strategyIntakeNotes, dashboardGoals } = body;

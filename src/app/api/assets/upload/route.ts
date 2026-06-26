@@ -2,11 +2,17 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
+import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const { authUser, dbUser } = await getActingUser(request);
-  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const acting = await getActingUser(request);
+  if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const dbUser = resolved.subject;
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const formData = await request.formData();
@@ -20,7 +26,7 @@ export async function POST(request: Request) {
 
   const ext = file.name.split(".").pop();
   const prefix = type.toLowerCase().replace(/_/g, "-");
-  const path = `${authUser.id}/${prefix}-${Date.now()}.${ext}`;
+  const path = `${dbUser.id}/${prefix}-${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("resumes")

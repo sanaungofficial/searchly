@@ -3,15 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { extractRawResumeText } from "@/lib/resume-extract";
 import { runResumeAssetParse, isResumeParseRunning } from "@/lib/resume-asset-parse";
 import { getActingUser } from "@/lib/acting-user";
+import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { NextResponse, after } from "next/server";
 
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const { authUser, dbUser: actingUser } = await getActingUser(request);
+  const acting = await getActingUser(request);
 
-  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const actingUser = resolved.subject;
   if (!actingUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const { data: { user } } = await supabase.auth.getUser();

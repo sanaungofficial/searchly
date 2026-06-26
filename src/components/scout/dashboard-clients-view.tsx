@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AdminClientsPanel } from "@/components/admin/admin-clients-panel";
+import { adminClientProfileBase } from "@/lib/workspace-urls";
 import { WorkspaceSubpageShell } from "@/components/scout/workspace-content";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
@@ -39,6 +40,10 @@ function DashboardClientsInner() {
     }
   }
 
+  function viewClientProfile(userId: string) {
+    router.push(adminClientProfileBase(userId));
+  }
+
   if (tab === "profile") {
     return (
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -52,6 +57,7 @@ function DashboardClientsInner() {
       <AdminClientsPanel
         apiPath={showAdminUi ? "/api/admin/clients" : "/api/coach/clients"}
         onViewAsClient={showAdminUi ? viewAsClient : undefined}
+        onViewClientProfile={showAdminUi ? viewClientProfile : undefined}
         startingUserId={starting}
         detailMode="drawer"
         embedded
