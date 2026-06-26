@@ -9,6 +9,7 @@ import {
   loadInboxSnapshot,
 } from "@/lib/kimchi-assistant/inbox-suggestions";
 import { jobStageLabel } from "@/lib/kimchi-assistant/stages";
+import { isPromotionalInboxActivity } from "@/lib/kimchi-assistant/suggestion-questions";
 import type {
   AssistantContextPayload,
   AssistantPageHint,
@@ -261,8 +262,12 @@ export function formatAssistantContextForPrompt(ctx: AssistantContextPayload): s
   const inboxBlock =
     ctx.inbox.pendingCount > 0
       ? `\nInbox (${ctx.inbox.pendingCount} to review): ${ctx.inbox.activities
+          .filter((a) => !isPromotionalInboxActivity(a))
           .slice(0, 5)
-          .map((a) => a.title || a.snippet || a.companyGuess)
+          .map((a) => {
+            const parts = [a.roleGuess, a.companyGuess, a.title || a.snippet].filter(Boolean);
+            return parts.join(" · ");
+          })
           .filter(Boolean)
           .join("; ")}`
       : "";

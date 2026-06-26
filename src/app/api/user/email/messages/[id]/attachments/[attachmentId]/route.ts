@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { downloadAttachment } from "@/lib/nylas-inbox";
 import { isNylasConfigured } from "@/lib/nylas";
 import { getUserEmailGrant } from "@/lib/user-email-server";
@@ -8,7 +8,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; attachmentId: string }> },
 ) {
-  const { dbUser } = await getActingUser();
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {

@@ -1,6 +1,7 @@
 import { JobActivitySignal, JobActivityStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFollowUpSuggestions } from "@/lib/job-follow-up-suggestions";
+import { isPromotionalInboxActivity } from "@/lib/kimchi-assistant/suggestion-questions";
 import type { AssistantInboxSnapshot, AssistantSuggestion } from "@/lib/kimchi-assistant/types";
 
 const SIGNAL_LABELS: Partial<Record<JobActivitySignal, string>> = {
@@ -104,16 +105,36 @@ export async function loadInboxSnapshot(userId: string): Promise<AssistantInboxS
   };
 }
 
+function inboxEmailPriority(signal: string, confidence: number | null): number {
+  switch (signal) {
+    case "INTERVIEW_INVITE":
+      return 94;
+    case "OFFER":
+      return 93;
+    case "RECRUITER_OUTREACH":
+      return 91;
+    case "APPLICATION_RECEIVED":
+      return 88;
+    case "FOLLOW_UP":
+      return 86;
+    case "REJECTION":
+      return 82;
+    default:
+      return (confidence ?? 0.5) >= 0.7 ? 78 : 60;
+  }
+}
+
 export function inboxSuggestionsFromSnapshot(inbox: AssistantInboxSnapshot): AssistantSuggestion[] {
   const out: AssistantSuggestion[] = [];
 
-  for (const a of inbox.activities.slice(0, 4)) {
+  for (const a of inbox.activities.slice(0, 6)) {
+    if (isPromotionalInboxActivity(a)) continue;
     out.push({
       id: `inbox-${a.id}`,
       kind: "inbox_email",
       title: inboxEmailActionLabel(a),
       detail: inboxEmailDetail(a),
-      priority: 95,
+      priority: inboxEmailPriority(a.signal, a.confidence),
       meta: { activityId: a.id, nylasMessageId: a.nylasMessageId ?? "" },
     });
   }

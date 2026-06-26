@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { syncAllInboxActivities } from "@/lib/inbox-crm";
 import { syncAllUserInboxes } from "@/lib/job-email-agent";
 import { ensureKimchiAgentAccount } from "@/lib/kimchi-agent-account";
 
@@ -9,7 +10,19 @@ export async function GET(req: Request) {
   }
 
   await ensureKimchiAgentAccount().catch((err) => console.error("[cron/email-agent-sync] agent account", err));
-  const result = await syncAllUserInboxes();
 
-  return NextResponse.json({ ok: true, ...result });
+  const [inboxCrm, aiAgent] = await Promise.all([
+    syncAllInboxActivities(),
+    syncAllUserInboxes().catch((err) => {
+      console.error("[cron/email-agent-sync] ai agent", err);
+      return { users: 0, processed: 0 };
+    }),
+  ]);
+
+  return NextResponse.json({
+    ok: true,
+    inboxCrm,
+    aiAgent,
+    processed: inboxCrm.processed + aiAgent.processed,
+  });
 }

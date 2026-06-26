@@ -146,10 +146,11 @@ export function UserAssetsList({
                         style={{
                           fontFamily: fontSans,
                           fontSize: 11,
-                          fontWeight: 600,
+                          fontWeight: 700,
                           padding: "2px 8px",
-                          background: color.forest,
-                          color: "#fff",
+                          background: "rgba(196,168,106,0.18)",
+                          border: `1px solid ${color.gold}`,
+                          color: "#7A6020",
                           borderRadius: 4,
                         }}
                       >

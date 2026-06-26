@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
-import { syncUserInbox } from "@/lib/job-email-agent";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
+import { syncInboxActivities } from "@/lib/inbox-crm";
 import { isNylasConfigured } from "@/lib/nylas";
 import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
 
-export async function POST() {
-  const { dbUser } = await getActingUser();
+export async function POST(request: Request) {
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {
@@ -17,7 +18,7 @@ export async function POST() {
   if (!grant) return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
 
   try {
-    const result = await syncUserInbox(dbUser.id);
+    const result = await syncInboxActivities(dbUser.id);
     await prisma.userEmailGrant.update({
       where: { id: grant.id },
       data: { lastSyncAt: new Date() },

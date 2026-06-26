@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 
 type MeetingEvent = {
@@ -44,13 +45,14 @@ type Props = {
 };
 
 export function InboxMeetingsPanel({ refreshKey, collapsed, onToggleCollapse }: Props) {
+  const { withClientScope } = useWorkspace();
   const [events, setEvents] = useState<MeetingEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/user/email/events");
+      const res = await fetch(withClientScope("/api/user/email/events"));
       if (!res.ok) {
         setEvents([]);
         return;
@@ -62,7 +64,7 @@ export function InboxMeetingsPanel({ refreshKey, collapsed, onToggleCollapse }: 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
     load();

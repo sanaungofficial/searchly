@@ -6,7 +6,8 @@ import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { InboxStatusDropdown, InboxStatusPills } from "./inbox-status-pill";
 import { SenderAvatar } from "./sender-avatar";
-import type { MessageDetail } from "./inbox-types";
+import { InboxContactCard } from "./inbox-contact-card";
+import type { ContactCardData, MessageDetail } from "./inbox-types";
 
 type Props = {
   detail: MessageDetail;
@@ -15,7 +16,10 @@ type Props = {
   onReply: () => void;
   onPatch: (patch: { unread?: boolean; starred?: boolean; archive?: boolean }) => void;
   onTagChange: (tag: InboxUserTag | null) => void;
+  onLinkJob: (jobId: string | null) => void;
+  jobLinkSaving?: boolean;
   onOpenThreadMessage: (id: string) => void;
+  scopePath?: (path: string) => string;
 };
 
 export function InboxExpandedMessage({
@@ -25,7 +29,10 @@ export function InboxExpandedMessage({
   onReply,
   onPatch,
   onTagChange,
+  onLinkJob,
+  jobLinkSaving = false,
   onOpenThreadMessage,
+  scopePath = (path) => path,
 }: Props) {
   const [showThread, setShowThread] = useState(true);
 
@@ -54,7 +61,11 @@ export function InboxExpandedMessage({
             onChange={onTagChange}
           />
           <span style={{ marginLeft: 8 }}>
-            <InboxStatusPills userTag={detail.activity?.userTag} signal={detail.activity?.signal} />
+            <InboxStatusPills
+              userTag={detail.activity?.userTag}
+              category={detail.activity?.category}
+              signal={detail.activity?.signal}
+            />
           </span>
         </div>
         <button
@@ -75,6 +86,14 @@ export function InboxExpandedMessage({
           ×
         </button>
       </div>
+
+      <InboxContactCard
+        contactCard={(detail.contactCard as ContactCardData | null) ?? null}
+        linkedJobId={detail.activity?.job?.id ?? null}
+        saving={jobLinkSaving}
+        scopePath={scopePath}
+        onLinkJob={onLinkJob}
+      />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
         <ScoutPrimaryBtn onClick={onReply}>Reply</ScoutPrimaryBtn>
@@ -121,7 +140,7 @@ export function InboxExpandedMessage({
             {detail.attachments.map((a) => (
               <a
                 key={a.id}
-                href={`/api/user/email/messages/${encodeURIComponent(detail.id)}/attachments/${encodeURIComponent(a.id)}`}
+                href={scopePath(`/api/user/email/messages/${encodeURIComponent(detail.id)}/attachments/${encodeURIComponent(a.id)}`)}
                 style={{
                   fontFamily: fontSans,
                   fontSize: T.caption,

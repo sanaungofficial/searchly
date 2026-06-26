@@ -196,15 +196,18 @@ export function ResumeUploadSuccessModal({
   onSave,
   onViewResume,
   isMobile,
+  targetRoles = [],
 }: {
   defaultName: string;
   saving: boolean;
   onSave: (name: string, targetJobTitle: string) => void;
   onViewResume: () => void;
   isMobile?: boolean;
+  targetRoles?: string[];
 }) {
   const [name, setName] = useState(defaultName);
-  const [targetJobTitle, setTargetJobTitle] = useState("");
+  const [targetJobTitle, setTargetJobTitle] = useState(targetRoles[0] ?? "");
+  const [customRole, setCustomRole] = useState(false);
 
   return (
     <ResumeUploadModalShell label="Resume upload" isMobile={isMobile}>
@@ -249,13 +252,50 @@ export function ResumeUploadSuccessModal({
         onChange={(e) => setName(e.target.value)}
         style={fieldInput}
       />
-      <label style={fieldLabel}>Target job title</label>
-      <input
-        value={targetJobTitle}
-        onChange={(e) => setTargetJobTitle(e.target.value)}
-        placeholder="Target role you're aiming for (e.g. Product Manager)"
-        style={{ ...fieldInput, marginBottom: 24 }}
-      />
+      <label style={fieldLabel}>Target role</label>
+      {targetRoles.length > 0 && !customRole ? (
+        <select
+          value={targetJobTitle}
+          onChange={(e) => setTargetJobTitle(e.target.value)}
+          style={{ ...fieldInput, marginBottom: 8 }}
+        >
+          <option value="">Select a target role (optional)</option>
+          {targetRoles.map((role) => (
+            <option key={role} value={role}>{role}</option>
+          ))}
+        </select>
+      ) : (
+        <input
+          value={targetJobTitle}
+          onChange={(e) => setTargetJobTitle(e.target.value)}
+          placeholder="Target role you're aiming for"
+          style={{ ...fieldInput, marginBottom: 8 }}
+        />
+      )}
+      {targetRoles.length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setCustomRole((v) => !v);
+            if (!customRole) setTargetJobTitle("");
+            else setTargetJobTitle(targetRoles[0] ?? "");
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            marginBottom: 24,
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            color: color.forest,
+            textDecoration: "underline",
+            cursor: "pointer",
+          }}
+        >
+          {customRole ? "Pick from my target roles" : "Enter a custom role instead"}
+        </button>
+      )}
+      {!targetRoles.length && <div style={{ marginBottom: 24 }} />}
       <ScoutPrimaryBtn
         onClick={onViewResume}
         style={{ width: "100%", padding: "14px 0", minHeight: 44, marginBottom: 10, justifyContent: "center" }}
@@ -284,6 +324,7 @@ export function useResumeUploadFlow(options: {
   onComplete: () => void;
   onFailed: (message: string) => void;
   onCancel: (assetId: string) => Promise<void>;
+  assetApiUrl?: (id: string) => string;
 }) {
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -326,7 +367,8 @@ export function useResumeUploadFlow(options: {
     const current = jobRef.current;
     if (!current || current.phase !== "analyzing") return;
     try {
-      const res = await fetch(`/api/assets/${current.assetId}`);
+      const assetUrl = optionsRef.current.assetApiUrl?.(current.assetId) ?? `/api/assets/${current.assetId}`;
+      const res = await fetch(assetUrl);
       const data = (await res.json()) as AssetStatus & { error?: string };
       if (!res.ok) return;
       if (data.parseStatus === "complete") {
@@ -368,7 +410,8 @@ export function useResumeUploadFlow(options: {
     if (!current) return;
     setSavingMeta(true);
     try {
-      await fetch(`/api/assets/${current.assetId}`, {
+      const assetUrl = optionsRef.current.assetApiUrl?.(current.assetId) ?? `/api/assets/${current.assetId}`;
+      await fetch(assetUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, targetJobTitle: targetJobTitle || null }),

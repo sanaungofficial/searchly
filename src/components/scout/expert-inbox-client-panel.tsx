@@ -136,7 +136,7 @@ type Props = {
   upcoming: HubBooking[];
   past: HubBooking[];
   vouchUrl: string | null;
-  onViewOps: () => void;
+  onViewClients: () => void;
   onViewClientProfile?: (userId: string) => void;
 };
 
@@ -146,7 +146,7 @@ export function ExpertInboxClientPanel({
   upcoming,
   past,
   vouchUrl,
-  onViewOps,
+  onViewClients,
   onViewClientProfile,
 }: Props) {
   const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(["sessions"]));
@@ -315,7 +315,7 @@ export function ExpertInboxClientPanel({
             )
           )}
           <div style={{ marginTop: 14 }}>
-            <ScoutSecondaryBtn type="button" onClick={onViewOps}>Open in Ops Tools</ScoutSecondaryBtn>
+            <ScoutSecondaryBtn type="button" onClick={onViewClients}>Open in Clients</ScoutSecondaryBtn>
           </div>
         </div>
       </CollapsibleCard>

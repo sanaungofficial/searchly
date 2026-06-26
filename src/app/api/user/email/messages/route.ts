@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import { serializeMessageActivity } from "@/lib/inbox-message-activity";
@@ -7,7 +7,8 @@ import { listMessages, serializeMessageSummary } from "@/lib/nylas-inbox";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
-  const { dbUser } = await getActingUser();
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {
@@ -49,9 +50,12 @@ export async function GET(req: NextRequest) {
     const serialized = messages.map((m) => serializeMessageSummary(m));
     const messageIds = serialized.map((m) => m.id);
     const activities = messageIds.length
-      ? await prisma.jobActivityLog.findMany({
+      ? await prisma.inboxActivity.findMany({
           where: { userId: dbUser.id, nylasMessageId: { in: messageIds } },
-          include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+          include: {
+            job: { select: { id: true, company: true, role: true, stage: true } },
+            contact: { select: { id: true, email: true, name: true, company: true } },
+          },
         })
       : [];
     const activityByMessageId = Object.fromEntries(

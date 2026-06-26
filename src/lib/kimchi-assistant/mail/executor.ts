@@ -12,6 +12,7 @@ import {
 } from "@/lib/nylas-inbox";
 import { prisma } from "@/lib/prisma";
 import { getUserEmailGrant } from "@/lib/user-email-server";
+import { logOutboundSend } from "@/lib/inbox-crm";
 
 export type MailToolResult = { ok: true; data: unknown } | { ok: false; error: string };
 
@@ -151,6 +152,15 @@ export async function mailSend(
       replyToMessageId: params.replyToMessageId?.trim() || undefined,
     });
     if (!sent) return { ok: false, error: "Send failed." };
+
+    logOutboundSend({
+      userId,
+      sent,
+      toEmail: to,
+      subject,
+      body,
+    }).catch((err) => console.error("[mailSend] activity log", err));
+
     return { ok: true, data: { sent: true, message: serializeMessageSummary(sent) } };
   } catch {
     return { ok: false, error: "Could not send — you may need to reconnect inbox with send permission." };

@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { ExpertInboxClientPanel } from "@/components/scout/expert-inbox-client-panel";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { WorkspaceLive } from "@/components/scout/workspace-live";
+import { WorkspaceSegmentTabs } from "@/components/scout/workspace-segment-tabs";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachClientSummary, HubBooking, HubCommunication } from "@/lib/coach-hub";
 import { navigateToAdminClientProfile } from "@/lib/admin-client-navigation";
@@ -21,6 +23,7 @@ type HubPayload = {
 };
 
 type InboxFilter = "all" | "requests";
+type InboxSection = "bookings" | "live";
 
 function commLabel(type: HubCommunication["type"]) {
   switch (type) {
@@ -82,11 +85,11 @@ function groupCommsByDay(comms: HubCommunication[]) {
 function ActionsMenu({
   vouchUrl,
   clientEmail,
-  onViewOps,
+  onViewClients,
 }: {
   vouchUrl: string | null;
   clientEmail: string;
-  onViewOps: () => void;
+  onViewClients: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -142,8 +145,8 @@ function ActionsMenu({
           <Link href={`/inbox?mode=expert`} style={{ ...actionItemStyle, display: "block", textDecoration: "none" }} onClick={() => setOpen(false)}>
             ✉ Email client
           </Link>
-          <button type="button" onClick={() => { onViewOps(); setOpen(false); }} style={actionItemStyle}>
-            ⊞ Open in Ops Tools
+          <button type="button" onClick={() => { onViewClients(); setOpen(false); }} style={actionItemStyle}>
+            ⊞ Open in Clients
           </button>
           <p style={{ margin: 0, padding: "8px 14px 10px", fontFamily: fontSans, fontSize: 11, color: color.muted, borderTop: border.line }}>
             {clientEmail}
@@ -171,7 +174,9 @@ const actionItemStyle: React.CSSProperties = {
 export function ExpertInboxView() {
   const isMobile = useIsMobile();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showAdminUi } = useWorkspace();
+  const [section, setSection] = useState<InboxSection>("bookings");
   const [data, setData] = useState<HubPayload | null>(null);
   const [clientProfiles, setClientProfiles] = useState<AdminClient[]>([]);
   const [vouchUrl, setVouchUrl] = useState<string | null>(null);
@@ -195,6 +200,11 @@ export function ExpertInboxView() {
       .catch((e) => setError(e instanceof Error ? e.message : "Error"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const next = searchParams.get("section");
+    if (next === "live" || next === "bookings") setSection(next);
+  }, [searchParams]);
 
   useEffect(() => {
     load();
@@ -271,7 +281,12 @@ export function ExpertInboxView() {
     if (isMobile) setMobilePane("detail");
   }
 
-  function openOps() {
+  function selectSection(next: InboxSection) {
+    setSection(next);
+    router.replace(next === "bookings" ? "/expert/inbox" : `/expert/inbox?section=${next}`, { scroll: false });
+  }
+
+  function openClients() {
     router.push("/expert/ops?section=clients");
   }
 
@@ -294,29 +309,48 @@ export function ExpertInboxView() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
       <header style={{ padding: isMobile ? "14px 16px" : "18px 24px", borderBottom: border.line, background: surface.card, flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
             <h1 style={{ margin: 0, fontFamily: fontSans, fontSize: isMobile ? 20 : 22, fontWeight: 600, color: color.forest }}>Inbox</h1>
+            <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
+              Session requests, booking updates, and live event setup.
+            </p>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, display: "flex", alignItems: "center", gap: 6 }}>
-              Show
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value as InboxFilter)}
-                style={{ fontFamily: fontSans, fontSize: T.caption, padding: "6px 10px", border: border.line, borderRadius: radius.box, background: "#fff" }}
-              >
-                <option value="all">All clients</option>
-                <option value="requests">Requests only</option>
-              </select>
-            </label>
-            <Link href="/inbox?mode=expert" style={{ textDecoration: "none" }}>
-              <ScoutSecondaryBtn type="button">Expert mail</ScoutSecondaryBtn>
-            </Link>
-          </div>
+          {section === "bookings" && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, display: "flex", alignItems: "center", gap: 6 }}>
+                Show
+                <select
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value as InboxFilter)}
+                  style={{ fontFamily: fontSans, fontSize: T.caption, padding: "6px 10px", border: border.line, borderRadius: radius.box, background: "#fff" }}
+                >
+                  <option value="all">All clients</option>
+                  <option value="requests">Requests only</option>
+                </select>
+              </label>
+              <Link href="/inbox?mode=expert" style={{ textDecoration: "none" }}>
+                <ScoutSecondaryBtn type="button">Expert mail</ScoutSecondaryBtn>
+              </Link>
+            </div>
+          )}
         </div>
+        <WorkspaceSegmentTabs
+          isMobile={isMobile}
+          tabs={[
+            { id: "bookings" as const, label: "Bookings" },
+            { id: "live" as const, label: "Live" },
+          ]}
+          active={section}
+          onChange={selectSection}
+        />
       </header>
 
+      {section === "live" ? (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: isMobile ? "16px 16px 32px" : "20px 24px 32px" }}>
+          <WorkspaceLive embedded />
+        </div>
+      ) : (
       <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
         {showList && (
           <aside style={{ width: isMobile ? "100%" : 300, flexShrink: 0, borderRight: isMobile ? "none" : border.line, overflowY: "auto", background: surface.inset }}>
@@ -433,7 +467,7 @@ export function ExpertInboxView() {
                         </p>
                       </div>
                     </div>
-                    <ActionsMenu vouchUrl={vouchUrl} clientEmail={selected.client.email} onViewOps={openOps} />
+                    <ActionsMenu vouchUrl={vouchUrl} clientEmail={selected.client.email} onViewClients={openClients} />
                   </div>
 
                   <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
@@ -541,7 +575,7 @@ export function ExpertInboxView() {
                       upcoming={selected.upcoming}
                       past={clientPastBookings}
                       vouchUrl={vouchUrl}
-                      onViewOps={openOps}
+                      onViewClients={openClients}
                       onViewClientProfile={showAdminUi ? (userId) => void navigateToAdminClientProfile(userId) : undefined}
                     />
                   )}
@@ -551,6 +585,7 @@ export function ExpertInboxView() {
           </main>
         )}
       </div>
+      )}
     </div>
   );
 }

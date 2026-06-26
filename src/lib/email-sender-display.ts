@@ -103,10 +103,28 @@ export const INBOX_USER_TAGS: { id: InboxUserTag; label: string; emoji: string }
 export function userTagFromRawPayload(raw: unknown): InboxUserTag | null {
   if (!raw || typeof raw !== "object") return null;
   const tag = (raw as { userTag?: string }).userTag;
-  if (tag === "needs_follow_up" || tag === "answered" || tag === "potential" || tag === "waiting") {
-    return tag;
+  return isInboxUserTag(tag) ? tag : null;
+}
+
+export function isInboxUserTag(tag: unknown): tag is InboxUserTag {
+  return tag === "needs_follow_up" || tag === "answered" || tag === "potential" || tag === "waiting";
+}
+
+export function categoryStatusLabel(category: string): { label: string; tone: "green" | "amber" | "red" | "blue" | "neutral" } {
+  switch (category) {
+    case "RECRUITER":
+      return { label: "Recruiter", tone: "blue" };
+    case "JOB_SEARCH":
+      return { label: "Job search", tone: "green" };
+    case "PERSONAL":
+      return { label: "Personal", tone: "neutral" };
+    case "NEWSLETTER":
+      return { label: "Newsletter", tone: "neutral" };
+    case "AUTOMATED":
+      return { label: "Automated", tone: "neutral" };
+    default:
+      return { label: "Uncategorized", tone: "neutral" };
   }
-  return null;
 }
 
 export function signalStatusLabel(signal: string): { label: string; tone: "green" | "amber" | "red" | "blue" | "neutral" } {

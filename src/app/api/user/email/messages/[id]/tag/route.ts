@@ -1,65 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
-import { JobActivitySource, JobActivitySignal, JobActivityStatus } from "@prisma/client";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import type { InboxUserTag } from "@/lib/email-sender-display";
+import { isInboxUserTag } from "@/lib/email-sender-display";
 import { serializeMessageActivity } from "@/lib/inbox-message-activity";
 import { prisma } from "@/lib/prisma";
 
-const VALID_TAGS = new Set<InboxUserTag>(["needs_follow_up", "answered", "potential", "waiting"]);
+const activityInclude = {
+  job: { select: { id: true, company: true, role: true, stage: true } },
+  contact: { select: { id: true, email: true, name: true, company: true } },
+} as const;
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { dbUser } = await getActingUser();
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: messageId } = await params;
   const body = (await req.json().catch(() => ({}))) as { tag?: InboxUserTag | "none" | null };
 
-  if (body.tag !== null && body.tag !== "none" && body.tag !== undefined && !VALID_TAGS.has(body.tag)) {
+  if (body.tag !== null && body.tag !== "none" && body.tag !== undefined && !isInboxUserTag(body.tag)) {
     return NextResponse.json({ error: "Invalid tag" }, { status: 400 });
   }
 
-  const existing = await prisma.jobActivityLog.findFirst({
+  const existing = await prisma.inboxActivity.findFirst({
     where: { userId: dbUser.id, nylasMessageId: messageId },
-    include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+    include: activityInclude,
   });
 
   if (body.tag === "none" || body.tag === null) {
     if (!existing) return NextResponse.json({ activity: null });
-    const raw = (existing.rawPayload && typeof existing.rawPayload === "object"
-      ? { ...(existing.rawPayload as Record<string, unknown>) }
-      : {}) as Record<string, unknown>;
-    delete raw.userTag;
-    const updated = await prisma.jobActivityLog.update({
+    const updated = await prisma.inboxActivity.update({
       where: { id: existing.id },
-      data: { rawPayload: Object.keys(raw).length ? raw : undefined },
-      include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+      data: { userTag: null },
+      include: activityInclude,
     });
     return NextResponse.json({ activity: serializeMessageActivity(updated) });
   }
 
   if (existing) {
-    const raw = (existing.rawPayload && typeof existing.rawPayload === "object"
-      ? { ...(existing.rawPayload as Record<string, unknown>) }
-      : {}) as Record<string, unknown>;
-    raw.userTag = body.tag;
-    const updated = await prisma.jobActivityLog.update({
+    const updated = await prisma.inboxActivity.update({
       where: { id: existing.id },
-      data: { rawPayload: raw },
-      include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+      data: { userTag: body.tag },
+      include: activityInclude,
     });
     return NextResponse.json({ activity: serializeMessageActivity(updated) });
   }
 
-  const created = await prisma.jobActivityLog.create({
+  const created = await prisma.inboxActivity.create({
     data: {
       userId: dbUser.id,
-      source: JobActivitySource.EMAIL,
-      signal: JobActivitySignal.OTHER,
-      status: JobActivityStatus.APPLIED,
+      kind: "EMAIL",
+      direction: "INBOUND",
+      category: "UNKNOWN",
       nylasMessageId: messageId,
-      rawPayload: { userTag: body.tag },
+      userTag: body.tag,
     },
-    include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+    include: activityInclude,
   });
 
   return NextResponse.json({ activity: serializeMessageActivity(created) });

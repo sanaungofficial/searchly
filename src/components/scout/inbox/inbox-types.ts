@@ -9,14 +9,46 @@ export type InboxStatus = {
 
 export type Folder = { id: string; name: string; unread_count?: number };
 
+export type PipelineJobOption = {
+  id: string;
+  company: string;
+  role: string;
+  stage: string;
+};
+
+export type ContactTimelineItem = {
+  id: string;
+  kind: string;
+  direction: string;
+  category: string;
+  subject: string | null;
+  snippet: string | null;
+  occurredAt: string | null;
+  nylasMessageId: string | null;
+  userTag: string | null;
+};
+
+export type ContactCardData = {
+  contact: {
+    id: string;
+    email: string;
+    name: string | null;
+    company: string | null;
+    title: string | null;
+  };
+  linkedJobs: Array<PipelineJobOption & { contactRole: string | null }>;
+  timeline: ContactTimelineItem[];
+};
+
 export type MessageActivityMeta = {
   id: string;
-  signal: string;
-  status: string;
+  category: string;
+  direction: string;
   userTag: "needs_follow_up" | "answered" | "potential" | "waiting" | null;
-  companyGuess: string | null;
-  roleGuess: string | null;
+  contact: { id: string; email: string; name: string | null; company: string | null } | null;
   job: { id: string; company: string; role: string; stage: string } | null;
+  /** @deprecated */
+  signal?: string | null;
 };
 
 export type MessageSummary = {
@@ -49,6 +81,7 @@ export type MessageDetail = MessageSummary & {
   bodyText: string;
   attachments: AttachmentMeta[];
   thread: MessageSummary[];
+  contactCard?: ContactCardData | null;
 };
 
 export type ComposeState = {

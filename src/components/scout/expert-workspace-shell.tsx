@@ -23,6 +23,16 @@ function NavIcon({ id }: { id: ExpertWorkspaceNavId }) {
       </svg>
     );
   }
+  if (id === "clients") {
+    return (
+      <svg {...common}>
+        <path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" strokeLinecap="round" />
+        <circle cx="10" cy="8" r="3" />
+        <path d="M20 19v-1a3 3 0 0 0-2-2.8" strokeLinecap="round" />
+        <path d="M16 4.2a3 3 0 0 1 0 5.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
   if (id === "offerings") {
     return (
       <svg {...common}>
