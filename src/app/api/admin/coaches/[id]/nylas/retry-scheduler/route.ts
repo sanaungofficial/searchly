@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
+import { syncCoachSchedulerFromProfile } from "@/lib/coach-scheduler-sync";
 import { prisma } from "@/lib/prisma";
 import { coachProfileSlug } from "@/lib/coach-slug";
-import { ensureCoachSchedulerConfig, isNylasConfigured } from "@/lib/nylas";
+import { isNylasConfigured } from "@/lib/nylas";
 
 export async function POST(
   _req: NextRequest,
@@ -31,23 +32,16 @@ export async function POST(
   }
 
   const slug = profile.slug ?? coachProfileSlug(profile.displayName, profile.id);
-  const coachEmail = profile.email ?? "";
 
   try {
-    const result = await ensureCoachSchedulerConfig({
-      grantId: profile.nylasGrantId,
-      configId: profile.nylasSchedulerConfigId,
-      coachName: profile.displayName,
-      coachEmail,
-      slug: profile.nylasSchedulerSlug ?? `kimchi-${slug}`,
-      durationMinutes: profile.schedulerDurationMinutes ?? 30,
-    });
+    const result = await syncCoachSchedulerFromProfile(profile.id);
+    if (!result) {
+      return NextResponse.json({ error: "Scheduler sync failed" }, { status: 502 });
+    }
 
     await prisma.coachProfile.update({
       where: { id: profile.id },
       data: {
-        nylasSchedulerConfigId: result.configId,
-        ...(result.slug ? { nylasSchedulerSlug: result.slug } : {}),
         ...(profile.status !== CoachStatus.ACTIVE ? { status: CoachStatus.ACTIVE } : {}),
         ...(slug !== profile.slug ? { slug } : {}),
       },
