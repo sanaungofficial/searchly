@@ -14,6 +14,7 @@ import {
   relaxRestrictiveFilters,
 } from "@/lib/profile-preference-filters";
 import {
+  filterJobsByLocationPreference,
   filterSourcesByLocationPreference,
 } from "@/lib/profile-location";
 import { filterSourcesByRadiusMiles } from "@/lib/job-location-radius";
@@ -29,6 +30,7 @@ import {
   type RecommendedMatchMode,
   RECOMMENDED_FETCH_POOL,
   RECOMMENDED_MIN_DISPLAY_ROLES,
+  RECOMMENDED_MIN_DISTINCT_COMPANIES,
   RECOMMENDED_SNAPSHOT_MAX_JOBS,
 } from "@/lib/recommended-jobs-config";
 import {
@@ -154,19 +156,36 @@ function displayKeysFromSources(sources: RecommendedJobSource[]): Set<string> {
   );
 }
 
-async function supplementSparseRecommendedSources(input: {
-  sources: RecommendedJobSource[];
-  targetRoles: string[];
-  semanticQuery: string;
-}): Promise<{ sources: RecommendedJobSource[]; supplemented: boolean }> {
+function countDistinctCompaniesFromSources(sources: RecommendedJobSource[]): number {
+  return new Set(
+    sources.map((source) => source.companyName.trim().toLowerCase()).filter(Boolean),
+  ).size;
+}
+
+function countDistinctCompaniesFromJobs(jobs: VectorMatchedJob[]): number {
+  return new Set(jobs.map((job) => job.companyName.trim().toLowerCase()).filter(Boolean)).size;
+}
+
+function recommendedFeedNeedsSupplement(sources: RecommendedJobSource[]): boolean {
   const displayCount = countUniqueDisplayListingKeys(
-    input.sources.map((source) => ({
+    sources.map((source) => ({
       companyName: source.companyName,
       title: source.cached.title,
       url: source.cached.url,
     })),
   );
-  if (displayCount >= RECOMMENDED_MIN_DISPLAY_ROLES) {
+  return (
+    displayCount < RECOMMENDED_MIN_DISPLAY_ROLES ||
+    countDistinctCompaniesFromSources(sources) < RECOMMENDED_MIN_DISTINCT_COMPANIES
+  );
+}
+
+async function supplementSparseRecommendedSources(input: {
+  sources: RecommendedJobSource[];
+  targetRoles: string[];
+  semanticQuery: string;
+}): Promise<{ sources: RecommendedJobSource[]; supplemented: boolean }> {
+  if (!recommendedFeedNeedsSupplement(input.sources)) {
     return { sources: input.sources, supplemented: false };
   }
 
@@ -198,8 +217,14 @@ async function supplementSparseRecommendedJobs(input: {
   userId: string;
   maxJobs: number;
   roleTitlePreferences: RoleTitlePreferences;
+  profileLocation?: string | null;
+  priorities?: string[];
+  applyLocationFilter?: boolean;
 }): Promise<VectorMatchedJob[]> {
-  if (input.jobs.length >= RECOMMENDED_MIN_DISPLAY_ROLES) return input.jobs;
+  const needsSupplement =
+    input.jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES ||
+    countDistinctCompaniesFromJobs(input.jobs) < RECOMMENDED_MIN_DISTINCT_COMPANIES;
+  if (!needsSupplement) return input.jobs;
 
   const broad = await fetchRecommendedBroadFallback({
     profileTargetRoles: input.targetRoles,
@@ -210,8 +235,17 @@ async function supplementSparseRecommendedJobs(input: {
   });
   if (!broad.sources.length) return input.jobs;
 
+  let extraSources = broad.sources;
+  if (input.applyLocationFilter) {
+    extraSources = filterSourcesByLocationPreference(extraSources, {
+      profileLocation: input.profileLocation,
+      priorities: input.priorities,
+    });
+    if (!extraSources.length) return input.jobs;
+  }
+
   const extra = await enrichAndRank(
-    broad.sources,
+    extraSources,
     input.resumeText,
     input.userId,
     input.maxJobs,
@@ -220,7 +254,14 @@ async function supplementSparseRecommendedJobs(input: {
   );
   if (!extra.length) return input.jobs;
 
-  return sortRecommendedJobs(dedupeVectorMatchedJobs([...input.jobs, ...extra])).slice(0, input.maxJobs);
+  let merged = sortRecommendedJobs(dedupeVectorMatchedJobs([...input.jobs, ...extra])).slice(0, input.maxJobs);
+  if (input.applyLocationFilter) {
+    merged = filterJobsByLocationPreference(merged, {
+      profileLocation: input.profileLocation,
+      priorities: input.priorities,
+    });
+  }
+  return merged;
 }
 
 type PrimaryFetchResult = {
@@ -316,37 +357,55 @@ async function fetchPrimaryRecommendedSources(input: {
     }
   }
 
-  if (!sources.length) {
-    const tracked = await fetchRecommendedFromTrackedCompanies({
-      userId: input.userId,
-      profileTargetRoles: input.targetRoles,
-      filters: input.filters,
-      maxJobs: input.maxJobs * 2,
-      preferCache: input.preferCache,
-    });
-    if (tracked.sources.length) {
-      sources = tracked.sources;
-      companyCount = tracked.companyCount;
-      trackedWithMatches = tracked.trackedWithMatches;
-      matchMode = "tracked";
-      notice =
-        notice ??
-        (input.artifactId
-          ? "Showing open roles at your tracked companies."
-          : "Track companies for a ranking boost — showing watchlist matches.");
-    }
-  }
+  // Global target-title search + watchlist jobs — always merge; watchlist boosts rank, never hard-filters the feed.
+  const supplemental: RecommendedJobSource[] = [];
+  let profileRoleCount = 0;
 
-  if (!sources.length && input.targetRoles.length) {
+  if (input.targetRoles.length || input.semanticQuery?.trim()) {
     const roles = await fetchRecommendedFromProfileRoles({
       profileTargetRoles: input.targetRoles,
       filters: input.filters,
       semanticQuery: input.semanticQuery || undefined,
       maxJobs: input.maxJobs * 2,
     });
-    sources = roles.sources;
-    matchMode = "profile_roles";
-    notice = notice ?? "Showing roles that match your target titles.";
+    profileRoleCount = roles.sources.length;
+    supplemental.push(...roles.sources);
+  }
+
+  const tracked = await fetchRecommendedFromTrackedCompanies({
+    userId: input.userId,
+    profileTargetRoles: input.targetRoles,
+    filters: input.filters,
+    maxJobs: input.maxJobs * 2,
+    preferCache: input.preferCache,
+  });
+  supplemental.push(...tracked.sources);
+  trackedWithMatches = Math.max(trackedWithMatches, tracked.trackedWithMatches);
+  companyCount = Math.max(companyCount, tracked.companyCount);
+
+  if (supplemental.length) {
+    const primaryCount = sources.length;
+    sources = dedupeRecommendedSources([...sources, ...supplemental], RECOMMENDED_FETCH_POOL);
+    companyCount = Math.max(companyCount, countDistinctCompaniesFromSources(sources));
+
+    if (!primaryCount && sources.length) {
+      if (profileRoleCount > 0) {
+        matchMode = "profile_roles";
+        notice = notice ?? "Showing roles that match your target titles across Hirebase.";
+      } else {
+        matchMode = "tracked";
+        notice =
+          notice ??
+          (input.artifactId
+            ? "Showing open roles at your tracked companies — add target roles for broader matches."
+            : "Track companies for a ranking boost — add target roles for broader matches.");
+      }
+    } else if (primaryCount && sources.length > primaryCount) {
+      notice = appendNotice(
+        notice,
+        "Included target-title and watchlist matches alongside your top fits.",
+      );
+    }
   }
 
   if (!sources.length) return empty;
@@ -455,13 +514,7 @@ export async function generateRecommendedJobsForUser(
   sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
 
   if (
-    countUniqueDisplayListingKeys(
-      sources.map((source) => ({
-        companyName: source.companyName,
-        title: source.cached.title,
-        url: source.cached.url,
-      })),
-    ) < RECOMMENDED_MIN_DISPLAY_ROLES &&
+    recommendedFeedNeedsSupplement(sources) &&
     hasRestrictiveListingFilters(effectiveFilters)
   ) {
     await retryPrimaryWithRelaxedFilters(
@@ -485,15 +538,16 @@ export async function generateRecommendedJobsForUser(
   }
 
   const sourcesBeforeLocation = sources;
+  const locationInput = { profileLocation, priorities };
   if (defaultFeed) {
-    const locationFiltered = filterSourcesByLocationPreference(sources, { profileLocation, priorities });
+    const locationFiltered = filterSourcesByLocationPreference(sources, locationInput);
     if (locationFiltered.length) {
       sources = locationFiltered;
     } else if (sourcesBeforeLocation.length) {
-      sources = sourcesBeforeLocation;
+      sources = [];
       notice = appendNotice(
         notice,
-        "No roles matched your location preferences — showing broader geography.",
+        "No roles matched your location — check Career preferences or enable relocation to see broader geography.",
       );
     }
   }
@@ -531,7 +585,7 @@ export async function generateRecommendedJobsForUser(
     filterStale: false,
   });
 
-  if (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
+  if (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES || countDistinctCompaniesFromJobs(jobs) < RECOMMENDED_MIN_DISTINCT_COMPANIES) {
     const beforeCount = jobs.length;
     jobs = await supplementSparseRecommendedJobs({
       jobs,
@@ -541,6 +595,9 @@ export async function generateRecommendedJobsForUser(
       userId: input.userId,
       maxJobs,
       roleTitlePreferences,
+      profileLocation,
+      priorities,
+      applyLocationFilter: defaultFeed,
     });
     if (jobs.length > beforeCount) {
       matchMode = matchMode === "broad" ? matchMode : "broad";
@@ -552,14 +609,19 @@ export async function generateRecommendedJobsForUser(
   }
 
   if (!jobs.length) {
-    const broad = await fetchRecommendedBroadFallback({
-      profileTargetRoles: targetRoles,
-      semanticQuery: semanticQuery || undefined,
-      maxJobs: RECOMMENDED_FETCH_POOL,
-      diverse: true,
-    });
-    if (broad.sources.length) {
-      sources = broad.sources;
+    let broadSources = (
+      await fetchRecommendedBroadFallback({
+        profileTargetRoles: targetRoles,
+        semanticQuery: semanticQuery || undefined,
+        maxJobs: RECOMMENDED_FETCH_POOL,
+        diverse: true,
+      })
+    ).sources;
+    if (defaultFeed && broadSources.length) {
+      broadSources = filterSourcesByLocationPreference(broadSources, locationInput);
+    }
+    if (broadSources.length) {
+      sources = broadSources;
       matchMode = "broad";
       jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, roleTitlePreferences, {
         filterStale: false,
@@ -569,6 +631,10 @@ export async function generateRecommendedJobsForUser(
         "Showing recent roles from Hirebase while personalized matches are sparse.",
       );
     }
+  }
+
+  if (defaultFeed && jobs.length) {
+    jobs = filterJobsByLocationPreference(jobs, locationInput);
   }
 
   if (!jobs.length) return null;

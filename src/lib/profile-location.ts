@@ -161,10 +161,74 @@ function jobLocationParts(cached: CachedJob, raw?: HirebaseJob): ParsedProfileLo
 
 function isRemoteJob(cached: CachedJob, raw?: HirebaseJob): boolean {
   if (cached.remote === true) return true;
-  const locType = raw?.location_type?.toLowerCase() ?? "";
+  const locType = (raw?.location_type ?? cached.locationType ?? "").toLowerCase();
   if (locType.includes("remote")) return true;
   const loc = (cached.location ?? "").toLowerCase();
   return loc.includes("remote") || loc === "remote";
+}
+
+const OVERSEAS_LOCATION_MARKERS = [
+  "switzerland",
+  "schweiz",
+  "zürich",
+  "zurich",
+  "geneva",
+  "bern",
+  "basel",
+  "united kingdom",
+  " england",
+  " scotland",
+  " wales",
+  " uk",
+  "germany",
+  "france",
+  "paris",
+  "berlin",
+  "canada",
+  "toronto",
+  "vancouver",
+  "montreal",
+  "australia",
+  "sydney",
+  "melbourne",
+  "singapore",
+  "india",
+  "bangalore",
+  "mumbai",
+  "netherlands",
+  "amsterdam",
+  "ireland",
+  "dublin",
+  "spain",
+  "madrid",
+  "barcelona",
+  "italy",
+  "milan",
+  "rome",
+  "japan",
+  "tokyo",
+  "mexico",
+  "brazil",
+];
+
+function mentionsOverseasLocation(jobHay: string): boolean {
+  return OVERSEAS_LOCATION_MARKERS.some((marker) => jobHay.includes(marker));
+}
+
+function remoteJobAllowedForScope(
+  cached: CachedJob,
+  raw: HirebaseJob | undefined,
+  home: ParsedProfileLocation,
+  scope: RelocationScope,
+): boolean {
+  if (scope !== "local") return true;
+  if (!home.country || !US_COUNTRY_ALIASES.has(normalizeToken(home.country))) return true;
+
+  const jobParts = jobLocationParts(cached, raw);
+  const jobHay = locationHaystack(jobParts, cached);
+  if (!jobHay.trim()) return true;
+  if (matchesCountry(jobHay, home.country)) return true;
+  return !mentionsOverseasLocation(jobHay);
 }
 
 function locationHaystack(parts: ParsedProfileLocation, cached: CachedJob): string {
@@ -215,9 +279,12 @@ export function jobMatchesLocationPreference(
   const home = parseProfileLocationString(input.profileLocation);
   if (!home) return true;
 
-  if (isRemoteJob(cached, raw)) return true;
-
   const scope = relocationScopeFromPriorities(input.priorities ?? []);
+
+  if (isRemoteJob(cached, raw)) {
+    return remoteJobAllowedForScope(cached, raw, home, scope);
+  }
+
   if (scope === "international") return true;
 
   const jobParts = jobLocationParts(cached, raw);
@@ -255,4 +322,15 @@ export function filterSourcesByLocationPreference<T extends RecommendedJobSource
 ): T[] {
   if (!parseProfileLocationString(input.profileLocation)) return sources;
   return sources.filter((s) => jobMatchesLocationPreference(s.cached, s.raw, input));
+}
+
+export function filterJobsByLocationPreference<T extends CachedJob>(
+  jobs: T[],
+  input: {
+    profileLocation?: string | null;
+    priorities?: string[];
+  },
+): T[] {
+  if (!parseProfileLocationString(input.profileLocation)) return jobs;
+  return jobs.filter((j) => jobMatchesLocationPreference(j, undefined, input));
 }

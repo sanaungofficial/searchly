@@ -15,6 +15,7 @@ import {
   PRIORITIZED_ROLE_SUGGESTIONS,
 } from "@/lib/role-title-preferences";
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
+import { RoleListBulkPaste } from "./role-list-bulk-paste";
 import {
   parseProfileLocation,
   profileBasePath,
@@ -70,7 +71,6 @@ import { CareerStrategyPanel } from "./career-strategy-panel";
 import { UserAssetsList } from "./user-assets-list";
 import { assetTypeLabel } from "@/lib/asset-types";
 import { CareerPreferencesPanel, type CareerPrefPatch } from "./career-preferences-panel";
-import { JobSearchInboxPanel } from "./job-search-inbox-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
@@ -1260,6 +1260,35 @@ function DreamRoleTab({
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 28, lineHeight: 1.7 }}>
         Control how Open and In-network jobs are ordered. Target roles unlock fit analysis; prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
       </p>
+
+      <RoleListBulkPaste
+        dreamList={dreamList}
+        onTargetChange={(next) => {
+          setDreamList(next);
+          onSave(next);
+        }}
+        prioritizedList={prioritizedList}
+        onPrioritizedChange={(next) => {
+          setPrioritizedList(next);
+          onPrioritizedSave(next);
+        }}
+        deprioritizedList={deprioritizedList}
+        onDeprioritizedChange={(next) => {
+          setDeprioritizedList(next);
+          onDeprioritizedSave(next);
+        }}
+        prioritizedCategories={prioritizedCategories}
+        onPrioritizedCategoriesChange={(next) => {
+          setPrioritizedCategories(next);
+          onPrioritizedCategoriesSave(next);
+        }}
+        deprioritizedCategories={deprioritizedCategories}
+        onDeprioritizedCategoriesChange={(next) => {
+          setDeprioritizedCategories(next);
+          onDeprioritizedCategoriesSave(next);
+        }}
+        onInitRoleSettings={onInitRoleSettings}
+      />
 
       <div style={{ marginBottom: 32 }}>
         <ScoutLabel>Target roles</ScoutLabel>
@@ -3654,7 +3683,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
             )}
             {page === "preferences" && profile && (
               <div style={{ paddingBottom: 40, paddingTop: 8, display: "flex", flexDirection: "column", gap: 24 }}>
-                <JobSearchInboxPanel />
                 <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
               </div>
             )}

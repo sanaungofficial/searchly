@@ -57,7 +57,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
         body: "Instant profile-based scoring (no full AI on this list): list rank among matches, keyword overlap with the posting, and skills found in your resume.",
       },
       {
-        title: "Why you're a good fit",
+        title: "What the bullets mean",
         body: "Bullets highlight aligned skills, seniority, and keyword overlap — not long AI prose unless you open full match analysis elsewhere.",
       },
       {
@@ -103,7 +103,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
         body: "Instant profile-based scoring: keyword overlap with the posting and recruiter notes, target-title alignment, and relative rank among network roles.",
       },
       {
-        title: "Why you're a good fit",
+        title: "What the bullets mean",
         body: "Bullets highlight aligned industries, skills, and keyword overlap from your resume and target roles.",
       },
       {

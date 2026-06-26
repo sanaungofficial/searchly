@@ -9,16 +9,30 @@ export type InboxStatus = {
 
 export type Folder = { id: string; name: string; unread_count?: number };
 
+export type MessageActivityMeta = {
+  id: string;
+  signal: string;
+  status: string;
+  userTag: "needs_follow_up" | "answered" | "potential" | "waiting" | null;
+  companyGuess: string | null;
+  roleGuess: string | null;
+  job: { id: string; company: string; role: string; stage: string } | null;
+};
+
 export type MessageSummary = {
   id: string;
   subject: string;
   snippet: string;
   from: string;
+  fromName?: string;
+  fromEmail?: string | null;
+  avatar?: { primary: string | null; fallback: string | null; initials: string };
   dateLabel: string;
   unread: boolean;
   starred?: boolean;
   threadId?: string | null;
   attachmentCount?: number;
+  activity?: MessageActivityMeta | null;
 };
 
 export type AttachmentMeta = {
