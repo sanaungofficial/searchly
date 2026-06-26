@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useCredits } from "@/hooks/useCredits";
 import { fontSans } from "@/lib/typography";
 
 type SettingsTab = "profile" | "security" | "subscription";
@@ -35,6 +36,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isPro, isAdmin, status, currentPeriodEnd, credits, loading, startCheckout, openPortal } = useSubscription();
+  const { showCredits, unlimitedAi } = useCredits();
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -476,9 +478,14 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                           Unlimited access · all features enabled
                         </p>
                       )}
-                      {!isPro && !isAdmin && (
+                      {!isPro && !isAdmin && !unlimitedAi && (
                         <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
                           Unlock unlimited AI credits
+                        </p>
+                      )}
+                      {!isPro && !isAdmin && unlimitedAi && (
+                        <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
+                          Unlimited AI access enabled
                         </p>
                       )}
                     </div>
@@ -501,7 +508,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       >
                         Manage Billing
                       </button>
-                    ) : (
+                    ) : unlimitedAi ? null : (
                       <button
                         onClick={startCheckout}
                         style={{
@@ -525,7 +532,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 </div>
 
                 {/* AI credits — free users + admins (visibility) */}
-                {credits && (!isPro || isAdmin) && (
+                {credits && showCredits && (
                   <div
                     style={{
                       padding: "14px 16px",
@@ -579,7 +586,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 )}
 
                 {/* What&apos;s included */}
-                {!isPro && !isAdmin && (
+                {!isPro && !isAdmin && !unlimitedAi && (
                   <div
                     style={{
                       padding: "14px 16px",

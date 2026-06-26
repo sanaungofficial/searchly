@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { isPro } from "@/lib/stripe";
 import { consumeFeatureCredit, type FeatureCreditStatus } from "@/lib/feature-credits";
 import { hasActiveProTrial } from "@/lib/referrals";
-import { CREDITS_EXHAUSTED_ERROR } from "@/lib/credits";
+import { CREDITS_EXHAUSTED_ERROR, UNLIMITED_AI_FOR_ALL } from "@/lib/credits";
 import type { PlanCreditFeature } from "@prisma/client";
 
 export async function getAuthedUserForAi() {
@@ -32,6 +32,7 @@ export async function hasUnlimitedAiAccess(dbUser: {
   role: string;
   subscription: { status: string; stripeCurrentPeriodEnd: Date } | null;
 }): Promise<boolean> {
+  if (UNLIMITED_AI_FOR_ALL) return true;
   if (dbUser.role === "ADMIN") return true;
   if (isPro(dbUser.subscription)) return true;
   return hasActiveProTrial(dbUser.id);

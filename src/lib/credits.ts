@@ -1,3 +1,6 @@
+/** When true, every user gets unlimited AI — no daily/monthly caps or 402 responses. */
+export const UNLIMITED_AI_FOR_ALL = true;
+
 /** Free-plan AI credits per calendar month (stored in MonthlyUsage.count). */
 export const FREE_MONTHLY_CREDITS = 15;
 
