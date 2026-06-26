@@ -1,10 +1,15 @@
+import type { NetworkJobListing } from "@/lib/network-job-display";
 import { fallbackJobMatch } from "@/lib/resume-match";
 import {
   isLowQualityMatchReason,
   matchScoreLabelFor,
   usableKeywordSummary,
 } from "@/lib/match-score";
-import type { NetworkJobListing } from "@/lib/network-job-display";
+import type { RoleTitlePreferences } from "@/lib/role-title-preferences";
+import {
+  applyRoleTitlePreferenceToScore,
+  roleTitlePreferenceReasons,
+} from "@/lib/role-title-preferences";
 
 export type NetworkJobMatchFields = {
   matchScore: number;
@@ -36,15 +41,6 @@ export function networkJobDescriptionForMatch(job: NetworkJobListing): string {
   return parts.join("\n\n").slice(0, 2000);
 }
 
-function titleRoleBoost(positionTitle: string, targetRoles: string[]): number {
-  const titleLower = positionTitle.toLowerCase();
-  for (const role of targetRoles) {
-    const trimmed = role.trim().toLowerCase();
-    if (trimmed.length >= 3 && titleLower.includes(trimmed)) return 12;
-  }
-  return 0;
-}
-
 const EMPTY_MATCH: NetworkJobMatchFields = {
   matchScore: 0,
   matchLabel: "",
@@ -56,8 +52,9 @@ const EMPTY_MATCH: NetworkJobMatchFields = {
 export function enrichNetworkJobsWithMatch(
   jobs: NetworkJobListing[],
   resumeText: string,
-  targetRoles: string[] = [],
+  roleTitlePreferences: RoleTitlePreferences = {},
 ): NetworkMatchedJob[] {
+  const targetRoles = roleTitlePreferences.targetRoles ?? [];
   const rolesLine = targetRoles.map((r) => r.trim()).filter(Boolean).join(", ");
   const profileText = [resumeText.trim(), rolesLine].filter(Boolean).join("\n");
   if (!profileText || !jobs.length) {
@@ -75,8 +72,12 @@ export function enrichNetworkJobsWithMatch(
   return ranked.map(({ job, fallback, keywordScore }, index) => {
     const rank = index + 1;
     const rankScore = vectorRankScore(rank, ranked.length);
-    const roleBoost = titleRoleBoost(job.positionTitle, targetRoles);
-    const matchScore = Math.min(100, Math.round(rankScore * 0.55 + keywordScore * 0.45 + roleBoost));
+    const baseScore = Math.round(rankScore * 0.55 + keywordScore * 0.45);
+    const { matchScore, adjustment } = applyRoleTitlePreferenceToScore(
+      baseScore,
+      job.positionTitle,
+      roleTitlePreferences,
+    );
 
     const industryMatches = job.industries.filter((industry) =>
       resumeLower.includes(industry.toLowerCase()),
@@ -88,16 +89,11 @@ export function enrichNetworkJobsWithMatch(
       .slice(0, 4);
 
     const reasons: string[] = [];
+    reasons.push(...roleTitlePreferenceReasons(adjustment));
     if (matchedSkills.length) {
       reasons.push(
         `You're a good fit because your background aligns with ${matchedSkills.slice(0, 4).join(", ")}.`,
       );
-    }
-    const titleMatch = targetRoles.find((role) =>
-      job.positionTitle.toLowerCase().includes(role.trim().toLowerCase()),
-    );
-    if (titleMatch) {
-      reasons.push(`This role matches your target title: ${titleMatch}.`);
     }
     if (job.remoteOption?.toLowerCase().includes("remote") && resumeLower.includes("remote")) {
       reasons.push("Remote flexibility matches what you've highlighted in your profile.");
@@ -132,7 +128,7 @@ export function enrichNetworkJobsWithMatch(
 export function enrichNetworkJobWithMatch(
   job: NetworkJobListing,
   resumeText: string,
-  targetRoles: string[] = [],
+  roleTitlePreferences: RoleTitlePreferences = {},
 ): NetworkMatchedJob {
-  return enrichNetworkJobsWithMatch([job], resumeText, targetRoles)[0]!;
+  return enrichNetworkJobsWithMatch([job], resumeText, roleTitlePreferences)[0]!;
 }

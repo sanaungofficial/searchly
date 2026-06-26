@@ -1,4 +1,5 @@
 import { countUniqueDisplayListingKeys, jobListingDedupeKey } from "@/lib/cached-job";
+import type { RoleTitlePreferences } from "@/lib/role-title-preferences";
 import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
@@ -64,7 +65,7 @@ function appendNotice(existing: string | undefined, next: string): string {
 
 async function loadUserContext(userId: string) {
   const profile = await prisma.profile.findUnique({ where: { userId } });
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
+  const targetRoles = (profile?.targetRoles ?? []).slice(0, 30);
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
@@ -84,8 +85,9 @@ async function loadUserContext(userId: string) {
 
   const profileLocation = parsedData.location ?? null;
   const priorities = profile?.priorities ?? [];
+  const deprioritizedRoles = (profile?.deprioritizedRoles ?? []).slice(0, 30);
 
-  return { profile, targetRoles, parsedData, resumeText, profileLocation, priorities };
+  return { profile, targetRoles, parsedData, resumeText, profileLocation, priorities, deprioritizedRoles };
 }
 
 async function enrichAndRank(
@@ -93,6 +95,7 @@ async function enrichAndRank(
   resumeText: string,
   userId: string,
   maxJobs: number,
+  roleTitlePreferences: RoleTitlePreferences,
   options?: { filterStale?: boolean },
 ): Promise<VectorMatchedJob[]> {
   if (!sources.length) return [];
@@ -103,6 +106,7 @@ async function enrichAndRank(
 
   const enriched = await enrichRecommendedSources(sources, resumeText, {
     heuristicOnly: true,
+    roleTitlePreferences,
   });
 
   const { index } = await loadTrackedCompanyIndex(userId);
@@ -181,6 +185,7 @@ async function supplementSparseRecommendedJobs(input: {
   resumeText: string;
   userId: string;
   maxJobs: number;
+  roleTitlePreferences: RoleTitlePreferences;
 }): Promise<VectorMatchedJob[]> {
   if (input.jobs.length >= RECOMMENDED_MIN_DISPLAY_ROLES) return input.jobs;
 
@@ -193,9 +198,14 @@ async function supplementSparseRecommendedJobs(input: {
   });
   if (!broad.sources.length) return input.jobs;
 
-  const extra = await enrichAndRank(broad.sources, input.resumeText, input.userId, input.maxJobs, {
-    filterStale: false,
-  });
+  const extra = await enrichAndRank(
+    broad.sources,
+    input.resumeText,
+    input.userId,
+    input.maxJobs,
+    input.roleTitlePreferences,
+    { filterStale: false },
+  );
   if (!extra.length) return input.jobs;
 
   return sortRecommendedJobs(dedupeVectorMatchedJobs([...input.jobs, ...extra])).slice(0, input.maxJobs);
@@ -355,7 +365,12 @@ export async function generateRecommendedJobsForUser(
     profile,
     profileLocation,
     priorities,
+    deprioritizedRoles,
   } = await loadUserContext(input.userId);
+  const roleTitlePreferences: RoleTitlePreferences = {
+    targetRoles,
+    deprioritizedRoles,
+  };
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   /** Default feed uses profile location post-filter only. Custom searches use explicit UI filters — no silent profile merge. */
   const mergedFilters = normalizePostedDateFilters({
@@ -504,7 +519,7 @@ export async function generateRecommendedJobsForUser(
     }
   }
 
-  let jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, {
+  let jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, roleTitlePreferences, {
     filterStale: false,
   });
 
@@ -517,6 +532,7 @@ export async function generateRecommendedJobsForUser(
       resumeText,
       userId: input.userId,
       maxJobs,
+      roleTitlePreferences,
     });
     if (jobs.length > beforeCount) {
       matchMode = matchMode === "broad" ? matchMode : "broad";
@@ -537,7 +553,7 @@ export async function generateRecommendedJobsForUser(
     if (broad.sources.length) {
       sources = broad.sources;
       matchMode = "broad";
-      jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, {
+      jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, roleTitlePreferences, {
         filterStale: false,
       });
       notice = appendNotice(

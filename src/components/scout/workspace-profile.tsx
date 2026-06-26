@@ -8,6 +8,7 @@ import {
   readOnboardingFinishPayload,
   type OnboardingFinishPayload,
 } from "@/lib/onboarding-finish";
+import { DEPRIORITIZED_ROLE_SUGGESTIONS } from "@/lib/role-title-preferences";
 import {
   parseProfileLocation,
   profileAboutSectionUrl,
@@ -261,6 +262,7 @@ interface UserProfile {
   headline: string | null;
   summary?: string | null;
   targetRoles: string[];
+  deprioritizedRoles?: string[];
   parsedData: ParsedData | null;
   employmentStatus: string | null;
   currentSalary: string | null;
@@ -865,6 +867,9 @@ function DreamRoleTab({
   dreamList,
   setDreamList,
   onSave,
+  deprioritizedList,
+  setDeprioritizedList,
+  onDeprioritizedSave,
   resumeAssets,
   userSkills,
   skillGoals,
@@ -882,6 +887,9 @@ function DreamRoleTab({
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
+  deprioritizedList: string[];
+  setDeprioritizedList: (l: string[]) => void;
+  onDeprioritizedSave: (list: string[]) => void;
   resumeAssets: UserAssetRow[];
   userSkills: string[];
   skillGoals: SkillGoal[];
@@ -899,6 +907,8 @@ function DreamRoleTab({
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysisView | "loading" | "error">>({});
   const [analysisErrors, setAnalysisErrors] = useState<Record<string, string>>({});
+  const [showDeprioritizedSearch, setShowDeprioritizedSearch] = useState(false);
+  const [deprioritizedQuery, setDeprioritizedQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [skillMenu, setSkillMenu] = useState<{ role: string; skill: string } | null>(null);
@@ -1031,7 +1041,7 @@ function DreamRoleTab({
   };
 
   const addRole = (title: string) => {
-    if (dreamList.includes(title) || dreamList.length >= 3) return;
+    if (dreamList.includes(title)) return;
     const next = [...dreamList, title];
     setDreamList(next);
     onSave(next);
@@ -1039,6 +1049,28 @@ function DreamRoleTab({
     setShowSearch(false);
     setSearchQuery("");
   };
+
+  const addDeprioritizedRole = (title: string) => {
+    const normalized = title.trim();
+    if (!normalized || deprioritizedList.includes(normalized)) return;
+    const next = [...deprioritizedList, normalized];
+    setDeprioritizedList(next);
+    onDeprioritizedSave(next);
+    setShowDeprioritizedSearch(false);
+    setDeprioritizedQuery("");
+  };
+
+  const removeDeprioritizedRole = (title: string) => {
+    const next = deprioritizedList.filter((r) => r !== title);
+    setDeprioritizedList(next);
+    onDeprioritizedSave(next);
+  };
+
+  const filteredDeprioritizedSuggestions = DEPRIORITIZED_ROLE_SUGGESTIONS.filter(
+    (r) =>
+      !deprioritizedList.includes(r) &&
+      r.toLowerCase().includes(deprioritizedQuery.toLowerCase()),
+  );
 
   const removeRole = (title: string) => {
     const next = dreamList.filter((r) => r !== title);
@@ -1103,7 +1135,7 @@ function DreamRoleTab({
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
-        Add up to 3 target roles. Pick a resume per role — each keeps its own fit score. Expand a role to run analysis; hit Refresh for an updated score.
+        Add target roles you want prioritized in Open and In-network opportunities. Pick a resume per role for fit analysis. Roles you deprioritize still appear — they sort lower in both feeds.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -1378,42 +1410,125 @@ function DreamRoleTab({
         })}
       </div>
 
-      {dreamList.length < 3 && (
-        <div>
-          {!showSearch ? (
-            <button
-              onClick={() => setShowSearch(true)}
-              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, cursor: "pointer" }}
-            >+ Add a role</button>
-          ) : (
-            <div>
-              <input
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search roles…"
-                style={{ width: "100%", padding: "12px 12px", borderRadius: "var(--scout-radius)", border: "1.5px solid #1A3A2F", fontFamily: "var(--font-ui)", fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
-              />
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${border.line}` }}>
+        <ScoutLabel>Deprioritize in job lists</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
+          Title patterns here sort lower in Recommended and In-network — not hidden. Use for sales, PM, or other paths you are not pursuing.
+        </p>
+        {deprioritizedList.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            {deprioritizedList.map((role) => (
+              <span
+                key={role}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 10px",
+                  border: border.line,
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: fontSans,
+                  fontSize: T.label,
+                  color: color.muted,
+                  background: surface.inset,
+                }}
+              >
+                {role}
+                <button
+                  type="button"
+                  onClick={() => removeDeprioritizedRole(role)}
+                  aria-label={`Remove ${role}`}
+                  style={{ border: "none", background: "transparent", cursor: "pointer", color: color.muted, padding: 0, lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {!showDeprioritizedSearch ? (
+          <button
+            type="button"
+            onClick={() => setShowDeprioritizedSearch(true)}
+            style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, cursor: "pointer" }}
+          >
+            + Add deprioritized pattern
+          </button>
+        ) : (
+          <div>
+            <input
+              autoFocus
+              value={deprioritizedQuery}
+              onChange={(e) => setDeprioritizedQuery(e.target.value)}
+              placeholder="e.g. Account Executive, Product Manager…"
+              style={{ width: "100%", padding: "12px 12px", borderRadius: "var(--scout-radius)", border: "1.5px solid #1A3A2F", fontFamily: fontSans, fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {deprioritizedQuery.trim() &&
+                !deprioritizedList.includes(deprioritizedQuery.trim()) &&
+                !DEPRIORITIZED_ROLE_SUGGESTIONS.some(
+                  (s) => s.toLowerCase() === deprioritizedQuery.trim().toLowerCase(),
+                ) && (
                   <button
-                    onClick={() => addRole(searchQuery.trim())}
-                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
-                  >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
+                    type="button"
+                    onClick={() => addDeprioritizedRole(deprioritizedQuery.trim())}
+                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
+                  >
+                    + Add &ldquo;{deprioritizedQuery.trim()}&rdquo;
+                  </button>
                 )}
-                {filteredRoles.slice(0, 20).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => addRole(r)}
-                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
-                  >{r}</button>
-                ))}
-                <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>Cancel</button>
-              </div>
+              {filteredDeprioritizedSuggestions.slice(0, 12).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => addDeprioritizedRole(r)}
+                  style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
+                >
+                  {r}
+                </button>
+              ))}
+              <button type="button" onClick={() => { setShowDeprioritizedSearch(false); setDeprioritizedQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: fontSans, fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>
+                Cancel
+              </button>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        {!showSearch ? (
+          <button
+            onClick={() => setShowSearch(true)}
+            style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, cursor: "pointer" }}
+          >+ Add a target role</button>
+        ) : (
+          <div>
+            <input
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search roles…"
+              style={{ width: "100%", padding: "12px 12px", borderRadius: "var(--scout-radius)", border: "1.5px solid #1A3A2F", fontFamily: fontSans, fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
+                <button
+                  onClick={() => addRole(searchQuery.trim())}
+                  style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
+                >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
+              )}
+              {filteredRoles.slice(0, 20).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => addRole(r)}
+                  style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
+                >{r}</button>
+              ))}
+              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: fontSans, fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2557,6 +2672,7 @@ export function WorkspaceProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
+  const [deprioritizedList, setDeprioritizedList] = useState<string[]>([]);
   const [roleAnalyses, setRoleAnalyses] = useState<RoleAnalysesMap>({});
   const [upskillProgress, setUpskillProgress] = useState<UpskillProgressMap>({});
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
@@ -2614,6 +2730,7 @@ export function WorkspaceProfile() {
         const userProfile = data as UserProfile;
         setProfile(userProfile);
         setDreamList(userProfile.targetRoles || []);
+        setDeprioritizedList(userProfile.deprioritizedRoles || []);
         setRoleAnalyses(normalizeRoleAnalysesMap(userProfile.roleAnalyses));
         setSkillGoals(normalizeSkillGoals(userProfile.skillGoals));
         setUpskillProgress(userProfile.upskillProgress ?? {});
@@ -3275,6 +3392,9 @@ export function WorkspaceProfile() {
                 dreamList={dreamList}
                 setDreamList={setDreamList}
                 onSave={(list) => patchProfile({ targetRoles: list })}
+                deprioritizedList={deprioritizedList}
+                setDeprioritizedList={setDeprioritizedList}
+                onDeprioritizedSave={(list) => patchProfile({ deprioritizedRoles: list })}
                 resumeAssets={resumeAssets}
                 userSkills={skills}
                 skillGoals={skillGoals}

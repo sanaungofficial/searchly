@@ -104,6 +104,8 @@ model Profile {
   headline    String?
   summary     String?
   targetRoles      String[]
+  /** Title patterns to sort lower in job feeds — reorder only, not hidden. */
+  deprioritizedRoles String[] @default([])
   targetSalary     String?
   employmentStatus String?
   currentSalary    String?

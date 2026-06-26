@@ -84,7 +84,7 @@ export function profileTextForMatchReasons(input: ProfileVSearchInput): string {
 
 /** Fallback when Hirebase rejects the query — roles only, no profile dump. */
 export function buildMinimalVSearchQuery(targetRoles: string[]): string | null {
-  const roles = targetRoles.map((r) => r.trim()).filter(Boolean).slice(0, 3);
+  const roles = targetRoles.map((r) => r.trim()).filter(Boolean).slice(0, 20);
   if (!roles.length) return null;
   return trimVSearchQuery(roles.join(", "));
 }

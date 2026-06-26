@@ -4,6 +4,11 @@ import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { fallbackJobMatch } from "@/lib/resume-match";
 import { isLowQualityMatchReason, matchScoreLabelFor, usableKeywordSummary } from "@/lib/match-score";
+import type { RoleTitlePreferences } from "@/lib/role-title-preferences";
+import {
+  applyRoleTitlePreferenceToScore,
+  roleTitlePreferenceReasons,
+} from "@/lib/role-title-preferences";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 function labelForScore(score: number): string {
@@ -32,7 +37,8 @@ function heuristicMatch(
   cached: ReturnType<typeof mapHirebaseJob>,
   resumeText: string,
   rank: number,
-  total: number
+  total: number,
+  roleTitlePreferences?: RoleTitlePreferences,
 ): Pick<VectorMatchedJob, "matchScore" | "matchLabel" | "matchReasons" | "matchedSkills" | "gapSkills"> {
   const description = jobDescriptionForMatch(job, cached);
   const fallback = fallbackJobMatch(description, resumeText);
@@ -43,9 +49,16 @@ function heuristicMatch(
 
   const rankScore = vectorRankScore(rank, total);
   const keywordScore = Math.round(fallback.score * 10);
-  const matchScore = Math.min(100, Math.round(rankScore * 0.55 + keywordScore * 0.45));
+  const baseScore = Math.round(rankScore * 0.55 + keywordScore * 0.45);
+  const jobTitle = job.job_title ?? cached.title ?? "";
+  const { matchScore, adjustment } = applyRoleTitlePreferenceToScore(
+    baseScore,
+    jobTitle,
+    roleTitlePreferences ?? {},
+  );
 
   const reasons: string[] = [];
+  reasons.push(...roleTitlePreferenceReasons(adjustment));
   if (matchedSkills.length) {
     reasons.push(
       `You're a good fit because your background aligns with ${matchedSkills.slice(0, 4).join(", ")}.`,
@@ -142,8 +155,9 @@ export async function enrichVectorJobsWithMatchReasons(input: {
   resumeText: string;
   /** Skip Claude batch — heuristic scores only (faster for recommended list). */
   heuristicOnly?: boolean;
+  roleTitlePreferences?: RoleTitlePreferences;
 }): Promise<VectorMatchedJob[]> {
-  const { rawJobs, cachedJobs, companyNames, resumeText, heuristicOnly } = input;
+  const { rawJobs, cachedJobs, companyNames, resumeText, heuristicOnly, roleTitlePreferences } = input;
   const pairs = rawJobs.map((job, index) => ({
     job,
     cached: cachedJobs[index] ?? mapHirebaseJob(job),
@@ -162,7 +176,7 @@ export async function enrichVectorJobsWithMatchReasons(input: {
     const jobId = job._id ?? `rank-${rank}`;
     const companyName = job.company_name?.trim() || companyNames[rank - 1] || "Unknown company";
     const ai = claudeRows.get(jobId);
-    const heuristic = heuristicMatch(job, cached, resumeText, rank, pairs.length);
+    const heuristic = heuristicMatch(job, cached, resumeText, rank, pairs.length, roleTitlePreferences);
 
     const matchScore = ai?.matchScore != null ? Math.min(100, Math.max(0, Math.round(ai.matchScore))) : heuristic.matchScore;
     const matchLabel = ai?.matchLabel?.trim() || labelForScore(matchScore);

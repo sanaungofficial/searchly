@@ -155,7 +155,7 @@ export default function OnboardingPage() {
 
   const applyReadbackRoles = useCallback((data: ReadBackData | null) => {
     if (!data?.targetRoles?.length) return;
-    const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 3);
+    const roles = data.targetRoles.map((r) => r.role).filter(Boolean).slice(0, 20);
     setReadbackRoleSuggestions(roles);
     setSelectedTitles((prev) => (prev.length ? prev : roles));
   }, []);
@@ -386,7 +386,7 @@ export default function OnboardingPage() {
     }
     if (patch.targetRoles?.length) {
       setReadbackRoleSuggestions((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
-      setSelectedTitles((prev) => [...new Set([...prev, ...patch.targetRoles!])].slice(0, 3));
+      setSelectedTitles((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
     }
   }, []);
 
