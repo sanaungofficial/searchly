@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { authRedirectForUser, provisionUserFromAuth } from "@/lib/sync-auth-user";
+import { resolveAuthRedirectForUser, provisionUserFromAuth } from "@/lib/sync-auth-user";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -15,13 +15,16 @@ export async function POST(request: Request) {
 
   try {
     const cookieStore = await cookies();
-    const { isNewUser } = await provisionUserFromAuth(user, cookieStore);
+    const { isNewUser, dbUser } = await provisionUserFromAuth(user, cookieStore);
     const body = await request.json().catch(() => ({}));
     const next = typeof body.next === "string" ? body.next : null;
 
+    const redirectTo = await resolveAuthRedirectForUser(dbUser, next);
+
     return NextResponse.json({
-      redirectTo: authRedirectForUser(isNewUser, next),
+      redirectTo,
       isNewUser,
+      onboardingComplete: redirectTo === "/dashboard",
     });
   } catch (err) {
     console.error("[auth/sync-user]", err);

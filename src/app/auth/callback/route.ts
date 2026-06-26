@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { authRedirectForUser, provisionUserFromAuth } from "@/lib/sync-auth-user";
+import { resolveAuthRedirectForUser, provisionUserFromAuth } from "@/lib/sync-auth-user";
 import {
   friendlyAuthMessage,
   isPkceVerifierError,
@@ -73,8 +73,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { isNewUser } = await provisionUserFromAuth(user, cookieStore);
-    const redirectTo = authRedirectForUser(isNewUser, next);
+    const { dbUser } = await provisionUserFromAuth(user, cookieStore);
+    const redirectTo = await resolveAuthRedirectForUser(dbUser, next);
     return NextResponse.redirect(`${origin}${redirectTo}`);
   } catch (err) {
     console.error("[auth/callback]", err);
