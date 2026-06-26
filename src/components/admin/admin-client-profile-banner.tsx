@@ -29,11 +29,10 @@ export function AdminClientProfileBanner({ name, email, onBack }: Props) {
       }}
     >
       <p style={{ margin: 0, fontSize: 13, fontFamily: fontSans }}>
-        Reviewing <strong style={{ fontWeight: 600 }}>{label}</strong>
+        Viewing as admin for <strong style={{ fontWeight: 600 }}>{label}</strong>
         {email ? (
           <span style={{ opacity: 0.75, fontFamily: fontMono, marginLeft: 8, fontSize: 12 }}>{email}</span>
         ) : null}
-        <span style={{ opacity: 0.85, marginLeft: 8 }}>— admin view (you stay signed in as admin)</span>
       </p>
       <button
         type="button"

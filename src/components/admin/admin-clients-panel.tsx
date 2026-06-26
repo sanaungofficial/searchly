@@ -575,7 +575,7 @@ export function AdminClientsPanel({
                         whiteSpace: "nowrap",
                       }}
                     >
-                      View profile
+                      View as admin
                     </button>
                   )}
                   {onViewAsClient && (

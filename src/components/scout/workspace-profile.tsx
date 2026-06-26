@@ -17,12 +17,8 @@ import {
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
 import {
   parseProfileLocation,
-  profileAboutSectionUrl,
-  profileAssetsUrl,
   profileBasePath,
-  profileLearningPathUrl,
   profileTabPath,
-  profileTargetCompaniesUrl,
   pipelineProspectUrl,
   prospectPathId,
 } from "@/lib/workspace-urls";

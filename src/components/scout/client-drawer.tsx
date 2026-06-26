@@ -74,7 +74,7 @@ export function ClientDetailBody({
               onClick={() => onViewClientProfile(client.id)}
               style={{ minHeight: 40 }}
             >
-              View profile
+              View as admin
             </ScoutPrimaryBtn>
           )}
           {showViewAsClient && onViewAsClient && (
