@@ -78,7 +78,7 @@ export function nylasProfileReturnUrl(
 ): string {
   const base = appUrl.replace(/\/$/, "");
   const path = isStaffPortalRole(role)
-    ? `${base}/dashboard/expert-profile`
+    ? `${base}/dashboard/offerings?section=profile`
     : `${base}/admin/profile`;
   if (!params || Object.keys(params).length === 0) return path;
 

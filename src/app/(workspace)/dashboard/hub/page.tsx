@@ -1,5 +1,5 @@
-import { DashboardCoachHubView } from "@/components/scout/dashboard-coach-hub-view";
+import { redirect } from "next/navigation";
 
 export default function DashboardHubPage() {
-  return <DashboardCoachHubView />;
+  redirect("/dashboard/inbox");
 }

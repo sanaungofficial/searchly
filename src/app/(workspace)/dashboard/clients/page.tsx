@@ -1,7 +1,5 @@
-"use client";
-
-import { DashboardClientsView } from "@/components/scout/dashboard-clients-view";
+import { redirect } from "next/navigation";
 
 export default function DashboardClientsPage() {
-  return <DashboardClientsView />;
+  redirect("/dashboard/ops?section=clients");
 }

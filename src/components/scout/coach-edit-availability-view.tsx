@@ -205,7 +205,7 @@ function ConnectCalendarCard({ returnPath, emailSync }: { returnPath: string; em
   );
 }
 
-export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboard/bookings", embedded = false }: Props) {
+export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboard/offerings?section=availability", embedded = false }: Props) {
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfilePayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -232,7 +232,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
   const returnPath =
     mode === "admin" && coachId
       ? `/admin/coaches?coachId=${encodeURIComponent(coachId)}&tab=availability`
-      : "/dashboard/availability";
+      : "/dashboard/offerings?section=availability";
 
   const loadProfile = useCallback(async () => {
     setLoading(true);

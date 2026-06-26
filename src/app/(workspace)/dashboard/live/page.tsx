@@ -1,5 +1,5 @@
-import { WorkspaceLive } from "@/components/scout/workspace-live";
+import { redirect } from "next/navigation";
 
 export default function DashboardLivePage() {
-  return <WorkspaceLive embedded />;
+  redirect("/dashboard/ops?section=live");
 }

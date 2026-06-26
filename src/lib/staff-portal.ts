@@ -1,22 +1,23 @@
-/** Coaches and admins share the Dashboard staff portal (Clients, Bookings, Live tabs). */
+/** Coaches and admins share the Dashboard staff portal (expert workspace). */
 export function isStaffPortalRole(role: string | null | undefined): boolean {
   return role === "COACH" || role === "ADMIN";
 }
 
-/** Sub-routes shown under Dashboard in the top nav for staff portal users. */
-export const STAFF_DASHBOARD_NAV = [
-  { id: "home", label: "Overview", path: "/dashboard" },
-  { id: "expert-profile", label: "Expert Profile", path: "/dashboard/expert-profile" },
-  { id: "availability", label: "Availability", path: "/dashboard/availability" },
-  { id: "hub", label: "Hub", path: "/dashboard/hub" },
-  { id: "clients", label: "Clients", path: "/dashboard/clients" },
-  { id: "bookings", label: "Bookings", path: "/dashboard/bookings" },
-  { id: "live", label: "Live", path: "/dashboard/live" },
+/** Leland-style expert workspace — left sidebar + top Expert dashboard dropdown. */
+export const EXPERT_WORKSPACE_NAV = [
+  { id: "inbox", label: "Inbox", path: "/dashboard/inbox" },
+  { id: "offerings", label: "Offerings", path: "/dashboard/offerings" },
+  { id: "reviews", label: "Reviews", path: "/dashboard/reviews" },
+  { id: "ops", label: "Ops Tools", path: "/dashboard/ops" },
 ] as const;
 
+export type ExpertWorkspaceNavId = (typeof EXPERT_WORKSPACE_NAV)[number]["id"];
+
+/** @deprecated Use EXPERT_WORKSPACE_NAV — kept for imports that expect STAFF_DASHBOARD_NAV */
+export const STAFF_DASHBOARD_NAV = EXPERT_WORKSPACE_NAV;
+
 export function matchStaffDashboardNavPath(pathname: string, itemPath: string): boolean {
-  if (itemPath === "/dashboard") return pathname === "/dashboard";
-  return pathname.startsWith(itemPath);
+  return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
 /** True when the URL is an expert-workspace route (not the shared /dashboard home). */
@@ -24,7 +25,10 @@ export function isExpertPortalPath(pathname: string): boolean {
   if (pathname.startsWith("/dashboard/clients/") && pathname.includes("/profile")) {
     return false;
   }
-  return STAFF_DASHBOARD_NAV.some(
-    (item) => item.path !== "/dashboard" && pathname.startsWith(item.path),
-  );
+  return EXPERT_WORKSPACE_NAV.some((item) => pathname.startsWith(item.path));
+}
+
+export function expertWorkspaceNavId(pathname: string): ExpertWorkspaceNavId | null {
+  const match = EXPERT_WORKSPACE_NAV.find((item) => pathname.startsWith(item.path));
+  return match?.id ?? null;
 }
