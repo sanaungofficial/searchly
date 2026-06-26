@@ -613,6 +613,12 @@ enum ExternalApiProvider {
   HIREBASE
   APIFY
   TOPECHELON
+  EXECTHREAD
+}
+
+enum NetworkJobSource {
+  TOPECHELON
+  EXECTHREAD
 }
 
 model CompanyIntel {
@@ -716,6 +722,15 @@ model PromptConfig {
   updatedBy      String?
 }
 
+/// Persisted ExecThread session cookies after email/password login.
+model ExecThreadSession {
+  id            String    @id @default("default")
+  cookies       Json
+  lastSyncAt    DateTime?
+  lastSyncError String?
+  updatedAt     DateTime  @updatedAt
+}
+
 /// Persisted Big Biller session (cookies + token) after a successful MFA login.
 model TopEchelonSession {
   id           String    @id @default("default")
@@ -746,10 +761,11 @@ model NetworkRecruiter {
   @@index([agencyName])
 }
 
-/// Network-shared jobs imported from Top Echelon Big Biller.
+/// Network-shared jobs imported from recruiter networks (Top Echelon, ExecThread, …).
 model NetworkJob {
   id                  String            @id @default(cuid())
-  externalId          String            @unique
+  source              NetworkJobSource  @default(TOPECHELON)
+  externalId          String
   networkId           String?
   positionTitle       String
   companyName         String?
@@ -768,6 +784,7 @@ model NetworkJob {
   recruiterName       String?
   recruiterId         String?
   topEchelonUrl       String?
+  sourceUrl           String?
   sharedAt            DateTime?
   raw                 Json
   syncedAt            DateTime          @default(now())
@@ -776,6 +793,8 @@ model NetworkJob {
   recruiterRecordId   String?
   recruiterRecord     NetworkRecruiter? @relation(fields: [recruiterRecordId], references: [id])
 
+  @@unique([source, externalId])
+  @@index([source])
   @@index([sharedAt])
   @@index([networkStatus])
   @@index([recruiterRecordId])

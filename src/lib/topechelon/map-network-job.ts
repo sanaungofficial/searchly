@@ -69,6 +69,7 @@ export function toNetworkJobDbRecord(job: TopEchelonNetworkJobRaw) {
     companyNameFromWebsite(mapped.agencyWebsite);
 
   return {
+    source: "TOPECHELON" as const,
     externalId: resolveNetworkJobExternalId(job),
     networkId: mapped.networkId,
     positionTitle: mapped.positionTitle,
@@ -88,6 +89,7 @@ export function toNetworkJobDbRecord(job: TopEchelonNetworkJobRaw) {
     recruiterName: mapped.recruiterName,
     recruiterId: mapped.recruiterId,
     topEchelonUrl: mapped.topEchelonUrl,
+    sourceUrl: mapped.topEchelonUrl,
     sharedAt: mapped.sharedAt,
     raw: mapped.raw,
     syncedAt: mapped.syncedAt,

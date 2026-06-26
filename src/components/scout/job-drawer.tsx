@@ -882,7 +882,12 @@ export function JobDrawer({
   const scrollSections: ScrollSection[] = networkJob
     ? ["overview", "recruiter", "company"]
     : ["overview", "company"];
-  const externalPostUrl = networkJob?.internalView === false ? null : (networkJob?.topEchelonUrl ?? applicationUrl);
+  const externalPostUrl = networkJob?.internalView === false
+    ? null
+    : (networkJob?.topEchelonUrl ?? networkJob?.sourceUrl ?? applicationUrl);
+  const networkSourceLabel =
+    networkJob?.source === "EXECTHREAD" ? "ExecThread posting ↗" : "Top Echelon posting ↗";
+  const networkOpenLabel = networkJob?.source === "EXECTHREAD" ? "OPEN ON EXECTHREAD" : "OPEN IN TE";
   const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
   const showParsedSections = hasStructuredSections;
   const showFullDescriptionBlob = hasFullPosting && !showParsedSections;
@@ -956,7 +961,7 @@ export function JobDrawer({
                 rel="noopener noreferrer"
                 style={{ fontFamily: sans, fontSize: 14, color: "#5C534A", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
               >
-                {networkJob ? "Top Echelon posting ↗" : "Original job post ↗"}
+                {networkJob ? networkSourceLabel : "Original job post ↗"}
               </a>
             )}
             {externalPostUrl && (
@@ -977,7 +982,7 @@ export function JobDrawer({
                   border: lineStrong,
                 }}
               >
-                {networkJob ? "OPEN IN TE" : "APPLY NOW"}
+                {networkJob ? networkOpenLabel : "APPLY NOW"}
               </a>
             )}
           </div>
@@ -1455,7 +1460,7 @@ export function JobDrawer({
                 rel="noopener noreferrer"
                 style={{ display: "block", width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}
               >
-                {networkJob ? "OPEN IN TE" : "APPLY NOW"}
+                {networkJob ? networkOpenLabel : "APPLY NOW"}
               </a>
             ) : prospectMode && onAddToPipeline && existingPipelineCardId == null ? (
               <button
@@ -1477,7 +1482,7 @@ export function JobDrawer({
                 </button>
                 {externalPostUrl && (
                   <a href={externalPostUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>
-                    {networkJob ? "Top Echelon posting ↗" : "Original job post ↗"}
+                    {networkJob ? networkSourceLabel : "Original job post ↗"}
                   </a>
                 )}
               </div>

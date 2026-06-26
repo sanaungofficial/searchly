@@ -37,6 +37,7 @@ export function sanitizeNetworkJobListing(
     networkStatus: null,
     networkStatusLabel: null,
     topEchelonUrl: null,
+    sourceUrl: null,
     adminDetails: [],
   };
 }
