@@ -1,6 +1,17 @@
 /** Minimum match score to show in feed — 0 = disabled (show all pulled results). */
 export const RECOMMENDED_MATCH_SCORE_FLOOR = 0;
 
+/** Max roles included in the daily match digest email. */
+export const RECOMMENDED_DIGEST_EMAIL_MAX_JOBS = 3;
+
+/** Minimum match score for digest emails — env override RECOMMENDED_DIGEST_MIN_SCORE. */
+export function recommendedDigestMinScore(): number {
+  const raw = process.env.RECOMMENDED_DIGEST_MIN_SCORE;
+  const parsed = raw ? Number.parseInt(raw, 10) : 60;
+  if (!Number.isFinite(parsed) || parsed < 0) return 60;
+  return Math.min(parsed, 100);
+}
+
 /** Over-fetch before optional score floor so enough jobs survive filtering. */
 export const RECOMMENDED_FETCH_POOL = 60;
 
