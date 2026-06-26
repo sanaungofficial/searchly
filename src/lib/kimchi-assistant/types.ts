@@ -31,6 +31,9 @@ export type AssistantInboxSnapshot = {
     title: string | null;
     snippet: string | null;
     signal: string;
+    status: string;
+    suggestedStage: string | null;
+    confidence: number | null;
     companyGuess: string | null;
     roleGuess: string | null;
     nylasMessageId: string | null;

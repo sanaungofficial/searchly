@@ -59,6 +59,7 @@ model User {
   emailGrant           UserEmailGrant?
   jobAgentSettings     UserJobAgentSettings?
   jobActivityLogs      JobActivityLog[]
+  assistantThreads     AssistantThread[]
 
   @@index([referredByUserId])
 }
@@ -1142,6 +1143,32 @@ model JobActivityLog {
   @@unique([userId, nylasEventId])
   @@index([userId, createdAt])
   @@index([userId, status])
+}
+
+/// Kimchi assistant conversation threads (chat + voice debrief blocks).
+model AssistantThread {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("New chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  AssistantMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AssistantMessage {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  kind      String   @default("text")
+  role      String
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([threadId, createdAt])
 }
 
 /// Kimchi-owned Nylas Agent Account (system mailbox).
