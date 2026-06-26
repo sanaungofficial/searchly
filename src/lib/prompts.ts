@@ -102,7 +102,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
   KIMCHI_FOR_YOU: {
     label: "Kimchi For You (welcome chips)",
     description:
-      "Generates 3–4 personalized action chips when Kimchi opens — must cite specific facts from the user context (pipeline, strategy, profile).",
+      "Generates 3–4 welcome question chips when Kimchi opens — natural questions with role/company context from pipeline and inbox.",
     category: "Kimchi Assistant",
     variables: ["contextBlock", "profileGaps", "summary"],
   },
@@ -518,31 +518,33 @@ From: {{from}}
 Subject: {{subject}}
 Snippet: {{snippet}}`,
 
-  KIMCHI_FOR_YOU: `You are Kimchi, a job search command center. The user just opened chat. Using ONLY the context below, suggest 3–4 specific next moves that prove you know them.
+  KIMCHI_FOR_YOU: `You are Kimchi. The user just opened chat. Suggest 3–4 short questions they might tap to start — each should sound like something a real person would ask out loud.
 
 Return ONLY valid JSON:
 {
-  "opener": "One warm sentence referencing something specific from their data (company, role, strategy target, or gap). Max 120 chars.",
+  "opener": null,
   "chips": [
     {
       "id": "unique-id",
-      "label": "2–6 words, specific (e.g. Follow up on Stripe PM)",
-      "variant": "action" | "chat",
+      "label": "Full natural question (8–14 words). Include company and/or role when you have them.",
+      "variant": "chat",
       "tone": "violet" | "sky" | "amber" | "mint" | "rose" | "neutral",
-      "actionType": "chat" | "navigate" | "open_strategy" | "open_resume" | "add_skill",
-      "href": "/opportunities/pipeline",
-      "prompt": "only when actionType is chat — reference their actual data",
-      "skill": "only when actionType is add_skill"
+      "actionType": "chat",
+      "prompt": "Same question expanded — still first person, with any useful context from their data"
     }
   ]
 }
 
 Rules:
-- Every chip must reference something in the context (company name, role, missing doc, inbox item).
-- Prefer action chips when they should DO something now.
-- Allowed href: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /inbox, /opportunities/pipeline
-- Do NOT invent employers, coaches, or jobs not listed below.
-- If pipeline is empty, suggest setup actions (strategy, resume, add jobs).
+- Every chip MUST be a complete question ending with ? — e.g. "How can I prep for the Paid Marketing Consultant role at Acme?" or "Am I a strong fit for the Marketing Automation Specialist role at LinkedIn?"
+- Prefer pipeline roles in INTERVIEWING stage for interview prep questions.
+- Prefer high-fit SAVED/APPLIED roles for fit questions ("Am I a strong fit for…").
+- Use real company and role names from context — never invent employers.
+- IGNORE promotional/marketing emails (newsletters, "you applied to 400+ jobs", job blasts, digests). Do not suggest chips about those.
+- Do NOT mention that you "searched their profile" or "know everything about them".
+- Do NOT set opener — leave it null (the UI already shows a friendly welcome).
+- Prefer chat chips only (actionType: chat). Navigate chips only for setup gaps (resume, strategy) if pipeline is empty.
+- Allowed href if needed: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /inbox, /opportunities/pipeline
 
 Summary: {{summary}}
 

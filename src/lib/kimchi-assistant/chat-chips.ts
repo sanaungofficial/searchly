@@ -3,6 +3,11 @@ import type {
   AssistantProfileGaps,
   AssistantSuggestion,
 } from "@/lib/kimchi-assistant/types";
+import {
+  filterSuggestionsForWelcome,
+  isPromotionalInboxActivity,
+  questionFromSuggestion,
+} from "@/lib/kimchi-assistant/suggestion-questions";
 
 export type ChipAction =
   | { type: "chat"; prompt: string }
@@ -87,7 +92,7 @@ function expandStrategyChip(ctx?: AssistantContextPayload | null): AssistantChip
   const target = strategyTargetRoles(ctx);
   return {
     id: "expand-strategy",
-    label: "Expand my strategy",
+    label: "What should I sharpen in my strategy?",
     variant: "chat",
     tone: "violet",
     action: {
@@ -118,7 +123,7 @@ function buildPersonalizedChatStarters(ctx: AssistantContextPayload): AssistantC
     chips.push(expandStrategyChip(ctx));
     chips.push({
       id: "focus-week-personal",
-      label: "This week's focus",
+      label: "What should I focus on this week?",
       variant: "chat",
       tone: "rose",
       action: {
@@ -134,7 +139,7 @@ function buildPersonalizedChatStarters(ctx: AssistantContextPayload): AssistantC
     const role = firstPipelineRole(ctx);
     chips.push({
       id: "pipeline-personal",
-      label: role ? `Status on ${role}` : "Review my pipeline",
+      label: role ? `What's my status on ${role}?` : "What's going on in my pipeline?",
       variant: "chat",
       tone: "mint",
       action: {
@@ -148,12 +153,12 @@ function buildPersonalizedChatStarters(ctx: AssistantContextPayload): AssistantC
 
   const followUp = ctx.suggestions.find((s) => s.id === "follow-up");
   if (followUp) {
-    chips.push(suggestionToChatChip(followUp));
+    chips.push(suggestionToChatChip(followUp, ctx));
   }
 
   const interview = ctx.suggestions.find((s) => s.id === "interview-prep");
   if (interview) {
-    chips.push(suggestionToChatChip(interview));
+    chips.push(suggestionToChatChip(interview, ctx));
   }
 
   return chips;
@@ -175,7 +180,7 @@ function buildPersonalizedFollowUpExtras(
   if (ctx.profileGaps.hasPipelineJobs && /pipeline|application|role|job|apply|interview/i.test(combined)) {
     const interviewing = ctx.suggestions.find((s) => s.id === "interview-prep");
     if (interviewing) {
-      out.push(suggestionToChatChip(interviewing));
+      out.push(suggestionToChatChip(interviewing, ctx));
     } else {
       const role = firstPipelineRole(ctx);
       if (role) {
@@ -194,20 +199,23 @@ function buildPersonalizedFollowUpExtras(
   }
 
   if (ctx.inbox.pendingCount > 0) {
-    const topEmail = ctx.inbox.activities[0];
+    const topEmail = ctx.inbox.activities.find((a) => !isPromotionalInboxActivity(a));
     if (topEmail) {
-      const label = topEmail.companyGuess
-        ? `Reply to ${topEmail.companyGuess}`
-        : "Review inbox email";
-      out.push({
+      const suggestion: AssistantSuggestion = {
         id: `inbox-${topEmail.id}`,
+        kind: "inbox_email",
+        title: topEmail.title ?? "Inbox update",
+        detail: topEmail.snippet ?? "",
+        meta: { activityId: topEmail.id },
+        priority: 90,
+      };
+      const { label, prompt } = questionFromSuggestion(suggestion, ctx.inbox);
+      out.push({
+        id: suggestion.id,
         label,
         variant: "chat",
         tone: "amber",
-        action: {
-          type: "chat",
-          prompt: `Help me decide what to do about this email${topEmail.companyGuess ? ` from ${topEmail.companyGuess}` : ""}: ${(topEmail.title || topEmail.snippet || "").slice(0, 220)}`,
-        },
+        action: { type: "chat", prompt },
       });
     }
   }
@@ -366,13 +374,7 @@ function suggestionToActionChip(s: AssistantSuggestion): AssistantChip | null {
     };
   }
   if (s.kind === "inbox_email" && s.meta?.activityId) {
-    return {
-      id: s.id,
-      label: s.title,
-      hint: s.detail,
-      variant: "action",
-      action: { type: "inbox_insight", activityId: s.meta.activityId },
-    };
+    return null;
   }
   if (s.id === "finish-readback") {
     return {
@@ -384,6 +386,14 @@ function suggestionToActionChip(s: AssistantSuggestion): AssistantChip | null {
     };
   }
   if (s.route && s.id !== "follow-up") {
+    if (
+      s.id.startsWith("apply-") ||
+      s.id === "interview-prep" ||
+      s.id === "current-job-fit" ||
+      s.kind === "follow_up"
+    ) {
+      return null;
+    }
     return {
       id: s.id,
       label: s.title,
@@ -395,18 +405,11 @@ function suggestionToActionChip(s: AssistantSuggestion): AssistantChip | null {
   return null;
 }
 
-function suggestionToChatChip(s: AssistantSuggestion): AssistantChip {
-  let prompt = s.title;
-  if (s.kind === "inbox_email") {
-    prompt = `Help me decide what to do about this email: ${s.detail}`;
-  } else if (s.kind === "follow_up") {
-    prompt = `Help me follow up: ${s.title} — ${s.detail}`;
-  } else if (s.detail) {
-    prompt = `Help me with: ${s.title} — ${s.detail}`;
-  }
+function suggestionToChatChip(s: AssistantSuggestion, ctx?: AssistantContextPayload | null): AssistantChip {
+  const { label, prompt } = questionFromSuggestion(s, ctx?.inbox ?? null);
   return {
     id: `chat-${s.id}`,
-    label: s.title,
+    label,
     hint: s.detail,
     variant: "chat",
     action: { type: "chat", prompt },
@@ -419,9 +422,10 @@ export function buildContextSuggestionChips(ctx: AssistantContextPayload | null)
 
   const chips: AssistantChip[] = [];
   const seen = new Set<string>();
+  const filtered = filterSuggestionsForWelcome(ctx.suggestions, ctx.inbox);
 
-  for (const s of ctx.suggestions) {
-    const chip = suggestionToActionChip(s) ?? suggestionToChatChip(s);
+  for (const s of filtered) {
+    const chip = suggestionToActionChip(s) ?? suggestionToChatChip(s, ctx);
     if (seen.has(chip.label)) continue;
     if (shouldSkipChipForContext(chip, ctx)) continue;
     seen.add(chip.label);
@@ -434,8 +438,7 @@ export function buildContextSuggestionChips(ctx: AssistantContextPayload | null)
 export function buildStarterActions(ctx: AssistantContextPayload | null): AssistantChip[] {
   const fromContext = (ctx?.suggestions ?? [])
     .map(suggestionToActionChip)
-    .filter(Boolean)
-    .filter((c) => !shouldSkipChipForContext(c, ctx)) as AssistantChip[];
+    .filter((c): c is AssistantChip => !!c && !shouldSkipChipForContext(c, ctx));
 
   if (fromContext.length >= 3) return fromContext.slice(0, 4);
 
@@ -450,12 +453,16 @@ export function buildStarterActions(ctx: AssistantContextPayload | null): Assist
 }
 
 export function buildStarterChatChips(ctx: AssistantContextPayload | null): AssistantChip[] {
-  const fromSuggestions = (ctx?.suggestions ?? [])
-    .filter((s) => !suggestionToActionChip(s))
-    .slice(0, 3)
-    .map(suggestionToChatChip);
+  if (!ctx?.suggestions?.length) {
+    return GENERIC_CHAT_STARTERS.slice(0, 4);
+  }
 
-  const personalized = ctx ? buildPersonalizedChatStarters(ctx) : [];
+  const filtered = filterSuggestionsForWelcome(ctx.suggestions, ctx.inbox);
+  const fromSuggestions = filtered
+    .map((s) => suggestionToActionChip(s) ?? suggestionToChatChip(s, ctx))
+    .filter((c) => !shouldSkipChipForContext(c, ctx));
+
+  const personalized = buildPersonalizedChatStarters(ctx);
   const merged: AssistantChip[] = [];
   const seen = new Set<string>();
 
@@ -473,7 +480,7 @@ export function buildStarterChatChips(ctx: AssistantContextPayload | null): Assi
     }
   }
 
-  return merged.slice(0, 4);
+  return merged.slice(0, 5);
 }
 
 const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
@@ -661,7 +668,7 @@ export function parseAiFollowUpChips(raw: unknown): AssistantChip[] {
     const c = chips[i];
     if (!c?.label?.trim()) continue;
 
-    const label = c.label.trim().slice(0, 48);
+    const label = c.label.trim().slice(0, 78);
     const id = (c.id || `ai-${i}`).slice(0, 64);
     const variant = c.variant === "action" ? "action" : "chat";
     const tone = VALID_TONES.has(c.tone as ChipTone)
@@ -733,8 +740,9 @@ export function buildFollowUpChips(params: {
   };
 
   if (ctx?.suggestions?.length) {
-    for (const s of ctx.suggestions.slice(0, 4)) {
-      const chip = suggestionToActionChip(s) ?? suggestionToChatChip(s);
+    const filtered = filterSuggestionsForWelcome(ctx.suggestions, ctx.inbox);
+    for (const s of filtered.slice(0, 4)) {
+      const chip = suggestionToActionChip(s) ?? suggestionToChatChip(s, ctx);
       pushChip(chip);
       if (out.length >= 3) break;
     }
@@ -813,7 +821,7 @@ export function legacyToChips(chips: ChatChip[]): AssistantChip[] {
 }
 
 export const WELCOME_MESSAGE =
-  "Hey — I can see your profile and search context. Pick something below or ask me anything.";
+  "Hey — what's on your mind today? I've got your search in the background, so feel free to ask anything.";
 
 export function isFailedAssistantReply(text: string): boolean {
   return /couldn't generate|didn't get a reply|Something went wrong|hit a snag|isn't available in this environment|That didn't work|Couldn't reach Kimchi/i.test(
@@ -838,6 +846,7 @@ export function isWelcomeOnlyThread(
       c.includes("Talk it out") ||
       c.includes("pick an action") ||
       c.includes("pick something below") ||
+      c.includes("what's on your mind") ||
       c.includes("Ask anything about your search") ||
       c.includes("Hey —")
     );

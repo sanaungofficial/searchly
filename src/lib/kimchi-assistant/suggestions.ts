@@ -99,7 +99,8 @@ export function buildAssistantSuggestions(
       title: `Prep for ${j.role} interview`,
       detail: `${j.company} — ask Kimchi what to lead with and where you're light.`,
       route: pipelineJobUrl(j.id, "fit"),
-      priority: 75,
+      priority: 96,
+      kind: "job",
     });
   }
 

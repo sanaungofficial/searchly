@@ -15,8 +15,6 @@ import { VOICE_PRESETS, getVoicePreset, type VoicePresetId } from "@/lib/kimchi-
 import {
   buildFollowUpChips,
   buildContextSuggestionChips,
-  buildKnowsYouPreview,
-  buildStarterActions,
   buildStarterChatChips,
   formatThreadForFollowUps,
   formatThreadForCopy,
@@ -107,7 +105,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [nextStepsVisible, setNextStepsVisible] = useState(false);
   const [inboxScanning, setInboxScanning] = useState(false);
   const [forYouChips, setForYouChips] = useState<AssistantChip[]>([]);
-  const [forYouOpener, setForYouOpener] = useState<string | null>(null);
   const [forYouLoading, setForYouLoading] = useState(false);
   const forYouRequestedRef = useRef(false);
 
@@ -292,9 +289,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         setForYouChips(data.chips as AssistantChip[]);
         setSuggestionsVisible(true);
       }
-      if (typeof data?.opener === "string" && data.opener.trim()) {
-        setForYouOpener(data.opener.trim());
-      }
       if (data?.source === "ai") notifyCreditsChanged();
     } catch {
       /* rule-based fallback handled server-side */
@@ -313,7 +307,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setNextStepsVisible(false);
     setSuggestionsVisible(false);
     setForYouChips([]);
-    setForYouOpener(null);
     forYouRequestedRef.current = false;
   }, [activeThreadId]);
 
@@ -322,13 +315,8 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   }, [messages, streaming, followUpChips]);
 
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
-  const starterActions = buildStarterActions(assistantCtx);
-  const starterChatChips = buildStarterChatChips(assistantCtx);
-  const knowsYouPreview = buildKnowsYouPreview(assistantCtx);
-  const welcomeKnowsYou =
-    knowsYouPreview && forYouOpener
-      ? { ...knowsYouPreview, headline: forYouOpener }
-      : knowsYouPreview;
+  const welcomeChips =
+    forYouChips.length > 0 ? forYouChips : buildStarterChatChips(assistantCtx);
 
   useEffect(() => {
     if (!assistantCtx || forYouRequestedRef.current) return;
@@ -814,11 +802,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           );
         })}
 
-        {welcomeOnly && (starterActions.length > 0 || starterChatChips.length > 0 || forYouLoading || forYouChips.length > 0) && (
+        {welcomeOnly && (welcomeChips.length > 0 || forYouLoading) && (
           <KimchiStarterSection
-            actions={forYouChips.length > 0 ? forYouChips : starterActions}
-            chatChips={forYouChips.length > 0 ? [] : starterChatChips}
-            knowsYou={welcomeKnowsYou}
+            actions={[]}
+            chatChips={welcomeChips}
             loading={forYouLoading}
             onActivate={handleChipActivate}
           />
