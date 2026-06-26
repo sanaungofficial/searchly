@@ -13,15 +13,19 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const context = searchParams.get("context") === "onboarding" ? "onboarding" : "workspace";
 
-  return NextResponse.json({
-    agentAvailable: deepgramConfigured(),
-    transcriptionAvailable: deepgramConfigured(),
-    extractionAvailable: !!process.env.ANTHROPIC_API_KEY,
-    context,
-    agent: deepgramConfigured()
-      ? context === "onboarding"
-        ? buildOnboardingVoiceAgentSettings()
-        : buildWorkspaceVoiceAgentSettings()
-      : null,
-  });
+  return NextResponse.json(
+    {
+      agentAvailable: deepgramConfigured(),
+      transcriptionAvailable: deepgramConfigured(),
+      extractionAvailable: !!process.env.ANTHROPIC_API_KEY,
+      context,
+      thinkModel: "gpt-4o-mini",
+      agent: deepgramConfigured()
+        ? context === "onboarding"
+          ? buildOnboardingVoiceAgentSettings()
+          : buildWorkspaceVoiceAgentSettings()
+        : null,
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
