@@ -61,6 +61,8 @@ export async function GET() {
       strategyUpdatedAt: profile?.strategyUpdatedAt?.toISOString() || null,
       hasStrategy: !!profile?.strategyData,
       dashboardGoals: normalizeDashboardGoals(profile?.dashboardGoals),
+      readbackData: profile?.readbackData ?? null,
+      readbackUpdatedAt: profile?.readbackUpdatedAt?.toISOString() ?? null,
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
         : undefined,
