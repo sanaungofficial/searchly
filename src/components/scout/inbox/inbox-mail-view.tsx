@@ -69,6 +69,7 @@ export function InboxMailView({
   const [foldersReady, setFoldersReady] = useState(false);
   const [meetingsCollapsed, setMeetingsCollapsed] = useState(false);
   const [tagSaving, setTagSaving] = useState(false);
+  const [jobLinkSaving, setJobLinkSaving] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [lastOpenedId, setLastOpenedId] = useState<string | null>(null);
   const [focusUnreadId, setFocusUnreadId] = useState<string | null>(null);
@@ -235,6 +236,30 @@ export function InboxMailView({
     }
   }
 
+  async function linkJob(messageId: string, jobId: string | null) {
+    setJobLinkSaving(true);
+    try {
+      const res = await fetch(withClientScope(`/api/user/email/messages/${encodeURIComponent(messageId)}/job`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not link opportunity");
+      const activity = data.activity ?? null;
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, activity } : m)));
+      if (detail?.id === messageId) {
+        const refreshed = await loadDetail(messageId);
+        setDetail(refreshed);
+      }
+      onNotice({ type: "success", text: jobId ? "Linked to opportunity." : "Opportunity link removed." });
+    } catch (e) {
+      onNotice({ type: "error", text: e instanceof Error ? e.message : "Could not link opportunity." });
+    } finally {
+      setJobLinkSaving(false);
+    }
+  }
+
   async function updateTag(messageId: string, tag: InboxUserTag | null) {
     setTagSaving(true);
     try {
@@ -389,10 +414,12 @@ export function InboxMailView({
                   <InboxExpandedMessage
                     detail={detail}
                     tagSaving={tagSaving}
+                    jobLinkSaving={jobLinkSaving}
                     onClose={() => setExpandedId(null)}
                     onReply={openReply}
                     onPatch={patchMessage}
                     onTagChange={(tag) => void updateTag(detail.id, tag)}
+                    onLinkJob={(jobId) => void linkJob(detail.id, jobId)}
                     onOpenThreadMessage={(id) => {
                       setLastOpenedId(id);
                       writeLastOpenedMessageId(id, status.email);

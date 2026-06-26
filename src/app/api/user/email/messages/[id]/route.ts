@@ -14,6 +14,8 @@ import {
   updateMessage,
 } from "@/lib/nylas-inbox";
 import { serializeMessageActivity } from "@/lib/inbox-message-activity";
+import { loadContactCard } from "@/lib/inbox-crm/link-job";
+import { logInboxMessage } from "@/lib/inbox-crm/log-message";
 import { prisma } from "@/lib/prisma";
 
 async function loadGrant(userId: string) {
@@ -50,13 +52,36 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       thread = threadMessages.map(serializeMessageSummary);
     }
 
-    const activityRow = await prisma.inboxActivity.findFirst({
+    let activityRow = await prisma.inboxActivity.findFirst({
       where: { userId: dbUser.id, nylasMessageId: id },
       include: {
         job: { select: { id: true, company: true, role: true, stage: true } },
         contact: { select: { id: true, email: true, name: true, company: true } },
       },
     });
+
+    if (!activityRow) {
+      activityRow = await logInboxMessage({
+        userId: dbUser.id,
+        grantId: grant.nylasGrantId,
+        userEmail: grant.email,
+        message,
+      }).then((row) =>
+        row
+          ? prisma.inboxActivity.findFirst({
+              where: { id: row.id },
+              include: {
+                job: { select: { id: true, company: true, role: true, stage: true } },
+                contact: { select: { id: true, email: true, name: true, company: true } },
+              },
+            })
+          : null,
+      );
+    }
+
+    const contactCard = activityRow?.contactId
+      ? await loadContactCard(dbUser.id, activityRow.contactId)
+      : null;
 
     return NextResponse.json({
       ...serializeMessageSummary(message),
@@ -68,6 +93,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       attachments: serializeAttachments(message),
       thread,
       activity: serializeMessageActivity(activityRow),
+      contactCard,
     });
   } catch (err) {
     console.error("[user/email/messages/id]", err);

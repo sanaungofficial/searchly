@@ -13,6 +13,7 @@ import {
 import { categorizeInboxMail } from "@/lib/inbox-crm/categorize";
 import { messageDirection } from "@/lib/inbox-crm/direction";
 import { upsertContactFromMessage } from "@/lib/inbox-crm/contacts";
+import { matchJobForContact } from "@/lib/inbox-crm/match-job";
 
 function snippetFor(message: NylasMessage): string {
   const text = (message.snippet ?? messagePlainText(message)).trim();
@@ -49,12 +50,25 @@ export async function logInboxMessage(params: {
   const contact = await upsertContactFromMessage(params.userId, full, params.userEmail);
   const occurredAt = full.date ? new Date(full.date * 1000) : new Date();
 
+  const jobs = await prisma.job.findMany({
+    where: { userId: params.userId },
+    orderBy: { updatedAt: "desc" },
+    take: 60,
+  });
+  const matchedJob = matchJobForContact(jobs, {
+    contactCompany: contact?.company,
+    contactEmail: contact?.email,
+    subject: full.subject,
+    category,
+  });
+
   const data = {
     userId: params.userId,
     kind: InboxActivityKind.EMAIL,
     direction,
     category,
     contactId: contact?.id ?? null,
+    jobId: matchedJob?.id ?? null,
     nylasMessageId: messageId,
     nylasThreadId: full.thread_id ?? null,
     subject: full.subject ?? messageFromLine(full),
@@ -70,6 +84,7 @@ export async function logInboxMessage(params: {
       direction: data.direction,
       category: data.category,
       contactId: data.contactId,
+      jobId: data.jobId ?? undefined,
       nylasThreadId: data.nylasThreadId,
       subject: data.subject,
       snippet: data.snippet,

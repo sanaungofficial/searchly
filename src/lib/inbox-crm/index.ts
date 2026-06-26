@@ -92,3 +92,21 @@ export async function syncInboxActivities(userId: string) {
 
   return { processed };
 }
+
+export async function syncAllInboxActivities() {
+  const grants = await prisma.userEmailGrant.findMany();
+  let total = 0;
+  for (const grant of grants) {
+    try {
+      const { processed } = await syncInboxActivities(grant.userId);
+      total += processed;
+      await prisma.userEmailGrant.update({
+        where: { id: grant.id },
+        data: { lastSyncAt: new Date() },
+      });
+    } catch (err) {
+      console.error("[inbox-crm] sync all", grant.userId, err);
+    }
+  }
+  return { users: grants.length, processed: total };
+}
