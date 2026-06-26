@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getAuthenticatedDbUser } from "@/lib/coach-api";
+import { getClientCoachingUser } from "@/lib/coach-api";
 import { getAssignedCoachIds } from "@/lib/coach-client-assignment";
 import { enrichCoachesWithMatch } from "@/lib/coach-match";
 import { buildCoachMatchUserContext } from "@/lib/coach-match-context";
@@ -101,7 +101,7 @@ function mapCoachRow(c: {
 
 export async function GET() {
   try {
-    const me = await getAuthenticatedDbUser();
+    const me = await getClientCoachingUser();
 
     const publicCoaches = await prisma.coachProfile.findMany({
       where: activeCoachListWhere(me?.id),
@@ -109,12 +109,13 @@ export async function GET() {
     });
 
     let assignedInternal: typeof publicCoaches = [];
+    let myCoachIds: string[] = [];
     if (me) {
-      const assignedIds = await getAssignedCoachIds(me.id);
-      if (assignedIds.length) {
+      myCoachIds = await getAssignedCoachIds(me.id);
+      if (myCoachIds.length) {
         assignedInternal = await prisma.coachProfile.findMany({
           where: {
-            id: { in: assignedIds },
+            id: { in: myCoachIds },
             status: "ACTIVE",
             isInternal: true,
           },
@@ -154,6 +155,7 @@ export async function GET() {
       coaches: withMatch,
       scored: matchCtx.scored,
       hint: matchCtx.hint,
+      myCoachIds,
     });
   } catch (err) {
     console.error("[api/coaches]", err);

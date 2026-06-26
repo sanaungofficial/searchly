@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CoachBookingStatus } from "@prisma/client";
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { getClientCoachingUser } from "@/lib/coach-api";
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const me = await getClientCoachingUser(req);
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sp = req.nextUrl.searchParams;
   const upcoming = sp.get("upcoming") !== "false";
@@ -15,7 +14,7 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const bookings = await prisma.coachBooking.findMany({
     where: {
-      guestEmail: { equals: user.email, mode: "insensitive" },
+      OR: [{ userId: me.id }, { guestEmail: { equals: me.email, mode: "insensitive" } }],
       ...(upcoming
         ? {
             startAt: { gte: now },

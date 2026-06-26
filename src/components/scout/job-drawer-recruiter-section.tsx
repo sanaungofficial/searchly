@@ -134,15 +134,17 @@ export function JobDrawerNetworkAdminSection({
           </div>
         ))}
       </div>
-      {networkJob.topEchelonUrl && (
+      {(networkJob.topEchelonUrl || networkJob.sourceUrl) && (
         <div style={{ marginTop: 16 }}>
           <a
-            href={networkJob.topEchelonUrl}
+            href={networkJob.topEchelonUrl ?? networkJob.sourceUrl ?? "#"}
             target="_blank"
             rel="noopener noreferrer"
             style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
           >
-            Open in Top Echelon Big Biller ↗
+            {networkJob.source === "EXECTHREAD"
+              ? "Open on ExecThread ↗"
+              : "Open in Top Echelon Big Biller ↗"}
           </a>
         </div>
       )}

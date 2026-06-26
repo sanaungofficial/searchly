@@ -12,7 +12,7 @@ import {
   type VectorMatchedJob,
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
-import { cachedJobToMeta, companyLogoFromJobData, normalizeJobUrl } from "@/lib/cached-job";
+import { cachedJobToMeta, companyLogoFromJobData, jobListingDedupeKey, normalizeJobUrl } from "@/lib/cached-job";
 import {
   roleListingToVectorMatchedJob,
   vectorJobToRoleListing,
@@ -569,7 +569,11 @@ export function buildRecommendedProspectCard(
 }
 
 function recommendedDedupeKey(job: VectorMatchedJob): string {
-  return normalizeJobUrl(job.url) ?? `${job.companyName.trim()}:${job.title.trim()}`.toLowerCase();
+  return jobListingDedupeKey({
+    companyName: job.companyName,
+    title: job.title,
+    url: job.url,
+  });
 }
 
 function RecommendedResultsList({
@@ -1043,13 +1047,22 @@ export function PipelineRecommendedSection({
     void fetchRecommended(reset, { preferCache: false });
   };
 
-  const recommendedListings = useMemo(
-    () =>
-      jobs
-        .filter((job) => !savedKeys.has(recommendedDedupeKey(job)))
-        .map((job) => vectorJobToRoleListing(job)),
-    [jobs, savedKeys],
-  );
+  const recommendedListings = useMemo(() => {
+    const byKey = new Map<string, ReturnType<typeof vectorJobToRoleListing>>();
+    for (const job of jobs) {
+      if (savedKeys.has(recommendedDedupeKey(job))) continue;
+      const listing = vectorJobToRoleListing(job);
+      const existing = byKey.get(listing.dedupeKey);
+      if (!existing) {
+        byKey.set(listing.dedupeKey, listing);
+        continue;
+      }
+      const scoreA = listing.matchScore ?? 0;
+      const scoreB = existing.matchScore ?? 0;
+      if (scoreA > scoreB) byKey.set(listing.dedupeKey, listing);
+    }
+    return [...byKey.values()];
+  }, [jobs, savedKeys]);
 
   const filteredListings = useMemo(
     () =>

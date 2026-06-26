@@ -1,10 +1,19 @@
 import { prisma } from "@/lib/prisma";
-import { interpretNetworkJob, SEED_NETWORK_JOBS, type NetworkJobListing } from "@/lib/network-job-display";
+import {
+  interpretExecThreadJob,
+  interpretNetworkJob,
+  SEED_NETWORK_JOBS,
+  type NetworkJobListing,
+} from "@/lib/network-job-display";
+import type { ExecThreadListingRaw } from "@/lib/execthread/types";
 import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
+import type { NetworkJobSource } from "@prisma/client";
 
 function rowToListing(row: {
+  source: NetworkJobSource;
   externalId: string;
   topEchelonUrl: string | null;
+  sourceUrl: string | null;
   raw: unknown;
   recruiterRecord: {
     externalId: string;
@@ -16,9 +25,15 @@ function rowToListing(row: {
     agencyName: string | null;
   } | null;
 }): NetworkJobListing {
-  const listing = interpretNetworkJob(row.raw as TopEchelonNetworkJobRaw);
+  const listing =
+    row.source === "EXECTHREAD"
+      ? interpretExecThreadJob(row.raw as ExecThreadListingRaw)
+      : interpretNetworkJob(row.raw as TopEchelonNetworkJobRaw);
+
   if (row.topEchelonUrl) listing.topEchelonUrl = row.topEchelonUrl;
-  if (row.recruiterRecord) {
+  if (row.sourceUrl) listing.sourceUrl = row.sourceUrl;
+
+  if (row.recruiterRecord && row.source === "TOPECHELON") {
     listing.recruiter = {
       id: row.recruiterRecord.externalId,
       externalId: row.recruiterRecord.externalId,

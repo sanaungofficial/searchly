@@ -1,3 +1,5 @@
+import type { ExecThreadListingRaw } from "@/lib/execthread/types";
+import { mapExecThreadNetworkJob } from "@/lib/execthread/map-network-job";
 import type { JobMeta } from "@/lib/job-meta";
 import type { KanbanCard } from "@/components/scout/workspace-data";
 import type { MappedNetworkJob } from "@/lib/topechelon/map-network-job";
@@ -33,6 +35,7 @@ export type NetworkRecruiterDisplay = {
 export type NetworkJobListing = {
   id: string;
   externalId: string;
+  source: "TOPECHELON" | "EXECTHREAD";
   networkId: string | null;
   positionTitle: string;
   companyName: string | null;
@@ -61,9 +64,10 @@ export type NetworkJobListing = {
   description: string | null;
   recruiterNotes: string | null;
   topEchelonUrl: string | null;
+  sourceUrl: string | null;
   adminDetails: Array<{ label: string; value: string }>;
   recruiter: NetworkRecruiterDisplay | null;
-  raw: TopEchelonNetworkJobRaw;
+  raw: TopEchelonNetworkJobRaw | ExecThreadListingRaw;
 } & Partial<NetworkJobMatchFields>;
 
 /** Best agency label for cards/logos — avoids generic "Recruiting firm". */
@@ -186,6 +190,7 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
   return {
     id: mapped.externalId,
     externalId: mapped.externalId,
+    source: "TOPECHELON",
     networkId: mapped.networkId,
     positionTitle: mapped.positionTitle,
     companyName: mapped.companyName,
@@ -214,10 +219,75 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
     description: mapped._display.descriptionText || null,
     recruiterNotes: mapped._display.recruiterNotesText || null,
     topEchelonUrl: mapped.topEchelonUrl,
+    sourceUrl: mapped.topEchelonUrl,
     adminDetails: buildAdminDetails(mapped, raw, shared, industries, salary),
     recruiter: recruiterRaw ? recruiterToDisplay(recruiterRaw) : null,
     raw,
   };
+}
+
+export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobListing {
+  const mapped = mapExecThreadNetworkJob(raw);
+  const industries = mapped._display.industries ?? [];
+  const sharedAtIso = mapped.sharedAt?.toISOString() ?? null;
+  const shared = formatNetworkSharedDate(sharedAtIso);
+  const descriptionText = mapped.description?.replace(/\s+/g, " ").trim() ?? null;
+
+  return {
+    id: mapped.externalId,
+    externalId: mapped.externalId,
+    source: "EXECTHREAD",
+    networkId: mapped.networkId,
+    positionTitle: mapped.positionTitle,
+    companyName: mapped.companyName,
+    agencyName: mapped.agencyName ?? mapped.companyName,
+    agencyWebsite: null,
+    agencyLogoUrl: null,
+    city: mapped.city,
+    state: mapped.state,
+    location: mapped.location,
+    industries,
+    salary: mapped._display.hasCompensation ? "Compensation disclosed on ExecThread" : null,
+    compensationMin: null,
+    compensationMax: null,
+    compensationBand: null,
+    jobType: mapped.jobType,
+    remoteOption: mapped.remoteOption,
+    fee: null,
+    feeType: null,
+    guarantee: null,
+    guaranteeLabel: null,
+    networkStatus: mapped.networkStatus,
+    networkStatusLabel: mapped.networkStatus,
+    sharedAt: sharedAtIso,
+    sharedAtLabel: shared.dateLabel,
+    sharedAtRelative: shared.relativeLabel,
+    description: descriptionText,
+    recruiterNotes: null,
+    topEchelonUrl: null,
+    sourceUrl: mapped.sourceUrl,
+    adminDetails: internalViewAdminDetailsExecThread(mapped, industries),
+    recruiter: null,
+    raw,
+  };
+}
+
+function internalViewAdminDetailsExecThread(
+  mapped: ReturnType<typeof mapExecThreadNetworkJob>,
+  industries: string[],
+): Array<{ label: string; value: string }> {
+  const rows: Array<{ label: string; value: string }> = [];
+  const push = (label: string, value: string | null | undefined) => {
+    if (value?.trim()) rows.push({ label, value: value.trim() });
+  };
+  push("Source", "ExecThread");
+  push("ExecThread ID", mapped.externalId);
+  push("Slug", mapped.networkId);
+  push("Level", mapped.networkStatus);
+  push("Functions", mapped._display.functions);
+  if (industries.length) push("Industry", industries.join(", "));
+  push("Listing URL", mapped.sourceUrl);
+  return rows;
 }
 
 export function buildNetworkProspectCard(
@@ -267,8 +337,10 @@ export function buildNetworkProspectCard(
       : {}),
     networkJob: {
       externalId: job.externalId,
+      source: job.source,
       networkId: job.networkId,
       topEchelonUrl: job.topEchelonUrl,
+      sourceUrl: job.sourceUrl,
       recruiterNotes: internalView ? job.recruiterNotes : null,
       fee: internalView ? job.fee : null,
       networkStatus: internalView ? (job.networkStatusLabel ?? job.networkStatus) : null,
@@ -293,7 +365,7 @@ export function buildNetworkProspectCard(
     fit: job.matchScore && job.matchScore > 0 ? job.matchScore : 0,
     jobRef: null,
     days,
-    _url: job.topEchelonUrl ?? undefined,
+    _url: job.topEchelonUrl ?? job.sourceUrl ?? undefined,
     _meta: meta,
     _networkJobId: job.id,
   };

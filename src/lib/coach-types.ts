@@ -80,8 +80,18 @@ export type CoachProfileDetail = CoachListItem & {
   whyCoach: string | null;
   aboutMe: string | null;
   isFollowing: boolean;
+  isMyCoach?: boolean;
   aggregates: CoachReviewAggregates | null;
   reviews: CoachReviewItem[];
+  purchasablePackages?: Array<{
+    id: string;
+    displayTitle: string;
+    displayHoursLabel: string;
+    displayPriceLabel: string | null;
+    displayPriceCents: number | null;
+    hoursGranted?: number;
+    hours: number;
+  }>;
 };
 
 export type CoachDirectoryFilters = {

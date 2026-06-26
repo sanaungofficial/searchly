@@ -17,7 +17,7 @@ import {
 } from "@/lib/coach-directory";
 import { writeCoachMatchCache } from "@/lib/coach-match-cache";
 import type { CoachListItem, CoachSpotlightBadge } from "@/lib/coach-types";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { useWorkspace } from "@/contexts/workspace-context";
 
 type Props = {
   category?: string | null;
@@ -25,6 +25,8 @@ type Props = {
   isPro: boolean;
   onSubscribe: () => void;
   onOpenCoach: (coach: CoachListItem) => void;
+  myCoachIds?: Set<string>;
+  onMyCoachIdsChange?: (ids: Set<string>) => void;
 };
 
 const inputStyle: React.CSSProperties = {
@@ -136,11 +138,16 @@ function countActiveFilters(params: URLSearchParams): number {
   return n;
 }
 
-export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOpenCoach }: Props) {
+export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOpenCoach, myCoachIds: myCoachIdsProp, onMyCoachIdsChange }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { userRole, isImpersonating } = useWorkspace();
+  const canSelfAssignCoach = userRole === "USER" || isImpersonating;
   const [allCoaches, setAllCoaches] = useState<CoachListItem[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [localMyCoachIds, setLocalMyCoachIds] = useState<Set<string>>(new Set());
+  const myCoachIds = myCoachIdsProp ?? localMyCoachIds;
+  const setMyCoachIds = onMyCoachIdsChange ?? setLocalMyCoachIds;
   const [loading, setLoading] = useState(true);
   const [scored, setScored] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -197,6 +204,9 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
       const coaches = Array.isArray(data.coaches) ? data.coaches : Array.isArray(data) ? data : [];
       setAllCoaches(coaches);
       setScored(Boolean(data.scored));
+      if (Array.isArray(data.myCoachIds)) {
+        setMyCoachIds(new Set(data.myCoachIds as string[]));
+      }
       const hint = typeof data.hint === "string" ? data.hint : COACH_MATCH_NEEDS_SIGNAL_HINT;
       writeCoachMatchCache({
         coaches,
@@ -280,6 +290,22 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
         else next.add(coach.id);
         return next;
       });
+    }
+  };
+
+  const toggleMyCoach = async (coach: CoachListItem) => {
+    const isAssigned = myCoachIds.has(coach.id);
+    if (coach.isInternal) return;
+    const res = isAssigned
+      ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
+      : await fetch("/api/coaching/coach-assignment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ coachProfileId: coach.id }),
+        });
+    if (res.ok) {
+      const data = await res.json();
+      setMyCoachIds(new Set((data.coachIds as string[]) ?? []));
     }
   };
 
@@ -415,6 +441,9 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
                   onFollow={toggleFollow}
                   following={followedIds.has(c.id)}
                   onOpenCoach={onOpenCoach}
+                  isMyCoach={myCoachIds.has(c.id)}
+                  canSelfAssignCoach={canSelfAssignCoach}
+                  onToggleMyCoach={toggleMyCoach}
                 />
               ))}
             </div>

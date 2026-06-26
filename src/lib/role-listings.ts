@@ -1,5 +1,5 @@
+import { jobListingDedupeKey } from "@/lib/cached-job";
 import type { CachedJob } from "@/lib/cached-job";
-import { normalizeJobUrl } from "@/lib/cached-job";
 import { jobMatchesListingFilters } from "@/lib/job-listing-filters";
 import type { JobMeta } from "@/lib/job-meta";
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -32,7 +32,7 @@ export type RoleListing = {
 export type StageFilter = "all" | KanbanStage;
 
 function listingDedupeKey(url: string | null | undefined, companyName: string, title: string): string {
-  return normalizeJobUrl(url) ?? `${companyName.trim()}:${title.trim()}`.toLowerCase();
+  return jobListingDedupeKey({ companyName, title, url });
 }
 
 export function kanbanCardToCachedJob(card: KanbanCard): CachedJob {

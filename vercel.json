@@ -17,6 +17,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/execthread-sync",
+      "schedule": "0 8 * * 1"
+    },
+    {
       "path": "/api/cron/live-sessions",
       "schedule": "*/5 * * * *"
     },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { markPurchasePaid, markPurchaseRefunded } from "@/lib/coach-purchase";
 import Stripe from "stripe";
 
 // Stripe requires the raw body to verify signatures
@@ -56,6 +57,15 @@ export async function POST(req: NextRequest) {
         if (session.mode === "subscription" && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
           await upsertSubscription(subscription);
+        } else if (session.mode === "payment" && session.metadata?.kind === "coach_purchase") {
+          const purchaseId = session.metadata.purchaseId;
+          if (purchaseId) {
+            await markPurchasePaid({
+              purchaseId,
+              stripePaymentIntentId:
+                typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
+            });
+          }
         }
         break;
       }
@@ -82,6 +92,21 @@ export async function POST(req: NextRequest) {
             where: { stripeSubscriptionId: invoice.subscription },
             data: { status: "PAST_DUE" },
           });
+        }
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+        if (paymentIntentId) {
+          const purchase = await prisma.coachPurchase.findFirst({
+            where: { stripePaymentIntentId: paymentIntentId },
+          });
+          if (purchase) {
+            const partial = charge.amount_refunded > 0 && charge.amount_refunded < charge.amount;
+            await markPurchaseRefunded(purchase.id, partial);
+          }
         }
         break;
       }

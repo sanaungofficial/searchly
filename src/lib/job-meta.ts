@@ -42,11 +42,13 @@ export interface JobMeta {
   companySlug?: string | null;
   companyWebsite?: string | null;
   companyLogo?: string | null;
-  /** Top Echelon in-network job (admin / internal). */
+  /** In-network job (Top Echelon, ExecThread, …). */
   networkJob?: {
     externalId: string;
+    source?: "TOPECHELON" | "EXECTHREAD";
     networkId: string | null;
     topEchelonUrl: string | null;
+    sourceUrl?: string | null;
     recruiterNotes: string | null;
     fee: string | null;
     networkStatus: string | null;

@@ -397,15 +397,15 @@ function NetworkJobCard({
             {saving ? "Saving…" : "Save job"}
           </ScoutPrimaryBtn>
         )}
-        {internalView && job.topEchelonUrl && (
+        {internalView && (job.topEchelonUrl || job.sourceUrl) && (
           <a
-            href={job.topEchelonUrl}
+            href={job.topEchelonUrl ?? job.sourceUrl ?? "#"}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
           >
-            Top Echelon ↗
+            {job.source === "EXECTHREAD" ? "ExecThread ↗" : "Top Echelon ↗"}
           </a>
         )}
       </div>
@@ -546,7 +546,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
           In-Network Roles
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Shared through Top Echelon Big Biller — not on public job boards. Same profile-based scoring as Open Roles.
+          Shared through recruiter networks (Top Echelon, ExecThread) — not on public job boards. Same profile-based scoring as Open Roles.
         </p>
       </div>
       )}
