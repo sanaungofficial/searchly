@@ -600,7 +600,7 @@ export function CoachProfileTab({
               Calendar connected — in-app booking is enabled.
             </p>
             <Link
-              href="/dashboard/availability"
+              href="/dashboard/offerings?section=availability"
               style={{
                 display: "inline-block",
                 padding: "10px 18px",

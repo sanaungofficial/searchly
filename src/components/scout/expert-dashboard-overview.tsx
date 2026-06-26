@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
-import { STAFF_DASHBOARD_NAV } from "@/lib/staff-portal";
+import { EXPERT_WORKSPACE_NAV } from "@/lib/staff-portal";
 
 type HubPayload = {
   stats?: {
@@ -43,10 +43,10 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           Expert workspace
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-          Your client sessions, hub, and availability — switch back to job seeker view anytime from the header.
+          Your client requests, offerings, and ops — switch back to job seeker view anytime from the header.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {STAFF_DASHBOARD_NAV.filter((n) => n.id !== "home").map((item) => (
+          {EXPERT_WORKSPACE_NAV.map((item) => (
             <Link
               key={item.path}
               href={item.path}
@@ -84,7 +84,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
       <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.ink, margin: 0 }}>Upcoming sessions</p>
-          <Link href="/dashboard/bookings" style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>
+          <Link href="/dashboard/ops?section=bookings" style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>
             All bookings →
           </Link>
         </div>
@@ -109,11 +109,11 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           </div>
         )}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-          <Link href="/dashboard/clients" style={{ textDecoration: "none" }}>
+          <Link href="/dashboard/ops?section=clients" style={{ textDecoration: "none" }}>
             <ScoutPrimaryBtn type="button">View clients</ScoutPrimaryBtn>
           </Link>
-          <Link href="/dashboard/hub" style={{ textDecoration: "none" }}>
-            <ScoutSecondaryBtn type="button">Open hub</ScoutSecondaryBtn>
+          <Link href="/dashboard/inbox" style={{ textDecoration: "none" }}>
+            <ScoutSecondaryBtn type="button">Open inbox</ScoutSecondaryBtn>
           </Link>
         </div>
       </ScoutBox>

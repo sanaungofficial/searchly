@@ -1,12 +1,5 @@
-"use client";
-
-import { CoachBookingsTab } from "@/components/scout/coach-bookings-tab";
-import { WorkspaceSubpageShell } from "@/components/scout/workspace-content";
+import { redirect } from "next/navigation";
 
 export default function DashboardBookingsPage() {
-  return (
-    <WorkspaceSubpageShell>
-      <CoachBookingsTab />
-    </WorkspaceSubpageShell>
-  );
+  redirect("/dashboard/ops?section=bookings");
 }

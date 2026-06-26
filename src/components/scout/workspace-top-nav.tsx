@@ -655,7 +655,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
             {isStaffPortal && !isImpersonating && !isAdminReviewing && (
               <UtilityPortalDropdown
                 label={isMobile ? "Expert" : "Expert dashboard"}
-                defaultPath="/dashboard"
+                defaultPath="/dashboard/inbox"
                 active={expertPortalActive}
                 items={expertNavItems}
                 dropdownOpen={navDropdownOpen === "expert-portal"}

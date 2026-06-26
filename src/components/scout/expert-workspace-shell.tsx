@@ -1,0 +1,182 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  EXPERT_WORKSPACE_NAV,
+  expertWorkspaceNavId,
+  type ExpertWorkspaceNavId,
+} from "@/lib/staff-portal";
+import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+
+function NavIcon({ id }: { id: ExpertWorkspaceNavId }) {
+  const stroke = "currentColor";
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke, strokeWidth: 1.8, "aria-hidden": true as const };
+
+  if (id === "inbox") {
+    return (
+      <svg {...common}>
+        <path d="M4 6h16v12H4z" strokeLinejoin="round" />
+        <path d="M4 7l8 6 8-6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (id === "offerings") {
+    return (
+      <svg {...common}>
+        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" strokeLinejoin="round" />
+        <path d="M9 21V12h6v9" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (id === "reviews") {
+    return (
+      <svg {...common}>
+        <path d="M12 3.5 14.6 9l5.9.5-4.5 3.9 1.4 5.7L12 16.8 6.6 19.1l1.4-5.7-4.5-3.9 5.9-.5z" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+type Props = {
+  children: React.ReactNode;
+};
+
+export function ExpertWorkspaceShell({ children }: Props) {
+  const pathname = usePathname();
+  const isMobile = useIsMobile();
+  const activeId = expertWorkspaceNavId(pathname);
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          height: "100%",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          background: surface.page,
+        }}
+      >
+        <nav
+          aria-label="Expert workspace"
+          style={{
+            display: "flex",
+            gap: 0,
+            overflowX: "auto",
+            borderBottom: border.line,
+            background: surface.card,
+            flexShrink: 0,
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {EXPERT_WORKSPACE_NAV.map(({ id, label, path }) => {
+            const active = activeId === id;
+            return (
+              <Link
+                key={id}
+                href={path}
+                style={{
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "12px 14px",
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? color.forest : color.muted,
+                  textDecoration: "none",
+                  borderBottom: active ? `2px solid ${color.forest}` : "2px solid transparent",
+                }}
+              >
+                <NavIcon id={id} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{children}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        minHeight: 0,
+        display: "flex",
+        overflow: "hidden",
+        background: surface.page,
+      }}
+    >
+      <aside
+        style={{
+          width: 220,
+          flexShrink: 0,
+          borderRight: border.line,
+          background: surface.card,
+          display: "flex",
+          flexDirection: "column",
+          padding: "20px 0",
+        }}
+      >
+        <p
+          style={{
+            margin: "0 0 16px",
+            padding: "0 20px",
+            fontFamily: fontSans,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: color.muted,
+          }}
+        >
+          Expert
+        </p>
+        <nav aria-label="Expert workspace" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {EXPERT_WORKSPACE_NAV.map(({ id, label, path }) => {
+            const active = activeId === id;
+            return (
+              <Link
+                key={id}
+                href={path}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  margin: "0 10px",
+                  padding: "10px 12px",
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: fontSans,
+                  fontSize: T.bodySm,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? color.forest : color.stone,
+                  textDecoration: "none",
+                  background: active ? "rgba(26,58,47,0.08)" : "transparent",
+                  borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
+                }}
+              >
+                <NavIcon id={id} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        {children}
+      </div>
+    </div>
+  );
+}

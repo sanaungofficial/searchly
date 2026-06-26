@@ -18,7 +18,7 @@ function DashboardClientsInner() {
 
   useEffect(() => {
     if (tab === "profile") {
-      router.replace("/dashboard/expert-profile");
+      router.replace("/dashboard/offerings?section=profile");
     }
   }, [tab, router]);
 
