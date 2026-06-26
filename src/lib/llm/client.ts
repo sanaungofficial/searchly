@@ -138,29 +138,27 @@ export function kimchiStreamTextWithTools(params: {
   const body = base.body;
   if (!body) return base;
 
+  const encoder = new TextEncoder();
+
   const stream = new ReadableStream({
     async start(controller) {
-      const reader = body.getReader();
-      const decoder = new TextDecoder();
-      let streamedText = "";
+      let streamedAny = false;
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            streamedText += decoder.decode(value, { stream: true });
-            controller.enqueue(value);
-          }
+        for await (const chunk of result.textStream) {
+          if (!chunk) continue;
+          streamedAny = true;
+          controller.enqueue(encoder.encode(chunk));
         }
-        streamedText += decoder.decode();
 
         const [finalText, steps] = await Promise.all([result.text, result.steps]);
-        const trimmedStreamed = streamedText.trim();
         const trimmedFinal = (finalText ?? "").trim();
 
-        if (!trimmedStreamed && trimmedFinal) {
-          controller.enqueue(new TextEncoder().encode(trimmedFinal));
-        } else if (!trimmedStreamed && !trimmedFinal) {
+        if (!streamedAny && trimmedFinal) {
+          controller.enqueue(encoder.encode(trimmedFinal));
+          streamedAny = true;
+        }
+
+        if (!streamedAny) {
           let navigateReason: string | null = null;
           for (const step of steps) {
             for (const tr of step.toolResults ?? []) {
@@ -170,10 +168,12 @@ export function kimchiStreamTextWithTools(params: {
               }
             }
           }
-          const fallback =
-            navigateReason?.trim() ||
-            "I'm here — try asking again or pick an action below.";
-          controller.enqueue(new TextEncoder().encode(fallback));
+          controller.enqueue(
+            encoder.encode(
+              navigateReason?.trim() ||
+                "I hit a snag generating a reply. Try sending that again — or tap a button below to keep going.",
+            ),
+          );
         }
 
         let navigateRoute: string | null = null;
@@ -185,8 +185,14 @@ export function kimchiStreamTextWithTools(params: {
           }
         }
         if (navigateRoute) {
-          controller.enqueue(new TextEncoder().encode(`\n<!--kimchi-nav:${navigateRoute}-->`));
+          controller.enqueue(encoder.encode(`\n<!--kimchi-nav:${navigateRoute}-->`));
         }
+      } catch {
+        controller.enqueue(
+          encoder.encode(
+            "Something went wrong on my end. Try your message again, or use the buttons below.",
+          ),
+        );
       } finally {
         controller.close();
       }

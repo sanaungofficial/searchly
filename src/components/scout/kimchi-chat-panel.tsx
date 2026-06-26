@@ -18,6 +18,7 @@ import {
   buildStarterActions,
   buildStarterChatChips,
   formatThreadForFollowUps,
+  isFailedAssistantReply,
   isWelcomeOnlyThread,
   WELCOME_MESSAGE,
   guidanceForChip,
@@ -350,8 +351,17 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         messages
           .filter((m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text")
           .map((m) => ({ role: m.role, content: m.content }));
-      const threadMessages = textThread;
-      const threadContext = formatThreadForFollowUps(threadMessages.slice(0, -1));
+      const threadContext = formatThreadForFollowUps(textThread.slice(0, -1));
+
+      const instant = buildFollowUpChips({
+        userMessage,
+        assistantMessage,
+        threadContext,
+        profileGaps: assistantCtx?.profileGaps,
+      });
+      setFollowUpChips(instant);
+
+      if (isFailedAssistantReply(assistantMessage)) return;
 
       try {
         const res = await fetch("/api/assistant/follow-ups", {
@@ -360,9 +370,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           body: JSON.stringify({
             userMessage,
             assistantMessage,
-            threadMessages,
+            threadMessages: textThread,
             threadContext,
             profileGaps: assistantCtx?.profileGaps,
+            strategySnippet: assistantCtx?.strategySnippet,
+            pipelineSnippet: assistantCtx?.pipelineSnippet,
           }),
         });
         const data = res.ok ? await res.json() : null;
@@ -370,30 +382,14 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           setFollowUpChips(data.chips as AssistantChip[]);
           return;
         }
-        if (Array.isArray(data?.chips)) {
+        if (Array.isArray(data?.chips) && data.chips.length >= 2) {
           setFollowUpChips(legacyToChips(data.chips));
-          return;
         }
-        setFollowUpChips(
-          buildFollowUpChips({
-            userMessage,
-            assistantMessage,
-            threadContext,
-            profileGaps: assistantCtx?.profileGaps,
-          }),
-        );
       } catch {
-        setFollowUpChips(
-          buildFollowUpChips({
-            userMessage,
-            assistantMessage,
-            threadContext,
-            profileGaps: assistantCtx?.profileGaps,
-          }),
-        );
+        /* keep instant chips */
       }
     },
-    [assistantCtx?.profileGaps, messages],
+    [assistantCtx?.pipelineSnippet, assistantCtx?.profileGaps, assistantCtx?.strategySnippet, messages],
   );
 
   const sendMessage = async (text: string) => {
@@ -459,14 +455,15 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       const { text: finalText, route: navRoute } = stripKimchiNavMarker(accumulated);
       accumulated = finalText;
       if (!accumulated.trim()) {
-        accumulated = "Sorry — I didn't get a reply. Try again or pick an action below.";
+        accumulated =
+          "I couldn't generate a reply just now. Try sending that again, or use the buttons below.";
       }
       updateLastAssistant(accumulated);
       if (navRoute) {
         goTo(navRoute);
       }
       notifyCreditsChanged();
-      if (threadId && accumulated.trim()) {
+      if (threadId && accumulated.trim() && !isFailedAssistantReply(accumulated)) {
         void persistMessages(threadId, [{ kind: "text", role: "assistant", content: accumulated }]);
       }
       void loadFollowUpChips(trimmed, accumulated, [

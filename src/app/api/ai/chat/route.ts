@@ -1,8 +1,8 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-usage";
 import { buildAssistantContext, formatAssistantContextForPrompt } from "@/lib/kimchi-assistant/context";
-import { buildKimchiMailTools } from "@/lib/kimchi-assistant/mail/chat-tools";
-import { isKimchiAiConfigured, kimchiStreamTextWithTools } from "@/lib/llm";
+import { buildKimchiMailTools, wantsMailTools } from "@/lib/kimchi-assistant/mail/chat-tools";
+import { isKimchiAiConfigured, kimchiStreamText, kimchiStreamTextWithTools } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +15,11 @@ You can act on the user's connected inbox and calendar using tools:
 - update_job_stage — pipeline updates when the user agrees
 - open_app_page — navigate when they need a full UI (resume editor, opportunities)
 
-If inbox is not connected, tell them to connect at /inbox. Never send email without explicit user confirmation.`;
+If inbox is not connected, tell them to connect at /inbox. Never send email without explicit user confirmation.
+Always include a helpful text reply — never finish on tool calls alone.`;
+
+const TEXT_REPLY_RULE =
+  "\nAlways reply with clear, helpful text the user can read. Do not respond with only tool calls or empty output.";
 
 export async function POST(request: Request) {
   if (!isKimchiAiConfigured()) {
@@ -46,6 +50,10 @@ export async function POST(request: Request) {
     pipeline?: { company: string; role: string; stage: string }[];
     focusedJob?: { company: string; role: string; description?: string; intent?: string } | null;
   };
+
+  const cleanMessages = messages
+    .filter((m) => m.content?.trim())
+    .map((m) => ({ role: m.role, content: m.content.trim() }));
 
   const resumeText = dbUser.profile?.resumeText || "";
 
@@ -79,23 +87,32 @@ export async function POST(request: Request) {
   const strategyContext = `\n\n${formatAssistantContextForPrompt(assistantCtx)}`;
 
   const template = await getPrompt("CHAT_SYSTEM");
+  const useTools = wantsMailTools(cleanMessages);
   const systemPrompt = `${interpolate(template, {
     pipelineContext,
     focusContext,
     resumeContext: `${resumeContext}${strategyContext}`,
-  })}\n${MAIL_TOOL_GUIDE}`;
+  })}${useTools ? MAIL_TOOL_GUIDE : TEXT_REPLY_RULE}`;
 
-  return kimchiStreamTextWithTools({
-    tier: "talk",
+  const streamParams = {
+    tier: "talk" as const,
     system: systemPrompt,
-    messages,
-    tools: buildKimchiMailTools(dbUser.id),
-    maxSteps: 8,
+    messages: cleanMessages,
     maxOutputTokens: 1536,
     userId: dbUser.id,
     tags: ["feature:scout-chat"],
-    onUsage: (usage, modelId) => {
+    onUsage: (usage: { inputTokens: number; outputTokens: number }, modelId: string) => {
       logAiUsage(dbUser.id, "CHAT", modelId, usage.inputTokens, usage.outputTokens);
     },
-  });
+  };
+
+  if (useTools) {
+    return kimchiStreamTextWithTools({
+      ...streamParams,
+      tools: buildKimchiMailTools(dbUser.id),
+      maxSteps: 6,
+    });
+  }
+
+  return kimchiStreamText(streamParams);
 }

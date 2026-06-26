@@ -549,6 +549,12 @@ export function legacyToChips(chips: ChatChip[]): AssistantChip[] {
 export const WELCOME_MESSAGE =
   "Hey — pick an action below or ask me anything about your search.";
 
+export function isFailedAssistantReply(text: string): boolean {
+  return /couldn't generate|didn't get a reply|Something went wrong|hit a snag|isn't available in this environment|That didn't work|Couldn't reach Kimchi/i.test(
+    text,
+  );
+}
+
 export function isWelcomeOnlyThread(
   messages: Array<{ kind?: string; role?: string; content?: string }>,
   threadTitle?: string | null,

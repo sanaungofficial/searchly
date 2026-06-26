@@ -2,6 +2,7 @@ import { getActingUser } from "@/lib/acting-user";
 import {
   buildFollowUpChips,
   formatThreadForFollowUps,
+  isFailedAssistantReply,
   parseAiFollowUpChips,
   type AssistantChip,
 } from "@/lib/kimchi-assistant/chat-chips";
@@ -34,6 +35,8 @@ export async function POST(request: Request) {
     threadContext?: string;
     threadMessages?: Array<{ role: string; content: string }>;
     profileGaps?: AssistantProfileGaps;
+    strategySnippet?: string;
+    pipelineSnippet?: string;
   };
 
   const userMessage = body.userMessage?.trim() ?? "";
@@ -43,16 +46,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ chips: [] });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: dbUser.id },
-    include: { profile: true, subscription: true },
-  });
-
-  const assistantCtx = user ? await buildAssistantContext({ user }) : null;
-  const profileGaps = body.profileGaps ?? assistantCtx?.profileGaps;
   const threadContext =
     body.threadContext?.trim() ||
     (body.threadMessages?.length ? formatThreadForFollowUps(body.threadMessages) : "");
+
+  let profileGaps = body.profileGaps;
+  let strategySnippet = body.strategySnippet ?? "";
+  let pipelineSnippet = body.pipelineSnippet ?? "";
+
+  if (!profileGaps || (!strategySnippet && !pipelineSnippet)) {
+    const user = await prisma.user.findUnique({
+      where: { id: dbUser.id },
+      include: { profile: true, subscription: true },
+    });
+    if (user) {
+      const assistantCtx = await buildAssistantContext({ user });
+      profileGaps = profileGaps ?? assistantCtx.profileGaps;
+      strategySnippet = strategySnippet || assistantCtx.strategySnippet;
+      pipelineSnippet = pipelineSnippet || assistantCtx.pipelineSnippet;
+    }
+  }
 
   const fallback = buildFollowUpChips({
     userMessage,
@@ -61,7 +74,11 @@ export async function POST(request: Request) {
     profileGaps,
   });
 
-  if (!isKimchiAiConfigured() || assistantMessage.length < 24) {
+  if (
+    isFailedAssistantReply(assistantMessage) ||
+    !isKimchiAiConfigured() ||
+    assistantMessage.length < 48
+  ) {
     return NextResponse.json({ chips: fallback });
   }
 
@@ -72,14 +89,14 @@ export async function POST(request: Request) {
       assistantMessage: assistantMessage.slice(0, 2000),
       threadContext: threadContext.slice(0, 3500),
       profileGaps: profileGaps ? formatProfileGaps(profileGaps) : "Unknown",
-      strategySnippet: assistantCtx?.strategySnippet?.slice(0, 800) ?? "",
-      pipelineSnippet: assistantCtx?.pipelineSnippet?.slice(0, 800) ?? "",
+      strategySnippet: strategySnippet.slice(0, 800),
+      pipelineSnippet: pipelineSnippet.slice(0, 800),
     });
 
     const { text } = await kimchiGenerateText({
       tier: "talk",
       prompt,
-      maxOutputTokens: 650,
+      maxOutputTokens: 450,
       userId: dbUser.id,
       tags: ["feature:chat-follow-ups"],
     });
