@@ -45,11 +45,22 @@ export async function GET() {
     .filter(Boolean) as string[];
   const clientUserIds = bookingClients.map((b) => b.userId).filter(Boolean) as string[];
 
+  let assignmentUserIds: string[] = [];
+  if (coachProfileId) {
+    const assignments = await prisma.coachClientAssignment.findMany({
+      where: { coachProfileId },
+      select: { userId: true },
+    });
+    assignmentUserIds = assignments.map((a) => a.userId);
+  }
+
+  const allUserIds = [...new Set([...clientUserIds, ...assignmentUserIds])];
+
   const clients = await prisma.user.findMany({
     where: {
       role: UserRole.USER,
       OR: [
-        ...(clientUserIds.length ? [{ id: { in: clientUserIds } }] : []),
+        ...(allUserIds.length ? [{ id: { in: allUserIds } }] : []),
         ...(clientEmails.length
           ? clientEmails.map((email) => ({ email: { equals: email, mode: "insensitive" as const } }))
           : []),

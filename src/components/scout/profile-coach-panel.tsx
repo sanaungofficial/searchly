@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { CoachDrawer } from "@/components/scout/coach-drawer";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
-import { MyCoachesPanel } from "@/components/scout/my-coaches-panel";
+import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachListItem } from "@/lib/coach-types";
@@ -155,6 +155,11 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
                         {coach.notes}
                       </p>
                     )}
+                    <ClientCoachSharedDocuments
+                      coachProfileId={coach.coachProfileId}
+                      coachName={coach.displayName}
+                      compact
+                    />
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
                       <ScoutPrimaryBtn onClick={() => openCoach(coach)} style={{ minHeight: 40, fontSize: 14 }}>
                         {coach.hasNylasBooking ? "View & book" : "View profile"}

@@ -47,6 +47,8 @@ model User {
   coachFollows         CoachFollow[]
   coachAssignments     CoachClientAssignment[] @relation("ClientCoachAssignments")
   coachAssignmentsMade CoachClientAssignment[] @relation("CoachAssignmentAdmin")
+  coachSharedDocumentsReceived CoachSharedDocument[] @relation("CoachSharedDocsClient")
+  coachSharedDocumentsUploaded CoachSharedDocument[] @relation("CoachSharedDocsUploader")
   coachBookings        CoachBooking[]       @relation("CoachBookingGuest")
   coachBookingComms    CoachBookingCommunication[] @relation("CoachBookingComms")
   coachPurchases       CoachPurchase[]      @relation("CoachPurchaseBuyer")
@@ -286,6 +288,7 @@ model CoachProfile {
   reviews        CoachReview[]
   followers      CoachFollow[]
   clientAssignments CoachClientAssignment[]
+  sharedDocuments   CoachSharedDocument[]
   bookings       CoachBooking[]
   communications CoachBookingCommunication[]
   liveSessions   LiveSession[]
@@ -642,6 +645,29 @@ model CoachClientAssignment {
   @@unique([userId, coachProfileId])
   @@index([userId])
   @@index([coachProfileId])
+}
+
+/// Coach-shared file for a client (career strategy, resources, etc.).
+model CoachSharedDocument {
+  id               String       @id @default(cuid())
+  coachProfileId   String
+  coachProfile     CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  clientUserId     String
+  clientUser       User         @relation("CoachSharedDocsClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  uploadedByUserId String
+  uploadedBy       User         @relation("CoachSharedDocsUploader", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+
+  type        AssetType
+  name        String
+  storagePath String
+  mimeType    String?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientUserId])
+  @@index([coachProfileId, clientUserId])
 }
 
 enum CoachStatus {

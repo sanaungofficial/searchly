@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CoachProfileTab } from "./coach-profile-tab";
 import { CoachBookingsTab } from "./coach-bookings-tab";
+import { CoachSharedDocumentsPanel } from "./coach-shared-documents-panel";
 import { ScoutBox } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
@@ -274,6 +275,8 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
             </table>
           )}
         </div>
+
+        <CoachSharedDocumentsPanel clientUserId={selected.id} mode="coach" />
       </>
     ));
   }

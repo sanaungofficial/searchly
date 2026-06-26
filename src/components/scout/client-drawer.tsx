@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-assignment-section";
+import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-documents-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -167,6 +168,15 @@ export function ClientDetailBody({
       {onClientUpdated && (
         <ClientCoachAssignmentSection client={client} onUpdated={onClientUpdated} />
       )}
+
+      <CoachSharedDocumentsPanel
+        clientUserId={client.id}
+        mode="admin"
+        assignedCoaches={(client.coachAssignments ?? []).map((a) => ({
+          coachProfileId: a.coachProfile.id,
+          displayName: a.coachProfile.displayName,
+        }))}
+      />
 
       <div style={{ background: surface.card, border: border.line, overflow: "hidden" }}>
         <div style={{ padding: "14px 20px", borderBottom: border.line }}>
