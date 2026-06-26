@@ -1,20 +1,32 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CoachDrawer } from "@/components/scout/coach-drawer";
 import { CoachingDirectory } from "@/components/scout/coaching-directory";
+import { ProfileCoachPanel } from "@/components/scout/profile-coach-panel";
 import { WorkspacePageShell } from "@/components/scout/workspace-page-shell";
+import { WorkspaceSegmentTabs } from "@/components/scout/workspace-segment-tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { color, fontSans } from "@/lib/typography";
 import type { CoachListItem } from "@/lib/coach-types";
 
+type CoachingTab = "directory" | "my-coaches";
+
+function coachingTabFromPath(pathname: string): CoachingTab {
+  return pathname === "/coaching/my-coaches" || pathname.startsWith("/coaching/my-coaches/")
+    ? "my-coaches"
+    : "directory";
+}
+
 function CoachingContent() {
   const isMobile = useIsMobile();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const coachingTab = coachingTabFromPath(pathname);
   const [isPro, setIsPro] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
@@ -31,10 +43,24 @@ function CoachingContent() {
   }, []);
 
   useEffect(() => {
+    if (coachingTab !== "directory") return;
     if (!coachParam) return;
     if (drawerCoach?.slug === coachParam || drawerCoach?.id === coachParam) return;
     setDrawerCoach({ id: coachParam, slug: coachParam, displayName: "Coach" } as CoachListItem);
-  }, [coachParam, drawerCoach?.slug, drawerCoach?.id]);
+  }, [coachParam, drawerCoach?.slug, drawerCoach?.id, coachingTab]);
+
+  const selectTab = useCallback(
+    (tab: CoachingTab) => {
+      if (tab === "my-coaches") {
+        router.push("/coaching/my-coaches");
+        return;
+      }
+      const params = new URLSearchParams(searchParams.toString());
+      const qs = params.toString();
+      router.push(qs ? `/coaching?${qs}` : "/coaching");
+    },
+    [router, searchParams],
+  );
 
   const openCoach = useCallback((coach: CoachListItem) => {
     setDrawerCoach(coach);
@@ -42,7 +68,8 @@ function CoachingContent() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("coach", slug);
     router.replace(`/coaching?${params.toString()}`, { scroll: false });
-  }, [router, searchParams]);
+    if (coachingTab !== "directory") selectTab("directory");
+  }, [router, searchParams, coachingTab, selectTab]);
 
   const closeDrawer = useCallback(() => {
     setDrawerCoach(null);
@@ -52,26 +79,47 @@ function CoachingContent() {
     router.replace(qs ? `/coaching?${qs}` : "/coaching", { scroll: false });
   }, [router, searchParams]);
 
+  const shellTitle =
+    coachingTab === "my-coaches" ? "Your coaches & sessions" : "Talk to someone who's done it.";
+  const shellSubtitle =
+    coachingTab === "my-coaches"
+      ? "Matched coaches, shared files, session notes, and booking activity."
+      : "Browse coaches ranked by how well they match your profile.";
+
   return (
     <>
       <WorkspacePageShell
         isMobile={isMobile}
         label="1:1 coaching"
-        mobileBarTitle="Coaching"
-        title="Talk to someone who's done it."
-        subtitle="Browse coaches ranked by how well they match your profile."
+        mobileBarTitle={coachingTab === "my-coaches" ? "My coaches" : "Coaching"}
+        title={shellTitle}
+        subtitle={shellSubtitle}
       >
-        <CoachingDirectory
+        <WorkspaceSegmentTabs
           isMobile={isMobile}
-          isPro={isPro}
-          onSubscribe={openPricing}
-          onOpenCoach={openCoach}
-          myCoachIds={myCoachIds}
-          onMyCoachIdsChange={setMyCoachIds}
+          tabs={[
+            { id: "directory" as const, label: "Browse coaches" },
+            { id: "my-coaches" as const, label: "My coaches" },
+          ]}
+          active={coachingTab}
+          onChange={selectTab}
         />
+
+        {coachingTab === "directory" ? (
+          <CoachingDirectory
+            isMobile={isMobile}
+            isPro={isPro}
+            onSubscribe={openPricing}
+            onOpenCoach={openCoach}
+            myCoachIds={myCoachIds}
+            onMyCoachIdsChange={setMyCoachIds}
+          />
+        ) : (
+          <ProfileCoachPanel isMobile={isMobile} embedded />
+        )}
       </WorkspacePageShell>
 
-      {drawerCoach && (
+      {drawerCoach && coachingTab === "directory" && (
         <CoachDrawer
           slug={drawerCoach.slug ?? drawerCoach.id}
           preview={drawerCoach}

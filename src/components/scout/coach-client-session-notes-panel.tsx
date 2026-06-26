@@ -140,7 +140,7 @@ export function CoachClientSessionNotesPanel({
         Session notes & homework
       </p>
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-        Share what happened in a session and optional follow-up work. Your client sees this under Profile → Coach.
+        Share what happened in a session and optional follow-up work. Your client sees this under Coaching → My coaches.
       </p>
 
       {mode === "admin" && options.length > 0 && (

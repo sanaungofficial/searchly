@@ -137,7 +137,7 @@ export function CoachSharedDocumentsPanel({
         Shared documents
       </p>
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-        Upload files for your client — career strategy, prep materials, and more. They&apos;ll see these under Profile → Coach.
+        Upload files for your client — career strategy, prep materials, and more. They&apos;ll see these under Coaching → My coaches.
       </p>
 
       {mode === "admin" && coachOptions.length > 0 && (

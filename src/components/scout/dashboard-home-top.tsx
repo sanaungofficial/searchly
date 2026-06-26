@@ -649,10 +649,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
           }}
         >
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0, flex: 1 }}>
-            You don&apos;t have a coach yet. When your team assigns one, they&apos;ll show up here and under Profile → Coach.
+            You don&apos;t have a coach yet. When your team assigns one, they&apos;ll show up here and under Coaching → My coaches.
           </p>
-          <ScoutSecondaryBtn onClick={() => router.push("/profile/coach")} style={{ minHeight: 40, flexShrink: 0 }}>
-            Profile → Coach
+          <ScoutSecondaryBtn onClick={() => router.push("/coaching/my-coaches")} style={{ minHeight: 40, flexShrink: 0 }}>
+            My coaches
           </ScoutSecondaryBtn>
         </div>
       )}
@@ -673,7 +673,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
             </p>
             <button
               type="button"
-              onClick={() => router.push("/profile/coach")}
+              onClick={() => router.push("/coaching/my-coaches")}
               style={{
                 background: "none",
                 border: "none",

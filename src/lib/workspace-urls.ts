@@ -183,7 +183,7 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
 }
 
 export type ProfileLocation = {
-  page: "about" | "dreamrole" | "targetcompanies" | "learning" | "assets" | "preferences" | "linkedin" | "strategy" | "coach";
+  page: "about" | "dreamrole" | "targetcompanies" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
   aboutSection?: AboutSectionSlug;
   assetId?: string;
   companyId?: string;
@@ -213,7 +213,6 @@ function parseProfileLocationInner(pathname: string): ProfileLocation {
   if (pathname === "/profile/preferences") return { page: "preferences" };
   if (pathname === "/profile/linkedin") return { page: "linkedin" };
   if (pathname === "/profile/career-strategy") return { page: "strategy" };
-  if (pathname === "/profile/coach") return { page: "coach" };
 
   if (pathname.startsWith("/profile/target-companies/") && pathname !== "/profile/target-companies") {
     const companyId = decodeURIComponent(pathname.slice("/profile/target-companies/".length).split("/")[0] ?? "");
@@ -292,8 +291,6 @@ export function profileTabPath(
       return `${base}/linkedin`;
     case "strategy":
       return `${base}/career-strategy`;
-    case "coach":
-      return `${base}/coach`;
     default:
       return base;
   }
