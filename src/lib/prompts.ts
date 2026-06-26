@@ -80,9 +80,16 @@ export const PROMPT_META: Record<string, PromptMeta> = {
   },
   KIMCHI_CHAT_FOLLOW_UPS: {
     label: "Kimchi Keep Going Chips",
-    description: "Generates 3–5 short follow-up chip labels after each chat reply.",
+    description: "Generates 3–5 follow-up chips (chat + navigate actions) after each chat reply.",
     category: "Kimchi Assistant",
-    variables: ["userMessage", "assistantMessage"],
+    variables: [
+      "userMessage",
+      "assistantMessage",
+      "threadContext",
+      "profileGaps",
+      "strategySnippet",
+      "pipelineSnippet",
+    ],
   },
   COVER_LETTER_FULL: {
     label: "Cover Letter (Full)",
@@ -415,19 +422,50 @@ Preset: {{presetTitle}}
 Transcript:
 {{transcript}}`,
 
-  KIMCHI_CHAT_FOLLOW_UPS: `You suggest 3–5 short follow-up options for a job seeker chatting with Kimchi.
+  KIMCHI_CHAT_FOLLOW_UPS: `You suggest 3–5 follow-up buttons after a job seeker chats with Kimchi.
 
 Return ONLY valid JSON:
-{ "chips": [{ "id": "unique", "label": "2–5 word button label", "prompt": "full user message to send Kimchi" }] }
+{
+  "chips": [
+    {
+      "id": "unique-id",
+      "label": "2–6 word button label",
+      "variant": "action" | "chat",
+      "tone": "violet" | "sky" | "amber" | "mint" | "rose" | "neutral",
+      "actionType": "chat" | "navigate" | "open_strategy" | "generate_strategy" | "open_resume" | "add_skill",
+      "href": "/profile/career-strategy",
+      "prompt": "only when actionType is chat",
+      "skill": "only when actionType is add_skill"
+    }
+  ]
+}
 
 Rules:
-- Labels are clickable chips — short, specific, related to the assistant's last reply
-- Prompts are what the user would type to drill deeper
-- Mix actions and questions when relevant (e.g. "Open pipeline", "Draft follow-up")
-- No generic "tell me more" unless nothing else fits
+- Read the FULL thread — suggest the natural next step from the whole conversation, not only the last line.
+- Prefer **action** chips when the user is ready to DO something (create strategy, open resume, open pipeline, open inbox).
+- Use **chat** chips for drill-down questions.
+- If they discussed career strategy and profile gaps show missing strategy doc → include action chip "Create your strategy" with actionType open_strategy.
+- If they discussed resume and no resume on file → actionType open_resume or navigate /profile/assets.
+- Labels are short and specific (e.g. "Create your strategy", "Open my pipeline", "Draft a follow-up").
+- Allowed navigate href values: /profile/assets, /profile/career-strategy, /profile/learning-path, /profile, /inbox, /opportunities/pipeline
+- Mix 1–2 action chips with chat chips when both fit.
+- No generic "tell me more" unless nothing else fits.
 
-User asked: {{userMessage}}
-Kimchi replied: {{assistantMessage}}`,
+Profile gaps:
+{{profileGaps}}
+
+Strategy context:
+{{strategySnippet}}
+
+Pipeline:
+{{pipelineSnippet}}
+
+Earlier in this thread:
+{{threadContext}}
+
+Latest exchange:
+User: {{userMessage}}
+Kimchi: {{assistantMessage}}`,
 
   COVER_LETTER_FULL: `${KIMCHI_VOICE}
 

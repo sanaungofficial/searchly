@@ -3,7 +3,7 @@ import { hasUnlimitedAiAccess } from "@/lib/ai-guard";
 import { buildStrategyPromptContext } from "@/lib/career-strategy-context";
 import { getAssignedCoachesForUser } from "@/lib/coach-client-assignment";
 import { assetTypeLabel } from "@/lib/asset-types";
-import { buildAssistantSuggestions } from "@/lib/kimchi-assistant/suggestions";
+import { buildAssistantSuggestions, profileHasStrategyDoc } from "@/lib/kimchi-assistant/suggestions";
 import {
   inboxSuggestionsFromSnapshot,
   loadInboxSnapshot,
@@ -231,6 +231,12 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
     knowsYouSnippet,
     pageHint: formatPageHint(pageHint),
     creditsHint,
+    profileGaps: {
+      hasStrategyDoc: profileHasStrategyDoc(profile),
+      hasResume: !!(primaryResume || profile?.resumeText?.trim()),
+      hasPipelineJobs: jobs.length > 0,
+      emailConnected: inbox.emailConnected,
+    },
     suggestions,
     inbox,
     generatedAt: new Date().toISOString(),

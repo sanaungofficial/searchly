@@ -1,4 +1,8 @@
-import type { AssistantContextPayload, AssistantSuggestion } from "@/lib/kimchi-assistant/types";
+import type {
+  AssistantContextPayload,
+  AssistantProfileGaps,
+  AssistantSuggestion,
+} from "@/lib/kimchi-assistant/types";
 
 export type ChipAction =
   | { type: "chat"; prompt: string }
@@ -125,12 +129,23 @@ const DEFAULT_ACTIONS: AssistantChip[] = [
 ];
 
 function suggestionToActionChip(s: AssistantSuggestion): AssistantChip | null {
+  if (s.id === "create-strategy") {
+    return {
+      id: s.id,
+      label: "Create your strategy",
+      hint: s.detail,
+      variant: "action",
+      tone: "violet",
+      action: { type: "open_strategy" },
+    };
+  }
   if (s.id === "upload-resume") {
     return {
       id: s.id,
       label: "Upload resume",
       hint: s.detail,
       variant: "action",
+      tone: "sky",
       action: { type: "navigate", href: "/profile/assets" },
     };
   }
@@ -206,7 +221,12 @@ export function buildStarterActions(ctx: AssistantContextPayload | null): Assist
     .filter(Boolean) as AssistantChip[];
 
   const seen = new Set(fromContext.map((c) => c.id));
-  const extras = DEFAULT_ACTIONS.filter((c) => !seen.has(c.id));
+  const extras = DEFAULT_ACTIONS.filter((c) => {
+    if (seen.has(c.id)) return false;
+    if (c.id === "strategy" && ctx?.profileGaps?.hasStrategyDoc) return false;
+    if (c.id === "strategy" && seen.has("create-strategy")) return false;
+    return true;
+  });
   return [...fromContext, ...extras].slice(0, 4);
 }
 
@@ -273,8 +293,9 @@ const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
     chips: [
       {
         id: "open-strategy",
-        label: "Build strategy doc",
+        label: "Create your strategy",
         variant: "action",
+        tone: "violet",
         action: { type: "open_strategy" },
       },
       {
@@ -342,18 +363,153 @@ const FALLBACK_DRILLDOWNS: AssistantChip[] = [
   },
 ];
 
+export function formatThreadForFollowUps(
+  messages: Array<{ role: string; content: string }>,
+  maxTurns = 10,
+): string {
+  return messages
+    .slice(-maxTurns)
+    .map((m) => {
+      const speaker = m.role === "user" ? "User" : "Kimchi";
+      return `${speaker}: ${m.content.trim().slice(0, 700)}`;
+    })
+    .join("\n\n");
+}
+
+const ALLOWED_NAV_ROUTES = [
+  "/profile/assets",
+  "/profile/career-strategy",
+  "/profile/learning-path",
+  "/profile",
+  "/inbox",
+  "/opportunities/pipeline",
+];
+
+function isAllowedNavigateHref(href: string): boolean {
+  const path = href.split("?")[0] ?? href;
+  if (ALLOWED_NAV_ROUTES.includes(path)) return true;
+  if (path.startsWith("/opportunities/pipeline/")) return true;
+  return false;
+}
+
+const VALID_TONES = new Set<ChipTone>(["violet", "sky", "amber", "mint", "rose", "neutral"]);
+
+type AiFollowUpChip = {
+  id?: string;
+  label?: string;
+  variant?: string;
+  tone?: string;
+  actionType?: string;
+  href?: string;
+  prompt?: string;
+  skill?: string;
+};
+
+export function parseAiFollowUpChips(raw: unknown): AssistantChip[] {
+  const chips = (raw as { chips?: AiFollowUpChip[] })?.chips;
+  if (!Array.isArray(chips)) return [];
+
+  const out: AssistantChip[] = [];
+  for (let i = 0; i < chips.length; i++) {
+    const c = chips[i];
+    if (!c?.label?.trim()) continue;
+
+    const label = c.label.trim().slice(0, 48);
+    const id = (c.id || `ai-${i}`).slice(0, 64);
+    const variant = c.variant === "action" ? "action" : "chat";
+    const tone = VALID_TONES.has(c.tone as ChipTone)
+      ? (c.tone as ChipTone)
+      : variant === "action"
+        ? "violet"
+        : "neutral";
+
+    let action: ChipAction | null = null;
+    const actionType = c.actionType ?? (variant === "chat" ? "chat" : "navigate");
+
+    switch (actionType) {
+      case "navigate":
+        if (c.href && isAllowedNavigateHref(c.href)) {
+          action = { type: "navigate", href: c.href.split("?")[0] ?? c.href };
+        }
+        break;
+      case "open_strategy":
+        action = { type: "open_strategy" };
+        break;
+      case "generate_strategy":
+        action = { type: "generate_strategy" };
+        break;
+      case "open_resume":
+        action = { type: "navigate", href: "/profile/assets" };
+        break;
+      case "add_skill":
+        action = { type: "add_skill", skill: (c.skill || "SQL").trim().slice(0, 40) };
+        break;
+      case "chat":
+        if (c.prompt?.trim()) {
+          action = { type: "chat", prompt: c.prompt.trim().slice(0, 400) };
+        } else {
+          action = { type: "chat", prompt: label };
+        }
+        break;
+      default:
+        break;
+    }
+
+    if (!action) continue;
+    out.push({ id, label, variant, tone, action });
+    if (out.length >= 5) break;
+  }
+
+  return out;
+}
+
 export function buildFollowUpChips(params: {
   userMessage: string;
   assistantMessage: string;
+  threadContext?: string;
+  profileGaps?: AssistantProfileGaps;
 }): AssistantChip[] {
-  const combined = `${params.userMessage}\n${params.assistantMessage}`;
+  const combined = [params.threadContext, params.userMessage, params.assistantMessage]
+    .filter(Boolean)
+    .join("\n");
   const out: AssistantChip[] = [];
   const usedLabels = new Set<string>();
+
+  if (
+    params.profileGaps &&
+    !params.profileGaps.hasStrategyDoc &&
+    /strategy|career plan|north star|goals doc|priorit|timeline|focus on/i.test(combined)
+  ) {
+    out.push({
+      id: "create-strategy",
+      label: "Create your strategy",
+      variant: "action",
+      tone: "violet",
+      action: { type: "open_strategy" },
+    });
+    usedLabels.add("Create your strategy");
+  }
+
+  if (
+    params.profileGaps &&
+    !params.profileGaps.hasResume &&
+    /resume|bullet|position|CV|curriculum/i.test(combined)
+  ) {
+    out.push({
+      id: "open-resume-gap",
+      label: "Upload your resume",
+      variant: "action",
+      tone: "sky",
+      action: { type: "navigate", href: "/profile/assets" },
+    });
+    usedLabels.add("Upload your resume");
+  }
 
   for (const rule of TOPIC_RULES) {
     if (!rule.match.test(combined)) continue;
     for (const chip of rule.chips) {
       if (usedLabels.has(chip.label)) continue;
+      if (chip.id === "open-strategy" && params.profileGaps?.hasStrategyDoc) continue;
       usedLabels.add(chip.label);
       out.push(chip);
       if (out.length >= 5) return out;

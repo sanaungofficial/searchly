@@ -17,6 +17,7 @@ import {
   buildFollowUpChips,
   buildStarterActions,
   buildStarterChatChips,
+  formatThreadForFollowUps,
   isWelcomeOnlyThread,
   WELCOME_MESSAGE,
   guidanceForChip,
@@ -79,7 +80,7 @@ function contextQuery(pageHint?: AssistantPageHint): string {
 
 export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigate }: Props) {
   const router = useRouter();
-  const { openPricing, kanbanCards } = useWorkspace();
+  const { openPricing, kanbanCards, user } = useWorkspace();
   const { messages, setMessages, ensureThread, updateLastAssistant, persistMessages, activeThreadId, activeThreadTitle } =
     threads;
 
@@ -338,27 +339,62 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     [addSkillAndNavigate, appendGuidanceMessage, navigateWithGuidance],
   );
 
-  const loadFollowUpChips = useCallback(async (userMessage: string, assistantMessage: string) => {
-    try {
-      const res = await fetch("/api/assistant/follow-ups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userMessage, assistantMessage }),
-      });
-      const data = res.ok ? await res.json() : null;
-      if (Array.isArray(data?.chips) && data.chips[0]?.action) {
-        setFollowUpChips(data.chips as AssistantChip[]);
-        return;
+  const loadFollowUpChips = useCallback(
+    async (
+      userMessage: string,
+      assistantMessage: string,
+      threadOverride?: Array<{ role: string; content: string }>,
+    ) => {
+      const textThread =
+        threadOverride ??
+        messages
+          .filter((m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text")
+          .map((m) => ({ role: m.role, content: m.content }));
+      const threadMessages = textThread;
+      const threadContext = formatThreadForFollowUps(threadMessages.slice(0, -1));
+
+      try {
+        const res = await fetch("/api/assistant/follow-ups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userMessage,
+            assistantMessage,
+            threadMessages,
+            threadContext,
+            profileGaps: assistantCtx?.profileGaps,
+          }),
+        });
+        const data = res.ok ? await res.json() : null;
+        if (Array.isArray(data?.chips) && data.chips[0]?.action) {
+          setFollowUpChips(data.chips as AssistantChip[]);
+          return;
+        }
+        if (Array.isArray(data?.chips)) {
+          setFollowUpChips(legacyToChips(data.chips));
+          return;
+        }
+        setFollowUpChips(
+          buildFollowUpChips({
+            userMessage,
+            assistantMessage,
+            threadContext,
+            profileGaps: assistantCtx?.profileGaps,
+          }),
+        );
+      } catch {
+        setFollowUpChips(
+          buildFollowUpChips({
+            userMessage,
+            assistantMessage,
+            threadContext,
+            profileGaps: assistantCtx?.profileGaps,
+          }),
+        );
       }
-      if (Array.isArray(data?.chips)) {
-        setFollowUpChips(legacyToChips(data.chips));
-        return;
-      }
-      setFollowUpChips(buildFollowUpChips({ userMessage, assistantMessage }));
-    } catch {
-      setFollowUpChips(buildFollowUpChips({ userMessage, assistantMessage }));
-    }
-  }, []);
+    },
+    [assistantCtx?.profileGaps, messages],
+  );
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
@@ -433,7 +469,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       if (threadId && accumulated.trim()) {
         void persistMessages(threadId, [{ kind: "text", role: "assistant", content: accumulated }]);
       }
-      void loadFollowUpChips(trimmed, accumulated);
+      void loadFollowUpChips(trimmed, accumulated, [
+        ...textThread.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user", content: trimmed },
+        { role: "assistant", content: accumulated },
+      ]);
     } catch {
       updateLastAssistant("Couldn't reach Kimchi — check your connection.");
     } finally {
@@ -530,6 +570,18 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setPendingVoiceStart(true);
   };
 
+  const userInitials = (() => {
+    const name = user?.name?.trim();
+    if (name) {
+      const parts = name.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase();
+      return parts[0]!.slice(0, 2).toUpperCase();
+    }
+    const email = user?.email?.trim();
+    if (email) return email.slice(0, 2).toUpperCase();
+    return "You";
+  })();
+
   return (
     <div className="kimchi-chat-panel">
       {showDoNext ? (
@@ -589,16 +641,33 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           return (
             <div
               key={msg.id ?? `t-${i}-${msg.content.slice(0, 12)}`}
-              className={`kimchi-chat-bubble kimchi-chat-bubble--${msg.role}`}
+              className={`kimchi-msg-row kimchi-msg-row--${msg.role}`}
             >
-              {msg.role === "user" ? (
-                msg.content
-              ) : welcomeOnly && i === messages.length - 1 ? (
-                WELCOME_MESSAGE
-              ) : streaming && i === messages.length - 1 && !msg.content?.trim() ? (
-                <KimchiTypingIndicator />
-              ) : (
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              {msg.role === "assistant" && (
+                <div className="kimchi-msg-avatar kimchi-msg-avatar--kimchi" aria-hidden="true">
+                  ✦
+                </div>
+              )}
+              <div className="kimchi-msg-body">
+                {msg.role === "assistant" && (
+                  <span className="kimchi-msg-sender">Kimchi</span>
+                )}
+                <div className={`kimchi-chat-bubble kimchi-chat-bubble--${msg.role}`}>
+                  {msg.role === "user" ? (
+                    msg.content
+                  ) : welcomeOnly && i === messages.length - 1 ? (
+                    WELCOME_MESSAGE
+                  ) : streaming && i === messages.length - 1 && !msg.content?.trim() ? (
+                    <KimchiTypingIndicator />
+                  ) : (
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  )}
+                </div>
+              </div>
+              {msg.role === "user" && (
+                <div className="kimchi-msg-avatar kimchi-msg-avatar--user" aria-hidden="true">
+                  {userInitials}
+                </div>
               )}
             </div>
           );
@@ -615,8 +684,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         {!streaming && !welcomeOnly && followUpChips.length > 0 && (
           <div className="kimchi-message-actions">
             <KimchiAssistantChipRow
+              label="Keep going"
               chips={followUpChips.slice(0, 5)}
               onActivate={handleChipActivate}
+              layout="inline"
+              emphasis="cta"
             />
           </div>
         )}
@@ -778,39 +850,97 @@ function KimchiChatPanelStyles() {
         min-height: 0;
         display: flex;
         flex-direction: column;
-        background: #fff;
+        background: #FAFAF8;
         position: relative;
       }
       .kimchi-chat-panel__thread {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
-        padding: 16px 18px;
+        padding: 20px 24px;
+      }
+      .kimchi-msg-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 18px;
+        max-width: 100%;
+      }
+      .kimchi-msg-row--user {
+        justify-content: flex-end;
+      }
+      .kimchi-msg-body {
+        min-width: 0;
+        max-width: min(88%, 560px);
+      }
+      .kimchi-msg-row--user .kimchi-msg-body {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      .kimchi-msg-sender {
+        display: block;
+        margin: 0 0 4px 2px;
+        font-family: ${sans};
+        font-size: 12px;
+        font-weight: 700;
+        color: rgba(26, 58, 47, 0.55);
+      }
+      .kimchi-msg-avatar {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ${sans};
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .kimchi-msg-avatar--kimchi {
+        background: linear-gradient(135deg, #E8913A 0%, #D45D7A 100%);
+        color: #fff;
+        font-size: 14px;
+      }
+      .kimchi-msg-avatar--user {
+        background: #3b82c4;
+        color: #fff;
       }
       .kimchi-chat-bubble {
-        max-width: 92%;
-        margin-bottom: 12px;
+        width: 100%;
+        margin-bottom: 0;
         padding: 14px 16px;
-        border-radius: var(--scout-radius);
+        border-radius: 14px;
         font-family: ${sans};
         font-size: 15px;
-        line-height: 1.55;
+        line-height: 1.6;
       }
       .kimchi-chat-bubble--user {
-        margin-left: auto;
         background: #1A3A2F;
-        color: #E8D5A3;
+        color: #F5F0E6;
         white-space: pre-wrap;
+        border-bottom-right-radius: 4px;
       }
       .kimchi-chat-bubble--assistant {
-        background: rgba(26, 58, 47, 0.06);
+        background: #FFFFFF;
         color: #1A1A1A;
+        border: 1px solid rgba(26, 58, 47, 0.08);
+        box-shadow: 0 1px 3px rgba(17, 17, 17, 0.04);
+        border-bottom-left-radius: 4px;
       }
       .kimchi-message-actions {
-        max-width: 92%;
-        margin: -4px 0 10px;
+        max-width: 100%;
+        margin: -6px 0 16px 44px;
       }
-      .kimchi-chat-bubble--assistant p { margin: 0 0 6px; }
+      .kimchi-chat-bubble--assistant p { margin: 0 0 8px; }
+      .kimchi-chat-bubble--assistant p:last-child { margin-bottom: 0; }
+      .kimchi-chat-bubble--assistant strong {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1A3A2F;
+      }
       .kimchi-voice-block {
         margin-bottom: 14px;
         padding: 14px;
@@ -980,15 +1110,17 @@ function KimchiChatPanelStyles() {
         cursor: pointer;
       }
       .kimchi-chat-panel__composer {
-        padding: 12px 18px 16px;
+        padding: 14px 20px 18px;
         border-top: 1px solid rgba(0,0,0,0.06);
+        background: #FFFFFF;
         flex-shrink: 0;
       }
       .kimchi-composer-box {
-        border: 1.5px solid rgba(26, 58, 47, 0.14);
-        border-radius: calc(var(--scout-radius) + 2px);
-        background: #fff;
+        border: 1.5px solid rgba(26, 58, 47, 0.1);
+        border-radius: 16px;
+        background: #FAFAF8;
         overflow: hidden;
+        box-shadow: 0 2px 8px rgba(17, 17, 17, 0.04);
       }
       .kimchi-composer-box__toolbar {
         padding: 8px 10px 0;

@@ -15,33 +15,37 @@ export function KimchiAssistantChipRow({
   label,
   onActivate,
   layout = "inline",
+  emphasis,
 }: {
   chips: AssistantChip[];
   label?: string;
   onActivate: (chip: AssistantChip) => void;
   /** inline = compact pills in a row (default); stack = deprecated full-width rows */
   layout?: "stack" | "inline";
+  /** cta = solid colorful action buttons (Strut-style) */
+  emphasis?: "default" | "cta";
 }) {
   if (chips.length === 0) return null;
 
   const inline = layout !== "stack";
+  const cta = emphasis === "cta";
 
   return (
-    <div className={`kimchi-chips${inline ? " kimchi-chips--inline" : ""}`}>
+    <div className={`kimchi-chips${inline ? " kimchi-chips--inline" : ""}${cta ? " kimchi-chips--cta" : ""}`}>
       {label && <p className="kimchi-chips__label">{label}</p>}
       <div className="kimchi-chips__row">
         {chips.map((chip) => (
           <button
             key={chip.id}
             type="button"
-            className={`kimchi-chips__chip kimchi-chips__chip--${chip.variant}${chip.tone ? ` kimchi-chips__chip--tone-${chip.tone}` : ""}`}
+            className={`kimchi-chips__chip kimchi-chips__chip--${chip.variant}${chip.tone ? ` kimchi-chips__chip--tone-${chip.tone}` : ""}${cta && chip.variant === "action" ? " kimchi-chips__chip--solid" : ""}`}
             title={chip.hint ?? chip.label}
             onClick={() => onActivate(chip)}
           >
             {!inline && chip.variant === "action" && (
               <span className="kimchi-chips__arrow" aria-hidden="true">→</span>
             )}
-            {inline && chip.variant === "action" && (
+            {inline && chip.variant === "action" && !cta && (
               <span className="kimchi-chips__pill-dot" aria-hidden="true" />
             )}
             <span className="kimchi-chips__chip-label">{chip.label}</span>
@@ -313,6 +317,59 @@ function KimchiChipStyles() {
       .kimchi-chips--inline .kimchi-chips__chip--tone-rose:hover {
         background: #ffe4ea;
       }
+      .kimchi-chips--cta .kimchi-chips__row {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip {
+        max-width: none;
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-weight: 600;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip-label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--action {
+        background: #e8913a;
+        border-color: #d47a22;
+        color: #fff;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--tone-violet {
+        background: #7c5cbf;
+        border-color: #6b4aad;
+        color: #fff;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--tone-sky {
+        background: #3b82c4;
+        border-color: #2f6da8;
+        color: #fff;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--tone-amber {
+        background: #e8913a;
+        border-color: #d47a22;
+        color: #fff;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--tone-mint {
+        background: #2d9a6a;
+        border-color: #248558;
+        color: #fff;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--solid.kimchi-chips__chip--tone-rose {
+        background: #d45d7a;
+        border-color: #bf4d68;
+        color: #fff;
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--solid:hover {
+        filter: brightness(1.06);
+        transform: translateY(-1px);
+      }
+      .kimchi-chips--cta .kimchi-chips__chip--chat {
+        background: #fff;
+        border-color: rgba(26, 58, 47, 0.18);
+        box-shadow: 0 1px 2px rgba(17, 17, 17, 0.04);
+      }
       .kimchi-chips__pill-dot {
         width: 5px;
         height: 5px;
@@ -363,9 +420,9 @@ function KimchiDoNextStyles() {
     <style>{`
       .kimchi-do-next {
         flex-shrink: 0;
-        padding: 6px 14px 5px;
-        border-bottom: 1px solid rgba(26, 58, 47, 0.07);
-        background: rgba(26, 58, 47, 0.02);
+        padding: 10px 18px 8px;
+        border-bottom: 1px solid rgba(26, 58, 47, 0.06);
+        background: linear-gradient(180deg, rgba(255, 248, 235, 0.65) 0%, rgba(255, 255, 255, 0) 100%);
       }
       .kimchi-do-next__head {
         margin-bottom: 4px;
@@ -393,20 +450,36 @@ function KimchiDoNextStyles() {
       }
       .kimchi-do-next__pill {
         flex-shrink: 0;
-        max-width: 160px;
-        padding: 4px 9px;
+        max-width: 180px;
+        padding: 6px 12px;
         background: #fff;
-        border: 1px solid rgba(26, 58, 47, 0.14);
-        border-radius: 999px;
+        border: 1px solid rgba(26, 58, 47, 0.12);
+        border-radius: 10px;
         cursor: pointer;
         font-family: ${sans};
-        font-size: 11px;
-        font-weight: 500;
+        font-size: 12px;
+        font-weight: 600;
         color: #1A3A2F;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        transition: background 0.12s ease, transform 0.1s ease;
+        transition: background 0.12s ease, transform 0.1s ease, box-shadow 0.12s ease;
+        box-shadow: 0 1px 2px rgba(17, 17, 17, 0.04);
+      }
+      .kimchi-do-next__pill:nth-child(3n+1) {
+        background: #f3ecff;
+        border-color: #c4a8e8;
+        color: #4a2d7a;
+      }
+      .kimchi-do-next__pill:nth-child(3n+2) {
+        background: #e8f4ff;
+        border-color: #9ec5ef;
+        color: #1a4a6e;
+      }
+      .kimchi-do-next__pill:nth-child(3n) {
+        background: #fff8e6;
+        border-color: #e8c96a;
+        color: #6b4f00;
       }
       .kimchi-do-next__pill:hover {
         background: rgba(26, 58, 47, 0.05);

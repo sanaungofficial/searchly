@@ -1,12 +1,28 @@
 import { getActingUser } from "@/lib/acting-user";
-import { buildFollowUpChips } from "@/lib/kimchi-assistant/chat-chips";
+import {
+  buildFollowUpChips,
+  formatThreadForFollowUps,
+  parseAiFollowUpChips,
+  type AssistantChip,
+} from "@/lib/kimchi-assistant/chat-chips";
+import { buildAssistantContext } from "@/lib/kimchi-assistant/context";
+import type { AssistantProfileGaps } from "@/lib/kimchi-assistant/types";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type Chip = { id: string; label: string; prompt: string };
+function formatProfileGaps(gaps: AssistantProfileGaps): string {
+  const lines = [
+    gaps.hasStrategyDoc ? "- Has career strategy doc" : "- Missing career strategy doc (suggest Create your strategy)",
+    gaps.hasResume ? "- Has resume on file" : "- Missing resume (suggest upload)",
+    gaps.hasPipelineJobs ? "- Has jobs in pipeline" : "- Pipeline empty (suggest add jobs)",
+    gaps.emailConnected ? "- Email connected" : "- Email not connected (suggest /inbox)",
+  ];
+  return lines.join("\n");
+}
 
 export async function POST(request: Request) {
   const { dbUser } = await getActingUser();
@@ -15,6 +31,9 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     userMessage?: string;
     assistantMessage?: string;
+    threadContext?: string;
+    threadMessages?: Array<{ role: string; content: string }>;
+    profileGaps?: AssistantProfileGaps;
   };
 
   const userMessage = body.userMessage?.trim() ?? "";
@@ -24,9 +43,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ chips: [] });
   }
 
-  const fallback = buildFollowUpChips({ userMessage, assistantMessage });
+  const user = await prisma.user.findUnique({
+    where: { id: dbUser.id },
+    include: { profile: true, subscription: true },
+  });
 
-  if (!isKimchiAiConfigured() || assistantMessage.length < 40) {
+  const assistantCtx = user ? await buildAssistantContext({ user }) : null;
+  const profileGaps = body.profileGaps ?? assistantCtx?.profileGaps;
+  const threadContext =
+    body.threadContext?.trim() ||
+    (body.threadMessages?.length ? formatThreadForFollowUps(body.threadMessages) : "");
+
+  const fallback = buildFollowUpChips({
+    userMessage,
+    assistantMessage,
+    threadContext,
+    profileGaps,
+  });
+
+  if (!isKimchiAiConfigured() || assistantMessage.length < 24) {
     return NextResponse.json({ chips: fallback });
   }
 
@@ -35,31 +70,25 @@ export async function POST(request: Request) {
     const prompt = interpolate(template, {
       userMessage: userMessage.slice(0, 500),
       assistantMessage: assistantMessage.slice(0, 2000),
+      threadContext: threadContext.slice(0, 3500),
+      profileGaps: profileGaps ? formatProfileGaps(profileGaps) : "Unknown",
+      strategySnippet: assistantCtx?.strategySnippet?.slice(0, 800) ?? "",
+      pipelineSnippet: assistantCtx?.pipelineSnippet?.slice(0, 800) ?? "",
     });
 
     const { text } = await kimchiGenerateText({
       tier: "talk",
       prompt,
-      maxOutputTokens: 450,
+      maxOutputTokens: 650,
       userId: dbUser.id,
       tags: ["feature:chat-follow-ups"],
     });
 
-    const parsed = JSON.parse(text.replace(/^```json?\s*|\s*```$/g, "")) as { chips?: Chip[] };
-    const chips = Array.isArray(parsed.chips)
-      ? parsed.chips
-          .filter((c) => c.label && c.prompt)
-          .slice(0, 5)
-          .map((c, i) => ({
-            id: c.id || `ai-${i}`,
-            label: c.label.slice(0, 48),
-            variant: "chat" as const,
-            action: { type: "chat" as const, prompt: c.prompt.slice(0, 400) },
-          }))
-      : [];
+    const parsed = JSON.parse(text.replace(/^```json?\s*|\s*```$/g, ""));
+    const aiChips = parseAiFollowUpChips(parsed);
 
-    if (chips.length >= 2) {
-      return NextResponse.json({ chips });
+    if (aiChips.length >= 2) {
+      return NextResponse.json({ chips: aiChips as AssistantChip[] });
     }
   } catch {
     /* use fallback */
