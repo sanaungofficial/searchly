@@ -38,7 +38,9 @@ import {
   pipelineProspectUrl,
   parseLegacyCompaniesRedirect,
   prospectPathId,
+  type OppTab,
 } from "@/lib/workspace-urls";
+import { JobSearchEmailDashboard } from "./job-search-email-dashboard";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
@@ -47,8 +49,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { readProspectJobCache, writeProspectJobCache } from "@/lib/prospect-jobs-cache";
 
 export type { DrawerTool };
-
-type OppTab = "pipeline" | "network";
 
 // Props now sourced from WorkspaceContext
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -471,6 +471,7 @@ export function WorkspaceOpportunities() {
   const oppTabs: [OppTab, string][] = [
     ["pipeline", "Open Roles"],
     ["network", "In-Network Roles"],
+    ["inbox", "Inbox"],
   ];
 
   const oppActionBtn: React.CSSProperties = {
@@ -501,8 +502,21 @@ export function WorkspaceOpportunities() {
         animation: "fadeIn 0.3s ease both",
       }}
     >
-      <WorkspaceScroll>
-        <WorkspaceContent>
+      <WorkspaceScroll
+        style={
+          tab === "inbox"
+            ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }
+            : undefined
+        }
+      >
+        <WorkspaceContent
+          flush={tab === "inbox"}
+          style={
+            tab === "inbox"
+              ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: "100%" }
+              : undefined
+          }
+        >
           <div
             style={{
               display: "flex",
@@ -510,7 +524,10 @@ export function WorkspaceOpportunities() {
               alignItems: "center",
               justifyContent: "space-between",
               gap: 16,
-              marginBottom: 20,
+              marginBottom: tab === "inbox" ? 0 : 20,
+              ...(tab === "inbox"
+                ? { padding: isMobile ? "16px 16px 0" : "20px 24px 0", flexShrink: 0 }
+                : {}),
             }}
           >
             <div style={{ display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -540,32 +557,40 @@ export function WorkspaceOpportunities() {
                 );
               })}
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <DataSourcesPopover compact />
-              {tab !== "network" && (
-                <button
-                  type="button"
-                  onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
-                  style={oppActionBtn}
-                >
-                  <PlusIcon /> Add job
-                </button>
-              )}
-              {tab === "pipeline" && (
-                <button
-                  type="button"
-                  onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
-                  style={{
-                    ...oppActionBtn,
-                    background: showCsvPanel ? color.forest : surface.card,
-                    color: showCsvPanel ? color.gold : color.forest,
-                  }}
-                >
-                  <UploadIcon /> Upload CSV
-                </button>
-              )}
-            </div>
+            {tab !== "inbox" && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <DataSourcesPopover compact />
+                {tab !== "network" && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
+                    style={oppActionBtn}
+                  >
+                    <PlusIcon /> Add job
+                  </button>
+                )}
+                {tab === "pipeline" && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
+                    style={{
+                      ...oppActionBtn,
+                      background: showCsvPanel ? color.forest : surface.card,
+                      color: showCsvPanel ? color.gold : color.forest,
+                    }}
+                  >
+                    <UploadIcon /> Upload CSV
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+
+          {tab === "inbox" && (
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isMobile ? "0 0 16px" : "0 24px 24px" }}>
+              <JobSearchEmailDashboard />
+            </div>
+          )}
 
           {showAddPanel && tab === "pipeline" && (
             <MyJobsUrlPastePanel

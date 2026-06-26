@@ -2,7 +2,7 @@ import type { DrawerTool } from "@/contexts/workspace-context";
 import type { CachedJob } from "@/lib/cached-job";
 import { normalizeJobUrl } from "@/lib/cached-job";
 
-export type OppTab = "pipeline" | "network";
+export type OppTab = "pipeline" | "network" | "inbox";
 export type AboutSectionSlug = "personal" | "education" | "experience" | "skills";
 
 const JOB_TOOLS = new Set(["resume", "cover", "fit"]);
@@ -69,6 +69,7 @@ export function networkJobUrl(jobId: string): string {
 
 export function opportunitiesTabUrl(tab: OppTab): string {
   if (tab === "network") return "/opportunities/network";
+  if (tab === "inbox") return "/opportunities/inbox";
   return "/opportunities/pipeline";
 }
 
@@ -128,6 +129,10 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
       return { tab: "network", networkJobId: decodeURIComponent(segments[3]) };
     }
     return { tab: "network" };
+  }
+
+  if (section === "inbox") {
+    return { tab: "inbox" };
   }
 
   if (section === "pipeline") {
