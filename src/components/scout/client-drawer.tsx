@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ScoutBox, ScoutPrimaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-assignment-section";
 import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-documents-panel";
@@ -43,12 +43,14 @@ function activeStage(stage: JobStage) {
 export function ClientDetailBody({
   client,
   onViewAsClient,
+  onViewClientProfile,
   startingUserId,
   showViewAsClient,
   onClientUpdated,
 }: {
   client: AdminClient;
   onViewAsClient?: (userId: string) => void;
+  onViewClientProfile?: (userId: string) => void;
   startingUserId?: string | null;
   showViewAsClient?: boolean;
   onClientUpdated?: (client: AdminClient) => void;
@@ -67,14 +69,22 @@ export function ClientDetailBody({
           )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {showViewAsClient && onViewAsClient && (
+          {onViewClientProfile && (
             <ScoutPrimaryBtn
+              onClick={() => onViewClientProfile(client.id)}
+              style={{ minHeight: 40 }}
+            >
+              View profile
+            </ScoutPrimaryBtn>
+          )}
+          {showViewAsClient && onViewAsClient && (
+            <ScoutSecondaryBtn
               onClick={() => onViewAsClient(client.id)}
               disabled={startingUserId === client.id}
               style={{ minHeight: 40, opacity: startingUserId === client.id ? 0.7 : 1 }}
             >
               {startingUserId === client.id ? "Opening…" : "View as client"}
-            </ScoutPrimaryBtn>
+            </ScoutSecondaryBtn>
           )}
           {client.profile?.linkedinUrl && (
             <a
@@ -234,12 +244,21 @@ type DrawerProps = {
   client: AdminClient;
   onClose: () => void;
   onViewAsClient?: (userId: string) => void;
+  onViewClientProfile?: (userId: string) => void;
   startingUserId?: string | null;
   showViewAsClient?: boolean;
   onClientUpdated?: (client: AdminClient) => void;
 };
 
-export function ClientDrawer({ client, onClose, onViewAsClient, startingUserId, showViewAsClient, onClientUpdated }: DrawerProps) {
+export function ClientDrawer({
+  client,
+  onClose,
+  onViewAsClient,
+  onViewClientProfile,
+  startingUserId,
+  showViewAsClient,
+  onClientUpdated,
+}: DrawerProps) {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
   const displayName = client.name ?? client.email.split("@")[0];
@@ -326,6 +345,7 @@ export function ClientDrawer({ client, onClose, onViewAsClient, startingUserId, 
           <ClientDetailBody
             client={client}
             onViewAsClient={onViewAsClient}
+            onViewClientProfile={onViewClientProfile}
             startingUserId={startingUserId}
             showViewAsClient={showViewAsClient}
             onClientUpdated={onClientUpdated}

@@ -12,6 +12,7 @@ import {
 } from "@/lib/career-strategy";
 import { mergeIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
 import { profileAboutSectionUrl, profileTargetCompaniesUrl } from "@/lib/workspace-urls";
+import { withClientUserId } from "@/lib/admin-client-subject";
 import { CareerPreferencesPanel } from "./career-preferences-panel";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
@@ -56,6 +57,7 @@ type Props = {
   onPatchProfile: (patch: Record<string, unknown>) => Promise<void>;
   isMobile?: boolean;
   isAdmin?: boolean;
+  clientUserId?: string;
 };
 
 type StrategyFileAsset = UserAssetListItem;
@@ -170,7 +172,8 @@ function applyStrategyPayload(
   setters.setGenerationError(data.generationError ? String(data.generationError) : null);
 }
 
-export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin = false }: Props) {
+export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin = false, clientUserId }: Props) {
+  const api = (path: string) => withClientUserId(path, clientUserId);
   const router = useRouter();
   const [intakeNotes, setIntakeNotes] = useState("");
   const [document, setDocument] = useState<CareerStrategyDocument>(EMPTY_STRATEGY);
@@ -225,7 +228,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
     if (!options?.silent) setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/ai/career-strategy");
+      const res = await fetch(api("/api/ai/career-strategy"));
       const data = await readResponseJson(res);
       if (data.error && res.status !== 404) {
         setError(formatApiErrorMessage(data.error));
@@ -254,7 +257,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
   }, [refreshStrategy]);
 
   const refreshStrategyAssets = useCallback(() => {
-    fetch("/api/assets")
+    fetch(api("/api/assets"))
       .then((r) => r.json())
       .then((assets: Array<{ id: string; name: string; url: string; createdAt: string; type: string }>) => {
         if (!Array.isArray(assets)) return;
@@ -300,7 +303,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
   }, [showCompleteBanner]);
 
   async function saveIntakeNotes() {
-    const res = await fetch("/api/ai/career-strategy", {
+    const res = await fetch(api("/api/ai/career-strategy"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ intakeNotes: intakeNotes.trim() }),
@@ -322,7 +325,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       if (intakeNotes.trim()) {
         await saveIntakeNotes();
       }
-      const res = await fetch("/api/ai/career-strategy", { method: "POST" });
+      const res = await fetch(api("/api/ai/career-strategy"), { method: "POST" });
       const data = await readResponseJson(res);
       if (res.status === 402) {
         notifyCreditsChanged();
@@ -346,7 +349,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
   async function handleSaveDocument() {
     setSaving(true);
     try {
-      const res = await fetch("/api/ai/career-strategy", {
+      const res = await fetch(api("/api/ai/career-strategy"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ document, intakeNotes }),
@@ -370,7 +373,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
     setError(null);
     try {
       await saveIntakeNotes();
-      const res = await fetch("/api/ai/strategy-intake", {
+      const res = await fetch(api("/api/ai/strategy-intake"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: intakeNotes }),
@@ -484,7 +487,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       const form = new FormData();
       form.append("file", file);
       form.append("type", "JOB_SEARCH_STRATEGY");
-      const res = await fetch("/api/assets/upload", { method: "POST", body: form });
+      const res = await fetch(api("/api/assets/upload"), { method: "POST", body: form });
       const data = await readResponseJson(res);
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Upload failed"));
       refreshStrategyAssets();
@@ -497,7 +500,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
 
   async function handleRemoveStrategyFile(id: string) {
     try {
-      const res = await fetch(`/api/assets?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const res = await fetch(api(`/api/assets?id=${encodeURIComponent(id)}`), { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       refreshStrategyAssets();
     } catch {

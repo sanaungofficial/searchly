@@ -323,6 +323,7 @@ function CreateClientModal({
 export function AdminClientsPanel({
   apiPath,
   onViewAsClient,
+  onViewClientProfile,
   startingUserId,
   detailMode = "drawer",
   embedded = false,
@@ -330,6 +331,7 @@ export function AdminClientsPanel({
 }: {
   apiPath: string;
   onViewAsClient?: (userId: string) => void;
+  onViewClientProfile?: (userId: string) => void;
   startingUserId?: string | null;
   detailMode?: "page" | "drawer";
   embedded?: boolean;
@@ -409,6 +411,7 @@ export function AdminClientsPanel({
         <ClientDetailBody
           client={selected}
           onViewAsClient={onViewAsClient}
+          onViewClientProfile={onViewClientProfile}
           startingUserId={startingUserId}
           showViewAsClient={!!onViewAsClient}
         />
@@ -553,6 +556,28 @@ export function AdminClientsPanel({
                     <p style={{ fontSize: 20, fontWeight: 600, color: color.ink, fontFamily: fontSans, margin: 0 }}>{activeJobs.length}</p>
                     <p style={{ fontSize: 12, color: "var(--scout-muted)", margin: 0 }}>active</p>
                   </div>
+                  {onViewClientProfile && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewClientProfile(client.id);
+                      }}
+                      style={{
+                        padding: "8px 14px",
+                        background: color.forest,
+                        color: color.gold,
+                        border: "none",
+                        borderRadius: "var(--scout-radius)",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: fontSans,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      View profile
+                    </button>
+                  )}
                   {onViewAsClient && (
                     <button
                       onClick={(e) => {
@@ -562,9 +587,9 @@ export function AdminClientsPanel({
                       disabled={startingUserId === client.id}
                       style={{
                         padding: "8px 14px",
-                        background: color.forest,
-                        color: color.gold,
-                        border: "none",
+                        background: "transparent",
+                        color: color.forest,
+                        border: border.line,
                         borderRadius: "var(--scout-radius)",
                         fontSize: 13,
                         fontWeight: 600,
@@ -621,6 +646,7 @@ export function AdminClientsPanel({
           client={selected}
           onClose={() => setSelected(null)}
           onViewAsClient={onViewAsClient}
+          onViewClientProfile={onViewClientProfile}
           startingUserId={startingUserId}
           showViewAsClient={!!onViewAsClient}
           onClientUpdated={(updated) => {

@@ -187,9 +187,27 @@ export type ProfileLocation = {
   aboutSection?: AboutSectionSlug;
   assetId?: string;
   companyId?: string;
+  /** Set when admin is reviewing a client profile without impersonating */
+  clientId?: string;
 };
 
-export function parseProfileLocation(pathname: string): ProfileLocation {
+const ADMIN_CLIENT_PROFILE_PREFIX = "/dashboard/clients/";
+
+export function adminClientProfileBase(clientId: string): string {
+  return `${ADMIN_CLIENT_PROFILE_PREFIX}${encodeURIComponent(clientId)}/profile`;
+}
+
+export function parseAdminClientProfilePath(pathname: string): { clientId: string; suffix: string } | null {
+  if (!pathname.startsWith(ADMIN_CLIENT_PROFILE_PREFIX)) return null;
+  const rest = pathname.slice(ADMIN_CLIENT_PROFILE_PREFIX.length);
+  const slash = rest.indexOf("/profile");
+  if (slash === -1) return null;
+  const clientId = decodeURIComponent(rest.slice(0, slash));
+  const suffix = rest.slice(slash + "/profile".length);
+  return { clientId, suffix };
+}
+
+function parseProfileLocationInner(pathname: string): ProfileLocation {
   if (pathname === "/profile/dream-role") return { page: "dreamrole" };
   if (pathname === "/profile/learning-path") return { page: "learning" };
   if (pathname === "/profile/preferences") return { page: "preferences" };
@@ -217,6 +235,61 @@ export function parseProfileLocation(pathname: string): ProfileLocation {
   }
 
   return { page: "about", aboutSection: "personal" };
+}
+
+export function parseProfileLocation(pathname: string): ProfileLocation {
+  const admin = parseAdminClientProfilePath(pathname);
+  if (admin) {
+    const pseudo =
+      admin.suffix === "" || admin.suffix === "/"
+        ? "/profile"
+        : `/profile${admin.suffix}`;
+    return { ...parseProfileLocationInner(pseudo), clientId: admin.clientId };
+  }
+  return parseProfileLocationInner(pathname);
+}
+
+export function profileBasePath(clientId?: string): string {
+  return clientId ? adminClientProfileBase(clientId) : "/profile";
+}
+
+export function profileTabPath(
+  base: string,
+  tab: ProfileLocation["page"],
+  opts?: { aboutSection?: AboutSectionSlug; assetId?: string; companyId?: string; skill?: string | null },
+): string {
+  switch (tab) {
+    case "about":
+      if (opts?.aboutSection && opts.aboutSection !== "personal") {
+        return `${base}/about/${opts.aboutSection}`;
+      }
+      return base;
+    case "dreamrole":
+      return `${base}/dream-role`;
+    case "targetcompanies":
+      return opts?.companyId
+        ? `${base}/target-companies/${encodeURIComponent(opts.companyId)}`
+        : `${base}/target-companies`;
+    case "learning":
+      if (opts?.skill?.trim()) {
+        return `${base}/learning-path?skill=${encodeURIComponent(opts.skill.trim())}`;
+      }
+      return `${base}/learning-path`;
+    case "assets":
+      return opts?.assetId
+        ? `${base}/assets/${encodeURIComponent(opts.assetId)}`
+        : `${base}/assets`;
+    case "preferences":
+      return `${base}/preferences`;
+    case "linkedin":
+      return `${base}/linkedin`;
+    case "strategy":
+      return `${base}/career-strategy`;
+    case "coach":
+      return `${base}/coach`;
+    default:
+      return base;
+  }
 }
 
 /** Legacy query links (?job=…&tool=…) → path URLs */

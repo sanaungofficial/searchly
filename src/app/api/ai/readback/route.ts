@@ -4,6 +4,7 @@ import { logAiUsage } from "@/lib/ai-cost";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { getActingUser } from "@/lib/acting-user";
+import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -15,7 +16,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const force = searchParams.get("force") === "true";
 
-  const { dbUser: actingUser } = await getActingUser(request);
+  const acting = await getActingUser(request);
+  if (!acting.authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return resolved.error;
+  const actingUser = resolved.subject;
   if (!actingUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const dbUser = await prisma.user.findUnique({
