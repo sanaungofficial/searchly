@@ -35,7 +35,10 @@ export async function GET() {
       headline: profile?.headline || null,
       summary: profile?.summary || null,
       targetRoles: profile?.targetRoles || [],
+      prioritizedRoles: profile?.prioritizedRoles || [],
+      prioritizedCategories: profile?.prioritizedCategories || [],
       deprioritizedRoles: profile?.deprioritizedRoles || [],
+      deprioritizedCategories: profile?.deprioritizedCategories || [],
       parsedData,
       employmentStatus: profile?.employmentStatus || null,
       currentSalary: profile?.currentSalary || null,
@@ -73,7 +76,7 @@ export async function PATCH(request: Request) {
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
-  const { name, headline, linkedinUrl, targetRoles, deprioritizedRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary, targetMarket, relocationOpenness, workAuthorization, securityClearance, searchDuration, positioningStatement, strategyIntakeNotes, dashboardGoals } = body;
+  const { name, headline, linkedinUrl, targetRoles, prioritizedRoles, prioritizedCategories, deprioritizedRoles, deprioritizedCategories, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary, targetMarket, relocationOpenness, workAuthorization, securityClearance, searchDuration, positioningStatement, strategyIntakeNotes, dashboardGoals } = body;
 
   if (strategyIntakeNotes !== undefined && !canAccessAdminClientTools(acting)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -88,7 +91,10 @@ export async function PATCH(request: Request) {
   if (summary !== undefined) profileUpdate.summary = summary;
   if (linkedinUrl !== undefined) profileUpdate.linkedinUrl = linkedinUrl;
   if (targetRoles !== undefined) profileUpdate.targetRoles = targetRoles;
+  if (prioritizedRoles !== undefined) profileUpdate.prioritizedRoles = prioritizedRoles;
+  if (prioritizedCategories !== undefined) profileUpdate.prioritizedCategories = prioritizedCategories;
   if (deprioritizedRoles !== undefined) profileUpdate.deprioritizedRoles = deprioritizedRoles;
+  if (deprioritizedCategories !== undefined) profileUpdate.deprioritizedCategories = deprioritizedCategories;
   if (parsedData !== undefined) profileUpdate.parsedData = parsedData;
   if (employmentStatus !== undefined) profileUpdate.employmentStatus = employmentStatus;
   if (currentSalary !== undefined) profileUpdate.currentSalary = currentSalary;

@@ -8,7 +8,13 @@ import {
   readOnboardingFinishPayload,
   type OnboardingFinishPayload,
 } from "@/lib/onboarding-finish";
-import { DEPRIORITIZED_ROLE_SUGGESTIONS } from "@/lib/role-title-preferences";
+import {
+  DEPRIORITIZED_CATEGORY_SUGGESTIONS,
+  DEPRIORITIZED_ROLE_SUGGESTIONS,
+  PRIORITIZED_CATEGORY_SUGGESTIONS,
+  PRIORITIZED_ROLE_SUGGESTIONS,
+} from "@/lib/role-title-preferences";
+import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
 import {
   parseProfileLocation,
   profileAboutSectionUrl,
@@ -262,7 +268,10 @@ interface UserProfile {
   headline: string | null;
   summary?: string | null;
   targetRoles: string[];
+  prioritizedRoles?: string[];
+  prioritizedCategories?: string[];
   deprioritizedRoles?: string[];
+  deprioritizedCategories?: string[];
   parsedData: ParsedData | null;
   employmentStatus: string | null;
   currentSalary: string | null;
@@ -867,9 +876,18 @@ function DreamRoleTab({
   dreamList,
   setDreamList,
   onSave,
+  prioritizedList,
+  setPrioritizedList,
+  onPrioritizedSave,
+  prioritizedCategories,
+  setPrioritizedCategories,
+  onPrioritizedCategoriesSave,
   deprioritizedList,
   setDeprioritizedList,
   onDeprioritizedSave,
+  deprioritizedCategories,
+  setDeprioritizedCategories,
+  onDeprioritizedCategoriesSave,
   resumeAssets,
   userSkills,
   skillGoals,
@@ -887,9 +905,18 @@ function DreamRoleTab({
   dreamList: string[];
   setDreamList: (l: string[]) => void;
   onSave: (list: string[]) => void;
+  prioritizedList: string[];
+  setPrioritizedList: (l: string[]) => void;
+  onPrioritizedSave: (list: string[]) => void;
+  prioritizedCategories: string[];
+  setPrioritizedCategories: (l: string[]) => void;
+  onPrioritizedCategoriesSave: (list: string[]) => void;
   deprioritizedList: string[];
   setDeprioritizedList: (l: string[]) => void;
   onDeprioritizedSave: (list: string[]) => void;
+  deprioritizedCategories: string[];
+  setDeprioritizedCategories: (l: string[]) => void;
+  onDeprioritizedCategoriesSave: (list: string[]) => void;
   resumeAssets: UserAssetRow[];
   userSkills: string[];
   skillGoals: SkillGoal[];
@@ -907,8 +934,6 @@ function DreamRoleTab({
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, RoleAnalysisView | "loading" | "error">>({});
   const [analysisErrors, setAnalysisErrors] = useState<Record<string, string>>({});
-  const [showDeprioritizedSearch, setShowDeprioritizedSearch] = useState(false);
-  const [deprioritizedQuery, setDeprioritizedQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [skillMenu, setSkillMenu] = useState<{ role: string; skill: string } | null>(null);
@@ -1050,28 +1075,6 @@ function DreamRoleTab({
     setSearchQuery("");
   };
 
-  const addDeprioritizedRole = (title: string) => {
-    const normalized = title.trim();
-    if (!normalized || deprioritizedList.includes(normalized)) return;
-    const next = [...deprioritizedList, normalized];
-    setDeprioritizedList(next);
-    onDeprioritizedSave(next);
-    setShowDeprioritizedSearch(false);
-    setDeprioritizedQuery("");
-  };
-
-  const removeDeprioritizedRole = (title: string) => {
-    const next = deprioritizedList.filter((r) => r !== title);
-    setDeprioritizedList(next);
-    onDeprioritizedSave(next);
-  };
-
-  const filteredDeprioritizedSuggestions = DEPRIORITIZED_ROLE_SUGGESTIONS.filter(
-    (r) =>
-      !deprioritizedList.includes(r) &&
-      r.toLowerCase().includes(deprioritizedQuery.toLowerCase()),
-  );
-
   const removeRole = (title: string) => {
     const next = dreamList.filter((r) => r !== title);
     setDreamList(next);
@@ -1135,7 +1138,7 @@ function DreamRoleTab({
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 28, lineHeight: 1.7 }}>
-        Control how Open and In-network jobs are ordered. Target roles rise in the list; deprioritized patterns sort lower — nothing is hidden.
+        Control how Open and In-network jobs are ordered. Target roles unlock fit analysis; prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
       </p>
 
       <div style={{ marginBottom: 32 }}>
@@ -1460,89 +1463,68 @@ function DreamRoleTab({
       </div>
       </div>
 
+      <div style={{ marginTop: 8, paddingTop: 28, borderTop: `1px solid ${border.line}`, marginBottom: 32 }}>
+        <ScoutLabel>Prioritized roles</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
+          Roles and related titles that should rank highest — commercial lead, GTM ops, RevOps, etc. Search live job titles from Hirebase and add similar titles to cast a wider net.
+        </p>
+        <RoleTitlePicker
+          selected={prioritizedList}
+          onChange={(next) => {
+            setPrioritizedList(next);
+            onPrioritizedSave(next);
+          }}
+          placeholder="e.g. Commercial Product Lead, GTM Operations…"
+          addButtonLabel="+ Add prioritized role"
+          quickSuggestions={PRIORITIZED_ROLE_SUGGESTIONS}
+          enableRelatedExpand
+        />
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Prioritized categories
+          </p>
+          <JobCategoryPicker
+            selected={prioritizedCategories}
+            onChange={(next) => {
+              setPrioritizedCategories(next);
+              onPrioritizedCategoriesSave(next);
+            }}
+            suggestions={PRIORITIZED_CATEGORY_SUGGESTIONS}
+            addButtonLabel="+ Add prioritized category"
+          />
+        </div>
+      </div>
+
       <div style={{ marginTop: 8, paddingTop: 28, borderTop: `1px solid ${border.line}` }}>
         <ScoutLabel>Deprioritized roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
           Title patterns that should sort lower — sales AE, product manager/management, etc. Matching includes related wording (e.g. &ldquo;Product Manager&rdquo; also deprioritizes &ldquo;Product Management&rdquo;).
         </p>
-        {deprioritizedList.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-            {deprioritizedList.map((role) => (
-              <span
-                key={role}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 10px",
-                  border: border.line,
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: fontSans,
-                  fontSize: T.label,
-                  color: color.muted,
-                  background: surface.inset,
-                }}
-              >
-                {role}
-                <button
-                  type="button"
-                  onClick={() => removeDeprioritizedRole(role)}
-                  aria-label={`Remove ${role}`}
-                  style={{ border: "none", background: "transparent", cursor: "pointer", color: color.muted, padding: 0, lineHeight: 1 }}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        {!showDeprioritizedSearch ? (
-          <button
-            type="button"
-            onClick={() => setShowDeprioritizedSearch(true)}
-            style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, cursor: "pointer" }}
-          >
-            + Add deprioritized role
-          </button>
-        ) : (
-          <div>
-            <input
-              autoFocus
-              value={deprioritizedQuery}
-              onChange={(e) => setDeprioritizedQuery(e.target.value)}
-              placeholder="e.g. Account Executive, Product Manager…"
-              style={{ width: "100%", padding: "12px 12px", borderRadius: "var(--scout-radius)", border: "1.5px solid #1A3A2F", fontFamily: fontSans, fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
-            />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {deprioritizedQuery.trim() &&
-                !deprioritizedList.includes(deprioritizedQuery.trim()) &&
-                !DEPRIORITIZED_ROLE_SUGGESTIONS.some(
-                  (s) => s.toLowerCase() === deprioritizedQuery.trim().toLowerCase(),
-                ) && (
-                  <button
-                    type="button"
-                    onClick={() => addDeprioritizedRole(deprioritizedQuery.trim())}
-                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
-                  >
-                    + Add &ldquo;{deprioritizedQuery.trim()}&rdquo;
-                  </button>
-                )}
-              {filteredDeprioritizedSuggestions.slice(0, 12).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => addDeprioritizedRole(r)}
-                  style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
-                >
-                  {r}
-                </button>
-              ))}
-              <button type="button" onClick={() => { setShowDeprioritizedSearch(false); setDeprioritizedQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: fontSans, fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+        <RoleTitlePicker
+          selected={deprioritizedList}
+          onChange={(next) => {
+            setDeprioritizedList(next);
+            onDeprioritizedSave(next);
+          }}
+          placeholder="e.g. Account Executive, Product Manager…"
+          addButtonLabel="+ Add deprioritized role"
+          quickSuggestions={DEPRIORITIZED_ROLE_SUGGESTIONS}
+          enableRelatedExpand
+        />
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Deprioritized categories
+          </p>
+          <JobCategoryPicker
+            selected={deprioritizedCategories}
+            onChange={(next) => {
+              setDeprioritizedCategories(next);
+              onDeprioritizedCategoriesSave(next);
+            }}
+            suggestions={DEPRIORITIZED_CATEGORY_SUGGESTIONS}
+            addButtonLabel="+ Add deprioritized category"
+          />
+        </div>
       </div>
     </div>
   );
@@ -2687,7 +2669,10 @@ export function WorkspaceProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dreamList, setDreamList] = useState<string[]>([]);
+  const [prioritizedList, setPrioritizedList] = useState<string[]>([]);
+  const [prioritizedCategories, setPrioritizedCategories] = useState<string[]>([]);
   const [deprioritizedList, setDeprioritizedList] = useState<string[]>([]);
+  const [deprioritizedCategories, setDeprioritizedCategories] = useState<string[]>([]);
   const [roleAnalyses, setRoleAnalyses] = useState<RoleAnalysesMap>({});
   const [upskillProgress, setUpskillProgress] = useState<UpskillProgressMap>({});
   const [skillGoals, setSkillGoals] = useState<SkillGoal[]>([]);
@@ -2745,7 +2730,10 @@ export function WorkspaceProfile() {
         const userProfile = data as UserProfile;
         setProfile(userProfile);
         setDreamList(userProfile.targetRoles || []);
+        setPrioritizedList(userProfile.prioritizedRoles || []);
+        setPrioritizedCategories(userProfile.prioritizedCategories || []);
         setDeprioritizedList(userProfile.deprioritizedRoles || []);
+        setDeprioritizedCategories(userProfile.deprioritizedCategories || []);
         setRoleAnalyses(normalizeRoleAnalysesMap(userProfile.roleAnalyses));
         setSkillGoals(normalizeSkillGoals(userProfile.skillGoals));
         setUpskillProgress(userProfile.upskillProgress ?? {});
@@ -3125,7 +3113,7 @@ export function WorkspaceProfile() {
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
-    { id: "dreamrole", label: isMobile ? "Roles" : "Target & deprioritized roles" },
+    { id: "dreamrole", label: isMobile ? "Roles" : "Role ranking" },
     { id: "targetcompanies", label: isMobile ? "Cos." : "Target Companies" },
     { id: "strategy", label: isMobile ? "Strategy" : "Career Strategy" },
     { id: "coach", label: "Coach" },
@@ -3148,7 +3136,7 @@ export function WorkspaceProfile() {
   const SIDEBAR_TABS: { id: ProfileSidebarTab; label: string }[] = [
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
-    { id: "dreamrole", label: "Target & deprioritized" },
+    { id: "dreamrole", label: "Role ranking" },
     { id: "targetcompanies", label: "Target Companies" },
     { id: "strategy", label: "Career Strategy" },
     { id: "coach", label: "Coach" },
@@ -3407,9 +3395,18 @@ export function WorkspaceProfile() {
                 dreamList={dreamList}
                 setDreamList={setDreamList}
                 onSave={(list) => patchProfile({ targetRoles: list })}
+                prioritizedList={prioritizedList}
+                setPrioritizedList={setPrioritizedList}
+                onPrioritizedSave={(list) => patchProfile({ prioritizedRoles: list })}
+                prioritizedCategories={prioritizedCategories}
+                setPrioritizedCategories={setPrioritizedCategories}
+                onPrioritizedCategoriesSave={(list) => patchProfile({ prioritizedCategories: list })}
                 deprioritizedList={deprioritizedList}
                 setDeprioritizedList={setDeprioritizedList}
                 onDeprioritizedSave={(list) => patchProfile({ deprioritizedRoles: list })}
+                deprioritizedCategories={deprioritizedCategories}
+                setDeprioritizedCategories={setDeprioritizedCategories}
+                onDeprioritizedCategoriesSave={(list) => patchProfile({ deprioritizedCategories: list })}
                 resumeAssets={resumeAssets}
                 userSkills={skills}
                 skillGoals={skillGoals}

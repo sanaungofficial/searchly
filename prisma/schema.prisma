@@ -104,8 +104,14 @@ model Profile {
   headline    String?
   summary     String?
   targetRoles      String[]
+  /** Title patterns to boost highest in job feeds — reorder only, not hidden. */
+  prioritizedRoles String[] @default([])
+  /** Hirebase job category buckets to boost (e.g. Operations Jobs). */
+  prioritizedCategories String[] @default([])
   /** Title patterns to sort lower in job feeds — reorder only, not hidden. */
   deprioritizedRoles String[] @default([])
+  /** Hirebase job category buckets to deprioritize (e.g. Sales Jobs). */
+  deprioritizedCategories String[] @default([])
   targetSalary     String?
   employmentStatus String?
   currentSalary    String?

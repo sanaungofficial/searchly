@@ -66,6 +66,10 @@ function appendNotice(existing: string | undefined, next: string): string {
 async function loadUserContext(userId: string) {
   const profile = await prisma.profile.findUnique({ where: { userId } });
   const targetRoles = (profile?.targetRoles ?? []).slice(0, 30);
+  const prioritizedRoles = (profile?.prioritizedRoles ?? []).slice(0, 30);
+  const prioritizedCategories = (profile?.prioritizedCategories ?? []).slice(0, 20);
+  const deprioritizedRoles = (profile?.deprioritizedRoles ?? []).slice(0, 30);
+  const deprioritizedCategories = (profile?.deprioritizedCategories ?? []).slice(0, 20);
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
@@ -85,9 +89,19 @@ async function loadUserContext(userId: string) {
 
   const profileLocation = parsedData.location ?? null;
   const priorities = profile?.priorities ?? [];
-  const deprioritizedRoles = (profile?.deprioritizedRoles ?? []).slice(0, 30);
 
-  return { profile, targetRoles, parsedData, resumeText, profileLocation, priorities, deprioritizedRoles };
+  return {
+    profile,
+    targetRoles,
+    parsedData,
+    resumeText,
+    profileLocation,
+    priorities,
+    prioritizedRoles,
+    prioritizedCategories,
+    deprioritizedRoles,
+    deprioritizedCategories,
+  };
 }
 
 async function enrichAndRank(
@@ -366,10 +380,16 @@ export async function generateRecommendedJobsForUser(
     profileLocation,
     priorities,
     deprioritizedRoles,
+    deprioritizedCategories,
+    prioritizedRoles,
+    prioritizedCategories,
   } = await loadUserContext(input.userId);
   const roleTitlePreferences: RoleTitlePreferences = {
     targetRoles,
+    prioritizedRoles,
+    prioritizedCategories,
     deprioritizedRoles,
+    deprioritizedCategories,
   };
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   /** Default feed uses profile location post-filter only. Custom searches use explicit UI filters — no silent profile merge. */

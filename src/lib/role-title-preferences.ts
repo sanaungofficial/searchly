@@ -1,8 +1,11 @@
-/** Profile-driven title boosts/penalties — reorder only, never filter. */
+/** Profile-driven title/category boosts/penalties — reorder only, never filter. */
 
 export type RoleTitlePreferences = {
   targetRoles?: string[];
+  prioritizedRoles?: string[];
+  prioritizedCategories?: string[];
   deprioritizedRoles?: string[];
+  deprioritizedCategories?: string[];
 };
 
 export type RoleTitlePreferenceAdjustment = {
@@ -10,14 +13,26 @@ export type RoleTitlePreferenceAdjustment = {
   penalty: number;
   netAdjustment: number;
   preferredMatch?: string;
+  prioritizedMatch?: string;
+  prioritizedCategoryMatch?: string;
   deprioritizedMatch?: string;
+  deprioritizedCategoryMatch?: string;
 };
 
 /** Boost when job title matches a target role (Profile → Dream roles). */
 export const TARGET_ROLE_TITLE_BOOST = 15;
 
+/** Stronger boost for explicitly prioritized role patterns (Hirebase-backed list). */
+export const PRIORITIZED_ROLE_TITLE_BOOST = 20;
+
+/** Boost when a job's Hirebase category matches a prioritized category. */
+export const PRIORITIZED_CATEGORY_BOOST = 12;
+
 /** Penalty when job title matches a deprioritized pattern — sorts lower, still visible. */
 export const DEPRIORITIZED_ROLE_TITLE_PENALTY = 28;
+
+/** Penalty when a job's Hirebase category matches a deprioritized category. */
+export const DEPRIORITIZED_CATEGORY_PENALTY = 20;
 
 const TITLE_STOP_WORDS = new Set([
   "a",
@@ -110,22 +125,58 @@ export function jobTitleMatchesRolePattern(jobTitle: string, pattern: string): b
   return expandToken(single).some((variant) => titleTokenSet(jobTitle).has(variant));
 }
 
+function normalizeCategory(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/** Match Hirebase category labels (exact or substring). */
+export function jobCategoryMatchesPattern(jobCategories: string[], pattern: string): boolean {
+  const needle = normalizeCategory(pattern);
+  if (!needle) return false;
+  return jobCategories.some((cat) => {
+    const hay = normalizeCategory(cat);
+    if (!hay) return false;
+    return hay === needle || hay.includes(needle) || needle.includes(hay);
+  });
+}
+
 export function adjustMatchScoreForRoleTitlePreferences(
   jobTitle: string,
   preferences: RoleTitlePreferences,
+  jobCategories: string[] = [],
 ): RoleTitlePreferenceAdjustment {
   let boost = 0;
   let penalty = 0;
   let preferredMatch: string | undefined;
+  let prioritizedMatch: string | undefined;
+  let prioritizedCategoryMatch: string | undefined;
   let deprioritizedMatch: string | undefined;
+  let deprioritizedCategoryMatch: string | undefined;
+
+  for (const role of preferences.prioritizedRoles ?? []) {
+    const trimmed = role.trim();
+    if (!trimmed) continue;
+    if (jobTitleMatchesRolePattern(jobTitle, trimmed)) {
+      boost = Math.max(boost, PRIORITIZED_ROLE_TITLE_BOOST);
+      prioritizedMatch = trimmed;
+    }
+  }
 
   for (const role of preferences.targetRoles ?? []) {
     const trimmed = role.trim();
     if (!trimmed) continue;
     if (jobTitleMatchesRolePattern(jobTitle, trimmed)) {
-      boost = TARGET_ROLE_TITLE_BOOST;
+      boost = Math.max(boost, TARGET_ROLE_TITLE_BOOST);
       preferredMatch = trimmed;
-      break;
+    }
+  }
+
+  for (const category of preferences.prioritizedCategories ?? []) {
+    const trimmed = category.trim();
+    if (!trimmed) continue;
+    if (jobCategoryMatchesPattern(jobCategories, trimmed)) {
+      boost = Math.max(boost, PRIORITIZED_CATEGORY_BOOST);
+      prioritizedCategoryMatch = trimmed;
     }
   }
 
@@ -133,9 +184,17 @@ export function adjustMatchScoreForRoleTitlePreferences(
     const trimmed = pattern.trim();
     if (!trimmed) continue;
     if (jobTitleMatchesRolePattern(jobTitle, trimmed)) {
-      penalty = DEPRIORITIZED_ROLE_TITLE_PENALTY;
+      penalty = Math.max(penalty, DEPRIORITIZED_ROLE_TITLE_PENALTY);
       deprioritizedMatch = trimmed;
-      break;
+    }
+  }
+
+  for (const category of preferences.deprioritizedCategories ?? []) {
+    const trimmed = category.trim();
+    if (!trimmed) continue;
+    if (jobCategoryMatchesPattern(jobCategories, trimmed)) {
+      penalty = Math.max(penalty, DEPRIORITIZED_CATEGORY_PENALTY);
+      deprioritizedCategoryMatch = trimmed;
     }
   }
 
@@ -144,7 +203,10 @@ export function adjustMatchScoreForRoleTitlePreferences(
     penalty,
     netAdjustment: boost - penalty,
     preferredMatch,
+    prioritizedMatch,
+    prioritizedCategoryMatch,
     deprioritizedMatch,
+    deprioritizedCategoryMatch,
   };
 }
 
@@ -152,20 +214,31 @@ export function applyRoleTitlePreferenceToScore(
   baseScore: number,
   jobTitle: string,
   preferences: RoleTitlePreferences,
+  jobCategories: string[] = [],
 ): { matchScore: number; adjustment: RoleTitlePreferenceAdjustment } {
-  const adjustment = adjustMatchScoreForRoleTitlePreferences(jobTitle, preferences);
+  const adjustment = adjustMatchScoreForRoleTitlePreferences(jobTitle, preferences, jobCategories);
   const matchScore = Math.min(100, Math.max(0, Math.round(baseScore + adjustment.netAdjustment)));
   return { matchScore, adjustment };
 }
 
 export function roleTitlePreferenceReasons(adjustment: RoleTitlePreferenceAdjustment): string[] {
   const reasons: string[] = [];
-  if (adjustment.preferredMatch) {
+  if (adjustment.prioritizedMatch) {
+    reasons.push(`Matches your prioritized role: ${adjustment.prioritizedMatch}.`);
+  } else if (adjustment.preferredMatch) {
     reasons.push(`Matches your target role: ${adjustment.preferredMatch}.`);
+  }
+  if (adjustment.prioritizedCategoryMatch) {
+    reasons.push(`Category boost — ${adjustment.prioritizedCategoryMatch}.`);
   }
   if (adjustment.deprioritizedMatch) {
     reasons.push(
       `Sorted lower — title relates to your deprioritized pattern (${adjustment.deprioritizedMatch}).`,
+    );
+  }
+  if (adjustment.deprioritizedCategoryMatch) {
+    reasons.push(
+      `Sorted lower — category matches your deprioritized bucket (${adjustment.deprioritizedCategoryMatch}).`,
     );
   }
   return reasons;
@@ -180,4 +253,25 @@ export const DEPRIORITIZED_ROLE_SUGGESTIONS: string[] = [
   "Product Owner",
   "Partnerships Manager",
   "Business Development Representative",
+];
+
+export const PRIORITIZED_ROLE_SUGGESTIONS: string[] = [
+  "Commercial Product Lead",
+  "GTM Operations Manager",
+  "Revenue Operations Manager",
+  "General Manager",
+  "Network Operations Manager",
+  "Commercial Strategy Lead",
+];
+
+export const DEPRIORITIZED_CATEGORY_SUGGESTIONS: string[] = [
+  "Sales Jobs",
+  "Product Jobs",
+  "Business Development Jobs",
+];
+
+export const PRIORITIZED_CATEGORY_SUGGESTIONS: string[] = [
+  "Operations Jobs",
+  "Project Management Jobs",
+  "Consulting Jobs",
 ];

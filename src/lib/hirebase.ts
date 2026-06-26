@@ -970,3 +970,19 @@ export async function fetchHirebaseJobById(
     throw err;
   }
 }
+
+/** Low-level paginated job search — used for title/category discovery. */
+export async function fetchHirebaseJobsSearch(
+  body: Record<string, unknown>,
+  ctx?: { userId?: string | null },
+): Promise<PaginatedJobs> {
+  return hirebaseFetch<PaginatedJobs>(
+    "/v2/jobs/search",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    },
+    ctx,
+  );
+}
