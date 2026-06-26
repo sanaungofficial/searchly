@@ -1,5 +1,6 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-usage";
+import { buildAssistantContext, formatAssistantContextForPrompt } from "@/lib/kimchi-assistant/context";
 import { isKimchiAiConfigured, kimchiStreamText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 
@@ -56,8 +57,15 @@ export async function POST(request: Request) {
     ? `\n\nUser's resume:\n${resumeText.slice(0, 6000)}`
     : "";
 
+  const assistantCtx = await buildAssistantContext({ user: dbUser });
+  const strategyContext = `\n\n${formatAssistantContextForPrompt(assistantCtx)}`;
+
   const template = await getPrompt("CHAT_SYSTEM");
-  const systemPrompt = interpolate(template, { pipelineContext, focusContext, resumeContext });
+  const systemPrompt = interpolate(template, {
+    pipelineContext,
+    focusContext,
+    resumeContext: `${resumeContext}${strategyContext}`,
+  });
 
   return kimchiStreamText({
     tier: "talk",

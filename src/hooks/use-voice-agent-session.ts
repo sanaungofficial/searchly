@@ -10,6 +10,7 @@ import {
 import type { VoiceOrbState } from "@/components/voice/voice-orb";
 import { VOICE_AGENT_AUDIO } from "@/lib/voice-agent-audio";
 import { VoiceAgentPlayer } from "@/lib/voice-agent-player";
+import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import {
   applyVoiceAgentField,
   type VoiceAgentFieldName,
@@ -26,9 +27,34 @@ export type VoiceAgentSessionResult = {
 type UseVoiceAgentSessionOptions = {
   context?: VoiceAgentContext;
   disabled?: boolean;
+  pageHint?: AssistantPageHint;
   onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
   onComplete?: (result: VoiceAgentSessionResult) => void;
+  onNavigate?: (route: string, label?: string) => void;
 };
+
+function pageHintQuery(hint?: AssistantPageHint): string {
+  if (!hint) return "";
+  const params = new URLSearchParams();
+  if (hint.pathname) params.set("pathname", hint.pathname);
+  if (hint.jobDbId) params.set("jobDbId", hint.jobDbId);
+  if (hint.jobRole) params.set("jobRole", hint.jobRole);
+  if (hint.jobCompany) params.set("jobCompany", hint.jobCompany);
+  if (hint.chatView) params.set("chatView", hint.chatView);
+  const qs = params.toString();
+  return qs ? `&${qs}` : "";
+}
+
+function logVoiceSessionDuration(context: VoiceAgentContext, startedAt: number | null) {
+  if (!startedAt) return;
+  const durationSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+  if (durationSeconds < 1) return;
+  void fetch("/api/assistant/voice-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ durationSeconds, context }),
+  }).catch(() => {});
+}
 
 function buildTranscript(lines: Array<{ role: string; content: string }>): string {
   return lines.map((line) => `${line.role}: ${line.content}`).join("\n");
@@ -55,8 +81,10 @@ async function fetchVoiceAgentToken(): Promise<string> {
 export function useVoiceAgentSession({
   context = "workspace",
   disabled,
+  pageHint,
   onFieldUpdate,
   onComplete,
+  onNavigate,
 }: UseVoiceAgentSessionOptions = {}) {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [agentSettings, setAgentSettings] = useState<AgentSettingsObject | null>(null);
@@ -75,6 +103,9 @@ export function useVoiceAgentSession({
   const rafRef = useRef<number | null>(null);
   const uiModeRef = useRef<VoiceOrbState>("idle");
   const endingIntentionallyRef = useRef(false);
+  const sessionStartedAtRef = useRef<number | null>(null);
+  const pageHintRef = useRef(pageHint);
+  pageHintRef.current = pageHint;
 
   const setUiMode = useCallback((mode: VoiceOrbState) => {
     uiModeRef.current = mode;
@@ -82,14 +113,16 @@ export function useVoiceAgentSession({
   }, []);
 
   useEffect(() => {
-    void fetch(`/api/voice/agent/config?context=${context}`, { cache: "no-store" })
+    void fetch(`/api/voice/agent/config?context=${context}${pageHintQuery(pageHint)}`, {
+      cache: "no-store",
+    })
       .then((res) => res.json())
       .then((data) => {
         setAvailable(!!data?.agentAvailable);
         setAgentSettings(data?.agent ?? null);
       })
       .catch(() => setAvailable(false));
-  }, [context]);
+  }, [context, pageHint?.pathname, pageHint?.jobDbId, pageHint?.jobRole, pageHint?.chatView]);
 
   const stopVisualizer = useCallback(() => {
     if (rafRef.current) {
@@ -118,6 +151,8 @@ export function useVoiceAgentSession({
   }, [stopVisualizer]);
 
   const teardownSession = useCallback(() => {
+    logVoiceSessionDuration(context, sessionStartedAtRef.current);
+    sessionStartedAtRef.current = null;
     stopVisualizer();
     micRef.current?.stop();
     micRef.current = null;
@@ -126,7 +161,7 @@ export function useVoiceAgentSession({
     sessionRef.current?.disconnect();
     sessionRef.current = null;
     setSessionActive(false);
-  }, [stopVisualizer]);
+  }, [context, stopVisualizer]);
 
   useEffect(() => () => teardownSession(), [teardownSession]);
 
@@ -216,6 +251,29 @@ export function useVoiceAgentSession({
             } else if (fn.name === "finish_onboarding_chat") {
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
               finishSession(args.summary || "Wrapped up your search preferences.");
+            } else if (fn.name === "open_ui_route" && args.route) {
+              onNavigate?.(args.route, args.label);
+              session.sendFunctionCallResponse(
+                fn.id,
+                fn.name,
+                JSON.stringify({ ok: true, route: args.route }),
+              );
+            } else if (fn.name === "suggest_next_actions") {
+              void (async () => {
+                try {
+                  const qs = pageHintQuery(pageHintRef.current);
+                  const url = qs ? `/api/assistant/context?${qs.slice(1)}` : "/api/assistant/context";
+                  const res = await fetch(url, { cache: "no-store" });
+                  const data = (await res.json()) as { suggestions?: unknown[] };
+                  session.sendFunctionCallResponse(
+                    fn.id,
+                    fn.name,
+                    JSON.stringify({ ok: true, suggestions: data.suggestions ?? [] }),
+                  );
+                } catch {
+                  session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: false }));
+                }
+              })();
             }
           } catch {
             session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: false }));
@@ -223,6 +281,7 @@ export function useVoiceAgentSession({
         }
       });
       session.on("connected", () => {
+        sessionStartedAtRef.current = Date.now();
         setSessionActive(true);
         setUiMode("live");
         startVisualizer();
@@ -266,6 +325,7 @@ export function useVoiceAgentSession({
     disabled,
     finishSession,
     handleFieldSave,
+    onNavigate,
     sessionActive,
     setUiMode,
     startVisualizer,

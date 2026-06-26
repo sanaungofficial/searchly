@@ -16,6 +16,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 import { KimchiComposerRow, KimchiVoiceComposerFooter, type KimchiVoiceProps } from "@/components/scout/kimchi-composer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { AssistantPageHint, AssistantSuggestion } from "@/lib/kimchi-assistant/types";
 
 const sans = fontSans;
 
@@ -114,12 +115,16 @@ export function ChatWidget({
   embedded = false,
   unified = false,
   voice,
+  voiceUnavailable = false,
+  pageHint,
   bottomStackOffset = 0,
 }: {
   hideLauncher?: boolean;
   embedded?: boolean;
   unified?: boolean;
   voice?: KimchiVoiceProps;
+  voiceUnavailable?: boolean;
+  pageHint?: AssistantPageHint;
   bottomStackOffset?: number;
 }) {
   const router = useRouter();
@@ -159,6 +164,31 @@ export function ChatWidget({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const voiceSyncedRef = useRef(0);
+  const [assistantSuggestions, setAssistantSuggestions] = useState<AssistantSuggestion[]>([]);
+
+  const assistantQuery = useCallback(() => {
+    if (!pageHint) return "";
+    const params = new URLSearchParams();
+    if (pageHint.pathname) params.set("pathname", pageHint.pathname);
+    if (pageHint.jobDbId) params.set("jobDbId", pageHint.jobDbId);
+    if (pageHint.jobRole) params.set("jobRole", pageHint.jobRole);
+    if (pageHint.jobCompany) params.set("jobCompany", pageHint.jobCompany);
+    if (pageHint.chatView) params.set("chatView", pageHint.chatView);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  }, [pageHint]);
+
+  useEffect(() => {
+    if (!unified || !chatOpen) return;
+    void fetch(`/api/assistant/context${assistantQuery()}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.suggestions && Array.isArray(data.suggestions)) {
+          setAssistantSuggestions(data.suggestions as AssistantSuggestion[]);
+        }
+      })
+      .catch(() => {});
+  }, [unified, chatOpen, assistantQuery]);
 
   const effectiveJobId = chatView === "chat" && chatJobId !== null
     ? chatJobId
@@ -565,9 +595,60 @@ export function ChatWidget({
     color: "var(--scout-muted)",
   };
 
+  const renderSuggestionsBlock = () => {
+    if (assistantSuggestions.length === 0) return null;
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <p
+          style={{
+            fontFamily: sans,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--scout-muted)",
+            margin: "0 0 8px",
+          }}
+        >
+          Suggested next
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {assistantSuggestions.slice(0, 4).map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => {
+                if (s.route) router.push(s.route);
+                else sendGeneralMessage(s.title);
+              }}
+              style={{
+                padding: "8px 10px",
+                background: "#FFF",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: "var(--scout-radius)",
+                fontFamily: sans,
+                fontSize: 13,
+                color: "#1A3A2F",
+                cursor: "pointer",
+                textAlign: "left",
+                lineHeight: 1.35,
+              }}
+            >
+              <span style={{ display: "block", fontWeight: 600 }}>{s.title}</span>
+              <span style={{ display: "block", fontSize: 12, color: "var(--scout-muted)", marginTop: 2 }}>
+                {s.detail}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderToolsPanelContent = () => (
     <>
       <CreditsStatusBar onUpgrade={openPricing} />
+      {renderSuggestionsBlock()}
       <p
         style={{
           fontFamily: sans,
@@ -1052,6 +1133,19 @@ export function ChatWidget({
     sendDisabled?: boolean,
   ) => (
     <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
+      {voiceUnavailable && !voice && (
+        <p
+          style={{
+            fontFamily: sans,
+            fontSize: 12,
+            color: "var(--scout-muted)",
+            margin: "0 0 8px",
+            lineHeight: 1.45,
+          }}
+        >
+          Voice isn&apos;t available here — type below. (Needs Deepgram on the server.)
+        </p>
+      )}
       {voice && <KimchiVoiceComposerFooter voice={voice} />}
       <CreditsInlineHint />
       <KimchiComposerRow

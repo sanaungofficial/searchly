@@ -56,7 +56,19 @@ export function VoiceIntakeRecorder({
     },
   });
 
-  if (available === false) return null;
+  if (available === false) {
+    return (
+      <div className="voice-intake-hero anim-fade-up">
+        <VoiceIntakeHeroStyles />
+        <div className="voice-intake-hero__panel voice-intake-hero__panel--muted">
+          <p className="voice-intake-hero__hint">
+            Voice isn&apos;t set up on this environment — use the picks below. On production, tap the orb to talk to
+            Kimchi.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const hint =
     orbState === "idle" || orbState === "error"
@@ -118,6 +130,12 @@ function VoiceIntakeHeroStyles() {
   return (
     <style>{`
       .voice-intake-hero { width: 100%; }
+
+      .voice-intake-hero__panel--muted {
+        padding: 20px 24px;
+        background: rgba(26, 58, 47, 0.04);
+        border: 1.5px dashed rgba(26, 58, 47, 0.16);
+      }
 
       .voice-intake-hero__panel {
         position: relative;

@@ -370,7 +370,7 @@ export function ScreenWelcome({
           />
           <SetupPathCard
             title="Start from scratch"
-            description="We'll walk you through it — type your answers or talk them through (voice coming soon)."
+            description="We'll walk you through it — type your answers or talk to Kimchi on the next step."
             selected={false}
             onClick={() => setPath("scratch")}
           />

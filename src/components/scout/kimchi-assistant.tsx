@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ChatWidget } from "@/components/scout/chat-widget";
 import { VoiceOrb } from "@/components/voice/voice-orb";
 import { useVoiceAgentSession } from "@/hooks/use-voice-agent-session";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 
 function launcherBottom(isMobile: boolean): string {
   return isMobile ? "max(16px, env(safe-area-inset-bottom))" : "24px";
@@ -13,8 +15,24 @@ function launcherBottom(isMobile: boolean): string {
 
 export function KimchiAssistant() {
   const isMobile = useIsMobile();
-  const { chatOpen, setChatOpen, setChatView, chatPulse } = useWorkspace();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { chatOpen, setChatOpen, setChatView, chatPulse, kanbanCards, drawerCardId, chatView } =
+    useWorkspace();
   const [panelOpen, setPanelOpen] = useState(false);
+
+  const pageHint = useMemo((): AssistantPageHint => {
+    const drawerJob =
+      drawerCardId !== null ? kanbanCards.find((c) => c.id === drawerCardId) : undefined;
+    const ext = drawerJob as (typeof kanbanCards[number] & { _dbId?: string }) | undefined;
+    return {
+      pathname: pathname ?? undefined,
+      chatView,
+      jobDbId: ext?._dbId,
+      jobRole: drawerJob?.role,
+      jobCompany: drawerJob?.company,
+    };
+  }, [pathname, drawerCardId, kanbanCards, chatView]);
 
   const {
     available,
@@ -26,7 +44,13 @@ export function KimchiAssistant() {
     sessionActive,
     toggleSession,
     resetSession,
-  } = useVoiceAgentSession({ context: "workspace" });
+  } = useVoiceAgentSession({
+    context: "workspace",
+    pageHint,
+    onNavigate: (route) => {
+      router.push(route);
+    },
+  });
 
   useEffect(() => {
     if (chatOpen) {
@@ -35,7 +59,7 @@ export function KimchiAssistant() {
   }, [chatOpen]);
 
   if (available === false) {
-    return <ChatWidget hideLauncher={false} />;
+    return <ChatWidget hideLauncher={false} voiceUnavailable />;
   }
 
   const right = isMobile ? "16px" : "24px";
@@ -100,7 +124,7 @@ export function KimchiAssistant() {
               </button>
             </div>
 
-            <ChatWidget embedded unified hideLauncher voice={voiceProps} />
+            <ChatWidget embedded unified hideLauncher voice={voiceProps} pageHint={pageHint} />
           </div>
         </>
       )}
