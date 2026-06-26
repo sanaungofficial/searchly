@@ -147,6 +147,61 @@ export type NylasAuthUrlResponse = {
   url?: string;
 };
 
+const MICROSOFT_EMAIL_SUFFIXES = [
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "office365.com",
+  "outlook.co.uk",
+];
+
+function emailDomain(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 0) return "";
+  return email.slice(at + 1).trim().toLowerCase();
+}
+
+export function emailDomainLooksMicrosoft(email: string): boolean {
+  const domain = emailDomain(email);
+  if (!domain) return false;
+  return (
+    MICROSOFT_EMAIL_SUFFIXES.includes(domain) ||
+    domain.includes("onmicrosoft.com") ||
+    domain.endsWith(".onmicrosoft.com")
+  );
+}
+
+/** Skip login_hint when it would steer Nylas to the wrong provider (e.g. Gmail hint on Outlook connect). */
+export function loginHintForNylasProvider(
+  email: string | undefined,
+  provider: "google" | "microsoft",
+): string | undefined {
+  if (!email?.trim()) return undefined;
+  const domain = emailDomain(email);
+  if (!domain) return undefined;
+
+  if (provider === "google") {
+    if (domain === "gmail.com" || domain === "googlemail.com" || domain.endsWith(".edu")) {
+      return email.trim();
+    }
+    // Custom Google Workspace domains are common — still pass hint for Google button.
+    if (!MICROSOFT_EMAIL_SUFFIXES.includes(domain) && !domain.includes("onmicrosoft.com")) {
+      return email.trim();
+    }
+    return undefined;
+  }
+
+  if (
+    MICROSOFT_EMAIL_SUFFIXES.includes(domain) ||
+    domain.includes("onmicrosoft.com") ||
+    domain.endsWith(".onmicrosoft.com")
+  ) {
+    return email.trim();
+  }
+  return undefined;
+}
+
 /** Build the documented GET /v3/connect/auth URL (browser redirect). */
 export function buildNylasAuthUrl(params: {
   provider: "google" | "microsoft";
@@ -166,14 +221,17 @@ export function buildNylasAuthUrl(params: {
     access_type: "offline",
     provider: params.provider,
     state: params.state,
-    prompt: "detect",
   });
-  if (params.loginHint) query.set("login_hint", params.loginHint);
+
+  const loginHint = loginHintForNylasProvider(params.loginHint, params.provider);
+  if (loginHint) query.set("login_hint", loginHint);
+
   if (params.inboxAccess) {
-    query.set(
-      "scope",
-      "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly",
-    );
+    const scope =
+      params.provider === "microsoft"
+        ? "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read"
+        : "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly";
+    query.set("scope", scope);
   }
 
   return `${cfg.apiUri}/v3/connect/auth?${query.toString()}`;
