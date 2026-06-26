@@ -1,3 +1,4 @@
+import { countUniqueDisplayListingKeys, jobListingDedupeKey } from "@/lib/cached-job";
 import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
@@ -22,6 +23,7 @@ import {
   type RecommendedJobSnapshotPayload,
   type RecommendedMatchMode,
   RECOMMENDED_FETCH_POOL,
+  RECOMMENDED_MIN_DISPLAY_ROLES,
   RECOMMENDED_SNAPSHOT_MAX_JOBS,
 } from "@/lib/recommended-jobs-config";
 import {
@@ -35,7 +37,7 @@ import {
   loadTrackedCompanyIndex,
   type RecommendedJobSource,
 } from "@/lib/recommended-jobs-fallback";
-import { finalizeRecommendedJobs } from "@/lib/recommended-jobs-ranking";
+import { finalizeRecommendedJobs, sortRecommendedJobs, dedupeVectorMatchedJobs } from "@/lib/recommended-jobs-ranking";
 import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import type { VectorMatchedJob, VectorSearchFilters } from "@/lib/vector-matched-job";
@@ -110,6 +112,93 @@ async function enrichAndRank(
     maxJobs,
     options,
   );
+}
+
+function displayKeysFromJobs(jobs: VectorMatchedJob[]): Set<string> {
+  return new Set(
+    jobs.map((job) =>
+      jobListingDedupeKey({
+        companyName: job.companyName,
+        title: job.title,
+        url: job.url,
+      }),
+    ),
+  );
+}
+
+function displayKeysFromSources(sources: RecommendedJobSource[]): Set<string> {
+  return new Set(
+    sources.map((source) =>
+      jobListingDedupeKey({
+        companyName: source.companyName,
+        title: source.cached.title,
+        url: source.cached.url,
+      }),
+    ),
+  );
+}
+
+async function supplementSparseRecommendedSources(input: {
+  sources: RecommendedJobSource[];
+  targetRoles: string[];
+  semanticQuery: string;
+}): Promise<{ sources: RecommendedJobSource[]; supplemented: boolean }> {
+  const displayCount = countUniqueDisplayListingKeys(
+    input.sources.map((source) => ({
+      companyName: source.companyName,
+      title: source.cached.title,
+      url: source.cached.url,
+    })),
+  );
+  if (displayCount >= RECOMMENDED_MIN_DISPLAY_ROLES) {
+    return { sources: input.sources, supplemented: false };
+  }
+
+  const broad = await fetchRecommendedBroadFallback({
+    profileTargetRoles: input.targetRoles,
+    semanticQuery: input.semanticQuery || undefined,
+    maxJobs: RECOMMENDED_FETCH_POOL,
+    diverse: true,
+    excludeDisplayKeys: displayKeysFromSources(input.sources),
+  });
+  if (!broad.sources.length) {
+    return { sources: input.sources, supplemented: false };
+  }
+
+  return {
+    sources: dedupeRecommendedSources(
+      [...input.sources, ...broad.sources],
+      RECOMMENDED_FETCH_POOL,
+    ),
+    supplemented: true,
+  };
+}
+
+async function supplementSparseRecommendedJobs(input: {
+  jobs: VectorMatchedJob[];
+  targetRoles: string[];
+  semanticQuery: string;
+  resumeText: string;
+  userId: string;
+  maxJobs: number;
+}): Promise<VectorMatchedJob[]> {
+  if (input.jobs.length >= RECOMMENDED_MIN_DISPLAY_ROLES) return input.jobs;
+
+  const broad = await fetchRecommendedBroadFallback({
+    profileTargetRoles: input.targetRoles,
+    semanticQuery: input.semanticQuery || undefined,
+    maxJobs: RECOMMENDED_FETCH_POOL,
+    diverse: true,
+    excludeDisplayKeys: displayKeysFromJobs(input.jobs),
+  });
+  if (!broad.sources.length) return input.jobs;
+
+  const extra = await enrichAndRank(broad.sources, input.resumeText, input.userId, input.maxJobs, {
+    filterStale: false,
+  });
+  if (!extra.length) return input.jobs;
+
+  return sortRecommendedJobs(dedupeVectorMatchedJobs([...input.jobs, ...extra])).slice(0, input.maxJobs);
 }
 
 type PrimaryFetchResult = {
@@ -292,7 +381,7 @@ export async function generateRecommendedJobsForUser(
 
   let { sources, matchMode, companyCount, trackedWithMatches, notice, resumeVSearch } = primary;
 
-  if (!sources.length && hasRestrictiveListingFilters(mergedFilters)) {
+  async function retryPrimaryWithRelaxedFilters(reason: string) {
     const relaxed = relaxRestrictiveFilters(mergedFilters);
     primary = await fetchPrimaryRecommendedSources({
       userId: input.userId,
@@ -305,18 +394,20 @@ export async function generateRecommendedJobsForUser(
       maxJobs,
       preferCache,
     });
-    if (primary.sources.length) {
-      sources = primary.sources;
-      matchMode = primary.matchMode;
-      companyCount = primary.companyCount;
-      trackedWithMatches = primary.trackedWithMatches;
-      resumeVSearch = primary.resumeVSearch;
-      notice = appendNotice(
-        primary.notice,
-        "No roles matched salary, date, or location filters — showing broader matches. Clear or loosen those filters to refine.",
-      );
-      effectiveFilters = relaxed;
-    }
+    if (!primary.sources.length) return;
+    sources = primary.sources;
+    matchMode = primary.matchMode;
+    companyCount = primary.companyCount;
+    trackedWithMatches = primary.trackedWithMatches;
+    resumeVSearch = primary.resumeVSearch;
+    notice = appendNotice(primary.notice, reason);
+    effectiveFilters = relaxed;
+  }
+
+  if (!sources.length && hasRestrictiveListingFilters(mergedFilters)) {
+    await retryPrimaryWithRelaxedFilters(
+      "No roles matched salary, date, or location filters — showing broader matches. Clear or loosen those filters to refine.",
+    );
   }
 
   if (!sources.length) {
@@ -324,6 +415,7 @@ export async function generateRecommendedJobsForUser(
       profileTargetRoles: targetRoles,
       semanticQuery: semanticQuery || undefined,
       maxJobs: RECOMMENDED_FETCH_POOL,
+      diverse: true,
     });
     if (broad.sources.length) {
       sources = broad.sources;
@@ -338,6 +430,36 @@ export async function generateRecommendedJobsForUser(
   if (!sources.length) return null;
 
   sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
+
+  if (
+    countUniqueDisplayListingKeys(
+      sources.map((source) => ({
+        companyName: source.companyName,
+        title: source.cached.title,
+        url: source.cached.url,
+      })),
+    ) < RECOMMENDED_MIN_DISPLAY_ROLES &&
+    hasRestrictiveListingFilters(effectiveFilters)
+  ) {
+    await retryPrimaryWithRelaxedFilters(
+      "Filters were too narrow — showing broader matches. Loosen salary, date, or radius to refine.",
+    );
+    sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
+  }
+
+  const sparseSupplement = await supplementSparseRecommendedSources({
+    sources,
+    targetRoles,
+    semanticQuery,
+  });
+  if (sparseSupplement.supplemented) {
+    sources = sparseSupplement.sources;
+    matchMode = matchMode === "broad" ? matchMode : "broad";
+    notice = appendNotice(
+      notice,
+      "Added broader roles to fill your feed — personalized matches were sparse.",
+    );
+  }
 
   const sourcesBeforeLocation = sources;
   if (defaultFeed) {
@@ -386,11 +508,31 @@ export async function generateRecommendedJobsForUser(
     filterStale: false,
   });
 
+  if (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES) {
+    const beforeCount = jobs.length;
+    jobs = await supplementSparseRecommendedJobs({
+      jobs,
+      targetRoles,
+      semanticQuery,
+      resumeText,
+      userId: input.userId,
+      maxJobs,
+    });
+    if (jobs.length > beforeCount) {
+      matchMode = matchMode === "broad" ? matchMode : "broad";
+      notice = appendNotice(
+        notice,
+        "Showing recent roles from Hirebase while personalized matches are sparse.",
+      );
+    }
+  }
+
   if (!jobs.length) {
     const broad = await fetchRecommendedBroadFallback({
       profileTargetRoles: targetRoles,
       semanticQuery: semanticQuery || undefined,
       maxJobs: RECOMMENDED_FETCH_POOL,
+      diverse: true,
     });
     if (broad.sources.length) {
       sources = broad.sources;

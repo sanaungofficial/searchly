@@ -18,6 +18,9 @@ export const RECOMMENDED_FETCH_POOL = 60;
 /** Max jobs stored per user snapshot / API response. */
 export const RECOMMENDED_SNAPSHOT_MAX_JOBS = 40;
 
+/** Minimum distinct company+title roles before we supplement with broad Hirebase results. */
+export const RECOMMENDED_MIN_DISPLAY_ROLES = 12;
+
 /** Cooldown between manual live refreshes — 0 disables rate limiting. */
 export const RECOMMENDED_MANUAL_REFRESH_COOLDOWN_MS = 0;
 

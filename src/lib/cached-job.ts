@@ -70,6 +70,23 @@ function normalizeListingToken(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
+/** Unique posting identity — URL or Hirebase id first (fetch / merge stage). */
+export function jobListingUrlDedupeKey(input: {
+  companyName?: string;
+  title?: string;
+  url?: string | null;
+  hirebaseId?: string | null;
+}): string {
+  const id = input.hirebaseId?.trim();
+  if (id) return `id:${id.toLowerCase()}`;
+  const url = normalizeJobUrl(input.url);
+  if (url) return `url:${url}`;
+  const company = normalizeListingToken(input.companyName ?? "");
+  const title = normalizeListingToken(input.title ?? "");
+  if (company && title) return `${company}::${title}`;
+  return "unknown";
+}
+
 /** Collapse multi-location re-posts of the same role (company + title, not URL). */
 export function jobListingDedupeKey(input: {
   companyName: string;
@@ -82,6 +99,22 @@ export function jobListingDedupeKey(input: {
   const url = normalizeJobUrl(input.url);
   if (url) return url;
   return `${company}::${title}` || "unknown";
+}
+
+export function countUniqueDisplayListingKeys(
+  items: Array<{ companyName: string; title: string; url?: string | null }>,
+): number {
+  const keys = new Set<string>();
+  for (const item of items) {
+    keys.add(
+      jobListingDedupeKey({
+        companyName: item.companyName,
+        title: item.title,
+        url: item.url,
+      }),
+    );
+  }
+  return keys.size;
 }
 
 function pickArray(primary?: string[], fallback?: string[]): string[] | undefined {

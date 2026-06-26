@@ -170,6 +170,7 @@ async function handleRecommended(request: Request) {
       resumeVSearch: result.resumeVSearch,
       notice: result.notice,
       snapshotDate,
+      generatedAt: new Date().toISOString(),
       fromSnapshot: false,
       scoreFloor: RECOMMENDED_MATCH_SCORE_FLOOR,
     });

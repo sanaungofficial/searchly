@@ -1,6 +1,6 @@
 import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
-import { jobListingDedupeKey } from "@/lib/cached-job";
+import { jobListingUrlDedupeKey } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX, HIREBASE_SEARCH_PAGE_MAX } from "@/lib/vector-matched-job";
 import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
@@ -719,6 +719,7 @@ export async function fetchHirebaseRoleMatchingJobs(input: {
 export async function fetchHirebaseRecentJobs(input: {
   keywords?: string[];
   maxJobs?: number;
+  page?: number;
 }): Promise<{
   jobs: CachedJob[];
   rawJobs: HirebaseJob[];
@@ -726,6 +727,7 @@ export async function fetchHirebaseRecentJobs(input: {
   totalCount: number;
 }> {
   const limit = Math.max(1, Math.min(input.maxJobs ?? HIREBASE_SEARCH_PAGE_MAX, HIREBASE_SEARCH_PAGE_MAX));
+  const page = Math.max(1, input.page ?? 1);
   const keywords = (input.keywords ?? [])
     .map((k) => k.trim().toLowerCase())
     .filter((k) => k.length >= 3)
@@ -733,7 +735,7 @@ export async function fetchHirebaseRecentJobs(input: {
 
   const body: Record<string, unknown> = {
     keywords,
-    page: 1,
+    page,
     limit,
     sort_by: "date_posted",
     sort_order: "desc",
@@ -821,10 +823,13 @@ function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
   for (const job of jobs) {
     const company = job.company_name?.trim() ?? "";
     const title = (job.job_title ?? job.title ?? "").trim();
-    const key =
-      jobListingDedupeKey({ companyName: company, title, url: job.application_link }) ||
-      (job._id ?? job.application_link ?? "").toLowerCase();
-    if (!key) continue;
+    const key = jobListingUrlDedupeKey({
+      companyName: company,
+      title,
+      url: job.application_link,
+      hirebaseId: job._id ?? null,
+    });
+    if (!key || key === "unknown") continue;
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, job);

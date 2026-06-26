@@ -876,7 +876,7 @@ export function PipelineRecommendedSection({
           setActiveFilterLabels(describeActiveFilters(applied));
           setSnapshotMeta({
             fromSnapshot: data.fromSnapshot === true,
-            generatedAt: data.generatedAt,
+            generatedAt: data.generatedAt ?? new Date().toISOString(),
           });
           writeRecommendedCache({
             jobs: nextJobs,
@@ -1142,6 +1142,11 @@ export function PipelineRecommendedSection({
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
                 {snapshotMeta.fromSnapshot ? "Daily snapshot" : "Live results"} · updated{" "}
                 {new Date(snapshotMeta.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+              </p>
+            )}
+            {hasLoadedOnce && !loading && (
+              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "4px 0 0" }}>
+                Showing {filteredListings.length} role{filteredListings.length === 1 ? "" : "s"}
               </p>
             )}
           </div>
