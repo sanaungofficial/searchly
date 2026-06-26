@@ -107,7 +107,7 @@ export function PipelineStageJobsList({
         <div>
           <ScoutLabel>{STAGE_LABELS[stage]}</ScoutLabel>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "6px 0 0" }}>
-            {stageCards.length} role{stageCards.length === 1 ? "" : "s"} in your pipeline
+            {stageCards.length} role{stageCards.length === 1 ? "" : "s"} saved
           </p>
         </div>
         <ScoutSecondaryBtn onClick={onBackToRecommendations}>← Back to Find roles</ScoutSecondaryBtn>

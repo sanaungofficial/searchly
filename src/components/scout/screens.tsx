@@ -248,7 +248,7 @@ interface WelcomeProps {
   onLIKey: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onContinue: () => void;
   onLinkedInOnly: () => void;
-  onSkip: () => void;
+  onStartFromScratch: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
@@ -278,6 +278,44 @@ function ResumeReadingProgress({ filename }: { filename: string }) {
   );
 }
 
+type SetupPath = "resume" | "linkedin" | "scratch";
+
+function SetupPathCard({
+  title,
+  description,
+  selected,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        ...ONBOARDING_CARD,
+        width: "100%",
+        textAlign: "left",
+        cursor: "pointer",
+        border: selected ? "2px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
+        background: selected ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG,
+        padding: "16px 18px",
+        transition: "border-color 0.15s, background 0.15s",
+      }}
+    >
+      <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: ONBOARDING_TEXT, margin: "0 0 6px" }}>
+        {title}
+      </p>
+      <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, margin: 0, lineHeight: 1.55 }}>
+        {description}
+      </p>
+    </button>
+  );
+}
+
 export function ScreenWelcome({
   resumeFilename,
   resumeUploaded,
@@ -289,7 +327,7 @@ export function ScreenWelcome({
   onLIKey,
   onContinue,
   onLinkedInOnly,
-  onSkip,
+  onStartFromScratch,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -297,239 +335,299 @@ export function ScreenWelcome({
   onFileChange,
 }: WelcomeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [path, setPath] = useState<SetupPath | null>(null);
   const dropBorder = resumeError ? "#C0392B" : isDragging ? "#1A3A2F" : "rgba(26,58,47,0.35)";
   const dropBg = resumeError ? "rgba(192,57,43,0.06)" : isDragging ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG;
   const canContinueWithResume = !!(resumeFilename && !resumeError);
   const canSaveLinkedInOnly = liInput.trim().length > 0 && !resumeFilename;
 
+  const heroBody =
+    path === "resume"
+      ? "Upload a PDF or Word file — we'll read it while you answer a few quick questions."
+      : path === "linkedin"
+        ? "Paste your LinkedIn link. If it's light on details, we'll help you fill in the rest."
+        : path === "scratch"
+          ? "No resume? No problem. We'll ask a few questions and help you build your profile step by step."
+          : "Pick how you'd like to start. You can always add or change things later.";
+
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
-      <OnboardingHeroIntro
-        title="Let's get you set up."
-        body="Upload your resume and we'll start reading it. Answer a few questions while we work — then we'll show you what we see."
-      />
+      <OnboardingHeroIntro title="Let's build your profile." body={heroBody} />
 
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
-        <p
+      {!path && (
+        <div className="anim-fade-up flex flex-col gap-3" style={{ animationDelay: "0.25s" }}>
+          <SetupPathCard
+            title="Upload my resume"
+            description="Best if you already have a resume file — PDF or Word."
+            selected={false}
+            onClick={() => setPath("resume")}
+          />
+          <SetupPathCard
+            title="Use my LinkedIn"
+            description="We'll pull what we can from your public LinkedIn profile."
+            selected={false}
+            onClick={() => setPath("linkedin")}
+          />
+          <SetupPathCard
+            title="Start from scratch"
+            description="We'll walk you through it — type your answers or talk them through (voice coming soon)."
+            selected={false}
+            onClick={() => setPath("scratch")}
+          />
+        </div>
+      )}
+
+      {path && (
+        <button
+          type="button"
+          onClick={() => setPath(null)}
           style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 600,
-            color: ONBOARDING_LABEL_COLOR,
-            letterSpacing: "0.6px",
-            textTransform: "uppercase",
-            marginBottom: 12,
+            ...ONBOARDING_SKIP_LINK,
+            alignSelf: "flex-start",
             marginTop: 0,
           }}
         >
-          Your resume
-        </p>
-        {!resumeFilename ? (
-          <div
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            onDrop={onDrop}
-            onClick={onFileClick}
+          ← Choose a different option
+        </button>
+      )}
+
+      {path === "resume" && (
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
+          <p
             style={{
-              border: `2px dashed ${dropBorder}`,
-              borderRadius: 0,
-              padding: ONBOARDING_CARD_PAD,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 14,
-              cursor: "pointer",
-              background: dropBg,
-              transition: "border-color 0.2s, background 0.2s",
-              userSelect: "none",
+              fontFamily: "var(--font-ui)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: ONBOARDING_LABEL_COLOR,
+              letterSpacing: "0.6px",
+              textTransform: "uppercase",
+              marginBottom: 12,
+              marginTop: 0,
             }}
           >
-            <UploadIcon />
-            <div className="text-center flex flex-col gap-[5px]">
-              <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: ONBOARDING_TEXT }}>
-                Drop your resume here
-              </span>
-              <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY }}>
-                PDF or DOCX — click to browse
-              </span>
+            Your resume
+          </p>
+          {!resumeFilename ? (
+            <div
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              onClick={onFileClick}
+              style={{
+                border: `2px dashed ${dropBorder}`,
+                borderRadius: 0,
+                padding: ONBOARDING_CARD_PAD,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 14,
+                cursor: "pointer",
+                background: dropBg,
+                transition: "border-color 0.2s, background 0.2s",
+                userSelect: "none",
+              }}
+            >
+              <UploadIcon />
+              <div className="text-center flex flex-col gap-[5px]">
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: ONBOARDING_TEXT }}>
+                  Drop your resume here
+                </span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY }}>
+                  PDF or DOCX — click to browse
+                </span>
+              </div>
             </div>
-          </div>
-        ) : !resumeUploaded ? (
-          <>
-            <ResumeReadingProgress filename={resumeFilename} />
-            {(resumeUploading || !resumeUploaded) && (
-              <p
+          ) : !resumeUploaded ? (
+            <>
+              <ResumeReadingProgress filename={resumeFilename} />
+              {(resumeUploading || !resumeUploaded) && (
+                <p
+                  style={{
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "#1A3A2F",
+                    marginTop: 14,
+                    marginBottom: 0,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  You can hit Continue below — we&apos;ll keep reading in the background.
+                </p>
+              )}
+            </>
+          ) : (
+            <div
+              className="anim-fade-in"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "14px 18px",
+                background: ONBOARDING_FIELD_BG,
+                border: ONBOARDING_FIELD_BORDER,
+                borderRadius: 0,
+              }}
+            >
+              <CheckCircleFilled />
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A3A2F", flex: 1 }}>
+                {resumeFilename}
+              </span>
+              <button
+                onClick={onFileClick}
                 style={{
+                  background: "none",
+                  border: "none",
                   fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 500,
-                  color: "#1A3A2F",
-                  marginTop: 14,
-                  marginBottom: 0,
-                  lineHeight: 1.55,
+                  color: ONBOARDING_TEXT_SECONDARY,
+                  cursor: "pointer",
+                  padding: 0,
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
                 }}
               >
-                You can hit Continue below — we&apos;ll keep reading in the background.
-              </p>
-            )}
-          </>
-        ) : (
+                Change
+              </button>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            style={{ display: "none" }}
+            onChange={onFileChange}
+          />
+          {resumeError && (
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#C0392B", marginTop: 12, marginBottom: 0, fontWeight: 500 }}>
+              That upload didn&apos;t work. Try again, or pick a different option above.
+            </p>
+          )}
+        </div>
+      )}
+
+      {path === "linkedin" && (
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
+          <p
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: ONBOARDING_LABEL_COLOR,
+              letterSpacing: "0.6px",
+              textTransform: "uppercase",
+              marginBottom: 12,
+              marginTop: 0,
+            }}
+          >
+            Your LinkedIn
+          </p>
           <div
-            className="anim-fade-in"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
-              padding: "14px 18px",
+              gap: 12,
+              padding: "12px 14px",
               background: ONBOARDING_FIELD_BG,
               border: ONBOARDING_FIELD_BORDER,
               borderRadius: 0,
             }}
           >
-            <CheckCircleFilled />
-            <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A3A2F", flex: 1 }}>
-              {resumeFilename}
-            </span>
-            <button
-              onClick={onFileClick}
+            <LinkedInIcon style={{ flexShrink: 0 }} />
+            <span
               style={{
-                background: "none",
-                border: "none",
                 fontFamily: "var(--font-ui)",
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: 500,
                 color: ONBOARDING_TEXT_SECONDARY,
-                cursor: "pointer",
-                padding: 0,
-                textDecoration: "underline",
-                textUnderlineOffset: 2,
+                flexShrink: 0,
+                userSelect: "none",
               }}
             >
-              Change
-            </button>
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.doc,.docx"
-          style={{ display: "none" }}
-          onChange={onFileChange}
-        />
-        {resumeError && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#C0392B", marginTop: 12, marginBottom: 0, fontWeight: 500 }}>
-            That upload didn&apos;t work. Try again, or add your LinkedIn below.
-          </p>
-        )}
-      </div>
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.5s" }}>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 13,
-            fontWeight: 600,
-            color: ONBOARDING_LABEL_COLOR,
-            letterSpacing: "0.6px",
-            textTransform: "uppercase",
-            marginBottom: 12,
-            marginTop: 0,
-          }}
-        >
-          LinkedIn <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", color: ONBOARDING_TEXT_SECONDARY }}>(optional)</span>
-        </p>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "12px 14px",
-            background: ONBOARDING_FIELD_BG,
-            border: ONBOARDING_FIELD_BORDER,
-            borderRadius: 0,
-          }}
-        >
-          <LinkedInIcon style={{ flexShrink: 0 }} />
-          <span
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 15,
-              fontWeight: 500,
-              color: ONBOARDING_TEXT_SECONDARY,
-              flexShrink: 0,
-              userSelect: "none",
-            }}
-          >
-            linkedin.com/in/
-          </span>
-          <input
-            type="text"
-            placeholder="your-name"
-            value={liInput}
-            onChange={onLIChange}
-            onKeyDown={onLIKey}
-            autoComplete="off"
-            spellCheck={false}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              border: "none",
-              background: "transparent",
-              fontFamily: "var(--font-ui)",
-              fontSize: 16,
-              fontWeight: 500,
-              color: ONBOARDING_TEXT,
-              caretColor: "#1A3A2F",
-              outline: "none",
-            }}
-          />
-        </div>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 12, marginBottom: 0, lineHeight: 1.55 }}>
-          Optional — we&apos;ll import your public profile after setup.
-        </p>
-      </div>
-
-      {(canContinueWithResume || canSaveLinkedInOnly) && (
-        <OnboardingActions skipLabel="Skip for now" onSkip={onSkip}>
-          {canContinueWithResume && (
-            <button
-              className="onboarding-cta"
-              onClick={onContinue}
-              style={{ ...PRIMARY_CTA, width: "100%" }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
-              Continue →
-            </button>
-          )}
-          {canSaveLinkedInOnly && (
-            <button
-              type="button"
-              className="onboarding-cta"
-              onClick={onLinkedInOnly}
+              linkedin.com/in/
+            </span>
+            <input
+              type="text"
+              placeholder="your-name"
+              value={liInput}
+              onChange={onLIChange}
+              onKeyDown={onLIKey}
+              autoComplete="off"
+              spellCheck={false}
               style={{
-                ...PRIMARY_CTA,
-                width: "100%",
-                marginTop: canContinueWithResume ? 10 : 0,
-                background: ONBOARDING_FIELD_BG,
+                flex: 1,
+                minWidth: 0,
+                border: "none",
+                background: "transparent",
+                fontFamily: "var(--font-ui)",
+                fontSize: 16,
+                fontWeight: 500,
                 color: ONBOARDING_TEXT,
-                border: ONBOARDING_FIELD_BORDER,
+                caretColor: "#1A3A2F",
+                outline: "none",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
-            >
-              Save LinkedIn only
-            </button>
-          )}
+            />
+          </div>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 12, marginBottom: 0, lineHeight: 1.55 }}>
+            If your profile is pretty empty, no worries — we&apos;ll help you add the rest as you go.
+          </p>
+        </div>
+      )}
+
+      {path === "scratch" && (
+        <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, color: ONBOARDING_TEXT, margin: "0 0 10px", lineHeight: 1.5 }}>
+            We&apos;ll help you build it
+          </p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, margin: 0, lineHeight: 1.6 }}>
+            Next up: a few quick questions about your goals and experience. Answer by typing — or talk it through when voice is ready. You can upload a resume or LinkedIn anytime from Profile.
+          </p>
+        </div>
+      )}
+
+      {path === "resume" && canContinueWithResume && (
+        <OnboardingActions skipLabel="Choose another option" onSkip={() => setPath(null)}>
+          <button
+            className="onboarding-cta"
+            onClick={onContinue}
+            style={{ ...PRIMARY_CTA, width: "100%" }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            Continue →
+          </button>
         </OnboardingActions>
       )}
 
-      {!canContinueWithResume && !canSaveLinkedInOnly && (
-        <div className="anim-fade-up" style={ONBOARDING_CARD}>
-          <button type="button" onClick={onSkip} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 0 }}>
-            Skip for now
+      {path === "linkedin" && canSaveLinkedInOnly && (
+        <OnboardingActions skipLabel="Choose another option" onSkip={() => setPath(null)}>
+          <button
+            type="button"
+            className="onboarding-cta"
+            onClick={onLinkedInOnly}
+            style={{ ...PRIMARY_CTA, width: "100%" }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            Continue with LinkedIn →
           </button>
-        </div>
+        </OnboardingActions>
+      )}
+
+      {path === "scratch" && (
+        <OnboardingActions skipLabel="Choose another option" onSkip={() => setPath(null)}>
+          <button
+            type="button"
+            className="onboarding-cta"
+            onClick={onStartFromScratch}
+            style={{ ...PRIMARY_CTA, width: "100%" }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            Let&apos;s build my profile →
+          </button>
+        </OnboardingActions>
       )}
     </div>
   );
@@ -2982,7 +3080,7 @@ export function ScreenTransition({
                 )}
                 {match && analysis.role && (
                   <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.5, margin: 0, textAlign: "center" }}>
-                    We&apos;ll add this to Pipeline and open your resume with this match score.
+                    We&apos;ll save this job and open your resume with this match score.
                   </p>
                 )}
                 <button type="button" onClick={onFinish} style={{ ...ONBOARDING_SKIP_LINK, marginTop: 4 }}>

@@ -54,7 +54,15 @@ function LoginContent() {
           Welcome back.
         </h2>
         <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32, lineHeight: 1.5 }}>
-          Sign in to pick up where you left off.
+          Sign in to pick up where you left off. New here?{" "}
+          <button
+            type="button"
+            onClick={() => router.push("/signup")}
+            style={{ background: "none", border: "none", padding: 0, color: "#1A3A2F", fontWeight: 600, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
+          >
+            Create an account
+          </button>
+          .
         </p>
 
         <AuthCredentialsForm mode="login" />
@@ -69,7 +77,7 @@ function LoginContent() {
       <p className="auth-footer-link">
         Don&apos;t have an account?{" "}
         <button type="button" onClick={() => router.push("/signup")}>
-          Sign up
+          Sign up — it&apos;s free
         </button>
       </p>
     </div>

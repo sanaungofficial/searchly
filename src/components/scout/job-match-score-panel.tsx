@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fontSans, color, surface, border as B } from "@/lib/typography";
 import { notifyCreditsChanged } from "@/lib/credits";
+import { friendlyResumeError } from "@/lib/user-facing-copy";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import {
   MatchBreakdownBar,
@@ -218,9 +219,15 @@ export function JobMatchScorePanel({
       {loading && (
         <p style={{ fontFamily: sans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>Analyzing resume…</p>
       )}
-      {error && (
-        <p style={{ fontFamily: sans, fontSize: 13, color: "#DC2626", margin: "0 0 10px" }}>{error}</p>
-      )}
+      {error && (() => {
+        const friendly = friendlyResumeError(error);
+        return (
+          <div style={{ margin: "0 0 10px" }}>
+            <p style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>{friendly.headline}</p>
+            <p style={{ fontFamily: sans, fontSize: 13, color: "#52493F", margin: 0, lineHeight: 1.5 }}>{friendly.body}</p>
+          </div>
+        );
+      })()}
 
       {breakdown && (
         <>

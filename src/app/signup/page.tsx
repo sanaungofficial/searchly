@@ -39,7 +39,15 @@ export default function SignupPage() {
           Create your account.
         </h2>
         <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32, lineHeight: 1.5 }}>
-          Your job search workspace — resume, pipeline, and Scout in one place.
+          Create your free account — resume help, saved jobs, and Scout in one place. Already have an account?{" "}
+          <button
+            type="button"
+            onClick={() => router.push("/login")}
+            style={{ background: "none", border: "none", padding: 0, color: "#1A3A2F", fontWeight: 600, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
+          >
+            Sign in
+          </button>
+          .
         </p>
 
         <AuthCredentialsForm mode="signup" />
@@ -48,7 +56,7 @@ export default function SignupPage() {
       <p className="auth-footer-link">
         Already have an account?{" "}
         <button type="button" onClick={() => router.push("/login")}>
-          Sign in
+          Sign in here
         </button>
       </p>
     </div>

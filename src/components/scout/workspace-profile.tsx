@@ -1419,9 +1419,15 @@ function UpskillSectionLabel({ children, variant }: { children: React.ReactNode;
 }
 
 function ProgramLinks({ programs }: { programs: UpskillProgram[] }) {
-  if (!programs.length) return null;
+  if (!programs.length) {
+    return (
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55 }}>
+        We&apos;re building a curated list for this skill — check back soon.
+      </p>
+    );
+  }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+    <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
       {programs.map((program) => (
         <a
           key={program.id}
@@ -1431,21 +1437,21 @@ function ProgramLinks({ programs }: { programs: UpskillProgram[] }) {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 2,
-            padding: "8px 10px",
-            border: border.line,
-            background: surface.inset,
+            gap: 4,
+            padding: "12px 14px",
+            border: border.lineStrong,
+            background: surface.card,
             textDecoration: "none",
+            transition: "background 0.15s",
           }}
         >
           <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
-            {program.name} →
+            {program.name}
           </span>
-          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-            {program.platform}
-            {program.duration ? ` · ${program.duration}` : ""}
-            {program.credential ? ` · ${program.credential}` : ""}
-            {program.type === "certification" ? " · Certification" : program.type === "search" ? " · Search" : ""}
+          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
+            {[program.platform, program.duration, program.credential, program.type === "certification" ? "Certification" : null]
+              .filter(Boolean)
+              .join(" · ")}
           </span>
         </a>
       ))}
@@ -1636,6 +1642,14 @@ function LearningTab({
 
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
+      <ScoutBox stack padding={isMobile ? "18px 16px" : "22px 24px"} style={{ marginBottom: 28, background: surface.page }}>
+        <ScoutDisplayTitle size={isMobile ? 26 : 32} style={{ marginBottom: 8 }}>
+          Learn &amp; grow
+        </ScoutDisplayTitle>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.6, maxWidth: 560 }}>
+          Skills to work on, courses to explore, and progress in one place. Add skills from Target Roles or pick them here.
+        </p>
+      </ScoutBox>
 
       {/* Skills to obtain — grouped by target role */}
       <div style={{ marginBottom: 32 }}>

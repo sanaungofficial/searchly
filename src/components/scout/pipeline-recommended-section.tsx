@@ -683,7 +683,7 @@ function RecommendedResultsList({
                 }}
                 disabled={savingKey === row.dedupeKey}
               >
-                {savingKey === row.dedupeKey ? "Saving…" : "Save to pipeline"}
+                {savingKey === row.dedupeKey ? "Saving…" : "Save job"}
               </ScoutPrimaryBtn>
               {row.url && (
                 <a
@@ -1077,7 +1077,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles from Hirebase matched to your profile — local and remote. Match scores here are estimates; open a role and run Analyze fit for a full resume check. Save any role to track it in your pipeline.
+              Roles from Hirebase matched to your profile — local and remote. Match scores here are estimates; open a role and run Analyze fit for a full resume check. Save any role to track it in your saved jobs.
             </p>
             {snapshotMeta?.generatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>

@@ -442,7 +442,7 @@ export function WorkspaceDashboard() {
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <ScoutPrimaryBtn onClick={addToKanban} style={{ minHeight: 44, flex: isMobile ? 1 : undefined }}>
-                  + Add to pipeline
+                  + Save this job
                 </ScoutPrimaryBtn>
                 <ScoutSecondaryBtn onClick={dismissJobAnalysis} style={{ minHeight: 44 }}>
                   Dismiss
@@ -467,7 +467,7 @@ export function WorkspaceDashboard() {
           <DashboardHomeTop isMobile={isMobile} />
 
           <div style={{ borderTop: border.line, paddingTop: isMobile ? 24 : 32, marginBottom: isMobile ? 24 : 32 }}>
-            <ScoutLabel>Your pipeline</ScoutLabel>
+            <ScoutLabel>Your saved jobs</ScoutLabel>
 
             {total === 0 ? (
               <ScoutBox style={{ marginTop: 10, textAlign: "center" }} padding={isMobile ? "24px 20px" : "20px 24px"}>
@@ -489,7 +489,7 @@ export function WorkspaceDashboard() {
                       <span style={displayTitleStyle(isMobile ? 40 : 48, { lineHeight: 1 })}>
                         {total}
                       </span>
-                      <span style={displayTitleStyle(20, { color: color.muted, lineHeight: 1.1 })}>in pipeline</span>
+                      <span style={displayTitleStyle(20, { color: color.muted, lineHeight: 1.1 })}>saved</span>
                     </div>
                   </ScoutBox>
                 )}

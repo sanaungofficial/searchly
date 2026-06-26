@@ -27,6 +27,20 @@ const FIT_SUGGESTIONS = [
   "What should I lead with in an interview?",
 ];
 
+const FIT_STARTERS_NO_RESUME = [
+  "What would I need to qualify for this role?",
+  "Help me figure out if this job fits me",
+  "What should I put on my resume for this?",
+  "What experience should I highlight?",
+];
+
+const FIT_FOLLOWUP_QUESTIONS = [
+  "What are my biggest gaps?",
+  "How can I stand out?",
+  "What should I say in an interview?",
+  "What skills should I learn first?",
+];
+
 const COACH_PREP_SUGGESTIONS = [
   "What should I ask about their track record?",
   "How do I open without wasting time?",
@@ -127,6 +141,7 @@ export function ChatWidget() {
   const [coachStreaming, setCoachStreaming] = useState(false);
   const [coachPrepStreaming, setCoachPrepStreaming] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [hasResume, setHasResume] = useState<boolean | null>(null);
   const [chatJobId, setChatJobId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -193,6 +208,20 @@ export function ChatWidget() {
   }, [fitChatNonce, chatOpen, chatView, drawerCardId, kanbanCards, fitChatJob, resetFitChat]);
 
   useEffect(() => {
+    if (chatView !== "chat" || !chatOpen) return;
+    void fetch("/api/assets")
+      .then((r) => r.json())
+      .then((rows: Array<{ type?: string }>) => {
+        if (!Array.isArray(rows)) {
+          setHasResume(false);
+          return;
+        }
+        setHasResume(rows.some((a) => a.type === "RESUME"));
+      })
+      .catch(() => setHasResume(false));
+  }, [chatView, chatOpen, fitChatNonce]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, coachPrepMessages, chatOpen]);
 
@@ -201,6 +230,13 @@ export function ChatWidget() {
       window.setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [chatOpen, chatView]);
+
+  const fitSuggestions =
+    hasResume === false ? FIT_STARTERS_NO_RESUME : FIT_SUGGESTIONS;
+
+  const showFitStarters = currentJob && messages.length <= 1 && !streaming;
+  const showFitFollowups =
+    currentJob && messages.length > 1 && !streaming && messages[messages.length - 1]?.role === "assistant";
 
   const toggleOpen = () => {
     setChatOpen(!chatOpen);
@@ -224,6 +260,16 @@ export function ChatWidget() {
     setSelectedJobId(null);
     if (ext?._dbId) router.push(pipelineJobUrl(ext._dbId, tool));
     else router.push("/opportunities/pipeline");
+  };
+
+  const handleFitAction = (action: "resume" | "cover" | "profile" | "create-resume") => {
+    if (!currentJob) return;
+    if (action === "profile" || action === "create-resume") {
+      setChatOpen(false);
+      router.push("/profile");
+      return;
+    }
+    handleOpenTool(currentJob.id, action);
   };
 
   const handleToolClick = (tool: DrawerTool) => {
@@ -885,9 +931,9 @@ export function ChatWidget() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {currentJob && messages.length <= 1 && !streaming && (
+                {showFitStarters && (
                   <div style={{ padding: "0 14px 10px", display: "flex", flexWrap: "wrap", gap: 6, flexShrink: 0 }}>
-                    {FIT_SUGGESTIONS.map((s) => (
+                    {fitSuggestions.map((s) => (
                       <button
                         key={s}
                         onClick={() => sendMessage(s)}
@@ -910,6 +956,68 @@ export function ChatWidget() {
                   </div>
                 )}
 
+                {showFitFollowups && (
+                  <>
+                    <div style={{ padding: "0 14px 8px", display: "flex", flexWrap: "wrap", gap: 6, flexShrink: 0 }}>
+                      {FIT_FOLLOWUP_QUESTIONS.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => sendMessage(s)}
+                          style={{
+                            padding: "6px 10px",
+                            background: "#FFF",
+                            border: "1px solid rgba(0,0,0,0.1)",
+                            borderRadius: 0,
+                            fontFamily: sans,
+                            fontSize: 12,
+                            color: "#1A3A2F",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ padding: "0 14px 10px", display: "flex", flexWrap: "wrap", gap: 6, flexShrink: 0 }}>
+                      {(hasResume === false
+                        ? [
+                            { id: "create-resume" as const, label: "Create my resume →" },
+                            { id: "profile" as const, label: "Build my profile →" },
+                          ]
+                        : [
+                            { id: "resume" as const, label: "Improve my resume for this role →" },
+                            { id: "cover" as const, label: "Write a cover letter →" },
+                            { id: "profile" as const, label: "Update my profile →" },
+                          ]
+                      ).map(({ id, label }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => handleFitAction(id)}
+                          style={{
+                            padding: "8px 12px",
+                            background: "rgba(26,58,47,0.08)",
+                            border: "1px solid rgba(26,58,47,0.15)",
+                            borderRadius: 0,
+                            fontFamily: sans,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: color.forest,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
                 <div
                   style={{
                     padding: "10px 12px 14px",
@@ -919,7 +1027,7 @@ export function ChatWidget() {
                 >
                   {!currentJob ? (
                     <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0, textAlign: "center" }}>
-                      Open a job from your pipeline to start.
+                      Open a saved job to start chatting.
                     </p>
                   ) : (
                     <>

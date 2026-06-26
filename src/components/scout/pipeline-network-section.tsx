@@ -394,7 +394,7 @@ function NetworkJobCard({
       <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>
         {onSave && (
           <ScoutPrimaryBtn onClick={() => onSave()} disabled={saving}>
-            {saving ? "Saving…" : "Save to pipeline"}
+            {saving ? "Saving…" : "Save job"}
           </ScoutPrimaryBtn>
         )}
         {internalView && job.topEchelonUrl && (

@@ -21,6 +21,7 @@ import {
   type LinkedInAnalysisData,
   type LinkedInSectionId,
 } from "@/lib/linkedin-analysis";
+import { friendlyLinkedInImportError, LINKEDIN_SPARSE_MESSAGE } from "@/lib/user-facing-copy";
 import { LINKEDIN_EMPLOYMENT_TYPES, newLinkedInEntryId, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
@@ -283,6 +284,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const [fixSuggestIssues, setFixSuggestIssues] = useState<SectionFixIssue[]>([]);
   const [fixSuggestionsLoading, setFixSuggestionsLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importNotice, setImportNotice] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
   const [showImportInput, setShowImportInput] = useState(false);
   const [newSkill, setNewSkill] = useState("");
@@ -478,6 +480,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     }
     setImporting(true);
     setError(null);
+    setImportNotice(null);
     try {
       const res = await fetch("/api/profile/linkedin-import", {
         method: "POST",
@@ -485,16 +488,24 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         body: JSON.stringify({ linkedinUrl: url }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Import failed");
+      if (!res.ok) {
+        const friendly = friendlyLinkedInImportError(typeof data.error === "string" ? data.error : "Import failed");
+        throw new Error(`${friendly.headline} ${friendly.body}`);
+      }
       await load();
       if (typeof data.linkedinUrl === "string") setLinkedinUrl(data.linkedinUrl);
       if (typeof data.name === "string") setName(data.name);
       setUpdatedAt(new Date().toISOString());
       setShowImportInput(false);
       setImportUrl("");
+      if (data.sparse) {
+        setImportNotice(typeof data.sparseMessage === "string" ? data.sparseMessage : LINKEDIN_SPARSE_MESSAGE);
+      }
       await loadAnalysis(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "LinkedIn import failed");
+      const raw = e instanceof Error ? e.message : "LinkedIn import failed";
+      const friendly = friendlyLinkedInImportError(raw);
+      setError(`${friendly.headline} ${friendly.body}`);
     } finally {
       setImporting(false);
     }
@@ -733,7 +744,12 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
         </div>
       </div>
 
-      {error && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 16 }}>{error}</p>}
+      {importNotice && (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: color.forest, background: "rgba(26,58,47,0.06)", padding: "12px 14px", marginBottom: 16, lineHeight: 1.55, border: border.line }}>
+          {importNotice}
+        </p>
+      )}
+      {error && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 16, lineHeight: 1.55 }}>{error}</p>}
 
       {showImportInput && (
         <ScoutBox padding={16} style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
