@@ -1,9 +1,21 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-usage";
 import { buildAssistantContext, formatAssistantContextForPrompt } from "@/lib/kimchi-assistant/context";
-import { isKimchiAiConfigured, kimchiStreamText } from "@/lib/llm";
+import { buildKimchiMailTools } from "@/lib/kimchi-assistant/mail/chat-tools";
+import { isKimchiAiConfigured, kimchiStreamTextWithTools } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { prisma } from "@/lib/prisma";
+
+const MAIL_TOOL_GUIDE = `
+You can act on the user's connected inbox and calendar using tools:
+- list_recent_emails / get_email — read mail (summarize; don't dump raw JSON)
+- draft_email_reply — draft only; show the user and get explicit confirmation before send_email
+- send_email — only after the user confirms to, subject, and body
+- list_calendar_events — upcoming interviews and meetings
+- update_job_stage — pipeline updates when the user agrees
+- open_app_page — navigate when they need a full UI (resume editor, opportunities)
+
+If inbox is not connected, tell them to connect at /inbox. Never send email without explicit user confirmation.`;
 
 export async function POST(request: Request) {
   if (!isKimchiAiConfigured()) {
@@ -67,17 +79,19 @@ export async function POST(request: Request) {
   const strategyContext = `\n\n${formatAssistantContextForPrompt(assistantCtx)}`;
 
   const template = await getPrompt("CHAT_SYSTEM");
-  const systemPrompt = interpolate(template, {
+  const systemPrompt = `${interpolate(template, {
     pipelineContext,
     focusContext,
     resumeContext: `${resumeContext}${strategyContext}`,
-  });
+  })}\n${MAIL_TOOL_GUIDE}`;
 
-  return kimchiStreamText({
+  return kimchiStreamTextWithTools({
     tier: "talk",
     system: systemPrompt,
     messages,
-    maxOutputTokens: 1024,
+    tools: buildKimchiMailTools(dbUser.id),
+    maxSteps: 8,
+    maxOutputTokens: 1536,
     userId: dbUser.id,
     tags: ["feature:scout-chat"],
     onUsage: (usage, modelId) => {

@@ -3,12 +3,11 @@
 import { ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { InboxInsightRow } from "./inbox-insight-row";
-import type { ActivitySummary, InboxLens, PipelineJob } from "./inbox-types";
+import type { ActivitySummary, PipelineJob } from "./inbox-types";
 
 const STRIP_LIMIT = 2;
 
 type Props = {
-  lens: InboxLens;
   insightsLoaded: boolean;
   insightsLoading: boolean;
   onCheckEmail: () => void;
@@ -25,7 +24,6 @@ type Props = {
 };
 
 export function InboxInsightsStrip({
-  lens,
   insightsLoaded,
   insightsLoading,
   onCheckEmail,
@@ -36,7 +34,7 @@ export function InboxInsightsStrip({
   onOpenMail,
   onAction,
 }: Props) {
-  const title = lens === "work" ? "Work insights" : "Insights";
+  const title = "Insights";
   const emailRows = insightsLoaded ? activities.slice(0, STRIP_LIMIT) : [];
 
   return (
@@ -51,7 +49,7 @@ export function InboxInsightsStrip({
         </ScoutSecondaryBtn>
         {!insightsLoaded && (
           <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>
-            {lens === "work" ? "Client & prospect mail" : "Roles & follow-ups from your mail"}
+            Roles & follow-ups from your mail
           </span>
         )}
         <button

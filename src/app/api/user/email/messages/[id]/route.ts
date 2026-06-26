@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
-import { parseInboxLens, resolveInboxGrant } from "@/lib/inbox-lens";
+import { resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import {
   fetchFolders,
@@ -13,12 +13,9 @@ import {
   serializeMessageSummary,
   updateMessage,
 } from "@/lib/nylas-inbox";
-import { prisma } from "@/lib/prisma";
 
-async function loadGrant(dbUser: { id: string; role: string; email: string }, req: NextRequest) {
-  const lens = parseInboxLens(req.nextUrl.searchParams.get("lens"));
-  const resolved = await resolveInboxGrant(dbUser.id, dbUser.role, dbUser.email, lens);
-  return { lens, grant: resolved };
+async function loadGrant(userId: string) {
+  return resolveInboxGrant(userId);
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -29,12 +26,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
 
-  const { lens, grant } = await loadGrant(dbUser, req);
+  const grant = await loadGrant(dbUser.id);
   if (!grant) {
-    return NextResponse.json(
-      { error: lens === "work" ? "Work inbox not connected" : "Inbox not connected" },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
   }
 
   const { id } = await params;
@@ -43,14 +37,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const message = await fetchMessage(grant.nylasGrantId, id);
     if (!message) return NextResponse.json({ error: "Message not found" }, { status: 404 });
-
-    const activity =
-      lens === "job_search"
-        ? await prisma.jobActivityLog.findFirst({
-            where: { userId: dbUser.id, nylasMessageId: id },
-            include: { job: { select: { id: true, company: true, role: true, stage: true } } },
-          })
-        : null;
 
     const bodyHtml = message.body?.includes("<") ? message.body : null;
     const bodyText = messagePlainText(message);
@@ -70,23 +56,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       bodyText,
       attachments: serializeAttachments(message),
       thread,
-      activity: activity
-        ? {
-            id: activity.id,
-            source: activity.source,
-            signal: activity.signal,
-            status: activity.status,
-            suggestedStage: activity.suggestedStage,
-            appliedStage: activity.appliedStage,
-            confidence: activity.confidence,
-            title: activity.title,
-            snippet: activity.snippet,
-            companyGuess: activity.companyGuess,
-            roleGuess: activity.roleGuess,
-            interviewAt: activity.interviewAt?.toISOString() ?? null,
-            job: activity.job,
-          }
-        : null,
     });
   } catch (err) {
     console.error("[user/email/messages/id]", err);
@@ -102,7 +71,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
 
-  const { grant } = await loadGrant(dbUser, req);
+  const grant = await loadGrant(dbUser.id);
   if (!grant) return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
 
   const { id } = await params;

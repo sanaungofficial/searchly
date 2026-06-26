@@ -4,17 +4,15 @@ import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { INBOX_WISDOM_TIPS } from "@/lib/inbox-wisdom-tips";
-import { INBOX_WORK_WISDOM_TIPS } from "@/lib/inbox-work-wisdom-tips";
 import type { FollowUpSuggestion, InboxInsightsPayload } from "@/lib/inbox-insights-api";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 import { InboxInsightRow } from "./inbox-insight-row";
 import { InboxWisdomTipRow } from "./inbox-wisdom-tip-row";
-import type { ActivitySummary, InboxLens, PipelineJob } from "./inbox-types";
+import type { ActivitySummary, PipelineJob } from "./inbox-types";
 
 const DRAWER_WIDTH = 440;
 
 type Props = {
-  lens: InboxLens;
   open: boolean;
   onClose: () => void;
   insightsLoaded: boolean;
@@ -32,7 +30,6 @@ type Props = {
 };
 
 export function InboxInsightsDrawer({
-  lens,
   open,
   onClose,
   insightsLoaded,
@@ -45,12 +42,10 @@ export function InboxInsightsDrawer({
   onAction,
 }: Props) {
   const isMobile = useIsMobile();
-  const tips = lens === "work" ? INBOX_WORK_WISDOM_TIPS : INBOX_WISDOM_TIPS;
-  const tipsTitle = lens === "work" ? "Work inbox tips" : "Job search tips";
+  const tips = INBOX_WISDOM_TIPS;
+  const tipsTitle = "Job search tips";
   const checkHint =
-    lens === "work"
-      ? "Check your work mail when you're ready — Kimchi will surface client and prospect updates. Nothing runs until you tap the button."
-      : "Check your email when you're ready — Kimchi will look for recruiters, interviews, and application updates. Nothing runs until you tap the button.";
+    "Check your email when you're ready — Kimchi will look for recruiters, interviews, and application updates. Nothing runs until you tap the button.";
 
   if (!open) return null;
 

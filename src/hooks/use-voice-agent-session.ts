@@ -11,6 +11,7 @@ import type { VoiceOrbState } from "@/components/voice/voice-orb";
 import { VOICE_AGENT_AUDIO } from "@/lib/voice-agent-audio";
 import { VoiceAgentPlayer } from "@/lib/voice-agent-player";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
+import { MAIL_VOICE_TOOL_NAMES } from "@/lib/kimchi-assistant/tools/registry";
 import {
   applyVoiceAgentField,
   type VoiceAgentFieldName,
@@ -55,6 +56,20 @@ function logVoiceSessionDuration(context: VoiceAgentContext, startedAt: number |
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ durationSeconds, context }),
   }).catch(() => {});
+}
+
+async function callMailTool(tool: string, args: Record<string, unknown>) {
+  const res = await fetch("/api/assistant/mail", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tool, args }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = typeof data.error === "string" ? data.error : "Could not complete that mail action.";
+    return { ok: false, error: msg };
+  }
+  return { ok: true, data };
 }
 
 function buildTranscript(lines: Array<{ role: string; content: string }>): string {
@@ -279,6 +294,15 @@ export function useVoiceAgentSession({
                 } catch {
                   session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: false }));
                 }
+              })();
+            } else if (MAIL_VOICE_TOOL_NAMES.has(fn.name)) {
+              void (async () => {
+                const result = await callMailTool(fn.name, args as Record<string, unknown>);
+                session.sendFunctionCallResponse(
+                  fn.id,
+                  fn.name,
+                  JSON.stringify(result.ok ? result.data : { error: result.error }),
+                );
               })();
             }
           } catch {

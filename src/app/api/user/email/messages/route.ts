@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
-import { sortMessagesByJobRelevance } from "@/lib/inbox-job-priority";
-import { parseInboxLens, resolveInboxGrant } from "@/lib/inbox-lens";
+import { resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import { listMessages, serializeMessageSummary } from "@/lib/nylas-inbox";
-import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   const { dbUser } = await getActingUser();
@@ -14,13 +12,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
 
-  const lens = parseInboxLens(req.nextUrl.searchParams.get("lens"));
-  const grant = await resolveInboxGrant(dbUser.id, dbUser.role, dbUser.email, lens);
+  const grant = await resolveInboxGrant(dbUser.id);
   if (!grant) {
-    return NextResponse.json(
-      { error: lens === "work" ? "Work inbox not connected" : "Inbox not connected" },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
   }
 
   const sp = req.nextUrl.searchParams;
@@ -50,47 +44,11 @@ export async function GET(req: NextRequest) {
       }));
     }
 
-    const ids = messages.map((m) => m.id);
-    const activities =
-      lens === "job_search" && ids.length
-        ? await prisma.jobActivityLog.findMany({
-            where: { userId: dbUser.id, nylasMessageId: { in: ids } },
-            include: { job: { select: { id: true, company: true, role: true, stage: true } } },
-          })
-        : [];
-
-    const activityByMessageId = Object.fromEntries(
-      activities.filter((a) => a.nylasMessageId).map((a) => [a.nylasMessageId!, a]),
-    );
-
-    const serialized = messages.map((m) => ({
-      ...serializeMessageSummary(m),
-      activity: activityByMessageId[m.id]
-        ? {
-            id: activityByMessageId[m.id].id,
-            signal: activityByMessageId[m.id].signal,
-            status: activityByMessageId[m.id].status,
-            suggestedStage: activityByMessageId[m.id].suggestedStage,
-            confidence: activityByMessageId[m.id].confidence,
-            job: activityByMessageId[m.id].job,
-          }
-        : null,
-    }));
-
-    const ordered =
-      lens === "work" || q
-        ? serialized
-        : sortMessagesByJobRelevance(
-            serialized.map((m) => ({
-              ...m,
-              hasAgentActivity: Boolean(m.activity),
-            })),
-          );
+    const serialized = messages.map((m) => serializeMessageSummary(m));
 
     return NextResponse.json({
-      messages: ordered,
+      messages: serialized,
       nextCursor,
-      lens,
     });
   } catch (err) {
     console.error("[user/email/messages]", err);
