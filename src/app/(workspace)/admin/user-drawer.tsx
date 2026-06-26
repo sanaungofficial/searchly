@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
 
@@ -199,7 +200,7 @@ export function UserDrawer({
         <div className="px-6 py-5 space-y-5 flex-1">
           {/* Quick stats */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center">
+            <ScoutBox padding="12px 16px" className="text-center">
               <p
                 className="text-2xl font-semibold text-[#1A1A1A]"
                 style={{ fontFamily: "var(--font-display)" }}
@@ -207,8 +208,8 @@ export function UserDrawer({
                 {user._count.jobs}
               </p>
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mt-0.5">jobs</p>
-            </div>
-            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center">
+            </ScoutBox>
+            <ScoutBox padding="12px 16px" className="text-center">
               <p
                 className="text-2xl font-semibold text-[#1A1A1A]"
                 style={{ fontFamily: "var(--font-display)" }}
@@ -216,8 +217,8 @@ export function UserDrawer({
                 {aiThisMonth}
               </p>
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mt-0.5">AI / mo</p>
-            </div>
-            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center flex flex-col items-center justify-center gap-1">
+            </ScoutBox>
+            <ScoutBox padding="12px 16px" className="text-center flex flex-col items-center justify-center gap-1">
               {user.subscription ? (
                 <span
                   className={`text-xs font-[family-name:var(--font-mono-ui)] px-2 py-0.5 rounded-[var(--scout-radius)] border ${STATUS_STYLES[user.subscription.status]}`}
@@ -228,11 +229,11 @@ export function UserDrawer({
                 <span className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)]">free</span>
               )}
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)]">plan</p>
-            </div>
+            </ScoutBox>
           </div>
 
           {/* Role */}
-          <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
+          <ScoutBox padding={16}>
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">Role</p>
             {canEdit ? (
               <div className="flex items-center gap-2">
@@ -263,10 +264,10 @@ export function UserDrawer({
             ) : (
               <span className="text-sm font-[family-name:var(--font-mono-ui)] text-[#52493F]">{user.role}</span>
             )}
-          </div>
+          </ScoutBox>
 
           {/* Account */}
-          <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
+          <ScoutBox padding={16}>
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">Account</p>
             <Row label="Joined" value={fmt(user.createdAt)} />
             <Row label="Attribution" value={user.profile?.attribution} />
@@ -287,11 +288,11 @@ export function UserDrawer({
                 </a>
               </div>
             )}
-          </div>
+          </ScoutBox>
 
           {/* Profile */}
           {user.profile && (
-            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
+            <ScoutBox padding={16}>
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">Profile</p>
               <Row label="Status" value={user.profile.employmentStatus} />
               <Row label="Current comp" value={user.profile.currentSalary} />
@@ -321,12 +322,12 @@ export function UserDrawer({
                   <p className="text-xs text-[#52493F] leading-relaxed line-clamp-5">{user.profile.summary}</p>
                 </div>
               )}
-            </div>
+            </ScoutBox>
           )}
 
           {/* Recent jobs */}
           {user.jobs.length > 0 && (
-            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
+            <ScoutBox padding={16}>
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">
                 Jobs
                 {user._count.jobs > user.jobs.length
@@ -349,11 +350,11 @@ export function UserDrawer({
                   </div>
                 ))}
               </div>
-            </div>
+            </ScoutBox>
           )}
 
           {/* AI Usage */}
-          <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
+          <ScoutBox padding={16}>
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">AI Usage (lifetime)</p>
             {aiLoading ? (
               <div className="space-y-2">
@@ -412,7 +413,7 @@ export function UserDrawer({
             ) : (
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)]">No AI usage yet</p>
             )}
-          </div>
+          </ScoutBox>
 
           {!canEdit && (
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] text-center pb-2">

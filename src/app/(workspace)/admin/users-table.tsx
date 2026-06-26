@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { UserRole, SubscriptionStatus } from "@prisma/client";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { UserDrawer, DrawerUser } from "./user-drawer";
 
 export type UserRow = DrawerUser;
@@ -82,7 +83,7 @@ function InviteModal({
     <>
       <div className="fixed inset-0 bg-black/40 z-[100]" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-[101] p-4">
-        <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] shadow-2xl w-full max-w-md p-6">
+        <ScoutBox padding={24} className="shadow-2xl w-full max-w-md">
           <div className="flex items-center justify-between mb-5">
             <h2
               className="text-base font-semibold text-[#1A1A1A]"
@@ -150,7 +151,7 @@ function InviteModal({
               </button>
             </div>
           </form>
-        </div>
+        </ScoutBox>
       </div>
     </>
   );
@@ -213,7 +214,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
 
   return (
     <>
-      <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] overflow-hidden">
+      <ScoutBox padding={0} style={{ overflow: "hidden" }}>
         {/* Controls */}
         <div className="px-6 py-4 border-b border-[rgba(17,17,17,0.08)] space-y-3">
           <div className="flex items-center gap-3">
@@ -381,7 +382,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
             </div>
           </div>
         )}
-      </div>
+      </ScoutBox>
 
       {showInvite && (
         <InviteModal

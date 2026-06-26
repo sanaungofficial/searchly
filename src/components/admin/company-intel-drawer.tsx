@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import type { CompanyEnrichmentCache } from "@/lib/hirebase-company-sync";
 
@@ -226,7 +227,7 @@ export function CompanyIntelDrawer({
           {company && !loading && (
             <>
               <Section title="Overview">
-                <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] bg-[var(--scout-inset)]/60 px-4 py-3">
+                <ScoutBox flat padding="12px 16px" bg="rgba(245, 241, 235, 0.6)">
                   <DetailRow label="Catalog slug" value={company.slug} />
                   <DetailRow label="Type" value={company.catalogType} />
                   <DetailRow label="Watchlists" value={String(company.watchlistCount)} />
@@ -241,12 +242,12 @@ export function CompanyIntelDrawer({
                           : "Fresh"
                     }
                   />
-                </div>
+                </ScoutBox>
               </Section>
 
               {(company.hirebaseProfileAt || company.hirebaseSlug) && (
                 <Section title="Hirebase">
-                  <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] bg-[var(--scout-inset)]/60 px-4 py-3">
+                  <ScoutBox flat padding="12px 16px" bg="rgba(245, 241, 235, 0.6)">
                     <DetailRow label="Slug" value={company.hirebaseSlug} />
                     <DetailRow label="Job board" value={company.hirebaseJobBoard} />
                     <DetailRow
@@ -258,7 +259,7 @@ export function CompanyIntelDrawer({
                       value={company.hirebaseSubindustries.length ? company.hirebaseSubindustries.join(", ") : null}
                     />
                     <DetailRow label="Synced" value={formatWhen(company.hirebaseSyncedAt)} />
-                  </div>
+                  </ScoutBox>
                 </Section>
               )}
 
@@ -289,20 +290,20 @@ export function CompanyIntelDrawer({
                     </div>
 
                     {(intel.fundingStage || intel.totalFunding || (intel.keyInvestors?.length ?? 0) > 0) && (
-                      <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-4 py-3 mb-4">
+                      <ScoutBox flat padding="12px 16px" style={{ marginBottom: 16 }}>
                         <DetailRow label="Funding stage" value={intel.fundingStage} />
                         <DetailRow label="Total funding" value={intel.totalFunding} />
                         <DetailRow label="Investors" value={intel.keyInvestors?.join(", ")} />
-                      </div>
+                      </ScoutBox>
                     )}
 
                     {(intel.leadership?.length ?? 0) > 0 && (
                       <div className="grid gap-2 mb-4">
                         {intel.leadership!.map((leader, i) => (
-                          <div key={i} className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-3 py-2">
+                          <ScoutBox key={i} flat padding="8px 12px">
                             <div className="text-sm font-medium text-[#1A1A1A]">{leader.name}</div>
                             <div className="text-xs text-[var(--scout-muted)]">{leader.title}</div>
-                          </div>
+                          </ScoutBox>
                         ))}
                       </div>
                     )}
@@ -310,11 +311,11 @@ export function CompanyIntelDrawer({
                     {(intel.recentNews?.length ?? 0) > 0 && (
                       <div className="space-y-2">
                         {intel.recentNews!.map((item, i) => (
-                          <div key={i} className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-3 py-2">
+                          <ScoutBox key={i} flat padding="8px 12px">
                             <div className="text-sm font-medium text-[#1A1A1A]">{item.title}</div>
                             <div className="text-xs text-[var(--scout-muted)] mt-1">{item.summary}</div>
                             <div className="text-xs text-[var(--scout-muted)] mt-1">{item.date}</div>
-                          </div>
+                          </ScoutBox>
                         ))}
                       </div>
                     )}
@@ -350,7 +351,7 @@ export function CompanyIntelDrawer({
                 ) : (
                   <div className="space-y-2 max-h-72 overflow-y-auto">
                     {jobs.slice(0, 50).map((job, i) => (
-                      <div key={`${job.title}-${i}`} className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-3 py-2">
+                      <ScoutBox key={`${job.title}-${i}`} flat padding="8px 12px">
                         <div className="text-sm font-medium text-[#1A1A1A]">{job.title}</div>
                         <div className="text-xs text-[var(--scout-muted)] mt-1">
                           {[job.location, job.department].filter(Boolean).join(" · ") || "No location"}
@@ -365,7 +366,7 @@ export function CompanyIntelDrawer({
                             View posting
                           </a>
                         )}
-                      </div>
+                      </ScoutBox>
                     ))}
                     {jobs.length > 50 && (
                       <p className="text-xs text-[var(--scout-muted)]">Showing first 50 of {jobs.length} cached roles.</p>

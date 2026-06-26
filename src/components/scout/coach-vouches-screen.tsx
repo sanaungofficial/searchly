@@ -1,16 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { CoachOnboardingHeader } from "./coach-onboarding-screens";
 import { coachVouchShareMessage } from "@/lib/coach-onboarding";
 
-const CARD: React.CSSProperties = {
-  background: "#FFFFFF",
-  borderRadius: "var(--scout-radius)",
-  padding: "clamp(16px, 4vw, 24px)",
-  border: "1px solid rgba(26,58,47,0.14)",
-  boxShadow: "0 2px 10px rgba(26,58,47,0.06)",
-};
+const CARD_PADDING = "clamp(16px, 4vw, 24px)";
 
 const DISPLAY_H2: React.CSSProperties = {
   fontFamily: "var(--font-display)",
@@ -63,10 +58,8 @@ function SubmittedModal({ onClose }: { onClose: () => void }) {
       }}
       onClick={onClose}
     >
-      <div
-        style={{ ...CARD, maxWidth: 440, width: "100%", position: "relative" }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, width: "100%" }}>
+      <ScoutBox padding={CARD_PADDING} style={{ position: "relative" }}>
         <button
           type="button"
           onClick={onClose}
@@ -88,6 +81,7 @@ function SubmittedModal({ onClose }: { onClose: () => void }) {
         <button type="button" className="onboarding-cta" onClick={onClose} style={{ ...PRIMARY_CTA, width: "100%" }}>
           Get started
         </button>
+      </ScoutBox>
       </div>
     </div>
   );
@@ -171,13 +165,13 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
 
           <div className="onboarding-content" style={{ maxWidth: 720 }}>
             <div className="flex flex-col gap-5 onboarding-screen-gap">
-              <div className="anim-fade-up" style={CARD}>
+              <ScoutBox padding={CARD_PADDING} className="anim-fade-up">
                 <h2 style={{ ...DISPLAY_H2, margin: "0 0 12px" }}>
                   You&apos;ve told us about you. Now we want to hear from your biggest champions.
                 </h2>
-              </div>
+              </ScoutBox>
 
-              <div className="anim-fade-up" style={{ ...CARD, background: "rgba(26,58,47,0.04)" }}>
+              <ScoutBox padding={CARD_PADDING} bg="rgba(26,58,47,0.04)" className="anim-fade-up">
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 8px", color: "#1A1A1A" }}>
@@ -207,10 +201,10 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                   </div>
                   <div style={{ fontSize: 56 }} aria-hidden="true">👍</div>
                 </div>
-              </div>
+              </ScoutBox>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-                <div style={CARD}>
+                <ScoutBox padding={CARD_PADDING}>
                   <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#78716c", margin: "0 0 8px" }}>You have been vouched for</p>
                   <p style={{ fontFamily: "var(--font-display)", fontSize: 48, fontWeight: 500, margin: "0 0 12px", color: "#1A1A1A" }}>
                     {vouchCount} {vouchCount === 1 ? "time" : "times"}
@@ -220,9 +214,9 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                       View your vouch page →
                     </a>
                   )}
-                </div>
+                </ScoutBox>
 
-                <div style={CARD}>
+                <ScoutBox padding={CARD_PADDING}>
                   <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 600, margin: "0 0 12px" }}>What are vouches?</p>
                   <ul style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", lineHeight: 1.65, margin: 0, paddingLeft: 18 }}>
                     <li>Help you stand out while your profile is in review</li>
@@ -230,10 +224,10 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                     <li>Help our team confirm you&apos;re a great fit to coach on Kimchi</li>
                     <li>Kickstart your profile with social proof</li>
                   </ul>
-                </div>
+                </ScoutBox>
               </div>
 
-              <div style={CARD}>
+              <ScoutBox padding={CARD_PADDING}>
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 600, margin: "0 0 8px" }}>Sharing your vouch link</p>
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", margin: "0 0 16px" }}>
                   Share your link in as many of these places as possible:
@@ -256,9 +250,9 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                     </span>
                   ))}
                 </div>
-              </div>
+              </ScoutBox>
 
-              <div style={{ ...CARD, background: "var(--scout-inset)" }}>
+              <ScoutBox padding={CARD_PADDING} bg="var(--scout-inset)">
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, margin: "0 0 12px" }}>Need help writing your post? Try this.</p>
                 <pre
                   style={{
@@ -276,16 +270,19 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                 <button type="button" className="onboarding-cta" onClick={onCopyMessage} style={SECONDARY_BTN}>
                   {copiedMessage ? "Copied!" : "Copy message"}
                 </button>
-              </div>
+              </ScoutBox>
 
-              <div style={{ ...CARD, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+              <ScoutBox
+                padding={CARD_PADDING}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}
+              >
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", margin: 0 }}>
                   You can access your provider portal while we review your application.
                 </p>
                 <a href="/clients" style={{ ...PRIMARY_CTA, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
                   Go to Clients →
                 </a>
-              </div>
+              </ScoutBox>
             </div>
           </div>
         </div>

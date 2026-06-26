@@ -273,7 +273,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                     display: "block",
                     textAlign: "center",
                     padding: "10px 14px",
-                    background: "#fff",
+                    background: surface.card,
                     color: color.stone,
                     fontFamily: fontSans,
                     fontSize: 13,
@@ -291,7 +291,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                     disabled={retryingScheduler}
                     style={{
                       padding: "10px 14px",
-                      background: "#fff",
+                      background: surface.card,
                       border: border.line,
                       fontFamily: fontSans,
                       fontSize: 13,

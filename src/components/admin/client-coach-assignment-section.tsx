@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
-import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutBox } from "@/components/scout/scout-box";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { border, color, fontMono, fontSans, surface } from "@/lib/typography";
 
@@ -91,7 +91,7 @@ export function ClientCoachAssignmentSection({
   }
 
   return (
-    <div style={{ background: surface.card, border: border.line, marginBottom: 20 }}>
+    <ScoutBox padding={0} style={{ marginBottom: 20, overflow: "hidden" }}>
       <div style={{ padding: "14px 20px", borderBottom: border.line }}>
         <p style={{ fontSize: 12, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, margin: 0 }}>
           Assigned coach
@@ -192,6 +192,6 @@ export function ClientCoachAssignmentSection({
 
         {error && <p style={{ fontFamily: fontSans, fontSize: 13, color: "#dc2626", margin: "12px 0 0" }}>{error}</p>}
       </div>
-    </div>
+    </ScoutBox>
   );
 }

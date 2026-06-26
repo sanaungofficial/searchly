@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatUsdFromCents } from "@/lib/coach-pricing";
 import { formatPurchaseLeadSource, formatPurchaseStatus, type AdminPurchaseRow } from "@/lib/coach-purchase";
@@ -109,7 +110,7 @@ export function CoachingPurchaseDrawer({
             />
           </div>
 
-          <div style={{ border: border.line, background: surface.card, padding: "16px 18px", marginBottom: 20 }}>
+          <ScoutBox padding="16px 18px" style={{ marginBottom: 20 }}>
             <p style={{ margin: "0 0 12px", fontFamily: fontMono, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
               Fee breakdown
             </p>
@@ -136,7 +137,7 @@ export function CoachingPurchaseDrawer({
                 </span>
               </div>
             ))}
-          </div>
+          </ScoutBox>
 
           {purchase.salesAssisted && (
             <p style={{ margin: "0 0 16px", fontFamily: fontSans, fontSize: 13, color: "#b45309", lineHeight: 1.5 }}>

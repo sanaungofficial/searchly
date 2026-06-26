@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
 import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
-import { ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
@@ -336,16 +336,9 @@ export function CoachProfileTab({
 
   if (!profile) {
     return (
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          border: "1px solid rgba(26,58,47,0.08)",
-          padding: 24,
-        }}
-      >
+      <ScoutBox padding={24}>
         <p style={{ fontSize: 14, color: "var(--scout-muted)" }}>{emptyMessage}</p>
-      </div>
+      </ScoutBox>
     );
   }
 
@@ -373,14 +366,7 @@ export function CoachProfileTab({
       )}
 
       {isAdminEdit && (
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: "var(--scout-radius)",
-            border: "1px solid rgba(26,58,47,0.08)",
-            padding: "20px 24px",
-          }}
-        >
+        <ScoutBox padding="20px 24px">
           <p
             style={{
               fontSize: 12,
@@ -465,16 +451,13 @@ export function CoachProfileTab({
               </label>
             </div>
           </div>
-        </div>
+        </ScoutBox>
       )}
 
       {!isAdminEdit && (
-        <div
+        <ScoutBox
+          padding="20px 24px"
           style={{
-            background: "#fff",
-            borderRadius: "var(--scout-radius)",
-            border: "1px solid rgba(26,58,47,0.08)",
-            padding: "20px 24px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -505,17 +488,10 @@ export function CoachProfileTab({
           <ScoutSecondaryBtn onClick={() => setPricingOpen(true)} style={{ minHeight: 40 }}>
             Manage pricing
           </ScoutSecondaryBtn>
-        </div>
+        </ScoutBox>
       )}
 
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          border: "1px solid rgba(26,58,47,0.08)",
-          padding: "20px 24px",
-        }}
-      >
+      <ScoutBox padding="20px 24px">
         <p
           style={{
             fontSize: 12,
@@ -562,16 +538,9 @@ export function CoachProfileTab({
             <input value={form.photoUrl ?? ""} onChange={field("photoUrl")} placeholder="https://…" style={inputStyle} />
           </div>
         </div>
-      </div>
+      </ScoutBox>
 
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          border: "1px solid rgba(26,58,47,0.08)",
-          padding: "20px 24px",
-        }}
-      >
+      <ScoutBox padding="20px 24px">
         <p
           style={{
             fontSize: 12,
@@ -605,17 +574,10 @@ export function CoachProfileTab({
             />
           </div>
         </div>
-      </div>
+      </ScoutBox>
 
       {!isAdminEdit && (
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          border: "1px solid rgba(26,58,47,0.08)",
-          padding: "20px 24px",
-        }}
-      >
+      <ScoutBox padding="20px 24px">
         <p
           style={{
             fontSize: 12,
@@ -714,7 +676,7 @@ export function CoachProfileTab({
           </div>
         )}
 
-      </div>
+      </ScoutBox>
       )}
 
       {isAdminEdit && (
@@ -724,14 +686,7 @@ export function CoachProfileTab({
         </p>
       )}
 
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          border: "1px solid rgba(26,58,47,0.08)",
-          padding: "20px 24px",
-        }}
-      >
+      <ScoutBox padding="20px 24px">
         <p
           style={{
             fontSize: 12,
@@ -773,16 +728,9 @@ export function CoachProfileTab({
             />
           </div>
         </div>
-      </div>
+      </ScoutBox>
 
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          border: "1px solid rgba(26,58,47,0.08)",
-          padding: "20px 24px",
-        }}
-      >
+      <ScoutBox padding="20px 24px">
         <p
           style={{
             fontSize: 12,
@@ -867,7 +815,7 @@ export function CoachProfileTab({
             </>
           )}
         </div>
-      </div>
+      </ScoutBox>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button

@@ -40,7 +40,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   background: "#fff",
   border: border.line,
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   padding: "8px 10px",
   outline: "none",
   fontFamily: fontSans,

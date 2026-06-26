@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { CompanyScanSettingsPanel } from "@/components/admin/company-scan-settings-panel";
 import { CompanyIntelDrawer } from "@/components/admin/company-intel-drawer";
 import { CompanyLogo } from "@/components/scout/company-logo";
@@ -135,7 +136,9 @@ export default function CompanyScansAdminPage() {
       </div>
 
       {message && (
-        <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] bg-[var(--scout-surface)] px-4 py-3 text-sm text-[#52493F]">{message}</div>
+        <ScoutBox padding="12px 16px" flat style={{ color: "#52493F", fontSize: 14 }}>
+          {message}
+        </ScoutBox>
       )}
 
       <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -146,14 +149,14 @@ export default function CompanyScansAdminPage() {
           ["Stale (need refresh)", totals.stale],
           ["With cached roles", totals.withJobs],
         ].map(([label, value]) => (
-          <div key={label as string} className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-5 py-4">
+          <ScoutBox key={label as string} stack padding="16px 20px">
             <p className="text-xs uppercase tracking-widest text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mb-1">{label}</p>
             <p className="text-2xl font-semibold text-[#1A1A1A]">{value}</p>
-          </div>
+          </ScoutBox>
         ))}
       </section>
 
-      <section className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-6">
+      <ScoutBox padding={24}>
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="text-sm font-semibold text-[#1A1A1A]">Hirebase company data (top 50)</h2>
@@ -202,9 +205,9 @@ export default function CompanyScansAdminPage() {
             </table>
           </div>
         )}
-      </section>
+      </ScoutBox>
 
-      <section className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-6">
+      <ScoutBox padding={24}>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="text-sm font-semibold text-[#1A1A1A]">{COMPANY_SCAN_SETTINGS_SIDEBAR.label}</h2>
@@ -215,9 +218,9 @@ export default function CompanyScansAdminPage() {
           </Link>
         </div>
         <CompanyScanSettingsPanel onSaved={load} />
-      </section>
+      </ScoutBox>
 
-      <section className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] overflow-hidden">
+      <ScoutBox padding={0} style={{ overflow: "hidden" }}>
         <div className="px-6 py-4 border-b border-[rgba(17,17,17,0.08)] flex items-center justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold text-[#1A1A1A]">Shared company intel</h2>
@@ -283,7 +286,7 @@ export default function CompanyScansAdminPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </ScoutBox>
 
       {selectedIntelId && (
         <CompanyIntelDrawer
