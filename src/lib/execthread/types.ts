@@ -140,4 +140,6 @@ export type ExecThreadSyncSummary = {
   previewHits?: number;
   redeemHits?: number;
   detailSparseSkips?: number;
+  mode?: "import" | "refresh";
+  failed?: number;
 };

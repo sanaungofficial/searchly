@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { execthreadConfigured } from "@/lib/execthread/client";
-import { runExecThreadSync, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
+import { runExecThreadSync, runExecThreadRefreshExisting, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
 import { recordExecThreadSyncResult } from "@/lib/execthread/session-store";
 
 export const maxDuration = 300;
@@ -9,6 +9,8 @@ export const maxDuration = 300;
 type SyncBody = {
   limit?: number;
   forceLogin?: boolean;
+  /** When true, re-fetch full details for ET jobs already in Kimchi (not search import). */
+  refreshExisting?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -37,10 +39,12 @@ export async function POST(request: Request) {
   const limit = typeof body.limit === "number" && body.limit > 0 ? body.limit : 5;
 
   try {
-    const summary = await runExecThreadSync({
-      limit,
-      forceLogin: body.forceLogin === true,
-    });
+    const summary = body.refreshExisting
+      ? await runExecThreadRefreshExisting({ forceLogin: body.forceLogin === true })
+      : await runExecThreadSync({
+          limit,
+          forceLogin: body.forceLogin === true,
+        });
     return NextResponse.json({ ok: true, summary });
   } catch (err) {
     if (err instanceof ExecThreadSessionExpiredError) {
