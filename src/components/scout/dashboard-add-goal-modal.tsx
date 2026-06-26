@@ -93,7 +93,7 @@ export function DashboardAddGoalModal({
           </div>
 
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 20px", lineHeight: 1.55 }}>
-            Choose an outcome you&apos;re working toward. You can add a target month if you have one in mind.
+            Choose what you&apos;re working toward. Add a target month if you have one.
           </p>
 
           <label style={{ display: "block", fontFamily: fontSans, fontSize: T.label, color: color.muted, marginBottom: 6 }}>

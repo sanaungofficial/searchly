@@ -569,7 +569,7 @@ export function WorkspaceSidebar({
                 🎁 Refer & Earn →
               </p>
               <p style={{ margin: 0, fontSize: 12, color: S.textSubtle, lineHeight: 1.5 }}>
-                Invite friends or share on LinkedIn to earn extra rewards!
+                Invite a friend or share on LinkedIn for extra credits.
               </p>
             </button>
           </div>
@@ -612,7 +612,7 @@ export function WorkspaceSidebar({
                 🎁 Refer & Earn →
               </p>
               <p style={{ margin: 0, fontSize: 12, color: S.textSubtle, lineHeight: 1.5 }}>
-                Invite friends or share on LinkedIn to earn extra rewards!
+                Invite a friend or share on LinkedIn for extra credits.
               </p>
             </button>
           </div>

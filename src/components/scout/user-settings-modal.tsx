@@ -488,7 +488,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       )}
                       {!isPro && !isAdmin && !unlimitedAi && (
                         <p style={{ fontSize: 14, color: "#8A7F72", margin: 0 }}>
-                          Unlock unlimited AI credits
+                          15 AI credits per month on Free
                         </p>
                       )}
                       {!isPro && !isAdmin && unlimitedAi && (
@@ -577,7 +577,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     )}
                     {!isAdmin && credits.remaining <= 0 && (
                       <p style={{ fontSize: 14, color: "#C4574A", margin: "8px 0 0" }}>
-                        Out of credits — upgrade for unlimited AI.
+                        Out of credits — Pro removes the monthly cap.
                       </p>
                     )}
                     {!isAdmin && credits.remaining > 0 && credits.remaining <= 3 && (
@@ -607,11 +607,11 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       Pro includes:
                     </p>
                     {[
-                      "Unlimited AI credits",
-                      "Unlimited job tracking",
-                      "Fit analysis on every role",
-                      "Cover letters & resume tailoring",
-                      "Priority support",
+                      "No monthly cap on AI actions",
+                      "Fit analysis on every role you paste",
+                      "Resume tailoring and cover letters",
+                      "Live coaching access",
+                      "Unlimited company watchlist and alerts",
                     ].map((feat) => (
                       <div key={feat} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1A3A2F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

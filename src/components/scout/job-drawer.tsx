@@ -418,7 +418,7 @@ function JobDrawerMatchSection({
     ? resumeName
       ? `for ${resumeName}`
       : "for selected resume"
-    : "from your profile snapshot (Discover feed)";
+    : "from your profile snapshot (Find roles feed)";
 
   return (
     <div style={{ marginBottom: 22, padding: "16px 18px", background: "rgba(74,139,106,0.08)", border: "1px solid rgba(74,139,106,0.22)" }}>

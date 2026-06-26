@@ -57,7 +57,7 @@ export function ProfileSyncPromptModal({ sync, onConfirm, onSkip, saving }: Prop
           Update your profile?
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.6, marginBottom: 24 }}>
-          {sync.prompt} This helps us tailor recommendations — you can change it anytime in Profile.
+          {sync.prompt} Better matches when your profile reflects this — change it anytime under Profile.
         </p>
         <button
           type="button"

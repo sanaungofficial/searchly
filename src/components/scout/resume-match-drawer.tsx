@@ -53,9 +53,9 @@ interface ResumeMatchDrawerProps {
 type Step = 1 | 2 | 3;
 
 const STEPS = [
-  { n: 1 as Step, label: "See Your Difference" },
-  { n: 2 as Step, label: "Align Your Resume" },
-  { n: 3 as Step, label: "Review Your New Resume" },
+  { n: 1 as Step, label: "See the gap" },
+  { n: 2 as Step, label: "Align your resume" },
+  { n: 3 as Step, label: "Review the draft" },
 ];
 
 function Stepper({ step }: { step: Step }) {
@@ -262,7 +262,7 @@ export function ResumeMatchDrawer({
           return;
         }
         if (r.status === 503) {
-          setError(d.error === "AI not configured" ? "AI isn't available on this environment — try on production." : (d.error ?? "AI not available"));
+          setError(d.error === "AI not configured" ? "AI isn't available in this environment — try on production." : (d.error ?? "AI isn't available right now."));
           return;
         }
         if (d.error) setError(d.error);
@@ -271,7 +271,7 @@ export function ResumeMatchDrawer({
           notifyCreditsChanged();
         }
       })
-      .catch(() => setError("Something went wrong"))
+      .catch(() => setError("Something went wrong — try again."))
       .finally(() => setLoading(false));
   }
 
@@ -321,7 +321,7 @@ export function ResumeMatchDrawer({
         notifyCreditsChanged();
       }
     } catch {
-      setGenerateError("Something went wrong. Please try again.");
+      setGenerateError("Something went wrong — try again.");
     } finally {
       setAligning(false);
     }
@@ -358,7 +358,7 @@ export function ResumeMatchDrawer({
         notifyCreditsChanged();
       }
     } catch {
-      setGenerateError("Could not apply tweak — try again.");
+      setGenerateError("Couldn't apply that tweak — try again.");
     } finally {
       setApplyingTweakId(null);
     }
@@ -549,7 +549,7 @@ export function ResumeMatchDrawer({
               {!loading && !data && !error && !hasRequestedAnalysis && (
                 <div style={{ paddingTop: 12, textAlign: "center" }}>
                   <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, marginBottom: 16, lineHeight: 1.55 }}>
-                    See how your resume compares to this role — keyword gaps, title alignment, and a fit score.
+                    Compare your resume to this role — keyword gaps, title fit, and a score.
                   </p>
                   <button
                     type="button"
@@ -565,7 +565,7 @@ export function ResumeMatchDrawer({
                       cursor: "pointer",
                     }}
                   >
-                    Analyze my resume →
+                    Analyze fit →
                   </button>
                 </div>
               )}
@@ -582,10 +582,10 @@ export function ResumeMatchDrawer({
                     }}
                   >
                     {error === "No resume found"
-                      ? "Upload a resume in your profile to see your match."
+                      ? "Upload a resume under Profile first."
                       : error === "No job description provided"
-                      ? "This job doesn't have a description stored. Paste it below:"
-                      : "Couldn't load match analysis. Try again."}
+                      ? "No description on file for this job — paste it below:"
+                      : "Couldn't load match analysis — try again."}
                   </p>
                   {error === "No job description provided" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -627,7 +627,7 @@ export function ResumeMatchDrawer({
                           cursor: manualDesc.trim() ? "pointer" : "not-allowed",
                         }}
                       >
-                        Analyze My Resume →
+                        Analyze fit →
                       </button>
                     </div>
                   )}
@@ -1729,7 +1729,7 @@ export function ResumeMatchDrawer({
                 letterSpacing: "0.3px",
               }}
             >
-              Generate My New Resume →
+              Generate tailored resume →
             </button>
           </div>
         )}

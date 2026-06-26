@@ -39,7 +39,7 @@ export default function SignupPage() {
           Create your account.
         </h2>
         <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32, lineHeight: 1.5 }}>
-          Your AI-powered job search workspace.
+          Your job search workspace — resume, pipeline, and Scout in one place.
         </p>
 
         <AuthCredentialsForm mode="signup" />

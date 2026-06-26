@@ -52,19 +52,19 @@ export const DATA_SOURCE_STATS = {
 
 export const DATA_SOURCE_HIGHLIGHTS = [
   {
-    title: "Direct to the source",
-    body: `We index ${DATA_SOURCE_STATS.companyPagesIndexed} company career pages and ATS platforms — every listing verified active at the employer level.`,
+    title: "Direct from employers",
+    body: `We index ${DATA_SOURCE_STATS.companyPagesIndexed} company career pages and ATS platforms — listings verified active at the source.`,
   },
   {
-    title: "Always fresh",
-    body: `Most sources scanned ${DATA_SOURCE_STATS.scanFrequency}. New jobs appear ${DATA_SOURCE_STATS.newJobLatency} of posting. Removed listings purged in ${DATA_SOURCE_STATS.purgeLatency}.`,
+    title: "Kept current",
+    body: `Most sources scanned ${DATA_SOURCE_STATS.scanFrequency}. New jobs show up ${DATA_SOURCE_STATS.newJobLatency} of posting. Removed listings drop off in ${DATA_SOURCE_STATS.purgeLatency}.`,
   },
   {
     title: "Broad ATS coverage",
-    body: `Greenhouse, Lever, Workday, iCIMS, ${EXTENDED_ATS_NAMES.slice(0, 5).join(", ")}, and 10+ more. Non-ATS companies? We index their career pages directly.`,
+    body: `Greenhouse, Lever, Workday, iCIMS, ${EXTENDED_ATS_NAMES.slice(0, 5).join(", ")}, and 10+ more. No ATS? We index the company's career page directly.`,
   },
   {
     title: "Agency filter",
-    body: "Optional filter to include or exclude staffing-agency listings — you control what shows up in your feed.",
+    body: "Optional — include or exclude staffing-agency listings in your feed.",
   },
 ] as const;

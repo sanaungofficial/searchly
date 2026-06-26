@@ -36,37 +36,37 @@ export type PlanFeatureRow = {
 export const PRO_FEATURE_ROWS: PlanFeatureRow[] = [
   {
     name: "AI Resume Match",
-    description: "Stand out to recruiters in 6 secs",
+    description: "Score your fit against the job description",
     pro: "Unlimited",
     free: "2 credits/day",
   },
   {
     name: "Resume Tailoring",
-    description: "Tailor your resume for every role",
+    description: "Rewrite bullets to match each role",
     pro: "Unlimited",
     free: "2 credits/day",
   },
   {
     name: "Scout AI Agent",
-    description: "Automate your job search",
+    description: "Ask about roles, companies, and your pipeline",
     pro: "Unlimited",
     free: "Limited access",
   },
   {
     name: "AI Cover Letter",
-    description: "Personalized pitch for every role",
+    description: "Draft a letter from your resume and the listing",
     pro: "Unlimited",
     free: "2 credits/day",
   },
   {
     name: "Live Career Coaching",
-    description: "Weekly personalized sessions",
+    description: "Book 1:1 sessions with career coaches",
     pro: "check",
     free: "x",
   },
   {
     name: "Insider Connection Email",
-    description: "Perfect for cold outreach & referral",
+    description: "Draft cold outreach and referral ask emails",
     pro: "Unlimited",
     free: "2 credits/day",
   },
@@ -78,24 +78,24 @@ export const PRO_FEATURE_ROWS: PlanFeatureRow[] = [
   },
   {
     name: "Company Watchlist",
-    description: "Monitor target companies",
+    description: "Save companies and scan for open roles",
     pro: "Unlimited",
     free: "1 saved company",
   },
   {
     name: "Instant Job Alerts",
-    description: "Always be the first to apply",
+    description: "Get notified when watched companies post",
     pro: "Unlimited",
     free: "1 alert/day",
   },
 ];
 
 export const FREE_FOR_ALL_FEATURES = [
-  "Job pipeline tracking",
-  "AI job matching",
-  "Company insights",
-  "Advanced job filtering",
-  "24/7 chat with Scout",
+  "Track applications in your pipeline",
+  "Paste a job URL for a match score",
+  "Company profiles and job scans",
+  "Filter and sort your opportunities",
+  "Scout chat (uses credits on Free)",
 ] as const;
 
 export const REFERRAL_BONUS_PER_FEATURE = 5;

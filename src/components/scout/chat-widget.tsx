@@ -21,28 +21,28 @@ const sans = fontSans;
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const FIT_SUGGESTIONS = [
-  "How well do I fit this role?",
-  "What are my biggest gaps?",
-  "How can I stand out in my application?",
-  "What should I highlight in an interview?",
+  "Am I actually a fit for this role?",
+  "Where am I weakest?",
+  "What would make my app stand out?",
+  "What should I lead with in an interview?",
 ];
 
 const COACH_PREP_SUGGESTIONS = [
-  "What should I ask about their background?",
-  "How should I open the session?",
-  "What goals should I set for this call?",
-  "Is this coach a good fit for me?",
+  "What should I ask about their track record?",
+  "How do I open without wasting time?",
+  "What should I walk away with?",
+  "Is this coach worth my time?",
 ];
 
 function fitWelcomeMessage(job: KanbanCard): string {
-  const fitNote = job.fit > 0 ? ` Your resume match score is ${job.fit}%.` : "";
-  return `Let's analyze your fit for ${job.role} at ${job.company}.${fitNote} I can walk through your strengths, gaps, and tactics to stand out — pick a suggestion below or ask me anything.`;
+  const fitNote = job.fit > 0 ? ` Resume match: ${job.fit}%.` : "";
+  return `Let's look at your fit for ${job.role} at ${job.company}.${fitNote} I'll be straight about strengths, gaps, and what to do about them — pick a suggestion or ask anything.`;
 }
 
 function coachPrepWelcomeMessage(coachName: string, matchScore?: number, matchLabel?: string): string {
   const matchNote =
     matchScore && matchScore > 0 ? ` Profile match: ${matchLabel ?? "Match"} (${matchScore}/100).` : "";
-  return `Let's prepare for your session with ${coachName}.${matchNote} I can help with questions to ask, what to share about your goals, and how to use the time well — pick a suggestion or ask anything.`;
+  return `Let's prep for your session with ${coachName}.${matchNote} I can help you figure out what to ask, what to share, and whether this is worth your time — pick a suggestion or ask anything.`;
 }
 
 function ChatMessageBody({
@@ -151,7 +151,7 @@ export function ChatWidget() {
       {
         role: "assistant",
         content:
-          "I'm your profile coach. Paste client intake notes, ask how to update their profile, or get help organizing search strategy fields. Profile updates require your approval in the Career Strategy tab.",
+          "Paste intake notes or ask how to shape this client's profile. I won't change anything without you approving it in the Career Strategy tab.",
       },
     ]);
     setInput("");
@@ -257,7 +257,7 @@ export function ChatWidget() {
         }
         setCoachMessages((prev) => {
           const copy = [...prev];
-          copy[copy.length - 1] = { role: "assistant", content: "Something went wrong. Try again." };
+          copy[copy.length - 1] = { role: "assistant", content: "That didn't work. Try again." };
           return copy;
         });
         return;
@@ -282,7 +282,7 @@ export function ChatWidget() {
     } catch {
       setCoachMessages((prev) => {
         const copy = [...prev];
-        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout. Check your connection." };
+        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout — check your connection." };
         return copy;
       });
     } finally {
@@ -315,13 +315,13 @@ export function ChatWidget() {
         }
         const err =
           res.status === 503
-            ? "AI is not available right now."
+            ? "Scout isn't available right now."
             : await (async () => {
                 try {
                   const data = await res.clone().json();
-                  return typeof data?.error === "string" ? data.error : "Something went wrong. Try again.";
+                  return typeof data?.error === "string" ? data.error : "That didn't work. Try again.";
                 } catch {
-                  return "Something went wrong. Try again.";
+                  return "That didn't work. Try again.";
                 }
               })();
         setCoachPrepMessages((prev) => {
@@ -353,7 +353,7 @@ export function ChatWidget() {
     } catch {
       setCoachPrepMessages((prev) => {
         const copy = [...prev];
-        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout. Check your connection and try again." };
+        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout — check your connection and try again." };
         return copy;
       });
     } finally {
@@ -408,13 +408,13 @@ export function ChatWidget() {
         }
         const err =
           res.status === 503
-            ? "AI is not available right now."
+            ? "Scout isn't available right now."
             : await (async () => {
                 try {
                   const data = await res.clone().json();
-                  return typeof data?.error === "string" ? data.error : "Something went wrong. Try again.";
+                  return typeof data?.error === "string" ? data.error : "That didn't work. Try again.";
                 } catch {
-                  return "Something went wrong. Try again.";
+                  return "That didn't work. Try again.";
                 }
               })();
         setMessages((prev) => {
@@ -446,7 +446,7 @@ export function ChatWidget() {
     } catch {
       setMessages((prev) => {
         const copy = [...prev];
-        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout. Check your connection and try again." };
+        copy[copy.length - 1] = { role: "assistant", content: "Couldn't reach Scout — check your connection and try again." };
         return copy;
       });
     } finally {
@@ -698,7 +698,7 @@ export function ChatWidget() {
                 <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
                   {!coachPrepCoach ? (
                     <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0, textAlign: "center" }}>
-                      Open a coach profile to prep for your session.
+                      Open a coach profile to prep.
                     </p>
                   ) : (
                     <>
@@ -714,7 +714,7 @@ export function ChatWidget() {
                               sendCoachPrepMessage(input);
                             }
                           }}
-                          placeholder="Ask how to prepare for this coach…"
+                          placeholder="Ask about prep, questions, or fit…"
                           rows={2}
                           disabled={coachPrepStreaming}
                           style={{
@@ -794,7 +794,7 @@ export function ChatWidget() {
                           sendCoachMessage(input);
                         }
                       }}
-                      placeholder="Paste intake notes or ask about profile updates…"
+                      placeholder="Paste intake notes or ask about profile fields…"
                       rows={2}
                       style={{
                         flex: 1,
@@ -919,7 +919,7 @@ export function ChatWidget() {
                 >
                   {!currentJob ? (
                     <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0, textAlign: "center" }}>
-                      Open a job to chat about fit.
+                      Open a job from your pipeline to start.
                     </p>
                   ) : (
                     <>
@@ -935,7 +935,7 @@ export function ChatWidget() {
                             sendMessage(input);
                           }
                         }}
-                        placeholder="Ask about your fit…"
+                        placeholder="Ask about fit, gaps, or tactics…"
                         rows={2}
                         disabled={streaming}
                         style={{
@@ -1072,36 +1072,36 @@ export function ChatWidget() {
                       lineHeight: 1.5,
                     }}
                   >
-                    Add a job first to use AI tools.
+                    Add a job to your pipeline first.
                   </p>
                 )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <ToolButton
                     icon="✦"
-                    title="Update resume"
-                    subtitle="Maximize your interview chances"
+                    title="Tailor resume"
+                    subtitle="Align your resume to this role"
                     disabled={!currentJob}
                     onClick={() => handleToolClick("resume")}
                   />
                   <ToolButton
                     icon="✉"
-                    title="Create cover letter"
-                    subtitle="Make your application stand out"
+                    title="Write cover letter"
+                    subtitle="Draft something specific to this job"
                     disabled={!currentJob}
                     onClick={() => handleToolClick("cover")}
                   />
                   <ToolButton
                     icon="👍"
-                    title="Tell me why I'm a good fit"
-                    subtitle="Chat about strengths & gaps"
+                    title="Check my fit"
+                    subtitle="Honest take on strengths and gaps"
                     disabled={!currentJob}
                     onClick={() => handleToolClick("fit")}
                   />
                   <ToolButton
                     icon="📋"
                     title="Profile coach"
-                    subtitle="Parse intake notes & update profile"
+                    subtitle="Parse intake and shape profile fields"
                     disabled={false}
                     onClick={() => openProfileCoach()}
                   />
@@ -1119,7 +1119,7 @@ export function ChatWidget() {
                       lineHeight: 1.4,
                     }}
                   >
-                    Fit analysis opens Scout chat. Resume & cover letter open the job drawer.
+                    Fit chat stays here. Resume and cover letter open in the job drawer.
                   </p>
                 )}
               </div>

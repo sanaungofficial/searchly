@@ -59,9 +59,9 @@ export default function PasscodePage() {
           boxSizing: "border-box",
         }}
       >
-        <h1 style={{ ...displayTitleStyle(20), marginBottom: 8 }}>Enter passcode</h1>
+        <h1 style={{ ...displayTitleStyle(20), marginBottom: 8 }}>Almost there.</h1>
         <p style={{ fontSize: 13, color: color.muted, marginBottom: 28, lineHeight: 1.5 }}>
-          This is an early preview. Enter your code to continue.
+          Kimchi is in early access. Enter your code to get in.
         </p>
 
         <input
@@ -95,7 +95,7 @@ export default function PasscodePage() {
 
         {error && (
           <div style={{ fontSize: 12, color: "#C4574A", marginBottom: 12 }}>
-            Incorrect passcode. Try again.
+            That&apos;s not it. Try again.
           </div>
         )}
 
