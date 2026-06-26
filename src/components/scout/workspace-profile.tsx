@@ -69,7 +69,8 @@ import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { CareerStrategyPanel } from "./career-strategy-panel";
 import { UserAssetsList } from "./user-assets-list";
-import { assetTypeLabel } from "@/lib/asset-types";
+import { LibraryDocumentUploadModal } from "./library-document-upload-modal";
+import { assetTypeLabel, LIBRARY_DOCUMENT_FILTER_TYPES, type LibraryDocumentType, type UserAssetType } from "@/lib/asset-types";
 import { CareerPreferencesPanel, type CareerPrefPatch } from "./career-preferences-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
@@ -79,7 +80,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { formatReadbackForDisplay } from "@/lib/readback-display";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox, ScoutDisplayTitle, ScoutGoldBtn, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { ProfileLayoutSidebar, type ProfileSidebarTab } from "./profile-layout-sidebar";
 import { ProfileReadinessPanel } from "./profile-readiness-panel";
@@ -131,7 +132,7 @@ interface ParsedData {
 
 interface UserAssetRow {
   id: string;
-  type: "RESUME" | "COVER_LETTER" | "JOB_SEARCH_STRATEGY" | "OTHER";
+  type: UserAssetType;
   name: string;
   url: string;
   isPrimary: boolean;
@@ -140,6 +141,59 @@ interface UserAssetRow {
   targetJobTitle?: string | null;
   parseStatus?: "running" | "complete" | "failed" | null;
   parseError?: string | null;
+}
+
+function dedupeRoles(roles: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const role of roles) {
+    const key = role.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(role.trim());
+  }
+  return out;
+}
+
+function TargetRoleSelect({
+  value,
+  roles,
+  onChange,
+  disabled,
+  onClickStop,
+}: {
+  value: string | null | undefined;
+  roles: string[];
+  onChange: (role: string | null) => void;
+  disabled?: boolean;
+  onClickStop?: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <select
+      value={value ?? ""}
+      disabled={disabled || roles.length === 0}
+      onClick={onClickStop}
+      onChange={(e) => {
+        onChange(e.target.value || null);
+      }}
+      style={{
+        width: "100%",
+        maxWidth: 220,
+        padding: "8px 10px",
+        border: border.lineStrong,
+        background: surface.card,
+        fontFamily: fontSans,
+        fontSize: T.bodySm,
+        color: value ? color.ink : color.muted,
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      <option value="">{roles.length === 0 ? "Add target roles first" : "Select target role…"}</option>
+      {roles.map((role) => (
+        <option key={role} value={role}>{role}</option>
+      ))}
+    </select>
+  );
 }
 
 function resumeAnalysisBadge(asset: UserAssetRow): { label: string; bg: string; border: string; color: string } {
@@ -1257,11 +1311,20 @@ function DreamRoleTab({
 
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 28, lineHeight: 1.7 }}>
-        Control how Open and In-network jobs are ordered. Target roles unlock fit analysis; prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
+      <ScoutLabel>Role ranking</ScoutLabel>
+      <ScoutDisplayTitle size={22} style={{ marginTop: 8, marginBottom: 8 }}>
+        Target roles &amp; fit analysis
+      </ScoutDisplayTitle>
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
+        Control how jobs rank in your feed, define target roles for fit scores, and pick which resume to assess against each role.
       </p>
 
-      <RoleListBulkPaste
+      <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
+        <ScoutLabel>Feed ranking</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
+          Target roles unlock fit analysis. Prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
+        </p>
+        <RoleListBulkPaste
         dreamList={dreamList}
         onTargetChange={(next) => {
           setDreamList(next);
@@ -1289,8 +1352,9 @@ function DreamRoleTab({
         }}
         onInitRoleSettings={onInitRoleSettings}
       />
+      </ScoutBox>
 
-      <div style={{ marginBottom: 32 }}>
+      <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
         <ScoutLabel>Target roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
           Roles you want at the top of Recommended and In-network. Add as many as you need; pick a resume per role for fit analysis.
@@ -1347,11 +1411,11 @@ function DreamRoleTab({
           const isLoading = result === "loading";
 
           return (
-            <div key={role} style={{ background: surface.card, border: isOpen ? border.lineStrong : border.line, overflow: "hidden" }}>
+            <ScoutBox key={role} padding={0} style={{ overflow: "hidden", borderColor: isOpen ? color.forest : border.line }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
                 {loaded ? (
-                  <div style={{ width: 40, height: 40, borderRadius: "var(--scout-radius)", background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
+                  <div style={{ width: 44, height: 44, background: scoreColor(loaded.fitScore), border: border.lineStrong, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, fontWeight: 700, color: loaded.fitScore >= 50 ? color.gold : "#FFFFFF" }}>{loaded.fitScore}%</span>
                   </div>
                 ) : isLoading ? (
                   <div style={{ width: 40, height: 40, borderRadius: "var(--scout-radius)", background: "rgba(26,58,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1398,31 +1462,33 @@ function DreamRoleTab({
                     <label style={{ display: "block", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       Resume for this role
                     </label>
-                    <select
-                      value={resumeIdForRole(role) ?? ""}
-                      onChange={(e) => void handleResumeChange(role, e.target.value)}
-                      disabled={!resumeAssets.length}
-                      style={{
-                        width: "100%",
-                        maxWidth: 420,
-                        padding: "10px 12px",
-                        border: border.lineStrong,
-                        background: surface.card,
-                        fontFamily: fontSans,
-                        fontSize: T.bodySm,
-                        color: color.ink,
-                      }}
-                    >
-                      {resumeAssets.length === 0 ? (
-                        <option value="">Upload a resume in Resumes</option>
-                      ) : (
-                        resumeAssets.map((asset) => (
-                          <option key={asset.id} value={asset.id}>
-                            {asset.name}{asset.isPrimary ? " (primary)" : ""}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                    <div style={{ padding: 12, background: surface.inset, border: border.line }}>
+                      <select
+                        value={resumeIdForRole(role) ?? ""}
+                        onChange={(e) => void handleResumeChange(role, e.target.value)}
+                        disabled={!resumeAssets.length}
+                        style={{
+                          width: "100%",
+                          maxWidth: 420,
+                          padding: "10px 12px",
+                          border: border.lineStrong,
+                          background: surface.card,
+                          fontFamily: fontSans,
+                          fontSize: T.bodySm,
+                          color: color.ink,
+                        }}
+                      >
+                        {resumeAssets.length === 0 ? (
+                          <option value="">Upload a resume in Resumes</option>
+                        ) : (
+                          resumeAssets.map((asset) => (
+                            <option key={asset.id} value={asset.id}>
+                              {asset.name}{asset.isPrimary ? " · primary" : ""}{asset.targetJobTitle ? ` · ${asset.targetJobTitle}` : ""}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
                   </div>
                   {result === "loading" && !loaded && (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", textAlign: "center", padding: "16px 0" }}>Analyzing your resume against this role…</p>
@@ -1606,13 +1672,13 @@ function DreamRoleTab({
                   )}
                 </div>
               )}
-            </div>
+            </ScoutBox>
           );
         })}
       </div>
-      </div>
+      </ScoutBox>
 
-      <div style={{ marginTop: 8, paddingTop: 28, borderTop: `1px solid ${border.line}`, marginBottom: 32 }}>
+      <ScoutBox padding={isMobile ? 16 : 22} style={{ marginBottom: 24 }}>
         <ScoutLabel>Prioritized roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
           Roles and related titles that should rank highest — commercial lead, GTM ops, RevOps, etc. Search live job titles from Hirebase and add similar titles to cast a wider net.
@@ -1642,9 +1708,9 @@ function DreamRoleTab({
             addButtonLabel="+ Add prioritized category"
           />
         </div>
-      </div>
+      </ScoutBox>
 
-      <div style={{ marginTop: 8, paddingTop: 28, borderTop: `1px solid ${border.line}` }}>
+      <ScoutBox padding={isMobile ? 16 : 22}>
         <ScoutLabel>Deprioritized roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
           Title patterns that should sort lower — sales AE, product manager/management, etc. Matching includes related wording (e.g. &ldquo;Product Manager&rdquo; also deprioritizes &ldquo;Product Management&rdquo;).
@@ -1674,7 +1740,7 @@ function DreamRoleTab({
             addButtonLabel="+ Add deprioritized category"
           />
         </div>
-      </div>
+      </ScoutBox>
     </div>
   );
 }
@@ -2295,7 +2361,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
   );
 }
 
-function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading, onOpenPricing, onUploadDocument, documentUploading }: {
+function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputRef, suggestions, suggestionsLoading, onOpenPricing, onUploadDocument, documentUploading, targetRoles, onMakePrimary, onUpdateTargetRole }: {
   assets: UserAssetRow[];
   uploading: boolean;
   onUpload: (file: File) => void;
@@ -2305,21 +2371,29 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
   suggestions: AISuggestion[];
   suggestionsLoading: boolean;
   onOpenPricing: () => void;
-  onUploadDocument?: (file: File, type: "JOB_SEARCH_STRATEGY" | "COVER_LETTER" | "OTHER") => void;
+  onUploadDocument?: (file: File, type: LibraryDocumentType) => void;
   documentUploading?: boolean;
+  targetRoles: string[];
+  onMakePrimary: (id: string) => void;
+  onUpdateTargetRole: (id: string, role: string | null) => void;
 }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [docFilter, setDocFilter] = useState<"all" | UserAssetRow["type"]>("all");
-  const strategyInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
-  const MAX_SLOTS = 5;
+  const [showDocUploadModal, setShowDocUploadModal] = useState(false);
+  const [docFilter, setDocFilter] = useState<"all" | UserAssetType>("all");
+  const [makingPrimary, setMakingPrimary] = useState<string | null>(null);
 
   const resumes = assets.filter((a) => a.type === "RESUME");
   const otherDocs = assets.filter((a) => a.type !== "RESUME");
   const filteredOther =
     docFilter === "all" ? otherDocs : otherDocs.filter((a) => a.type === docFilter);
+
+  const primaryBadge = (
+    <span style={{ padding: "2px 8px", background: "rgba(196,168,106,0.18)", border: `1px solid ${color.gold}`, fontSize: T.caption, fontWeight: 700, color: "#7A6020" }}>
+      ★ Primary
+    </span>
+  );
 
   const renderResumeMenu = (r: UserAssetRow) => (
     <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
@@ -2339,23 +2413,44 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
             background: surface.card,
             border: border.line,
             boxShadow: "4px 4px 0 rgba(17,17,17,0.06)",
-            minWidth: 160,
+            minWidth: 180,
             zIndex: 100,
             overflow: "hidden",
           }}
         >
           {[
             { label: "View resume", action: () => { onOpenResume(r.id); setMenuOpen(null); } },
-            { label: "Replace resume", action: () => { inputRef.current?.click(); setMenuOpen(null); } },
             { label: "Download", action: () => { window.open(r.url, "_blank"); setMenuOpen(null); } },
+            ...(!r.isPrimary ? [{
+              label: "Make primary",
+              action: () => {
+                setMakingPrimary(r.id);
+                onMakePrimary(r.id);
+                setMenuOpen(null);
+                setMakingPrimary(null);
+              },
+            }] : []),
             { label: "Delete", action: () => { onDelete(r.id); setMenuOpen(null); } },
           ].map((item) => (
             <button
               key={item.label}
               onClick={item.action}
-              style={{ width: "100%", padding: "12px 14px", minHeight: 44, textAlign: "left", background: "none", border: "none", fontSize: 14, color: "#1A1A1A", cursor: "pointer", display: "block", borderBottom: "1px solid #F5F3EF" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3EF")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                minHeight: 44,
+                textAlign: "left",
+                background: item.label === "Make primary" ? "rgba(196,168,106,0.12)" : "none",
+                border: "none",
+                fontSize: 14,
+                fontWeight: item.label === "Make primary" ? 700 : 400,
+                color: item.label === "Make primary" ? "#7A6020" : "#1A1A1A",
+                cursor: "pointer",
+                display: "block",
+                borderBottom: "1px solid #F5F3EF",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = item.label === "Make primary" ? "rgba(196,168,106,0.2)" : "#F5F3EF")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = item.label === "Make primary" ? "rgba(196,168,106,0.12)" : "none")}
             >
               {item.label}
             </button>
@@ -2372,7 +2467,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
           <ScoutLabel>Documents</ScoutLabel>
           <ScoutDisplayTitle size={22} style={{ marginTop: 8, marginBottom: 6 }}>Your file library</ScoutDisplayTitle>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-            Resumes, strategy docs, and cover letters — tagged by type in one place.
+            Resumes and supporting documents — tagged by type in one place.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
@@ -2398,10 +2493,10 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
             Upgrade to Pro ›
           </button>
           )}
-          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { onUpload(f); setShowUploadModal(false); } }} />
+          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { onUpload(f); setShowUploadModal(false); } e.target.value = ""; }} />
           <ScoutPrimaryBtn
             onClick={() => setShowUploadModal(true)}
-            disabled={uploading || resumes.length >= MAX_SLOTS}
+            disabled={uploading}
             style={{ width: isMobile ? "100%" : undefined, opacity: uploading ? 0.6 : 1 }}
           >
             {uploading ? "Uploading…" : "+ Upload resume"}
@@ -2409,9 +2504,8 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
         </div>
       </div>
 
-      {/* Resume list */}
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 12px" }}>
-        {resumes.length} of {MAX_SLOTS} resume slots used
+        {resumes.length} resume{resumes.length === 1 ? "" : "s"} saved
       </p>
       {isMobile ? (
         <ScoutBox padding={0} style={{ overflow: "hidden" }}>
@@ -2455,12 +2549,8 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                   </button>
                   {renderResumeMenu(r)}
                 </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                  {r.isPrimary && (
-                    <span style={{ padding: "2px 8px", background: surface.inset, border: border.line, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
-                      ★ Primary
-                    </span>
-                  )}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
+                  {r.isPrimary && primaryBadge}
                   {(() => {
                     const badge = resumeAnalysisBadge(r);
                     return (
@@ -2469,12 +2559,26 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                       </span>
                     );
                   })()}
+                  {!r.isPrimary && (
+                    <ScoutGoldBtn
+                      disabled={makingPrimary === r.id}
+                      onClick={() => onMakePrimary(r.id)}
+                      style={{ padding: "4px 10px", fontSize: T.caption, minHeight: 32 }}
+                    >
+                      {makingPrimary === r.id ? "Setting…" : "Make primary"}
+                    </ScoutGoldBtn>
+                  )}
                 </div>
-                {r.targetJobTitle && (
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px" }}>
-                    Target: {r.targetJobTitle}
+                <div style={{ marginBottom: 10 }} onClick={(e) => e.stopPropagation()}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Target role
                   </p>
-                )}
+                  <TargetRoleSelect
+                    value={r.targetJobTitle}
+                    roles={targetRoles}
+                    onChange={(role) => onUpdateTargetRole(r.id, role)}
+                  />
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
                     Modified {timeAgo(r.updatedAt)}
@@ -2496,7 +2600,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
           borderBottom: border.line,
           background: surface.inset,
         }}>
-          {["Resume", "Target Job Title", "Last Modified", "Created", ""].map((col) => (
+          {["Resume", "Target role", "Last modified", "Created", ""].map((col) => (
             <span key={col} style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{col}</span>
           ))}
         </div>
@@ -2541,12 +2645,8 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                 </div>
                 <div>
                   <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>{r.name}</span>
-                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                    {r.isPrimary && (
-                      <span style={{ padding: "2px 8px", background: surface.inset, border: border.line, fontSize: T.caption, fontWeight: 600, color: color.forest, display: "flex", alignItems: "center", gap: 3 }}>
-                        ★ Primary
-                      </span>
-                    )}
+                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+                    {r.isPrimary && primaryBadge}
                     {(() => {
                       const badge = resumeAnalysisBadge(r);
                       return (
@@ -2555,13 +2655,27 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
                         </span>
                       );
                     })()}
+                    {!r.isPrimary && (
+                      <ScoutGoldBtn
+                        disabled={makingPrimary === r.id}
+                        onClick={(e) => { e.stopPropagation(); onMakePrimary(r.id); }}
+                        style={{ padding: "3px 8px", fontSize: 11, minHeight: 28 }}
+                      >
+                        Make primary
+                      </ScoutGoldBtn>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: r.targetJobTitle ? color.ink : "#C0B8B0" }}>
-                {r.targetJobTitle || "—"}
-              </span>
+              <div onClick={(e) => e.stopPropagation()}>
+                <TargetRoleSelect
+                  value={r.targetJobTitle}
+                  roles={targetRoles}
+                  onChange={(role) => onUpdateTargetRole(r.id, role)}
+                  onClickStop={(e) => e.stopPropagation()}
+                />
+              </div>
 
               <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                 {timeAgo(r.updatedAt)}
@@ -2584,36 +2698,21 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
           <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
             <div>
               <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>
-                Strategy & other documents
+                Other documents
               </p>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-                {otherDocs.length} document{otherDocs.length === 1 ? "" : "s"} · resumes above have their own slots ({resumes.length}/{MAX_SLOTS})
+                {otherDocs.length} document{otherDocs.length === 1 ? "" : "s"} — strategy, cover letters, portfolios, and more
               </p>
             </div>
             {onUploadDocument && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                <input ref={strategyInputRef} type="file" accept=".pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={(e) => {
-                  const files = e.target.files;
-                  if (files) Array.from(files).forEach((f) => onUploadDocument(f, "JOB_SEARCH_STRATEGY"));
-                  e.target.value = "";
-                }} />
-                <input ref={coverInputRef} type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: "none" }} onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) onUploadDocument(f, "COVER_LETTER");
-                  e.target.value = "";
-                }} />
-                <ScoutSecondaryBtn onClick={() => strategyInputRef.current?.click()} disabled={documentUploading}>
-                  + Strategy doc
-                </ScoutSecondaryBtn>
-                <ScoutSecondaryBtn onClick={() => coverInputRef.current?.click()} disabled={documentUploading}>
-                  + Cover letter
-                </ScoutSecondaryBtn>
-              </div>
+              <ScoutSecondaryBtn onClick={() => setShowDocUploadModal(true)} disabled={documentUploading}>
+                {documentUploading ? "Uploading…" : "+ Upload document"}
+              </ScoutSecondaryBtn>
             )}
           </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-            {(["all", "JOB_SEARCH_STRATEGY", "COVER_LETTER", "OTHER"] as const).map((key) => (
+            {LIBRARY_DOCUMENT_FILTER_TYPES.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -2647,7 +2746,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
             }))}
             showTypeBadge
             isMobile={isMobile}
-            emptyMessage="No strategy or cover letter files yet — use the buttons above to add one."
+            emptyMessage="No documents yet — upload one and pick its type."
             onDelete={onDelete}
           />
         </ScoutBox>
@@ -2659,6 +2758,17 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
           onUpload={() => inputRef.current?.click()}
           uploading={uploading}
           inputRef={inputRef}
+        />
+      )}
+      {onUploadDocument && (
+        <LibraryDocumentUploadModal
+          open={showDocUploadModal}
+          onClose={() => setShowDocUploadModal(false)}
+          uploading={documentUploading}
+          onUpload={(file, type) => {
+            onUploadDocument(file, type);
+            setShowDocUploadModal(false);
+          }}
         />
       )}
     </div>
@@ -3246,9 +3356,10 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
       refreshAssets();
     },
     onCancel: handleAssetDelete,
+    assetApiUrl: (id) => api(`/api/assets/${id}`),
   });
 
-  const handleDocumentUpload = async (file: File, type: "JOB_SEARCH_STRATEGY" | "COVER_LETTER" | "OTHER") => {
+  const handleDocumentUpload = async (file: File, type: LibraryDocumentType) => {
     setDocumentUploading(true);
     try {
       const form = new FormData();
@@ -3264,6 +3375,43 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
       setDocumentUploading(false);
     }
   };
+
+  const handleMakePrimary = async (id: string) => {
+    setAssets((prev) =>
+      prev.map((a) =>
+        a.type === "RESUME" ? { ...a, isPrimary: a.id === id } : a,
+      ),
+    );
+    try {
+      const res = await fetch(api(`/api/assets/${id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPrimary: true }),
+      });
+      if (res.ok) {
+        refreshProfileAfterResume();
+      } else {
+        refreshAssets();
+      }
+    } catch {
+      refreshAssets();
+    }
+  };
+
+  const handleUpdateTargetRole = async (id: string, targetJobTitle: string | null) => {
+    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, targetJobTitle } : a)));
+    try {
+      await fetch(api(`/api/assets/${id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetJobTitle }),
+      });
+    } catch {
+      refreshAssets();
+    }
+  };
+
+  const targetRolesForResumes = dedupeRoles([...dreamList, ...prioritizedList]);
 
   const handleResumeUpload = async (file: File) => {
     setResumeUploading(true);
@@ -3722,7 +3870,22 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
             )}
             {page === "assets" && profile && (
-              <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} onUploadDocument={handleDocumentUpload} documentUploading={documentUploading} />
+              <AssetsTab
+                assets={assets}
+                uploading={resumeUploading}
+                onUpload={handleResumeUpload}
+                onDelete={handleAssetDelete}
+                onOpenResume={openResumeEditor}
+                inputRef={resumeInputRef}
+                suggestions={profileSuggestions}
+                suggestionsLoading={suggestionsLoading}
+                onOpenPricing={openPricing}
+                onUploadDocument={handleDocumentUpload}
+                documentUploading={documentUploading}
+                targetRoles={targetRolesForResumes}
+                onMakePrimary={handleMakePrimary}
+                onUpdateTargetRole={handleUpdateTargetRole}
+              />
             )}
 
             {page === "linkedin" && (
@@ -3766,6 +3929,7 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
           defaultName={uploadFlow.job.defaultName}
           saving={uploadFlow.savingMeta}
           isMobile={isMobile}
+          targetRoles={targetRolesForResumes}
           onSave={(name, targetJobTitle) => void uploadFlow.finishSuccess(name, targetJobTitle)}
           onViewResume={() => {
             const assetId = uploadFlow.viewResume();
