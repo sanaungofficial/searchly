@@ -1,5 +1,9 @@
 import { getActingUser } from "@/lib/acting-user";
 import { enrichNetworkJobsWithMatch } from "@/lib/network-job-match";
+import {
+  canViewNetworkJobInternalFromSession,
+  sanitizeNetworkJobListing,
+} from "@/lib/network-job-access";
 import { loadNetworkJobListings } from "@/lib/network-jobs-load";
 import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
 import { buildProfileVSearchQuery, profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
@@ -29,13 +33,19 @@ function buildNetworkMatchProfileText(input: {
 
 export async function GET(request: Request) {
   const { jobs, source } = await loadNetworkJobListings();
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, realDbUser, isImpersonating } = await getActingUser(request);
+  const internalView = canViewNetworkJobInternalFromSession(
+    realDbUser,
+    realDbUser?.role === "ADMIN",
+    isImpersonating,
+  );
+  const visibleJobs = internalView ? jobs : jobs.map((job) => sanitizeNetworkJobListing(job, false));
 
   if (!dbUser) {
     return NextResponse.json({
-      jobs,
+      jobs: visibleJobs,
       source,
-      count: jobs.length,
+      count: visibleJobs.length,
       scored: false,
     });
   }
@@ -80,7 +90,7 @@ export async function GET(request: Request) {
     parsedData,
   });
 
-  const matchedJobs = enrichNetworkJobsWithMatch(jobs, resumeText, targetRoles);
+  const matchedJobs = enrichNetworkJobsWithMatch(visibleJobs, resumeText, targetRoles);
 
   return NextResponse.json({
     jobs: matchedJobs,

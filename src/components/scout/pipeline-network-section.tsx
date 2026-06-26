@@ -7,6 +7,12 @@ import { networkAgencyDisplayName, previewPlainText, SEED_NETWORK_JOBS } from "@
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
+  NETWORK_JOB_CLIENT_BADGE,
+  NETWORK_JOB_CLIENT_INTRO,
+  networkSourceChannelCode,
+  networkSourceListingLinkLabel,
+} from "@/lib/network-source-labels";
+import {
   createEmptyNetworkJobFilterForm,
   buildNetworkJobFilterSuggestions,
   countActiveNetworkFilterFields,
@@ -211,6 +217,18 @@ function NetworkJobFiltersGrid({
         />
       </FilterField>
 
+      <FilterField label="Channel">
+        <select
+          style={inputStyle}
+          value={form.channel}
+          onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
+        >
+          <option value="">All channels</option>
+          <option value="TE">TE</option>
+          <option value="ET">ET</option>
+        </select>
+      </FilterField>
+
       {internalView && (
         <>
           <FilterField label="Recruiting agency">
@@ -319,7 +337,19 @@ function NetworkJobCard({
                 color: "#6B5A2A",
               }}
             >
-              Recruiter network
+              {NETWORK_JOB_CLIENT_BADGE}
+            </span>
+            <span
+              style={{
+                padding: "2px 8px",
+                border: border.line,
+                fontFamily: fontMono,
+                fontSize: T.label,
+                fontWeight: 700,
+                color: color.forest,
+              }}
+            >
+              {networkSourceChannelCode(job.source)}
             </span>
             {internalView && job.networkStatusLabel && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>
@@ -405,7 +435,7 @@ function NetworkJobCard({
             onClick={(e) => e.stopPropagation()}
             style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
           >
-            {job.source === "EXECTHREAD" ? "ExecThread ↗" : "Top Echelon ↗"}
+            {networkSourceListingLinkLabel(job.source)}
           </a>
         )}
       </div>
@@ -546,7 +576,9 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
           In-Network Roles
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Shared through recruiter networks (Top Echelon, ExecThread) — not on public job boards. Same profile-based scoring as Open Roles.
+          {internalView
+            ? "Staff view — TE/ET channel tags on every listing, plus fee and status filters. Partner names stay in the internal drawer only."
+            : NETWORK_JOB_CLIENT_INTRO}
         </p>
       </div>
       )}
@@ -557,8 +589,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
             <ScoutLabel>In-Network Roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               {internalView
-                ? "Internal view — fee, guarantee, status, and agency filters. Sorted by profile match."
-                : "Roles shared with you — sorted by how well they match your profile."}
+                ? "Staff view — fees, guarantees, and partner links in the drawer. Filter by TE or ET channel."
+                : "Roles shared with you — filter by TE or ET channel, sorted by profile match."}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>

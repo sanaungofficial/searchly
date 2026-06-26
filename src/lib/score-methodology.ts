@@ -96,7 +96,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
     bullets: [
       {
         title: "Where roles come from",
-        body: "Shared through Top Echelon Big Biller — recruiter-network openings, not public job boards.",
+        body: "Shared through Kimchi's recruiter network — exclusive openings not listed on public job boards.",
       },
       {
         title: "How the score is calculated",

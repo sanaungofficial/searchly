@@ -30,6 +30,10 @@ import type { MatchData } from "./job-match-ui";
 import { matchDataToFitDisplay } from "./job-match-ui";
 import { getJobFreshness } from "@/lib/job-posted-freshness";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
+import {
+  networkSourceChannelCode,
+  networkSourceListingLinkLabel,
+} from "@/lib/network-source-labels";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -886,8 +890,13 @@ export function JobDrawer({
     ? null
     : (networkJob?.topEchelonUrl ?? networkJob?.sourceUrl ?? applicationUrl);
   const networkSourceLabel =
-    networkJob?.source === "EXECTHREAD" ? "ExecThread posting ↗" : "Top Echelon posting ↗";
-  const networkOpenLabel = networkJob?.source === "EXECTHREAD" ? "OPEN ON EXECTHREAD" : "OPEN IN TE";
+    networkJob?.source && networkJob.internalView
+      ? networkSourceListingLinkLabel(networkJob.source)
+      : "Original job post ↗";
+  const networkOpenLabel =
+    networkJob?.source && networkJob.internalView
+      ? `OPEN ${networkSourceChannelCode(networkJob.source)}`
+      : "APPLY NOW";
   const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
   const showParsedSections = hasStructuredSections;
   const showFullDescriptionBlob = hasFullPosting && !showParsedSections;

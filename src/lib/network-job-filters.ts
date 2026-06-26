@@ -1,4 +1,5 @@
 import type { NetworkJobListing } from "@/lib/network-job-display";
+import { networkSourceChannelCode } from "@/lib/network-source-labels";
 
 function splitInputList(value: string): string[] {
   return value.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
@@ -18,6 +19,8 @@ export type NetworkJobFilterForm = {
   salaryTo: string;
   jobType: string;
   remoteOption: string;
+  /** Public channel filter: TE, ET, or empty for all. */
+  channel: string;
   networkStatus: string;
   feeQuery: string;
   guaranteeQuery: string;
@@ -39,6 +42,7 @@ export function createEmptyNetworkJobFilterForm(): NetworkJobFilterForm {
     salaryTo: "",
     jobType: "",
     remoteOption: "",
+    channel: "",
     networkStatus: "",
     feeQuery: "",
     guaranteeQuery: "",
@@ -96,6 +100,7 @@ function jobHaystack(job: NetworkJobListing, internalView: boolean): string {
     job.recruiter?.name,
     job.salary,
     ...job.industries,
+    networkSourceChannelCode(job.source),
   ];
   if (internalView) {
     parts.push(
@@ -206,6 +211,11 @@ export function filterNetworkJobsFromForm<T extends NetworkJobListing>(
     if (!matchesContains(job.jobType, form.jobType)) return false;
     if (!matchesContains(job.remoteOption, form.remoteOption)) return false;
 
+    if (form.channel.trim()) {
+      const want = form.channel.trim().toUpperCase();
+      if (networkSourceChannelCode(job.source).toUpperCase() !== want) return false;
+    }
+
     if (internalView) {
       if (!matchesContains(job.networkStatusLabel ?? job.networkStatus, form.networkStatus)) return false;
       if (!matchesContains(job.feeType, form.feeType)) return false;
@@ -242,6 +252,7 @@ export function countActiveNetworkFilterFields(form: NetworkJobFilterForm, inter
     "salaryTo",
     "jobType",
     "remoteOption",
+    "channel",
   ];
   for (const key of textFields) {
     if (form[key].trim()) n += 1;
