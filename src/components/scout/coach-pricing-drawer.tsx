@@ -137,6 +137,8 @@ export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
   const [addingDiscount, setAddingDiscount] = useState(false);
   const [newDiscountHours, setNewDiscountHours] = useState("");
   const [newDiscountPercent, setNewDiscountPercent] = useState("");
+  const [packageFormOpen, setPackageFormOpen] = useState(false);
+  const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -219,6 +221,33 @@ export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
     await patch({
       bulkDiscounts: [{ id: row.id, minHours: row.minHours, discountPercent, enabled: row.enabled, sortOrder: row.sortOrder }],
     });
+  }
+
+  async function savePackage(pkg: Record<string, unknown>) {
+    await patch({ packages: [pkg] });
+    setPackageFormOpen(false);
+    setEditingPackageId(null);
+  }
+
+  async function setPackageOffering(row: PricingPackageRow, enabled: boolean) {
+    await patch({
+      packages: [{
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        hours: row.hours,
+        hoursMax: row.hoursMax,
+        syncedToHourly: row.syncedToHourly,
+        isPublic: row.isPublic,
+        enabled,
+        sortOrder: row.sortOrder,
+        priceCents: row.priceCents,
+      }],
+    });
+  }
+
+  async function deletePackage(id: string) {
+    await patch({ deletePackageId: id });
   }
 
   async function addBulkDiscount() {
@@ -613,43 +642,36 @@ export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
                 </div>
               </Section>
 
-              <Section title="Types of service offerings">
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 16 }}>
-                  <Card>
-                    <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>Packages</p>
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
-                      Fixed-hour bundles clients purchase upfront. Prices sync to your hourly rate and bulk discounts by default.
-                    </p>
-                    <PackageList packages={data.packages} />
-                  </Card>
-                  <Card>
-                    <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>Custom hourly services</p>
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
-                      Time added to a client&apos;s balance at your hourly rate — ideal for ongoing coaching relationships.
-                    </p>
-                  </Card>
-                </div>
-                {profileSlug && (
-                  <Link
-                    href={`/coaching/coach/${profileSlug}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "14px 16px",
-                      border: border.line,
-                      background: surface.inset,
-                      textDecoration: "none",
-                      color: color.forest,
-                      fontFamily: fontSans,
-                      fontSize: 14,
-                      fontWeight: 600,
-                    }}
-                  >
-                    See how your clients view offerings
-                    <span>→</span>
-                  </Link>
-                )}
+              <PackagesSection
+                packages={data.packages}
+                categoryLabel={data.category ?? "Coaching"}
+                profileSlug={profileSlug}
+                saving={saving}
+                packageFormOpen={packageFormOpen}
+                editingPackageId={editingPackageId}
+                onOpenCreate={() => {
+                  setEditingPackageId(null);
+                  setPackageFormOpen(true);
+                }}
+                onCloseForm={() => {
+                  setPackageFormOpen(false);
+                  setEditingPackageId(null);
+                }}
+                onEdit={(id) => {
+                  setEditingPackageId(id);
+                  setPackageFormOpen(true);
+                }}
+                onSave={savePackage}
+                onSetOffering={setPackageOffering}
+                onDelete={deletePackage}
+              />
+
+              <Section title="Custom hourly services" subtitle="Time added to a client's balance at your hourly rate — ideal for ongoing coaching relationships.">
+                <Card>
+                  <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: color.stone, lineHeight: 1.55 }}>
+                    Your hourly rate ({data.hourlyRate != null ? `$${data.hourlyRate}/hr` : "not set yet"}) applies when clients purchase custom hours outside fixed packages.
+                  </p>
+                </Card>
               </Section>
 
               <Section title="Good to know">
@@ -728,6 +750,403 @@ function BulkDiscountRowEditor({
   );
 }
 
+function PackagesSection({
+  packages,
+  categoryLabel,
+  profileSlug,
+  saving,
+  packageFormOpen,
+  editingPackageId,
+  onOpenCreate,
+  onCloseForm,
+  onEdit,
+  onSave,
+  onSetOffering,
+  onDelete,
+}: {
+  packages: PricingPackageRow[];
+  categoryLabel: string;
+  profileSlug: string | null | undefined;
+  saving: boolean;
+  packageFormOpen: boolean;
+  editingPackageId: string | null;
+  onOpenCreate: () => void;
+  onCloseForm: () => void;
+  onEdit: (id: string) => void;
+  onSave: (pkg: Record<string, unknown>) => Promise<void>;
+  onSetOffering: (row: PricingPackageRow, enabled: boolean) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const offering = packages.filter((p) => p.enabled);
+  const notOffering = packages.filter((p) => !p.enabled);
+  const editingPackage = editingPackageId ? packages.find((p) => p.id === editingPackageId) : null;
+
+  return (
+    <Section
+      title="Packages"
+      subtitle="Packages are statements of work linked to a specified amount of time. Public packages appear on your profile; private packages can still be shared via direct link."
+    >
+      <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.stone }}>
+        Your {categoryLabel} packages
+      </p>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+        <ScoutPrimaryBtn onClick={onOpenCreate} disabled={saving} style={{ minHeight: 38, fontSize: 13 }}>
+          + Create new
+        </ScoutPrimaryBtn>
+      </div>
+
+      {packageFormOpen && (
+        <PackageForm
+          initial={editingPackage ?? undefined}
+          saving={saving}
+          onCancel={onCloseForm}
+          onSave={onSave}
+        />
+      )}
+
+      <PackageGroup title="Offering" packages={offering} profileSlug={profileSlug} saving={saving} onSetOffering={onSetOffering} onEdit={onEdit} onDelete={onDelete} />
+      <PackageGroup
+        title="Not offering"
+        packages={notOffering}
+        profileSlug={profileSlug}
+        saving={saving}
+        onSetOffering={onSetOffering}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        emptyMessage="No packages here — create one or set a package to Don't offer."
+      />
+
+      {profileSlug && (
+        <Link
+          href={`/coaching/coach/${profileSlug}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 16,
+            padding: "14px 16px",
+            border: border.line,
+            background: surface.inset,
+            textDecoration: "none",
+            color: color.forest,
+            fontFamily: fontSans,
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          See how your clients view offerings
+          <span>→</span>
+        </Link>
+      )}
+    </Section>
+  );
+}
+
+function PackageGroup({
+  title,
+  packages,
+  profileSlug,
+  saving,
+  onSetOffering,
+  onEdit,
+  onDelete,
+  emptyMessage,
+}: {
+  title: string;
+  packages: PricingPackageRow[];
+  profileSlug: string | null | undefined;
+  saving: boolean;
+  onSetOffering: (row: PricingPackageRow, enabled: boolean) => Promise<void>;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
+  emptyMessage?: string;
+}) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ margin: "0 0 8px", fontFamily: fontMono, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
+        {title}
+      </p>
+      <div style={{ border: border.line, background: surface.card }}>
+        {packages.length === 0 ? (
+          <p style={{ margin: 0, padding: "16px 18px", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+            {emptyMessage ?? "No packages in this group."}
+          </p>
+        ) : (
+          packages.map((pkg, i) => (
+            <PackageRow
+              key={pkg.id}
+              pkg={pkg}
+              profileSlug={profileSlug}
+              saving={saving}
+              isLast={i === packages.length - 1}
+              onSetOffering={onSetOffering}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PackageRow({
+  pkg,
+  profileSlug,
+  saving,
+  isLast,
+  onSetOffering,
+  onEdit,
+  onDelete,
+}: {
+  pkg: PricingPackageRow;
+  profileSlug: string | null | undefined;
+  saving: boolean;
+  isLast: boolean;
+  onSetOffering: (row: PricingPackageRow, enabled: boolean) => Promise<void>;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const packageUrl =
+    profileSlug && typeof window !== "undefined"
+      ? `${window.location.origin}/coaching/coach/${profileSlug}?package=${pkg.id}`
+      : null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "14px 16px",
+        borderBottom: isLast ? "none" : border.line,
+        flexWrap: "wrap",
+      }}
+    >
+      <div
+        style={{
+          width: 56,
+          height: 40,
+          background: "rgba(26,58,47,0.06)",
+          border: border.line,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: fontMono,
+          fontSize: 11,
+          color: color.muted,
+        }}
+      >
+        {pkg.displayHoursLabel}
+      </div>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <button
+          type="button"
+          onClick={() => onEdit(pkg.id)}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+        >
+          <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "underline" }}>
+            {pkg.displayTitle}
+          </p>
+        </button>
+        <p style={{ margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+          {pkg.displayHoursLabel}
+          {pkg.displayPriceLabel ? ` · ${pkg.displayPriceLabel}` : ""}
+          {pkg.syncedToHourly ? " · synced" : " · custom price"}
+          {!pkg.isPublic ? " · private" : ""}
+        </p>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <select
+          value={pkg.enabled ? "offering" : "dont_offer"}
+          disabled={saving}
+          onChange={(e) => onSetOffering(pkg, e.target.value === "offering")}
+          style={{
+            padding: "8px 10px",
+            border: border.line,
+            fontFamily: fontSans,
+            fontSize: 13,
+            background: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          <option value="offering">Offering</option>
+          <option value="dont_offer">Don&apos;t offer</option>
+        </select>
+        {packageUrl && (
+          <button
+            type="button"
+            title="Copy package link"
+            onClick={() => {
+              navigator.clipboard.writeText(packageUrl).catch(() => {});
+            }}
+            style={{
+              padding: "8px 10px",
+              border: border.line,
+              background: "#fff",
+              cursor: "pointer",
+              fontFamily: fontSans,
+              fontSize: 14,
+            }}
+          >
+            🔗
+          </button>
+        )}
+        <div style={{ position: "relative" }}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Package actions"
+            style={{ padding: "8px 10px", border: border.line, background: "#fff", cursor: "pointer", fontSize: 16 }}
+          >
+            ⋮
+          </button>
+          {menuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "100%",
+                marginTop: 4,
+                background: "#fff",
+                border: border.line,
+                boxShadow: "2px 2px 0 rgba(0,0,0,0.06)",
+                zIndex: 10,
+                minWidth: 120,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); onEdit(pkg.id); }}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", background: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer" }}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); onDelete(pkg.id); }}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", background: "none", fontFamily: fontSans, fontSize: 13, cursor: "pointer", color: "#b45309" }}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PackageForm({
+  initial,
+  saving,
+  onCancel,
+  onSave,
+}: {
+  initial?: PricingPackageRow;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: (pkg: Record<string, unknown>) => Promise<void>;
+}) {
+  const [title, setTitle] = useState(initial?.title ?? initial?.displayTitle ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [hours, setHours] = useState(String(initial?.hours ?? 1));
+  const [hoursMax, setHoursMax] = useState(initial?.hoursMax != null ? String(initial.hoursMax) : "");
+  const [syncedToHourly, setSyncedToHourly] = useState(initial?.syncedToHourly ?? true);
+  const [priceUsd, setPriceUsd] = useState(
+    initial?.priceCents != null ? String(Math.round(initial.priceCents / 100)) : "",
+  );
+  const [isPublic, setIsPublic] = useState(initial?.isPublic ?? true);
+  const [enabled, setEnabled] = useState(initial?.enabled ?? true);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const h = Math.round(Number(hours));
+    if (!title.trim() || !Number.isFinite(h) || h < 1) return;
+    const maxRaw = hoursMax.trim() ? Math.round(Number(hoursMax)) : null;
+    await onSave({
+      ...(initial?.id ? { id: initial.id } : {}),
+      title: title.trim(),
+      description: description.trim() || null,
+      hours: h,
+      hoursMax: maxRaw != null && Number.isFinite(maxRaw) && maxRaw > h ? maxRaw : null,
+      syncedToHourly,
+      priceCents: !syncedToHourly && priceUsd.trim() ? Math.round(Number(priceUsd) * 100) : null,
+      isPublic,
+      enabled,
+      sortOrder: initial?.sortOrder ?? 999,
+    });
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "9px 12px",
+    border: border.line,
+    fontFamily: fontSans,
+    fontSize: 14,
+    boxSizing: "border-box",
+  };
+
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <form onSubmit={submit}>
+        <p style={{ margin: "0 0 14px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>
+          {initial ? "Edit package" : "Create package"}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label style={{ fontFamily: fontSans, fontSize: 13 }}>
+            Title *
+            <input required value={title} onChange={(e) => setTitle(e.target.value)} style={{ ...inputStyle, marginTop: 6 }} placeholder="e.g. Interview prep intensive" />
+          </label>
+          <label style={{ fontFamily: fontSans, fontSize: 13 }}>
+            Description
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={{ ...inputStyle, marginTop: 6, resize: "vertical" }} placeholder="What clients get in this package…" />
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={{ fontFamily: fontSans, fontSize: 13 }}>
+              Hours (min) *
+              <input type="number" min={1} required value={hours} onChange={(e) => setHours(e.target.value)} style={{ ...inputStyle, marginTop: 6 }} />
+            </label>
+            <label style={{ fontFamily: fontSans, fontSize: 13 }}>
+              Hours (max)
+              <input type="number" min={1} value={hoursMax} onChange={(e) => setHoursMax(e.target.value)} style={{ ...inputStyle, marginTop: 6 }} placeholder="Optional range" />
+            </label>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: 13 }}>
+            <input type="checkbox" checked={syncedToHourly} onChange={(e) => setSyncedToHourly(e.target.checked)} />
+            Sync price to hourly rate and bulk discounts
+          </label>
+          {!syncedToHourly && (
+            <label style={{ fontFamily: fontSans, fontSize: 13 }}>
+              Custom price (USD)
+              <input type="number" min={1} value={priceUsd} onChange={(e) => setPriceUsd(e.target.value)} style={{ ...inputStyle, marginTop: 6 }} />
+            </label>
+          )}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: 13 }}>
+            <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
+            Show on public profile
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: fontSans, fontSize: 13 }}>
+            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+            Currently offering this package
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <ScoutPrimaryBtn type="submit" disabled={saving} style={{ minHeight: 38 }}>
+            {saving ? "Saving…" : initial ? "Save package" : "Create package"}
+          </ScoutPrimaryBtn>
+          <ScoutSecondaryBtn type="button" onClick={onCancel} style={{ minHeight: 38 }}>
+            Cancel
+          </ScoutSecondaryBtn>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
 function FirstStepCard({
   active,
   badge,
@@ -774,21 +1193,5 @@ function FirstStepCard({
       <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>{title}</p>
       <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted }}>{subtitle}</p>
     </button>
-  );
-}
-
-function PackageList({ packages }: { packages: PricingPackageRow[] }) {
-  if (packages.length === 0) {
-    return <p style={{ margin: "12px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>No packages yet.</p>;
-  }
-  return (
-    <ul style={{ margin: "12px 0 0", padding: 0, listStyle: "none" }}>
-      {packages.map((p) => (
-        <li key={p.id} style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, padding: "4px 0", borderTop: border.line }}>
-          {p.displayPriceLabel ?? `${p.hours}h`}
-          {p.syncedToHourly ? " · synced" : " · custom price"}
-        </li>
-      ))}
-    </ul>
   );
 }

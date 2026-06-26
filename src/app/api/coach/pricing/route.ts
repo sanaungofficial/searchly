@@ -6,6 +6,7 @@ import {
   buildTakeHomeExamples,
   DEFAULT_BULK_DISCOUNTS,
   DEFAULT_PACKAGE_HOURS,
+  DEFAULT_PACKAGE_TITLES,
   enrichPackages,
   inferRecommendedTier,
   type CoachPricingPayload,
@@ -70,8 +71,10 @@ async function ensurePricingDefaults(coachProfileId: string) {
       data: DEFAULT_PACKAGE_HOURS.map((hours, i) => ({
         coachProfileId,
         hours,
+        title: DEFAULT_PACKAGE_TITLES[hours],
         syncedToHourly: true,
-        enabled: true,
+        isPublic: true,
+        enabled: false,
         sortOrder: i,
       })),
     });
@@ -102,12 +105,17 @@ function serializePricing(profile: {
   packagesSyncToHourly: boolean;
   experienceLevel: string | null;
   industryYears: number | null;
+  category: string | null;
   pricingPackages: Array<{
     id: string;
     hours: number;
+    hoursMax: number | null;
+    title: string | null;
+    description: string | null;
     label: string | null;
     priceCents: number | null;
     syncedToHourly: boolean;
+    isPublic: boolean;
     enabled: boolean;
     sortOrder: number;
   }>;
@@ -124,6 +132,7 @@ function serializePricing(profile: {
     profile.hourlyRate,
     profile.bulkDiscounts,
     profile.packagesSyncToHourly,
+    { includeDisabled: true },
   );
   const syncedPackageCount = profile.pricingPackages.filter((p) => p.enabled && p.syncedToHourly).length;
   const unsyncedPackageCount = profile.pricingPackages.filter((p) => p.enabled && !p.syncedToHourly).length;
@@ -140,6 +149,7 @@ function serializePricing(profile: {
     packagesSyncToHourly: profile.packagesSyncToHourly,
     experienceLevel: profile.experienceLevel,
     industryYears: profile.industryYears,
+    category: profile.category,
     packages,
     bulkDiscounts: profile.bulkDiscounts
       .filter((d) => d.enabled)
@@ -176,10 +186,14 @@ export async function GET() {
 
 type PackageInput = {
   id?: string;
+  title?: string | null;
+  description?: string | null;
   hours: number;
+  hoursMax?: number | null;
   label?: string | null;
   priceCents?: number | null;
   syncedToHourly?: boolean;
+  isPublic?: boolean;
   enabled?: boolean;
   sortOrder?: number;
 };
@@ -247,11 +261,20 @@ export async function PATCH(req: NextRequest) {
     for (const pkg of body.packages as PackageInput[]) {
       const hours = Math.round(Number(pkg.hours));
       if (!Number.isFinite(hours) || hours < 1) continue;
+      const hoursMaxRaw = pkg.hoursMax;
+      const hoursMax =
+        hoursMaxRaw != null && hoursMaxRaw !== ""
+          ? Math.round(Number(hoursMaxRaw))
+          : null;
       const data = {
         hours,
+        hoursMax: hoursMax != null && Number.isFinite(hoursMax) && hoursMax > hours ? hoursMax : null,
+        title: pkg.title?.trim() || null,
+        description: pkg.description?.trim() || null,
         label: pkg.label?.trim() || null,
         priceCents: pkg.priceCents != null ? Math.round(Number(pkg.priceCents)) : null,
         syncedToHourly: pkg.syncedToHourly ?? true,
+        isPublic: pkg.isPublic ?? true,
         enabled: pkg.enabled ?? true,
         sortOrder: pkg.sortOrder ?? 0,
       };
@@ -261,10 +284,8 @@ export async function PATCH(req: NextRequest) {
           data,
         });
       } else {
-        await prisma.coachPricingPackage.upsert({
-          where: { coachProfileId_hours: { coachProfileId: profile.id, hours } },
-          create: { coachProfileId: profile.id, ...data },
-          update: data,
+        await prisma.coachPricingPackage.create({
+          data: { coachProfileId: profile.id, ...data },
         });
       }
     }

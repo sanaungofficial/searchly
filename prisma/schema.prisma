@@ -289,16 +289,19 @@ model CoachPricingPackage {
   id             String       @id @default(cuid())
   coachProfileId String
   coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  title          String?
+  description    String?
   hours          Int
+  hoursMax       Int?
   label          String?
   priceCents     Int?
   syncedToHourly Boolean      @default(true)
+  isPublic       Boolean      @default(true)
   enabled        Boolean      @default(true)
   sortOrder      Int          @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  @@unique([coachProfileId, hours])
   @@index([coachProfileId])
 }
 

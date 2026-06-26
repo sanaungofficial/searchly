@@ -27,6 +27,13 @@ export const DEFAULT_BULK_DISCOUNTS: Array<{ minHours: number; discountPercent: 
 /** Default hour packages synced to hourly rate. */
 export const DEFAULT_PACKAGE_HOURS = [1, 3, 5, 10] as const;
 
+export const DEFAULT_PACKAGE_TITLES: Record<number, string> = {
+  1: "1 hour coaching",
+  3: "3 hour package",
+  5: "5 hour package",
+  10: "10 hour package",
+};
+
 /** Kimchi platform take rate by client lifetime spend (mirrors Leland sliding scale). */
 export const PLATFORM_TAKE_TIERS = [
   { label: "First $500 spent", platformPercent: 20 },
@@ -47,11 +54,28 @@ export type BulkDiscountRow = Pick<
 
 export type PricingPackageRow = Pick<
   CoachPricingPackage,
-  "id" | "hours" | "label" | "priceCents" | "syncedToHourly" | "enabled" | "sortOrder"
+  "id" | "hours" | "hoursMax" | "title" | "description" | "label" | "priceCents" | "syncedToHourly" | "isPublic" | "enabled" | "sortOrder"
 > & {
   displayPriceCents: number | null;
+  displayPriceCentsMax: number | null;
+  displayHoursLabel: string;
   displayPriceLabel: string | null;
+  displayTitle: string;
 };
+
+export function formatHoursRange(hours: number, hoursMax: number | null | undefined): string {
+  if (hoursMax != null && hoursMax > hours) {
+    return `${hours}h–${hoursMax}h`;
+  }
+  return `${hours}h`;
+}
+
+export function packageDisplayTitle(p: { title?: string | null; label?: string | null; hours: number; hoursMax?: number | null }): string {
+  if (p.title?.trim()) return p.title.trim();
+  if (p.label?.trim()) return p.label.trim();
+  const range = formatHoursRange(p.hours, p.hoursMax);
+  return `${range} coaching package`;
+}
 
 export type CoachPricingPayload = {
   coachProfileId: string;
@@ -65,6 +89,7 @@ export type CoachPricingPayload = {
   packagesSyncToHourly: boolean;
   experienceLevel: string | null;
   industryYears: number | null;
+  category: string | null;
   packages: PricingPackageRow[];
   bulkDiscounts: BulkDiscountRow[];
   syncedPackageCount: number;
@@ -209,23 +234,45 @@ export function enrichPackages(
   hourlyRate: number | null,
   bulkDiscounts: CoachBulkDiscount[],
   packagesSyncToHourly: boolean,
+  options?: { includeDisabled?: boolean },
 ): PricingPackageRow[] {
+  const includeDisabled = options?.includeDisabled ?? true;
   return packages
-    .filter((p) => p.enabled)
+    .filter((p) => includeDisabled || p.enabled)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.hours - b.hours)
     .map((p) => {
       const displayPriceCents = computePackagePriceCents(hourlyRate, p.hours, bulkDiscounts, p, packagesSyncToHourly);
-      const label = p.label ?? `${p.hours} hour${p.hours === 1 ? "" : "s"}`;
+      const maxHours = p.hoursMax != null && p.hoursMax > p.hours ? p.hoursMax : null;
+      const displayPriceCentsMax = maxHours
+        ? computePackagePriceCents(hourlyRate, maxHours, bulkDiscounts, p, packagesSyncToHourly)
+        : null;
+      const displayTitle = packageDisplayTitle(p);
+      const hoursLabel = formatHoursRange(p.hours, p.hoursMax);
+      let priceLabel: string | null = null;
+      if (displayPriceCents != null) {
+        if (displayPriceCentsMax != null && displayPriceCentsMax !== displayPriceCents) {
+          priceLabel = `${formatUsdFromCents(displayPriceCents)}–${formatUsdFromCents(displayPriceCentsMax)}`;
+        } else {
+          priceLabel = formatUsdFromCents(displayPriceCents);
+        }
+      }
       return {
         id: p.id,
         hours: p.hours,
+        hoursMax: p.hoursMax,
+        title: p.title,
+        description: p.description,
         label: p.label,
         priceCents: p.priceCents,
         syncedToHourly: p.syncedToHourly,
+        isPublic: p.isPublic,
         enabled: p.enabled,
         sortOrder: p.sortOrder,
         displayPriceCents,
-        displayPriceLabel: displayPriceCents != null ? `${formatUsdFromCents(displayPriceCents)} · ${label}` : label,
+        displayPriceCentsMax,
+        displayHoursLabel: hoursLabel,
+        displayPriceLabel: priceLabel,
+        displayTitle,
       };
     });
 }
