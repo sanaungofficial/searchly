@@ -6,11 +6,13 @@ export function deepgramConfigured(): boolean {
 }
 
 /** Short-lived JWT for browser Voice Agent WebSocket (default TTL 30s — use ttlSeconds for sessions). */
-export async function createDeepgramGrantToken(ttlSeconds = 600): Promise<string> {
+export async function createDeepgramGrantToken(ttlSeconds = 120): Promise<string> {
   const apiKey = process.env.DEEPGRAM_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("DEEPGRAM_API_KEY is not configured");
   }
+
+  const safeTtl = Math.min(Math.max(ttlSeconds, 30), 3600);
 
   const response = await fetch(DEEPGRAM_GRANT_URL, {
     method: "POST",
@@ -18,12 +20,18 @@ export async function createDeepgramGrantToken(ttlSeconds = 600): Promise<string
       Authorization: `Token ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ ttl_seconds: ttlSeconds }),
+    body: JSON.stringify({ ttl_seconds: safeTtl }),
   });
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error(`Deepgram grant failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+    const memberHint =
+      response.status === 403
+        ? " Ensure DEEPGRAM_API_KEY has Member (or higher) permissions in the Deepgram console."
+        : "";
+    throw new Error(
+      `Deepgram grant failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}${memberHint}`,
+    );
   }
 
   const data = (await response.json()) as { access_token?: string };

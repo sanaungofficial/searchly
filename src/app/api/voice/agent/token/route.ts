@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   try {
-    const token = await createDeepgramGrantToken(900);
+    const token = await createDeepgramGrantToken(120);
     return new NextResponse(token, {
       status: 200,
       headers: { "Content-Type": "text/plain", "Cache-Control": "no-store" },

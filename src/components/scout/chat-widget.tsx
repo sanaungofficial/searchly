@@ -108,7 +108,13 @@ function ChatMessageBody({
   );
 }
 
-export function ChatWidget({ hideLauncher = false }: { hideLauncher?: boolean }) {
+export function ChatWidget({
+  hideLauncher = false,
+  bottomStackOffset = 0,
+}: {
+  hideLauncher?: boolean;
+  bottomStackOffset?: number;
+}) {
   const router = useRouter();
   const {
     kanbanCards,
@@ -501,6 +507,9 @@ export function ChatWidget({ hideLauncher = false }: { hideLauncher?: boolean })
   };
 
   const panelWidth = isMobile ? "calc(100vw - 24px)" : chatView === "chat" || chatView === "coach" || chatView === "coach-prep" ? 380 : 320;
+  const panelBottom = isMobile
+    ? `max(${76 + bottomStackOffset}px, calc(${68 + bottomStackOffset}px + env(safe-area-inset-bottom)))`
+    : 88 + bottomStackOffset;
   const panelHeight = isMobile
     ? "min(70vh, calc(100vh - env(safe-area-inset-bottom) - 96px))"
     : chatView === "chat" || chatView === "coach" || chatView === "coach-prep"
@@ -560,7 +569,7 @@ export function ChatWidget({ hideLauncher = false }: { hideLauncher?: boolean })
           <div
             style={{
               position: "fixed",
-              bottom: isMobile ? "max(76px, calc(68px + env(safe-area-inset-bottom)))" : 88,
+              bottom: panelBottom,
               right: isMobile ? 12 : 24,
               left: isMobile ? 12 : undefined,
               width: panelWidth,
