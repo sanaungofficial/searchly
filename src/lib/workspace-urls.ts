@@ -183,7 +183,7 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
 }
 
 export type ProfileLocation = {
-  page: "about" | "dreamrole" | "targetcompanies" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
+  page: "about" | "dreamrole" | "targetcompanies" | "learning" | "assets" | "preferences" | "linkedin" | "strategy" | "coach";
   aboutSection?: AboutSectionSlug;
   assetId?: string;
   companyId?: string;
@@ -195,6 +195,7 @@ export function parseProfileLocation(pathname: string): ProfileLocation {
   if (pathname === "/profile/preferences") return { page: "preferences" };
   if (pathname === "/profile/linkedin") return { page: "linkedin" };
   if (pathname === "/profile/career-strategy") return { page: "strategy" };
+  if (pathname === "/profile/coach") return { page: "coach" };
 
   if (pathname.startsWith("/profile/target-companies/") && pathname !== "/profile/target-companies") {
     const companyId = decodeURIComponent(pathname.slice("/profile/target-companies/".length).split("/")[0] ?? "");

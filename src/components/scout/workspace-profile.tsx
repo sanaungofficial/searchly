@@ -72,6 +72,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { ProfileLayoutSidebar, type ProfileSidebarTab } from "./profile-layout-sidebar";
+import { ProfileCoachPanel } from "./profile-coach-panel";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import {
@@ -2372,7 +2373,7 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type PageTab = "dreamrole" | "targetcompanies" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
+type PageTab = "dreamrole" | "targetcompanies" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy" | "coach";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "experience", "education", "skills"];
@@ -2448,6 +2449,7 @@ export function WorkspaceProfile() {
     else if (tab === "preferences") router.push("/profile/preferences");
     else if (tab === "linkedin") router.push("/profile/linkedin");
     else if (tab === "strategy") router.push("/profile/career-strategy");
+    else if (tab === "coach") router.push("/profile/coach");
   };
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2873,6 +2875,7 @@ export function WorkspaceProfile() {
     { id: "dreamrole", label: isMobile ? "Roles" : "Target Roles" },
     { id: "targetcompanies", label: isMobile ? "Cos." : "Target Companies" },
     { id: "strategy", label: isMobile ? "Strategy" : "Career Strategy" },
+    { id: "coach", label: "Coach" },
     { id: "learning", label: "Upskill" },
     { id: "assets", label: "Resumes" },
     { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
@@ -2895,6 +2898,7 @@ export function WorkspaceProfile() {
     { id: "dreamrole", label: "Target Roles" },
     { id: "targetcompanies", label: "Target Companies" },
     { id: "strategy", label: "Career Strategy" },
+    { id: "coach", label: "Coach" },
     { id: "learning", label: "Upskill" },
     { id: "assets", label: "Resumes" },
     { id: "preferences", label: "Preferences" },
@@ -3219,6 +3223,10 @@ export function WorkspaceProfile() {
                   }}
                 />
               </div>
+            )}
+
+            {page === "coach" && (
+              <ProfileCoachPanel isMobile={isMobile} />
             )}
 
             {page === "learning" && (

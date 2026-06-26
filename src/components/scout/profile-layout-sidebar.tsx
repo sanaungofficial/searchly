@@ -8,6 +8,7 @@ export type ProfileSidebarTab =
   | "dreamrole"
   | "targetcompanies"
   | "strategy"
+  | "coach"
   | "learning"
   | "assets"
   | "preferences";

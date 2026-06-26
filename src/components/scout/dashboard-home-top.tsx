@@ -93,8 +93,9 @@ type AssignedCoach = {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { openPricing, userRole } = useWorkspace();
+  const { openPricing, userRole, isImpersonating } = useWorkspace();
   const isStaffPortal = isStaffPortalRole(userRole);
+  const showClientCoachUi = !isStaffPortal || isImpersonating;
   const { isPro, loading: subLoading } = useSubscription();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -106,7 +107,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [editTargetMonth, setEditTargetMonth] = useState("");
   const [bookedCoach, setBookedCoach] = useState<BookedCoach | null>(null);
-  const [assignedCoach, setAssignedCoach] = useState<AssignedCoach | null>(null);
+  const [assignedCoaches, setAssignedCoaches] = useState<AssignedCoach[]>([]);
   const [bookingLoading, setBookingLoading] = useState(true);
   const [pendingSync, setPendingSync] = useState<ReturnType<typeof profileNeedsSyncForGoal>>(null);
   const [syncSaving, setSyncSaving] = useState(false);
@@ -154,9 +155,9 @@ export function DashboardHomeTop({ isMobile }: Props) {
   }, []);
 
   useEffect(() => {
-    if (isStaffPortal) {
+    if (!showClientCoachUi) {
       setBookedCoach(null);
-      setAssignedCoach(null);
+      setAssignedCoaches([]);
       setBookingLoading(false);
       return;
     }
@@ -164,11 +165,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
     setBookingLoading(true);
     const assignedPromise = fetch("/api/coaching/assigned-coaches")
       .then((r) => (r.ok ? r.json() : { coaches: [] }))
-      .then((d) => {
-        const first = d.coaches?.[0];
-        setAssignedCoach(first ?? null);
-      })
-      .catch(() => setAssignedCoach(null));
+      .then((d) => setAssignedCoaches(d.coaches ?? []))
+      .catch(() => setAssignedCoaches([]));
 
     const bookingPromise = fetch("/api/bookings/me?upcoming=true&limit=1")
       .then((r) => (r.ok ? r.json() : null))
@@ -203,7 +201,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
     Promise.all([assignedPromise, bookingPromise])
       .finally(() => setBookingLoading(false));
-  }, [isStaffPortal]);
+  }, [showClientCoachUi]);
 
   const goals = profile?.dashboardGoals ?? [];
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
@@ -636,7 +634,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const rightColumn = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
       {/* Coach status — seekers only */}
-      {!isStaffPortal && !bookingLoading && !bookedCoach && !assignedCoach && (
+      {showClientCoachUi && !bookingLoading && !bookedCoach && assignedCoaches.length === 0 && (
         <div
           style={{
             ...CARD,
@@ -650,49 +648,80 @@ export function DashboardHomeTop({ isMobile }: Props) {
           }}
         >
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0, flex: 1 }}>
-            You don&apos;t have a coach yet. Search experts to find your perfect match.
+            You don&apos;t have a coach yet. When your team assigns one, they&apos;ll show up here and under Profile → Coach.
           </p>
-          <ScoutSecondaryBtn onClick={() => router.push("/coaching")} style={{ minHeight: 40, flexShrink: 0 }}>
-            Browse coaches
+          <ScoutSecondaryBtn onClick={() => router.push("/profile/coach")} style={{ minHeight: 40, flexShrink: 0 }}>
+            Profile → Coach
           </ScoutSecondaryBtn>
         </div>
       )}
 
-      {!isStaffPortal && !bookingLoading && !bookedCoach && assignedCoach && (
+      {showClientCoachUi && !bookingLoading && !bookedCoach && assignedCoaches.length > 0 && (
         <div
           style={{
             ...CARD,
             padding: isMobile ? "16px 18px" : "18px 22px",
             display: "flex",
-            alignItems: isMobile ? "flex-start" : "center",
+            flexDirection: "column",
             gap: 14,
-            flexDirection: isMobile ? "column" : "row",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
-            <CoachAvatar name={assignedCoach.displayName} photoUrl={assignedCoach.photoUrl} size={48} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
-                Your Kimchi coach
-              </p>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
-                {assignedCoach.displayName}
-              </p>
-              <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
-                {assignedCoach.headline?.slice(0, 100) ?? "Book your intro call to get started."}
-              </p>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Your Kimchi {assignedCoaches.length === 1 ? "coach" : "coaches"}
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/profile/coach")}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                fontWeight: 600,
+                color: color.forest,
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              View in profile →
+            </button>
           </div>
-          <ScoutPrimaryBtn
-            onClick={() => openCoachProfile(assignedCoach.slug, assignedCoach.coachProfileId)}
-            style={{ minHeight: 40, flexShrink: 0, width: isMobile ? "100%" : undefined }}
-          >
-            {assignedCoach.hasNylasBooking ? "Book with coach →" : "View coach →"}
-          </ScoutPrimaryBtn>
+          {assignedCoaches.map((coach) => (
+            <div
+              key={coach.coachProfileId}
+              style={{
+                display: "flex",
+                alignItems: isMobile ? "flex-start" : "center",
+                gap: 14,
+                flexDirection: isMobile ? "column" : "row",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 0 }}>
+                <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={48} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
+                    {coach.displayName}
+                  </p>
+                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+                    {coach.headline?.slice(0, 100) ?? "Book your intro call to get started."}
+                  </p>
+                </div>
+              </div>
+              <ScoutPrimaryBtn
+                onClick={() => openCoachProfile(coach.slug, coach.coachProfileId)}
+                style={{ minHeight: 40, flexShrink: 0, width: isMobile ? "100%" : undefined }}
+              >
+                {coach.hasNylasBooking ? "Book →" : "View →"}
+              </ScoutPrimaryBtn>
+            </div>
+          ))}
         </div>
       )}
 
-      {!isStaffPortal && !bookingLoading && bookedCoach && (
+      {showClientCoachUi && !bookingLoading && bookedCoach && (
         <div
           style={{
             ...CARD,
@@ -767,7 +796,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
       )}
 
-      {!isStaffPortal && (
+      {!showClientCoachUi && (
         <div style={{ ...CARD, padding: isMobile ? "16px 18px" : "18px 22px" }}>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             My coaches
