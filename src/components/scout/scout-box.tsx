@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { border, radius, shadow, surface, displayTitleStyle } from "@/lib/typography";
+import { border, color, radius, shadow, surface, displayTitleStyle } from "@/lib/typography";
 
 type ScoutBoxProps = {
   children: ReactNode;
@@ -124,6 +124,41 @@ export function ScoutPrimaryBtn({
         background: disabled ? "rgba(26,58,47,0.35)" : "var(--scout-forest)",
         color: "var(--scout-gold)",
         border: border.lineStrong,
+        opacity: disabled ? 0.7 : 1,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Gold CTA — e.g. Make primary resume */
+export function ScoutGoldBtn({
+  children,
+  onClick,
+  disabled,
+  type = "button",
+  style,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
+  style?: React.CSSProperties;
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        ...btnBase,
+        padding: "8px 16px",
+        background: disabled ? "rgba(196,168,106,0.35)" : color.gold,
+        color: color.forest,
+        border: `1px solid ${color.forest}`,
+        fontWeight: 700,
         opacity: disabled ? 0.7 : 1,
         ...style,
       }}

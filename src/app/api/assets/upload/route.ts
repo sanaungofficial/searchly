@@ -4,6 +4,17 @@ import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 
+const LIBRARY_ASSET_TYPES = [
+  "COVER_LETTER",
+  "JOB_SEARCH_STRATEGY",
+  "PORTFOLIO",
+  "WRITING_SAMPLE",
+  "REFERENCE",
+  "CERTIFICATION",
+  "TRANSCRIPT",
+  "OTHER",
+] as const;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const acting = await getActingUser(request);
@@ -20,7 +31,7 @@ export async function POST(request: Request) {
   const type = formData.get("type") as string | null;
 
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  if (!type || !["COVER_LETTER", "JOB_SEARCH_STRATEGY", "OTHER"].includes(type)) {
+  if (!type || !LIBRARY_ASSET_TYPES.includes(type as (typeof LIBRARY_ASSET_TYPES)[number])) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   }
 
@@ -45,7 +56,7 @@ export async function POST(request: Request) {
   const asset = await prisma.userAsset.create({
     data: {
       userId: dbUser.id,
-      type: type as "COVER_LETTER" | "JOB_SEARCH_STRATEGY" | "OTHER",
+      type: type as (typeof LIBRARY_ASSET_TYPES)[number],
       name: file.name.replace(/\.[^/.]+$/, "") || type,
       url: signedData.signedUrl,
       isPrimary: false,
