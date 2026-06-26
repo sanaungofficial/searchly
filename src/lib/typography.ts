@@ -13,10 +13,19 @@ export const color = {
   ink: "#1A1A1A",
   forest: "#1A3A2F",
   stone: "#52493F",
-  muted: "#6B6258",
-  mutedLight: "#A09890",
+  /** Body secondary — bumped from #6B6258 for AA on cream (~5.2:1) */
+  muted: "#5C534A",
+  mutedLight: "#8A8178",
   gold: "#E8D5A3",
   cream: "#F7F5F2",
+} as const;
+
+/** Source Sans 3 — Kimchi uses three weights only (no hairline/thin on UI) */
+export const weight = {
+  body: 400,
+  medium: 500,
+  semibold: 600,
+  display: 500,
 } as const;
 
 export function displayTitleStyle(size: number, overrides?: CSSProperties): CSSProperties {
