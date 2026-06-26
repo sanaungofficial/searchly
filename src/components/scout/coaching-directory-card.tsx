@@ -1,5 +1,6 @@
 "use client";
 
+import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CoachFitAssessment, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -117,8 +118,9 @@ export function CoachingDirectoryCard({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: color.ink, margin: 0, lineHeight: 1.3 }}>
+                <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: color.ink, margin: 0, lineHeight: 1.3, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   {coach.displayName}
+                  {coach.isInternal && <InternalCoachBadge compact />}
                 </p>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
                   <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />

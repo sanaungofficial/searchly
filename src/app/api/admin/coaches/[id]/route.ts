@@ -25,6 +25,7 @@ function coachData(body: Record<string, unknown>) {
   if (body.hourlyRate !== undefined) d.hourlyRate = body.hourlyRate ? Number(body.hourlyRate) : null;
   if (body.category !== undefined) d.category = (body.category as string) || null;
   if (body.featured !== undefined) d.featured = body.featured;
+  if (body.isInternal !== undefined) d.isInternal = Boolean(body.isInternal);
   if (body.status !== undefined) d.status = body.status as CoachStatus;
   Object.assign(d, parseSchedulerAvailabilityPatch(body));
   return d;

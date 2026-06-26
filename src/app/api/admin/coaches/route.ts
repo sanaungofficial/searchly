@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       hourlyRate: body.hourlyRate ? Number(body.hourlyRate) : null,
       category: body.category || null,
       featured: body.featured ?? false,
+      isInternal: body.isInternal ?? false,
       status: (body.status as CoachStatus) ?? CoachStatus.ACTIVE,
     },
   });
