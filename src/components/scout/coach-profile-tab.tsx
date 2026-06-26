@@ -10,6 +10,7 @@ import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
   id: string;
+  slug?: string | null;
   displayName: string;
   email: string | null;
   headline: string | null;
@@ -27,6 +28,16 @@ type CoachProfile = {
   hourlyRate: number | null;
   category: string | null;
   calLink: string | null;
+  status?: "ACTIVE" | "PENDING" | "INACTIVE";
+  featured?: boolean;
+  isInternal?: boolean;
+  clientSpecializations?: string[];
+  experienceLevel?: string | null;
+  clientTier?: string | null;
+  industryYears?: number | null;
+  isProfessionalCoach?: boolean;
+  whyCoach?: string | null;
+  aboutMe?: string | null;
   nylasGrantId?: string | null;
   nylasSchedulerConfigId?: string | null;
   nylasSchedulerSlug?: string | null;
@@ -147,12 +158,18 @@ type CoachProfileTabProps = {
   /** When true, auto-creates a coach profile via PATCH if none exists (for admins). */
   setupOnMissing?: boolean;
   emptyMessage?: string;
+  /** Admin mode: edit any coach by id via /api/admin/coaches/[id] */
+  mode?: "coach" | "admin";
+  coachId?: string;
 };
 
 export function CoachProfileTab({
   setupOnMissing = false,
   emptyMessage = "No coach profile found linked to your account. Contact an admin to get set up.",
+  mode = "coach",
+  coachId,
 }: CoachProfileTabProps) {
+  const isAdminEdit = mode === "admin" && Boolean(coachId);
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<CoachProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,7 +187,8 @@ export function CoachProfileTab({
   const [pricingOpen, setPricingOpen] = useState(false);
 
   async function loadProfile() {
-    const r = await fetch("/api/coach/profile");
+    const url = isAdminEdit ? `/api/admin/coaches/${coachId}` : "/api/coach/profile";
+    const r = await fetch(url);
     const d = await r.json();
     if (d && !d.error) {
       setProfile(d);
@@ -194,7 +212,7 @@ export function CoachProfileTab({
     async function init() {
       let data = await loadProfile();
 
-      if (!data && setupOnMissing) {
+      if (!data && setupOnMissing && !isAdminEdit) {
         setSettingUp(true);
         const r = await fetch("/api/coach/profile", {
           method: "PATCH",
@@ -223,7 +241,7 @@ export function CoachProfileTab({
     return () => {
       cancelled = true;
     };
-  }, [setupOnMissing]);
+  }, [setupOnMissing, isAdminEdit, coachId]);
 
   useEffect(() => {
     const nylas = searchParams.get("nylas");
@@ -292,7 +310,8 @@ export function CoachProfileTab({
   async function save() {
     if (!profile) return;
     setSaving(true);
-    const r = await fetch("/api/coach/profile", {
+    const url = isAdminEdit ? `/api/admin/coaches/${coachId}` : "/api/coach/profile";
+    const r = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -332,7 +351,7 @@ export function CoachProfileTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 60 }}>
-      {nylasNotice && (
+      {!isAdminEdit && nylasNotice && (
         <div
           style={{
             background: nylasNotice.type === "success" ? "rgba(45,122,80,0.08)" : "rgba(220,38,38,0.08)",
@@ -353,20 +372,15 @@ export function CoachProfileTab({
         </div>
       )}
 
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          border: "1px solid rgba(26,58,47,0.08)",
-          padding: "20px 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
+      {isAdminEdit && (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: "var(--scout-radius)",
+            border: "1px solid rgba(26,58,47,0.08)",
+            padding: "20px 24px",
+          }}
+        >
           <p
             style={{
               fontSize: 12,
@@ -374,22 +388,125 @@ export function CoachProfileTab({
               textTransform: "uppercase",
               letterSpacing: "0.8px",
               fontFamily: fontMono,
-              margin: "0 0 6px",
+              marginBottom: 16,
             }}
           >
-            Pricing
+            Admin settings
           </p>
-          <p style={{ margin: 0, fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest }}>
-            {form.hourlyRate != null ? `$${form.hourlyRate}/hr` : "Not set"}
-          </p>
-          <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
-            Hourly rate, packages, bulk discounts, and lead settings
-          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input value={form.email ?? ""} onChange={field("email")} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Status</label>
+              <select
+                value={form.status ?? "ACTIVE"}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as CoachProfile["status"] }))}
+                style={{ ...inputStyle, cursor: "pointer" }}
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="PENDING">Pending</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <input value={form.category ?? ""} onChange={field("category")} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Industry years</label>
+              <input
+                type="number"
+                value={form.industryYears ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    industryYears: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
+              <input
+                type="checkbox"
+                id="featured-coach"
+                checked={form.featured ?? false}
+                onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))}
+                style={{ width: 14, height: 14, cursor: "pointer" }}
+              />
+              <label htmlFor="featured-coach" style={{ fontSize: 13, color: color.stone, cursor: "pointer", fontFamily: fontSans }}>
+                Featured in directory
+              </label>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
+              <input
+                type="checkbox"
+                id="internal-coach"
+                checked={form.isInternal ?? false}
+                onChange={(e) => setForm((f) => ({ ...f, isInternal: e.target.checked }))}
+                style={{ width: 14, height: 14, cursor: "pointer" }}
+              />
+              <label htmlFor="internal-coach" style={{ fontSize: 13, color: color.stone, cursor: "pointer", fontFamily: fontSans }}>
+                Internal Kimchi coach
+              </label>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
+              <input
+                type="checkbox"
+                id="pro-coach"
+                checked={form.isProfessionalCoach ?? false}
+                onChange={(e) => setForm((f) => ({ ...f, isProfessionalCoach: e.target.checked }))}
+                style={{ width: 14, height: 14, cursor: "pointer" }}
+              />
+              <label htmlFor="pro-coach" style={{ fontSize: 13, color: color.stone, cursor: "pointer", fontFamily: fontSans }}>
+                Professional coach
+              </label>
+            </div>
+          </div>
         </div>
-        <ScoutSecondaryBtn onClick={() => setPricingOpen(true)} style={{ minHeight: 40 }}>
-          Manage pricing
-        </ScoutSecondaryBtn>
-      </div>
+      )}
+
+      {!isAdminEdit && (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: "var(--scout-radius)",
+            border: "1px solid rgba(26,58,47,0.08)",
+            padding: "20px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--scout-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.8px",
+                fontFamily: fontMono,
+                margin: "0 0 6px",
+              }}
+            >
+              Pricing
+            </p>
+            <p style={{ margin: 0, fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest }}>
+              {form.hourlyRate != null ? `$${form.hourlyRate}/hr` : "Not set"}
+            </p>
+            <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+              Hourly rate, packages, bulk discounts, and lead settings
+            </p>
+          </div>
+          <ScoutSecondaryBtn onClick={() => setPricingOpen(true)} style={{ minHeight: 40 }}>
+            Manage pricing
+          </ScoutSecondaryBtn>
+        </div>
+      )}
 
       <div
         style={{
@@ -490,6 +607,7 @@ export function CoachProfileTab({
         </div>
       </div>
 
+      {!isAdminEdit && (
       <div
         style={{
           background: "#fff",
@@ -597,6 +715,14 @@ export function CoachProfileTab({
         )}
 
       </div>
+      )}
+
+      {isAdminEdit && (
+        <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
+          Calendar connection and weekly hours are in the <strong>Overview</strong> and <strong>Availability</strong> tabs.
+          Packages and hourly rate are in the <strong>Pricing</strong> tab.
+        </p>
+      )}
 
       <div
         style={{
@@ -702,6 +828,44 @@ export function CoachProfileTab({
               placeholder="e.g. Tech"
             />
           </div>
+          {isAdminEdit && (
+            <>
+              <div>
+                <label style={labelStyle}>Client specializations</label>
+                <TagInput
+                  value={form.clientSpecializations ?? []}
+                  onChange={(v) => setForm((f) => ({ ...f, clientSpecializations: v }))}
+                  placeholder="e.g. MBA candidates"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Experience level</label>
+                <input value={form.experienceLevel ?? ""} onChange={field("experienceLevel")} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Client tier</label>
+                <input value={form.clientTier ?? ""} onChange={field("clientTier")} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Why coach</label>
+                <textarea
+                  value={form.whyCoach ?? ""}
+                  onChange={field("whyCoach")}
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>About me (extended)</label>
+                <textarea
+                  value={form.aboutMe ?? ""}
+                  onChange={field("aboutMe")}
+                  rows={4}
+                  style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -728,7 +892,7 @@ export function CoachProfileTab({
         )}
       </div>
 
-      {pricingOpen && (
+      {!isAdminEdit && pricingOpen && (
         <CoachPricingDrawer
           coachSlug={profile.slug}
           onClose={() => {
