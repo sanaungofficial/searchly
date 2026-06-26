@@ -16,13 +16,51 @@ export type ChatChip = {
   prompt: string;
 };
 
+export type ChipTone = "violet" | "sky" | "amber" | "mint" | "rose" | "neutral";
+
 export type AssistantChip = {
   id: string;
   label: string;
   hint?: string;
   variant: "action" | "chat";
+  tone?: ChipTone;
   action: ChipAction;
 };
+
+export const CHIP_PAGE_GUIDANCE: Record<string, string> = {
+  "/profile/assets":
+    "Taking you to **Profile → Assets**. Upload your master resume or edit the one you have — Kimchi tailors from this for every application.",
+  "/profile/career-strategy":
+    "Opening **Career strategy**. Review your goals doc or generate a new one — that's the north star for your search.",
+  "/profile/learning-path":
+    "Opening **Upskill**. Pick a course or next step for the skill you queued.",
+  "/opportunities/pipeline":
+    "Opening your **pipeline**. Add roles you're tracking or move cards forward as things progress.",
+  "/inbox":
+    "Opening **Inbox**. Connect email if you haven't — Kimchi can summarize recruiter threads and draft replies.",
+};
+
+export function chipNavigateHref(chip: AssistantChip): string | null {
+  switch (chip.action.type) {
+    case "navigate":
+      return chip.action.href;
+    case "open_strategy":
+      return "/profile/career-strategy";
+    case "open_resume":
+      return "/profile/assets";
+    default:
+      return null;
+  }
+}
+
+export function guidanceForChip(chip: AssistantChip): string | null {
+  const href = chipNavigateHref(chip);
+  if (href && CHIP_PAGE_GUIDANCE[href]) return CHIP_PAGE_GUIDANCE[href];
+  if (chip.action.type === "add_skill") {
+    return `Added **${chip.action.skill}** to your Upskill path — pick a course or next step on that page.`;
+  }
+  return chip.hint ?? null;
+}
 
 export const NEW_THREAD_TITLE = "New thread";
 
@@ -31,6 +69,7 @@ const GENERIC_CHAT_STARTERS: AssistantChip[] = [
     id: "plan-search",
     label: "Plan my job search",
     variant: "chat",
+    tone: "mint",
     action: {
       type: "chat",
       prompt: "Help me plan my job search for the next two weeks — what should I prioritize?",
@@ -40,6 +79,7 @@ const GENERIC_CHAT_STARTERS: AssistantChip[] = [
     id: "focus-week",
     label: "What should I focus on?",
     variant: "chat",
+    tone: "rose",
     action: {
       type: "chat",
       prompt: "Given everything you know about me, what should I focus on this week?",
@@ -49,6 +89,7 @@ const GENERIC_CHAT_STARTERS: AssistantChip[] = [
     id: "pipeline-review",
     label: "Review my pipeline",
     variant: "chat",
+    tone: "neutral",
     action: {
       type: "chat",
       prompt: "Walk me through my pipeline — what's strong, what's stale, and what am I missing?",
@@ -62,20 +103,23 @@ const DEFAULT_ACTIONS: AssistantChip[] = [
     label: "Build career strategy",
     hint: "Turn your goals into a strategy doc",
     variant: "action",
+    tone: "violet",
     action: { type: "open_strategy" },
   },
   {
     id: "resume",
     label: "Work on my resume",
-    hint: "Open the resume editor",
+    hint: "Upload or edit your master resume",
     variant: "action",
-    action: { type: "open_resume" },
+    tone: "sky",
+    action: { type: "navigate", href: "/profile/assets" },
   },
   {
     id: "upskill",
     label: "Add a skill to learn",
     hint: "Queue it on your Upskill path",
     variant: "action",
+    tone: "amber",
     action: { type: "add_skill", skill: "SQL" },
   },
 ];
@@ -211,9 +255,10 @@ const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
     chips: [
       {
         id: "open-resume",
-        label: "Open resume editor",
+        label: "Open resume & assets",
         variant: "action",
-        action: { type: "open_resume" },
+        tone: "sky",
+        action: { type: "navigate", href: "/profile/assets" },
       },
       {
         id: "resume-bullet",

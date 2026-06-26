@@ -34,7 +34,7 @@ export function KimchiAssistantChipRow({
           <button
             key={chip.id}
             type="button"
-            className={`kimchi-chips__chip kimchi-chips__chip--${chip.variant}`}
+            className={`kimchi-chips__chip kimchi-chips__chip--${chip.variant}${chip.tone ? ` kimchi-chips__chip--tone-${chip.tone}` : ""}`}
             title={chip.hint ?? chip.label}
             onClick={() => onActivate(chip)}
           >
@@ -237,7 +237,7 @@ function KimchiChipStyles() {
         padding: 5px 10px;
         align-items: center;
         gap: 5px;
-        border-radius: 999px;
+        border-radius: 8px;
         border-width: 1px;
       }
       .kimchi-chips--inline .kimchi-chips__chip:active {
@@ -258,6 +258,60 @@ function KimchiChipStyles() {
       .kimchi-chips--inline .kimchi-chips__chip--action {
         background: rgba(26, 58, 47, 0.07);
         border-color: rgba(26, 58, 47, 0.14);
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-violet {
+        background: #f3ecff;
+        border-color: #c4a8e8;
+        color: #4a2d7a;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-violet .kimchi-chips__pill-dot {
+        background: #7c5cbf;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-sky {
+        background: #e8f4ff;
+        border-color: #9ec5ef;
+        color: #1a4a6e;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-sky .kimchi-chips__pill-dot {
+        background: #3b82c4;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-amber {
+        background: #fff8e6;
+        border-color: #e8c96a;
+        color: #6b4f00;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-amber .kimchi-chips__pill-dot {
+        background: #c9920a;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-mint {
+        background: #e8f7f0;
+        border-color: #8fd4b0;
+        color: #1a4a35;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-rose {
+        background: #fff0f3;
+        border-color: #f0b8c4;
+        color: #6b2438;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-neutral {
+        background: #f5f5f4;
+        border-color: rgba(26, 58, 47, 0.18);
+        color: #1A3A2F;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-violet:hover {
+        background: #ebe0ff;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-sky:hover {
+        background: #dcebff;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-amber:hover {
+        background: #fff3cc;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-mint:hover {
+        background: #d8f0e4;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--tone-rose:hover {
+        background: #ffe4ea;
       }
       .kimchi-chips__pill-dot {
         width: 5px;
