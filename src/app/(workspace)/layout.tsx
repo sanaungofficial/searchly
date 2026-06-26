@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { WorkspaceTopNav } from "@/components/scout/workspace-top-nav";
 import { KimchiAssistant } from "@/components/scout/kimchi-assistant";
 import { PricingModal } from "@/components/scout/pricing-modal";
@@ -16,6 +17,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
     pricingOpen,
     openPricing,
     closePricing,
+    impersonation,
   } = useWorkspace();
 
   const searchParams = useSearchParams();
@@ -51,7 +53,12 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         background: surface.page,
       }}
     >
-      <WorkspaceTopNav isMobile={isMobile} user={user ?? undefined} isAdmin={isAdmin} />
+      <ImpersonationBanner state={impersonation} />
+      <WorkspaceTopNav
+        isMobile={isMobile}
+        user={user ?? undefined}
+        isAdmin={isAdmin && !impersonation.active}
+      />
       <div
         style={{
           flex: 1,

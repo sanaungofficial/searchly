@@ -41,7 +41,8 @@ export function ImpersonationBanner({ state }: { state: ImpersonationState }) {
         gap: 12,
         flexWrap: "wrap",
         borderBottom: "1px solid rgba(232,213,163,0.2)",
-        zIndex: 20,
+        flexShrink: 0,
+        zIndex: 30,
         position: "relative",
       }}
     >

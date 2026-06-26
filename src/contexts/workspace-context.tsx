@@ -6,8 +6,16 @@ import { createClient } from "@/utils/supabase/client";
 import { INITIAL_KANBAN_CARDS, NOTIFICATIONS } from "@/components/scout/workspace-data";
 import { useJobs } from "@/hooks/useJobs";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
-import { ImpersonationBanner, type ImpersonationState } from "@/components/admin/impersonation-banner";
+import type { ImpersonationState } from "@/components/admin/impersonation-banner";
 import { setActingUserScope, getActingUserScope } from "@/lib/client-session";
+
+const NO_STORE: RequestInit = { cache: "no-store" };
+
+function initialImpersonationState(): ImpersonationState {
+  if (typeof window === "undefined") return { active: false };
+  const scope = getActingUserScope();
+  return scope !== "self" ? { active: true } : { active: false };
+}
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -74,6 +82,7 @@ interface WorkspaceContextValue {
   closePricing: () => void;
   actingUserId: string | null;
   isImpersonating: boolean;
+  impersonation: ImpersonationState;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -103,7 +112,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [coachPrepCoach, setCoachPrepCoach] = useState<CoachPrepTarget | null>(null);
   const [coachPrepNonce, setCoachPrepNonce] = useState(0);
   const [pricingOpen, setPricingOpen] = useState(false);
-  const [impersonation, setImpersonation] = useState<ImpersonationState>({ active: false });
+  const [impersonation, setImpersonation] = useState<ImpersonationState>(initialImpersonationState);
   const [actingUserId, setActingUserId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const scope = getActingUserScope();
@@ -158,7 +167,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       let profileEmail: string | null = null;
       let impersonating = false;
       try {
-        const res = await fetch("/api/profile");
+        const res = await fetch("/api/profile", NO_STORE);
         if (res.ok) {
           const data = await res.json();
           headline = data?.headline ?? null;
@@ -181,6 +190,27 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch {}
+
+      if (!impersonating) {
+        try {
+          const impRes = await fetch("/api/admin/impersonate", NO_STORE);
+          if (impRes.ok) {
+            const impData = await impRes.json();
+            if (impData?.active && impData.user) {
+              impersonating = true;
+              setImpersonation({
+                active: true,
+                name: impData.user.name,
+                email: impData.user.email,
+              });
+              setActingUserId(impData.user.id ?? null);
+              setActingUserScope(impData.user.id ?? null);
+              profileName = profileName ?? impData.user.name ?? null;
+              profileEmail = profileEmail ?? impData.user.email ?? null;
+            }
+          }
+        } catch {}
+      }
       try {
         const res = await fetch("/api/admin");
         setIsAdmin(res.ok);
@@ -255,9 +285,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         closePricing,
         actingUserId,
         isImpersonating: impersonation.active,
+        impersonation,
       }}
     >
-      <ImpersonationBanner state={impersonation} />
       {children}
     </WorkspaceContext.Provider>
   );
