@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/live-sessions",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/email-agent-sync",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

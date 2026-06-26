@@ -60,6 +60,7 @@ import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { CareerStrategyPanel } from "./career-strategy-panel";
+import { JobSearchInboxPanel } from "./job-search-inbox-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
@@ -3419,7 +3420,8 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
         )}
         {page === "preferences" && profile && (
-          <div style={{ paddingBottom: 40, paddingTop: 8 }}>
+          <div style={{ paddingBottom: 40, paddingTop: 8, display: "flex", flexDirection: "column", gap: 24 }}>
+            <JobSearchInboxPanel />
             <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
           </div>
         )}

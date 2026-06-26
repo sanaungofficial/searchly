@@ -84,6 +84,13 @@ export function nylasProfileReturnUrl(
   return qs ? `${path}?${qs}` : path;
 }
 
+/** Where job seekers land after connecting a dedicated job-search inbox. */
+export function nylasUserInboxReturnUrl(appUrl: string, params?: Record<string, string>): string {
+  const base = `${appUrl.replace(/\/$/, "")}/profile/preferences`;
+  if (!params || Object.keys(params).length === 0) return base;
+  return `${base}?${new URLSearchParams(params).toString()}`;
+}
+
 export function isNylasConfigured(): boolean {
   return getNylasConfig() !== null;
 }
@@ -145,6 +152,8 @@ export function buildNylasAuthUrl(params: {
   provider: "google" | "microsoft";
   state: string;
   loginHint?: string;
+  /** When set, request inbox + calendar read scopes for job-search agent. */
+  inboxAccess?: boolean;
 }): string {
   const cfg = getNylasConfig();
   if (!cfg) throw new Error("Nylas is not configured");
@@ -160,6 +169,12 @@ export function buildNylasAuthUrl(params: {
     prompt: "detect",
   });
   if (params.loginHint) query.set("login_hint", params.loginHint);
+  if (params.inboxAccess) {
+    query.set(
+      "scope",
+      "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly",
+    );
+  }
 
   return `${cfg.apiUri}/v3/connect/auth?${query.toString()}`;
 }
@@ -306,7 +321,13 @@ export async function ensureCoachSchedulerConfig(params: {
   return { ...created, created: true };
 }
 
-export function signNylasState(payload: { coachProfileId: string; ts: number; returnAppUrl?: string }): string {
+export type NylasOAuthStatePayload =
+  | { kind: "coach"; coachProfileId: string; ts: number; returnAppUrl?: string }
+  | { kind: "user"; userId: string; ts: number; returnAppUrl?: string };
+
+export type NylasOAuthState = { coachProfileId: string; ts: number; returnAppUrl?: string };
+
+export function signNylasOAuthState(payload: NylasOAuthStatePayload): string {
   const cfg = getNylasConfig();
   if (!cfg) throw new Error("Nylas is not configured");
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -314,9 +335,7 @@ export function signNylasState(payload: { coachProfileId: string; ts: number; re
   return `${body}.${sig}`;
 }
 
-export type NylasOAuthState = { coachProfileId: string; ts: number; returnAppUrl?: string };
-
-export function verifyNylasState(state: string): NylasOAuthState | null {
+export function verifyNylasOAuthState(state: string): NylasOAuthStatePayload | null {
   const cfg = getNylasConfig();
   if (!cfg) return null;
 
@@ -332,20 +351,50 @@ export function verifyNylasState(state: string): NylasOAuthState | null {
 
   try {
     const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as {
+      kind?: "coach" | "user";
       coachProfileId?: string;
+      userId?: string;
       ts?: number;
       returnAppUrl?: string;
     };
-    if (!parsed.coachProfileId || !parsed.ts) return null;
-    if (Date.now() - parsed.ts > 1000 * 60 * 60) return null;
-    return {
-      coachProfileId: parsed.coachProfileId,
-      ts: parsed.ts,
-      ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
-    };
+    if (!parsed.ts || Date.now() - parsed.ts > 1000 * 60 * 60) return null;
+
+    if (parsed.kind === "user" && parsed.userId) {
+      return {
+        kind: "user",
+        userId: parsed.userId,
+        ts: parsed.ts,
+        ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
+      };
+    }
+
+    if (parsed.coachProfileId) {
+      return {
+        kind: "coach",
+        coachProfileId: parsed.coachProfileId,
+        ts: parsed.ts,
+        ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
+      };
+    }
+
+    return null;
   } catch {
     return null;
   }
+}
+
+export function signNylasState(payload: NylasOAuthState): string {
+  return signNylasOAuthState({ kind: "coach", ...payload });
+}
+
+export function verifyNylasState(state: string): NylasOAuthState | null {
+  const parsed = verifyNylasOAuthState(state);
+  if (!parsed || parsed.kind !== "coach") return null;
+  return {
+    coachProfileId: parsed.coachProfileId,
+    ts: parsed.ts,
+    ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
+  };
 }
 
 function nylasOAuthCookieOptions() {
@@ -361,16 +410,16 @@ function nylasOAuthCookieOptions() {
 /** Persist OAuth state in a cookie so callback still works if Nylas drops the state param. */
 export function attachNylasOAuthCookie(
   response: NextResponse,
-  payload: NylasOAuthState,
+  payload: NylasOAuthStatePayload,
 ): NextResponse {
-  response.cookies.set(NYLAS_OAUTH_COOKIE, signNylasState(payload), nylasOAuthCookieOptions());
+  response.cookies.set(NYLAS_OAUTH_COOKIE, signNylasOAuthState(payload), nylasOAuthCookieOptions());
   return response;
 }
 
-export function readNylasOAuthCookie(req: NextRequest): NylasOAuthState | null {
+export function readNylasOAuthCookie(req: NextRequest): NylasOAuthStatePayload | null {
   const raw = req.cookies.get(NYLAS_OAUTH_COOKIE)?.value;
   if (!raw) return null;
-  return verifyNylasState(raw);
+  return verifyNylasOAuthState(raw);
 }
 
 export function clearNylasOAuthCookie(response: NextResponse): NextResponse {
@@ -381,8 +430,8 @@ export function clearNylasOAuthCookie(response: NextResponse): NextResponse {
 export function resolveNylasOAuthState(
   req: NextRequest,
   stateFromQuery: string | null,
-): NylasOAuthState | null {
-  return verifyNylasState(stateFromQuery ?? "") ?? readNylasOAuthCookie(req);
+): NylasOAuthStatePayload | null {
+  return verifyNylasOAuthState(stateFromQuery ?? "") ?? readNylasOAuthCookie(req);
 }
 
 export function mapNylasOAuthError(params: {
