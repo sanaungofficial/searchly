@@ -2300,16 +2300,14 @@ export function ScreenAboutYouSearch({
 }: AboutYouSearchProps) {
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
+      {onVoiceIntakeComplete && (
+        <VoiceIntakeRecorder onComplete={onVoiceIntakeComplete} />
+      )}
+
       <AboutYouIntro
         title="A few questions about your search."
-        body="Two quick picks while we finish reading your resume — or hit the mic and talk for a minute."
+        body="Pick below — or use the voice orb above if you already talked."
       />
-
-      {onVoiceIntakeComplete && (
-        <div className="anim-fade-up" style={{ animationDelay: "0.15s" }}>
-          <VoiceIntakeRecorder onComplete={onVoiceIntakeComplete} />
-        </div>
-      )}
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
         {aboutYouSectionLabel("What's driving your move?", "So we surface roles that match why you're looking — not just your title.")}

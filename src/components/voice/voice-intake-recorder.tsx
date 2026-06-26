@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { IntakeParseResult } from "@/lib/career-strategy";
-import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
+import { VoiceOrb, useAudioLevel, type VoiceOrbState } from "@/components/voice/voice-orb";
 
 export type VoiceIntakeResult = IntakeParseResult & {
   transcript: string;
@@ -24,6 +24,11 @@ function pickMimeType(): string {
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "audio/webm";
 }
 
+function phaseToOrbState(phase: RecorderPhase): VoiceOrbState {
+  if (phase === "error") return "idle";
+  return phase;
+}
+
 interface VoiceIntakeRecorderProps {
   onComplete: (result: VoiceIntakeResult) => void;
   disabled?: boolean;
@@ -35,11 +40,14 @@ export function VoiceIntakeRecorder({ onComplete, disabled }: VoiceIntakeRecorde
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [liveStream, setLiveStream] = useState<MediaStream | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+
+  const audioLevel = useAudioLevel(phase === "recording", liveStream);
 
   useEffect(() => {
     void fetch("/api/voice/intake")
@@ -55,6 +63,7 @@ export function VoiceIntakeRecorder({ onComplete, disabled }: VoiceIntakeRecorde
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setLiveStream(null);
     mediaRecorderRef.current = null;
     chunksRef.current = [];
   }, []);
@@ -77,7 +86,7 @@ export function VoiceIntakeRecorder({ onComplete, disabled }: VoiceIntakeRecorde
         }
 
         const result = data as VoiceIntakeResult;
-        setSummary(result.summary || "Got it — we pulled a few things from your story.");
+        setSummary(result.summary || "Pulled a few things from your story — check the picks below.");
         setPhase("done");
         onComplete(result);
       } catch (err) {
@@ -105,6 +114,7 @@ export function VoiceIntakeRecorder({ onComplete, disabled }: VoiceIntakeRecorde
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      setLiveStream(stream);
 
       const mimeType = pickMimeType();
       const recorder = new MediaRecorder(stream, { mimeType });
@@ -140,116 +150,174 @@ export function VoiceIntakeRecorder({ onComplete, disabled }: VoiceIntakeRecorde
     }
   }, [cleanupStream, disabled, phase, uploadRecording]);
 
+  const handleOrbClick = useCallback(() => {
+    if (phase === "recording") stopRecording();
+    else if (phase === "idle" || phase === "error" || phase === "done") void startRecording();
+  }, [phase, startRecording, stopRecording]);
+
   if (available === false) return null;
 
-  const cardStyle: React.CSSProperties = {
-    border: "1.5px solid rgba(26,58,47,0.14)",
-    background: "#fff",
-    padding: "clamp(18px, 4vw, 28px)",
-  };
+  const orbLabel =
+    phase === "recording"
+      ? elapsed > 0
+        ? `Listening · ${formatDuration(elapsed)}`
+        : "Listening…"
+      : phase === "processing"
+        ? "One sec…"
+        : phase === "done"
+          ? "Got it"
+          : "Tap to talk";
 
-  if (phase === "processing") {
-    return (
-      <div style={cardStyle}>
-        <KimchiProcessLoader
-          preset="onboardingReadback"
-          title="Listening back and pulling out the good stuff…"
-          hint="Usually about 10–20 seconds."
-        />
-      </div>
-    );
-  }
-
-  if (phase === "done") {
-    return (
-      <div style={cardStyle}>
-        <p style={{ margin: 0, fontFamily: "var(--font-ui)", fontSize: 15, color: "#1A3A2F", lineHeight: 1.5 }}>
-          ✨ {summary}
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            setPhase("idle");
-            setSummary(null);
-          }}
-          style={{
-            marginTop: 14,
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            color: "rgba(26,58,47,0.65)",
-            fontFamily: "var(--font-ui)",
-            fontSize: 14,
-            cursor: "pointer",
-            textDecoration: "underline",
-          }}
-        >
-          Record again
-        </button>
-      </div>
-    );
-  }
+  const orbSublabel =
+    phase === "idle" || phase === "error"
+      ? "Tell us what you're looking for — target role, timeline, what matters. A minute is plenty."
+      : phase === "recording"
+        ? "Tap the orb again when you're done."
+        : phase === "processing"
+          ? "Transcribing and pulling out the useful bits."
+          : summary ?? undefined;
 
   return (
-    <div style={cardStyle}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-        <button
-          type="button"
-          aria-label={phase === "recording" ? "Stop recording" : "Start voice recording"}
-          disabled={disabled || available !== true}
-          onClick={() => {
-            if (phase === "recording") stopRecording();
-            else void startRecording();
-          }}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: "999px",
-            border: "none",
-            flexShrink: 0,
-            cursor: disabled ? "not-allowed" : "pointer",
-            background: phase === "recording" ? "#C4574A" : "#1A3A2F",
-            color: "#F7F5F2",
-            fontSize: 22,
-            lineHeight: 1,
-            boxShadow: phase === "recording" ? "0 0 0 6px rgba(196,87,74,0.18)" : "none",
-          }}
-        >
-          {phase === "recording" ? "■" : "🎙"}
-        </button>
+    <div className="voice-intake-hero anim-fade-up">
+      <VoiceIntakeHeroStyles />
+      <div className="voice-intake-hero__panel">
+        <p className="voice-intake-hero__eyebrow">Or just talk</p>
+        <h3 className="voice-intake-hero__title">Skip the forms — tell Kimchi your story.</h3>
 
-        <div style={{ flex: 1 }}>
-          <p
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-display)",
-              fontSize: "clamp(18px, 2.4vw, 22px)",
-              color: "#1A3A2F",
-              lineHeight: 1.25,
-            }}
-          >
-            {phase === "recording" ? "We're listening…" : "Prefer talking to tapping?"}
-          </p>
-          <p
-            style={{
-              margin: "8px 0 0",
-              fontFamily: "var(--font-ui)",
-              fontSize: 15,
-              color: "rgba(26,58,47,0.72)",
-              lineHeight: 1.5,
-            }}
-          >
-            {phase === "recording"
-              ? `Hit stop when you're done.${elapsed > 0 ? ` (${formatDuration(elapsed)})` : ""}`
-              : "Hit the mic and tell us what you're looking for — a couple minutes is perfect."}
-          </p>
-          {error && (
-            <p style={{ margin: "10px 0 0", color: "#9B3A2A", fontFamily: "var(--font-ui)", fontSize: 14 }}>
-              {error}
-            </p>
-          )}
-        </div>
+        <VoiceOrb
+          state={phaseToOrbState(phase)}
+          audioLevel={audioLevel}
+          onClick={handleOrbClick}
+          disabled={disabled || available !== true}
+          label={orbLabel}
+        />
+
+        {orbSublabel && phase !== "done" && (
+          <p className="voice-intake-hero__hint">{orbSublabel}</p>
+        )}
+
+        {phase === "done" && summary && (
+          <div className="voice-intake-hero__success">
+            <p>{summary}</p>
+            <button type="button" className="voice-intake-hero__again" onClick={() => {
+              setPhase("idle");
+              setSummary(null);
+            }}>
+              Record again
+            </button>
+          </div>
+        )}
+
+        {error && <p className="voice-intake-hero__error">{error}</p>}
       </div>
     </div>
+  );
+}
+
+function VoiceIntakeHeroStyles() {
+  return (
+    <style>{`
+      .voice-intake-hero {
+        width: 100%;
+      }
+
+      .voice-intake-hero__panel {
+        position: relative;
+        overflow: hidden;
+        padding: clamp(28px, 6vw, 44px) clamp(20px, 5vw, 36px);
+        background:
+          radial-gradient(circle at 20% 0%, rgba(61, 170, 156, 0.12), transparent 42%),
+          radial-gradient(circle at 80% 100%, rgba(196, 168, 106, 0.1), transparent 38%),
+          linear-gradient(180deg, #eef5f2 0%, #f7f5f2 100%);
+        border: 1.5px solid rgba(26, 58, 47, 0.12);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+      }
+
+      .voice-intake-hero__panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          radial-gradient(rgba(26, 58, 47, 0.04) 1px, transparent 1px);
+        background-size: 18px 18px;
+        pointer-events: none;
+        opacity: 0.5;
+      }
+
+      .voice-intake-hero__eyebrow {
+        position: relative;
+        margin: 0;
+        font-family: var(--font-ui);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(26, 58, 47, 0.55);
+      }
+
+      .voice-intake-hero__title {
+        position: relative;
+        margin: 0 0 12px;
+        max-width: 420px;
+        font-family: var(--font-display);
+        font-size: clamp(20px, 3.2vw, 26px);
+        line-height: 1.25;
+        color: #1A3A2F;
+        font-weight: 600;
+      }
+
+      .voice-intake-hero__hint {
+        position: relative;
+        margin: 4px 0 0;
+        max-width: 380px;
+        font-family: var(--font-ui);
+        font-size: 15px;
+        line-height: 1.55;
+        color: rgba(26, 58, 47, 0.72);
+      }
+
+      .voice-intake-hero__success {
+        position: relative;
+        margin-top: 8px;
+        max-width: 420px;
+        padding: 14px 18px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(26, 58, 47, 0.12);
+      }
+
+      .voice-intake-hero__success p {
+        margin: 0;
+        font-family: var(--font-ui);
+        font-size: 15px;
+        line-height: 1.5;
+        color: #1A3A2F;
+      }
+
+      .voice-intake-hero__again {
+        margin-top: 12px;
+        background: transparent;
+        border: none;
+        padding: 0;
+        font-family: var(--font-ui);
+        font-size: 14px;
+        color: rgba(26, 58, 47, 0.65);
+        cursor: pointer;
+        text-decoration: underline;
+      }
+
+      .voice-intake-hero__error {
+        position: relative;
+        margin: 8px 0 0;
+        max-width: 380px;
+        font-family: var(--font-ui);
+        font-size: 14px;
+        line-height: 1.5;
+        color: #9B3A2A;
+      }
+    `}</style>
   );
 }
