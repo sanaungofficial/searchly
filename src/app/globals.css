@@ -46,8 +46,8 @@
 }
 
 :root {
-  --radius: 5px;
-  --scout-radius: 5px;
+  --radius: 10px;
+  --scout-radius: 10px;
   --foreground: #1A1A1A;
 
   /* Kimchi / Citebound — warm parchment palette (mockup) */
