@@ -4,8 +4,6 @@ import { enrichRecommendedSources } from "@/lib/jobs-search-response";
 import { sourcesToCacheEntries, upsertJobListingCache } from "@/lib/job-listing-cache";
 import {
   isDefaultRecommendedFilters,
-  mergeProfileAndRequestFilters,
-  profilePreferencesToFilters,
 } from "@/lib/profile-preference-filters";
 import {
   filterSourcesByLocationPreference,
@@ -72,15 +70,7 @@ async function loadUserContext(userId: string) {
   const profileLocation = parsedData.location ?? null;
   const priorities = profile?.priorities ?? [];
 
-  const profilePrefs = profilePreferencesToFilters({
-    priorities,
-    targetSalary: profile?.targetSalary,
-    employmentStatus: profile?.employmentStatus,
-    jobTimeline: profile?.jobTimeline,
-    profileLocation,
-  });
-
-  return { profile, targetRoles, parsedData, resumeText, profilePrefs, profileLocation, priorities };
+  return { profile, targetRoles, parsedData, resumeText, profileLocation, priorities };
 }
 
 async function enrichAndRank(
@@ -88,6 +78,7 @@ async function enrichAndRank(
   resumeText: string,
   userId: string,
   maxJobs: number,
+  options?: { filterStale?: boolean },
 ): Promise<VectorMatchedJob[]> {
   if (!sources.length) return [];
 
@@ -104,6 +95,7 @@ async function enrichAndRank(
     enriched,
     (job) => companyNameMatchesTracked(job.companyName, index),
     maxJobs,
+    options,
   );
 }
 
@@ -119,22 +111,17 @@ export async function generateRecommendedJobsForUser(
   const {
     targetRoles,
     resumeText,
-    profilePrefs,
     parsedData,
     profile,
     profileLocation,
     priorities,
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
-  const mergedFilters = defaultFeed
-    ? {
-        ...requestFilters,
-        semanticQuery: semanticQuery || undefined,
-      }
-    : mergeProfileAndRequestFilters(profilePrefs, {
-        ...requestFilters,
-        semanticQuery: semanticQuery || undefined,
-      });
+  /** Default feed uses profile location post-filter only. Custom searches use explicit UI filters — no silent profile merge. */
+  const mergedFilters = {
+    ...requestFilters,
+    semanticQuery: semanticQuery || undefined,
+  };
 
   const artifact = await ensureHirebaseArtifactForUser(input.userId);
   const preferCache = input.preferCache !== false;
@@ -251,7 +238,9 @@ export async function generateRecommendedJobsForUser(
 
   if (!sources.length) return null;
 
-  const jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs);
+  const jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, {
+    filterStale: defaultFeed,
+  });
 
   return {
     jobs,

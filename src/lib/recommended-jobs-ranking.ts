@@ -1,4 +1,5 @@
 import { RECOMMENDED_MATCH_SCORE_FLOOR } from "@/lib/recommended-jobs-config";
+import { compareJobFreshness, isRecommendedFreshnessVisible } from "@/lib/job-posted-freshness";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 export type RecommendedRankTier = 1 | 2 | 3;
@@ -23,6 +24,10 @@ export function sortRecommendedJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[
     const tierA = a.rankTier ?? 3;
     const tierB = b.rankTier ?? 3;
     if (tierA !== tierB) return tierA - tierB;
+
+    const freshnessCmp = compareJobFreshness(a.datePosted, b.datePosted);
+    if (freshnessCmp !== 0) return freshnessCmp;
+
     if (a.isTrackedCompany !== b.isTrackedCompany) {
       return (b.isTrackedCompany ? 1 : 0) - (a.isTrackedCompany ? 1 : 0);
     }
@@ -35,6 +40,7 @@ export function finalizeRecommendedJobs(
   jobs: VectorMatchedJob[],
   isTrackedFn: (job: VectorMatchedJob) => boolean,
   maxJobs: number,
+  options?: { filterStale?: boolean },
 ): VectorMatchedJob[] {
   const enriched = jobs.map((job) => {
     const tracked = isTrackedFn(job);
@@ -45,6 +51,10 @@ export function finalizeRecommendedJobs(
     };
   });
 
-  const floored = applyRecommendedScoreFloor(enriched);
+  const filterStale = options?.filterStale !== false;
+  const freshnessFiltered = filterStale
+    ? enriched.filter((job) => isRecommendedFreshnessVisible(job.datePosted))
+    : enriched;
+  const floored = applyRecommendedScoreFloor(freshnessFiltered);
   return sortRecommendedJobs(floored).slice(0, maxJobs);
 }

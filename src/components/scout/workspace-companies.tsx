@@ -10,6 +10,7 @@ import type { CachedJob } from "@/lib/cached-job";
 import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { JobFreshnessIndicator } from "./job-freshness-indicator";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 
@@ -799,6 +800,11 @@ function DrawerJobRow({
         {(job.department || job.location) && (
           <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", marginTop: 2 }}>
             {[job.department, job.location].filter(Boolean).join(" · ")}
+          </div>
+        )}
+        {job.datePosted && (
+          <div style={{ marginTop: 6 }}>
+            <JobFreshnessIndicator datePosted={job.datePosted} variant="compact" />
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { resend } from "@/lib/email";
 import { matchScoreStyle } from "@/lib/match-score";
+import { FRESHNESS_COLORS, getJobFreshness } from "@/lib/job-posted-freshness";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.kimchi.so";
@@ -120,6 +121,8 @@ export async function sendRecommendedJobsDigestEmail(input: {
 function renderJobCard(job: VectorMatchedJob): string {
   const style = matchScoreStyle(job.matchScore);
   const location = job.location?.trim();
+  const freshness = getJobFreshness(job.datePosted);
+  const freshnessColors = FRESHNESS_COLORS[freshness.level];
   const reasons = (job.matchReasons ?? []).slice(0, 2);
   const reasonBullets = reasons
     .map(
@@ -140,6 +143,14 @@ function renderJobCard(job: VectorMatchedJob): string {
           <p style="margin:0 0 10px;font-size:13px;color:#6B6258;">
             ${escapeHtml(job.companyName)}${watchlistBadge}${location ? ` · ${escapeHtml(location)}` : ""}
           </p>
+          ${
+            job.datePosted
+              ? `<p style="margin:0 0 10px;font-size:12px;font-weight:600;color:${freshnessColors.text};">
+                   <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${freshnessColors.dot};margin-right:6px;vertical-align:middle;"></span>
+                   ${escapeHtml(freshness.cardLabel)}
+                 </p>`
+              : ""
+          }
           <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:${style.accent};">
             ${job.matchScore}/100 · ${escapeHtml(job.matchLabel)} match
           </p>
