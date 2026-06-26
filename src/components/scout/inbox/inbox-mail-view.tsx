@@ -543,7 +543,7 @@ export function InboxMailView({
                       )}
                     </div>
                     <ScoutSecondaryBtn onClick={() => handleAnalyze(Boolean(detail.activity))} disabled={analyzing}>
-                      {analyzing ? "Checking…" : detail.activity ? "Check again" : "Check this email"}
+                      {analyzing ? "Analyzing…" : detail.activity ? "Re-analyze" : "Analyze for search"}
                     </ScoutSecondaryBtn>
                   </div>
                   {detail.activity && (

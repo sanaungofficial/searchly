@@ -78,7 +78,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [streaming, setStreaming] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [assistantCtx, setAssistantCtx] = useState<AssistantContextPayload | null>(null);
-  const [doNextCollapsed, setDoNextCollapsed] = useState(false);
+  const [doNextCollapsed, setDoNextCollapsed] = useState(true);
   const [doNextForceOpen, setDoNextForceOpen] = useState(false);
   const [presetMenuOpen, setPresetMenuOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<VoicePresetId>("general");
@@ -183,6 +183,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     audioLevel,
     sessionActive,
     toggleSession,
+    endSession,
     agentSettings,
   } = useVoiceAgentSession({
     context: "workspace",
@@ -227,6 +228,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const suggestions = assistantCtx?.suggestions ?? [];
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
   const showDoNext = !welcomeOnly && suggestions.length > 0 && (!doNextCollapsed || doNextForceOpen);
+  const showDoNextCollapsed = !welcomeOnly && suggestions.length > 0 && doNextCollapsed && !doNextForceOpen;
   const starterActions = buildStarterActions(assistantCtx);
   const starterChatChips = buildStarterChatChips(assistantCtx);
 
@@ -491,7 +493,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           onExpand={() => setDoNextForceOpen(true)}
           onSelect={handleDoNextSelect}
         />
-      ) : doNextCollapsed && suggestions.length > 0 ? (
+      ) : showDoNextCollapsed ? (
         <>
           <KimchiDoNextStrip
             suggestions={suggestions}
@@ -510,9 +512,17 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         {messages.map((msg, i) => {
           if (msg.kind === "voice") {
             const vm = msg as VoiceMessage;
+            const preset = getVoicePreset(vm.presetId);
             return (
-              <div key={msg.id ?? `voice-${i}`} className="kimchi-voice-block">
-                <p className="kimchi-voice-block__eyebrow">Voice · {vm.presetTitle}</p>
+              <div
+                key={msg.id ?? `voice-${i}`}
+                className="kimchi-voice-block"
+                style={{ borderLeftColor: preset.accent, borderLeftWidth: 3, borderLeftStyle: "solid" }}
+              >
+                <p className="kimchi-voice-block__eyebrow">
+                  <span className="kimchi-voice-block__emoji" aria-hidden="true">{preset.emoji}</span>
+                  Voice · {vm.presetTitle}
+                </p>
                 <p className="kimchi-voice-block__summary">{vm.summary}</p>
                 {vm.bullets.length > 0 && (
                   <ul className="kimchi-voice-block__bullets">
@@ -525,7 +535,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                   <div className="kimchi-voice-block__actions">
                     {vm.actions.map((a) => (
                       <button key={a.id} type="button" onClick={() => void handleDebriefAction(vm, a)}>
-                        {a.label}
+                        <span className="kimchi-voice-block__action-label">{a.label}</span>
+                        {"hint" in a && a.hint && (
+                          <span className="kimchi-voice-block__action-hint">{a.hint}</span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -571,7 +584,8 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         {!streaming && !welcomeOnly && followUpChips.length > 0 && (
           <KimchiAssistantChipRow
             label="Keep going"
-            chips={followUpChips}
+            chips={followUpChips.slice(0, 5)}
+            layout="inline"
             onActivate={handleChipActivate}
           />
         )}
@@ -591,16 +605,29 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                 disabled={!agentSettings}
               />
               <span className="kimchi-chat-panel__voice-label">
-                {orbState === "listening" ? "Listening…" : orbState === "speaking" ? "Kimchi is speaking" : "Tap orb when done"}
+                {getVoicePreset(selectedPreset).emoji}{" "}
+                {orbState === "listening" ? "Listening…" : orbState === "speaking" ? "Kimchi is speaking" : "Talking"}
               </span>
+              <button type="button" className="kimchi-voice-done-btn" onClick={endSession}>
+                Done talking
+              </button>
               {voiceError && <span className="kimchi-chat-panel__voice-error">{voiceError}</span>}
             </>
           ) : presetMenuOpen ? (
             <div className="kimchi-preset-menu">
               {VOICE_PRESETS.map((p) => (
-                <button key={p.id} type="button" className="kimchi-preset-menu__item" onClick={() => startPresetVoice(p.id)}>
-                  <span className="kimchi-preset-menu__title">{p.title}</span>
-                  <span className="kimchi-preset-menu__desc">{p.description}</span>
+                <button
+                  key={p.id}
+                  type="button"
+                  className="kimchi-preset-menu__item"
+                  style={{ borderLeftColor: p.accent, borderLeftWidth: 3, borderLeftStyle: "solid" }}
+                  onClick={() => startPresetVoice(p.id)}
+                >
+                  <span className="kimchi-preset-menu__emoji" aria-hidden="true">{p.emoji}</span>
+                  <span className="kimchi-preset-menu__copy">
+                    <span className="kimchi-preset-menu__title">{p.title}</span>
+                    <span className="kimchi-preset-menu__desc">{p.description}</span>
+                  </span>
                 </button>
               ))}
               <button type="button" className="kimchi-preset-menu__cancel" onClick={() => setPresetMenuOpen(false)}>
@@ -765,6 +792,15 @@ function KimchiChatPanelStyles() {
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: rgba(26, 58, 47, 0.55);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .kimchi-voice-block__emoji {
+        font-size: 14px;
+        line-height: 1;
+        text-transform: none;
+        letter-spacing: 0;
       }
       .kimchi-voice-block__summary {
         margin: 0;
@@ -782,20 +818,49 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-voice-block__actions {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-direction: column;
+        gap: 6px;
         margin-top: 12px;
       }
       .kimchi-voice-block__actions button {
-        padding: 9px 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        padding: 10px 12px;
         background: #1A3A2F;
         color: #E8D5A3;
         border: none;
         border-radius: var(--scout-radius);
         font-family: ${sans};
+        cursor: pointer;
+        text-align: left;
+      }
+      .kimchi-voice-block__action-label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .kimchi-voice-block__action-hint {
+        font-size: 11px;
+        font-weight: 400;
+        opacity: 0.75;
+        line-height: 1.35;
+      }
+      .kimchi-voice-done-btn {
+        margin-left: auto;
+        padding: 7px 12px;
+        background: rgba(26, 58, 47, 0.08);
+        border: 1px solid rgba(26, 58, 47, 0.18);
+        border-radius: 999px;
+        font-family: ${sans};
         font-size: 12px;
         font-weight: 600;
+        color: #1A3A2F;
         cursor: pointer;
+        flex-shrink: 0;
+      }
+      .kimchi-voice-done-btn:hover {
+        background: rgba(26, 58, 47, 0.12);
       }
       .kimchi-voice-block__transcript {
         display: inline-block;
@@ -834,12 +899,26 @@ function KimchiChatPanelStyles() {
         width: 100%;
       }
       .kimchi-preset-menu__item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
         text-align: left;
         padding: 10px 12px;
         background: #fff;
         border: 1px solid rgba(26, 58, 47, 0.12);
         border-radius: var(--scout-radius);
         cursor: pointer;
+      }
+      .kimchi-preset-menu__item:hover {
+        background: rgba(26, 58, 47, 0.04);
+      }
+      .kimchi-preset-menu__emoji {
+        font-size: 20px;
+        line-height: 1.2;
+        flex-shrink: 0;
+      }
+      .kimchi-preset-menu__copy {
+        min-width: 0;
       }
       .kimchi-preset-menu__title {
         display: block;

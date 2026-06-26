@@ -1,6 +1,7 @@
 import { getActingUser } from "@/lib/acting-user";
 import { buildFollowUpChips } from "@/lib/kimchi-assistant/chat-chips";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -30,21 +31,16 @@ export async function POST(request: Request) {
   }
 
   try {
+    const template = await getPrompt("KIMCHI_CHAT_FOLLOW_UPS");
+    const prompt = interpolate(template, {
+      userMessage: userMessage.slice(0, 500),
+      assistantMessage: assistantMessage.slice(0, 2000),
+    });
+
     const { text } = await kimchiGenerateText({
       tier: "talk",
-      prompt: `You suggest 3 short follow-up prompts for a job seeker chatting with Kimchi.
-
-Return ONLY valid JSON:
-{ "chips": [{ "id": "unique", "label": "3-6 word button label", "prompt": "full user message to send Kimchi" }] }
-
-Rules:
-- Labels are clickable chips — short, specific, related to the assistant's last reply
-- Prompts are what the user would type to drill deeper
-- No generic "tell me more" unless nothing else fits
-
-User asked: ${userMessage.slice(0, 500)}
-Kimchi replied: ${assistantMessage.slice(0, 2000)}`,
-      maxOutputTokens: 350,
+      prompt,
+      maxOutputTokens: 450,
       userId: dbUser.id,
       tags: ["feature:chat-follow-ups"],
     });
@@ -53,7 +49,7 @@ Kimchi replied: ${assistantMessage.slice(0, 2000)}`,
     const chips = Array.isArray(parsed.chips)
       ? parsed.chips
           .filter((c) => c.label && c.prompt)
-          .slice(0, 4)
+          .slice(0, 5)
           .map((c, i) => ({
             id: c.id || `ai-${i}`,
             label: c.label.slice(0, 48),

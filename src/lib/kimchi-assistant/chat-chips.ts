@@ -111,7 +111,7 @@ function suggestionToActionChip(s: AssistantSuggestion): AssistantChip | null {
   if (s.kind === "inbox_email" && s.meta?.activityId) {
     return {
       id: s.id,
-      label: "Review this email",
+      label: s.title,
       hint: s.detail,
       variant: "action",
       action: { type: "inbox_insight", activityId: s.meta.activityId },
@@ -311,7 +311,7 @@ export function buildFollowUpChips(params: {
       if (usedLabels.has(chip.label)) continue;
       usedLabels.add(chip.label);
       out.push(chip);
-      if (out.length >= 4) return out;
+      if (out.length >= 5) return out;
     }
   }
 
@@ -319,7 +319,7 @@ export function buildFollowUpChips(params: {
     if (usedLabels.has(chip.label)) continue;
     usedLabels.add(chip.label);
     out.push(chip);
-    if (out.length >= 3) break;
+    if (out.length >= 5) break;
   }
 
   return out;
