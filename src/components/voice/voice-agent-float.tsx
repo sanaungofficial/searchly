@@ -70,11 +70,15 @@ export function VoiceAgentFloat() {
       ? "Tap the orb to start talking. You can also use text chat anytime."
       : orbState === "done"
         ? undefined
-        : orbState === "connecting" || orbState === "thinking"
+        : orbState === "connecting"
           ? "Connecting…"
-          : sessionActive
-            ? "Tap the orb when you're done."
-            : undefined;
+          : orbState === "thinking"
+            ? "Kimchi is thinking…"
+            : sessionActive && transcriptLines.length === 0 && (orbState === "live" || orbState === "listening")
+              ? "Just start speaking — Kimchi is listening."
+              : sessionActive
+                ? "Tap the orb when you're done."
+                : undefined;
 
   return (
     <>

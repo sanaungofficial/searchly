@@ -208,6 +208,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     error: voiceError,
     audioLevel,
     sessionActive,
+    transcriptLines,
     toggleSession,
     endSession,
     agentSettings,
@@ -909,10 +910,24 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                 onClick={toggleSession}
                 disabled={!agentSettings}
               />
-              <span className="kimchi-chat-panel__voice-label">
-                {getVoicePreset(selectedPreset).emoji}{" "}
-                {orbState === "listening" ? "Listening…" : orbState === "speaking" ? "Kimchi is speaking" : "Talking"}
-              </span>
+              <div className="kimchi-chat-panel__voice-status">
+                <span className="kimchi-chat-panel__voice-label">
+                  {getVoicePreset(selectedPreset).emoji}{" "}
+                  {orbState === "listening" || orbState === "live"
+                    ? "Listening…"
+                    : orbState === "speaking"
+                      ? "Kimchi is speaking"
+                      : orbState === "connecting"
+                        ? "Connecting…"
+                        : orbState === "thinking"
+                          ? "Thinking…"
+                          : "Talking"}
+                </span>
+                {transcriptLines.length === 0 &&
+                  (orbState === "live" || orbState === "listening" || orbState === "connecting") && (
+                    <span className="kimchi-chat-panel__voice-hint">Just start speaking — Kimchi is listening.</span>
+                  )}
+              </div>
               <button type="button" className="kimchi-voice-done-btn" onClick={endSession}>
                 Done talking
               </button>
@@ -1336,10 +1351,22 @@ function KimchiChatPanelStyles() {
         gap: 10px;
         flex-shrink: 0;
       }
+      .kimchi-chat-panel__voice-status {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
       .kimchi-chat-panel__voice-label {
         font-family: ${sans};
         font-size: 13px;
         color: var(--scout-muted);
+      }
+      .kimchi-chat-panel__voice-hint {
+        font-family: ${sans};
+        font-size: 12px;
+        line-height: 1.35;
+        color: rgba(26, 58, 47, 0.55);
       }
       .kimchi-chat-panel__voice-error {
         font-family: ${sans};
