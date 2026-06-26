@@ -1,6 +1,7 @@
 import { JobActivitySignal, JobActivitySource, JobActivityStatus, JobStage, type Job } from "@prisma/client";
 import { kimchiGenerateText } from "@/lib/llm";
 import { extractJsonObject } from "@/lib/nylas-smart-compose";
+import { getPrompt, interpolate } from "@/lib/prompts";
 import {
   fetchMessage,
   fetchRecentMessages,
@@ -74,27 +75,13 @@ async function classifyWithClaude(params: {
     .map((j) => `- ${j.company} | ${j.role} | stage=${j.stage}`)
     .join("\n");
 
-  const prompt = `Triage this job-search email. Return ONLY valid JSON:
-{
-  "signal": "APPLICATION_RECEIVED" | "INTERVIEW_INVITE" | "REJECTION" | "OFFER" | "RECRUITER_OUTREACH" | "FOLLOW_UP" | "OTHER",
-  "suggestedStage": "SAVED" | "APPLYING" | "APPLIED" | "SCREENING" | "INTERVIEWING" | "OFFER" | "REJECTED" | "WITHDRAWN" | null,
-  "confidence": 0.0-1.0,
-  "company": string | null,
-  "role": string | null,
-  "title": string,
-  "snippet": string (max 200 chars),
-  "interviewAt": ISO8601 string | null,
-  "createJob": boolean
-}
-
-Newsletters/marketing → OTHER, low confidence.
-
-Pipeline:
-${pipeline || "(empty)"}
-
-From: ${params.from}
-Subject: ${params.subject}
-Snippet: ${params.snippet.slice(0, 200)}`;
+  const template = await getPrompt("KIMCHI_INBOX_TRIAGE");
+  const prompt = interpolate(template, {
+    pipeline: pipeline || "(empty)",
+    from: params.from,
+    subject: params.subject,
+    snippet: params.snippet.slice(0, 200),
+  });
 
   try {
     const { text } = await kimchiGenerateText({

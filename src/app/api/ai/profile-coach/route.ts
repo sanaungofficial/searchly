@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     strategySummary,
   });
 
-  return kimchiStreamText({
+  return await kimchiStreamText({
     tier: "talk",
     system: systemPrompt,
     messages,

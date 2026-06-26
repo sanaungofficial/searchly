@@ -42,7 +42,7 @@ You will be given a cover letter and a specific instruction to improve it. Rewri
     `Instruction: ${prompt}`,
   ].filter(Boolean).join("\n");
 
-  return kimchiStreamText({
+  return await kimchiStreamText({
     tier: "create",
     system: systemPrompt,
     messages: [{ role: "user", content: userMessage }],

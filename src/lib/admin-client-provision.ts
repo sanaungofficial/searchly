@@ -110,7 +110,7 @@ async function uploadResumeForClient(input: {
   }
 
   if (tokensIn > 0) {
-    logAiUsage(dbUser.id, "RESUME_PARSE", kimchiModelId("parse"), tokensIn, tokensOut);
+    logAiUsage(dbUser.id, "RESUME_PARSE", await kimchiModelId("parse"), tokensIn, tokensOut);
   }
 
   const parsedData = parsedRaw;

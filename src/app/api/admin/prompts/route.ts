@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PROMPT_META, PROMPT_DEFAULTS, getPrompt } from "@/lib/prompts";
 import { COMPANY_SCAN_SETTINGS_KEY } from "@/lib/company-scan-config";
+import { KIMCHI_AI_SETTINGS_KEY } from "@/lib/kimchi-ai-settings";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -11,7 +12,7 @@ export async function GET() {
   await Promise.all(Object.keys(PROMPT_META).map((key) => getPrompt(key)));
 
   const rows = await prisma.promptConfig.findMany({
-    where: { key: { not: COMPANY_SCAN_SETTINGS_KEY } },
+    where: { key: { notIn: [COMPANY_SCAN_SETTINGS_KEY, KIMCHI_AI_SETTINGS_KEY] } },
     orderBy: { category: "asc" },
   });
 

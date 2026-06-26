@@ -57,7 +57,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   let tokensOut = 0;
   let usedFallback = false;
   let provider: "hirebase" | "claude" | "heuristic" = "heuristic";
-  let modelId = kimchiModelId("parse");
+  let modelId = await kimchiModelId("parse");
 
   if (bytes) {
     const result = await parseResumeFile(anthropic, bytes, ext, structuredPrompt, asset.name, dbUser.id);
