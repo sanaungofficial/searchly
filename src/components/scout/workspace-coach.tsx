@@ -57,7 +57,7 @@ const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
 function StageBadge({ stage }: { stage: JobStage }) {
   const { bg, color } = STAGE_COLORS[stage] ?? STAGE_COLORS.SAVED;
   return (
-    <span style={{ fontSize: 12, fontFamily: fontMono, padding: "2px 7px", borderRadius: 0, background: bg, color }}>
+    <span style={{ fontSize: 12, fontFamily: fontMono, padding: "2px 7px", borderRadius: "var(--scout-radius)", background: bg, color }}>
       {stage.toLowerCase()}
     </span>
   );
@@ -195,13 +195,13 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
           <div style={{ display: "flex", gap: 8 }}>
             {selected.profile?.linkedinUrl && (
               <a href={selected.profile.linkedinUrl} target="_blank" rel="noreferrer"
-                style={{ fontSize: T.caption, fontFamily: fontMono, padding: "5px 12px", borderRadius: 0, border: border.line, color: color.forest, textDecoration: "none", background: surface.card }}>
+                style={{ fontSize: T.caption, fontFamily: fontMono, padding: "5px 12px", borderRadius: "var(--scout-radius)", border: border.line, color: color.forest, textDecoration: "none", background: surface.card }}>
                 LinkedIn ↗
               </a>
             )}
             {selected.profile?.resumeUrl && (
               <a href={selected.profile.resumeUrl} target="_blank" rel="noreferrer"
-                style={{ fontSize: T.caption, fontFamily: fontMono, padding: "5px 12px", borderRadius: 0, border: border.line, color: color.forest, textDecoration: "none", background: surface.card }}>
+                style={{ fontSize: T.caption, fontFamily: fontMono, padding: "5px 12px", borderRadius: "var(--scout-radius)", border: border.line, color: color.forest, textDecoration: "none", background: surface.card }}>
                 Resume ↗
               </a>
             )}
@@ -223,7 +223,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         {selected.profile && (selected.profile.targetRoles.length > 0 || selected.profile.targetSalary) && (
-          <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px", marginBottom: 20 }}>
+          <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px", marginBottom: 20 }}>
             <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 10 }}>Targets</p>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
               {selected.profile.targetRoles.length > 0 && (
@@ -231,7 +231,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
                   <p style={{ fontSize: 13, color: "var(--scout-muted)", marginBottom: 4 }}>Roles</p>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {selected.profile.targetRoles.map((r) => (
-                      <span key={r} style={{ fontSize: 13, background: "rgba(26,58,47,0.06)", color: "#1a3a2f", padding: "2px 8px", borderRadius: 0 }}>{r}</span>
+                      <span key={r} style={{ fontSize: 13, background: "rgba(26,58,47,0.06)", color: "#1a3a2f", padding: "2px 8px", borderRadius: "var(--scout-radius)" }}>{r}</span>
                     ))}
                   </div>
                 </div>
@@ -246,7 +246,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
           </div>
         )}
 
-        <div style={{ background: "#fff", borderRadius: 0, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+        <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           <div style={{ padding: "14px 20px", borderBottom: "1px solid #f0ece6" }}>
             <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono }}>Job Pipeline ({selected.jobs.length})</p>
           </div>
@@ -302,7 +302,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
 
           <div style={{ marginBottom: 16 }}>
             <input type="text" placeholder="Search clients…" value={search} onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", fontSize: 14, background: surface.card, border: border.line, borderRadius: 0, padding: "9px 14px", outline: "none", fontFamily: fontSans, boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, background: surface.card, border: border.line, borderRadius: "var(--scout-radius)", padding: "9px 14px", outline: "none", fontFamily: fontSans, boxSizing: "border-box" }} />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -312,15 +312,15 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
               const hasOffer = client.jobs.some((j) => j.stage === "OFFER");
               return (
                 <button key={client.id} onClick={() => setSelected(client)}
-                  style={{ background: "#fff", borderRadius: 0, border: `1px solid ${hasOffer ? "rgba(5,150,105,0.3)" : inInterview ? "rgba(124,58,237,0.2)" : "rgba(26,58,47,0.08)"}`, padding: "16px 20px", cursor: "pointer", textAlign: "left", transition: "box-shadow 0.15s", width: "100%" }}
+                  style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: `1px solid ${hasOffer ? "rgba(5,150,105,0.3)" : inInterview ? "rgba(124,58,237,0.2)" : "rgba(26,58,47,0.08)"}`, padding: "16px 20px", cursor: "pointer", textAlign: "left", transition: "box-shadow 0.15s", width: "100%" }}
                   onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.06)")}
                   onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                         <p style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 14 }}>{client.name ?? client.email.split("@")[0]}</p>
-                        {hasOffer && <span style={{ fontSize: 12, background: "rgba(5,150,105,0.1)", color: "#059669", padding: "1px 7px", borderRadius: 0, fontFamily: fontMono }}>offer</span>}
-                        {inInterview && !hasOffer && <span style={{ fontSize: 12, background: "rgba(124,58,237,0.1)", color: "#7c3aed", padding: "1px 7px", borderRadius: 0, fontFamily: fontMono }}>interviewing</span>}
+                        {hasOffer && <span style={{ fontSize: 12, background: "rgba(5,150,105,0.1)", color: "#059669", padding: "1px 7px", borderRadius: "var(--scout-radius)", fontFamily: fontMono }}>offer</span>}
+                        {inInterview && !hasOffer && <span style={{ fontSize: 12, background: "rgba(124,58,237,0.1)", color: "#7c3aed", padding: "1px 7px", borderRadius: "var(--scout-radius)", fontFamily: fontMono }}>interviewing</span>}
                       </div>
                       <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: fontMono }}>{client.email}</p>
                       {client.profile?.headline && <p style={{ fontSize: 13, color: "#52493f", marginTop: 4 }}>{client.profile.headline}</p>}
@@ -339,7 +339,7 @@ export function WorkspaceCoach({ embedded = false }: { embedded?: boolean }) {
                   {client.jobs.length > 0 && (
                     <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                       {client.jobs.slice(0, 4).map((j) => (
-                        <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 5, background: "#faf8f5", borderRadius: 0, padding: "3px 8px" }}>
+                        <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 5, background: "#faf8f5", borderRadius: "var(--scout-radius)", padding: "3px 8px" }}>
                           <span style={{ fontSize: 13, color: "#3d3530" }}>{j.company}</span>
                           <StageBadge stage={j.stage} />
                         </div>

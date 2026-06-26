@@ -24,7 +24,7 @@ export function GrowthWelcomeModal({ onClose }: Props) {
         style={{
           position: "relative",
           background: "#1A3A2F",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           padding: "40px 36px",
           maxWidth: 420,
           width: "100%",
@@ -63,7 +63,7 @@ export function GrowthWelcomeModal({ onClose }: Props) {
             background: "#E8D5A3",
             color: "#1A3A2F",
             border: "none",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontFamily: "var(--font-ui)",
             fontSize: 14,
             fontWeight: 600,

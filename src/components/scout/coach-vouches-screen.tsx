@@ -6,7 +6,7 @@ import { coachVouchShareMessage } from "@/lib/coach-onboarding";
 
 const CARD: React.CSSProperties = {
   background: "#FFFFFF",
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   padding: "clamp(16px, 4vw, 24px)",
   border: "1px solid rgba(26,58,47,0.14)",
   boxShadow: "0 2px 10px rgba(26,58,47,0.06)",
@@ -26,7 +26,7 @@ const PRIMARY_CTA: React.CSSProperties = {
   background: "#1A3A2F",
   color: "#E8D5A3",
   border: "none",
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   fontFamily: "var(--font-ui)",
   fontSize: 14,
   fontWeight: 500,
@@ -245,7 +245,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                       style={{
                         padding: "8px 14px",
                         border: "1.5px solid rgba(26,58,47,0.2)",
-                        borderRadius: 999,
+                        borderRadius: "var(--scout-radius)"99,
                         fontFamily: "var(--font-ui)",
                         fontSize: 13,
                         color: "#1A1A1A",

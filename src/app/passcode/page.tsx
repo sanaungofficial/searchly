@@ -83,7 +83,7 @@ export default function PasscodePage() {
             letterSpacing: "0.3em",
             padding: "12px 16px",
             border: error ? "1px solid #C4574A" : border.lineStrong,
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             outline: "none",
             color: color.ink,
             background: surface.inset,

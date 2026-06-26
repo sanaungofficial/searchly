@@ -46,7 +46,8 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 5px;
+  --scout-radius: 5px;
   --foreground: #1A1A1A;
 
   /* Kimchi / Citebound — warm parchment palette (mockup) */
@@ -235,7 +236,7 @@
   max-width: 420px;
   background: var(--scout-surface);
   border: 1px solid rgba(17, 17, 17, 0.14);
-  border-radius: 0;
+  border-radius: var(--scout-radius);
   padding: 40px 36px;
   box-sizing: border-box;
 }
@@ -248,7 +249,7 @@
   gap: 10px;
   min-height: 48px;
   padding: 12px 20px;
-  border-radius: 0;
+  border-radius: var(--scout-radius);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -261,7 +262,7 @@
   min-height: 48px;
   padding: 12px 14px;
   border: 1px solid rgba(17, 17, 17, 0.14);
-  border-radius: 0;
+  border-radius: var(--scout-radius);
   font-size: 16px;
   color: #1A3A2F;
   background: var(--scout-inset);
@@ -301,7 +302,7 @@
 
   .auth-card {
     padding: 28px 20px;
-    border-radius: 12px;
+    border-radius: var(--scout-radius);
   }
 }
 

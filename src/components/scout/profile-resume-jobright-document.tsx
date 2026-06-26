@@ -37,7 +37,7 @@ function SectionActions({ onFix, onImpact }: { onFix: () => void; onImpact?: () 
           padding: "4px 10px",
           fontSize: 11,
           fontWeight: 600,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: `1px solid ${JR.border}`,
           background: JR.panel,
           color: JR.muted,
@@ -53,7 +53,7 @@ function SectionActions({ onFix, onImpact }: { onFix: () => void; onImpact?: () 
           padding: "4px 12px",
           fontSize: 11,
           fontWeight: 700,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "none",
           background: JR.green,
           color: JR.gold,
@@ -87,7 +87,7 @@ function SkillPill({ label, onRemove }: { label: string; onRemove: () => void })
         gap: 4,
         padding: "4px 8px",
         background: "#F3F4F6",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontSize: 10,
         marginRight: 6,
         marginBottom: 6,
@@ -158,7 +158,7 @@ export function JobrightResumeDocument({
         maxWidth: 820,
         padding: "32px 48px 48px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontSize: 11,
         lineHeight: 1.55,
         color: JR.text,
@@ -174,7 +174,7 @@ export function JobrightResumeDocument({
               padding: "6px 12px",
               fontSize: 12,
               fontWeight: 600,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               border: `1px solid ${JR.border}`,
               background: JR.panel,
               cursor: "pointer",
@@ -191,7 +191,7 @@ export function JobrightResumeDocument({
           {grade}
         </div>
         <div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: 0 }}>{gradeLabel}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: "var(--scout-radius)" }}>{gradeLabel}</span>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: JR.muted }}>Score: {score}/100</p>
         </div>
         <button
@@ -330,7 +330,7 @@ export function JobrightResumeDocument({
               <button
                 type="button"
                 onClick={() => patch({ workExperience: [...data.workExperience, { id: `exp_${Date.now()}`, company: "", title: "", bullets: [] }] })}
-                style={{ background: "none", border: `1px dashed ${JR.border}`, borderRadius: 0, padding: "8px 12px", fontSize: 12, cursor: "pointer", color: JR.muted, width: "100%" }}
+                style={{ background: "none", border: `1px dashed ${JR.border}`, borderRadius: "var(--scout-radius)", padding: "8px 12px", fontSize: 12, cursor: "pointer", color: JR.muted, width: "100%" }}
               >
                 <Plus size={12} style={{ display: "inline", verticalAlign: "middle" }} /> Add experience
               </button>
@@ -387,7 +387,7 @@ export function JobrightScorePill({
   onViewReport: () => void;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", background: JR.greenLight, borderRadius: 0, border: `1px solid ${JR.green}` }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", background: JR.greenLight, borderRadius: "var(--scout-radius)", border: `1px solid ${JR.green}` }}>
       <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF3C7", border: "1.5px solid #D4AF37", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#92400E" }}>
         {grade}
       </span>

@@ -43,7 +43,7 @@ export default function DevJobDrawerPreviewPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--scout-page)", padding: 24 }}>
       <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#5C534A", marginBottom: 12 }}>Dev preview — JobDrawer (JobRight fields)</p>
-      {!open && <button type="button" onClick={() => setOpen(true)} style={{ padding: "10px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 8, cursor: "pointer" }}>Open drawer</button>}
+      {!open && <button type="button" onClick={() => setOpen(true)} style={{ padding: "10px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: "var(--scout-radius)", cursor: "pointer" }}>Open drawer</button>}
       {open && <JobDrawer card={MOCK_CARD} onClose={() => setOpen(false)} moveCard={() => {}} onDelete={() => setOpen(false)} onCardUpdate={() => {}} />}
     </div>
   );

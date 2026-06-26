@@ -60,7 +60,7 @@ const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
 function StageBadge({ stage }: { stage: JobStage }) {
   const { bg, color: c } = STAGE_COLORS[stage] ?? STAGE_COLORS.SAVED;
   return (
-    <span style={{ fontSize: 12, fontFamily: fontMono, padding: "2px 7px", borderRadius: 0, background: bg, color: c }}>
+    <span style={{ fontSize: 12, fontFamily: fontMono, padding: "2px 7px", borderRadius: "var(--scout-radius)", background: bg, color: c }}>
       {stage.toLowerCase()}
     </span>
   );
@@ -136,7 +136,7 @@ function CreateClientModal({
     fontSize: 14,
     background: surface.card,
     border: border.line,
-    borderRadius: 0,
+    borderRadius: "var(--scout-radius)",
     padding: "9px 12px",
     outline: "none",
     fontFamily: fontSans,
@@ -272,7 +272,7 @@ function CreateClientModal({
                   padding: "10px 16px",
                   background: surface.inset,
                   border: border.line,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   fontSize: 14,
                   fontFamily: fontSans,
                   cursor: "pointer",
@@ -288,7 +288,7 @@ function CreateClientModal({
                   background: color.forest,
                   color: color.gold,
                   border: "none",
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   fontSize: 14,
                   fontWeight: 600,
                   fontFamily: fontSans,
@@ -473,7 +473,7 @@ export function AdminClientsPanel({
             fontSize: 14,
             background: surface.card,
             border: border.line,
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             padding: "9px 14px",
             outline: "none",
             fontFamily: fontSans,
@@ -551,7 +551,7 @@ export function AdminClientsPanel({
                         background: color.forest,
                         color: color.gold,
                         border: "none",
-                        borderRadius: 0,
+                        borderRadius: "var(--scout-radius)",
                         fontSize: 13,
                         fontWeight: 600,
                         cursor: startingUserId === client.id ? "default" : "pointer",

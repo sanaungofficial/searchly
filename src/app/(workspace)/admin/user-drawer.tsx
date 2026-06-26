@@ -182,7 +182,7 @@ export function UserDrawer({
               <button
                 onClick={viewAsClient}
                 disabled={impersonating}
-                className="mt-3 text-xs font-semibold px-3 py-1.5 bg-[#1A3A2F] text-[#E8D5A3] border-0 rounded-none disabled:opacity-60"
+                className="mt-3 text-xs font-semibold px-3 py-1.5 bg-[#1A3A2F] text-[#E8D5A3] border-0 rounded-[var(--scout-radius)] disabled:opacity-60"
               >
                 {impersonating ? "Opening…" : "View as client"}
               </button>
@@ -190,7 +190,7 @@ export function UserDrawer({
           </div>
           <button
             onClick={onClose}
-            className="text-[var(--scout-muted)] hover:text-[#52493F] text-lg leading-none shrink-0 mt-0.5 w-7 h-7 flex items-center justify-center rounded-none hover:bg-[var(--scout-inset)]"
+            className="text-[var(--scout-muted)] hover:text-[#52493F] text-lg leading-none shrink-0 mt-0.5 w-7 h-7 flex items-center justify-center rounded-[var(--scout-radius)] hover:bg-[var(--scout-inset)]"
           >
             ✕
           </button>
@@ -199,7 +199,7 @@ export function UserDrawer({
         <div className="px-6 py-5 space-y-5 flex-1">
           {/* Quick stats */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center">
+            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center">
               <p
                 className="text-2xl font-semibold text-[#1A1A1A]"
                 style={{ fontFamily: "var(--font-display)" }}
@@ -208,7 +208,7 @@ export function UserDrawer({
               </p>
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mt-0.5">jobs</p>
             </div>
-            <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center">
+            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center">
               <p
                 className="text-2xl font-semibold text-[#1A1A1A]"
                 style={{ fontFamily: "var(--font-display)" }}
@@ -217,10 +217,10 @@ export function UserDrawer({
               </p>
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mt-0.5">AI / mo</p>
             </div>
-            <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center flex flex-col items-center justify-center gap-1">
+            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-4 py-3 text-center flex flex-col items-center justify-center gap-1">
               {user.subscription ? (
                 <span
-                  className={`text-xs font-[family-name:var(--font-mono-ui)] px-2 py-0.5 rounded-none border ${STATUS_STYLES[user.subscription.status]}`}
+                  className={`text-xs font-[family-name:var(--font-mono-ui)] px-2 py-0.5 rounded-[var(--scout-radius)] border ${STATUS_STYLES[user.subscription.status]}`}
                 >
                   {user.subscription.status.toLowerCase()}
                 </span>
@@ -232,14 +232,14 @@ export function UserDrawer({
           </div>
 
           {/* Role */}
-          <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-4">
+          <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">Role</p>
             {canEdit ? (
               <div className="flex items-center gap-2">
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="flex-1 text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-none px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-[family-name:var(--font-mono-ui)]"
+                  className="flex-1 text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-[family-name:var(--font-mono-ui)]"
                 >
                   {ROLE_OPTIONS.map((r) => (
                     <option key={r} value={r}>
@@ -251,7 +251,7 @@ export function UserDrawer({
                   <button
                     onClick={handleRoleSave}
                     disabled={saving}
-                    className="text-xs bg-[#1A3A2F] text-[#E8D5A3] px-4 py-2 rounded-none hover:opacity-90 disabled:opacity-50 font-[family-name:var(--font-mono-ui)] whitespace-nowrap"
+                    className="text-xs bg-[#1A3A2F] text-[#E8D5A3] px-4 py-2 rounded-[var(--scout-radius)] hover:opacity-90 disabled:opacity-50 font-[family-name:var(--font-mono-ui)] whitespace-nowrap"
                   >
                     {saving ? "Saving…" : "Save"}
                   </button>
@@ -266,7 +266,7 @@ export function UserDrawer({
           </div>
 
           {/* Account */}
-          <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-4">
+          <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">Account</p>
             <Row label="Joined" value={fmt(user.createdAt)} />
             <Row label="Attribution" value={user.profile?.attribution} />
@@ -291,7 +291,7 @@ export function UserDrawer({
 
           {/* Profile */}
           {user.profile && (
-            <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-4">
+            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">Profile</p>
               <Row label="Status" value={user.profile.employmentStatus} />
               <Row label="Current comp" value={user.profile.currentSalary} />
@@ -302,7 +302,7 @@ export function UserDrawer({
                   <span className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] w-28 shrink-0 pt-0.5">Target roles</span>
                   <div className="flex flex-wrap gap-1">
                     {user.profile.targetRoles.map((r) => (
-                      <span key={r} className="text-xs bg-[var(--scout-inset)] text-[#52493F] px-2 py-0.5 rounded-none font-[family-name:var(--font-mono-ui)]">
+                      <span key={r} className="text-xs bg-[var(--scout-inset)] text-[#52493F] px-2 py-0.5 rounded-[var(--scout-radius)] font-[family-name:var(--font-mono-ui)]">
                         {r}
                       </span>
                     ))}
@@ -326,7 +326,7 @@ export function UserDrawer({
 
           {/* Recent jobs */}
           {user.jobs.length > 0 && (
-            <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-4">
+            <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
               <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">
                 Jobs
                 {user._count.jobs > user.jobs.length
@@ -343,7 +343,7 @@ export function UserDrawer({
                       <p className="text-xs font-medium text-[#52493F]">{job.company}</p>
                       <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)]">{job.role}</p>
                     </div>
-                    <span className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] bg-[var(--scout-inset)] px-2 py-0.5 rounded-none border border-[rgba(17,17,17,0.08)]">
+                    <span className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] bg-[var(--scout-inset)] px-2 py-0.5 rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)]">
                       {job.stage.toLowerCase()}
                     </span>
                   </div>
@@ -353,18 +353,18 @@ export function UserDrawer({
           )}
 
           {/* AI Usage */}
-          <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-4">
+          <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-4">
             <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] uppercase tracking-wider mb-3">AI Usage (lifetime)</p>
             {aiLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-3.5 bg-[var(--scout-inset)] rounded-none animate-pulse" />
+                  <div key={i} className="h-3.5 bg-[var(--scout-inset)] rounded-[var(--scout-radius)] animate-pulse" />
                 ))}
               </div>
             ) : aiDetail && aiDetail.totalCalls > 0 ? (
               <>
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-[var(--scout-inset)] rounded-none p-3 text-center">
+                  <div className="bg-[var(--scout-inset)] rounded-[var(--scout-radius)] p-3 text-center">
                     <p
                       className="text-xl font-semibold text-[#1A1A1A]"
                       style={{ fontFamily: "var(--font-display)" }}
@@ -373,7 +373,7 @@ export function UserDrawer({
                     </p>
                     <p className="text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mt-0.5">total calls</p>
                   </div>
-                  <div className="bg-[var(--scout-inset)] rounded-none p-3 text-center">
+                  <div className="bg-[var(--scout-inset)] rounded-[var(--scout-radius)] p-3 text-center">
                     <p
                       className="text-xl font-semibold text-[#1A1A1A]"
                       style={{ fontFamily: "var(--font-display)" }}

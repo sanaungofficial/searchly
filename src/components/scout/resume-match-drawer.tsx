@@ -471,7 +471,7 @@ export function ResumeMatchDrawer({
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: 9,
+                borderRadius: "var(--scout-radius)",
                 background: "#1A3A2F",
                 display: "flex",
                 alignItems: "center",
@@ -627,7 +627,7 @@ export function ResumeMatchDrawer({
                           width: "100%",
                           padding: "12px",
                           border: "1px solid rgba(0,0,0,0.12)",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           fontFamily: fontSans,
                           fontSize: 14,
                           color: "#1A1A1A",
@@ -649,7 +649,7 @@ export function ResumeMatchDrawer({
                             : "rgba(0,0,0,0.05)",
                           color: manualDesc.trim() ? "#E8D5A3" : "var(--scout-muted)",
                           border: "none",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           fontFamily: fontSans,
                           fontSize: 14,
                           fontWeight: 600,
@@ -694,7 +694,7 @@ export function ResumeMatchDrawer({
                           marginBottom: 20,
                           padding: "24px 28px",
                           background: "var(--scout-inset)",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           border: "1px solid rgba(0,0,0,0.05)",
                         }}
                       >
@@ -723,7 +723,7 @@ export function ResumeMatchDrawer({
                                 gap: 6,
                                 padding: "6px 12px",
                                 background: "rgba(196,87,74,0.08)",
-                                borderRadius: 0,
+                                borderRadius: "var(--scout-radius)",
                                 border: "1px solid rgba(196,87,74,0.15)",
                               }}
                             >
@@ -791,7 +791,7 @@ export function ResumeMatchDrawer({
                       <div
                         style={{
                           background: "#FFFFFF",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           border: "1px solid rgba(0,0,0,0.08)",
                           marginBottom: 8,
                           overflow: "hidden",
@@ -919,7 +919,7 @@ export function ResumeMatchDrawer({
                                     alignItems: "center",
                                     gap: 3,
                                     padding: "3px 6px 3px 8px",
-                                    borderRadius: 0,
+                                    borderRadius: "var(--scout-radius)",
                                     fontFamily: fontSans,
                                     fontSize: 14,
                                     fontWeight: 500,
@@ -986,7 +986,7 @@ export function ResumeMatchDrawer({
                                   color: "#52493F",
                                   background: "transparent",
                                   border: "1px dashed rgba(0,0,0,0.2)",
-                                  borderRadius: 0,
+                                  borderRadius: "var(--scout-radius)",
                                   padding: "3px 10px",
                                   outline: "none",
                                   width: newKw
@@ -1100,7 +1100,7 @@ export function ResumeMatchDrawer({
                       alignItems: "center",
                       gap: 12,
                       padding: "13px 14px",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       border: `1px solid ${checked ? "rgba(26,58,47,0.22)" : "rgba(0,0,0,0.08)"}`,
                       background: checked
                         ? "rgba(26,58,47,0.04)"
@@ -1114,7 +1114,7 @@ export function ResumeMatchDrawer({
                       style={{
                         width: 18,
                         height: 18,
-                        borderRadius: 0,
+                        borderRadius: "var(--scout-radius)",
                         border: `2px solid ${checked ? "#1A3A2F" : "rgba(0,0,0,0.2)"}`,
                         background: checked ? "#1A3A2F" : "transparent",
                         display: "flex",
@@ -1292,7 +1292,7 @@ export function ResumeMatchDrawer({
                         style={{
                           padding: "20px 16px",
                           background: "rgba(74,139,106,0.06)",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           border: "1px solid rgba(74,139,106,0.15)",
                           textAlign: "center",
                         }}
@@ -1322,7 +1322,7 @@ export function ResumeMatchDrawer({
                                 alignItems: "center",
                                 gap: 6,
                                 padding: "6px 12px",
-                                borderRadius: 0,
+                                borderRadius: "var(--scout-radius)",
                                 fontFamily: fontSans,
                                 fontSize: 14,
                                 fontWeight: 500,
@@ -1442,7 +1442,7 @@ export function ResumeMatchDrawer({
                       background: "transparent",
                       color: "#52493F",
                       border: "1px solid rgba(0,0,0,0.12)",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       fontFamily: fontSans,
                       fontSize: 14,
                       cursor: "pointer",
@@ -1462,7 +1462,7 @@ export function ResumeMatchDrawer({
                     style={{
                       flex: "0 0 57%",
                       background: "#FAFAF8",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       border: "1px solid rgba(0,0,0,0.07)",
                       padding: "20px 22px",
                       minWidth: 0,
@@ -1498,7 +1498,7 @@ export function ResumeMatchDrawer({
                             color: "#3D7A5B",
                             background: "rgba(74,139,106,0.08)",
                             padding: "2px 8px",
-                            borderRadius: 0,
+                            borderRadius: "var(--scout-radius)",
                             border: "1px solid rgba(74,139,106,0.15)",
                           }}
                         >
@@ -1526,7 +1526,7 @@ export function ResumeMatchDrawer({
                     <div
                       style={{
                         background: "var(--scout-inset)",
-                        borderRadius: 0,
+                        borderRadius: "var(--scout-radius)",
                         padding: "16px 18px",
                         border: "1px solid rgba(0,0,0,0.06)",
                       }}
@@ -1609,7 +1609,7 @@ export function ResumeMatchDrawer({
                               gap: 9,
                               padding: "9px 12px",
                               background: "rgba(74,139,106,0.055)",
-                              borderRadius: 0,
+                              borderRadius: "var(--scout-radius)",
                               border: "1px solid rgba(74,139,106,0.12)",
                             }}
                           >
@@ -1673,7 +1673,7 @@ export function ResumeMatchDrawer({
                                 justifyContent: "space-between",
                                 padding: "10px 14px",
                                 background: applyingTweakId === tweak.id ? "#F0EDE8" : "#FAFAF9",
-                                borderRadius: 0,
+                                borderRadius: "var(--scout-radius)",
                                 border: "1px solid rgba(0,0,0,0.08)",
                                 cursor: applyingTweakId ? "wait" : "pointer",
                                 width: "100%",
@@ -1732,7 +1732,7 @@ export function ResumeMatchDrawer({
                 background: "#1A3A2F",
                 color: "#E8D5A3",
                 border: "none",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,
@@ -1764,7 +1764,7 @@ export function ResumeMatchDrawer({
                 background: "transparent",
                 color: "#52493F",
                 border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 500,
@@ -1786,7 +1786,7 @@ export function ResumeMatchDrawer({
                 color:
                   selectedSections.size > 0 ? "#E8D5A3" : "var(--scout-muted)",
                 border: "none",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,
@@ -1819,7 +1819,7 @@ export function ResumeMatchDrawer({
                 background: "transparent",
                 color: "#52493F",
                 border: "1px solid rgba(0,0,0,0.1)",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 500,
@@ -1839,7 +1839,7 @@ export function ResumeMatchDrawer({
                 background: "#1A3A2F",
                 color: "#E8D5A3",
                 border: "none",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,

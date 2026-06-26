@@ -59,7 +59,7 @@ function CoachAiToolCard({
   onClick: () => void;
 }) {
   return (
-    <div style={{ background: cardBg, border: line, borderRadius: 0, padding: "18px 20px", marginBottom: 12 }}>
+    <div style={{ background: cardBg, border: line, borderRadius: "var(--scout-radius)", padding: "18px 20px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
         <p style={displayTitleStyle(T.title)}>{title}</p>
         {creditCost ? (
@@ -78,7 +78,7 @@ function CoachAiToolCard({
           background: color.forest,
           color: color.gold,
           border: lineStrong,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           fontFamily: fontSans,
           fontSize: 14,
           fontWeight: 600,

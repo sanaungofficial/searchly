@@ -12,7 +12,7 @@ function RecruiterMetaChip({ label }: { label: string }) {
         padding: "5px 10px",
         background: surface.inset,
         border: line,
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: sans,
         fontSize: 12,
         fontWeight: 500,

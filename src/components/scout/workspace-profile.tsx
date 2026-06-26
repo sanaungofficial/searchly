@@ -427,7 +427,7 @@ function SectionHeader({ title, onEdit }: { title: string; onEdit?: () => void }
     <div className="flex items-center justify-between mb-4">
       <h3 style={displayTitleStyle(T.heading)}>{title}</h3>
       {onEdit && (
-        <button onClick={onEdit} className="p-1.5 rounded-none hover:bg-[#E8D5A3]/40 transition-colors" aria-label={`Edit ${title}`}>
+        <button onClick={onEdit} className="p-1.5 rounded-[var(--scout-radius)] hover:bg-[#E8D5A3]/40 transition-colors" aria-label={`Edit ${title}`}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9.5 1.5L12.5 4.5L5 12H2V9L9.5 1.5Z" stroke="#52493F" strokeWidth="1.2" strokeLinejoin="round"/>
           </svg>
@@ -448,7 +448,7 @@ function EmptyState({ message, sub }: { message: string; sub?: string }) {
 
 function SkillChip({ label, onRemove }: { label: string; onRemove?: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-none bg-[#E8D5A3]/50 text-xs font-medium text-[#52493F]">
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--scout-radius)] bg-[#E8D5A3]/50 text-xs font-medium text-[#52493F]">
       {label}
       {onRemove && <button onClick={onRemove} className="ml-0.5 text-[var(--scout-muted)] hover:text-[#52493F]">x</button>}
     </span>
@@ -522,7 +522,7 @@ function PersonalTab({ profile, onSave }: {
             <div key={label}>
               <label className="block text-xs text-[var(--scout-muted)] mb-1">{label}</label>
               <input value={val} onChange={(e) => setter(e.target.value)}
-                className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
+                className="w-full px-3 py-2.5 text-base sm:text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
             </div>
           ))}
           <div>
@@ -532,21 +532,21 @@ function PersonalTab({ profile, onSave }: {
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               placeholder="Your About story — this is the source of truth for your LinkedIn About section."
-              className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-y"
+              className="w-full px-3 py-2.5 text-base sm:text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-y"
             />
           </div>
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving}
-              className="min-h-11 px-4 py-2 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">
+              className="min-h-11 px-4 py-2 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90 disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => setEditing(false)} className="min-h-11 px-4 py-2 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
+            <button onClick={() => setEditing(false)} className="min-h-11 px-4 py-2 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-[var(--scout-radius)]">Cancel</button>
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-3 pb-3 border-b border-[#E5DDD0]">
-            <div className="w-12 h-12 rounded-none bg-[#1C3A2F] flex items-center justify-center text-[#E8D5A3] text-base font-semibold shrink-0">
+            <div className="w-12 h-12 rounded-[var(--scout-radius)] bg-[#1C3A2F] flex items-center justify-center text-[#E8D5A3] text-base font-semibold shrink-0">
               {initials(profile.name)}
             </div>
             <div>
@@ -603,7 +603,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
       <SectionHeader title="Education" />
       <div className="space-y-4">
         {list.map((entry) => (
-          <div key={entry.id} className="rounded-none border border-[#E5DDD0] p-3 space-y-2 relative">
+          <div key={entry.id} className="rounded-[var(--scout-radius)] border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div><label className="block text-xs text-[var(--scout-muted)] mb-1">School</label>
               <LinkedInOrgPicker
@@ -619,22 +619,22 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Degree</label>
-                <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.degree} onChange={(e) => updateEntry(entry.id, "degree", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Field</label>
-                <input value={entry.field || ""} onChange={(e) => updateEntry(entry.id, "field", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.field || ""} onChange={(e) => updateEntry(entry.id, "field", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">From (YYYY-MM)</label>
-                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2018-09" className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2018-09" className="w-full px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">To</label>
-                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="2022-05" className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="2022-05" className="w-full px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
           </div>
         ))}
-        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-none hover:border-[#1C3A2F]/40 transition-colors">+ Add education</button>
+        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-[var(--scout-radius)] hover:border-[#1C3A2F]/40 transition-colors">+ Add education</button>
         <div className="flex gap-2 pt-1">
-          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-[var(--scout-radius)]">Cancel</button>
         </div>
       </div>
     </div>
@@ -689,7 +689,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
       <SectionHeader title="Work Experience" />
       <div className="space-y-4">
         {list.map((entry) => (
-          <div key={entry.id} className="rounded-none border border-[#E5DDD0] p-3 space-y-2 relative">
+          <div key={entry.id} className="rounded-[var(--scout-radius)] border border-[#E5DDD0] p-3 space-y-2 relative">
             <button onClick={() => removeEntry(entry.id)} className="absolute top-2 right-2 text-[#C0B8B0] hover:text-[#52493F] text-base leading-none">x</button>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Company</label>
@@ -703,22 +703,22 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
                 />
               </div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Title</label>
-                <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.title} onChange={(e) => updateEntry(entry.id, "title", e.target.value)} className="w-full px-3 py-2.5 text-base sm:text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">From (YYYY-MM)</label>
-                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2020-01" className="w-full px-3 py-2.5 text-base sm:text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.from || ""} onChange={(e) => updateEntry(entry.id, "from", e.target.value)} placeholder="2020-01" className="w-full px-3 py-2.5 text-base sm:text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
               <div><label className="block text-xs text-[var(--scout-muted)] mb-1">To (YYYY-MM or Present)</label>
-                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="Present" className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
+                <input value={entry.to || ""} onChange={(e) => updateEntry(entry.id, "to", e.target.value)} placeholder="Present" className="w-full px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" /></div>
             </div>
             <div><label className="block text-xs text-[var(--scout-muted)] mb-1">Bullet points (one per line)</label>
-              <textarea rows={4} value={entry.bullets.join("\n")} onChange={(e) => updateBullets(entry.id, e.target.value)} className="w-full px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-none" /></div>
+              <textarea rows={4} value={entry.bullets.join("\n")} onChange={(e) => updateBullets(entry.id, e.target.value)} className="w-full px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F] resize-none" /></div>
           </div>
         ))}
-        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-none hover:border-[#1C3A2F]/40 transition-colors">+ Add experience</button>
+        <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-[var(--scout-radius)] hover:border-[#1C3A2F]/40 transition-colors">+ Add experience</button>
         <div className="flex gap-2 pt-1">
-          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-[var(--scout-radius)]">Cancel</button>
         </div>
       </div>
     </div>
@@ -748,7 +748,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
                   <ul className="mt-2 space-y-1">
                     {entry.bullets.map((b, bi) => (
                       <li key={bi} className="text-xs text-[#52493F] flex gap-1.5">
-                        <span className="mt-1 w-1 h-1 rounded-none bg-[var(--scout-muted)] shrink-0" />{b}
+                        <span className="mt-1 w-1 h-1 rounded-[var(--scout-radius)] bg-[var(--scout-muted)] shrink-0" />{b}
                       </li>
                     ))}
                   </ul>
@@ -801,15 +801,15 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
             <input value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
               placeholder="Add a skill and press Enter"
-              className="flex-1 px-3 py-2 text-sm rounded-none border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
-            <button onClick={addSkill} className="px-3 py-2 text-xs bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90">Add</button>
+              className="flex-1 px-3 py-2 text-sm rounded-[var(--scout-radius)] border border-[#E5DDD0] bg-[#FFFDF9] focus:outline-none focus:ring-1 focus:ring-[#1C3A2F]/30 text-[#1C3A2F]" />
+            <button onClick={addSkill} className="px-3 py-2 text-xs bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90">Add</button>
           </div>
           <div className="flex flex-wrap gap-2">
             {list.map((s) => <SkillChip key={s} label={s} onRemove={() => setList((p) => p.filter((x) => x !== s))} />)}
           </div>
           <div className="flex gap-2 pt-1">
-            <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-[var(--scout-radius)] hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-[var(--scout-radius)]">Cancel</button>
           </div>
         </div>
       ) : (
@@ -826,7 +826,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
           <p className="text-xs font-semibold text-[var(--scout-muted)] uppercase tracking-wide mb-3" style={{ fontSize: 14, letterSpacing: "1px" }}>Working on</p>
           <div className="space-y-2">
             {skillGoals.map((g) => (
-              <div key={`${g.skill}-${g.role}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(196,168,106,0.08)", border: "1px solid rgba(196,168,106,0.25)", borderRadius: 0 }}>
+              <div key={`${g.skill}-${g.role}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(196,168,106,0.08)", border: "1px solid rgba(196,168,106,0.25)", borderRadius: "var(--scout-radius)" }}>
                 <div>
                   <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "#1A1A1A", marginBottom: 2 }}>{g.skill}</p>
                   <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020" }}>for {g.role}</p>
@@ -834,7 +834,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
                 <button
                   onClick={() => handleGraduate(g.skill)}
                   disabled={graduating === g.skill}
-                  style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer", opacity: graduating === g.skill ? 0.6 : 1 }}
+                  style={{ padding: "6px 12px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer", opacity: graduating === g.skill ? 0.6 : 1 }}
                 >
                   {graduating === g.skill ? "Saving…" : "Mark as acquired"}
                 </button>
@@ -1105,15 +1105,15 @@ function DreamRoleTab({
             <div key={role} style={{ background: surface.card, border: isOpen ? border.lineStrong : border.line, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", cursor: "pointer" }} onClick={() => toggleExpand(role)}>
                 {loaded ? (
-                  <div style={{ width: 40, height: 40, borderRadius: 0, background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "var(--scout-radius)", background: scoreColor(loaded.fitScore), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 14, fontWeight: 600, color: "#FFFFFF" }}>{loaded.fitScore}%</span>
                   </div>
                 ) : isLoading ? (
-                  <div style={{ width: 40, height: 40, borderRadius: 0, background: "rgba(26,58,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "var(--scout-radius)", background: "rgba(26,58,47,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontFamily: "var(--font-mono-ui)", fontSize: 11, fontWeight: 600, color: color.forest }}>…</span>
                   </div>
                 ) : (
-                  <div style={{ width: 40, height: 40, borderRadius: 0, background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
+                  <div style={{ width: 40, height: 40, borderRadius: "var(--scout-radius)", background: "rgba(0,0,0,0.04)", flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={displayTitleStyle(T.body, { marginBottom: 2 })}>{role}</p>
@@ -1208,7 +1208,7 @@ function DreamRoleTab({
                                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#1A3A2F", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>What you have</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {haveSkills.map((skill) => (
-                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(26,58,47,0.08)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(26,58,47,0.08)", border: "1px solid rgba(74,139,106,0.2)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A3A2F", display: "inline-flex", alignItems: "center", gap: 5 }}>
                                       <span style={{ fontSize: 14 }}>✓</span> {skill}
                                     </span>
                                   ))}
@@ -1229,7 +1229,7 @@ function DreamRoleTab({
                                             prev?.role === role && prev.skill === skill ? null : { role, skill },
                                           );
                                         }}
-                                        style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+                                        style={{ alignSelf: "flex-start", padding: "5px 11px", background: "#FFFDF9", border: "1px dashed rgba(0,0,0,0.18)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
                                       >
                                         {skill}
                                         <span style={{ fontSize: 10, color: color.muted }}>▼</span>
@@ -1286,21 +1286,21 @@ function DreamRoleTab({
                                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "#C4A86A", textTransform: "uppercase", letterSpacing: "1.1px", marginBottom: 8 }}>Working on</p>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {learningSkills.map((skill) => (
-                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                    <span key={skill} style={{ padding: "5px 11px", background: "rgba(196,168,106,0.12)", border: "1px solid rgba(196,168,106,0.35)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#7A6020", display: "inline-flex", alignItems: "center", gap: 5 }}>
                                       <span style={{ fontSize: 14 }}>→</span> {skill}
                                     </span>
                                   ))}
                                 </div>
                               </div>
                             )}
-                            <div style={{ marginTop: 4, padding: "10px 14px", background: "rgba(0,0,0,0.025)", borderRadius: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                            <div style={{ marginTop: 4, padding: "10px 14px", background: "rgba(0,0,0,0.025)", borderRadius: "var(--scout-radius)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                               <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", margin: 0, lineHeight: 1.5 }}>
                                 {loaded._cachedAt
                                   ? `Last refreshed ${formatLastRefreshed(loaded._cachedAt)}. Scores are saved per resume — switch resumes to compare, or refresh for a new analysis.`
                                   : "Scores are saved per resume. Refresh when you want an updated analysis."}
                                 {loaded._stale ? " Your profile changed since this score — refresh when ready." : ""}
                               </p>
-                              <button onClick={() => handleRefresh(role)} style={{ padding: "5px 12px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
+                              <button onClick={() => handleRefresh(role)} style={{ padding: "5px 12px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
                                 ↻ Refresh
                               </button>
                             </div>
@@ -1371,7 +1371,7 @@ function DreamRoleTab({
           {!showSearch ? (
             <button
               onClick={() => setShowSearch(true)}
-              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, cursor: "pointer" }}
+              style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, cursor: "pointer" }}
             >+ Add a role</button>
           ) : (
             <div>
@@ -1380,20 +1380,20 @@ function DreamRoleTab({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search roles…"
-                style={{ width: "100%", padding: "12px 12px", borderRadius: 0, border: "1.5px solid #1A3A2F", fontFamily: "var(--font-ui)", fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "12px 12px", borderRadius: "var(--scout-radius)", border: "1.5px solid #1A3A2F", fontFamily: "var(--font-ui)", fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
               />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
                   <button
                     onClick={() => addRole(searchQuery.trim())}
-                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
+                    style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
                   >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
                 )}
                 {filteredRoles.slice(0, 20).map((r) => (
                   <button
                     key={r}
                     onClick={() => addRole(r)}
-                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
+                    style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
                   >{r}</button>
                 ))}
                 <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>Cancel</button>
@@ -1680,7 +1680,7 @@ function LearningTab({
                   value={newSkillName}
                   onChange={(e) => setNewSkillName(e.target.value)}
                   placeholder="e.g. Market analysis"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
                 />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
@@ -1688,7 +1688,7 @@ function LearningTab({
                 <select
                   value={newSkillRole || dreamList[0] || "__custom__"}
                   onChange={(e) => setNewSkillRole(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card }}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card }}
                 >
                   {dreamList.map((role) => (
                     <option key={role} value={role}>{role}</option>
@@ -1703,7 +1703,7 @@ function LearningTab({
                     value={customSkillRole}
                     onChange={(e) => setCustomSkillRole(e.target.value)}
                     placeholder="Role name"
-                    style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: border.lineStrong, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, background: surface.card, outline: "none", boxSizing: "border-box" }}
                   />
                 </div>
               )}
@@ -1851,22 +1851,22 @@ function LearningTab({
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Course / Certification name *</label>
                 <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Google Project Management Certificate"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
               <div>
                 <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Platform</label>
                 <input value={newPlatform} onChange={(e) => setNewPlatform(e.target.value)} placeholder="e.g. Coursera, Udemy, LinkedIn"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
               <div>
                 <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>Duration</label>
                 <input value={newDuration} onChange={(e) => setNewDuration(e.target.value)} placeholder="e.g. 6 weeks"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={{ display: "block", fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginBottom: 4 }}>URL (optional)</label>
                 <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://…"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 0, border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--scout-radius)", border: "1px solid #E5DDD0", fontFamily: "var(--font-ui)", fontSize: 14, color: "#1A1A1A", background: "#FFFDF9", outline: "none", boxSizing: "border-box" }} />
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -1886,8 +1886,8 @@ function LearningTab({
               const statusLabel = item.status === "completed" ? "Completed ✓" : item.status === "inprogress" ? "In progress" : "Not started";
               const statusColor = item.status === "completed" ? "#1A3A2F" : item.status === "inprogress" ? "#C4A86A" : "var(--scout-muted)";
               return (
-                <div key={item.id} style={{ background: "#FFFFFF", borderRadius: 0, padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 0, background: "#E8E2D8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div key={item.id} style={{ background: "#FFFFFF", borderRadius: "var(--scout-radius)", padding: "14px 16px", border: "1px solid rgba(0,0,0,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: 12 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "var(--scout-radius)", background: "#E8E2D8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, color: "var(--scout-muted)" }}>{(item.platform || item.name).charAt(0).toUpperCase()}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1905,7 +1905,7 @@ function LearningTab({
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: isMobile ? "wrap" : undefined }}>
                     <button onClick={() => updateCustomStatus(item.id)}
-                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(26,58,47,0.08)" : "#1A3A2F", color: item.status === "completed" ? "#1A3A2F" : "#E8D5A3", border: "none", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                      style={{ padding: "10px 14px", minHeight: 44, flex: isMobile ? 1 : undefined, background: item.status === "completed" ? "rgba(26,58,47,0.08)" : "#1A3A2F", color: item.status === "completed" ? "#1A3A2F" : "#E8D5A3", border: "none", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
                       {item.status === "completed" ? "Review →" : item.status === "inprogress" ? "Complete →" : "Start →"}
                     </button>
                     <button onClick={() => removeCustomItem(item.id)} style={{ background: "none", border: "none", color: "#C0B8B0", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}>×</button>
@@ -2364,7 +2364,7 @@ function PrefChip({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>{label}</p>
-      <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{value}</span>
+      <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{value}</span>
     </div>
   );
 }
@@ -2483,7 +2483,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
   const timelineLabel = PREF_JOB_TIMELINES.find(t => t.value === profile.jobTimeline)?.label;
   const hasAnyData = profile.employmentStatus || profile.jobTimeline || profile.currentSalary || profile.targetSalary || profile.careerMotivation || (profile.priorities || []).length > 0 || profile.targetMarket || profile.relocationOpenness || profile.workAuthorization || profile.securityClearance || profile.searchDuration || profile.positioningStatement;
 
-  const inputStyle: React.CSSProperties = { width: "100%", padding: isMobile ? "12px 10px" : "8px 10px", fontSize: isMobile ? 16 : 13, borderRadius: 0, border: border.line, background: surface.inset, color: color.forest, fontFamily: fontSans, outline: "none", boxSizing: "border-box" };
+  const inputStyle: React.CSSProperties = { width: "100%", padding: isMobile ? "12px 10px" : "8px 10px", fontSize: isMobile ? 16 : 13, borderRadius: "var(--scout-radius)", border: border.line, background: surface.inset, color: color.forest, fontFamily: fontSans, outline: "none", boxSizing: "border-box" };
 
   return (
     <ScoutBox padding={isMobile ? "18px 16px" : "22px 24px"}>
@@ -2497,7 +2497,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_EMPLOYMENT.map(({ value, label }) => (
                 <button key={value} onClick={() => setEmpStatus(empStatus === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 0, border: empStatus === value ? border.lineStrong : border.line, background: empStatus === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: empStatus === value ? border.lineStrong : border.line, background: empStatus === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -2510,7 +2510,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {PREF_JOB_TIMELINES.map(({ value, label }) => (
                 <button key={value} onClick={() => setTimeline(timeline === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: 0, border: timeline === value ? border.lineStrong : border.line, background: timeline === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: timeline === value ? border.lineStrong : border.line, background: timeline === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
                   {label}
                 </button>
               ))}
@@ -2533,7 +2533,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PREF_MOTIVATIONS.map((m) => (
                 <button key={m} onClick={() => setMotivation(motivation === m ? "" : m)}
-                  style={{ padding: "5px 12px", borderRadius: 0, border: motivation === m ? border.lineStrong : border.line, background: motivation === m ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: motivation === m ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: motivation === m ? border.lineStrong : border.line, background: motivation === m ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: motivation === m ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
                   {m}
                 </button>
               ))}
@@ -2546,7 +2546,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PREF_PRIORITIES.map((p) => (
                 <button key={p} onClick={() => setPriorities(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])}
-                  style={{ padding: "5px 12px", borderRadius: 0, border: priorities.includes(p) ? border.lineStrong : border.line, background: priorities.includes(p) ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: priorities.includes(p) ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
+                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: priorities.includes(p) ? border.lineStrong : border.line, background: priorities.includes(p) ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: priorities.includes(p) ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
                   {p}
                 </button>
               ))}
@@ -2599,13 +2599,13 @@ function CareerPreferencesPanel({ profile, onSave }: {
           {profile.employmentStatus && (
             <div>
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Status</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{statusLabel || profile.employmentStatus}</span>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{statusLabel || profile.employmentStatus}</span>
             </div>
           )}
           {profile.jobTimeline && (
             <div>
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Timeline</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{timelineLabel || profile.jobTimeline}</span>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{timelineLabel || profile.jobTimeline}</span>
             </div>
           )}
           {(profile.currentSalary || profile.targetSalary) && (
@@ -2613,13 +2613,13 @@ function CareerPreferencesPanel({ profile, onSave }: {
               {profile.currentSalary && (
                 <div>
                   <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Current</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.currentSalary}</span>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.currentSalary}</span>
                 </div>
               )}
               {profile.targetSalary && (
                 <div>
                   <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Target</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.targetSalary}</span>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.targetSalary}</span>
                 </div>
               )}
             </div>
@@ -2627,7 +2627,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
           {profile.careerMotivation && (
             <div>
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Looking for</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.careerMotivation}</span>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.careerMotivation}</span>
             </div>
           )}
           {(profile.priorities || []).length > 0 && (
@@ -2635,7 +2635,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Priorities</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {profile.priorities.map((p) => (
-                  <span key={p} style={{ padding: "5px 11px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{p}</span>
+                  <span key={p} style={{ padding: "5px 11px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{p}</span>
                 ))}
               </div>
             </div>

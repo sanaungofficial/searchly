@@ -27,7 +27,7 @@ function CompanyMetaChip({ label }: { label: string }) {
         padding: "5px 10px",
         background: surface.inset,
         border: line,
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: sans,
         fontSize: 12,
         fontWeight: 500,
@@ -148,7 +148,7 @@ export function JobDrawerCompanySection({
               style={{
                 padding: "5px 11px",
                 background: "rgba(74,139,106,0.12)",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: sans,
                 fontSize: 12,
                 fontWeight: 500,

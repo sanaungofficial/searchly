@@ -172,7 +172,7 @@ function CompanyTrackPanel({
               gap: 6,
               padding: "6px 12px",
               background: mintLight,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               marginBottom: 12,
             }}
           >
@@ -190,7 +190,7 @@ function CompanyTrackPanel({
               background: color.forest,
               color: color.gold,
               border: "none",
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               fontFamily: sans,
               fontSize: 14,
               fontWeight: 600,
@@ -219,7 +219,7 @@ function CompanyTrackPanel({
                 background: saving ? "rgba(26,58,47,0.35)" : color.forest,
                 color: color.gold,
                 border: "none",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: sans,
                 fontSize: 14,
                 fontWeight: 600,
@@ -238,7 +238,7 @@ function CompanyTrackPanel({
                   background: "#FFF",
                   color: "#1A3A2F",
                   border: "1px solid rgba(0,0,0,0.12)",
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   fontFamily: sans,
                   fontSize: 14,
                   fontWeight: 600,
@@ -580,7 +580,7 @@ function JobDescriptionPanel({
             color: "#1A1A1A",
             background: cardBg,
             border: line,
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             padding: "16px 18px",
             resize: "vertical",
             outline: "none",
@@ -650,7 +650,7 @@ function AiToolCard({
       style={{
         background: highlighted ? surface.inset : cardBg,
         border: highlighted ? lineStrong : line,
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         padding: "18px 20px",
         marginBottom: 12,
       }}
@@ -672,7 +672,7 @@ function AiToolCard({
           background: color.forest,
           color: color.gold,
           border: lineStrong,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           fontFamily: sans,
           fontSize: 14,
           fontWeight: 600,
@@ -906,7 +906,7 @@ export function JobDrawer({
           width: isMobile ? "100vw" : DRAWER_WIDTH,
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.inset,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           overflow: "hidden",
           zIndex: drawerZ,
           boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
@@ -972,7 +972,7 @@ export function JobDrawer({
                   padding: "10px 20px",
                   background: color.forest,
                   color: color.gold,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   fontFamily: sans,
                   fontSize: 14,
                   fontWeight: 700,
@@ -1085,7 +1085,7 @@ export function JobDrawer({
                             padding: "6px 13px",
                             background: displayFit >= 70 ? mintLight : "rgba(0,0,0,0.05)",
                             border: displayFit >= 70 ? "1px solid rgba(74,139,106,0.25)" : line,
-                            borderRadius: 0,
+                            borderRadius: "var(--scout-radius)",
                             fontFamily: sans,
                             fontSize: 13,
                             fontWeight: 500,
@@ -1138,7 +1138,7 @@ export function JobDrawer({
                   {tags.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
                       {tags.map((t, i) => (
-                        <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: 0, fontFamily: sans, fontSize: 13, fontWeight: 500, color: color.forest }}>
+                        <span key={i} style={{ padding: "6px 12px", background: mintLight, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, fontWeight: 500, color: color.forest }}>
                           {t}
                         </span>
                       ))}
@@ -1159,7 +1159,7 @@ export function JobDrawer({
               )}
 
               {tool !== null && !job && (
-                <div style={{ padding: 16, background: cardBg, border: line, borderRadius: 0, marginBottom: 14 }}>
+                <div style={{ padding: 16, background: cardBg, border: line, borderRadius: "var(--scout-radius)", marginBottom: 14 }}>
                   <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
                     {tool === "resume" ? "Resume tailoring" : tool === "cover" ? "Cover letter" : "Fit analysis"} — coming soon
                   </p>
@@ -1172,7 +1172,7 @@ export function JobDrawer({
               {tool === "cover" && job && (
                 <div style={{ marginBottom: 18 }}>
                   <SectionTitle>Cover letter</SectionTitle>
-                  <div style={{ padding: 16, background: cardBg, border: line, borderRadius: 0, borderLeft: `3px solid ${mint}` }}>
+                  <div style={{ padding: 16, background: cardBg, border: line, borderRadius: "var(--scout-radius)", borderLeft: `3px solid ${mint}` }}>
                     <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.75, whiteSpace: "pre-wrap", margin: 0 }}>{job.coverLetter}</p>
                   </div>
                 </div>
@@ -1183,7 +1183,7 @@ export function JobDrawer({
                   <SectionTitle>Fit analysis</SectionTitle>
                   <p style={{ fontFamily: sans, fontSize: 15, lineHeight: 1.7, marginBottom: 12 }}>{job.fitSummary}</p>
                   {job.fitWorks.map((w, i) => (
-                    <div key={i} style={{ padding: "10px 12px", background: mintLight, borderRadius: 0, marginBottom: 8, fontSize: 14 }}>✓ {w}</div>
+                    <div key={i} style={{ padding: "10px 12px", background: mintLight, borderRadius: "var(--scout-radius)", marginBottom: 8, fontSize: 14 }}>✓ {w}</div>
                   ))}
                 </div>
               )}
@@ -1278,7 +1278,7 @@ export function JobDrawer({
                 <>
                   {existingPipelineCardId != null ? (
                     <>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: 0, marginBottom: 12 }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: "var(--scout-radius)", marginBottom: 12 }}>
                         <span style={{ fontSize: 12, color: mint }}>✓</span>
                         <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: color.forest }}>Already saved</span>
                       </div>
@@ -1286,7 +1286,7 @@ export function JobDrawer({
                         Track your progress, add notes, and use AI tools for this role.
                       </p>
                       {onOpenInPipeline && (
-                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                        <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                           Open saved job →
                         </button>
                       )}
@@ -1297,7 +1297,7 @@ export function JobDrawer({
                         Save this job to track your progress, see how you match, and create a tailored resume or cover letter.
                       </p>
                       {onAddToPipeline && (
-                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
+                        <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
                           {addingToPipeline ? "Saving…" : "Save this job"}
                         </button>
                       )}
@@ -1309,7 +1309,7 @@ export function JobDrawer({
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
                 <span style={{
                   padding: "5px 12px",
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   background: `${STAGE_COLORS[card.stage]}18`,
                   color: STAGE_COLORS[card.stage],
                   fontFamily: sans,
@@ -1339,7 +1339,7 @@ export function JobDrawer({
                       padding: "6px 10px",
                       background: surface.inset,
                       border: line,
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       fontFamily: sans,
                       fontSize: 12,
                       fontWeight: 500,
@@ -1357,14 +1357,14 @@ export function JobDrawer({
                 onChange={(e) => setNextStepValue(e.target.value)}
                 onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
                 placeholder="e.g. Follow up with recruiter…"
-                style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: 0, fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 8, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, marginBottom: 8, boxSizing: "border-box" }}
               />
               <input
                 type="date"
                 value={nextStepDueValue}
                 onChange={(e) => setNextStepDueValue(e.target.value)}
                 onBlur={() => patchNextStep(nextStepValue, nextStepDueValue)}
-                style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: 0, fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", minHeight: isMobile ? 44 : undefined, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 13, outline: "none", background: surface.inset, boxSizing: "border-box" }}
               />
                 </>
               )}
@@ -1388,7 +1388,7 @@ export function JobDrawer({
                   fontSize: 13,
                   background: surface.inset,
                   border: line,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   padding: "12px 14px",
                   resize: "vertical",
                   outline: "none",
@@ -1444,7 +1444,7 @@ export function JobDrawer({
               <button
                 type="button"
                 onClick={() => setMatchDrawerOpen(true)}
-                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
+                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
               >
                 {displayFit <= 0 ? "See how you match →" : `Improve match (${displayFit}%) →`}
               </button>
@@ -1453,7 +1453,7 @@ export function JobDrawer({
                 href={externalPostUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ display: "block", width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 15, fontWeight: 700, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}
+                style={{ display: "block", width: "100%", padding: "14px 16px", minHeight: 48, background: color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}
               >
                 {networkJob ? "OPEN IN TE" : "APPLY NOW"}
               </a>
@@ -1462,21 +1462,21 @@ export function JobDrawer({
                 type="button"
                 onClick={() => void onAddToPipeline()}
                 disabled={addingToPipeline}
-                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: addingToPipeline ? "default" : "pointer" }}
+                style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: addingToPipeline ? "default" : "pointer" }}
               >
                 {addingToPipeline ? "Saving…" : "Save this job"}
               </button>
             ) : null}
             {mobileToolsOpen && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-                <button type="button" onClick={() => setCoverDrawerOpen(true)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
+                <button type="button" onClick={() => setCoverDrawerOpen(true)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
                   Build cover letter
                 </button>
-                <button type="button" onClick={() => openFitChat(card)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
+                <button type="button" onClick={() => openFitChat(card)} style={{ width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", cursor: "pointer" }}>
                   Analyze fit
                 </button>
                 {externalPostUrl && (
-                  <a href={externalPostUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>
+                  <a href={externalPostUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "12px 16px", minHeight: 44, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", textDecoration: "none", textAlign: "center", boxSizing: "border-box" }}>
                     {networkJob ? "Top Echelon posting ↗" : "Original job post ↗"}
                   </a>
                 )}

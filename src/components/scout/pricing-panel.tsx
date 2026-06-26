@@ -111,7 +111,7 @@ export function PricingPanel({ compact = false }: Props) {
                 position: "relative",
                 background: selected ? (p.popular ? "#4A8B6A" : "#1C3A2F") : "#FFFDF9",
                 border: selected ? "2px solid #1C3A2F" : "1px solid #E5DDD0",
-                borderRadius: 14,
+                borderRadius: "var(--scout-radius)",
                 padding: compact ? "16px 12px" : "20px 16px",
                 cursor: "pointer",
                 textAlign: "center",
@@ -184,7 +184,7 @@ export function PricingPanel({ compact = false }: Props) {
         style={{
           background: "#FFFDF9",
           border: "1px solid #E5DDD0",
-          borderRadius: 16,
+          borderRadius: "var(--scout-radius)",
           overflow: "hidden",
           textAlign: "left",
         }}
@@ -210,7 +210,7 @@ export function PricingPanel({ compact = false }: Props) {
                   background: "#1C3A2F",
                   color: "#E8D5A3",
                   border: "none",
-                  borderRadius: 8,
+                  borderRadius: "var(--scout-radius)",
                   fontWeight: 600,
                   cursor: "pointer",
                   fontSize: 12,
@@ -229,7 +229,7 @@ export function PricingPanel({ compact = false }: Props) {
                   background: "#1C3A2F",
                   color: "#E8D5A3",
                   border: "none",
-                  borderRadius: 8,
+                  borderRadius: "var(--scout-radius)",
                   fontWeight: 600,
                   cursor: "pointer",
                   fontSize: 12,
@@ -310,7 +310,7 @@ export function PricingPanel({ compact = false }: Props) {
           textAlign: "left",
           background: "#FFFDF9",
           border: "1px solid #E5DDD0",
-          borderRadius: 16,
+          borderRadius: "var(--scout-radius)",
           padding: compact ? "16px 20px" : "24px 28px",
         }}
       >

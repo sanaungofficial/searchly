@@ -179,7 +179,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ padding: "3px 10px", background: weekly.accentColor, color: weekly.bgColor, borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
+            <span style={{ padding: "3px 10px", background: weekly.accentColor, color: weekly.bgColor, borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
               Weekly
             </span>
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: weekly.accentColor, opacity: 0.6 }}>
@@ -219,7 +219,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
             const bg = id === "live" && active ? "#C4574A" : active ? "#1A3A2F" : "rgba(0,0,0,0.05)";
             const chipColor = id === "live" && active ? "#FFFFFF" : active ? "#E8D5A3" : "#52493F";
             return (
-              <button key={id} onClick={() => setFilter(id)} style={{ padding: "6px 14px", background: bg, color: chipColor, border: "none", borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+              <button key={id} onClick={() => setFilter(id)} style={{ padding: "6px 14px", background: bg, color: chipColor, border: "none", borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
                 {label}
               </button>
             );
@@ -233,7 +233,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
             <ScoutBox key={s.id} padding={0} style={{ overflow: "hidden" }}>
               <div style={{ background: s.bgColor, padding: "16px 18px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ padding: "2px 8px", background: s.accentColor, color: s.bgColor, borderRadius: 0, fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
+                  <span style={{ padding: "2px 8px", background: s.accentColor, color: s.bgColor, borderRadius: "var(--scout-radius)", fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
                     {s.isLive ? "● Live" : s.category}
                   </span>
                   <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: s.accentColor, opacity: 0.7 }}>{s.startsIn}</span>

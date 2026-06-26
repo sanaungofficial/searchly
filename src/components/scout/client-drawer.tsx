@@ -24,7 +24,7 @@ const STAGE_COLORS: Record<JobStage, { bg: string; color: string }> = {
 function StageBadge({ stage }: { stage: JobStage }) {
   const { bg, color: c } = STAGE_COLORS[stage] ?? STAGE_COLORS.SAVED;
   return (
-    <span style={{ fontSize: 12, fontFamily: fontMono, padding: "2px 7px", borderRadius: 0, background: bg, color: c }}>
+    <span style={{ fontSize: 12, fontFamily: fontMono, padding: "2px 7px", borderRadius: "var(--scout-radius)", background: bg, color: c }}>
       {stage.toLowerCase()}
     </span>
   );
@@ -81,7 +81,7 @@ export function ClientDetailBody({
                 fontSize: T.caption,
                 fontFamily: fontMono,
                 padding: "10px 14px",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 border: border.line,
                 color: color.forest,
                 textDecoration: "none",
@@ -100,7 +100,7 @@ export function ClientDetailBody({
                 fontSize: T.caption,
                 fontFamily: fontMono,
                 padding: "10px 14px",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 border: border.line,
                 color: color.forest,
                 textDecoration: "none",

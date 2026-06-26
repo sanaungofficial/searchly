@@ -42,7 +42,7 @@ const inputStyle: React.CSSProperties = {
   marginTop: 4,
   padding: "8px 10px",
   border: "1px solid #e8e2da",
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   fontFamily: "var(--font-ui)",
   fontSize: 13,
   boxSizing: "border-box",
@@ -250,7 +250,7 @@ export function CompanyScanSettingsPanel({
           type="button"
           onClick={saveSettings}
           disabled={saving}
-          style={{ padding: "8px 18px", border: "none", borderRadius: 0, background: "#1A3A2F", color: "#E8D5A3", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
+          style={{ padding: "8px 18px", border: "none", borderRadius: "var(--scout-radius)", background: "#1A3A2F", color: "#E8D5A3", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.6 : 1 }}
         >
           {saving ? "Saving…" : "Save settings"}
         </button>
@@ -258,7 +258,7 @@ export function CompanyScanSettingsPanel({
           type="button"
           onClick={runNow}
           disabled={running}
-          style={{ padding: "8px 14px", border: "1px solid rgba(17,17,17,0.14)", borderRadius: 0, background: "transparent", color: "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: 13, cursor: running ? "default" : "pointer", opacity: running ? 0.6 : 1 }}
+          style={{ padding: "8px 14px", border: "1px solid rgba(17,17,17,0.14)", borderRadius: "var(--scout-radius)", background: "transparent", color: "var(--scout-muted)", fontFamily: "var(--font-ui)", fontSize: 13, cursor: running ? "default" : "pointer", opacity: running ? 0.6 : 1 }}
         >
           {running ? "Running…" : "Run stale scans now"}
         </button>

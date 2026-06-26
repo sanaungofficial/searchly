@@ -478,7 +478,7 @@ export function WorkspaceOpportunities() {
     background: color.forest,
     color: color.gold,
     border: border.lineStrong,
-    borderRadius: 0,
+    borderRadius: "var(--scout-radius)",
     fontFamily: fontSans,
     fontSize: T.caption,
     fontWeight: 600,
@@ -815,7 +815,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             flex: 1,
             padding: "9px 12px",
             border: border.line,
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             background: surface.inset,
             fontFamily: fontSans,
             fontSize: T.caption,
@@ -831,7 +831,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
             background: color.forest,
             color: color.gold,
             border: border.lineStrong,
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontFamily: fontSans,
             fontSize: T.caption,
             fontWeight: 600,
@@ -874,7 +874,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
         </div>
       )}
       {error && !loading && (
-        <div style={{ padding: "8px 12px", background: "rgba(196,87,74,0.06)", borderRadius: 0, border: "1px solid rgba(196,87,74,0.15)", maxWidth: 560 }}>
+        <div style={{ padding: "8px 12px", background: "rgba(196,87,74,0.06)", borderRadius: "var(--scout-radius)", border: "1px solid rgba(196,87,74,0.15)", maxWidth: 560 }}>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#C4574A" }}>{error}</p>
         </div>
       )}
@@ -893,12 +893,12 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {typeof analysis.location === "string" && analysis.location && (
-                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: 0, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(0,0,0,0.05)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                     📍 {analysis.location}
                   </span>
                 )}
                 {typeof analysis.salary === "string" && analysis.salary && (
-                  <span style={{ padding: "2px 8px", background: "rgba(26,58,47,0.08)", borderRadius: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
+                  <span style={{ padding: "2px 8px", background: "rgba(26,58,47,0.08)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: T.caption, fontWeight: 500, color: "#2D6B4A" }}>
                     {analysis.salary}
                   </span>
                 )}
@@ -917,7 +917,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               background: color.forest,
               color: color.gold,
               border: border.lineStrong,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               fontFamily: fontSans,
               fontSize: T.caption,
               fontWeight: 600,

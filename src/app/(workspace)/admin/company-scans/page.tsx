@@ -135,7 +135,7 @@ export default function CompanyScansAdminPage() {
       </div>
 
       {message && (
-        <div className="rounded-none border border-[rgba(17,17,17,0.14)] bg-[var(--scout-surface)] px-4 py-3 text-sm text-[#52493F]">{message}</div>
+        <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] bg-[var(--scout-surface)] px-4 py-3 text-sm text-[#52493F]">{message}</div>
       )}
 
       <section className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -146,14 +146,14 @@ export default function CompanyScansAdminPage() {
           ["Stale (need refresh)", totals.stale],
           ["With cached roles", totals.withJobs],
         ].map(([label, value]) => (
-          <div key={label as string} className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] px-5 py-4">
+          <div key={label as string} className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] px-5 py-4">
             <p className="text-xs uppercase tracking-widest text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] mb-1">{label}</p>
             <p className="text-2xl font-semibold text-[#1A1A1A]">{value}</p>
           </div>
         ))}
       </section>
 
-      <section className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-6">
+      <section className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-6">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="text-sm font-semibold text-[#1A1A1A]">Hirebase company data (top 50)</h2>
@@ -166,7 +166,7 @@ export default function CompanyScansAdminPage() {
             type="button"
             onClick={syncHirebaseTop50}
             disabled={syncingHirebase || !data.hirebaseConfigured}
-            className="rounded-none bg-stone-800 px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-[var(--scout-radius)] bg-stone-800 px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {syncingHirebase ? "Syncing 50 companies…" : "Sync top 50 from Hirebase"}
           </button>
@@ -175,7 +175,7 @@ export default function CompanyScansAdminPage() {
           <p className="text-xs text-amber-700 mb-4">Add HIREBASE_API_KEY on Vercel or .env.local to enable sync.</p>
         )}
         {syncResults && (
-          <div className="overflow-x-auto border border-[rgba(17,17,17,0.08)] rounded-none max-h-72 overflow-y-auto">
+          <div className="overflow-x-auto border border-[rgba(17,17,17,0.08)] rounded-[var(--scout-radius)] max-h-72 overflow-y-auto">
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-[var(--scout-inset)]">
                 <tr className="text-left text-[var(--scout-muted)] uppercase tracking-wider">
@@ -204,7 +204,7 @@ export default function CompanyScansAdminPage() {
         )}
       </section>
 
-      <section className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] p-6">
+      <section className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="text-sm font-semibold text-[#1A1A1A]">{COMPANY_SCAN_SETTINGS_SIDEBAR.label}</h2>
@@ -217,7 +217,7 @@ export default function CompanyScansAdminPage() {
         <CompanyScanSettingsPanel onSaved={load} />
       </section>
 
-      <section className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] overflow-hidden">
+      <section className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] overflow-hidden">
         <div className="px-6 py-4 border-b border-[rgba(17,17,17,0.08)] flex items-center justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold text-[#1A1A1A]">Shared company intel</h2>
@@ -227,7 +227,7 @@ export default function CompanyScansAdminPage() {
             type="button"
             onClick={backfillWebsites}
             disabled={backfilling}
-            className="rounded-none border border-stone-300 px-3 py-1.5 text-xs font-medium text-[#52493F] disabled:opacity-50"
+            className="rounded-[var(--scout-radius)] border border-stone-300 px-3 py-1.5 text-xs font-medium text-[#52493F] disabled:opacity-50"
           >
             {backfilling ? "Backfilling…" : "Backfill catalog websites"}
           </button>

@@ -95,7 +95,7 @@ export function ReferEarnModal({ onClose }: Props) {
     maxHeight: "min(85vh, calc(100dvh - 32px))",
     overflow: "auto",
     background: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: "var(--scout-radius)",
     zIndex: 1101,
     padding: view === "hub" ? 28 : 32,
     fontFamily: "var(--font-ui), sans-serif",
@@ -128,7 +128,7 @@ export function ReferEarnModal({ onClose }: Props) {
             <button
               type="button"
               onClick={() => setView("invite")}
-              style={{ background: "#FDF0F3", border: "1px solid #F0DDE3", borderRadius: 14, padding: "24px 20px", cursor: "pointer", textAlign: "left" }}
+              style={{ background: "#FDF0F3", border: "1px solid #F0DDE3", borderRadius: "var(--scout-radius)", padding: "24px 20px", cursor: "pointer", textAlign: "left" }}
             >
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#1A1A1A", borderBottom: "2px solid #1A1A1A", paddingBottom: 8, display: "inline-block" }}>
                 Invite Friends →
@@ -139,7 +139,7 @@ export function ReferEarnModal({ onClose }: Props) {
             <button
               type="button"
               onClick={() => setView("linkedin")}
-              style={{ background: "#E8F8FA", border: "1px solid #C8E8EE", borderRadius: 14, padding: "24px 20px", cursor: "pointer", textAlign: "left" }}
+              style={{ background: "#E8F8FA", border: "1px solid #C8E8EE", borderRadius: "var(--scout-radius)", padding: "24px 20px", cursor: "pointer", textAlign: "left" }}
             >
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#1A1A1A", borderBottom: "2px solid #1A1A1A", paddingBottom: 8, display: "inline-block" }}>
                 Share About Us →
@@ -158,7 +158,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 { step: "2", title: "Your friend completes sign-up & finishes onboarding", icon: "👥" },
                 { step: "3", title: "You and your friend each get a bonus", icon: "🎁" },
               ].map((s) => (
-                <div key={s.step} style={{ background: "var(--scout-inset)", borderRadius: 12, padding: 16 }}>
+                <div key={s.step} style={{ background: "var(--scout-inset)", borderRadius: "var(--scout-radius)", padding: 16 }}>
                   <span style={{ fontSize: 20 }}>{s.icon}</span>
                   <p style={{ margin: "8px 0 0", fontSize: 13, fontWeight: 600, color: "#1A1A1A", lineHeight: 1.45 }}>{s.title}</p>
                 </div>
@@ -172,8 +172,8 @@ export function ReferEarnModal({ onClose }: Props) {
 
             <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px" }}>Share Your Referral Link</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
-              <input readOnly value={stats.link} style={{ flex: 1, padding: "10px 14px", border: "1px solid #E5DDD0", borderRadius: 8, fontSize: 14 }} />
-              <button type="button" onClick={copyLink} style={{ padding: "10px 20px", background: "#4A8B6A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
+              <input readOnly value={stats.link} style={{ flex: 1, padding: "10px 14px", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)", fontSize: 14 }} />
+              <button type="button" onClick={copyLink} style={{ padding: "10px 20px", background: "#4A8B6A", color: "#fff", border: "none", borderRadius: "var(--scout-radius)", fontWeight: 600, cursor: "pointer" }}>
                 {copied ? "Copied!" : "Copy"}
               </button>
             </div>
@@ -186,7 +186,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 { label: "Tailor Credits Earned", value: stats.tailorCreditsEarned },
                 { label: "Scout Credits Earned", value: stats.scoutCreditsEarned },
               ].map((card) => (
-                <div key={card.label} style={{ background: "var(--scout-inset)", borderRadius: 10, padding: "16px 12px", textAlign: "center" }}>
+                <div key={card.label} style={{ background: "var(--scout-inset)", borderRadius: "var(--scout-radius)", padding: "16px 12px", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#1A1A1A" }}>{card.value}</p>
                   <p style={{ margin: "6px 0 0", fontSize: 11, color: "#8A7F72", lineHeight: 1.35 }}>{card.label}</p>
                 </div>
@@ -203,7 +203,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 { icon: "#", text: "Tag @Kimchi and include #kimchi and #jobsearch" },
                 { icon: "✉", text: `Send your post link to ${REFERRAL_SUPPORT_EMAIL} to claim your reward` },
               ].map((s, i) => (
-                <div key={i} style={{ background: "var(--scout-inset)", borderRadius: 12, padding: 16 }}>
+                <div key={i} style={{ background: "var(--scout-inset)", borderRadius: "var(--scout-radius)", padding: 16 }}>
                   <span style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", background: "#4A8B6A", color: "#fff", borderRadius: 6, fontSize: 13, fontWeight: 700 }}>{s.icon}</span>
                   <p style={{ margin: "10px 0 0", fontSize: 13, color: "#1A1A1A", lineHeight: 1.45 }}>{s.text}</p>
                 </div>
@@ -219,9 +219,9 @@ export function ReferEarnModal({ onClose }: Props) {
                 value={postUrl}
                 onChange={(e) => setPostUrl(e.target.value)}
                 placeholder="https://www.linkedin.com/feed/update/..."
-                style={{ flex: 1, padding: "10px 14px", border: "1px solid #E5DDD0", borderRadius: 8, fontSize: 14 }}
+                style={{ flex: 1, padding: "10px 14px", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)", fontSize: 14 }}
               />
-              <button type="button" onClick={submitLinkedIn} disabled={submitting || !postUrl.trim()} style={{ padding: "10px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+              <button type="button" onClick={submitLinkedIn} disabled={submitting || !postUrl.trim()} style={{ padding: "10px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: "var(--scout-radius)", fontWeight: 600, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
                 Submit
               </button>
             </div>
@@ -232,7 +232,7 @@ export function ReferEarnModal({ onClose }: Props) {
               href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin : "https://app.kimchi.so")}`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: "block", textAlign: "center", marginTop: 24, padding: "14px", background: "#1A1A1A", color: "#fff", borderRadius: 100, fontWeight: 600, textDecoration: "none", fontSize: 15 }}
+              style={{ display: "block", textAlign: "center", marginTop: 24, padding: "14px", background: "#1A1A1A", color: "#fff", borderRadius: "var(--scout-radius)"0, fontWeight: 600, textDecoration: "none", fontSize: 15 }}
             >
               Share Now on LinkedIn
             </a>

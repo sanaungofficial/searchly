@@ -121,7 +121,7 @@ export function ScoreExplainerPopover({
               padding: iconOnly ? 4 : "5px 8px",
               background: open ? "rgba(26,58,47,0.06)" : "transparent",
               border: iconOnly ? "none" : border.line,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               cursor: "pointer",
               color: light ? "rgba(232,213,163,0.75)" : color.muted,
               fontFamily: fontSans,
@@ -144,7 +144,7 @@ export function ScoreExplainerPopover({
           onOpenAutoFocus={(e) => e.preventDefault()}
           onMouseEnter={show}
           onMouseLeave={scheduleClose}
-          className="rounded-none border-0 bg-transparent p-0 shadow-none outline-none"
+          className="rounded-[var(--scout-radius)] border-0 bg-transparent p-0 shadow-none outline-none"
           style={{
             width: 320,
             maxWidth: "min(320px, calc(100vw - 24px))",

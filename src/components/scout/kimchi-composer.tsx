@@ -192,7 +192,7 @@ function KimchiComposerStyles() {
         max-height: 120px;
         resize: none;
         border: 1px solid rgba(26, 58, 47, 0.14);
-        border-radius: 0;
+        border-radius: var(--scout-radius);
         padding: 10px 12px;
         font-family: ${sans};
         font-size: 14px;
@@ -210,7 +210,7 @@ function KimchiComposerStyles() {
         height: 40px;
         flex-shrink: 0;
         border: none;
-        border-radius: 0;
+        border-radius: var(--scout-radius);
         background: #1A3A2F;
         color: #E8D5A3;
         font-size: 16px;

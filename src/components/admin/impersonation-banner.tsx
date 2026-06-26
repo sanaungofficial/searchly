@@ -59,7 +59,7 @@ export function ImpersonationBanner({ state }: { state: ImpersonationState }) {
           background: "transparent",
           border: "1px solid rgba(232,213,163,0.45)",
           color: color.gold,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           fontSize: 12,
           fontWeight: 600,
           cursor: exiting ? "default" : "pointer",

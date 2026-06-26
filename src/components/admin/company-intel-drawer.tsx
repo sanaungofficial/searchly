@@ -171,7 +171,7 @@ export function CompanyIntelDrawer({
               <img
                 src={hirebaseLogo}
                 alt=""
-                className="rounded-none object-contain bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.08)]"
+                className="rounded-[var(--scout-radius)] object-contain bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.08)]"
                 style={{ width: 44, height: 44 }}
               />
             ) : (
@@ -226,7 +226,7 @@ export function CompanyIntelDrawer({
           {company && !loading && (
             <>
               <Section title="Overview">
-                <div className="rounded-none border border-[rgba(17,17,17,0.08)] bg-[var(--scout-inset)]/60 px-4 py-3">
+                <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] bg-[var(--scout-inset)]/60 px-4 py-3">
                   <DetailRow label="Catalog slug" value={company.slug} />
                   <DetailRow label="Type" value={company.catalogType} />
                   <DetailRow label="Watchlists" value={String(company.watchlistCount)} />
@@ -246,7 +246,7 @@ export function CompanyIntelDrawer({
 
               {(company.hirebaseProfileAt || company.hirebaseSlug) && (
                 <Section title="Hirebase">
-                  <div className="rounded-none border border-[rgba(17,17,17,0.08)] bg-[var(--scout-inset)]/60 px-4 py-3">
+                  <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] bg-[var(--scout-inset)]/60 px-4 py-3">
                     <DetailRow label="Slug" value={company.hirebaseSlug} />
                     <DetailRow label="Job board" value={company.hirebaseJobBoard} />
                     <DetailRow
@@ -272,24 +272,24 @@ export function CompanyIntelDrawer({
                     )}
                     <div className="flex flex-wrap gap-2 mb-4">
                       {intel.employeeCount && (
-                        <span className="rounded-none bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">{intel.employeeCount} employees</span>
+                        <span className="rounded-[var(--scout-radius)] bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">{intel.employeeCount} employees</span>
                       )}
                       {intel.industry && (
-                        <span className="rounded-none bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">{intel.industry}</span>
+                        <span className="rounded-[var(--scout-radius)] bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">{intel.industry}</span>
                       )}
                       {intel.founded && (
-                        <span className="rounded-none bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">Founded {intel.founded}</span>
+                        <span className="rounded-[var(--scout-radius)] bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">Founded {intel.founded}</span>
                       )}
                       {intel.headquarters && (
-                        <span className="rounded-none bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">{intel.headquarters}</span>
+                        <span className="rounded-[var(--scout-radius)] bg-[var(--scout-inset)] px-2 py-1 text-xs text-[#52493F]">{intel.headquarters}</span>
                       )}
                       {intel.glassdoorRating && (
-                        <span className="rounded-none bg-[rgba(26,58,47,0.08)] border border-[rgba(26,58,47,0.15)] px-2 py-1 text-xs text-[#1A3A2F]">★ {intel.glassdoorRating} Glassdoor</span>
+                        <span className="rounded-[var(--scout-radius)] bg-[rgba(26,58,47,0.08)] border border-[rgba(26,58,47,0.15)] px-2 py-1 text-xs text-[#1A3A2F]">★ {intel.glassdoorRating} Glassdoor</span>
                       )}
                     </div>
 
                     {(intel.fundingStage || intel.totalFunding || (intel.keyInvestors?.length ?? 0) > 0) && (
-                      <div className="rounded-none border border-[rgba(17,17,17,0.08)] px-4 py-3 mb-4">
+                      <div className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-4 py-3 mb-4">
                         <DetailRow label="Funding stage" value={intel.fundingStage} />
                         <DetailRow label="Total funding" value={intel.totalFunding} />
                         <DetailRow label="Investors" value={intel.keyInvestors?.join(", ")} />
@@ -299,7 +299,7 @@ export function CompanyIntelDrawer({
                     {(intel.leadership?.length ?? 0) > 0 && (
                       <div className="grid gap-2 mb-4">
                         {intel.leadership!.map((leader, i) => (
-                          <div key={i} className="rounded-none border border-[rgba(17,17,17,0.08)] px-3 py-2">
+                          <div key={i} className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-3 py-2">
                             <div className="text-sm font-medium text-[#1A1A1A]">{leader.name}</div>
                             <div className="text-xs text-[var(--scout-muted)]">{leader.title}</div>
                           </div>
@@ -310,7 +310,7 @@ export function CompanyIntelDrawer({
                     {(intel.recentNews?.length ?? 0) > 0 && (
                       <div className="space-y-2">
                         {intel.recentNews!.map((item, i) => (
-                          <div key={i} className="rounded-none border border-[rgba(17,17,17,0.08)] px-3 py-2">
+                          <div key={i} className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-3 py-2">
                             <div className="text-sm font-medium text-[#1A1A1A]">{item.title}</div>
                             <div className="text-xs text-[var(--scout-muted)] mt-1">{item.summary}</div>
                             <div className="text-xs text-[var(--scout-muted)] mt-1">{item.date}</div>
@@ -332,7 +332,7 @@ export function CompanyIntelDrawer({
                     type="button"
                     onClick={scanJobs}
                     disabled={scanning || !company.scannable}
-                    className="rounded-none bg-stone-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    className="rounded-[var(--scout-radius)] bg-stone-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                   >
                     {scanning ? "Scanning…" : jobs.length > 0 ? "Re-scan jobs" : "Scan jobs"}
                   </button>
@@ -350,7 +350,7 @@ export function CompanyIntelDrawer({
                 ) : (
                   <div className="space-y-2 max-h-72 overflow-y-auto">
                     {jobs.slice(0, 50).map((job, i) => (
-                      <div key={`${job.title}-${i}`} className="rounded-none border border-[rgba(17,17,17,0.08)] px-3 py-2">
+                      <div key={`${job.title}-${i}`} className="rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.08)] px-3 py-2">
                         <div className="text-sm font-medium text-[#1A1A1A]">{job.title}</div>
                         <div className="text-xs text-[var(--scout-muted)] mt-1">
                           {[job.location, job.department].filter(Boolean).join(" · ") || "No location"}

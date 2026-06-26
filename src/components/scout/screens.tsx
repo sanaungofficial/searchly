@@ -82,7 +82,7 @@ const ONBOARDING_SECTION_PAD = "clamp(16px, 4vw, 24px)";
 
 const ONBOARDING_CARD: React.CSSProperties = {
   background: "#FFFFFF",
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   padding: ONBOARDING_SECTION_PAD,
   border: "1px solid rgba(26,58,47,0.14)",
   boxShadow: "0 2px 10px rgba(26,58,47,0.06)",
@@ -99,7 +99,7 @@ const PRIMARY_CTA: React.CSSProperties = {
   background: "#1A3A2F",
   color: "#E8D5A3",
   border: "none",
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   fontFamily: "var(--font-ui)",
   fontSize: 14,
   fontWeight: 500,
@@ -415,7 +415,7 @@ export function ScreenWelcome({
               onClick={onFileClick}
               style={{
                 border: `2px dashed ${dropBorder}`,
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 padding: ONBOARDING_CARD_PAD,
                 display: "flex",
                 flexDirection: "column",
@@ -466,7 +466,7 @@ export function ScreenWelcome({
                 padding: "14px 18px",
                 background: ONBOARDING_FIELD_BG,
                 border: ONBOARDING_FIELD_BORDER,
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
               }}
             >
               <CheckCircleFilled />
@@ -531,7 +531,7 @@ export function ScreenWelcome({
               padding: "12px 14px",
               background: ONBOARDING_FIELD_BG,
               border: ONBOARDING_FIELD_BORDER,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
             }}
           >
             <LinkedInIcon style={{ flexShrink: 0 }} />
@@ -665,7 +665,7 @@ export function ScreenLinkedIn({
           gap: 8,
           padding: "7px 14px 7px 10px",
           background: "rgba(26,58,47,0.08)",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           width: "fit-content",
         }}
       >
@@ -1016,7 +1016,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
                       padding: "8px 14px",
                       background: ONBOARDING_FIELD_BG,
                       border: ONBOARDING_FIELD_BORDER,
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       fontFamily: "var(--font-ui)",
                       fontSize: 13,
                       fontWeight: 500,
@@ -1034,7 +1034,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
                   marginBottom: 24,
                   padding: "14px 16px",
                   background: ONBOARDING_FIELD_BG,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   border: ONBOARDING_FIELD_BORDER,
                   borderLeft: "3px solid #1A3A2F",
                 }}
@@ -1085,7 +1085,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
               </div>
 
               {/* One honest note */}
-              <div style={{ padding: "14px 16px", background: ONBOARDING_FIELD_BG, borderRadius: 0, border: ONBOARDING_FIELD_BORDER }}>
+              <div style={{ padding: "14px 16px", background: ONBOARDING_FIELD_BG, borderRadius: "var(--scout-radius)", border: ONBOARDING_FIELD_BORDER }}>
                 <p
                   style={{
                     fontFamily: "var(--font-ui)",
@@ -1152,7 +1152,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
                 background: ONBOARDING_FIELD_BG,
                 color: ONBOARDING_TEXT,
                 border: ONBOARDING_FIELD_BORDER,
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 fontFamily: "var(--font-ui)",
                 fontSize: 14,
                 fontWeight: 500,
@@ -1309,7 +1309,7 @@ export function ScreenTargetJobs({
               justifyContent: "space-between",
               padding: "16px 20px",
               background: "#FFFFFF",
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               boxShadow: "0 1px 3px rgba(0,0,0,0.05), 0 3px 10px rgba(0,0,0,0.04)",
             }}
           >
@@ -1318,7 +1318,7 @@ export function ScreenTargetJobs({
                 style={{
                   width: 38,
                   height: 38,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   background: "#F0EDE6",
                   display: "flex",
                   alignItems: "center",
@@ -1409,7 +1409,7 @@ export function ScreenTargetJobs({
               background: "#1A3A2F",
               color: "#E8D5A3",
               border: "none",
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               fontFamily: "var(--font-ui)",
               fontSize: 15,
               fontWeight: 500,
@@ -1528,7 +1528,7 @@ function TargetRoleChip({
         padding: "8px 12px",
         background: "rgba(26,58,47,0.12)",
         border: "1.5px solid #1A3A2F",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: "var(--font-ui)",
         fontSize: 14,
         fontWeight: 600,
@@ -1658,7 +1658,7 @@ function TargetRoleAutocomplete({
                   padding: "8px 14px",
                   background: ONBOARDING_FIELD_BG,
                   border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   fontFamily: "var(--font-ui)",
                   fontSize: 13,
                   fontWeight: 500,
@@ -1728,7 +1728,7 @@ function TargetRoleAutocomplete({
             minHeight: 48,
             padding: "12px 14px",
             border: ONBOARDING_FIELD_BORDER,
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             background: atMax ? "rgba(247,245,242,0.6)" : ONBOARDING_FIELD_BG,
             fontFamily: "var(--font-ui)",
             fontSize: 16,
@@ -1754,7 +1754,7 @@ function TargetRoleAutocomplete({
               listStyle: "none",
               background: "#FFFFFF",
               border: "1px solid rgba(26,58,47,0.16)",
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               boxShadow: "0 8px 24px rgba(26,58,47,0.12)",
               maxHeight: 240,
               overflowY: "auto",
@@ -1772,7 +1772,7 @@ function TargetRoleAutocomplete({
                     textAlign: "left",
                     padding: "10px 12px",
                     border: "none",
-                    borderRadius: 0,
+                    borderRadius: "var(--scout-radius)",
                     background: index === highlight ? "rgba(26,58,47,0.08)" : "transparent",
                     fontFamily: "var(--font-ui)",
                     fontSize: 14,
@@ -1933,7 +1933,7 @@ function TargetCompanyChip({
         padding: "6px 10px 6px 6px",
         background: ONBOARDING_FIELD_BG,
         border: ONBOARDING_FIELD_BORDER,
-        borderRadius: 8,
+        borderRadius: "var(--scout-radius)",
         fontFamily: "var(--font-ui)",
         fontSize: 13,
         fontWeight: 500,
@@ -2110,7 +2110,7 @@ function TargetCompanyAutocomplete({
             minHeight: 48,
             padding: "12px 14px",
             border: ONBOARDING_FIELD_BORDER,
-            borderRadius: 8,
+            borderRadius: "var(--scout-radius)",
             background: atMax ? "rgba(247,245,242,0.6)" : ONBOARDING_FIELD_BG,
             fontFamily: "var(--font-ui)",
             fontSize: 16,
@@ -2136,7 +2136,7 @@ function TargetCompanyAutocomplete({
               listStyle: "none",
               background: "#FFFFFF",
               border: "1px solid rgba(26,58,47,0.16)",
-              borderRadius: 8,
+              borderRadius: "var(--scout-radius)",
               boxShadow: "0 8px 24px rgba(26,58,47,0.12)",
               maxHeight: 240,
               overflowY: "auto",
@@ -2283,7 +2283,7 @@ function aboutYouChipBtn(selected: boolean, onClick: () => void, label: string) 
         background: selected ? "rgba(26,58,47,0.12)" : ONBOARDING_FIELD_BG,
         color: selected ? "#1A3A2F" : ONBOARDING_TEXT,
         border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: "var(--font-ui)",
         fontSize: 14,
         fontWeight: selected ? 600 : 500,
@@ -2436,7 +2436,7 @@ export function ScreenAboutYouSearch({
                   background: selected ? "#1A3A2F" : ONBOARDING_FIELD_BG,
                   color: selected ? "#E8D5A3" : ONBOARDING_TEXT,
                   border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   fontFamily: "var(--font-ui)",
                   fontSize: 15,
                   fontWeight: selected ? 600 : 500,
@@ -2497,7 +2497,7 @@ export function ScreenAboutYouPreferences({
     minHeight: 48,
     padding: "11px 36px 11px 14px",
     border: ONBOARDING_FIELD_BORDER,
-    borderRadius: 0,
+    borderRadius: "var(--scout-radius)",
     background: ONBOARDING_FIELD_BG,
     fontFamily: "var(--font-ui)",
     fontSize: 16,
@@ -2662,7 +2662,7 @@ function JobBoardShortcutButton({ id, label, url }: { id: JobBoardId; label: str
         padding: "10px 14px",
         background: ONBOARDING_FIELD_BG,
         border: ONBOARDING_FIELD_BORDER,
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: "var(--font-ui)",
         fontSize: 14,
         fontWeight: 600,
@@ -2755,7 +2755,7 @@ export function ScreenTransition({
                   padding: "8px 14px",
                   background: ONBOARDING_FIELD_BG,
                   border: ONBOARDING_FIELD_BORDER,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   fontFamily: "var(--font-ui)",
                   fontSize: 14,
                   fontWeight: 500,
@@ -2817,7 +2817,7 @@ export function ScreenTransition({
               minHeight: 48,
               padding: "12px 14px",
               border: ONBOARDING_FIELD_BORDER,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               background: ONBOARDING_FIELD_BG,
               fontFamily: "var(--font-ui)",
               fontSize: 16,
@@ -2885,7 +2885,7 @@ export function ScreenTransition({
               marginTop: 16,
               padding: "16px 18px",
               background: ONBOARDING_FIELD_BG,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               border: ONBOARDING_FIELD_BORDER,
             }}
           >
@@ -2900,7 +2900,7 @@ export function ScreenTransition({
                   marginBottom: 14,
                   padding: "10px 12px",
                   background: "rgba(196,168,106,0.12)",
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                 }}
               >
                 We couldn&apos;t pull the company or job title from that link. Open one job from the boards above and paste its direct listing URL (e.g. linkedin.com/jobs/view/…).
@@ -2963,7 +2963,7 @@ export function ScreenTransition({
                   padding: "14px 16px",
                   marginBottom: 14,
                   background: "var(--scout-inset)",
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   border: "1px solid rgba(0,0,0,0.05)",
                 }}
               >
@@ -3128,7 +3128,7 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
                 alignItems: "center",
                 gap: 12,
                 padding: "14px 16px",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 border: `1.5px solid ${isDone ? "#1A3A2F" : isActive ? "rgba(26,58,47,0.35)" : "rgba(26,58,47,0.12)"}`,
                 background: isDone ? "rgba(26,58,47,0.06)" : ONBOARDING_FIELD_BG,
               }}
@@ -3185,7 +3185,7 @@ export function DemoNextButton({ onClick }: { onClick: () => void }) {
           background: hover ? "#1A3A2F" : "rgba(26,58,47,0.9)",
           color: "rgba(232,213,163,0.88)",
           border: "none",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           fontFamily: "var(--font-ui)",
           fontSize: 12,
           fontWeight: 500,

@@ -211,7 +211,7 @@ function CompanySuggestInput({
         }}
         onFocus={() => !picked && suggestions.length > 0 && setOpen(true)}
         placeholder="Start typing — e.g. Oracle, Comcast, Stripe"
-        style={{ width: "100%", border: picked ? border.lineStrong : border.line, borderRadius: 0, padding: "9px 12px", fontSize: T.bodySm, outline: "none", boxSizing: "border-box", fontFamily: fontSans, background: surface.inset }}
+        style={{ width: "100%", border: picked ? border.lineStrong : border.line, borderRadius: "var(--scout-radius)", padding: "9px 12px", fontSize: T.bodySm, outline: "none", boxSizing: "border-box", fontFamily: fontSans, background: surface.inset }}
         required
       />
       {open && suggestions.length > 0 && (
@@ -242,7 +242,7 @@ function CompanySuggestInput({
 }
 
 const editableWrapStyle: React.CSSProperties = {
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   padding: "4px 6px",
   margin: "-4px -6px",
   transition: "background 0.15s",
@@ -305,10 +305,10 @@ function PriorityBadge({ value, onChange }: { value: string; onChange: (v: strin
   }
   return (
     <div ref={containerRef} style={{ position: "relative", display: "inline-block" }} onClick={(e) => e.stopPropagation()}>
-      <button ref={btnRef} type="button" onClick={handleOpen} style={{ background: priorityColors.bg, color: priorityColors.text, border: "none", borderRadius: 0, padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
+      <button ref={btnRef} type="button" onClick={handleOpen} style={{ background: priorityColors.bg, color: priorityColors.text, border: "none", borderRadius: "var(--scout-radius)", padding: "3px 8px", fontSize: 14, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{value || "—"}</button>
       {open && (
         <div
-          style={{ position: "fixed", top: coords.top, left: coords.left, background: surface.card, border: border.line, borderRadius: 0, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}
+          style={{ position: "fixed", top: coords.top, left: coords.left, background: surface.card, border: border.line, borderRadius: "var(--scout-radius)", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 9999, minWidth: 100, overflow: "hidden" }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {["HIGH", "MEDIUM", "LOW", ""].map((opt) => (
@@ -623,7 +623,7 @@ function CompanyTableRow({
           onClick={onRemove}
           title="Remove company"
           aria-label={`Remove ${company.name}`}
-          style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: 0, lineHeight: 1 }}
+          style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "2px 6px", borderRadius: "var(--scout-radius)", lineHeight: 1 }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#ccc")}
         >
@@ -804,7 +804,7 @@ function DrawerJobRow({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginTop: 2 }}>
         {match && (
-          <span style={{ background: "rgba(26,58,47,0.08)", color: color.forest, border: border.line, borderRadius: 0, padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", fontFamily: fontSans, letterSpacing: "0.03em" }}>Match</span>
+          <span style={{ background: "rgba(26,58,47,0.08)", color: color.forest, border: border.line, borderRadius: "var(--scout-radius)", padding: "2px 7px", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", fontFamily: fontSans, letterSpacing: "0.03em" }}>Match</span>
         )}
         {job.url && (
           <a
@@ -977,7 +977,7 @@ function CompanyDrawer({
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "2px 6px", borderRadius: 0, lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#333")} onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}>×</button>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "2px 6px", borderRadius: "var(--scout-radius)", lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#333")} onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}>×</button>
             </div>
           </div>
         </div>
@@ -1005,7 +1005,7 @@ function CompanyDrawer({
           {/* Matching roles */}
           <DrawerSection title="Matching roles">
             {matchRoles.length === 0 && (
-              <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
+              <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: "var(--scout-radius)", padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
                 Add target roles in Profile → Target Roles. We only pull openings that match your targets — not every role at this company.
               </div>
             )}
@@ -1029,7 +1029,7 @@ function CompanyDrawer({
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {matchingJobs.length > 0 && (
                   <div>
-                    <div style={{ border: border.line, borderRadius: 0, overflow: "hidden" }}>
+                    <div style={{ border: border.line, borderRadius: "var(--scout-radius)", overflow: "hidden" }}>
                       {matchingJobs.map((job, i) => (
                         <DrawerJobRow
                           key={`m-${i}-${job.url ?? job.title}`}
@@ -1062,14 +1062,14 @@ function CompanyDrawer({
 
           {/* Notes */}
           <DrawerSection title="Notes">
-            <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: 0, padding: "10px 12px" }}>
+            <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: "var(--scout-radius)", padding: "10px 12px" }}>
               <AutoTextarea value={company.notes ?? ""} placeholder="Add notes about this company, contacts, conversations…" onBlur={(v) => onPatch(company.id, "notes", v)} />
             </div>
           </DrawerSection>
 
           {/* Danger zone */}
           <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 16 }}>
-            <button onClick={() => { onRemove(company.id); onClose(); }} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: 0, padding: "6px 14px", cursor: "pointer" }} onMouseEnter={(e) => { (e.currentTarget.style.background = "#fef2f2"); }} onMouseLeave={(e) => { (e.currentTarget.style.background = "none"); }}>
+            <button onClick={() => { onRemove(company.id); onClose(); }} style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#dc2626", background: "none", border: "1px solid #fecaca", borderRadius: "var(--scout-radius)", padding: "6px 14px", cursor: "pointer" }} onMouseEnter={(e) => { (e.currentTarget.style.background = "#fef2f2"); }} onMouseLeave={(e) => { (e.currentTarget.style.background = "none"); }}>
               Remove company
             </button>
           </div>

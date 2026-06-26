@@ -112,7 +112,7 @@ const fieldInput: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
   border: border.lineStrong,
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   background: surface.card,
   fontFamily: fontSans,
   fontSize: T.bodySm,

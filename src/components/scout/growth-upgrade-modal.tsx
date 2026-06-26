@@ -75,7 +75,7 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
         style={{
           position: "relative",
           background: "#fff",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           padding: "36px 32px",
           maxWidth: 420,
           width: "100%",
@@ -118,7 +118,7 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
             padding: "12px 0",
             background: "#1A3A2F",
             color: "#E8D5A3",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontFamily: "var(--font-ui)",
             fontSize: 14,
             fontWeight: 600,
@@ -141,7 +141,7 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
               padding: "12px 0",
               background: "var(--scout-inset)",
               color: "#1A3A2F",
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               fontFamily: "var(--font-ui)",
               fontSize: 14,
               fontWeight: 600,
@@ -190,7 +190,7 @@ export function GrowthMatchOffer({
           marginTop: 14,
           padding: "14px 16px",
           background: "rgba(26,58,47,0.04)",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.12)",
         }}
       >
@@ -221,7 +221,7 @@ export function GrowthMatchOffer({
         marginTop: 14,
         padding: "14px 16px",
         background: "rgba(196,87,74,0.06)",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         border: "1px solid rgba(196,87,74,0.15)",
       }}
     >
@@ -239,7 +239,7 @@ export function GrowthMatchOffer({
             background: "#1A3A2F",
             color: "#E8D5A3",
             border: "none",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontFamily: "var(--font-ui)",
             fontSize: 14,
             fontWeight: 600,
@@ -257,7 +257,7 @@ export function GrowthMatchOffer({
             background: "transparent",
             color: "#1A3A2F",
             border: "1px solid rgba(26,58,47,0.2)",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontFamily: "var(--font-ui)",
             fontSize: 14,
             fontWeight: 600,

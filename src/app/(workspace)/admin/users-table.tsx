@@ -82,7 +82,7 @@ function InviteModal({
     <>
       <div className="fixed inset-0 bg-black/40 z-[100]" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center z-[101] p-4">
-        <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] shadow-2xl w-full max-w-md p-6">
+        <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] shadow-2xl w-full max-w-md p-6">
           <div className="flex items-center justify-between mb-5">
             <h2
               className="text-base font-semibold text-[#1A1A1A]"
@@ -92,7 +92,7 @@ function InviteModal({
             </h2>
             <button
               onClick={onClose}
-              className="text-[var(--scout-muted)] hover:text-[#52493F] w-7 h-7 flex items-center justify-center rounded-none hover:bg-[var(--scout-inset)] text-lg leading-none"
+              className="text-[var(--scout-muted)] hover:text-[#52493F] w-7 h-7 flex items-center justify-center rounded-[var(--scout-radius)] hover:bg-[var(--scout-inset)] text-lg leading-none"
             >
               ✕
             </button>
@@ -107,7 +107,7 @@ function InviteModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@example.com"
-                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-none px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
+                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
               />
             </div>
             <div>
@@ -117,7 +117,7 @@ function InviteModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Full name"
-                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-none px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
+                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
               />
             </div>
             <div>
@@ -125,7 +125,7 @@ function InviteModal({
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as UserRole)}
-                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-none px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-[family-name:var(--font-mono-ui)]"
+                className="w-full text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 font-[family-name:var(--font-mono-ui)]"
               >
                 <option value="USER">user</option>
                 <option value="COACH">coach</option>
@@ -137,14 +137,14 @@ function InviteModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-sm text-[var(--scout-muted)] px-4 py-2 rounded-none hover:bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)]"
+                className="text-sm text-[var(--scout-muted)] px-4 py-2 rounded-[var(--scout-radius)] hover:bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="text-sm bg-[#1A3A2F] text-[#E8D5A3] px-4 py-2 rounded-none hover:opacity-90 disabled:opacity-50 font-medium"
+                className="text-sm bg-[#1A3A2F] text-[#E8D5A3] px-4 py-2 rounded-[var(--scout-radius)] hover:opacity-90 disabled:opacity-50 font-medium"
               >
                 {loading ? "Sending…" : "Send invite"}
               </button>
@@ -213,7 +213,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
 
   return (
     <>
-      <div className="bg-[var(--scout-surface)] rounded-none border border-[rgba(17,17,17,0.14)] overflow-hidden">
+      <div className="bg-[var(--scout-surface)] rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] overflow-hidden">
         {/* Controls */}
         <div className="px-6 py-4 border-b border-[rgba(17,17,17,0.08)] space-y-3">
           <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
               placeholder="Search by name or email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-none px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
+              className="flex-1 text-sm bg-[var(--scout-inset)] border border-[rgba(17,17,17,0.14)] rounded-[var(--scout-radius)] px-3 py-2 outline-none focus:ring-1 focus:ring-stone-300 placeholder:text-[var(--scout-muted)]"
             />
             <div className="flex items-center gap-1 text-xs text-[var(--scout-muted)] font-[family-name:var(--font-mono-ui)] shrink-0">
               <span>Sort:</span>
@@ -230,7 +230,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
                 <button
                   key={s}
                   onClick={() => setSort(s)}
-                  className={`px-2 py-1 rounded-none ${sort === s ? "bg-[var(--scout-inset)] text-[#52493F]" : "hover:bg-[var(--scout-inset)]"}`}
+                  className={`px-2 py-1 rounded-[var(--scout-radius)] ${sort === s ? "bg-[var(--scout-inset)] text-[#52493F]" : "hover:bg-[var(--scout-inset)]"}`}
                 >
                   {s === "date" ? "newest" : "most jobs"}
                 </button>
@@ -239,7 +239,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
             {canEdit && (
               <button
                 onClick={() => setShowInvite(true)}
-                className="shrink-0 text-xs bg-[#1A3A2F] text-[#E8D5A3] px-3 py-2 rounded-none hover:opacity-90 font-medium"
+                className="shrink-0 text-xs bg-[#1A3A2F] text-[#E8D5A3] px-3 py-2 rounded-[var(--scout-radius)] hover:opacity-90 font-medium"
               >
                 + Invite
               </button>
@@ -253,7 +253,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
                 <button
                   key={r}
                   onClick={() => setRoleFilter(r)}
-                  className={`px-2 py-0.5 rounded-none border text-xs font-[family-name:var(--font-mono-ui)] transition-colors ${
+                  className={`px-2 py-0.5 rounded-[var(--scout-radius)] border text-xs font-[family-name:var(--font-mono-ui)] transition-colors ${
                     roleFilter === r
                       ? r === "ALL"
                         ? "bg-[#1A3A2F] text-[#E8D5A3] border-stone-800"
@@ -274,7 +274,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
                 <button
                   key={s}
                   onClick={() => setSubFilter(s)}
-                  className={`px-2 py-0.5 rounded-none border text-xs font-[family-name:var(--font-mono-ui)] transition-colors ${
+                  className={`px-2 py-0.5 rounded-[var(--scout-radius)] border text-xs font-[family-name:var(--font-mono-ui)] transition-colors ${
                     subFilter === s
                       ? "bg-[#1A3A2F] text-[#E8D5A3] border-stone-800"
                       : "border-[rgba(17,17,17,0.14)] text-[var(--scout-muted)] hover:border-stone-300 hover:text-[var(--scout-muted)]"
@@ -324,7 +324,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
                     )}
                   </td>
                   <td className="px-6 py-3">
-                    <span className={`inline-block text-xs font-[family-name:var(--font-mono-ui)] px-2 py-0.5 rounded-none border ${ROLE_STYLES[user.role]}`}>
+                    <span className={`inline-block text-xs font-[family-name:var(--font-mono-ui)] px-2 py-0.5 rounded-[var(--scout-radius)] border ${ROLE_STYLES[user.role]}`}>
                       {user.role.toLowerCase()}
                     </span>
                   </td>
@@ -333,7 +333,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
                   </td>
                   <td className="px-6 py-3">
                     {user.subscription ? (
-                      <span className={`inline-block text-xs font-[family-name:var(--font-mono-ui)] px-2 py-0.5 rounded-none border ${STATUS_STYLES[user.subscription.status]}`}>
+                      <span className={`inline-block text-xs font-[family-name:var(--font-mono-ui)] px-2 py-0.5 rounded-[var(--scout-radius)] border ${STATUS_STYLES[user.subscription.status]}`}>
                         {user.subscription.status.toLowerCase()}
                       </span>
                     ) : (
@@ -366,7 +366,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="text-xs px-3 py-1.5 rounded-none border border-[rgba(17,17,17,0.14)] text-[var(--scout-muted)] hover:border-stone-300 disabled:opacity-40 disabled:cursor-not-allowed font-[family-name:var(--font-mono-ui)]"
+                className="text-xs px-3 py-1.5 rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] text-[var(--scout-muted)] hover:border-stone-300 disabled:opacity-40 disabled:cursor-not-allowed font-[family-name:var(--font-mono-ui)]"
               >
                 ← prev
               </button>
@@ -374,7 +374,7 @@ export function UsersTable({ users: initialUsers, canEdit }: { users: UserRow[];
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="text-xs px-3 py-1.5 rounded-none border border-[rgba(17,17,17,0.14)] text-[var(--scout-muted)] hover:border-stone-300 disabled:opacity-40 disabled:cursor-not-allowed font-[family-name:var(--font-mono-ui)]"
+                className="text-xs px-3 py-1.5 rounded-[var(--scout-radius)] border border-[rgba(17,17,17,0.14)] text-[var(--scout-muted)] hover:border-stone-300 disabled:opacity-40 disabled:cursor-not-allowed font-[family-name:var(--font-mono-ui)]"
               >
                 next →
               </button>

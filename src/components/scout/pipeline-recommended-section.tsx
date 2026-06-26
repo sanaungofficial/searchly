@@ -255,7 +255,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
   border: border.line,
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: T.caption,
   boxSizing: "border-box",

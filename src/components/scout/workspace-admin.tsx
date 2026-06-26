@@ -114,7 +114,7 @@ const ROLES: UserRole[] = ["USER", "COACH", "ADMIN"];
 
 function StatCard({ label, value, sub, accent }: { label: string; value: number | string; sub?: string; accent?: string }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px" }}>
+    <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px" }}>
       <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 6 }}>{label}</p>
       <p style={{ fontSize: 26, fontWeight: 600, color: accent ?? "#1a1a1a", fontFamily: "var(--font-playfair)", lineHeight: 1 }}>{value}</p>
       {sub && <p style={{ fontSize: 12, color: "var(--scout-muted)", marginTop: 4 }}>{sub}</p>}
@@ -212,7 +212,7 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
                 { label: "Resume", value: detail.profile?.resumeUrl ? "Uploaded" : "None" },
                 { label: "Tailored Resumes", value: detail.tailoredResumes.length },
               ].map(({ label, value }) => (
-                <div key={label} style={{ background: "#faf8f5", borderRadius: 8, padding: "10px 12px" }}>
+                <div key={label} style={{ background: "#faf8f5", borderRadius: "var(--scout-radius)", padding: "10px 12px" }}>
                   <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>{label}</p>
                   <p style={{ fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>{value}</p>
                 </div>
@@ -273,11 +273,11 @@ function UserDetailPanel({ userId, onClose, onEdit }: { userId: string; onClose:
               <div>
                 <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", marginBottom: 8 }}>AI Usage</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                  <div style={{ background: "#faf8f5", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ background: "#faf8f5", borderRadius: "var(--scout-radius)", padding: "10px 12px" }}>
                     <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>Total Calls</p>
                     <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{detail.aiSummary.totalCalls}</p>
                   </div>
-                  <div style={{ background: "#faf8f5", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ background: "#faf8f5", borderRadius: "var(--scout-radius)", padding: "10px 12px" }}>
                     <p style={{ fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.6px", fontFamily: "var(--font-dm-mono)", marginBottom: 3 }}>AI Cost</p>
                     <p style={{ fontSize: 20, fontWeight: 600, color: "#1a1a1a", fontFamily: "var(--font-playfair)" }}>{fmt$(detail.aiSummary.totalCostUsd)}</p>
                   </div>
@@ -354,8 +354,8 @@ function EditPanel({ user, onClose, onSaved }: { user: AdminUser; onClose: () =>
         </div>
         {err && <p style={{ fontSize: 13, color: "#b45309", margin: 0 }}>{err}</p>}
         <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-ui)" }}>{saving ? "Saving…" : "Save"}</button>
+          <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--scout-radius)", border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--scout-radius)", border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-ui)" }}>{saving ? "Saving…" : "Save"}</button>
         </div>
       </div>
     </div>
@@ -391,7 +391,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.2)" }} />
-      <div style={{ position: "relative", width: 380, background: "#fff", borderRadius: 14, boxShadow: "0 8px 40px rgba(0,0,0,0.12)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ position: "relative", width: 380, background: "#fff", borderRadius: "var(--scout-radius)", boxShadow: "0 8px 40px rgba(0,0,0,0.12)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontFamily: "var(--font-playfair)", fontSize: 16, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Invite User</p>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--scout-muted)", fontSize: 20 }}>×</button>
@@ -400,7 +400,7 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
           <div style={{ textAlign: "center", padding: "16px 0" }}>
             <p style={{ fontSize: 22, marginBottom: 8 }}>✓</p>
             <p style={{ fontSize: 14, color: "#2d7a50", fontWeight: 500 }}>Invite sent to {email}</p>
-            <button onClick={onClose} style={{ marginTop: 16, padding: "8px 20px", borderRadius: 8, border: "none", background: "#1a3a2f", color: "#fff", cursor: "pointer", fontSize: 14, fontFamily: "var(--font-ui)" }}>Done</button>
+            <button onClick={onClose} style={{ marginTop: 16, padding: "8px 20px", borderRadius: "var(--scout-radius)", border: "none", background: "#1a3a2f", color: "#fff", cursor: "pointer", fontSize: 14, fontFamily: "var(--font-ui)" }}>Done</button>
           </div>
         ) : (
           <>
@@ -420,8 +420,8 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
             </div>
             {err && <p style={{ fontSize: 13, color: "#b45309", margin: 0 }}>{err}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
-              <button onClick={send} disabled={sending} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: sending ? "#d4c9b8" : "#1a3a2f", cursor: sending ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-ui)" }}>{sending ? "Sending…" : "Send Invite"}</button>
+              <button onClick={onClose} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--scout-radius)", border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 14, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
+              <button onClick={send} disabled={sending} style={{ flex: 1, padding: "9px 0", borderRadius: "var(--scout-radius)", border: "none", background: sending ? "#d4c9b8" : "#1a3a2f", cursor: sending ? "default" : "pointer", fontSize: 14, color: "#fff", fontFamily: "var(--font-ui)" }}>{sending ? "Sending…" : "Send Invite"}</button>
             </div>
           </>
         )}
@@ -617,13 +617,13 @@ function CoachEditDrawer({ coach, onClose, onSaved, onDeleted }: { coach: CoachP
 
         <div style={{ padding: "16px 24px", borderTop: "1px solid #f0ece6", display: "flex", gap: 8 }}>
           {!isNew && (
-            <button onClick={remove} disabled={deleting} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(220,38,38,0.3)", background: "transparent", cursor: deleting ? "default" : "pointer", fontSize: 13, color: "#dc2626", fontFamily: "var(--font-ui)" }}>
+            <button onClick={remove} disabled={deleting} style={{ padding: "8px 14px", borderRadius: "var(--scout-radius)", border: "1px solid rgba(220,38,38,0.3)", background: "transparent", cursor: deleting ? "default" : "pointer", fontSize: 13, color: "#dc2626", fontFamily: "var(--font-ui)" }}>
               {deleting ? "Deleting…" : "Delete"}
             </button>
           )}
           <div style={{ flex: 1 }} />
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
-          <button onClick={save} disabled={saving} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 13, color: "#fff", fontFamily: "var(--font-ui)", fontWeight: 600 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: "var(--scout-radius)", border: "1px solid #e8e2da", background: "transparent", cursor: "pointer", fontSize: 13, color: "#3d3530", fontFamily: "var(--font-ui)" }}>Cancel</button>
+          <button onClick={save} disabled={saving} style={{ padding: "8px 20px", borderRadius: "var(--scout-radius)", border: "none", background: saving ? "#d4c9b8" : "#1a3a2f", cursor: saving ? "default" : "pointer", fontSize: 13, color: "#fff", fontFamily: "var(--font-ui)", fontWeight: 600 }}>
             {saving ? "Saving…" : isNew ? "Create" : "Save"}
           </button>
         </div>
@@ -667,7 +667,7 @@ function CoachesPanel() {
       }>Coaches ({coaches.length})</SectionLabel>
 
       {loading ? <p style={{ fontSize: 13, color: "var(--scout-muted)" }}>Loading…</p> : (
-        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+        <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
           <div style={{ padding: "10px 16px", borderBottom: "1px solid #f0ece6" }}>
             <input type="text" placeholder="Search coaches…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: "100%", fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-ui)", boxSizing: "border-box" }} />
           </div>
@@ -813,7 +813,7 @@ function PromptsPanel() {
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
       {/* Left: prompt list */}
-      <div style={{ width: 220, flexShrink: 0, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+      <div style={{ width: 220, flexShrink: 0, background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
         {categories.map((cat) => (
           <div key={cat}>
             <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--scout-muted)", textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "var(--font-dm-mono)", background: "#faf8f5", borderBottom: "1px solid #f0ece6" }}>{cat}</div>
@@ -828,7 +828,7 @@ function PromptsPanel() {
       </div>
 
       {/* Right: editor */}
-      <div style={{ flex: 1, background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: 20 }}>
+      <div style={{ flex: 1, background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", padding: 20 }}>
         {current ? (
           <>
             <div style={{ marginBottom: 12 }}>
@@ -982,7 +982,7 @@ export function WorkspaceAdmin() {
             <StatCard label="Total Calls" value={revenue.ai.callsTotal} />
           </div>
           {revenue.ai.byFeature.length > 0 && (
-            <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+            <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #f0ece6" }}>
@@ -1017,7 +1017,7 @@ export function WorkspaceAdmin() {
 
       {/* Onboarding Funnel */}
       <SectionLabel>Onboarding Funnel</SectionLabel>
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px" }}>
+      <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", padding: "16px 20px" }}>
         {[
           { label: "Signed up", value: data.funnel.signedUp },
           { label: "Profile created", value: data.funnel.profileCreated },
@@ -1051,7 +1051,7 @@ export function WorkspaceAdmin() {
 
       {/* Jobs by Stage */}
       <SectionLabel>Jobs by Stage</SectionLabel>
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+      <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid #f0ece6" }}>
@@ -1081,7 +1081,7 @@ export function WorkspaceAdmin() {
         <button onClick={() => setInviteOpen(true)} style={{ fontSize: 13, fontFamily: "var(--font-ui)", padding: "5px 12px", borderRadius: 7, border: "none", background: "#1a3a2f", color: "#E8D5A3", cursor: "pointer" }}>+ Invite User</button>
       }>All Users</SectionLabel>
 
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
+      <div style={{ background: "#fff", borderRadius: "var(--scout-radius)", border: "1px solid rgba(26,58,47,0.08)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #f0ece6" }}>
           <input type="text" placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, fontSize: 13, background: "#faf8f5", border: "1px solid #e8e2da", borderRadius: 7, padding: "6px 10px", outline: "none", fontFamily: "var(--font-ui)" }} />
           <div style={{ display: "flex", gap: 4, fontSize: 12, fontFamily: "var(--font-dm-mono)", color: "var(--scout-muted)" }}>

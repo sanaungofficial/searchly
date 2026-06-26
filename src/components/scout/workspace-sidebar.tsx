@@ -88,7 +88,7 @@ function SidebarNavButton({
       title={isRail ? label : undefined}
       style={{
         padding: isRail ? "10px 0" : "10px 14px",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         cursor: "pointer",
         background: active ? S.bgActive : "transparent",
         border: S.border,
@@ -362,7 +362,7 @@ export function WorkspaceSidebar({
               zIndex: 10,
               width: 16,
               height: 48,
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               background: S.bg,
               border: "1px solid rgba(232,213,163,0.2)",
               borderLeft: "none",
@@ -439,7 +439,7 @@ export function WorkspaceSidebar({
                   position: "relative",
                   cursor: "pointer",
                   padding: 6,
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   background: "none",
                   border: S.border,
                   color: S.iconMuted,
@@ -472,7 +472,7 @@ export function WorkspaceSidebar({
                   <button
                     onClick={onToggle}
                     title="Close menu"
-                    style={{ cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: S.border, color: S.iconMuted, lineHeight: 1, transition: "background 0.15s" }}
+                    style={{ cursor: "pointer", padding: 6, borderRadius: "var(--scout-radius)", background: "none", border: S.border, color: S.iconMuted, lineHeight: 1, transition: "background 0.15s" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = S.bgHover)}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                   >
@@ -483,7 +483,7 @@ export function WorkspaceSidebar({
                 )}
                 <button
                   onClick={onToggleNotif}
-                  style={{ position: "relative", cursor: "pointer", padding: 6, borderRadius: 0, background: "none", border: S.border, color: S.iconMuted, transition: "background 0.15s" }}
+                  style={{ position: "relative", cursor: "pointer", padding: 6, borderRadius: "var(--scout-radius)", background: "none", border: S.border, color: S.iconMuted, transition: "background 0.15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = S.bgHover)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                 >
@@ -560,7 +560,7 @@ export function WorkspaceSidebar({
                 width: "100%",
                 background: "rgba(74,139,106,0.12)",
                 border: "1px solid rgba(74,139,106,0.25)",
-                borderRadius: 10,
+                borderRadius: "var(--scout-radius)",
                 padding: "10px 14px",
                 cursor: "pointer",
                 textAlign: "left",
@@ -603,7 +603,7 @@ export function WorkspaceSidebar({
                 width: "100%",
                 background: "rgba(74,139,106,0.12)",
                 border: "1px solid rgba(74,139,106,0.25)",
-                borderRadius: 10,
+                borderRadius: "var(--scout-radius)",
                 padding: "10px 14px",
                 cursor: "pointer",
                 textAlign: "left",

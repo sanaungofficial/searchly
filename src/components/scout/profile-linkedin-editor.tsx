@@ -738,7 +738,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
           <ScoutPrimaryBtn onClick={() => void generate()} disabled={generating} style={{ padding: "10px 18px" }}>
             {generating ? "Refreshing…" : draft ? "Refresh from About" : "Build from About"}
           </ScoutPrimaryBtn>
-          <a href={liUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, padding: "10px 18px", borderRadius: 0, border: border.lineStrong, background: surface.card, color: color.forest, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+          <a href={liUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, padding: "10px 18px", borderRadius: "var(--scout-radius)", border: border.lineStrong, background: surface.card, color: color.forest, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
             Open LinkedIn →
           </a>
         </div>
@@ -801,8 +801,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             minWidth: 0,
           }}
         >
-          <div style={{ minWidth: 0, background: LI.bg, borderRadius: 0, padding: stackLayout ? 12 : 16, border: `1px solid ${LI.border}` }}>
-            <div style={{ background: LI.card, borderRadius: 0, overflow: "hidden", boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+          <div style={{ minWidth: 0, background: LI.bg, borderRadius: "var(--scout-radius)", padding: stackLayout ? 12 : 16, border: `1px solid ${LI.border}` }}>
+            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", overflow: "hidden", boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <div
                 style={{ position: "relative", height: stackLayout ? 80 : 120, background: coverPhotoUrl ? `url(${coverPhotoUrl}) center/cover no-repeat` : LI.banner }}
                 onMouseEnter={() => setPhotoHover("cover")}
@@ -842,7 +842,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               </div>
             </div>
 
-            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader title="About" onImprove={() => openImprove("about")} />
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: LI.muted, margin: "0 0 8px" }}>{draft.about.length}/2600</p>
               <textarea
@@ -855,7 +855,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               />
             </div>
 
-            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader
                 title="Experience"
                 addLabel="+ Add role"
@@ -1070,7 +1070,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               })}
             </div>
 
-            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader
                 title="Education"
                 addLabel="+ Add school"
@@ -1188,11 +1188,11 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               ))}
             </div>
 
-            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader title="Skills" onImprove={() => openImprove("skills")} />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 {draft.skills.map((skill) => (
-                  <span key={skill} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "system-ui", fontSize: 14, fontWeight: 600, color: LI.muted, background: "#eef3f8", padding: "6px 10px 6px 14px", borderRadius: 16 }}>
+                  <span key={skill} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "system-ui", fontSize: 14, fontWeight: 600, color: LI.muted, background: "#eef3f8", padding: "6px 10px 6px 14px", borderRadius: "var(--scout-radius)" }}>
                     {skill}
                     <button
                       type="button"
@@ -1242,7 +1242,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               </div>
             </div>
 
-            <div style={{ background: LI.card, borderRadius: 0, marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                 <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: 0, color: LI.text }}>Featured</h4>
                 <button
@@ -1340,7 +1340,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: stackLayout ? undefined : "calc(100vh - 220px)", overflowY: stackLayout ? undefined : "auto" }}>
               {checklist.map((item) => (
-                <div key={item.id} style={{ border: border.line, borderRadius: 0, padding: 12, background: surface.inset }}>
+                <div key={item.id} style={{ border: border.line, borderRadius: "var(--scout-radius)", padding: 12, background: surface.inset }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
                     <div style={{ minWidth: 0 }}>
                       <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600, color: LI.blue, textTransform: "uppercase", letterSpacing: 0.5 }}>{item.section}</span>

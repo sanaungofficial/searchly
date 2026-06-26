@@ -28,7 +28,7 @@ function AtsLogoCard({ platform }: { platform: AtsPlatform }) {
         minWidth: 0,
         background: surface.card,
         border: border.line,
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         padding: "10px 8px",
         display: "flex",
         alignItems: "center",
@@ -72,7 +72,7 @@ function AggregatorBadge({ name }: { name: string }) {
         padding: "6px 12px",
         background: "#F9FAFB",
         border: "1px solid #E5E7EB",
-        borderRadius: 999,
+        borderRadius: "var(--scout-radius)"99,
         whiteSpace: "nowrap",
       }}
     >
@@ -129,7 +129,7 @@ export function DataSourcesPopover({ align = "right", compact = false }: Props) 
             padding: compact ? "6px 8px" : "7px 10px",
             background: open ? "rgba(26,58,47,0.06)" : "transparent",
             border: border.line,
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             cursor: "pointer",
             color: color.forest,
             fontFamily: fontSans,
@@ -152,7 +152,7 @@ export function DataSourcesPopover({ align = "right", compact = false }: Props) 
         onOpenAutoFocus={(e) => e.preventDefault()}
         onMouseEnter={show}
         onMouseLeave={scheduleClose}
-        className="rounded-none border-0 bg-transparent p-0 shadow-none outline-none"
+        className="rounded-[var(--scout-radius)] border-0 bg-transparent p-0 shadow-none outline-none"
         style={{
           width: 380,
           maxWidth: "min(380px, calc(100vw - 24px))",

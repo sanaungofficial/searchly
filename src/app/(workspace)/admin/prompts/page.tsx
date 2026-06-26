@@ -232,7 +232,7 @@ export default function PromptsPage() {
               <textarea
                 value={draft}
                 onChange={(e) => { setDraft(e.target.value); setSaveStatus("idle"); }}
-                style={{ width: "100%", minHeight: 400, fontFamily: fontMono, fontSize: T.caption, lineHeight: 1.6, padding: "12px 14px", border: border.line, borderRadius: 0, background: surface.inset, color: color.ink, resize: "vertical", outline: "none", boxSizing: "border-box" }}
+                style={{ width: "100%", minHeight: 400, fontFamily: fontMono, fontSize: T.caption, lineHeight: 1.6, padding: "12px 14px", border: border.line, borderRadius: "var(--scout-radius)", background: surface.inset, color: color.ink, resize: "vertical", outline: "none", boxSizing: "border-box" }}
               />
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
                 <ScoutPrimaryBtn onClick={handleSave} disabled={saving}>

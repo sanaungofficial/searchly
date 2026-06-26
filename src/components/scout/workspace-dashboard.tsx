@@ -334,7 +334,7 @@ export function WorkspaceDashboard() {
                 flex: 1,
                 padding: "12px 12px",
                 border: border.line,
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 background: surface.card,
                 fontFamily: fontSans,
                 fontSize: isMobile ? 16 : T.bodySm,

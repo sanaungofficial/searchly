@@ -60,7 +60,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 10px",
   border: border.line,
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   fontSize: 13,
   fontFamily: fontSans,
   color: JR.text,
@@ -128,7 +128,7 @@ function SortableSectionTab({
         alignItems: "center",
         gap: 6,
         padding: "10px 12px",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         background: active ? JR.greenLight : "transparent",
         border: active ? `1px solid ${JR.green}` : "1px solid transparent",
         cursor: "pointer",
@@ -214,7 +214,7 @@ export function ReportPanel({
           { label: "Quality rating", value: score != null ? `${Math.round(score)}/100` : "—" },
           { label: "Sections", value: `${5 - missing.length}/5` },
         ].map((stat) => (
-          <div key={stat.label} style={{ background: JR.bg, borderRadius: 0, padding: "10px 12px", textAlign: "center" }}>
+          <div key={stat.label} style={{ background: JR.bg, borderRadius: "var(--scout-radius)", padding: "10px 12px", textAlign: "center" }}>
             <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: JR.text }}>{stat.value}</p>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: JR.muted }}>{stat.label}</p>
           </div>
@@ -222,7 +222,7 @@ export function ReportPanel({
       </div>
 
       {headline && (
-        <p style={{ fontSize: 14, color: JR.text, lineHeight: 1.5, margin: "0 0 14px", padding: "12px 14px", background: JR.bg, borderRadius: 0 }}>
+        <p style={{ fontSize: 14, color: JR.text, lineHeight: 1.5, margin: "0 0 14px", padding: "12px 14px", background: JR.bg, borderRadius: "var(--scout-radius)" }}>
           {headline}
         </p>
       )}
@@ -253,7 +253,7 @@ export function ReportPanel({
                 ? { bg: JR.criticalBg, color: JR.critical }
                 : { bg: JR.optionalBg, color: JR.optional };
           return (
-            <div key={i} style={{ marginBottom: 8, padding: "10px 12px", background: palette.bg, borderRadius: 0, border: `1px solid ${JR.border}` }}>
+            <div key={i} style={{ marginBottom: 8, padding: "10px 12px", background: palette.bg, borderRadius: "var(--scout-radius)", border: `1px solid ${JR.border}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: palette.color, textTransform: "uppercase" }}>{issue.priority}</span>
               </div>
@@ -275,7 +275,7 @@ export function ReportPanel({
           background: JR.panel,
           color: JR.greenDark,
           border: `1px solid ${JR.green}`,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           fontSize: 13,
           fontWeight: 600,
           cursor: loading ? "wait" : "pointer",
@@ -294,7 +294,7 @@ export function ReportPanel({
           background: JR.green,
           color: "#FFFFFF",
           border: "none",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           fontSize: 13,
           fontWeight: 600,
           cursor: "pointer",
@@ -399,7 +399,7 @@ export function SectionsPanel({
         {activeSection === "skills" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {skillGroups.map((g) => (
-              <div key={g.id} style={{ border: `1px solid ${JR.border}`, borderRadius: 0, padding: 10 }}>
+              <div key={g.id} style={{ border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", padding: 10 }}>
                 <input
                   style={inputStyle}
                   value={g.label}
@@ -519,7 +519,7 @@ export function SectionsPanel({
 function WorkEditor({ entry, onChange, onRemove }: { entry: ParsedWorkEntry; onChange: (e: ParsedWorkEntry) => void; onRemove: () => void }) {
   return (
     <SortableRow id={entry.id}>
-      <div style={{ border: `1px solid ${JR.border}`, borderRadius: 0, padding: 10, background: JR.bg }}>
+      <div style={{ border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", padding: 10, background: JR.bg }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <input style={inputStyle} value={entry.title} placeholder="Title" onChange={(e) => onChange({ ...entry, title: e.target.value })} />
           <input style={inputStyle} value={entry.company} placeholder="Company" onChange={(e) => onChange({ ...entry, company: e.target.value })} />
@@ -544,7 +544,7 @@ function WorkEditor({ entry, onChange, onRemove }: { entry: ParsedWorkEntry; onC
 function EducationEditor({ entry, onChange, onRemove }: { entry: ParsedEducationEntry; onChange: (e: ParsedEducationEntry) => void; onRemove: () => void }) {
   return (
     <SortableRow id={entry.id}>
-      <div style={{ border: `1px solid ${JR.border}`, borderRadius: 0, padding: 10, background: JR.bg }}>
+      <div style={{ border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", padding: 10, background: JR.bg }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <input style={inputStyle} value={entry.school} placeholder="School" onChange={(e) => onChange({ ...entry, school: e.target.value })} />
           <input style={inputStyle} value={entry.degree} placeholder="Degree" onChange={(e) => onChange({ ...entry, degree: e.target.value })} />
@@ -562,7 +562,7 @@ function EducationEditor({ entry, onChange, onRemove }: { entry: ParsedEducation
 
 function CertEditor({ entry, onChange, onRemove }: { entry: ParsedCertificationEntry; onChange: (e: ParsedCertificationEntry) => void; onRemove: () => void }) {
   return (
-    <div style={{ border: `1px solid ${JR.border}`, borderRadius: 0, padding: 10, background: JR.bg }}>
+    <div style={{ border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", padding: 10, background: JR.bg }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <input style={inputStyle} value={entry.name} placeholder="Certification" onChange={(e) => onChange({ ...entry, name: e.target.value })} />
         <input style={inputStyle} value={entry.issuer || ""} placeholder="Issuer" onChange={(e) => onChange({ ...entry, issuer: e.target.value })} />
@@ -614,7 +614,7 @@ export function ResumePreview({ data }: { data: ParsedResumeData }) {
         maxWidth: 720,
         padding: "52px 60px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontSize: 11,
         lineHeight: 1.55,
         color: JR.text,

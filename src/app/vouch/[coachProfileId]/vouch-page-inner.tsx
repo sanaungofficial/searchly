@@ -200,7 +200,7 @@ function ProfileCard({
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#78716c", margin: "0 0 10px", lineHeight: 1.5 }}>{coach.headline}</p>
         )}
         {isPending && (
-          <span style={{ fontSize: 12, fontFamily: "var(--font-ui)", fontWeight: 600, color: "#b45309", background: "rgba(180,83,9,0.1)", padding: "4px 10px", borderRadius: 999 }}>
+          <span style={{ fontSize: 12, fontFamily: "var(--font-ui)", fontWeight: 600, color: "#b45309", background: "rgba(180,83,9,0.1)", padding: "4px 10px", borderRadius: "var(--scout-radius)"99 }}>
             Pending expert
           </span>
         )}

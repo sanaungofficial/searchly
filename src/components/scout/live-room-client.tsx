@@ -317,7 +317,7 @@ const controlBtnStyle: React.CSSProperties = {
   minHeight: 44,
   background: surface.card,
   border: B.lineStrong,
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: 14,
   fontWeight: 600,

@@ -27,7 +27,7 @@ export default async function DigestUnsubscribedPage({
           width: "100%",
           background: "#FFFDF9",
           border: "1px solid #E5DDD0",
-          borderRadius: 16,
+          borderRadius: "var(--scout-radius)",
           padding: "36px 32px",
           textAlign: "center",
         }}
@@ -64,7 +64,7 @@ export default async function DigestUnsubscribedPage({
             fontSize: 14,
             fontWeight: 600,
             textDecoration: "none",
-            borderRadius: 10,
+            borderRadius: "var(--scout-radius)",
           }}
         >
           Back to Kimchi

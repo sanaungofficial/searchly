@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { border, surface, displayTitleStyle } from "@/lib/typography";
+import { border, radius, surface, displayTitleStyle } from "@/lib/typography";
 
 type ScoutBoxProps = {
   children: ReactNode;
@@ -26,6 +26,7 @@ export function ScoutBox({
         style={{
           background: bg,
           border: border.line,
+          borderRadius: radius.box,
           padding,
           ...style,
         }}
@@ -47,6 +48,7 @@ export function ScoutBox({
           bottom: 0,
           background: surface.stackPlate,
           border: border.line,
+          borderRadius: radius.box,
         }}
       />
       <div
@@ -54,6 +56,7 @@ export function ScoutBox({
           position: "relative",
           background: bg,
           border: border.lineStrong,
+          borderRadius: radius.box,
           padding,
         }}
       >
@@ -120,7 +123,7 @@ const btnBase: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  borderRadius: 0,
+  borderRadius: radius.box,
 };
 
 export function ScoutPrimaryBtn({

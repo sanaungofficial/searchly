@@ -55,6 +55,12 @@ export const border = {
   lineStrong: "1px solid rgba(17,17,17,0.22)",
 } as const;
 
+/** Standard corner radius for cards, inputs, and buttons */
+export const radius = {
+  box: "var(--scout-radius)",
+  px: 5,
+} as const;
+
 /** Mobile-first type scale (px) — nothing below 12 for readable content */
 export const type = {
   displayLg: 28,

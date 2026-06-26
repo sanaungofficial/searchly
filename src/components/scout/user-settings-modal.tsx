@@ -161,7 +161,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           maxWidth: "calc(100vw - 32px)",
           maxHeight: "min(80vh, calc(100dvh - 32px))",
           background: "#FFFFFF",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.1)",
           zIndex: 1101,
           display: "flex",
@@ -234,7 +234,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   alignItems: "center",
                   gap: 10,
                   padding: "9px 10px",
-                  borderRadius: 0,
+                  borderRadius: "var(--scout-radius)",
                   border: "none",
                   background: tab === id ? "#1A3A2F" : "transparent",
                   color: tab === id ? "#E8D5A3" : "#52493F",
@@ -272,7 +272,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 alignItems: "center",
                 gap: 10,
                 padding: "9px 10px",
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 border: "none",
                 background: "transparent",
                 color: "#C4574A",
@@ -317,7 +317,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 cursor: "pointer",
                 color: "#8A7F72",
                 padding: 4,
-                borderRadius: 0,
+                borderRadius: "var(--scout-radius)",
                 display: "flex",
                 alignItems: "center",
                 transition: "color 0.15s",
@@ -406,7 +406,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         disabled={uploading}
                         style={{
                           padding: "8px 16px",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           border: "1px solid #D5CFC8",
                           background: "transparent",
                           color: "#52493F",
@@ -440,7 +440,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   style={{
                     padding: "12px 16px",
                     background: "var(--scout-cream)",
-                    borderRadius: 0,
+                    borderRadius: "var(--scout-radius)",
                     fontSize: 14,
                     color: "#8A7F72",
                     lineHeight: 1.5,
@@ -471,7 +471,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       gap: 10,
                       padding: "10px 14px",
                       border: "1px solid #EEE9E2",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       background: dailyEmailEnabled ? "rgba(26,58,47,0.06)" : "transparent",
                       cursor: digestLoading || digestSaving ? "not-allowed" : "pointer",
                       opacity: digestLoading || digestSaving ? 0.6 : 1,
@@ -481,7 +481,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       style={{
                         width: 36,
                         height: 20,
-                        borderRadius: 10,
+                        borderRadius: "var(--scout-radius)",
                         background: dailyEmailEnabled ? "#1A3A2F" : "#D4CCC0",
                         position: "relative",
                         transition: "background 0.15s",
@@ -529,7 +529,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     style={{
                       padding: "16px",
                       border: "1px solid #EEE9E2",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -555,7 +555,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                               color: "#FFFFFF",
                               background: isAdmin ? "#6B4A8A" : "#1A3A2F",
                               padding: "2px 8px",
-                              borderRadius: 0,
+                              borderRadius: "var(--scout-radius)",
                               letterSpacing: "0.4px",
                             }}
                           >
@@ -589,7 +589,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         onClick={openPortal}
                         style={{
                           padding: "8px 16px",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           border: "1px solid #D5CFC8",
                           background: "transparent",
                           color: "#52493F",
@@ -608,7 +608,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                         onClick={startCheckout}
                         style={{
                           padding: "8px 16px",
-                          borderRadius: 0,
+                          borderRadius: "var(--scout-radius)",
                           border: "none",
                           background: "#1A3A2F",
                           color: "#E8D5A3",
@@ -633,7 +633,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       padding: "14px 16px",
                       background: "#FDFCFA",
                       border: "1px solid #EEE9E2",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
@@ -691,7 +691,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     width: "100%",
                     background: "rgba(74,139,106,0.08)",
                     border: "1px solid rgba(74,139,106,0.22)",
-                    borderRadius: 0,
+                    borderRadius: "var(--scout-radius)",
                     padding: "14px 16px",
                     cursor: "pointer",
                     textAlign: "left",
@@ -712,7 +712,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                       padding: "14px 16px",
                       background: "rgba(26,58,47,0.04)",
                       border: "1px solid rgba(26,58,47,0.1)",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                     }}
                   >
                     <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3A2F", margin: "0 0 10px" }}>
@@ -741,7 +741,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     padding: "14px 16px",
                     background: "var(--scout-cream)",
                     border: "1px dashed #D5CFC8",
-                    borderRadius: 0,
+                    borderRadius: "var(--scout-radius)",
                     textAlign: "center",
                   }}
                 >
@@ -755,7 +755,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                     onClick={() => window.location.reload()}
                     style={{
                       padding: "6px 14px",
-                      borderRadius: 0,
+                      borderRadius: "var(--scout-radius)",
                       border: "1px solid #D5CFC8",
                       background: "white",
                       color: "#52493F",
@@ -784,7 +784,7 @@ function Field({ label, value }: { label: string; value: string }) {
       <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
         {label}
       </p>
-      <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "var(--scout-inset)", borderRadius: 0, border: "1px solid #EEE9E2" }}>
+      <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "var(--scout-inset)", borderRadius: "var(--scout-radius)", border: "1px solid #EEE9E2" }}>
         {value}
       </p>
     </div>

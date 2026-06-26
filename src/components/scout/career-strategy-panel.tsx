@@ -103,7 +103,7 @@ const textareaStyle: React.CSSProperties = {
   minHeight: 100,
   padding: "10px 12px",
   border: border.line,
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   fontFamily: fontSans,
   fontSize: 14,
   lineHeight: 1.5,

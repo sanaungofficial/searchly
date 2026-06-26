@@ -475,19 +475,19 @@ export function ProfileResumeEditor({
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: JR.muted, display: "flex" }}><X size={18} /></button>
             <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: JR.muted }}>RESUME</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: JR.text, padding: "4px 10px", background: JR.bg, borderRadius: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{assetName}</span>
-            {isPrimary && <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", background: JR.greenLight, color: JR.greenDark, borderRadius: 0 }}>Primary</span>}
+            <span style={{ fontSize: 13, fontWeight: 600, color: JR.text, padding: "4px 10px", background: JR.bg, borderRadius: "var(--scout-radius)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{assetName}</span>
+            {isPrimary && <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", background: JR.greenLight, color: JR.greenDark, borderRadius: "var(--scout-radius)" }}>Primary</span>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <JobrightScorePill score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} />
             <ScoreExplainerPopover variant="resume-quality" />
             {saved && <span style={{ fontSize: 13, color: JR.green, display: "flex", alignItems: "center", gap: 4 }}><Check size={13} /> Saved</span>}
             {saving && <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: JR.muted }} />}
-            <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>
+            <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>
             {shareMsg && <span style={{ fontSize: 12, color: JR.green }}>{shareMsg}</span>}
-            <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, cursor: "pointer" }}>Preview</button>
+            <button type="button" onClick={() => window.print()} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, cursor: "pointer" }}>Preview</button>
             <div ref={downloadRef} style={{ position: "relative" }}>
-              <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <button type="button" onClick={() => setDownloadMenuOpen((v) => !v)} disabled={downloading} style={{ padding: "7px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                 {downloading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Download size={14} />} Download <ChevronDown size={12} />
               </button>
               {downloadMenuOpen && (
@@ -510,7 +510,7 @@ export function ProfileResumeEditor({
         {parseError && !loading && !reparsing && (
           <div className="resume-print-hide" style={{ padding: "10px 16px", background: JR.criticalBg, borderBottom: `1px solid ${JR.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <span style={{ fontSize: 13, color: JR.text }}>{parseError}</span>
-            <button type="button" onClick={() => assetId && loadAsset(assetId)} style={{ padding: "6px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: 0, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><RefreshCw size={12} /> Retry</button>
+            <button type="button" onClick={() => assetId && loadAsset(assetId)} style={{ padding: "6px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><RefreshCw size={12} /> Retry</button>
           </div>
         )}
         <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>

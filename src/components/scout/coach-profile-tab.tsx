@@ -35,7 +35,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   background: "#fff",
   border: "1px solid rgba(26,58,47,0.12)",
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   padding: "9px 12px",
   outline: "none",
   fontFamily: fontSans,
@@ -79,7 +79,7 @@ function TagInput({
               alignItems: "center",
               gap: 4,
               background: "rgba(26,58,47,0.08)",
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               padding: "2px 8px",
               fontSize: 13,
               color: "#1a3a2f",
@@ -120,7 +120,7 @@ function TagInput({
           onClick={add}
           style={{
             padding: "9px 14px",
-            borderRadius: 8,
+            borderRadius: "var(--scout-radius)",
             border: "1px solid rgba(26,58,47,0.15)",
             background: "transparent",
             cursor: "pointer",
@@ -312,7 +312,7 @@ export function CoachProfileTab({
       <div
         style={{
           background: "#fff",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.08)",
           padding: 24,
         }}
@@ -348,7 +348,7 @@ export function CoachProfileTab({
       <div
         style={{
           background: "#fff",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.08)",
           padding: "20px 24px",
         }}
@@ -414,7 +414,7 @@ export function CoachProfileTab({
       <div
         style={{
           background: "#fff",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.08)",
           padding: "20px 24px",
         }}
@@ -457,7 +457,7 @@ export function CoachProfileTab({
       <div
         style={{
           background: "#fff",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.08)",
           padding: "20px 24px",
         }}
@@ -568,7 +568,7 @@ export function CoachProfileTab({
       <div
         style={{
           background: "#fff",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.08)",
           padding: "20px 24px",
         }}
@@ -619,7 +619,7 @@ export function CoachProfileTab({
       <div
         style={{
           background: "#fff",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.08)",
           padding: "20px 24px",
         }}
@@ -681,7 +681,7 @@ export function CoachProfileTab({
             background: saving ? "#d4c9b8" : color.forest,
             color: color.gold,
             border: "none",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontSize: 14,
             fontWeight: 600,
             cursor: saving ? "default" : "pointer",

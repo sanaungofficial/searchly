@@ -224,8 +224,8 @@ export function MatchBreakdownBar({ label, pct }: { label: string; pct: number }
         <span style={{ fontFamily: sans, fontSize: 13, color: "#5C534A" }}>{label}</span>
         <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 700, color: barColor }}>{pct}%</span>
       </div>
-      <div style={{ height: 8, borderRadius: 0, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 0, boxShadow: `0 0 0 1px ${bg}` }} />
+      <div style={{ height: 8, borderRadius: "var(--scout-radius)", background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: "var(--scout-radius)", boxShadow: `0 0 0 1px ${bg}` }} />
       </div>
     </div>
   );
@@ -264,7 +264,7 @@ export function ResumeSelectDropdown({
           color: color.forest,
           background: "rgba(34,197,94,0.08)",
           border: "1px solid rgba(34,197,94,0.28)",
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           padding: compact ? "4px 8px" : "6px 10px",
           maxWidth: compact ? 140 : 200,
           cursor: "pointer",
@@ -291,7 +291,7 @@ export function MatchKeywordTag({ text, matched }: { text: string; matched: bool
         alignItems: "center",
         gap: 4,
         padding: "4px 9px",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: sans,
         fontSize: 13,
         fontWeight: 600,
@@ -314,7 +314,7 @@ export function IndustryTag({ label, matched }: { label: string; matched: boolea
         alignItems: "center",
         gap: 4,
         padding: "3px 8px",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: sans,
         fontSize: 13,
         fontWeight: 500,

@@ -82,7 +82,7 @@ export function CreditsSidebarBlock({
         style={{
           background: exhausted ? "rgba(196,87,74,0.12)" : "rgba(232,213,163,0.06)",
           border: `1px solid ${exhausted ? "rgba(196,87,74,0.25)" : "rgba(232,213,163,0.12)"}`,
-          borderRadius: 0,
+          borderRadius: "var(--scout-radius)",
           padding: "10px 14px",
         }}
       >
@@ -99,7 +99,7 @@ export function CreditsSidebarBlock({
             width: "100%",
             background: "#E8D5A3",
             border: "1px solid rgba(17,17,17,0.22)",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             padding: "10px 14px",
             cursor: "pointer",
             textAlign: "left",
@@ -119,7 +119,7 @@ export function CreditsSidebarBlock({
             width: "100%",
             background: "rgba(232,213,163,0.08)",
             border: "1px solid rgba(232,213,163,0.15)",
-            borderRadius: 10,
+            borderRadius: "var(--scout-radius)",
             padding: "8px 14px",
             cursor: "pointer",
             textAlign: "center",
@@ -136,7 +136,7 @@ export function CreditsSidebarBlock({
             display: "block",
             background: "rgba(232,213,163,0.08)",
             border: "1px solid rgba(232,213,163,0.15)",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             padding: "8px 14px",
             textDecoration: "none",
             textAlign: "center",
@@ -162,7 +162,7 @@ export function CreditCostBadge({ cost = 1 }: { cost?: number }) {
         alignItems: "center",
         gap: 4,
         padding: "2px 8px",
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         fontFamily: "var(--font-ui)",
         fontSize: 11,
         fontWeight: 600,
@@ -209,7 +209,7 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
         padding: "10px 14px",
         background: bg,
         border: `1px solid ${border}`,
-        borderRadius: 0,
+        borderRadius: "var(--scout-radius)",
         marginBottom: 12,
       }}
     >
@@ -250,7 +250,7 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
               background: "#1A3A2F",
               color: "#E8D5A3",
               border: "none",
-              borderRadius: 0,
+              borderRadius: "var(--scout-radius)",
               fontFamily: "var(--font-ui)",
               fontSize: 12,
               fontWeight: 600,

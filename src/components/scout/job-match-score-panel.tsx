@@ -178,7 +178,7 @@ export function JobMatchScorePanel({
 
   if (displayScore <= 0 && onRunFullMatch) {
     return (
-      <div style={{ background: surface.card, borderRadius: 0, padding: "20px 22px", minWidth: fullWidth ? undefined : 220, width: fullWidth ? "100%" : undefined, border: line, boxSizing: "border-box" }}>
+      <div style={{ background: surface.card, borderRadius: "var(--scout-radius)", padding: "20px 22px", minWidth: fullWidth ? undefined : 220, width: fullWidth ? "100%" : undefined, border: line, boxSizing: "border-box" }}>
         <p style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: "#5C534A", marginBottom: 10 }}>
           <ScoreExplainerLabel variant="job-match">Match score</ScoreExplainerLabel>
         </p>
@@ -186,7 +186,7 @@ export function JobMatchScorePanel({
         <button
           type="button"
           onClick={onRunFullMatch}
-          style={{ width: "100%", padding: "11px 14px", minHeight: fullWidth ? 44 : undefined, background: color.forest, color: color.gold, border: "none", borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+          style={{ width: "100%", padding: "11px 14px", minHeight: fullWidth ? 44 : undefined, background: color.forest, color: color.gold, border: "none", borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
         >
           Analyze match
         </button>
@@ -195,7 +195,7 @@ export function JobMatchScorePanel({
   }
 
   return (
-    <div style={{ background: surface.card, borderRadius: 0, padding: "20px 22px", minWidth: fullWidth ? undefined : 240, width: fullWidth ? "100%" : undefined, border: line, boxSizing: "border-box" }}>
+    <div style={{ background: surface.card, borderRadius: "var(--scout-radius)", padding: "20px 22px", minWidth: fullWidth ? undefined : 240, width: fullWidth ? "100%" : undefined, border: line, boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: headlineColor, letterSpacing: "0.5px", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 4 }}>
@@ -248,7 +248,7 @@ export function JobMatchScorePanel({
             background: color.forest,
             color: color.gold,
             border: "none",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontFamily: sans,
             fontSize: 14,
             fontWeight: 600,
@@ -270,7 +270,7 @@ export function JobMatchScorePanel({
             background: "rgba(34,197,94,0.08)",
             color: color.forest,
             border: "1px solid rgba(34,197,94,0.25)",
-            borderRadius: 0,
+            borderRadius: "var(--scout-radius)",
             fontFamily: sans,
             fontSize: 13,
             fontWeight: 600,
