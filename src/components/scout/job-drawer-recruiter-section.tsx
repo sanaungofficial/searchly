@@ -10,6 +10,8 @@ import {
 const sans = fontSans;
 const line = B.line;
 
+type NetworkRecruiter = NonNullable<JobMeta["networkJob"]>["recruiter"];
+
 function RecruiterMetaChip({ label }: { label: string }) {
   return (
     <span
@@ -36,7 +38,7 @@ function MetaLine({ label, value, href }: { label: string; value: string; href?:
         {label}
       </p>
       {href ? (
-        <a href={href} style={{ fontFamily: sans, fontSize: 14, color: color.forest, fontWeight: 600, textDecoration: "none" }}>
+        <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontFamily: sans, fontSize: 14, color: color.forest, fontWeight: 600, textDecoration: "none" }}>
           {value} ↗
         </a>
       ) : (
@@ -46,29 +48,23 @@ function MetaLine({ label, value, href }: { label: string; value: string; href?:
   );
 }
 
-export function JobDrawerRecruiterSection({
+function RecruiterCard({
+  recruiter,
   networkJob,
+  showDivider = false,
 }: {
+  recruiter: NonNullable<NetworkRecruiter>;
   networkJob: NonNullable<JobMeta["networkJob"]>;
+  showDivider?: boolean;
 }) {
-  const recruiter = networkJob.recruiter;
-  if (!recruiter) {
-    return (
-      <ScoutBox padding={20}>
-        <p style={{ fontFamily: sans, fontSize: 14, color: color.muted, margin: 0 }}>
-          No recruiter profile linked to this network posting yet.
-        </p>
-      </ScoutBox>
-    );
-  }
-
   const chips = [
+    recruiter.title,
     recruiter.agencyName,
     networkJob.internalView && networkJob.networkId ? `Network ${networkJob.networkId}` : null,
   ].filter(Boolean) as string[];
 
   return (
-    <ScoutBox padding={20}>
+    <div style={showDivider ? { paddingTop: 16, marginTop: 16, borderTop: line } : undefined}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
         <div
           style={{
@@ -88,6 +84,9 @@ export function JobDrawerRecruiterSection({
         </div>
         <div>
           <h4 style={displayTitleStyle(20, { margin: "0 0 4px" })}>{recruiter.name}</h4>
+          {recruiter.title && (
+            <p style={{ fontFamily: sans, fontSize: 14, color: color.muted, margin: "0 0 2px" }}>{recruiter.title}</p>
+          )}
           {recruiter.agencyName && (
             <p style={{ fontFamily: sans, fontSize: 14, color: color.muted, margin: 0 }}>{recruiter.agencyName}</p>
           )}
@@ -103,12 +102,58 @@ export function JobDrawerRecruiterSection({
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px 20px" }}>
-        {networkJob.internalView && <MetaLine label="TE recruiter ID" value={recruiter.externalId} />}
+        {networkJob.internalView && <MetaLine label="Recruiter ID" value={recruiter.externalId} />}
         {recruiter.email && <MetaLine label="Email" value={recruiter.email} href={`mailto:${recruiter.email}`} />}
         {recruiter.phone && <MetaLine label="Phone" value={recruiter.phone} href={`tel:${recruiter.phone}`} />}
-        {recruiter.firstName && <MetaLine label="First name" value={recruiter.firstName} />}
-        {recruiter.lastName && <MetaLine label="Last name" value={recruiter.lastName} />}
+        {recruiter.linkedInUrl && (
+          <MetaLine label="LinkedIn" value="View profile" href={recruiter.linkedInUrl} />
+        )}
       </div>
+    </div>
+  );
+}
+
+export function JobDrawerRecruiterSection({
+  networkJob,
+}: {
+  networkJob: NonNullable<JobMeta["networkJob"]>;
+}) {
+  const recruiters =
+    networkJob.recruiters?.length
+      ? networkJob.recruiters
+      : networkJob.recruiter
+        ? [networkJob.recruiter]
+        : [];
+
+  if (!recruiters.length) {
+    return (
+      <ScoutBox padding={20}>
+        <p style={{ fontFamily: sans, fontSize: 14, color: color.muted, margin: 0 }}>
+          No recruiter profile linked to this network posting yet.
+        </p>
+      </ScoutBox>
+    );
+  }
+
+  return (
+    <ScoutBox padding={20}>
+      <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: color.muted, margin: "0 0 8px" }}>
+        Recruiters{recruiters.length > 1 ? ` (${recruiters.length})` : ""}
+      </p>
+      {recruiters.length > 1 && (
+        <p style={{ fontFamily: sans, fontSize: 13, color: color.mutedLight, margin: "0 0 8px", lineHeight: 1.5 }}>
+          Tip: If you do not personally know the contacts below, look for a shared connection on LinkedIn for a warm introduction.
+        </p>
+      )}
+
+      {recruiters.map((recruiter, index) => (
+        <RecruiterCard
+          key={recruiter.externalId}
+          recruiter={recruiter}
+          networkJob={networkJob}
+          showDivider={index > 0}
+        />
+      ))}
 
       {networkJob.internalView && networkJob.fee && (
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: line }}>
@@ -135,14 +180,24 @@ export function JobDrawerNetworkAdminSection({
         {networkJob.adminDetails.map(({ label, value }) => (
           <div key={label}>
             <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 600, color: color.muted, margin: "0 0 4px" }}>{label}</p>
-            <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", margin: 0, lineHeight: 1.5 }}>{value}</p>
+            <p style={{ fontFamily: sans, fontSize: 14, color: "#2A2218", margin: 0, lineHeight: 1.5, wordBreak: "break-word" }}>{value}</p>
           </div>
         ))}
       </div>
-      {(networkJob.topEchelonUrl || networkJob.sourceUrl) && (
-        <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 16 }}>
+        {networkJob.applyUrl && (
           <a
-            href={networkJob.topEchelonUrl ?? networkJob.sourceUrl ?? "#"}
+            href={networkJob.applyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
+          >
+            Apply now ↗
+          </a>
+        )}
+        {(networkJob.listingUrl || networkJob.topEchelonUrl || networkJob.sourceUrl) && (
+          <a
+            href={networkJob.listingUrl ?? networkJob.topEchelonUrl ?? networkJob.sourceUrl ?? "#"}
             target="_blank"
             rel="noopener noreferrer"
             style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
@@ -151,8 +206,8 @@ export function JobDrawerNetworkAdminSection({
               ? networkSourceListingLinkLabel(networkJob.source)
               : "Partner listing ↗"}
           </a>
-        </div>
-      )}
+        )}
+      </div>
     </ScoutBox>
   );
 }

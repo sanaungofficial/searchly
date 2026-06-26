@@ -888,14 +888,18 @@ export function JobDrawer({
     : ["overview", "company"];
   const externalPostUrl = networkJob?.internalView === false
     ? null
-    : (networkJob?.topEchelonUrl ?? networkJob?.sourceUrl ?? applicationUrl);
+    : (networkJob?.applyUrl ?? networkJob?.topEchelonUrl ?? networkJob?.sourceUrl ?? applicationUrl);
   const networkSourceLabel =
     networkJob?.source && networkJob.internalView
-      ? networkSourceListingLinkLabel(networkJob.source)
+      ? networkJob.applyUrl
+        ? "Apply on partner site ↗"
+        : networkSourceListingLinkLabel(networkJob.source)
       : "Original job post ↗";
   const networkOpenLabel =
     networkJob?.source && networkJob.internalView
-      ? `OPEN ${networkSourceChannelCode(networkJob.source)}`
+      ? networkJob.applyUrl
+        ? "APPLY NOW"
+        : `OPEN ${networkSourceChannelCode(networkJob.source)}`
       : "APPLY NOW";
   const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
   const showParsedSections = hasStructuredSections;

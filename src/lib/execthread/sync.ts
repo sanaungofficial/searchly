@@ -7,21 +7,58 @@ import {
 import { ExecThreadSessionExpiredError } from "@/lib/execthread/errors";
 import { toExecThreadNetworkJobDbRecord } from "@/lib/execthread/map-network-job";
 import {
+  mapExecThreadPrimaryRecruiter,
+  toNetworkRecruiterRecord,
+} from "@/lib/execthread/map-network-recruiter";
+import {
   loadExecThreadSession,
   recordExecThreadSyncResult,
   saveExecThreadSession,
 } from "@/lib/execthread/session-store";
-import type { ExecThreadSyncSummary } from "@/lib/execthread/types";
+import type { ExecThreadListingRaw, ExecThreadSyncSummary } from "@/lib/execthread/types";
 
 export type RunExecThreadSyncOptions = {
   limit?: number;
   forceLogin?: boolean;
 };
 
+async function upsertExecThreadRecruiter(job: ExecThreadListingRaw): Promise<string | null> {
+  const mapped = mapExecThreadPrimaryRecruiter(job);
+  if (!mapped) return null;
+
+  const record = toNetworkRecruiterRecord(mapped);
+  const row = await prisma.networkRecruiter.upsert({
+    where: { externalId: record.externalId },
+    create: {
+      externalId: record.externalId,
+      firstName: record.firstName,
+      lastName: record.lastName,
+      name: record.name,
+      email: record.email,
+      phone: record.phone,
+      agencyName: record.agencyName,
+      raw: record.raw,
+    },
+    update: {
+      firstName: record.firstName,
+      lastName: record.lastName,
+      name: record.name,
+      email: record.email,
+      phone: record.phone,
+      agencyName: record.agencyName,
+      raw: record.raw,
+      syncedAt: new Date(),
+    },
+  });
+
+  return row.id;
+}
+
 async function upsertExecThreadJob(
   dbFields: ReturnType<typeof toExecThreadNetworkJobDbRecord>,
+  recruiterRecordId: string | null,
 ): Promise<void> {
-  const data = { ...dbFields, recruiterRecordId: null as string | null };
+  const data = { ...dbFields, recruiterRecordId };
   await prisma.networkJob.upsert({
     where: {
       source_externalId: {
@@ -95,9 +132,20 @@ export async function runExecThreadSync(
   const jobs = await client.fetchListingsWithDetails(limit);
 
   let upserted = 0;
+  let previewHits = 0;
+  let redeemHits = 0;
+
   for (const job of jobs) {
+    const exportMeta = job._kimchiExport as {
+      publicPreview?: unknown;
+      redeem?: unknown;
+    } | undefined;
+    if (exportMeta?.publicPreview) previewHits += 1;
+    if (exportMeta?.redeem) redeemHits += 1;
+
     const dbFields = toExecThreadNetworkJobDbRecord(job);
-    await upsertExecThreadJob(dbFields);
+    const recruiterRecordId = await upsertExecThreadRecruiter(job);
+    await upsertExecThreadJob(dbFields, recruiterRecordId);
     upserted += 1;
   }
 
@@ -110,6 +158,8 @@ export async function runExecThreadSync(
     totalHits,
     durationMs: Date.now() - started,
     authenticated,
+    previewHits,
+    redeemHits,
   };
 }
 

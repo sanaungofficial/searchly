@@ -1,15 +1,25 @@
 import {
   ExecThreadAuthError,
+  ExecThreadRedeemError,
   ExecThreadSessionExpiredError,
+  isExecThreadBenignRedeemError,
   parseExecThreadAuthError,
 } from "@/lib/execthread/errors";
 import type {
   ExecThreadCookie,
+  ExecThreadJobExportBundle,
   ExecThreadListingRaw,
   ExecThreadLoginOptions,
+  ExecThreadMemberJobResponse,
+  ExecThreadRedeemOptions,
+  ExecThreadRedeemResponse,
   ExecThreadSearchResponse,
   ExecThreadSessionData,
 } from "@/lib/execthread/types";
+import {
+  isSparseExecThreadListingDetail,
+  mergeExecThreadJobExport,
+} from "@/lib/execthread/job-export";
 
 const DEFAULT_API_BASE = "https://api.execthread.com/api";
 const WEB_ORIGIN = "https://execthread.com";
@@ -79,6 +89,88 @@ export class ExecThreadClient {
     return this.request<ExecThreadListingRaw>("GET", `/listings/getListingById?id=${encodeURIComponent(id)}`);
   }
 
+  /** Public preview — full description, travel, industry, company copy (no auth). */
+  async getPublicListingPreview(slug: string): Promise<ExecThreadListingRaw> {
+    const trimmed = slug.trim();
+    return this.request<ExecThreadListingRaw>(
+      "GET",
+      `/listings/public_listing_preview/${encodeURIComponent(trimmed)}`,
+    );
+  }
+
+  /** Authenticated member view — recruiters, apply link after redeem. */
+  async getMemberJob(id: string): Promise<ExecThreadMemberJobResponse> {
+    return this.request<ExecThreadMemberJobResponse>("GET", `/members/jobs/${encodeURIComponent(id)}`);
+  }
+
+  /** Reveal confidential recruiter contacts / apply link (premium ET = unlimited redemptions). */
+  async redeemListing(id: string, options: ExecThreadRedeemOptions = {}): Promise<ExecThreadRedeemResponse> {
+    const response = await this.request<ExecThreadRedeemResponse>("POST", "/members/redeem", {
+      id,
+      recruitersOrHiringManager: options.recruitersOrHiringManager ?? true,
+      expressedInterest: options.expressedInterest ?? false,
+      companyContact: options.companyContact ?? true,
+    });
+    if (response.error && !isExecThreadBenignRedeemError(response.error)) {
+      throw new ExecThreadRedeemError(String(response.error));
+    }
+    return response;
+  }
+
+  async fetchListingFullExport(searchRow: ExecThreadListingRaw): Promise<ExecThreadListingRaw> {
+    const bundle: ExecThreadJobExportBundle = {
+      searchRow,
+      publicPreview: null,
+      listingDetail: null,
+      memberJob: null,
+      redeem: null,
+    };
+
+    if (searchRow.slug?.trim()) {
+      try {
+        bundle.publicPreview = await this.getPublicListingPreview(searchRow.slug);
+      } catch {
+        // optional
+      }
+    }
+
+    try {
+      const detail = await this.getListingById(searchRow._id);
+      if (!isSparseExecThreadListingDetail(detail)) {
+        bundle.listingDetail = detail;
+      }
+    } catch {
+      // optional
+    }
+
+    try {
+      bundle.memberJob = await this.getMemberJob(searchRow._id);
+    } catch {
+      // optional when session missing
+    }
+
+    // Always redeem when syncing with an authenticated session — no point budgeting in Kimchi.
+    // Premium ExecThread accounts have unlimited redemptions; "already redeemed" is OK.
+    try {
+      bundle.redeem = await this.redeemListing(searchRow._id, {
+        recruitersOrHiringManager: true,
+        companyContact: true,
+      });
+    } catch (err) {
+      if (!isExecThreadBenignRedeemError(err)) {
+        console.warn(`[execthread] redeem skipped for ${searchRow._id}:`, err);
+      }
+    }
+
+    try {
+      bundle.memberJob = await this.getMemberJob(searchRow._id);
+    } catch {
+      // optional
+    }
+
+    return mergeExecThreadJobExport(bundle);
+  }
+
   /** Returns true if session cookies can load full listing detail. */
   async sessionLooksValid(): Promise<boolean> {
     try {
@@ -100,8 +192,7 @@ export class ExecThreadClient {
     const merged: ExecThreadListingRaw[] = [];
     for (const row of summaries) {
       try {
-        const detail = await this.getListingById(row._id);
-        merged.push({ ...row, ...detail, _id: row._id });
+        merged.push(await this.fetchListingFullExport(row));
       } catch {
         merged.push(row);
       }
