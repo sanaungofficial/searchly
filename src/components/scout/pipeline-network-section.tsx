@@ -217,6 +217,18 @@ function NetworkJobFiltersGrid({
         />
       </FilterField>
 
+      <FilterField label="Channel">
+        <select
+          style={inputStyle}
+          value={form.channel}
+          onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
+        >
+          <option value="">All channels</option>
+          <option value="TE">TE</option>
+          <option value="ET">ET</option>
+        </select>
+      </FilterField>
+
       {internalView && (
         <>
           <FilterField label="Recruiting agency">
@@ -327,21 +339,18 @@ function NetworkJobCard({
             >
               {NETWORK_JOB_CLIENT_BADGE}
             </span>
-            {internalView && (
-              <span
-                style={{
-                  padding: "2px 8px",
-                  border: border.line,
-                  fontFamily: fontMono,
-                  fontSize: T.label,
-                  fontWeight: 700,
-                  color: color.forest,
-                }}
-                title={`Partner channel: ${job.source}`}
-              >
-                {networkSourceChannelCode(job.source)}
-              </span>
-            )}
+            <span
+              style={{
+                padding: "2px 8px",
+                border: border.line,
+                fontFamily: fontMono,
+                fontSize: T.label,
+                fontWeight: 700,
+                color: color.forest,
+              }}
+            >
+              {networkSourceChannelCode(job.source)}
+            </span>
             {internalView && job.networkStatusLabel && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>
                 {job.networkStatusLabel}
@@ -568,7 +577,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
           {internalView
-            ? "Internal view — channel codes TE (Top Echelon) and ET (ExecThread), plus fee and status filters. Clients only see the recruiter network badge."
+            ? "Staff view — TE/ET channel tags on every listing, plus fee and status filters. Partner names stay in the internal drawer only."
             : NETWORK_JOB_CLIENT_INTRO}
         </p>
       </div>
@@ -580,8 +589,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
             <ScoutLabel>In-Network Roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               {internalView
-                ? "Staff view — TE/ET channel badges, fees, guarantees, and partner links. Sorted by profile match."
-                : "Roles shared with you — sorted by how well they match your profile."}
+                ? "Staff view — fees, guarantees, and partner links in the drawer. Filter by TE or ET channel."
+                : "Roles shared with you — filter by TE or ET channel, sorted by profile match."}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>

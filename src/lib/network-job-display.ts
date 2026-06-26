@@ -20,7 +20,7 @@ import {
   formatNetworkSharedDate,
   formatNetworkStatus,
 } from "@/lib/network-job-format";
-import { networkSourceAdminName } from "@/lib/network-source-labels";
+import { networkSourceAdminName, networkSourceChannelCode } from "@/lib/network-source-labels";
 
 export type NetworkRecruiterDisplay = {
   id: string;
@@ -324,7 +324,7 @@ export function buildNetworkProspectCard(
     requiredQualifications: parsed.requiredQualifications.length ? parsed.requiredQualifications : undefined,
     preferredQualifications: parsed.preferredQualifications.length ? parsed.preferredQualifications : undefined,
     benefits: parsed.benefits.length ? parsed.benefits : undefined,
-    tags: ["Recruiter network", job.networkStatusLabel ?? job.networkStatus ?? "network"].filter(Boolean),
+    tags: ["Recruiter network", networkSourceChannelCode(job.source), job.networkStatusLabel ?? job.networkStatus ?? ""].filter(Boolean),
     ...(job.matchScore != null && job.matchScore > 0
       ? {
           vectorMatch: {
