@@ -670,7 +670,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                 onNavigate={navigateExpertPortal}
               />
             )}
-            {showAdminUi && (
+            {(showAdminUi || isAdminReviewing) && (
               <UtilityPortalDropdown
                 label="Admin"
                 defaultPath="/admin"
