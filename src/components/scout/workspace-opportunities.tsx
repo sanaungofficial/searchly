@@ -54,7 +54,7 @@ export type { DrawerTool };
 interface OpportunitiesProps {}
 
 export function WorkspaceOpportunities() {
-  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId, isImpersonating } = useWorkspace();
+  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId, isImpersonating, withClientScope } = useWorkspace();
   const isMobile = useIsMobile();
   const router = useRouter();
   const pathname = usePathname();
@@ -107,7 +107,7 @@ export function WorkspaceOpportunities() {
 
     setProspectDetailLoading(true);
     try {
-      const res = await fetch(`/api/jobs/prospect/${encodeURIComponent(prospectId)}`);
+      const res = await fetch(withClientScope(`/api/jobs/prospect/${encodeURIComponent(prospectId)}`));
       const data = (await res.json().catch(() => ({}))) as {
         job?: CachedJob;
         companyName?: string;
@@ -424,7 +424,7 @@ export function WorkspaceOpportunities() {
     loadedNetworkJobRef.current = loc.networkJobId;
     void (async () => {
       try {
-        const res = await fetch(`/api/network-jobs/${encodeURIComponent(loc.networkJobId!)}`);
+        const res = await fetch(withClientScope(`/api/network-jobs/${encodeURIComponent(loc.networkJobId!)}`));
         const data = await res.json().catch(() => ({})) as { job?: NetworkJobListing };
         if (res.ok && data.job) {
           const drawerId = -Math.abs(Date.now() % 1_000_000);

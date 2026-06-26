@@ -1,4 +1,4 @@
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { buildAssistantContext } from "@/lib/kimchi-assistant/context";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +17,8 @@ function parsePageHint(searchParams: URLSearchParams): AssistantPageHint | undef
 }
 
 export async function GET(request: Request) {
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const user = await prisma.user.findUnique({

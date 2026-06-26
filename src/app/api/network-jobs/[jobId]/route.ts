@@ -1,4 +1,4 @@
-import { getActingUser } from "@/lib/acting-user";
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 import { enrichNetworkJobWithMatch } from "@/lib/network-job-match";
 import {
   canViewNetworkJobInternalFromSession,
@@ -28,11 +28,13 @@ export async function GET(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const { dbUser, realDbUser, isImpersonating } = await getActingUser(request);
+  const resolved = await resolveProfileApiSubject(request);
+  if ("error" in resolved) return resolved.error;
+  const { dbUser, acting } = resolved;
   const internalView = canViewNetworkJobInternalFromSession(
-    realDbUser,
-    realDbUser?.role === "ADMIN",
-    isImpersonating
+    acting.realDbUser,
+    acting.realDbUser?.role === "ADMIN",
+    acting.isImpersonating
   );
 
   if (!dbUser) {

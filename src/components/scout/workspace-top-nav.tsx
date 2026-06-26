@@ -375,7 +375,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   }));
 
   const navigateToSeekerDashboard = () => {
-    if (isStaffPortal && !isImpersonating) setStaffDashboardView("seeker");
+    if (isStaffPortal && !isImpersonating && !isAdminReviewing) setStaffDashboardView("seeker");
     router.push("/dashboard");
   };
 
@@ -652,7 +652,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
           {/* Right actions — expert/admin portals + account utilities */}
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0 }}>
             {showExpertModeChip && <ExpertModeChip isMobile={isMobile} />}
-            {isStaffPortal && !isImpersonating && (
+            {isStaffPortal && !isImpersonating && !isAdminReviewing && (
               <UtilityPortalDropdown
                 label={isMobile ? "Expert" : "Expert dashboard"}
                 defaultPath="/dashboard"
