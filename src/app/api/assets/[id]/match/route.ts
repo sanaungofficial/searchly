@@ -2,17 +2,11 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-usage";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { normalizeParsedResumeData, parsedResumeToText } from "@/lib/resume-parse";
 import { fallbackJobMatch } from "@/lib/resume-match";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
@@ -34,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const resumeText = asset.resumeText?.trim() || (parsed ? parsedResumeToText(parsed) : "");
   if (!resumeText.trim()) return NextResponse.json({ error: "Resume is empty" }, { status: 400 });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json(fallbackJobMatch(description, resumeText));
   }
 
@@ -49,19 +43,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     resumeSlice: resumeText.slice(0, 4000),
   });
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1024,
-    messages: [{ role: "user", content: prompt }],
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 1024,
+    userId: dbUser.id,
+    tags: ["feature:asset-match"],
   });
 
-  logAiUsage(dbUser.id, "FIT_ANALYSIS", "claude-haiku-4-5-20251001", message.usage.input_tokens, message.usage.output_tokens);
-
-  const content = message.content[0];
-  if (content.type !== "text") return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
+  logAiUsage(dbUser.id, "FIT_ANALYSIS", modelId, usage.inputTokens, usage.outputTokens);
 
   try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON");
     const result = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(result.keywords)) result.keywords = [];

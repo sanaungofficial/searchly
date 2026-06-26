@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import type { CompanyIntel, TrackedCompany } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveCareersUrl, getIntelCareersUrl } from "@/lib/company-intel";
@@ -34,12 +34,6 @@ export type JobsCachePayload = {
 };
 
 export const MATCH_SCAN_MAX_JOBS = 50;
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export function parseJobsCache(raw: unknown): JobsCachePayload | null {
   if (!raw || typeof raw !== "object") return null;
@@ -189,7 +183,7 @@ async function scanMatchesViaAi(
   matchRoles: string[],
   settings: CompanyScanSettings
 ): Promise<{ ok: true; parsed: JobsCachePayload } | { ok: false; error: string }> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return { ok: false, error: "AI not configured" };
   }
 
@@ -237,13 +231,12 @@ async function scanMatchesViaAi(
   const template = await getPrompt("COMPANY_JOBS_SCAN");
   const prompt = interpolate(template, { careersUrl, pageText });
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
-    messages: [{ role: "user", content: prompt }],
+  const { text } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 2000,
+    tags: ["feature:company-jobs-scan"],
   });
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -370,7 +363,7 @@ async function scanCompanyIntelViaHirebase(
 async function scanCompanyIntelViaAi(
   intel: CompanyIntel
 ): Promise<{ ok: true; parsed: JobsCachePayload } | { ok: false; error: string }> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return { ok: false, error: "AI not configured" };
   }
 
@@ -418,13 +411,12 @@ async function scanCompanyIntelViaAi(
   const template = await getPrompt("COMPANY_JOBS_SCAN");
   const prompt = interpolate(template, { careersUrl, pageText });
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
-    messages: [{ role: "user", content: prompt }],
+  const { text } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 2000,
+    tags: ["feature:company-jobs-scan"],
   });
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -505,8 +497,8 @@ export async function runCompanyJobsCron(): Promise<CompanyScanCronSummary> {
   }
 
   const provider = resolveJobsScanProvider(settings);
-  if (provider === "ai" && !process.env.ANTHROPIC_API_KEY) {
-    summary.errors.push("ANTHROPIC_API_KEY not configured");
+  if (provider === "ai" && !isKimchiAiConfigured()) {
+    summary.errors.push("AI not configured");
     summary.failed += 1;
     await recordCompanyScanCronRun(summary);
     return summary;

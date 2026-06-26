@@ -1,16 +1,10 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
+import { isKimchiAiConfigured, kimchiStreamText } from "@/lib/llm";
 import { KIMCHI_VOICE } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-let _a: Anthropic | null = null;
-function getAnthropic() {
-  if (!_a) _a = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _a;
-}
-
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -48,29 +42,12 @@ You will be given a cover letter and a specific instruction to improve it. Rewri
     `Instruction: ${prompt}`,
   ].filter(Boolean).join("\n");
 
-  const anthropicStream = getAnthropic().messages.stream({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 900,
+  return kimchiStreamText({
+    tier: "create",
     system: systemPrompt,
     messages: [{ role: "user", content: userMessage }],
-  });
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of anthropicStream) {
-        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-          controller.enqueue(encoder.encode(chunk.delta.text));
-        }
-      }
-      controller.close();
-    },
-    cancel() {
-      anthropicStream.abort();
-    },
-  });
-
-  return new Response(readable, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+    maxOutputTokens: 900,
+    userId: dbUser.id,
+    tags: ["feature:cover-letter-refine"],
   });
 }

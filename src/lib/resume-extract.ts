@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { isHirebaseResumeConfigured, parseResumeWithHirebase } from "@/lib/hirebase-resume";
+import { isKimchiAiConfigured, kimchiGenerateText, PARSE_MODEL } from "@/lib/llm";
 import {
   fallbackParseResumeFromText,
   isLikelyBrokenWorkExperience,
@@ -8,7 +9,7 @@ import {
   type ParsedResumeData,
 } from "@/lib/resume-parse";
 
-export const PARSE_MODEL = "claude-haiku-4-5-20251001";
+export { PARSE_MODEL };
 
 export type ResumeParseProvider = "hirebase" | "claude" | "heuristic";
 
@@ -82,27 +83,33 @@ export async function extractRawResumeText(bytes: Buffer, extHint?: string): Pro
 }
 
 export async function parseResumeText(
-  anthropic: Anthropic,
   rawText: string,
   structuredPrompt: string,
-): Promise<{ parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number }> {
+  userId?: string,
+): Promise<{ parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number; modelId: string }> {
+  if (!isKimchiAiConfigured()) {
+    return { parsed: null, tokensIn: 0, tokensOut: 0, modelId: "" };
+  }
+
   try {
-    const msg = await anthropic.messages.create({
-      model: PARSE_MODEL,
-      max_tokens: 8192,
-      messages: [{ role: "user", content: `${structuredPrompt}\n\nResume text:\n${rawText.slice(0, 24000)}` }],
+    const { text, usage, modelId } = await kimchiGenerateText({
+      tier: "parse",
+      prompt: `${structuredPrompt}\n\nResume text:\n${rawText.slice(0, 24000)}`,
+      maxOutputTokens: 8192,
+      userId,
+      tags: ["feature:resume-parse"],
     });
+
     let parsed: ParsedResumeData | null = null;
-    if (msg.content[0]?.type === "text") {
-      parsed = normalizeParsedResumeData(parseJsonFromModel(msg.content[0].text));
-    }
+    parsed = normalizeParsedResumeData(parseJsonFromModel(text));
     return {
       parsed,
-      tokensIn: msg.usage.input_tokens,
-      tokensOut: msg.usage.output_tokens,
+      tokensIn: usage.inputTokens,
+      tokensOut: usage.outputTokens,
+      modelId,
     };
   } catch {
-    return { parsed: null, tokensIn: 0, tokensOut: 0 };
+    return { parsed: null, tokensIn: 0, tokensOut: 0, modelId: "" };
   }
 }
 
@@ -154,13 +161,24 @@ export async function parseResumePdf(
 }
 
 async function parseFileWithClaude(
-  anthropic: Anthropic,
+  anthropic: Anthropic | null,
   bytes: Buffer,
   ext: string,
   rawText: string,
   structuredPrompt: string,
+  userId?: string,
 ): Promise<Omit<ResumeFileParseResult, "usedFallback" | "hirebaseArtifactId">> {
   if (ext === "pdf" || isPdfBuffer(bytes)) {
+    if (!anthropic) {
+      const text = rawText.trim();
+      return {
+        text,
+        parsed: text ? fallbackParseResumeFromText(text) : null,
+        tokensIn: 0,
+        tokensOut: 0,
+        provider: "heuristic",
+      };
+    }
     const base64 = bytes.toString("base64");
     const result = await parseResumePdf(anthropic, base64, structuredPrompt);
     const text = result.text.trim() || rawText;
@@ -179,7 +197,7 @@ async function parseFileWithClaude(
     return { text: "", parsed: null, tokensIn: 0, tokensOut: 0, provider: "heuristic" };
   }
 
-  const { parsed, tokensIn, tokensOut } = await parseResumeText(anthropic, sourceText, structuredPrompt);
+  const { parsed, tokensIn, tokensOut } = await parseResumeText(sourceText, structuredPrompt, userId);
   return {
     text: sourceText,
     parsed: parsed || fallbackParseResumeFromText(sourceText),
@@ -237,8 +255,8 @@ export async function parseResumeFile(
     }
   }
 
-  if (anthropic) {
-    const claude = await parseFileWithClaude(anthropic, bytes, ext, rawText, structuredPrompt);
+  if (anthropic || isKimchiAiConfigured()) {
+    const claude = await parseFileWithClaude(anthropic, bytes, ext, rawText, structuredPrompt, userId ?? undefined);
     if (claude.parsed || claude.text) {
       return {
         ...claude,
@@ -262,29 +280,31 @@ export async function parseResumeFile(
 }
 
 export async function parseResumeFromText(
-  anthropic: Anthropic | null,
   rawText: string,
   structuredPrompt: string,
-): Promise<{ parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number; usedFallback: boolean; provider: ResumeParseProvider }> {
+  userId?: string,
+): Promise<{ parsed: ParsedResumeData | null; tokensIn: number; tokensOut: number; usedFallback: boolean; provider: ResumeParseProvider; modelId: string }> {
   const text = rawText.trim();
-  if (!text) return { parsed: null, tokensIn: 0, tokensOut: 0, usedFallback: false, provider: "heuristic" };
+  if (!text) return { parsed: null, tokensIn: 0, tokensOut: 0, usedFallback: false, provider: "heuristic", modelId: "" };
 
-  if (!anthropic) {
+  if (!isKimchiAiConfigured()) {
     return {
       parsed: fallbackParseResumeFromText(text),
       tokensIn: 0,
       tokensOut: 0,
       usedFallback: true,
       provider: "heuristic",
+      modelId: "",
     };
   }
 
-  const { parsed, tokensIn, tokensOut } = await parseResumeText(anthropic, text, structuredPrompt);
+  const { parsed, tokensIn, tokensOut, modelId } = await parseResumeText(text, structuredPrompt, userId);
   return {
     parsed: parsed || fallbackParseResumeFromText(text),
     tokensIn,
     tokensOut,
     usedFallback: !parsed,
     provider: parsed ? "claude" : "heuristic",
+    modelId,
   };
 }

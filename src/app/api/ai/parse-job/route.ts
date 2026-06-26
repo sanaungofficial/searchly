@@ -3,14 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { PARSE_JOB_JSON_SHAPE, parsedJobToMeta } from "@/lib/job-meta";
 import { normalizeJobListingUrl } from "@/lib/job-listing-url";
-import Anthropic from "@anthropic-ai/sdk";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 // ── HTML → plain text ────────────────────────────────────────────────────────
 function htmlToText(html: string): string {
@@ -111,8 +105,8 @@ async function fetchViaJina(url: string): Promise<string> {
 async function aiParseJobContent(
   pageText: string,
   url: string,
-  anthropic: Anthropic
-): Promise<Record<string, unknown>> {
+  userId?: string,
+): Promise<{ parsed: Record<string, unknown>; modelId: string; usage: { inputTokens: number; outputTokens: number } }> {
   const prompt = `Extract job posting details from this content. Return ONLY valid JSON, no other text.
 
 Page URL: ${url}
@@ -122,16 +116,21 @@ ${pageText.slice(0, 15000)}
 Return this exact JSON shape (all fields required, use null or [] if not found):
 ${PARSE_JOB_JSON_SHAPE}`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 4096,
+    userId,
+    tags: ["feature:job-parse"],
   });
 
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON in AI response");
-  return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+  return {
+    parsed: JSON.parse(jsonMatch[0]) as Record<string, unknown>,
+    modelId,
+    usage,
+  };
 }
 
 function buildParseResponse(
@@ -161,7 +160,7 @@ function buildParseResponse(
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -179,8 +178,6 @@ export async function POST(request: Request) {
   }
   const url = normalized.url;
 
-  const anthropic = getAnthropic();
-
   // ── 1. Greenhouse API ─────────────────────────────────────────────────────
   const ghMatch = parseGreenhouseUrl(url);
   if (ghMatch) {
@@ -194,8 +191,8 @@ export async function POST(request: Request) {
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
       try {
-        const structured = await aiParseJobContent(descText, url, anthropic);
-        if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", "claude-haiku-4-5-20251001", 0, 0);
+        const { parsed: structured, modelId, usage } = await aiParseJobContent(descText, url, dbUser?.id);
+        if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", modelId, usage.inputTokens, usage.outputTokens);
         return NextResponse.json({
           ...buildParseResponse(structured, {
             company: companyName,
@@ -237,8 +234,8 @@ export async function POST(request: Request) {
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
       try {
-        const structured = await aiParseJobContent(descText, url, anthropic);
-        if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", "claude-haiku-4-5-20251001", 0, 0);
+        const { parsed: structured, modelId, usage } = await aiParseJobContent(descText, url, dbUser?.id);
+        if (dbUser) logAiUsage(dbUser.id, "JOB_PARSE", modelId, usage.inputTokens, usage.outputTokens);
         return NextResponse.json({
           ...buildParseResponse(structured, {
             company: companyName,
@@ -320,10 +317,9 @@ export async function POST(request: Request) {
 
   // ── 5. AI parse ───────────────────────────────────────────────────────────
   try {
-    const parsed = await aiParseJobContent(pageText, url, anthropic);
+    const { parsed, modelId, usage } = await aiParseJobContent(pageText, url, dbUser?.id);
     if (dbUser) {
-      // token logging is approximate since we refactored to a helper
-      logAiUsage(dbUser.id, "JOB_PARSE", "claude-haiku-4-5-20251001", 0, 0);
+      logAiUsage(dbUser.id, "JOB_PARSE", modelId, usage.inputTokens, usage.outputTokens);
     }
     return NextResponse.json({ ...buildParseResponse(parsed), _source: scrapeSource });
   } catch {

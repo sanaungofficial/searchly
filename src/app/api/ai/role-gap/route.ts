@@ -16,14 +16,8 @@ import { upsertProfileFields } from "@/lib/profile-write";
 import { getActingUser } from "@/lib/acting-user";
 import { normalizeParsedResumeData, parseJsonFromModel } from "@/lib/resume-parse";
 import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
-import Anthropic from "@anthropic-ai/sdk";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 async function saveRoleAnalysis(
   userId: string,
@@ -109,7 +103,7 @@ function parseJobMatchFromText(text: string): JobMatchResult | null {
 
 async function analyzeRoleViaJobMatch(role: string, resumeText: string, userId: string): Promise<JobMatchResult> {
   const description = roleJobDescription(role);
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return fallbackJobMatch(description, resumeText);
   }
 
@@ -122,18 +116,17 @@ async function analyzeRoleViaJobMatch(role: string, resumeText: string, userId: 
       resumeSlice: resumeText.slice(0, 4000),
     });
 
-    const message = await getAnthropic().messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
+    const { text, usage, modelId } = await kimchiGenerateText({
+      tier: "analyze",
+      prompt,
+      maxOutputTokens: 1024,
+      userId,
+      tags: ["feature:role-gap"],
     });
 
-    logAiUsage(userId, "FIT_ANALYSIS", "claude-haiku-4-5-20251001", message.usage.input_tokens, message.usage.output_tokens);
+    logAiUsage(userId, "FIT_ANALYSIS", modelId, usage.inputTokens, usage.outputTokens);
 
-    const content = message.content[0];
-    if (content.type !== "text") throw new Error("Unexpected AI response");
-
-    const parsed = parseJobMatchFromText(content.text);
+    const parsed = parseJobMatchFromText(text);
     if (parsed) return parsed;
   } catch {
     /* fall through */
@@ -194,7 +187,7 @@ export async function GET(request: Request) {
       });
     }
 
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (isKimchiAiConfigured()) {
       const quotaError = await requireAiQuota(dbUserWithSub, "MATCH");
       if (quotaError) return quotaError;
     }

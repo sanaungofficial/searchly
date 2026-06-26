@@ -14,6 +14,7 @@ import {
   normalizeStrategyHistory,
   type StrategySourceSnapshot,
 } from "@/lib/career-strategy";
+import { isKimchiAiConfigured } from "@/lib/llm";
 import { upsertProfileFields, ensureProfileRow } from "@/lib/profile-write";
 import { prisma } from "@/lib/prisma";
 import { NextResponse, after } from "next/server";
@@ -106,7 +107,7 @@ export async function GET(request: Request) {
 /** Start strategy generation in the background — consumes STRATEGY credit up front. */
 export async function POST(request: Request) {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!isKimchiAiConfigured()) {
       return NextResponse.json({ error: "AI not configured" }, { status: 503 });
     }
 

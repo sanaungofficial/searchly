@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import {
   linkedInDraftCompleteness,
@@ -7,16 +8,7 @@ import {
   parseLinkedInAnalysisFromModel,
 } from "@/lib/linkedin-analysis";
 import { normalizeLinkedInDraft } from "@/lib/linkedin-profile";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
-
-const ANALYSIS_MODEL = "claude-haiku-4-5-20251001";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -47,7 +39,7 @@ export async function GET(request: Request) {
     });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     const completeness = linkedInDraftCompleteness(draft);
     return NextResponse.json({
       score: completeness.pct,
@@ -69,13 +61,14 @@ export async function GET(request: Request) {
     draftJson: JSON.stringify(draft).slice(0, 12000),
   });
 
-  const message = await getAnthropic().messages.create({
-    model: ANALYSIS_MODEL,
-    max_tokens: 2200,
-    messages: [{ role: "user", content: prompt }],
+  const { text } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 2200,
+    userId: dbUser.id,
+    tags: ["feature:linkedin-draft-analysis"],
   });
 
-  const text = message.content[0]?.type === "text" ? message.content[0].text : "";
   const parsed = parseLinkedInAnalysisFromModel(text);
   if (!parsed) {
     return NextResponse.json({ error: "Failed to parse analysis" }, { status: 500 });

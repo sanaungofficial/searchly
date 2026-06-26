@@ -2,18 +2,12 @@ import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
 import { buildStrategyPromptContext } from "@/lib/career-strategy-context";
 import { normalizeStrategyDocument } from "@/lib/career-strategy";
+import { isKimchiAiConfigured, kimchiStreamText } from "@/lib/llm";
 import { prisma } from "@/lib/prisma";
 import { getPrompt, interpolate } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return new Response(JSON.stringify({ error: "AI not configured" }), { status: 503 });
   }
 
@@ -80,25 +74,21 @@ export async function POST(request: Request) {
     strategySummary,
   });
 
-  const COACH_MODEL = "claude-sonnet-4-6";
-  const stream = await getAnthropic().messages.stream({
-    model: COACH_MODEL,
-    max_tokens: 1500,
+  return kimchiStreamText({
+    tier: "talk",
     system: systemPrompt,
     messages,
-  });
-
-  stream.on("finalMessage", (msg) => {
-    logAiUsage({
-      userId: dbUser.id,
-      feature: "profile_coach",
-      model: COACH_MODEL,
-      inputTokens: msg.usage.input_tokens,
-      outputTokens: msg.usage.output_tokens,
-    }).catch(() => {});
-  });
-
-  return new Response(stream.toReadableStream(), {
-    headers: { "Content-Type": "text/event-stream" },
+    maxOutputTokens: 1500,
+    userId: dbUser.id,
+    tags: ["feature:profile-coach"],
+    onUsage: (usage, modelId) => {
+      logAiUsage({
+        userId: dbUser.id,
+        feature: "profile_coach",
+        model: modelId,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      }).catch(() => {});
+    },
   });
 }
