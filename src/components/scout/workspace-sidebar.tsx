@@ -7,9 +7,6 @@ import {
   DashboardIcon,
   OpportunitiesIcon,
   ProfileIcon,
-  LiveIcon,
-  CoachingIcon,
-  NetworkIcon,
   BellIcon,
   ArrowLeftIcon,
 } from "./workspace-icons";
@@ -23,8 +20,7 @@ import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
 import { KimchiBySecondLadder } from "./scout-box";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
-import { isProductionEnv, shouldShowCommunityNav, canAccessBetaFeature, BETA_FEATURES } from "@/lib/beta-features";
-import { isStaffPortalRole } from "@/lib/staff-portal";
+import { isProductionEnv } from "@/lib/beta-features";
 
 interface SidebarProps {
   isMobile?: boolean;
@@ -65,37 +61,6 @@ const NAV_MAIN: NavItem[] = [
   { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
 ];
 
-const NAV_COMMUNITY: NavItem[] = [
-  { id: "live", label: BETA_FEATURES.live.navLabel, path: "/live", Icon: LiveIcon },
-  { id: "coaching", label: BETA_FEATURES.coaching.navLabel, path: "/coaching", Icon: CoachingIcon },
-  { id: "network", label: BETA_FEATURES.network.navLabel, path: "/network", Icon: NetworkIcon },
-];
-
-const OPP_SUBNAV = [
-  { label: "Open Roles", path: "/opportunities/pipeline" },
-  { label: "In-Network Roles", path: "/opportunities/network" },
-] as const;
-
-function SidebarSectionLabel({ children, isRail }: { children: React.ReactNode; isRail: boolean }) {
-  if (isRail) return null;
-  return (
-    <p
-      style={{
-        fontFamily: "var(--font-ui)",
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        color: "rgba(232,213,163,0.32)",
-        padding: "14px 14px 6px",
-        margin: 0,
-      }}
-    >
-      {children}
-    </p>
-  );
-}
-
 function SidebarNavButton({
   active,
   onClick,
@@ -105,7 +70,6 @@ function SidebarNavButton({
   badge,
   showIncompleteDot,
   showLiveDot,
-  indent,
 }: {
   active: boolean;
   onClick: () => void;
@@ -115,7 +79,6 @@ function SidebarNavButton({
   badge?: number;
   showIncompleteDot?: boolean;
   showLiveDot?: boolean;
-  indent?: boolean;
 }) {
   return (
     <button
@@ -123,7 +86,7 @@ function SidebarNavButton({
       onClick={onClick}
       title={isRail ? label : undefined}
       style={{
-        padding: isRail ? "10px 0" : indent ? "8px 14px 8px 22px" : "10px 14px",
+        padding: isRail ? "10px 0" : "10px 14px",
         borderRadius: 0,
         cursor: "pointer",
         background: active ? "rgba(232,213,163,0.12)" : "transparent",
@@ -261,10 +224,7 @@ export function WorkspaceSidebar({
 
   const user = userProp ?? ctxUser ?? undefined;
   const isAdmin = isAdminProp ?? ctxIsAdmin;
-  const userRole = userRoleProp ?? ctxUserRole;
-  const showCommunityNav = shouldShowCommunityNav(isAdmin);
 
-  const isStaff = isStaffPortalRole(userRole);
   const { loading: subLoading } = useSubscription();
   const { credits, showCredits, unlimitedAi } = useCredits();
   const { openPricing } = useWorkspace();
@@ -272,19 +232,8 @@ export function WorkspaceSidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [referEarnOpen, setReferEarnOpen] = useState(false);
-  const [hasLiveNow, setHasLiveNow] = useState(false);
 
   const activePipelineCount = kanbanCards.filter((c) => c.stage !== "closed").length;
-
-  useEffect(() => {
-    if (!authChecked) return;
-    fetch("/api/live/sessions")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.hasLiveNow != null) setHasLiveNow(!!data.hasLiveNow);
-      })
-      .catch(() => {});
-  }, [authChecked]);
 
   useEffect(() => {
     if (!authChecked) return;
@@ -577,55 +526,17 @@ export function WorkspaceSidebar({
 
 
           {NAV_MAIN.map(({ id, label, path, Icon }) => (
-            <React.Fragment key={id}>
-              <SidebarNavButton
-                active={isActive(path)}
-                onClick={() => navigate(path)}
-                label={label}
-                Icon={Icon}
-                isRail={isRail}
-                badge={id === "opportunities" ? activePipelineCount : undefined}
-                showIncompleteDot={id === "profile" && profileIncomplete}
-              />
-              {id === "opportunities" && !isRail && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 2 }}>
-                  {OPP_SUBNAV.map(({ label: subLabel, path: subPath }) => (
-                    <SidebarNavButton
-                      key={subPath}
-                      active={pathname.startsWith(subPath)}
-                      onClick={() => navigate(subPath)}
-                      label={subLabel}
-                      Icon={() => (
-                        <span style={{ width: 15, height: 15, display: "inline-block", borderLeft: `2px solid ${pathname.startsWith(subPath) ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}` }} />
-                      )}
-                      isRail={false}
-                      indent
-                    />
-                  ))}
-                </div>
-              )}
-            </React.Fragment>
+            <SidebarNavButton
+              key={id}
+              active={isActive(path)}
+              onClick={() => navigate(path)}
+              label={label}
+              Icon={Icon}
+              isRail={isRail}
+              badge={id === "opportunities" ? activePipelineCount : undefined}
+              showIncompleteDot={id === "profile" && profileIncomplete}
+            />
           ))}
-
-          {showCommunityNav && (
-            <>
-              <SidebarSectionLabel isRail={isRail}>Community</SidebarSectionLabel>
-              {NAV_COMMUNITY.filter(
-                ({ id }) =>
-                  !(isStaff && id === "live") && canAccessBetaFeature(id as "live" | "coaching" | "network", isAdmin),
-              ).map(({ id, label, path, Icon }) => (
-                <SidebarNavButton
-                  key={id}
-                  active={isActive(path)}
-                  onClick={() => navigate(path)}
-                  label={label}
-                  Icon={Icon}
-                  isRail={isRail}
-                  showLiveDot={id === "live" && hasLiveNow}
-                />
-              ))}
-            </>
-          )}
         </div>
 
         {isMobile && showCredits && credits && !isRail && (
