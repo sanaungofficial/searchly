@@ -66,6 +66,24 @@ export function normalizeJobUrl(url: string | null | undefined): string | null {
   }
 }
 
+function normalizeListingToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** Collapse multi-location re-posts of the same role (company + title, not URL). */
+export function jobListingDedupeKey(input: {
+  companyName: string;
+  title: string;
+  url?: string | null;
+}): string {
+  const company = normalizeListingToken(input.companyName);
+  const title = normalizeListingToken(input.title);
+  if (company && title) return `${company}::${title}`;
+  const url = normalizeJobUrl(input.url);
+  if (url) return url;
+  return `${company}::${title}` || "unknown";
+}
+
 function pickArray(primary?: string[], fallback?: string[]): string[] | undefined {
   if (primary?.length) return primary;
   if (fallback?.length) return fallback;

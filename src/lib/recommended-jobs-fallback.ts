@@ -9,7 +9,7 @@ import {
   mapHirebaseJob,
 } from "@/lib/hirebase";
 import type { CachedJob } from "@/lib/cached-job";
-import { normalizeJobUrl } from "@/lib/cached-job";
+import { jobListingDedupeKey, normalizeJobUrl } from "@/lib/cached-job";
 import { parseJobsCache } from "@/lib/company-jobs-scan";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
 import { buildMatchRoles, filterMatchingJobs } from "@/lib/job-match";
@@ -41,17 +41,30 @@ export function cachedJobToHirebaseJob(job: CachedJob, companyName: string): Hir
   };
 }
 
-function dedupeSources(sources: RecommendedJobSource[], maxJobs: number): RecommendedJobSource[] {
-  const seen = new Set<string>();
-  const out: RecommendedJobSource[] = [];
+export function dedupeRecommendedSources(sources: RecommendedJobSource[], maxJobs: number): RecommendedJobSource[] {
+  const byKey = new Map<string, RecommendedJobSource>();
   for (const entry of sources) {
-    const key = normalizeJobUrl(entry.cached.url) ?? `${entry.companyName}:${entry.cached.title}`.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(entry);
-    if (out.length >= maxJobs) break;
+    const key =
+      jobListingDedupeKey({
+        companyName: entry.companyName,
+        title: entry.cached.title,
+        url: entry.cached.url,
+      }) ||
+      (normalizeJobUrl(entry.cached.url) ?? `${entry.companyName}:${entry.cached.title}`.toLowerCase());
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, entry);
+      continue;
+    }
+    const existingPosted = existing.cached.datePosted ? Date.parse(existing.cached.datePosted) : 0;
+    const nextPosted = entry.cached.datePosted ? Date.parse(entry.cached.datePosted) : 0;
+    if (nextPosted >= existingPosted) byKey.set(key, entry);
   }
-  return out;
+  return [...byKey.values()].slice(0, maxJobs);
+}
+
+function dedupeSources(sources: RecommendedJobSource[], maxJobs: number): RecommendedJobSource[] {
+  return dedupeRecommendedSources(sources, maxJobs);
 }
 
 function jobsFromCache(
@@ -539,7 +552,7 @@ export async function fetchRecommendedBroadFallback(input: {
         });
         if (sources.length >= maxJobs) break;
       }
-      return { sources };
+      return { sources: dedupeSources(sources, maxJobs) };
     }
   } catch {
     /* try summary search */
@@ -559,7 +572,7 @@ export async function fetchRecommendedBroadFallback(input: {
       companyName: summary.companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company",
       raw,
     }));
-    return { sources: sources.slice(0, maxJobs) };
+    return { sources: dedupeSources(sources, maxJobs) };
   } catch {
     return { sources: [] };
   }

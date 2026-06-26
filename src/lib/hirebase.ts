@@ -1,5 +1,6 @@
 import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
+import { jobListingDedupeKey } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
@@ -816,13 +817,24 @@ export async function fetchHirebaseSummarySearch(input: {
 }
 
 function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
-  const seen = new Set<string>();
-  return jobs.filter((job) => {
-    const key = (job._id ?? job.application_link ?? job.job_title ?? job.title ?? "").toLowerCase();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const byKey = new Map<string, HirebaseJob>();
+  for (const job of jobs) {
+    const company = job.company_name?.trim() ?? "";
+    const title = (job.job_title ?? job.title ?? "").trim();
+    const key =
+      jobListingDedupeKey({ companyName: company, title, url: job.application_link }) ||
+      (job._id ?? job.application_link ?? "").toLowerCase();
+    if (!key) continue;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, job);
+      continue;
+    }
+    const existingPosted = existing.date_posted ? Date.parse(existing.date_posted) : 0;
+    const nextPosted = job.date_posted ? Date.parse(job.date_posted) : 0;
+    if (nextPosted >= existingPosted) byKey.set(key, job);
+  }
+  return [...byKey.values()];
 }
 
 export type HirebaseVSearchInput = VectorSearchFilters & {

@@ -23,6 +23,7 @@ import {
 } from "@/lib/recommended-jobs-config";
 import {
   companyNameMatchesTracked,
+  dedupeRecommendedSources,
   fetchRecommendedBroadFallback,
   fetchRecommendedFromProfileRoles,
   fetchRecommendedFromTrackedCompanies,
@@ -332,6 +333,8 @@ export async function generateRecommendedJobsForUser(
   }
 
   if (!sources.length) return null;
+
+  sources = dedupeRecommendedSources(sources, RECOMMENDED_FETCH_POOL);
 
   const sourcesBeforeLocation = sources;
   if (defaultFeed) {

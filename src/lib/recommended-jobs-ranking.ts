@@ -1,4 +1,5 @@
 import { RECOMMENDED_MATCH_SCORE_FLOOR } from "@/lib/recommended-jobs-config";
+import { jobListingDedupeKey } from "@/lib/cached-job";
 import { compareJobFreshness, isRecommendedFreshnessVisible } from "@/lib/job-posted-freshness";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
@@ -36,6 +37,31 @@ export function sortRecommendedJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[
   });
 }
 
+export function dedupeVectorMatchedJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[] {
+  const byKey = new Map<string, VectorMatchedJob>();
+  for (const job of jobs) {
+    const key = jobListingDedupeKey({
+      companyName: job.companyName,
+      title: job.title,
+      url: job.url,
+    });
+    if (!key) continue;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, job);
+      continue;
+    }
+    if (job.matchScore !== existing.matchScore) {
+      if (job.matchScore > existing.matchScore) byKey.set(key, job);
+      continue;
+    }
+    if (compareJobFreshness(job.datePosted, existing.datePosted) < 0) {
+      byKey.set(key, job);
+    }
+  }
+  return [...byKey.values()];
+}
+
 export function finalizeRecommendedJobs(
   jobs: VectorMatchedJob[],
   isTrackedFn: (job: VectorMatchedJob) => boolean,
@@ -56,5 +82,5 @@ export function finalizeRecommendedJobs(
     ? enriched.filter((job) => isRecommendedFreshnessVisible(job.datePosted))
     : enriched;
   const floored = applyRecommendedScoreFloor(freshnessFiltered);
-  return sortRecommendedJobs(floored).slice(0, maxJobs);
+  return sortRecommendedJobs(dedupeVectorMatchedJobs(floored)).slice(0, maxJobs);
 }
