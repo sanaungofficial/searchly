@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { resolvePostAuthRedirect } from "@/components/auth/post-auth-redirect";
 import {
   ScoutHeader,
   ScreenWelcome,
@@ -99,12 +100,21 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) {
         router.replace("/login");
-      } else {
-        setAuthChecked(true);
+        return;
       }
+      try {
+        const destination = await resolvePostAuthRedirect();
+        if (destination === "/dashboard") {
+          router.replace("/dashboard");
+          return;
+        }
+      } catch {
+        // Allow onboarding if sync fails
+      }
+      setAuthChecked(true);
     });
   }, [router]);
 
@@ -467,26 +477,21 @@ export default function OnboardingPage() {
         autoRunMatch: false,
       });
 
-      fetch("/api/referrals", {
+      await fetch("/api/referrals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "complete-onboarding" }),
       }).catch(() => {});
 
-      const finishDestination =
-        companiesSnapshot.length > 0 ? "/profile/target-companies" : "/profile/dream-role";
-
-      router.push(finishDestination);
+      router.push("/dashboard");
     } catch {
-      fetch("/api/referrals", {
+      await fetch("/api/referrals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "complete-onboarding" }),
       }).catch(() => {});
       writeOnboardingFinishPayload({ primaryAssetId, autoRunMatch: false });
-      router.push(
-        companiesSnapshot.length > 0 ? "/profile/target-companies" : "/profile/dream-role"
-      );
+      router.push("/dashboard");
     }
   }, [
     aboutYouFields,

@@ -9,9 +9,40 @@ type CookieStore = {
   get: (name: string) => { value: string } | undefined;
 };
 
-export function authRedirectForUser(isNewUser: boolean, next?: string | null) {
+export function authRedirectForUser(
+  onboardingCompletedAt: Date | null | undefined,
+  next?: string | null,
+) {
   if (next && next !== "/") return next;
-  return isNewUser ? "/onboarding" : "/dashboard";
+  return onboardingCompletedAt ? "/dashboard" : "/onboarding";
+}
+
+/** Server-side redirect — backfills completion for returning users who already have a profile. */
+export async function resolveAuthRedirectForUser(
+  dbUser: { id: string; onboardingCompletedAt: Date | null },
+  next?: string | null,
+) {
+  if (next && next !== "/") return next;
+  if (dbUser.onboardingCompletedAt) return "/dashboard";
+
+  const profile = await prisma.profile.findUnique({
+    where: { userId: dbUser.id },
+    select: { id: true },
+  });
+  if (profile) {
+    await markOnboardingComplete(dbUser.id);
+    return "/dashboard";
+  }
+
+  return "/onboarding";
+}
+
+/** Mark onboarding finished — idempotent. */
+export async function markOnboardingComplete(userId: string): Promise<void> {
+  await prisma.user.updateMany({
+    where: { id: userId, onboardingCompletedAt: null },
+    data: { onboardingCompletedAt: new Date() },
+  });
 }
 
 /** Upsert Prisma user + referral/welcome side effects after Supabase auth succeeds. */

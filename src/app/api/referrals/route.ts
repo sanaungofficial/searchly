@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getReferralStats, completeReferral } from "@/lib/referrals";
+import { markOnboardingComplete } from "@/lib/sync-auth-user";
 
 async function getDbUser() {
   const cookieStore = await cookies();
@@ -35,8 +36,9 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   if (body.action === "complete-onboarding") {
+    await markOnboardingComplete(dbUser.id);
     const result = await completeReferral(dbUser.id);
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, onboardingComplete: true });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
