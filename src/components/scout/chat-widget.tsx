@@ -14,6 +14,7 @@ import { CreditCostBadge, CreditsInlineHint, CreditsStatusBar } from "@/componen
 import { ScoreExplainerPopover } from "@/components/scout/score-explainer-popover";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
+import { KimchiComposerRow, KimchiVoiceStrip, type KimchiVoiceProps } from "@/components/scout/kimchi-composer";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const sans = fontSans;
@@ -108,7 +109,19 @@ function ChatMessageBody({
   );
 }
 
-export function ChatWidget() {
+export function ChatWidget({
+  hideLauncher = false,
+  embedded = false,
+  unified = false,
+  voice,
+  bottomStackOffset = 0,
+}: {
+  hideLauncher?: boolean;
+  embedded?: boolean;
+  unified?: boolean;
+  voice?: KimchiVoiceProps;
+  bottomStackOffset?: number;
+}) {
   const router = useRouter();
   const {
     kanbanCards,
@@ -409,7 +422,8 @@ export function ChatWidget() {
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || streaming || !currentJob) return;
+    if (!trimmed || streaming) return;
+    if (!unified && !currentJob) return;
 
     const nextMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }];
     setMessages([...nextMessages, { role: "assistant", content: "" }]);
@@ -423,12 +437,10 @@ export function ChatWidget() {
         stage: STAGE_LABELS[c.stage],
       }));
 
-      const meta = (currentJob as KanbanCard & { _meta?: JobMeta })._meta;
-      const jobDescription = resolveJobDescriptionText(
-        meta,
-        currentJob.role,
-        currentJob.company,
-      );
+      const meta = currentJob ? (currentJob as KanbanCard & { _meta?: JobMeta })._meta : undefined;
+      const jobDescription = currentJob
+        ? resolveJobDescriptionText(meta, currentJob.role, currentJob.company)
+        : "";
 
       const res = await fetch("/api/ai/chat", {
         method: "POST",
@@ -436,12 +448,14 @@ export function ChatWidget() {
         body: JSON.stringify({
           messages: nextMessages,
           pipeline,
-          focusedJob: {
-            company: currentJob.company,
-            role: currentJob.role,
-            intent: "fit",
-            description: jobDescription || undefined,
-          },
+          focusedJob: currentJob
+            ? {
+                company: currentJob.company,
+                role: currentJob.role,
+                intent: "fit",
+                description: jobDescription || undefined,
+              }
+            : null,
         }),
       });
 
@@ -500,91 +514,67 @@ export function ChatWidget() {
     }
   };
 
+  const sendGeneralMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || streaming) return;
+    if (chatView !== "chat") {
+      setChatView("chat");
+      if (currentJob) {
+        resetFitChat(currentJob);
+      } else if (messages.length === 0) {
+        setMessages([
+          {
+            role: "assistant",
+            content: "Ask about your search, your pipeline, or pick a job under Tools for role-specific help.",
+          },
+        ]);
+      }
+    }
+    await sendMessage(trimmed);
+  };
+
+  const renderUnifiedComposer = (
+    placeholder: string,
+    onSend: () => void,
+    sendDisabled?: boolean,
+  ) => (
+    <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
+      <CreditsInlineHint />
+      <KimchiComposerRow
+        voice={voice}
+        value={input}
+        onChange={setInput}
+        onSend={onSend}
+        placeholder={placeholder}
+        disabled={sendDisabled}
+        inputRef={inputRef}
+      />
+    </div>
+  );
+
   const panelWidth = isMobile ? "calc(100vw - 24px)" : chatView === "chat" || chatView === "coach" || chatView === "coach-prep" ? 380 : 320;
+  const panelBottom = isMobile
+    ? `max(${76 + bottomStackOffset}px, calc(${68 + bottomStackOffset}px + env(safe-area-inset-bottom)))`
+    : 88 + bottomStackOffset;
   const panelHeight = isMobile
     ? "min(70vh, calc(100vh - env(safe-area-inset-bottom) - 96px))"
     : chatView === "chat" || chatView === "coach" || chatView === "coach-prep"
       ? "min(640px, calc(100vh - 120px))"
       : undefined;
 
-  return (
+  const panelChrome = (
     <>
-      <button
-        onClick={toggleOpen}
-        aria-label={chatOpen ? "Close Scout" : "Open Scout AI"}
+      {!unified && (
+      <div
         style={{
-          position: "fixed",
-          bottom: isMobile ? "max(16px, env(safe-area-inset-bottom))" : 24,
-          right: isMobile ? 12 : 24,
-          left: isMobile ? 12 : undefined,
-          width: 52,
-          height: 52,
-          borderRadius: 0,
-          background: chatOpen ? "#1A3A2F" : "#FFFFFF",
-          border: chatPulse ? `2px solid ${color.forest}` : "1px solid rgba(26,58,47,0.15)",
-          boxShadow: chatPulse
-            ? "0 0 0 6px rgba(26,58,47,0.2), 0 4px 16px rgba(0,0,0,0.12)"
-            : "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
-          cursor: "pointer",
-          zIndex: 90,
+          padding: embedded ? "10px 14px" : "14px 18px 12px",
+          background: "#1A3A2F",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.2s",
-          animation: chatPulse ? "chatPulse 1.2s ease-in-out 2" : undefined,
+          justifyContent: "space-between",
+          flexShrink: 0,
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
       >
-        <span style={{ fontSize: 22, color: chatOpen ? "#E8D5A3" : "#1A3A2F", lineHeight: 1 }}>✦</span>
-      </button>
-
-      <style>{`
-        @keyframes chatPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.08); }
-        }
-      `}</style>
-
-      {chatOpen && (
-        <>
-          <div
-            onClick={() => {
-              setChatOpen(false);
-              setSelectedJobId(null);
-            }}
-            style={{ position: "fixed", inset: 0, zIndex: 95 }}
-          />
-          <div
-            style={{
-              position: "fixed",
-              bottom: isMobile ? "max(76px, calc(68px + env(safe-area-inset-bottom)))" : 88,
-              right: isMobile ? 12 : 24,
-              left: isMobile ? 12 : undefined,
-              width: panelWidth,
-              height: panelHeight,
-              maxHeight: isMobile ? "calc(100vh - 96px - env(safe-area-inset-bottom))" : undefined,
-              background: "#FFFFFF",
-              borderRadius: 0,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
-              border: "1px solid rgba(0,0,0,0.06)",
-              zIndex: 100,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              animation: "fadeIn 0.2s ease both",
-            }}
-          >
-            <div
-              style={{
-                padding: "14px 18px 12px",
-                background: "#1A3A2F",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexShrink: 0,
-              }}
-            >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14, color: "#E8D5A3" }}>✦</span>
                 <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#E8D5A3" }}>
@@ -641,6 +631,7 @@ export function ChatWidget() {
                     Chat
                   </button>
                 )}
+                {!embedded && (
                 <button
                   onClick={() => {
                     setChatOpen(false);
@@ -658,8 +649,81 @@ export function ChatWidget() {
                 >
                   ×
                 </button>
+                )}
               </div>
             </div>
+      )}
+
+      {unified && (
+        <div
+          style={{
+            padding: "8px 14px",
+            borderBottom: "1px solid rgba(26,58,47,0.08)",
+            background: "#FAFAF8",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
+            {chatView === "chat"
+              ? "Chat"
+              : chatView === "coach"
+                ? "Profile coach"
+                : chatView === "coach-prep"
+                  ? "Session prep"
+                  : "Tools"}
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {(chatView === "chat" || chatView === "coach" || chatView === "coach-prep") && (
+              <button
+                type="button"
+                onClick={() => setChatView("tools")}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: sans,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "rgba(26,58,47,0.65)",
+                  padding: "2px 0",
+                }}
+              >
+                Tools
+              </button>
+            )}
+            {chatView === "tools" && hasJobs && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentJob) {
+                    resetFitChat(currentJob);
+                    setChatView("chat");
+                  }
+                }}
+                disabled={!currentJob}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: currentJob ? "pointer" : "default",
+                  fontFamily: sans,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: currentJob ? "#1A3A2F" : "rgba(26,58,47,0.35)",
+                  padding: "2px 0",
+                }}
+              >
+                Chat
+              </button>
+            )}
+            {(chatView === "chat" || chatView === "coach" || chatView === "coach-prep") && <CreditCostBadge />}
+          </div>
+        </div>
+      )}
+
+      {unified && voice && <KimchiVoiceStrip voice={voice} />}
 
             {chatView === "coach-prep" ? (
               <>
@@ -741,6 +805,21 @@ export function ChatWidget() {
                     ))}
                   </div>
                 )}
+                {unified && voice ? (
+                  !coachPrepCoach ? (
+                    <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
+                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0, textAlign: "center" }}>
+                        Open a coach profile to prep.
+                      </p>
+                    </div>
+                  ) : (
+                    renderUnifiedComposer(
+                      "Ask about prep, questions, or fit…",
+                      () => sendCoachPrepMessage(input),
+                      coachPrepStreaming,
+                    )
+                  )
+                ) : (
                 <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
                   {!coachPrepCoach ? (
                     <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0, textAlign: "center" }}>
@@ -797,6 +876,7 @@ export function ChatWidget() {
                     </>
                   )}
                 </div>
+                )}
               </>
             ) : chatView === "coach" ? (
               <>
@@ -828,6 +908,13 @@ export function ChatWidget() {
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
+                {unified && voice ? (
+                  renderUnifiedComposer(
+                    "Paste intake notes or ask about profile fields…",
+                    () => sendCoachMessage(input),
+                    coachStreaming,
+                  )
+                ) : (
                 <div style={{ padding: "10px 14px 14px", borderTop: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
                   <div style={{ display: "flex", gap: 8 }}>
                     <textarea
@@ -873,6 +960,7 @@ export function ChatWidget() {
                     </button>
                   </div>
                 </div>
+                )}
               </>
             ) : chatView === "chat" ? (
               <>
@@ -1018,6 +1106,13 @@ export function ChatWidget() {
                   </>
                 )}
 
+                {unified && voice ? (
+                  renderUnifiedComposer(
+                    currentJob ? "Ask about fit, gaps, or tactics…" : "Ask Kimchi anything…",
+                    () => sendMessage(input),
+                    streaming,
+                  )
+                ) : (
                 <div
                   style={{
                     padding: "10px 12px 14px",
@@ -1080,6 +1175,7 @@ export function ChatWidget() {
                     </>
                   )}
                 </div>
+                )}
               </>
             ) : (
               <div style={{ padding: "14px 16px 16px", overflowY: "auto" }}>
@@ -1227,11 +1323,116 @@ export function ChatWidget() {
                       lineHeight: 1.4,
                     }}
                   >
-                    Fit chat stays here. Resume and cover letter open in the job drawer.
+                    Resume and cover letter open in the job drawer.
                   </p>
+                )}
+                {unified && voice && renderUnifiedComposer(
+                  "Ask Kimchi anything…",
+                  () => sendGeneralMessage(input),
+                  streaming,
                 )}
               </div>
             )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            background: "#FFFFFF",
+          }}
+        >
+          {panelChrome}
+        </div>
+        {showUpgrade && (
+          <GrowthUpgradeModal
+            trigger="limit_hit"
+            onClose={() => setShowUpgrade(false)}
+            onOpenPricing={openPricing}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {!hideLauncher && (
+      <button
+        onClick={toggleOpen}
+        aria-label={chatOpen ? "Close Scout" : "Open Scout AI"}
+        style={{
+          position: "fixed",
+          bottom: isMobile ? "max(16px, env(safe-area-inset-bottom))" : 24,
+          right: isMobile ? 12 : 24,
+          left: isMobile ? 12 : undefined,
+          width: 52,
+          height: 52,
+          borderRadius: 0,
+          background: chatOpen ? "#1A3A2F" : "#FFFFFF",
+          border: chatPulse ? `2px solid ${color.forest}` : "1px solid rgba(26,58,47,0.15)",
+          boxShadow: chatPulse
+            ? "0 0 0 6px rgba(26,58,47,0.2), 0 4px 16px rgba(0,0,0,0.12)"
+            : "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+          cursor: "pointer",
+          zIndex: 90,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.2s",
+          animation: chatPulse ? "chatPulse 1.2s ease-in-out 2" : undefined,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      >
+        <span style={{ fontSize: 22, color: chatOpen ? "#E8D5A3" : "#1A3A2F", lineHeight: 1 }}>✦</span>
+      </button>
+      )}
+
+      <style>{`
+        @keyframes chatPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+        }
+      `}</style>
+
+      {chatOpen && (
+        <>
+          <div
+            onClick={() => {
+              setChatOpen(false);
+              setSelectedJobId(null);
+            }}
+            style={{ position: "fixed", inset: 0, zIndex: 95 }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              bottom: panelBottom,
+              right: isMobile ? 12 : 24,
+              left: isMobile ? 12 : undefined,
+              width: panelWidth,
+              height: panelHeight,
+              maxHeight: isMobile ? "calc(100vh - 96px - env(safe-area-inset-bottom))" : undefined,
+              background: "#FFFFFF",
+              borderRadius: 0,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0,0,0,0.06)",
+              zIndex: 100,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              animation: "fadeIn 0.2s ease both",
+            }}
+          >
+            {panelChrome}
           </div>
         </>
       )}

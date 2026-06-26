@@ -1,13 +1,7 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-usage";
+import { isKimchiAiConfigured, kimchiStreamText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 type CoachPrepBody = {
   messages: { role: "user" | "assistant"; content: string }[];
@@ -28,7 +22,7 @@ type CoachPrepBody = {
 };
 
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return new Response(JSON.stringify({ error: "AI not configured" }), { status: 503 });
   }
 
@@ -98,34 +92,17 @@ export async function POST(request: Request) {
     matchSummary,
   });
 
-  const COACH_PREP_MODEL = "claude-sonnet-4-6";
-  const stream = await getAnthropic().messages.stream({
-    model: COACH_PREP_MODEL,
-    max_tokens: 1024,
+  return kimchiStreamText({
+    tier: "talk",
     system: systemPrompt,
     messages,
-  });
-
-  const userId = dbUser?.id;
-  if (userId) {
-    stream.on("finalMessage", (msg) => {
-      logAiUsage(userId, "CHAT", COACH_PREP_MODEL, msg.usage.input_tokens, msg.usage.output_tokens);
-    });
-  }
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of stream) {
-        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-          controller.enqueue(encoder.encode(chunk.delta.text));
-        }
-      }
-      controller.close();
+    maxOutputTokens: 1024,
+    userId: dbUser.id,
+    tags: ["feature:coach-prep"],
+    onUsage: (usage, modelId) => {
+      logAiUsage(dbUser.id, "CHAT", modelId, usage.inputTokens, usage.outputTokens);
     },
   });
-
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
   } catch (err) {
     console.error("[coach-prep]", err);
     const message = err instanceof Error ? err.message : "Coach prep failed";

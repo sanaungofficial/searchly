@@ -1,0 +1,60 @@
+"use client";
+
+import { forwardRef, type CSSProperties, type ReactNode } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { surface } from "@/lib/typography";
+
+/** Max content width — matches mockup airy centered layout */
+export const WORKSPACE_MAX_WIDTH = 1200;
+
+type Props = {
+  children: ReactNode;
+  /** Omit horizontal padding (child sections manage their own) */
+  flush?: boolean;
+  style?: CSSProperties;
+};
+
+export function workspaceContentPadding(isMobile: boolean, flush?: boolean): string {
+  if (flush) return "0";
+  return isMobile ? "24px 16px 48px" : "32px 28px 48px";
+}
+
+/** Centered page column below the global top nav */
+export function WorkspaceContent({ children, flush, style }: Props) {
+  const isMobile = useIsMobile();
+  return (
+    <div
+      style={{
+        width: "100%",
+        maxWidth: WORKSPACE_MAX_WIDTH,
+        margin: "0 auto",
+        padding: workspaceContentPadding(isMobile, flush),
+        boxSizing: "border-box",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Full-height scroll region with cream page background */
+export const WorkspaceScroll = forwardRef<HTMLDivElement, { children: ReactNode }>(
+  function WorkspaceScroll({ children }, ref) {
+    return (
+      <div
+        ref={ref}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
+          background: surface.page,
+        }}
+      >
+        {children}
+      </div>
+    );
+  },
+);

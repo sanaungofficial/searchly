@@ -37,7 +37,7 @@ export function LiveSessionRoomPage({
         flexDirection: "column",
         height: "100%",
         minHeight: isMobile ? "calc(100vh - 56px)" : "100%",
-        background: "#F7F5F2",
+        background: "var(--scout-page)",
       }}
     >
       <div

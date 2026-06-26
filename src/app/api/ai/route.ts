@@ -1,18 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
-let anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!anthropic) anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return anthropic;
-}
-
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -76,29 +70,26 @@ export async function POST(request: Request) {
     prompt = interpolate(template, { userName, company, role, profileContext, jobNotes: jobNotesBlock, resumeInstruction });
   }
 
-  const MODEL = "claude-haiku-4-5-20251001";
-  const message = await getAnthropic().messages.create({
-    model: MODEL,
-    max_tokens: 1024,
-    messages: [{ role: "user", content: prompt }],
+  const tier = tool === "fit" ? "analyze" : "create";
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier,
+    prompt,
+    maxOutputTokens: 1024,
+    userId: dbUser.id,
+    tags: [`feature:ai-${tool}`],
   });
 
   const aiFeature = tool === "cover" ? "COVER_LETTER" : tool === "fit" ? "FIT_ANALYSIS" : "RESUME_BULLETS";
-  logAiUsage(dbUser.id, aiFeature as import("@prisma/client").AiFeature, MODEL, message.usage.input_tokens, message.usage.output_tokens);
-
-  const content = message.content[0];
-  if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-  }
+  logAiUsage(dbUser.id, aiFeature as import("@prisma/client").AiFeature, modelId, usage.inputTokens, usage.outputTokens);
 
   if (tool === "resume") {
     try {
-      const parsed = JSON.parse(content.text);
+      const parsed = JSON.parse(text);
       return NextResponse.json(parsed);
     } catch {
       return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
     }
   }
 
-  return NextResponse.json({ text: content.text });
+  return NextResponse.json({ text });
 }

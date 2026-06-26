@@ -5,7 +5,7 @@ import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 
 export function LandingPage() {
   return (
-    <div style={{ background: "#F7F5F2", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
+    <div style={{ background: "var(--scout-page)", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
       {/* Nav */}
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 48px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <div>

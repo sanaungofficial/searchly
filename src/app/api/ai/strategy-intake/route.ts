@@ -5,22 +5,14 @@ import { anthropicErrorResponse } from "@/lib/anthropic-errors";
 import { fillIntakePrompt } from "@/lib/career-strategy-context";
 import { parseIntakeJson } from "@/lib/career-strategy";
 import { ensureProfileRow } from "@/lib/profile-write";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
-
-const PARSE_MODEL = "claude-haiku-4-5-20251001";
 
 export async function POST(request: Request) {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!isKimchiAiConfigured()) {
       return NextResponse.json({ error: "AI not configured" }, { status: 503 });
     }
 
@@ -54,27 +46,24 @@ export async function POST(request: Request) {
       intakeNotes: notes,
     });
 
-    const message = await getAnthropic().messages.create({
-      model: PARSE_MODEL,
-      max_tokens: 3500,
-      messages: [{ role: "user", content: prompt }],
+    const { text, usage, modelId } = await kimchiGenerateText({
+      tier: "parse",
+      prompt,
+      maxOutputTokens: 3500,
+      userId: dbUser.id,
+      tags: ["feature:strategy-intake"],
     });
 
     logAiUsage({
       userId: dbUser.id,
       feature: "strategy_intake",
-      model: PARSE_MODEL,
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
+      model: modelId,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
     }).catch(() => {});
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-    }
-
     try {
-      const parsed = parseIntakeJson(content.text);
+      const parsed = parseIntakeJson(text);
       return NextResponse.json(parsed);
     } catch {
       return NextResponse.json({ error: "Failed to parse intake response" }, { status: 500 });

@@ -1,5 +1,30 @@
 import type { AgentSettingsObject } from "@deepgram/agents";
 
+/**
+ * Deepgram-managed LLM for Voice Agent think step.
+ * Use IDs from GET https://agent.deepgram.com/v1/agent/settings/think/models
+ * gpt-4o-mini is Standard tier and most widely available on Voice Agent plans.
+ */
+export const VOICE_AGENT_THINK_PROVIDER = {
+  type: "open_ai" as const,
+  model: "gpt-4o-mini",
+  temperature: 0.6,
+};
+
+const VOICE_AGENT_LISTEN = {
+  provider: {
+    type: "deepgram" as const,
+    model: "nova-3",
+  },
+};
+
+const VOICE_AGENT_SPEAK = {
+  provider: {
+    type: "deepgram" as const,
+    model: "aura-2-thalia-en",
+  },
+};
+
 export const ONBOARDING_VOICE_AGENT_PROMPT = `You are Kimchi — a sharp friend helping someone set up their job search during onboarding. You talk like a peer who's been through a senior search: direct, warm, no hype or corporate fluff.
 
 Your job is to learn enough to personalize their search by asking short follow-up questions about:
@@ -71,29 +96,30 @@ const AGENT_FUNCTIONS = [
 export function buildOnboardingVoiceAgentSettings(): AgentSettingsObject {
   return {
     language: "en",
-    listen: {
-      provider: {
-        type: "deepgram",
-        version: "v1",
-        model: "nova-3",
-        smart_format: false,
-      },
-    },
+    listen: VOICE_AGENT_LISTEN,
     think: {
-      provider: {
-        type: "anthropic",
-        model: "claude-4-5-haiku-latest",
-        temperature: 0.6,
-      },
+      provider: VOICE_AGENT_THINK_PROVIDER,
       prompt: ONBOARDING_VOICE_AGENT_PROMPT,
       functions: [...AGENT_FUNCTIONS],
     },
-    speak: {
-      provider: {
-        type: "deepgram",
-        version: "v1",
-        model: "aura-2-thalia-en",
-      },
+    speak: VOICE_AGENT_SPEAK,
+  } as AgentSettingsObject;
+}
+
+export const WORKSPACE_VOICE_AGENT_PROMPT = `You are Kimchi — a sharp friend helping with their job search. You talk like a peer who's been through a senior search: direct, warm, no hype.
+
+Help them think through roles, fit, interviews, and what to prioritize in their search. Ask one question at a time when you need more context. Keep spoken replies under 2 sentences unless they ask for depth.
+
+If they want to update profile details, ask clarifying questions and summarize what you heard. Never ask for passwords, SSN, or login credentials.`;
+
+export function buildWorkspaceVoiceAgentSettings(): AgentSettingsObject {
+  return {
+    language: "en",
+    listen: VOICE_AGENT_LISTEN,
+    think: {
+      provider: VOICE_AGENT_THINK_PROVIDER,
+      prompt: WORKSPACE_VOICE_AGENT_PROMPT,
     },
+    speak: VOICE_AGENT_SPEAK,
   } as AgentSettingsObject;
 }

@@ -33,5 +33,5 @@ export default function Home() {
     });
   }, [router]);
 
-  return <div style={{ height: "100vh", background: "#F7F5F2" }} />;
+  return <div style={{ height: "100vh", background: "var(--scout-page)" }} />;
 }

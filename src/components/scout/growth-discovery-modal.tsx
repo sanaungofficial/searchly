@@ -241,7 +241,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
               <div
                 style={{
                   padding: "12px 14px",
-                  background: "#F7F5F2",
+                  background: "var(--scout-inset)",
                   borderRadius: 0,
                   border: "1px solid #E5DDD0",
                   marginBottom: 20,

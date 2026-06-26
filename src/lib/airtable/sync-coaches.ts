@@ -104,20 +104,26 @@ export async function runAirtableCoachSync(
           });
 
           if (shouldUpload) {
-            const photoUrl = await persistCoachPhotoFromAttachment(
+            const photoResult = await persistCoachPhotoFromAttachment(
               updated.id,
               mapped.photoAttachment,
               updated.photoUrl,
               { forceRefresh: options.refreshPhotos }
             );
-            if (photoUrl && photoUrl !== updated.photoUrl) {
+            if (photoResult.url && photoResult.url !== updated.photoUrl) {
               await prisma.coachProfile.update({
                 where: { id: updated.id },
-                data: { photoUrl },
+                data: { photoUrl: photoResult.url },
               });
               summary.photoUploaded += 1;
-            } else if (!photoUrl && mapped.photoAttachment) {
+              if (photoResult.error) {
+                summary.errors.push(`Record ${record.id} photo: ${photoResult.error}`);
+              }
+            } else if (!photoResult.url) {
               summary.photoErrors += 1;
+              summary.errors.push(
+                `Record ${record.id} photo: ${photoResult.error ?? "no photo URL returned"}`
+              );
             }
           }
         }
@@ -139,19 +145,25 @@ export async function runAirtableCoachSync(
         });
 
         if (mapped.photoAttachment) {
-          const photoUrl = await persistCoachPhotoFromAttachment(
+          const photoResult = await persistCoachPhotoFromAttachment(
             withSlug.id,
             mapped.photoAttachment,
             null
           );
-          if (photoUrl) {
+          if (photoResult.url) {
             await prisma.coachProfile.update({
               where: { id: withSlug.id },
-              data: { photoUrl },
+              data: { photoUrl: photoResult.url },
             });
             summary.photoUploaded += 1;
+            if (photoResult.error) {
+              summary.errors.push(`Record ${record.id} photo: ${photoResult.error}`);
+            }
           } else {
             summary.photoErrors += 1;
+            summary.errors.push(
+              `Record ${record.id} photo: ${photoResult.error ?? "no photo URL returned"}`
+            );
           }
         }
 

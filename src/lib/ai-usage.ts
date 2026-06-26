@@ -5,7 +5,10 @@ export type { AiFeature };
 
 const PRICING: Record<string, { input: number; output: number }> = {
   "claude-haiku-4-5-20251001": { input: 0.80 / 1_000_000, output: 4.00 / 1_000_000 },
-  "claude-sonnet-4-6":         { input: 3.00 / 1_000_000, output: 15.00 / 1_000_000 },
+  "claude-sonnet-4-6": { input: 3.00 / 1_000_000, output: 15.00 / 1_000_000 },
+  "anthropic/claude-haiku-4.5": { input: 0.80 / 1_000_000, output: 4.00 / 1_000_000 },
+  "anthropic/claude-sonnet-4.6": { input: 3.00 / 1_000_000, output: 15.00 / 1_000_000 },
+  "openai/gpt-4o-mini": { input: 0.15 / 1_000_000, output: 0.60 / 1_000_000 },
 };
 
 export function calcCost(model: string, tokensIn: number, tokensOut: number): number {

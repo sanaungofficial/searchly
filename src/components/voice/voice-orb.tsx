@@ -19,6 +19,22 @@ interface VoiceOrbProps {
   disabled?: boolean;
   label?: string;
   sublabel?: string;
+  /** hero = onboarding panel; float = bottom-right launcher; composer = inline mic button */
+  variant?: "hero" | "float" | "composer";
+  /** Continuous bounce when idle (default true for float) */
+  bounce?: boolean;
+}
+
+function KimchiStar({ size = 28 }: { size?: number }) {
+  return (
+    <span
+      className="voice-orb-star"
+      aria-hidden="true"
+      style={{ fontSize: size, lineHeight: 1, color: "currentColor" }}
+    >
+      ✦
+    </span>
+  );
 }
 
 export function VoiceOrb({
@@ -28,7 +44,12 @@ export function VoiceOrb({
   disabled,
   label,
   sublabel,
+  variant = "hero",
+  bounce,
 }: VoiceOrbProps) {
+  const isFloat = variant === "float";
+  const isComposer = variant === "composer";
+  const shouldBounce = bounce ?? (isFloat && (state === "idle" || state === "error" || state === "done"));
   const isListening = state === "listening" || state === "live";
   const isSpeaking = state === "speaking";
   const isThinking = state === "thinking" || state === "connecting";
@@ -52,10 +73,13 @@ export function VoiceOrb({
   return (
     <>
       <VoiceOrbStyles />
-      <div className="voice-orb-wrap">
+      <div className={["voice-orb-wrap", isFloat ? "voice-orb-wrap--float" : "", isComposer ? "voice-orb-wrap--composer" : ""].filter(Boolean).join(" ")}>
         <div
           className={[
             "voice-orb-rings",
+            shouldBounce ? "voice-orb-rings--bounce" : "",
+            isFloat ? "voice-orb-rings--compact" : "",
+            isComposer ? "voice-orb-rings--composer" : "",
             isListening ? "voice-orb-rings--active" : "",
             isSpeaking ? "voice-orb-rings--speaking" : "",
             isThinking ? "voice-orb-rings--processing" : "",
@@ -73,8 +97,12 @@ export function VoiceOrb({
           }
         >
           <span className="voice-orb-ring voice-orb-ring--1" aria-hidden="true" />
-          <span className="voice-orb-ring voice-orb-ring--2" aria-hidden="true" />
-          <span className="voice-orb-ring voice-orb-ring--3" aria-hidden="true" />
+          {!isComposer && (
+            <>
+              <span className="voice-orb-ring voice-orb-ring--2" aria-hidden="true" />
+              <span className="voice-orb-ring voice-orb-ring--3" aria-hidden="true" />
+            </>
+          )}
 
           <button
             type="button"
@@ -105,17 +133,8 @@ export function VoiceOrb({
                   ✓
                 </span>
               ) : state === "idle" ? (
-                <span className="voice-orb-mic" aria-hidden="true">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3.08A7 7 0 0 0 19 11Z"
-                      fill="currentColor"
-                    />
-                  </svg>
+                <span className="voice-orb-star-wrap" aria-hidden="true">
+                  <KimchiStar size={isComposer ? 18 : isFloat ? 26 : 32} />
                 </span>
               ) : (
                 <span className="voice-orb-wave" aria-hidden="true">
@@ -123,7 +142,9 @@ export function VoiceOrb({
                 </span>
               )}
             </span>
-            <span className="voice-orb-core__label">{label ?? defaultLabel}</span>
+            {!isFloat && !isComposer && (
+              <span className="voice-orb-core__label">{label ?? defaultLabel}</span>
+            )}
           </button>
         </div>
 
@@ -186,6 +207,10 @@ function VoiceOrbStyles() {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-8px); }
       }
+      @keyframes voice-orb-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-14px); }
+      }
       @keyframes voice-orb-spin {
         to { transform: rotate(360deg); }
       }
@@ -215,6 +240,68 @@ function VoiceOrbStyles() {
         width: min(220px, 58vw);
         height: min(220px, 58vw);
         animation: voice-orb-float 4.5s ease-in-out infinite;
+      }
+
+      .voice-orb-rings--bounce {
+        animation: voice-orb-bounce 2.4s ease-in-out infinite;
+      }
+
+      .voice-orb-rings--compact {
+        width: 100px;
+        height: 100px;
+        animation: none;
+      }
+
+      .voice-orb-rings--compact.voice-orb-rings--bounce {
+        animation: voice-orb-bounce 2.4s ease-in-out infinite;
+      }
+
+      .voice-orb-wrap--composer {
+        flex-shrink: 0;
+      }
+
+      .voice-orb-rings--composer {
+        width: 44px;
+        height: 44px;
+        animation: none;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-core {
+        inset: 2px;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-core__inner {
+        margin-bottom: 0;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-spinner {
+        width: 18px;
+        height: 18px;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-check {
+        font-size: 16px;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-ring--1 {
+        inset: -2px;
+      }
+
+      .voice-orb-wrap--float .voice-orb-core {
+        inset: 6px;
+      }
+
+      .voice-orb-wrap--float .voice-orb-core__inner {
+        margin-bottom: 0;
+      }
+
+      .voice-orb-wrap--float .voice-orb-spinner {
+        width: 24px;
+        height: 24px;
+      }
+
+      .voice-orb-wrap--float .voice-orb-check {
+        font-size: 22px;
       }
 
       .voice-orb-ring {
@@ -359,6 +446,17 @@ function VoiceOrbStyles() {
       }
 
       .voice-orb-mic { display: flex; opacity: 0.95; }
+
+      .voice-orb-star-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #E8D5A3;
+      }
+
+      .voice-orb-wrap--float .voice-orb-star-wrap {
+        color: #E8D5A3;
+      }
 
       .voice-orb-wave {
         display: flex;

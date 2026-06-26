@@ -52,7 +52,7 @@ const IS_PROD = isProductionEnv();
 
 const NAV_MAIN: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
-  { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
+  { id: "opportunities", label: "Opportunities", path: "/opportunities/pipeline", Icon: OpportunitiesIcon },
   {
     id: "coaching",
     label: BETA_FEATURES.coaching.navLabel,
@@ -261,7 +261,8 @@ export function WorkspaceSidebar({
   };
 
   const isActive = (path: string) => {
-    if (path === "/opportunities") return pathname.startsWith("/opportunities");
+    if (path.startsWith("/opportunities")) return pathname.startsWith("/opportunities");
+    if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     if (path === "/coaching") return pathname.startsWith("/coaching");
     return pathname === path;
   };
@@ -269,7 +270,7 @@ export function WorkspaceSidebar({
   const onToggleNotif = () => setNotifOpen((p) => !p);
 
   const onNavigateNotif = (section: string) => {
-    const path = section === "opportunities" ? "/opportunities" : `/${section}`;
+    const path = section === "opportunities" ? "/opportunities/pipeline" : `/${section}`;
     router.push(path);
     const allRead: Record<number, boolean> = {};
     NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));

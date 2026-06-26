@@ -1,21 +1,13 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { normalizeParsedResumeData, parseJsonFromModel } from "@/lib/resume-parse";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
-
-const ANALYSIS_MODEL = "claude-haiku-4-5-20251001";
-
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -44,15 +36,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const template = await getPrompt("RESUME_ASSET_ANALYSIS");
   const prompt = interpolate(template, { resumeSlice: resumeSlice.slice(0, 8000) });
 
-  const message = await getAnthropic().messages.create({
-    model: ANALYSIS_MODEL,
-    max_tokens: 2200,
-    messages: [{ role: "user", content: prompt }],
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 2200,
+    userId: dbUser.id,
+    tags: ["feature:resume-asset-analysis"],
   });
 
-  logAiUsage(dbUser.id, "RESUME_ASSET_ANALYSIS", ANALYSIS_MODEL, message.usage.input_tokens, message.usage.output_tokens);
+  logAiUsage(dbUser.id, "FIT_ANALYSIS", modelId, usage.inputTokens, usage.outputTokens);
 
-  const text = message.content[0]?.type === "text" ? message.content[0].text : "";
   const parsed = parseJsonFromModel(text);
   if (!parsed || typeof parsed !== "object") {
     return NextResponse.json({ error: "Failed to parse analysis" }, { status: 500 });

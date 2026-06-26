@@ -47,15 +47,15 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #F7F5F2;
   --foreground: #1A1A1A;
 
-  /* Searchly brand tokens */
+  /* Kimchi / Citebound — warm parchment palette (mockup) */
   --scout-cream: #F2EDE3;
   --scout-page: #EDE8DF;
   --scout-surface: #FFFFFF;
   --scout-inset: #F5F2EC;
   --scout-stack-plate: #D4CFC4;
+  --background: var(--scout-page);
   --scout-ink: #1A1A1A;
   --scout-forest: #1A3A2F;
   --scout-gold: #E8D5A3;
@@ -148,9 +148,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    background: var(--scout-page);
+  }
   body {
     @apply text-foreground;
-    background: #F7F5F2;
+    background: var(--scout-page);
     font-family: var(--font-ui);
   }
   /* Kimchi workspace: Tailwind text-xs (12px) → 13px minimum in product UI */
@@ -212,7 +215,7 @@
    ───────────────────────────────────────────── */
 .auth-page {
   min-height: 100vh;
-  background: #F7F5F2;
+  background: var(--scout-page);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -328,7 +331,7 @@
 
 .onboarding-loading {
   min-height: 100vh;
-  background: #F7F5F2;
+  background: var(--scout-page);
   display: flex;
   flex-direction: column;
   align-items: center;

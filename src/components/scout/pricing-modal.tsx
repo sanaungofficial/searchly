@@ -31,7 +31,7 @@ export function PricingModal({ onClose }: Props) {
           maxWidth: "calc(100vw - 32px)",
           maxHeight: "90vh",
           overflow: "auto",
-          background: "#F7F5F2",
+          background: "var(--scout-page)",
           borderRadius: 16,
           zIndex: 201,
           padding: "24px 28px 28px",

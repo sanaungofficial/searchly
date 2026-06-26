@@ -69,7 +69,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
+import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import {
@@ -540,7 +540,7 @@ function PersonalTab({ profile, onSave }: {
               className="min-h-11 px-4 py-2 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => setEditing(false)} className="min-h-11 px-4 py-2 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
+            <button onClick={() => setEditing(false)} className="min-h-11 px-4 py-2 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
           </div>
         </div>
       ) : (
@@ -634,7 +634,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
         <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-none hover:border-[#1C3A2F]/40 transition-colors">+ Add education</button>
         <div className="flex gap-2 pt-1">
           <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
         </div>
       </div>
     </div>
@@ -718,7 +718,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
         <button onClick={addEntry} className="w-full py-2 text-xs text-[#1C3A2F] border border-dashed border-[#C0B8B0] rounded-none hover:border-[#1C3A2F]/40 transition-colors">+ Add experience</button>
         <div className="flex gap-2 pt-1">
           <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
+          <button onClick={() => { setList(entries); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
         </div>
       </div>
     </div>
@@ -809,7 +809,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
           </div>
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving} className="px-4 py-1.5 text-xs font-medium bg-[#1C3A2F] text-[#F2EDE3] rounded-none hover:bg-[#1C3A2F]/90 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[#F7F5F2] rounded-none">Cancel</button>
+            <button onClick={() => { setList(skills); setEditing(false); }} className="px-4 py-1.5 text-xs font-medium text-[#52493F] hover:bg-[var(--scout-inset)] rounded-none">Cancel</button>
           </div>
         </div>
       ) : (
@@ -2364,7 +2364,7 @@ function PrefChip({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>{label}</p>
-      <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{value}</span>
+      <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{value}</span>
     </div>
   );
 }
@@ -2599,13 +2599,13 @@ function CareerPreferencesPanel({ profile, onSave }: {
           {profile.employmentStatus && (
             <div>
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Status</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{statusLabel || profile.employmentStatus}</span>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{statusLabel || profile.employmentStatus}</span>
             </div>
           )}
           {profile.jobTimeline && (
             <div>
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Timeline</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{timelineLabel || profile.jobTimeline}</span>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{timelineLabel || profile.jobTimeline}</span>
             </div>
           )}
           {(profile.currentSalary || profile.targetSalary) && (
@@ -2613,13 +2613,13 @@ function CareerPreferencesPanel({ profile, onSave }: {
               {profile.currentSalary && (
                 <div>
                   <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Current</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.currentSalary}</span>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.currentSalary}</span>
                 </div>
               )}
               {profile.targetSalary && (
                 <div>
                   <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Target</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.targetSalary}</span>
+                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.targetSalary}</span>
                 </div>
               )}
             </div>
@@ -2627,7 +2627,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
           {profile.careerMotivation && (
             <div>
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Looking for</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.careerMotivation}</span>
+              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.careerMotivation}</span>
             </div>
           )}
           {(profile.priorities || []).length > 0 && (
@@ -2635,7 +2635,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
               <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Priorities</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {profile.priorities.map((p) => (
-                  <span key={p} style={{ padding: "5px 11px", borderRadius: 0, background: "#F7F5F2", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{p}</span>
+                  <span key={p} style={{ padding: "5px 11px", borderRadius: 0, background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{p}</span>
                 ))}
               </div>
             </div>
@@ -3144,22 +3144,13 @@ export function WorkspaceProfile() {
     { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
   ];
 
-  const scrollPad = isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const sectionCardPad = isMobile ? 18 : 22;
-  const contentShell: React.CSSProperties = {
-    width: "100%",
-    maxWidth: isMobile ? undefined : 1120,
-    margin: "0 auto",
-  };
   const showReadback = !!(readback || readbackLoading);
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
-      {isMobile && (
-        <WorkspaceMobileTopBar center={<ScoutLabel>Your profile</ScoutLabel>} />
-      )}
-      <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" }}>
-        <div style={contentShell}>
+      <WorkspaceScroll ref={scrollRef}>
+        <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH }}>
         {upskillPrompt && page !== "learning" && page !== "dreamrole" && (
           <div style={{ marginBottom: 16 }}>
             <UpskillNextStepCard
@@ -3173,12 +3164,10 @@ export function WorkspaceProfile() {
         )}
         {/* Header */}
         <div style={{ marginBottom: isMobile ? 24 : 28 }}>
-          {!isMobile && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-              <ScoutLabel>Your profile</ScoutLabel>
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+            <ScoutLabel>Your profile</ScoutLabel>
+          </div>
           <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
             {loading ? "Loading…" : profile?.name || "Your profile"}
           </ScoutDisplayTitle>
@@ -3479,8 +3468,8 @@ export function WorkspaceProfile() {
         {page === "linkedin" && (
           <ProfileLinkedInEditor isMobile={isMobile} />
         )}
-        </div>
-      </div>
+        </WorkspaceContent>
+      </WorkspaceScroll>
       <ProfileResumeEditor
         open={!!editorAssetId}
         assetId={editorAssetId}
