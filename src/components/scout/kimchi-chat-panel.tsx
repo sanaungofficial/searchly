@@ -15,6 +15,7 @@ import type {
 import { VOICE_PRESETS, getVoicePreset, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import {
   buildFollowUpChips,
+  buildKnowsYouPreview,
   buildStarterActions,
   buildStarterChatChips,
   formatThreadForFollowUps,
@@ -254,6 +255,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const showDoNext = !welcomeOnly && suggestions.length > 0;
   const starterActions = buildStarterActions(assistantCtx);
   const starterChatChips = buildStarterChatChips(assistantCtx);
+  const knowsYouPreview = buildKnowsYouPreview(assistantCtx);
 
   const goTo = useCallback(
     (href: string) => {
@@ -377,11 +379,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           assistantMessage,
           threadContext,
           profileGaps: assistantCtx?.profileGaps,
+          ctx: assistantCtx,
         }),
       );
       setCanAskAiSuggestions(!isFailedAssistantReply(assistantMessage));
     },
-    [assistantCtx?.profileGaps, messages],
+    [assistantCtx, messages],
   );
 
   const loadAiFollowUpChips = useCallback(async () => {
@@ -684,7 +687,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               : welcomeOnly && i === messages.length - 1
                 ? WELCOME_MESSAGE
                 : msg.content;
-          const canCopy = !!copyText?.trim() && !isStreamingPlaceholder && !isFailedAssistantReply(copyText);
+          const canCopy = !!copyText?.trim() && !isStreamingPlaceholder;
 
           return (
             <div
@@ -725,6 +728,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           <KimchiStarterSection
             actions={starterActions}
             chatChips={starterChatChips}
+            knowsYou={knowsYouPreview}
             onActivate={handleChipActivate}
           />
         )}
