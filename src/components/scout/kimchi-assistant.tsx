@@ -27,7 +27,6 @@ export function KimchiAssistant() {
     agentSettings,
     orbState,
     error,
-    summary,
     transcriptLines,
     audioLevel,
     sessionActive,
@@ -193,16 +192,15 @@ export function KimchiAssistant() {
 
                   {hint && <p className="kimchi-assistant-panel__hint">{hint}</p>}
 
-                  {orbState === "done" && summary && (
-                    <div className="kimchi-assistant-panel__success">
-                      <p>{summary}</p>
-                      <button type="button" className="kimchi-assistant-panel__again" onClick={resetSession}>
-                        Talk again
-                      </button>
-                    </div>
+                  {orbState === "done" && (
+                    <button type="button" className="kimchi-assistant-panel__again" onClick={resetSession}>
+                      Talk again
+                    </button>
                   )}
 
-                  {error && <p className="kimchi-assistant-panel__error">{error}</p>}
+                  {error && orbState !== "done" && (
+                    <p className="kimchi-assistant-panel__error">{error}</p>
+                  )}
                 </div>
               </>
             ) : (
@@ -210,25 +208,20 @@ export function KimchiAssistant() {
             )}
           </div>
 
-          <div
-            className="kimchi-assistant-launcher kimchi-assistant-launcher--open"
-            style={{ bottom, right }}
-          >
-            <VoiceOrb
-              variant="float"
-              state={mainTab === "voice" ? orbState : "idle"}
-              audioLevel={mainTab === "voice" ? audioLevel : 0}
-              onClick={() => {
-                if (mainTab !== "voice") selectTab("voice");
-                else toggleSession();
-              }}
-              disabled={available !== true || !agentSettings}
-              bounce={
-                mainTab === "voice" &&
-                (orbState === "idle" || orbState === "error" || orbState === "done")
-              }
-            />
-          </div>
+          {mainTab !== "voice" && (
+            <div
+              className="kimchi-assistant-launcher kimchi-assistant-launcher--open"
+              style={{ bottom, right }}
+            >
+              <VoiceOrb
+                variant="float"
+                state="idle"
+                onClick={() => selectTab("voice")}
+                disabled={available !== true || !agentSettings}
+                bounce
+              />
+            </div>
+          )}
         </>
       )}
     </>
