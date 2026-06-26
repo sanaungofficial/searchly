@@ -97,3 +97,38 @@ export function buildOnboardingVoiceAgentSettings(): AgentSettingsObject {
     },
   } as AgentSettingsObject;
 }
+
+export const WORKSPACE_VOICE_AGENT_PROMPT = `You are Kimchi — a sharp friend helping with their job search. You talk like a peer who's been through a senior search: direct, warm, no hype.
+
+Help them think through roles, fit, interviews, and what to prioritize in their search. Ask one question at a time when you need more context. Keep spoken replies under 2 sentences unless they ask for depth.
+
+If they want to update profile details, ask clarifying questions and summarize what you heard. Never ask for passwords, SSN, or login credentials.`;
+
+export function buildWorkspaceVoiceAgentSettings(): AgentSettingsObject {
+  return {
+    language: "en",
+    listen: {
+      provider: {
+        type: "deepgram",
+        version: "v1",
+        model: "nova-3",
+        smart_format: false,
+      },
+    },
+    think: {
+      provider: {
+        type: "anthropic",
+        model: "claude-4-5-haiku-latest",
+        temperature: 0.6,
+      },
+      prompt: WORKSPACE_VOICE_AGENT_PROMPT,
+    },
+    speak: {
+      provider: {
+        type: "deepgram",
+        version: "v1",
+        model: "aura-2-thalia-en",
+      },
+    },
+  } as AgentSettingsObject;
+}

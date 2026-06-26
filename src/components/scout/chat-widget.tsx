@@ -108,7 +108,7 @@ function ChatMessageBody({
   );
 }
 
-export function ChatWidget() {
+export function ChatWidget({ hideLauncher = false }: { hideLauncher?: boolean }) {
   const router = useRouter();
   const {
     kanbanCards,
@@ -509,6 +509,7 @@ export function ChatWidget() {
 
   return (
     <>
+      {!hideLauncher && (
       <button
         onClick={toggleOpen}
         aria-label={chatOpen ? "Close Scout" : "Open Scout AI"}
@@ -538,6 +539,7 @@ export function ChatWidget() {
       >
         <span style={{ fontSize: 22, color: chatOpen ? "#E8D5A3" : "#1A3A2F", lineHeight: 1 }}>✦</span>
       </button>
+      )}
 
       <style>{`
         @keyframes chatPulse {

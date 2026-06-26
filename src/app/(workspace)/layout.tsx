@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { WorkspaceSidebar } from "@/components/scout/workspace-sidebar";
 import { ChatWidget } from "@/components/scout/chat-widget";
+import { VoiceAgentFloat } from "@/components/voice/voice-agent-float";
 import { PricingModal } from "@/components/scout/pricing-modal";
 import { MOBILE_TOP_BAR_HEIGHT } from "@/components/scout/workspace-mobile-top-bar";
 
@@ -96,7 +97,8 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </div>
-      <ChatWidget />
+      <VoiceAgentFloat />
+      <ChatWidget hideLauncher />
       {pricingOpen && <PricingModal onClose={closePricing} />}
     </div>
   );
