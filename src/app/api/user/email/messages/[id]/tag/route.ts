@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { JobActivitySource, JobActivitySignal, JobActivityStatus } from "@prisma/client";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { serializeMessageActivity } from "@/lib/inbox-message-activity";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +8,8 @@ import { prisma } from "@/lib/prisma";
 const VALID_TAGS = new Set<InboxUserTag>(["needs_follow_up", "answered", "potential", "waiting"]);
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { dbUser } = await getActingUser();
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: messageId } = await params;

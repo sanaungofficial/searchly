@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { isNylasConfigured } from "@/lib/nylas";
 import { sendMessage, serializeMessageSummary } from "@/lib/nylas-inbox";
 import { getUserEmailGrant } from "@/lib/user-email-server";
@@ -18,7 +18,8 @@ function parseRecipients(raw: unknown): Array<{ email: string; name?: string }> 
 }
 
 export async function POST(req: NextRequest) {
-  const { dbUser } = await getActingUser();
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -54,6 +55,7 @@ export function InboxMailView({
   sending,
 }: Props) {
   const isMobile = useIsMobile();
+  const { withClientScope } = useWorkspace();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageSummary[]>([]);
@@ -73,31 +75,31 @@ export function InboxMailView({
   const connected = Boolean(status.connected);
 
   const loadFolders = useCallback(async () => {
-    const res = await fetch("/api/user/email/folders");
+    const res = await fetch(withClientScope("/api/user/email/folders"));
     if (!res.ok) throw new Error(await readFetchError(res, "folders"));
     const data = await res.json();
     return (data.folders ?? []) as Folder[];
-  }, []);
+  }, [withClientScope]);
 
   const loadMessages = useCallback(async (folderId: string | null, q: string, cursor?: string | null) => {
     const params = new URLSearchParams();
     if (folderId) params.set("folderId", folderId);
     if (q.trim()) params.set("q", q.trim());
     if (cursor) params.set("pageToken", cursor);
-    const res = await fetch(`/api/user/email/messages?${params.toString()}`);
+    const res = await fetch(withClientScope(`/api/user/email/messages?${params.toString()}`));
     if (!res.ok) throw new Error(await readFetchError(res, "messages"));
     const data = await res.json();
     return {
       messages: (data.messages ?? []) as MessageSummary[],
       nextCursor: (data.nextCursor as string | null) ?? null,
     };
-  }, []);
+  }, [withClientScope]);
 
   const loadDetail = useCallback(async (id: string) => {
-    const res = await fetch(`/api/user/email/messages/${encodeURIComponent(id)}?thread=1`);
+    const res = await fetch(withClientScope(`/api/user/email/messages/${encodeURIComponent(id)}?thread=1`));
     if (!res.ok) throw new Error(await readFetchError(res, "detail"));
     return res.json() as Promise<MessageDetail>;
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
     setLastOpenedId(readLastOpenedMessageId(status.email));
@@ -212,7 +214,7 @@ export function InboxMailView({
 
   async function patchMessage(patch: { unread?: boolean; starred?: boolean; archive?: boolean }) {
     if (!expandedId) return;
-    const res = await fetch(`/api/user/email/messages/${encodeURIComponent(expandedId)}`, {
+    const res = await fetch(withClientScope(`/api/user/email/messages/${encodeURIComponent(expandedId)}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
@@ -236,7 +238,7 @@ export function InboxMailView({
   async function updateTag(messageId: string, tag: InboxUserTag | null) {
     setTagSaving(true);
     try {
-      const res = await fetch(`/api/user/email/messages/${encodeURIComponent(messageId)}/tag`, {
+      const res = await fetch(withClientScope(`/api/user/email/messages/${encodeURIComponent(messageId)}/tag`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tag: tag ?? "none" }),
@@ -396,6 +398,7 @@ export function InboxMailView({
                       writeLastOpenedMessageId(id, status.email);
                       setExpandedId(id);
                     }}
+                    scopePath={withClientScope}
                   />
                 )}
               </div>

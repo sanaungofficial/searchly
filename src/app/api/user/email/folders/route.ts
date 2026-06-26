@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import { fetchFolders, folderDisplayName, folderSortRank } from "@/lib/nylas-inbox";
 
-export async function GET(_req: NextRequest) {
-  const { dbUser } = await getActingUser();
+export async function GET(req: NextRequest) {
+  const { dbUser, error } = await resolveScopedDbUser(req);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {

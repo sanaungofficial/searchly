@@ -16,6 +16,7 @@ type Props = {
   onPatch: (patch: { unread?: boolean; starred?: boolean; archive?: boolean }) => void;
   onTagChange: (tag: InboxUserTag | null) => void;
   onOpenThreadMessage: (id: string) => void;
+  scopePath?: (path: string) => string;
 };
 
 export function InboxExpandedMessage({
@@ -26,6 +27,7 @@ export function InboxExpandedMessage({
   onPatch,
   onTagChange,
   onOpenThreadMessage,
+  scopePath = (path) => path,
 }: Props) {
   const [showThread, setShowThread] = useState(true);
 
@@ -121,7 +123,7 @@ export function InboxExpandedMessage({
             {detail.attachments.map((a) => (
               <a
                 key={a.id}
-                href={`/api/user/email/messages/${encodeURIComponent(detail.id)}/attachments/${encodeURIComponent(a.id)}`}
+                href={scopePath(`/api/user/email/messages/${encodeURIComponent(detail.id)}/attachments/${encodeURIComponent(a.id)}`)}
                 style={{
                   fontFamily: fontSans,
                   fontSize: T.caption,

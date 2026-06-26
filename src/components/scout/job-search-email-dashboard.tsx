@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,6 +14,7 @@ export function JobSearchEmailDashboard() {
   const isMobile = useIsMobile();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { withClientScope, isAdminReviewing } = useWorkspace();
 
   const [status, setStatus] = useState<InboxStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,14 +27,14 @@ export function JobSearchEmailDashboard() {
   const bootstrap = useCallback(async () => {
     setLoading(true);
     try {
-      const stRes = await fetch("/api/nylas/user/status");
+      const stRes = await fetch(withClientScope("/api/nylas/user/status"));
       if (stRes.ok) setStatus(await stRes.json());
     } catch {
       setNotice({ type: "error", text: "Could not load inbox status." });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
     bootstrap().catch(() => setLoading(false));
@@ -70,7 +72,7 @@ export function JobSearchEmailDashboard() {
   async function handleSend() {
     setSending(true);
     try {
-      const res = await fetch("/api/user/email/messages/send", {
+      const res = await fetch(withClientScope("/api/user/email/messages/send"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -119,8 +121,11 @@ export function JobSearchEmailDashboard() {
           Inbox
         </h2>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: "0 0 20px" }}>
-          Connect Gmail or Outlook to read and send mail here. For summaries, drafts, and pipeline updates, use Kimchi chat or voice.
+          {isAdminReviewing
+            ? "This client has not connected Gmail or Outlook yet. They need to connect from their own account."
+            : "Connect Gmail or Outlook to read and send mail here. For summaries, drafts, and pipeline updates, use Kimchi chat or voice."}
         </p>
+        {!isAdminReviewing && (
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <ScoutPrimaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=google"; }}>
             Connect Gmail
@@ -129,6 +134,7 @@ export function JobSearchEmailDashboard() {
             Connect Outlook
           </ScoutSecondaryBtn>
         </div>
+        )}
       </ScoutBox>
     );
   }
