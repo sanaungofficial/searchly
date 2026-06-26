@@ -60,6 +60,24 @@ export async function PATCH(
       accentColor: body.accentColor,
       status: body.status,
     });
+
+    if (body.status === "CANCELLED" && existing.status !== "CANCELLED") {
+      const { prisma } = await import("@/lib/prisma");
+      const { sendLiveSessionCancelledEmail } = await import("@/lib/comms/live-session-emails");
+      const registrations = await prisma.liveSessionRegistration.findMany({
+        where: { liveSessionId: existing.id },
+        include: { user: { select: { email: true, name: true } } },
+      });
+      for (const reg of registrations) {
+        if (!reg.user.email) continue;
+        void sendLiveSessionCancelledEmail({
+          email: reg.user.email,
+          name: reg.user.name,
+          session: { title: row.title, host: row.hostName },
+        }).catch((err) => console.error("[live/cancel email]", reg.id, err));
+      }
+    }
+
     return NextResponse.json({ session: row });
   } catch (err) {
     console.error("[admin/live/sessions PATCH]", err);

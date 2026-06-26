@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { markPurchasePaid, markPurchaseRefunded } from "@/lib/coach-purchase";
+import {
+  sendCoachPurchaseConfirmationEmail,
+  sendPaymentFailedEmail,
+  sendProWelcomeEmail,
+} from "@/lib/comms/billing-emails";
 import Stripe from "stripe";
 
 // Stripe requires the raw body to verify signatures
@@ -57,6 +62,13 @@ export async function POST(req: NextRequest) {
         if (session.mode === "subscription" && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
           await upsertSubscription(subscription);
+          const customerId = session.customer as string;
+          const user = await prisma.user.findUnique({ where: { stripeCustomerId: customerId } });
+          if (user?.email) {
+            sendProWelcomeEmail({ email: user.email, name: user.name }).catch((err) =>
+              console.error("[stripe/webhook] pro welcome", err),
+            );
+          }
         } else if (session.mode === "payment" && session.metadata?.kind === "coach_purchase") {
           const purchaseId = session.metadata.purchaseId;
           if (purchaseId) {
@@ -65,6 +77,23 @@ export async function POST(req: NextRequest) {
               stripePaymentIntentId:
                 typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
             });
+            if (session.customer_email) {
+              const purchase = await prisma.coachPurchase.findUnique({
+                where: { id: purchaseId },
+                include: {
+                  coachProfile: { select: { displayName: true } },
+                  buyer: { select: { name: true } },
+                },
+              });
+              if (purchase) {
+                sendCoachPurchaseConfirmationEmail({
+                  email: session.customer_email,
+                  name: purchase.buyer?.name ?? null,
+                  coachName: purchase.coachProfile.displayName,
+                  packageLabel: purchase.packageTitle ?? "Coaching package",
+                }).catch((err) => console.error("[stripe/webhook] coach purchase email", err));
+              }
+            }
           }
         }
         break;
@@ -92,6 +121,15 @@ export async function POST(req: NextRequest) {
             where: { stripeSubscriptionId: invoice.subscription },
             data: { status: "PAST_DUE" },
           });
+          const sub = await prisma.subscription.findFirst({
+            where: { stripeSubscriptionId: invoice.subscription },
+            include: { user: { select: { email: true, name: true } } },
+          });
+          if (sub?.user.email) {
+            sendPaymentFailedEmail({ email: sub.user.email, name: sub.user.name }).catch((err) =>
+              console.error("[stripe/webhook] payment failed email", err),
+            );
+          }
         }
         break;
       }

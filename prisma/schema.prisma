@@ -212,6 +212,7 @@ model Job {
   fitAnalysis  String?
 
   appliedAt    DateTime?
+  pipelineFollowUpSentAt DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -437,6 +438,9 @@ model CoachBooking {
   rawPayload      Json?
   communications  CoachBookingCommunication[]
 
+  reminder24hSentAt DateTime?
+  reminder1hSentAt  DateTime?
+
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -452,6 +456,9 @@ enum CoachBookingCommType {
   CANCELLATION
   SESSION_BOOKED
   SESSION_RESCHEDULED
+  REMINDER_24H
+  REMINDER_1H
+  GUEST_RESCHEDULED
 }
 
 enum CoachBookingCommAudience {
@@ -520,6 +527,7 @@ model LiveSession {
   liveNowEmailSentAt DateTime?
   postSessionEmailSentAt DateTime?
   followNotifySentAt DateTime?
+  followerPostSessionSentAt DateTime?
 
   peakViewers        Int               @default(0)
   totalUniqueJoins   Int               @default(0)
@@ -579,6 +587,8 @@ model LiveSessionRegistration {
 
   joinedAt      DateTime?
   reminderSentAt DateTime?
+  reminder24hSentAt DateTime?
+  reminder1hSentAt DateTime?
   createdAt     DateTime    @default(now())
 
   @@unique([liveSessionId, userId])
@@ -1013,8 +1023,12 @@ model UserDigestSettings {
   userId            String    @unique
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   dailyEmailEnabled Boolean   @default(true)
+  watchlistEmailEnabled Boolean @default(true)
+  pipelineEmailEnabled Boolean @default(true)
   lastDigestSentAt  DateTime?
+  lastWatchlistSentAt DateTime?
   lastDigestJobIds  String[]  @default([])
+  lastWatchlistJobIds String[] @default([])
   lastManualRefreshAt DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

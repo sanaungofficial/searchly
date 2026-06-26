@@ -1,29 +1,97 @@
 import { prisma } from "@/lib/prisma";
 import { endLiveSession } from "@/lib/live-session-actions";
 import {
+  notifyCoachFollowersPostSession,
   sendLiveSessionLiveNowEmail,
-  sendLiveSessionPostSessionEmail,
   sendLiveSessionReminderEmail,
-} from "@/lib/live-session-emails";
+} from "@/lib/comms/live-session-emails";
 import { logLiveSessionEvent } from "@/lib/live-session-events";
 import { snapshotLiveRoomMetrics } from "@/lib/hms";
 
-const REMINDER_WINDOW_MS = 15 * 60 * 1000;
-const REMINDER_TOLERANCE_MS = 5 * 60 * 1000;
+const REMINDER_15M_MS = 15 * 60 * 1000;
+const REMINDER_1H_MS = 60 * 60 * 1000;
+const REMINDER_24H_MS = 24 * 60 * 60 * 1000;
+const REMINDER_TOLERANCE_MS = 10 * 60 * 1000;
 
 export type LiveSessionCronSummary = {
   autoEnded: number;
   remindersSent: number;
-  postSessionSent: number;
+  followerPostSent: number;
   metricsUpdated: number;
   errors: string[];
 };
+
+type ReminderWindow = "24h" | "1h" | "15m";
+
+function reminderConfig(window: ReminderWindow) {
+  switch (window) {
+    case "24h":
+      return { offsetMs: REMINDER_24H_MS, flag: "reminder24hSentAt" as const };
+    case "1h":
+      return { offsetMs: REMINDER_1H_MS, flag: "reminder1hSentAt" as const };
+    case "15m":
+      return { offsetMs: REMINDER_15M_MS, flag: "reminderSentAt" as const };
+  }
+}
+
+async function sendReminderWindow(window: ReminderWindow, now: Date, summary: LiveSessionCronSummary) {
+  const { offsetMs, flag } = reminderConfig(window);
+  const reminderStart = new Date(now.getTime() + offsetMs - REMINDER_TOLERANCE_MS);
+  const reminderEnd = new Date(now.getTime() + offsetMs + REMINDER_TOLERANCE_MS);
+
+  const upcoming = await prisma.liveSession.findMany({
+    where: {
+      status: "SCHEDULED",
+      scheduledStart: { gte: reminderStart, lte: reminderEnd },
+    },
+    include: {
+      registrations: {
+        where: { [flag]: null },
+        include: { user: { select: { email: true, name: true } } },
+      },
+    },
+  });
+
+  for (const session of upcoming) {
+    for (const reg of session.registrations) {
+      if (!reg.user.email) continue;
+      try {
+        await sendLiveSessionReminderEmail({
+          email: reg.user.email,
+          name: reg.user.name,
+          window,
+          session: {
+            title: session.title,
+            host: session.hostName,
+            scheduledStart: session.scheduledStart,
+            scheduledEnd: session.scheduledEnd,
+            legacyNumericId: session.legacyNumericId,
+            id: session.id,
+          },
+        });
+        await prisma.liveSessionRegistration.update({
+          where: { id: reg.id },
+          data: { [flag]: now },
+        });
+        await logLiveSessionEvent({
+          liveSessionId: session.id,
+          userId: reg.userId,
+          type: "REMINDER_SENT",
+          metadata: { window },
+        });
+        summary.remindersSent += 1;
+      } catch (err) {
+        summary.errors.push(`reminder ${window} ${reg.id}: ${err instanceof Error ? err.message : "failed"}`);
+      }
+    }
+  }
+}
 
 export async function runLiveSessionCron(): Promise<LiveSessionCronSummary> {
   const summary: LiveSessionCronSummary = {
     autoEnded: 0,
     remindersSent: 0,
-    postSessionSent: 0,
+    followerPostSent: 0,
     metricsUpdated: 0,
     errors: [],
   };
@@ -45,8 +113,8 @@ export async function runLiveSessionCron(): Promise<LiveSessionCronSummary> {
       try {
         await endLiveSession(session, true);
         summary.autoEnded += 1;
-        await sendPostSessionEmails(session.id);
-        summary.postSessionSent += 1;
+        await notifyCoachFollowersPostSession(session.id);
+        summary.followerPostSent += 1;
       } catch (err) {
         summary.errors.push(`auto-end ${session.id}: ${err instanceof Error ? err.message : "failed"}`);
       }
@@ -56,66 +124,22 @@ export async function runLiveSessionCron(): Promise<LiveSessionCronSummary> {
   const expiredLive = await prisma.liveSession.findMany({
     where: {
       status: "ENDED",
-      postSessionEmailSentAt: null,
+      followerPostSessionSentAt: null,
       endedAt: { gte: new Date(now.getTime() - 60 * 60 * 1000) },
     },
   });
 
   for (const session of expiredLive) {
     try {
-      await sendPostSessionEmails(session.id);
-      summary.postSessionSent += 1;
+      await notifyCoachFollowersPostSession(session.id);
+      summary.followerPostSent += 1;
     } catch (err) {
-      summary.errors.push(`post-session ${session.id}: ${err instanceof Error ? err.message : "failed"}`);
+      summary.errors.push(`follower-post ${session.id}: ${err instanceof Error ? err.message : "failed"}`);
     }
   }
 
-  const reminderStart = new Date(now.getTime() + REMINDER_WINDOW_MS - REMINDER_TOLERANCE_MS);
-  const reminderEnd = new Date(now.getTime() + REMINDER_WINDOW_MS + REMINDER_TOLERANCE_MS);
-
-  const upcoming = await prisma.liveSession.findMany({
-    where: {
-      status: "SCHEDULED",
-      scheduledStart: { gte: reminderStart, lte: reminderEnd },
-    },
-    include: {
-      registrations: {
-        where: { reminderSentAt: null },
-        include: { user: { select: { email: true, name: true } } },
-      },
-    },
-  });
-
-  for (const session of upcoming) {
-    for (const reg of session.registrations) {
-      if (!reg.user.email) continue;
-      try {
-        await sendLiveSessionReminderEmail({
-          email: reg.user.email,
-          name: reg.user.name,
-          session: {
-            title: session.title,
-            host: session.hostName,
-            scheduledStart: session.scheduledStart,
-            scheduledEnd: session.scheduledEnd,
-            legacyNumericId: session.legacyNumericId,
-            id: session.id,
-          },
-        });
-        await prisma.liveSessionRegistration.update({
-          where: { id: reg.id },
-          data: { reminderSentAt: now },
-        });
-        await logLiveSessionEvent({
-          liveSessionId: session.id,
-          userId: reg.userId,
-          type: "REMINDER_SENT",
-        });
-        summary.remindersSent += 1;
-      } catch (err) {
-        summary.errors.push(`reminder ${reg.id}: ${err instanceof Error ? err.message : "failed"}`);
-      }
-    }
+  for (const window of ["24h", "1h", "15m"] as ReminderWindow[]) {
+    await sendReminderWindow(window, now, summary);
   }
 
   return summary;
@@ -160,54 +184,4 @@ export async function notifyLiveSessionLiveNow(sessionId: string): Promise<numbe
   });
 
   return sent;
-}
-
-async function sendPostSessionEmails(sessionId: string): Promise<void> {
-  const session = await prisma.liveSession.findUnique({
-    where: { id: sessionId },
-    include: {
-      registrations: {
-        where: { joinedAt: { not: null } },
-        include: {
-          user: { select: { email: true, name: true } },
-        },
-      },
-      coachProfile: { select: { slug: true } },
-    },
-  });
-
-  if (!session || session.postSessionEmailSentAt) return;
-
-  const replayUrl = session.recordingUrl ?? session.hlsPlaybackUrl ?? null;
-
-  for (const reg of session.registrations) {
-    if (!reg.user.email) continue;
-    try {
-      await sendLiveSessionPostSessionEmail({
-        email: reg.user.email,
-        name: reg.user.name,
-        session: {
-          title: session.title,
-          host: session.hostName,
-          legacyNumericId: session.legacyNumericId,
-          id: session.id,
-          coachProfileId: session.coachProfileId,
-          coachSlug: session.coachProfile?.slug ?? null,
-        },
-        replayUrl,
-      });
-      await logLiveSessionEvent({
-        liveSessionId: sessionId,
-        userId: reg.userId,
-        type: "POST_SESSION_SENT",
-      });
-    } catch (err) {
-      console.error("[live/post-session]", reg.id, err);
-    }
-  }
-
-  await prisma.liveSession.update({
-    where: { id: sessionId },
-    data: { postSessionEmailSentAt: new Date() },
-  });
 }

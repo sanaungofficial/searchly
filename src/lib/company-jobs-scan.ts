@@ -317,6 +317,8 @@ export async function scanTrackedCompanyMatches(
     return { ok: false, error: lastError ?? "No jobs scan provider available." };
   }
 
+  const oldCache = parseJobsCache(company.jobsCache)?.jobs ?? [];
+
   const updated = await prisma.trackedCompany.update({
     where: { id: trackedCompanyId },
     data: {
@@ -324,6 +326,19 @@ export async function scanTrackedCompanyMatches(
       lastJobsFetchedAt: new Date(),
     },
   });
+
+  if (company.user.email) {
+    const { maybeSendWatchlistAlertAfterScan } = await import("@/lib/comms/watchlist-alert-email");
+    void maybeSendWatchlistAlertAfterScan({
+      userId,
+      email: company.user.email,
+      name: company.user.name,
+      trackedCompanyId,
+      companyName,
+      oldCache,
+      newCache: parsed.jobs,
+    }).catch((err) => console.error("[watchlist alert]", trackedCompanyId, err));
+  }
 
   return { ok: true, company: updated, jobCount: parsed.jobs.length };
 }

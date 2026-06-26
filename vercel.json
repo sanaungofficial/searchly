@@ -17,6 +17,14 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/job-search-emails",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/cron/booking-reminders",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/execthread-sync",
       "schedule": "0 8 * * 1"
     },

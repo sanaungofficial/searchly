@@ -13,3 +13,18 @@ export {
   liveReminderSms,
 } from "@/lib/comms/sms-templates";
 export { sendSmsAdminTest, smsAdminStatus } from "@/lib/comms/sms-admin";
+export {
+  sendKimchiEmail,
+  kimchiEmailConfigured,
+  shouldSendAutomatedKimchiEmail,
+  type KimchiEmailTemplate,
+} from "@/lib/comms/send-email";
+export {
+  appBaseUrl,
+  coachEmailShell,
+  ctaButton,
+  emailPreferencesUrl,
+  emailShell,
+  escapeHtml,
+  KIMCHI_EMAIL_FROM,
+} from "@/lib/comms/email-shell";
