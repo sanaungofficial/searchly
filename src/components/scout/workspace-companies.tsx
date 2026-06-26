@@ -96,7 +96,7 @@ function humanizeApiError(message: string | undefined, status: number): string {
     return "AI scanning isn't available on staging — try on app.kimchi.so.";
   }
   if (message?.includes("target roles")) {
-    return "Add target roles in Profile → Target Roles (or below) to find matching jobs.";
+    return "Add target roles in Profile → Target Roles to find matching jobs.";
   }
   if (message?.includes("Careers URL or website")) {
     return "Add a careers URL (or website) before scanning.";
@@ -875,7 +875,7 @@ function CompanyDrawer({
 
   async function handleScan() {
     if (!matchRoles.length) {
-      setScanError("Add target roles in Profile → Target Roles (or below) before scanning.");
+      setScanError("Add target roles in Profile → Target Roles before scanning.");
       return;
     }
     setScanning(true); setScanError(null);
@@ -1085,10 +1085,12 @@ export function WorkspaceCompanies({
   onOpenProspectJob,
   selectedCompanyId = null,
   onCompanySelect,
+  embeddedInProfile = false,
 }: {
   onOpenProspectJob?: (companyName: string, job: CachedJob) => void;
   selectedCompanyId?: string | null;
   onCompanySelect?: (id: string | null) => void;
+  embeddedInProfile?: boolean;
 }) {
   const isMobile = useIsMobile();
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
@@ -1248,19 +1250,32 @@ export function WorkspaceCompanies({
   const selectedCompany = companies.find((c) => c.id === selectedId) ?? null;
 
   const thStyle: React.CSSProperties = { fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "8px 12px", textAlign: "left", whiteSpace: "nowrap", borderBottom: border.line, background: surface.inset };
-  const contentPad = isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
+  const contentPad = embeddedInProfile
+    ? "0 0 40px 0"
+    : isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const sortedCompanies = sortCompanies(companies);
 
   return (
     <div style={{ padding: contentPad, boxSizing: "border-box", width: "100%", overflowX: "hidden" }}>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-          <ScoutLabel>Dream employers</ScoutLabel>
-        </div>
+        {!embeddedInProfile && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+            <ScoutLabel>Target companies</ScoutLabel>
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>Track companies you care about</ScoutDisplayTitle>
+            {embeddedInProfile ? (
+              <>
+                <ScoutLabel>Target companies</ScoutLabel>
+                <ScoutDisplayTitle size={isMobile ? 22 : 26} style={{ margin: "8px 0" }}>
+                  Companies you&apos;re targeting
+                </ScoutDisplayTitle>
+              </>
+            ) : (
+              <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>Track companies you care about</ScoutDisplayTitle>
+            )}
             <p style={{ fontFamily: fontSans, fontSize: isMobile ? T.bodySm : T.body, color: color.muted, margin: 0, lineHeight: 1.6 }}>
               {companies.length} {companies.length === 1 ? "company" : "companies"} on your watchlist — scan careers pages for matching roles.
             </p>

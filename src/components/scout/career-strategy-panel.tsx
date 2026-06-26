@@ -560,8 +560,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
             Target companies (watchlist)
           </p>
-          <button type="button" onClick={() => router.push("/opportunities/companies")} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", fontFamily: fontSans, fontSize: 12 }}>
-            Manage in Companies →
+          <button type="button" onClick={() => router.push("/profile/target-companies")} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", fontFamily: fontSans, fontSize: 12 }}>
+            Manage in Target Companies →
           </button>
         </div>
         {companies.length === 0 ? (

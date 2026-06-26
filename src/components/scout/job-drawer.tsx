@@ -180,11 +180,11 @@ function CompanyTrackPanel({
             <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: color.forest }}>On your watchlist</span>
           </div>
           <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
-            Scan open roles, enrich company intel, and manage notes from Companies.
+            Scan open roles, enrich company intel, and manage notes from Target Companies.
           </p>
           <button
             type="button"
-            onClick={() => router.push("/opportunities/companies")}
+            onClick={() => router.push("/profile/target-companies")}
             style={{
               padding: "10px 18px",
               background: color.forest,
@@ -198,7 +198,7 @@ function CompanyTrackPanel({
               border: lineStrong,
             }}
           >
-            Open in Companies →
+            Open in Target Companies →
           </button>
         </>
       ) : (
@@ -557,7 +557,7 @@ function JobDescriptionPanel({
       <div style={{ marginBottom: 22 }}>
         <SectionTitle icon={<IconBriefcase />}>Job description</SectionTitle>
         <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.65, margin: 0 }}>
-          Full posting text isn&apos;t available yet. Open the job link below or refresh matching roles on Companies.
+          Full posting text isn&apos;t available yet. Open the job link below or refresh matching roles in Target Companies.
         </p>
       </div>
     );

@@ -359,7 +359,7 @@ export default function OnboardingPage() {
       }).catch(() => {});
 
       const finishDestination =
-        companiesSnapshot.length > 0 ? "/opportunities/companies" : "/profile/dream-role";
+        companiesSnapshot.length > 0 ? "/profile/target-companies" : "/profile/dream-role";
 
       router.push(finishDestination);
     } catch {
@@ -370,7 +370,7 @@ export default function OnboardingPage() {
       }).catch(() => {});
       writeOnboardingFinishPayload({ primaryAssetId, autoRunMatch: false });
       router.push(
-        companiesSnapshot.length > 0 ? "/opportunities/companies" : "/profile/dream-role"
+        companiesSnapshot.length > 0 ? "/profile/target-companies" : "/profile/dream-role"
       );
     }
   }, [

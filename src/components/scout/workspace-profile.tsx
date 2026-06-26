@@ -13,7 +13,13 @@ import {
   profileAboutSectionUrl,
   profileAssetsUrl,
   profileLearningPathUrl,
+  profileTargetCompaniesUrl,
+  pipelineProspectUrl,
+  prospectPathId,
 } from "@/lib/workspace-urls";
+import type { CachedJob } from "@/lib/cached-job";
+import { writeProspectJobCache } from "@/lib/prospect-jobs-cache";
+import { WorkspaceCompanies } from "./workspace-companies";
 import {
   AVAILABLE_ROLES,
   UPSKILL_CATEGORIES,
@@ -2642,7 +2648,7 @@ function CareerPreferencesPanel({ profile, onSave }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type PageTab = "dreamrole" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
+type PageTab = "dreamrole" | "targetcompanies" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "experience", "education", "skills"];
@@ -2687,6 +2693,7 @@ export function WorkspaceProfile() {
   const setPage = (tab: PageTab) => {
     if (tab === "about") router.push("/profile");
     else if (tab === "dreamrole") router.push("/profile/dream-role");
+    else if (tab === "targetcompanies") router.push("/profile/target-companies");
     else if (tab === "learning") router.push("/profile/learning-path");
     else if (tab === "assets") router.push("/profile/assets");
     else if (tab === "preferences") router.push("/profile/preferences");
@@ -2897,6 +2904,17 @@ export function WorkspaceProfile() {
     router.push(profileLearningPathUrl(skill));
   };
 
+  const openCompanyProspectJob = useCallback((companyName: string, job: CachedJob) => {
+    const prospectId = prospectPathId(job);
+    writeProspectJobCache({
+      prospectId,
+      job,
+      companyName,
+      fetchedAt: Date.now(),
+    });
+    router.push(pipelineProspectUrl(prospectId));
+  }, [router]);
+
   const addSkillGoal = (skill: string, role: string) => {
     if (hasSkillGoal(skill, role)) return;
     const next = [...skillGoals, buildSkillGoal(skill, role)];
@@ -3104,6 +3122,7 @@ export function WorkspaceProfile() {
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
     { id: "dreamrole", label: isMobile ? "Roles" : "Target Roles" },
+    { id: "targetcompanies", label: isMobile ? "Cos." : "Target Companies" },
     { id: "strategy", label: isMobile ? "Strategy" : "Career Strategy" },
     { id: "learning", label: "Upskill" },
     { id: "assets", label: "Resumes" },
@@ -3315,6 +3334,15 @@ export function WorkspaceProfile() {
             onGoToUpskill={goToUpskill}
             onClearUpskillPrompt={() => setUpskillPrompt(null)}
             onInitRoleSettings={initRoleSettings}
+          />
+        )}
+
+        {page === "targetcompanies" && (
+          <WorkspaceCompanies
+            embeddedInProfile
+            onOpenProspectJob={openCompanyProspectJob}
+            selectedCompanyId={profileLoc.companyId ?? null}
+            onCompanySelect={(id) => router.push(profileTargetCompaniesUrl(id))}
           />
         )}
 

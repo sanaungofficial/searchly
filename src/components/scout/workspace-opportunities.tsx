@@ -28,7 +28,6 @@ import type { NetworkJobListing } from "@/lib/network-job-display";
 import { buildNetworkProspectCard } from "@/lib/network-job-display";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
-  companiesUrl,
   findKanbanCardByDbId,
   legacyOpportunitiesQueryToPath,
   networkJobUrl,
@@ -36,9 +35,9 @@ import {
   parseOpportunitiesLocation,
   pipelineJobUrl,
   pipelineProspectUrl,
+  parseLegacyCompaniesRedirect,
   prospectPathId,
 } from "@/lib/workspace-urls";
-import { WorkspaceCompanies } from "./workspace-companies";
 import { JobDrawer, type DrawerTool } from "./job-drawer";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
@@ -48,7 +47,7 @@ import { readProspectJobCache, writeProspectJobCache } from "@/lib/prospect-jobs
 
 export type { DrawerTool };
 
-type OppTab = "pipeline" | "network" | "companies";
+type OppTab = "pipeline" | "network";
 
 // Props now sourced from WorkspaceContext
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -75,11 +74,16 @@ export function WorkspaceOpportunities() {
       router.replace(legacyPath);
       return;
     }
+    const companiesRedirect = parseLegacyCompaniesRedirect(pathname);
+    if (companiesRedirect) {
+      router.replace(companiesRedirect);
+      return;
+    }
     if (searchParams.get("addJob") === "1") {
       setShowAddPanel(true);
       router.replace("/opportunities/pipeline");
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, pathname]);
 
   const loadProspectFromPath = useCallback(async (prospectId: string) => {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
@@ -493,7 +497,6 @@ export function WorkspaceOpportunities() {
                 {([
                   ["pipeline", "Open Roles"],
                   ["network", "In-Network Roles"],
-                  ["companies", "Companies"],
                 ] as [OppTab, string][]).map(([id, label]) => {
                   const active = tab === id;
                   return (
@@ -536,7 +539,7 @@ export function WorkspaceOpportunities() {
             }}
           >
             <DataSourcesPopover compact />
-            {tab !== "companies" && tab !== "network" && (
+            {tab !== "network" && (
               <button
                 onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
                 style={{
@@ -598,7 +601,6 @@ export function WorkspaceOpportunities() {
             {([
               ["pipeline", "Open Roles"],
               ["network", "In-Network Roles"],
-              ["companies", "Companies"],
             ] as [OppTab, string][]).map(([id, label]) => {
               const active = tab === id;
               return (
@@ -627,7 +629,7 @@ export function WorkspaceOpportunities() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <DataSourcesPopover compact />
-            {tab !== "companies" && tab !== "network" && (
+            {tab !== "network" && (
               <button
                 onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
                 style={{
@@ -710,13 +712,6 @@ export function WorkspaceOpportunities() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {tab === "companies" && (
-          <WorkspaceCompanies
-            onOpenProspectJob={openProspectJob}
-            selectedCompanyId={loc.companyId ?? null}
-            onCompanySelect={(id) => router.push(companiesUrl(id))}
-          />
-        )}
         {tab === "network" && (
           <PipelineNetworkSection
             onOpenJob={openNetworkJob}

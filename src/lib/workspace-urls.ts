@@ -2,7 +2,7 @@ import type { DrawerTool } from "@/contexts/workspace-context";
 import type { CachedJob } from "@/lib/cached-job";
 import { normalizeJobUrl } from "@/lib/cached-job";
 
-export type OppTab = "pipeline" | "companies" | "network";
+export type OppTab = "pipeline" | "network";
 export type AboutSectionSlug = "personal" | "education" | "experience" | "skills";
 
 const JOB_TOOLS = new Set(["resume", "cover", "fit"]);
@@ -55,8 +55,12 @@ export function pipelineProspectUrl(prospectId: string): string {
 }
 
 export function companiesUrl(companyId?: string | null): string {
-  if (!companyId) return "/opportunities/companies";
-  return `/opportunities/companies/${encodeURIComponent(companyId)}`;
+  return profileTargetCompaniesUrl(companyId);
+}
+
+export function profileTargetCompaniesUrl(companyId?: string | null): string {
+  if (!companyId) return "/profile/target-companies";
+  return `/profile/target-companies/${encodeURIComponent(companyId)}`;
 }
 
 export function networkJobUrl(jobId: string): string {
@@ -64,7 +68,6 @@ export function networkJobUrl(jobId: string): string {
 }
 
 export function opportunitiesTabUrl(tab: OppTab): string {
-  if (tab === "companies") return "/opportunities/companies";
   if (tab === "network") return "/opportunities/network";
   return "/opportunities/pipeline";
 }
@@ -94,7 +97,25 @@ export type OpportunitiesLocation = {
   networkJobId?: string;
 };
 
+/** @deprecated Legacy opportunities companies URLs — use profileTargetCompaniesUrl */
+export function parseLegacyCompaniesRedirect(pathname: string): string | null {
+  if (pathname === "/opportunities/companies") return profileTargetCompaniesUrl();
+  if (pathname.startsWith("/opportunities/companies/")) {
+    const companyId = decodeURIComponent(pathname.slice("/opportunities/companies/".length).split("/")[0] ?? "");
+    return companyId ? profileTargetCompaniesUrl(companyId) : profileTargetCompaniesUrl();
+  }
+  return null;
+}
+
 export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocation {
+  const legacyCompanies = parseLegacyCompaniesRedirect(pathname);
+  if (legacyCompanies) {
+    const companyId = pathname.startsWith("/opportunities/companies/")
+      ? decodeURIComponent(pathname.slice("/opportunities/companies/".length).split("/")[0] ?? "")
+      : undefined;
+    return { tab: "pipeline", companyId: companyId || undefined };
+  }
+
   const segments = pathname.split("/").filter(Boolean);
 
   if (segments[0] !== "opportunities") {
@@ -102,9 +123,6 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
   }
 
   const section = segments[1];
-  if (section === "companies") {
-    return { tab: "companies", companyId: segments[2] || undefined };
-  }
   if (section === "network") {
     if (segments[2] === "jobs" && segments[3]) {
       return { tab: "network", networkJobId: decodeURIComponent(segments[3]) };
@@ -133,9 +151,10 @@ export function parseOpportunitiesLocation(pathname: string): OpportunitiesLocat
 }
 
 export type ProfileLocation = {
-  page: "about" | "dreamrole" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
+  page: "about" | "dreamrole" | "targetcompanies" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
   aboutSection?: AboutSectionSlug;
   assetId?: string;
+  companyId?: string;
 };
 
 export function parseProfileLocation(pathname: string): ProfileLocation {
@@ -144,6 +163,12 @@ export function parseProfileLocation(pathname: string): ProfileLocation {
   if (pathname === "/profile/preferences") return { page: "preferences" };
   if (pathname === "/profile/linkedin") return { page: "linkedin" };
   if (pathname === "/profile/career-strategy") return { page: "strategy" };
+
+  if (pathname.startsWith("/profile/target-companies/") && pathname !== "/profile/target-companies") {
+    const companyId = decodeURIComponent(pathname.slice("/profile/target-companies/".length).split("/")[0] ?? "");
+    return { page: "targetcompanies", companyId: companyId || undefined };
+  }
+  if (pathname === "/profile/target-companies") return { page: "targetcompanies" };
 
   if (pathname.startsWith("/profile/assets/") && pathname !== "/profile/assets") {
     const assetId = decodeURIComponent(pathname.slice("/profile/assets/".length).split("/")[0] ?? "");

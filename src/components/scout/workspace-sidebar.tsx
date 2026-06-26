@@ -80,7 +80,6 @@ const NAV_COMMUNITY: NavItem[] = [
 const OPP_SUBNAV = [
   { label: "Open Roles", path: "/opportunities/pipeline" },
   { label: "In-Network Roles", path: "/opportunities/network" },
-  { label: "Companies", path: "/opportunities/companies" },
 ] as const;
 
 function SidebarSectionLabel({ children, isRail }: { children: React.ReactNode; isRail: boolean }) {

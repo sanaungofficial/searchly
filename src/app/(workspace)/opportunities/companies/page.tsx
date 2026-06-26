@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 export default function CompaniesPage() {
-  return null;
+  redirect("/profile/target-companies");
 }
