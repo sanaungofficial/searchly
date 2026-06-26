@@ -55,6 +55,7 @@ export async function POST(request: Request) {
   let profileGaps = body.profileGaps;
   let strategySnippet = body.strategySnippet ?? "";
   let pipelineSnippet = body.pipelineSnippet ?? "";
+  let assistantCtx = null as Awaited<ReturnType<typeof buildAssistantContext>> | null;
 
   if (!profileGaps || (!strategySnippet && !pipelineSnippet)) {
     const user = await prisma.user.findUnique({
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
       include: { profile: true, subscription: true },
     });
     if (user) {
-      const assistantCtx = await buildAssistantContext({ user });
+      assistantCtx = await buildAssistantContext({ user });
       profileGaps = profileGaps ?? assistantCtx.profileGaps;
       strategySnippet = strategySnippet || assistantCtx.strategySnippet;
       pipelineSnippet = pipelineSnippet || assistantCtx.pipelineSnippet;
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
     assistantMessage,
     threadContext,
     profileGaps,
+    ctx: assistantCtx,
   });
 
   if (!body.useAi) {

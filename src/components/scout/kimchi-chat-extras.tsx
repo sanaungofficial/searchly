@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { AssistantChip } from "@/lib/kimchi-assistant/chat-chips";
+import type { AssistantChip, KnowsYouPreview } from "@/lib/kimchi-assistant/chat-chips";
 import type { AssistantSuggestion, AssistantInboxSnapshot } from "@/lib/kimchi-assistant/types";
 import { InboxInsightRow } from "@/components/scout/inbox/inbox-insight-row";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
@@ -217,14 +217,27 @@ export function KimchiChipRow({
 export function KimchiStarterSection({
   actions,
   chatChips,
+  knowsYou,
   onActivate,
 }: {
   actions: AssistantChip[];
   chatChips: AssistantChip[];
+  knowsYou?: KnowsYouPreview | null;
   onActivate: (chip: AssistantChip) => void;
 }) {
   return (
     <div className="kimchi-starter">
+      {knowsYou && (
+        <div className="kimchi-knows-you">
+          <p className="kimchi-knows-you__label">Kimchi knows you</p>
+          <p className="kimchi-knows-you__headline">{knowsYou.headline}</p>
+          {knowsYou.details.map((detail) => (
+            <p key={detail} className="kimchi-knows-you__detail">
+              {detail}
+            </p>
+          ))}
+        </div>
+      )}
       <KimchiAssistantChipRow label="Do this" chips={actions} layout="inline" onActivate={onActivate} />
       <KimchiAssistantChipRow label="Or ask" chips={chatChips} layout="inline" onActivate={onActivate} />
       <KimchiStarterStyles />
@@ -240,6 +253,40 @@ function KimchiStarterStyles() {
         flex-direction: column;
         gap: 2px;
         margin-bottom: 8px;
+      }
+      .kimchi-knows-you {
+        margin: 0 0 10px;
+        padding: 10px 12px;
+        background: linear-gradient(135deg, rgba(124, 92, 191, 0.08) 0%, rgba(45, 154, 106, 0.08) 100%);
+        border: 1px solid rgba(26, 58, 47, 0.1);
+        border-radius: 10px;
+      }
+      .kimchi-knows-you__label {
+        margin: 0 0 4px;
+        font-family: ${sans};
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(26, 58, 47, 0.48);
+      }
+      .kimchi-knows-you__headline {
+        margin: 0 0 4px;
+        font-family: ${sans};
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.35;
+        color: #1A3A2F;
+      }
+      .kimchi-knows-you__detail {
+        margin: 0;
+        font-family: ${sans};
+        font-size: 12px;
+        line-height: 1.4;
+        color: rgba(26, 58, 47, 0.72);
+      }
+      .kimchi-knows-you__detail + .kimchi-knows-you__detail {
+        margin-top: 2px;
       }
     `}</style>
   );

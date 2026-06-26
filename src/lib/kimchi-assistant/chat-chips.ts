@@ -68,6 +68,204 @@ export function guidanceForChip(chip: AssistantChip): string | null {
 
 export const NEW_THREAD_TITLE = "New thread";
 
+export type KnowsYouPreview = {
+  headline: string;
+  details: string[];
+};
+
+function strategyTargetRoles(ctx: AssistantContextPayload | null | undefined): string | null {
+  return ctx?.strategySnippet.match(/Target roles: ([^\n]+)/)?.[1]?.trim() ?? null;
+}
+
+function firstPipelineRole(ctx: AssistantContextPayload | null | undefined): string | null {
+  const line = ctx?.pipelineSnippet.match(/^- (.+?) \(/m)?.[1];
+  if (!line) return null;
+  return line.split(" at ")[0]?.trim() ?? line;
+}
+
+function expandStrategyChip(ctx?: AssistantContextPayload | null): AssistantChip {
+  const target = strategyTargetRoles(ctx);
+  return {
+    id: "expand-strategy",
+    label: "Expand my strategy",
+    variant: "chat",
+    tone: "violet",
+    action: {
+      type: "chat",
+      prompt: target
+        ? `Based on my career strategy and targeting ${target}, what should I sharpen or add this week?`
+        : "Based on my career strategy, what should I expand or sharpen this week?",
+    },
+  };
+}
+
+function openStrategyChip(ctx?: AssistantContextPayload | null): AssistantChip {
+  if (ctx?.profileGaps.hasStrategyDoc) return expandStrategyChip(ctx);
+  return {
+    id: "open-strategy",
+    label: "Create your strategy",
+    variant: "action",
+    tone: "violet",
+    action: { type: "open_strategy" },
+  };
+}
+
+function buildPersonalizedChatStarters(ctx: AssistantContextPayload): AssistantChip[] {
+  const chips: AssistantChip[] = [];
+  const target = strategyTargetRoles(ctx);
+
+  if (ctx.profileGaps.hasStrategyDoc) {
+    chips.push(expandStrategyChip(ctx));
+    chips.push({
+      id: "focus-week-personal",
+      label: "This week's focus",
+      variant: "chat",
+      tone: "rose",
+      action: {
+        type: "chat",
+        prompt: target
+          ? `Given my strategy, pipeline, and profile — I'm targeting ${target}. What should I focus on this week?`
+          : "Given everything you know about me — my strategy, pipeline, and profile — what should I focus on this week?",
+      },
+    });
+  }
+
+  if (ctx.profileGaps.hasPipelineJobs && ctx.pipelineSnippet !== "Pipeline is empty.") {
+    const role = firstPipelineRole(ctx);
+    chips.push({
+      id: "pipeline-personal",
+      label: role ? `Status on ${role}` : "Review my pipeline",
+      variant: "chat",
+      tone: "mint",
+      action: {
+        type: "chat",
+        prompt: role
+          ? `Walk me through my pipeline — start with ${role}. What's strong, what's stale, and what am I missing?`
+          : "Walk me through my pipeline — what's strong, what's stale, and what am I missing?",
+      },
+    });
+  }
+
+  const followUp = ctx.suggestions.find((s) => s.id === "follow-up");
+  if (followUp) {
+    chips.push(suggestionToChatChip(followUp));
+  }
+
+  const interview = ctx.suggestions.find((s) => s.id === "interview-prep");
+  if (interview) {
+    chips.push(suggestionToChatChip(interview));
+  }
+
+  return chips;
+}
+
+function buildPersonalizedFollowUpExtras(
+  ctx: AssistantContextPayload,
+  combined: string,
+): AssistantChip[] {
+  const out: AssistantChip[] = [];
+
+  if (
+    ctx.profileGaps.hasStrategyDoc &&
+    /strategy|plan|priorit|focus|timeline|goal|week/i.test(combined)
+  ) {
+    out.push(expandStrategyChip(ctx));
+  }
+
+  if (ctx.profileGaps.hasPipelineJobs && /pipeline|application|role|job|apply|interview/i.test(combined)) {
+    const interviewing = ctx.suggestions.find((s) => s.id === "interview-prep");
+    if (interviewing) {
+      out.push(suggestionToChatChip(interviewing));
+    } else {
+      const role = firstPipelineRole(ctx);
+      if (role) {
+        out.push({
+          id: "pipeline-status",
+          label: `Next step on ${role}`,
+          variant: "chat",
+          tone: "mint",
+          action: {
+            type: "chat",
+            prompt: `Based on my pipeline, what's the best next move on ${role}?`,
+          },
+        });
+      }
+    }
+  }
+
+  if (ctx.inbox.pendingCount > 0) {
+    const topEmail = ctx.inbox.activities[0];
+    if (topEmail) {
+      const label = topEmail.companyGuess
+        ? `Reply to ${topEmail.companyGuess}`
+        : "Review inbox email";
+      out.push({
+        id: `inbox-${topEmail.id}`,
+        label,
+        variant: "chat",
+        tone: "amber",
+        action: {
+          type: "chat",
+          prompt: `Help me decide what to do about this email${topEmail.companyGuess ? ` from ${topEmail.companyGuess}` : ""}: ${(topEmail.title || topEmail.snippet || "").slice(0, 220)}`,
+        },
+      });
+    }
+  }
+
+  return out;
+}
+
+function shouldSkipChipForContext(chip: AssistantChip, ctx?: AssistantContextPayload | null): boolean {
+  if (!ctx) return false;
+  if (chip.action.type === "navigate" && chip.action.href === "/inbox" && ctx.inbox.pendingCount === 0) {
+    return true;
+  }
+  if (chip.id === "strategy" && ctx.profileGaps.hasStrategyDoc) return true;
+  if (chip.id === "create-strategy" && ctx.profileGaps.hasStrategyDoc) return true;
+  if (chip.id === "resume" && ctx.profileGaps.hasResume) return true;
+  if (chip.id === "upskill" && ctx.suggestions.some((s) => s.id.startsWith("apply-"))) return true;
+  return false;
+}
+
+export function buildKnowsYouPreview(ctx: AssistantContextPayload | null): KnowsYouPreview | null {
+  if (!ctx) return null;
+
+  const hasPersonalData =
+    ctx.profileGaps.hasStrategyDoc ||
+    ctx.profileGaps.hasResume ||
+    ctx.profileGaps.hasPipelineJobs ||
+    !!ctx.knowsYouSnippet?.trim();
+
+  if (!hasPersonalData && ctx.summary === "Getting started with Kimchi.") {
+    return null;
+  }
+
+  const headline =
+    ctx.summary !== "Getting started with Kimchi." ? ctx.summary : "I'm learning your search";
+  const details: string[] = [];
+
+  const target = strategyTargetRoles(ctx);
+  if (ctx.profileGaps.hasStrategyDoc && target) {
+    details.push(`Strategy: targeting ${target}`);
+  } else if (ctx.profileGaps.hasStrategyDoc) {
+    details.push("Career strategy doc on file");
+  }
+
+  if (ctx.profileGaps.hasPipelineJobs) {
+    const firstLine = ctx.pipelineSnippet.split("\n")[0]?.replace(/^- /, "");
+    if (firstLine) details.push(`Pipeline: ${firstLine}`);
+  }
+
+  const resumeLine = ctx.knowsYouSnippet
+    ?.split("\n")
+    .find((l) => l.includes("Master resume") || l.includes("Resume text"));
+  if (resumeLine) {
+    details.push(resumeLine.replace(/^Master resume on file: /, "Resume: "));
+  }
+
+  return { headline, details: details.slice(0, 2) };
+}
+
 const GENERIC_CHAT_STARTERS: AssistantChip[] = [
   {
     id: "plan-search",
@@ -218,12 +416,15 @@ function suggestionToChatChip(s: AssistantSuggestion): AssistantChip {
 export function buildStarterActions(ctx: AssistantContextPayload | null): AssistantChip[] {
   const fromContext = (ctx?.suggestions ?? [])
     .map(suggestionToActionChip)
-    .filter(Boolean) as AssistantChip[];
+    .filter(Boolean)
+    .filter((c) => !shouldSkipChipForContext(c, ctx)) as AssistantChip[];
+
+  if (fromContext.length >= 3) return fromContext.slice(0, 4);
 
   const seen = new Set(fromContext.map((c) => c.id));
   const extras = DEFAULT_ACTIONS.filter((c) => {
     if (seen.has(c.id)) return false;
-    if (c.id === "strategy" && ctx?.profileGaps?.hasStrategyDoc) return false;
+    if (shouldSkipChipForContext(c, ctx)) return false;
     if (c.id === "strategy" && seen.has("create-strategy")) return false;
     return true;
   });
@@ -231,14 +432,30 @@ export function buildStarterActions(ctx: AssistantContextPayload | null): Assist
 }
 
 export function buildStarterChatChips(ctx: AssistantContextPayload | null): AssistantChip[] {
-  const fromContext = (ctx?.suggestions ?? [])
+  const fromSuggestions = (ctx?.suggestions ?? [])
     .filter((s) => !suggestionToActionChip(s))
     .slice(0, 3)
     .map(suggestionToChatChip);
 
-  const seen = new Set(fromContext.map((c) => c.label));
-  const extras = GENERIC_CHAT_STARTERS.filter((c) => !seen.has(c.label));
-  return [...fromContext, ...extras].slice(0, 4);
+  const personalized = ctx ? buildPersonalizedChatStarters(ctx) : [];
+  const merged: AssistantChip[] = [];
+  const seen = new Set<string>();
+
+  for (const chip of [...fromSuggestions, ...personalized]) {
+    if (seen.has(chip.label)) continue;
+    seen.add(chip.label);
+    merged.push(chip);
+  }
+
+  if (merged.length < 3) {
+    for (const chip of GENERIC_CHAT_STARTERS) {
+      if (seen.has(chip.label)) continue;
+      seen.add(chip.label);
+      merged.push(chip);
+    }
+  }
+
+  return merged.slice(0, 4);
 }
 
 const TOPIC_RULES: Array<{ match: RegExp; chips: AssistantChip[] }> = [
@@ -480,58 +697,77 @@ export function buildFollowUpChips(params: {
   assistantMessage: string;
   threadContext?: string;
   profileGaps?: AssistantProfileGaps;
+  ctx?: AssistantContextPayload | null;
 }): AssistantChip[] {
+  const ctx = params.ctx;
+  const profileGaps = params.profileGaps ?? ctx?.profileGaps;
   const combined = [params.threadContext, params.userMessage, params.assistantMessage]
     .filter(Boolean)
     .join("\n");
   const out: AssistantChip[] = [];
   const usedLabels = new Set<string>();
 
-  if (
-    params.profileGaps &&
-    !params.profileGaps.hasStrategyDoc &&
-    /strategy|career plan|north star|goals doc|priorit|timeline|focus on/i.test(combined)
-  ) {
-    out.push({
-      id: "create-strategy",
-      label: "Create your strategy",
-      variant: "action",
-      tone: "violet",
-      action: { type: "open_strategy" },
-    });
-    usedLabels.add("Create your strategy");
+  const pushChip = (chip: AssistantChip) => {
+    if (usedLabels.has(chip.label)) return;
+    if (shouldSkipChipForContext(chip, ctx)) return;
+    usedLabels.add(chip.label);
+    out.push(chip);
+  };
+
+  if (ctx?.suggestions?.length) {
+    for (const s of ctx.suggestions.slice(0, 4)) {
+      const chip = suggestionToActionChip(s) ?? suggestionToChatChip(s);
+      pushChip(chip);
+      if (out.length >= 3) break;
+    }
   }
 
   if (
-    params.profileGaps &&
-    !params.profileGaps.hasResume &&
+    profileGaps &&
+    !profileGaps.hasStrategyDoc &&
+    /strategy|career plan|north star|goals doc|priorit|timeline|focus on/i.test(combined)
+  ) {
+    pushChip(openStrategyChip(ctx));
+  } else if (profileGaps?.hasStrategyDoc && /strategy|plan|priorit|focus|timeline|goal/i.test(combined)) {
+    pushChip(expandStrategyChip(ctx));
+  }
+
+  if (
+    profileGaps &&
+    !profileGaps.hasResume &&
     /resume|bullet|position|CV|curriculum/i.test(combined)
   ) {
-    out.push({
+    pushChip({
       id: "open-resume-gap",
       label: "Upload your resume",
       variant: "action",
       tone: "sky",
       action: { type: "navigate", href: "/profile/assets" },
     });
-    usedLabels.add("Upload your resume");
   }
 
   for (const rule of TOPIC_RULES) {
     if (!rule.match.test(combined)) continue;
     for (const chip of rule.chips) {
-      if (usedLabels.has(chip.label)) continue;
-      if (chip.id === "open-strategy" && params.profileGaps?.hasStrategyDoc) continue;
-      usedLabels.add(chip.label);
-      out.push(chip);
+      if (chip.id === "open-strategy") {
+        pushChip(openStrategyChip(ctx));
+        continue;
+      }
+      if (shouldSkipChipForContext(chip, ctx)) continue;
+      pushChip(chip);
+      if (out.length >= 5) return out;
+    }
+  }
+
+  if (ctx) {
+    for (const chip of buildPersonalizedFollowUpExtras(ctx, combined)) {
+      pushChip(chip);
       if (out.length >= 5) return out;
     }
   }
 
   for (const chip of FALLBACK_DRILLDOWNS) {
-    if (usedLabels.has(chip.label)) continue;
-    usedLabels.add(chip.label);
-    out.push(chip);
+    pushChip(chip);
     if (out.length >= 5) break;
   }
 
@@ -559,7 +795,7 @@ export function legacyToChips(chips: ChatChip[]): AssistantChip[] {
 }
 
 export const WELCOME_MESSAGE =
-  "Hey — pick an action below or ask me anything about your search.";
+  "Hey — I can see your profile and search context. Pick something below or ask me anything.";
 
 export function isFailedAssistantReply(text: string): boolean {
   return /couldn't generate|didn't get a reply|Something went wrong|hit a snag|isn't available in this environment|That didn't work|Couldn't reach Kimchi/i.test(
