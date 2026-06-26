@@ -68,9 +68,9 @@ export function ScoutLabel({ children }: { children: ReactNode }) {
     <span
       style={{
         fontFamily: "var(--font-ui)",
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 600,
-        letterSpacing: "0.1em",
+        letterSpacing: "0.08em",
         textTransform: "uppercase",
         color: "var(--scout-muted)",
       }}
