@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AgentMicrophone,
-  AgentPlayer,
   AgentSession,
   type AgentSettingsObject,
   type ConversationTextMessage,
 } from "@deepgram/agents";
 import type { VoiceOrbState } from "@/components/voice/voice-orb";
+import { VOICE_AGENT_AUDIO } from "@/lib/voice-agent-audio";
+import { VoiceAgentPlayer } from "@/lib/voice-agent-player";
 import {
   applyVoiceAgentField,
   type VoiceAgentFieldName,
@@ -69,7 +70,7 @@ export function useVoiceAgentSession({
 
   const sessionRef = useRef<AgentSession | null>(null);
   const micRef = useRef<AgentMicrophone | null>(null);
-  const playerRef = useRef<AgentPlayer | null>(null);
+  const playerRef = useRef<VoiceAgentPlayer | null>(null);
   const transcriptRef = useRef<Array<{ role: string; content: string }>>([]);
   const rafRef = useRef<number | null>(null);
   const uiModeRef = useRef<VoiceOrbState>("idle");
@@ -175,11 +176,19 @@ export function useVoiceAgentSession({
           tokenFactory: fetchVoiceAgentToken,
         },
         agent: agentSettings,
+        audio: VOICE_AGENT_AUDIO,
         tags: ["kimchi", context],
       });
 
-      const player = new AgentPlayer();
-      const mic = new AgentMicrophone((data) => session.sendAudio(data));
+      const player = new VoiceAgentPlayer();
+      await player.prepare();
+
+      const mic = new AgentMicrophone((data) => session.sendAudio(data), {
+        sampleRate: VOICE_AGENT_AUDIO.input.sampleRate,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      });
 
       session.on("audio", (chunk) => player.queue(chunk));
       session.on("user-started-speaking", () => {
