@@ -86,7 +86,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
           email: trimmedEmail,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?type=email`,
             data: { name: trimmedEmail.split("@")[0] },
           },
         });

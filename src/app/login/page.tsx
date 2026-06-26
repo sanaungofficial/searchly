@@ -16,6 +16,10 @@ function LoginContent() {
       setError("We signed you in but could not finish setting up your account. Please try again.");
     } else if (err === "no_code") {
       setError("Sign-in link expired or was invalid. Please try again.");
+    } else if (err.toLowerCase().includes("code verifier")) {
+      setError(
+        "This link must be opened in the same browser where you signed up. Try signing in with your email and password instead."
+      );
     } else if (err) {
       setError(decodeURIComponent(err));
     }

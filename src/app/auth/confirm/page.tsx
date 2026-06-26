@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
-function AuthCallbackContent() {
+function AuthConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [message, setMessage] = useState("Finishing sign-in…");
@@ -18,24 +18,10 @@ function AuthCallbackContent() {
       const next = searchParams.get("next") ?? "/";
       let authError: { message: string } | null = null;
 
-      const code = searchParams.get("code");
       const token_hash = searchParams.get("token_hash");
       const type = searchParams.get("type");
-      const oauthError =
-        searchParams.get("error_description") ??
-        searchParams.get("error");
 
-      if (oauthError) {
-        if (!cancelled) {
-          router.replace(`/login?error=${encodeURIComponent(oauthError)}`);
-        }
-        return;
-      }
-
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        authError = error;
-      } else if (token_hash && type) {
+      if (token_hash && type) {
         const { error } = await supabase.auth.verifyOtp({
           token_hash,
           type: type as EmailOtpType,
@@ -114,10 +100,10 @@ function AuthCallbackContent() {
   );
 }
 
-export default function AuthCallbackPage() {
+export default function AuthConfirmPage() {
   return (
     <Suspense>
-      <AuthCallbackContent />
+      <AuthConfirmContent />
     </Suspense>
   );
 }
