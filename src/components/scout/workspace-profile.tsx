@@ -273,6 +273,7 @@ interface ReadbackData {
 interface UserProfile {
   name: string;
   email: string | null;
+  avatarUrl?: string | null;
   resumeUrl: string | null;
   linkedinUrl: string | null;
   headline: string | null;
@@ -2792,14 +2793,19 @@ function AboutSectionCard({
   );
 }
 
-export function WorkspaceProfile() {
+type WorkspaceProfileProps = {
+  /** When set (admin client review route), load this user's profile — not the logged-in admin. */
+  adminClientUserId?: string;
+};
+
+export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = {}) {
   const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState<AboutSection>("personal");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const profileLoc = parseProfileLocation(pathname);
-  const clientId = profileLoc.clientId;
+  const clientId = adminClientUserId ?? profileLoc.clientId;
   const profileBase = profileBasePath(clientId);
   const api = (path: string) => withClientUserId(path, clientId);
   const page = profileLoc.page;
@@ -2856,6 +2862,9 @@ export function WorkspaceProfile() {
 
   useEffect(() => {
     setLoading(true);
+    setProfile(null);
+    setReadback(null);
+    legacyMigratedRef.current = false;
     fetch(api("/api/profile"), { cache: "no-store" })
       .then(async (r) => {
         const text = await r.text();
@@ -3411,7 +3420,7 @@ export function WorkspaceProfile() {
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-              <ScoutLabel>Your profile</ScoutLabel>
+              <ScoutLabel>{clientId ? "Client profile" : "Your profile"}</ScoutLabel>
             </div>
             <ScoutDisplayTitle size={28} style={{ marginBottom: 8 }}>
               {loading ? "Loading…" : profile?.name || "Your profile"}
@@ -3552,11 +3561,11 @@ export function WorkspaceProfile() {
               tabs={SIDEBAR_TABS}
               activePage={page as ProfileSidebarTab}
               onNavigate={(tab) => setPage(tab)}
-              name={profile?.name || user?.name || "Your profile"}
-              headline={profile?.headline || user?.headline}
+              name={profile?.name || (clientId ? "Client profile" : user?.name) || "Your profile"}
+              headline={profile?.headline || (clientId ? null : user?.headline)}
               location={profile?.parsedData?.location}
               educationLabel={primaryEducationLabel(education)}
-              avatarUrl={user?.avatarUrl}
+              avatarUrl={clientId ? profile?.avatarUrl : user?.avatarUrl}
               completenessPct={completenessPct}
               loading={loading}
               onCompletenessClick={missingItems.length > 0 ? () => setShowChecklist((s) => !s) : undefined}

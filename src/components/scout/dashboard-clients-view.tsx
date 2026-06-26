@@ -3,10 +3,10 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AdminClientsPanel } from "@/components/admin/admin-clients-panel";
-import { adminClientProfileBase } from "@/lib/workspace-urls";
 import { WorkspaceSubpageShell } from "@/components/scout/workspace-content";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
+import { navigateToAdminClientProfile } from "@/lib/admin-client-navigation";
 
 function DashboardClientsInner() {
   const router = useRouter();
@@ -41,7 +41,7 @@ function DashboardClientsInner() {
   }
 
   function viewClientProfile(userId: string) {
-    router.push(adminClientProfileBase(userId));
+    void navigateToAdminClientProfile(userId);
   }
 
   if (tab === "profile") {

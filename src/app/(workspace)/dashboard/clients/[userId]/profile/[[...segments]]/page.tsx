@@ -14,6 +14,6 @@ export default function AdminClientProfilePage({ params }: Props) {
 }
 
 async function AdminClientProfilePageInner({ params }: Props) {
-  await params;
-  return <WorkspaceProfile />;
+  const { userId } = await params;
+  return <WorkspaceProfile key={userId} adminClientUserId={userId} />;
 }
