@@ -5,6 +5,7 @@ import { normalizeSkillGoals, normalizeUpskillProgress } from "@/lib/upskill-pro
 import { normalizeTargetRoleSettings } from "@/lib/target-role-settings";
 import { upsertProfileFields } from "@/lib/profile-write";
 import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
+import { invalidateRecommendedSnapshotForUser } from "@/lib/recommended-jobs-snapshot";
 import { NextResponse } from "next/server";
 import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
@@ -118,6 +119,20 @@ export async function PATCH(request: Request) {
 
   if (Object.keys(profileUpdate).length > 0) {
     await upsertProfileFields(dbUser.id, profileUpdate);
+  }
+
+  const roleRankingChanged =
+    prioritizedRoles !== undefined ||
+    prioritizedCategories !== undefined ||
+    deprioritizedRoles !== undefined ||
+    deprioritizedCategories !== undefined;
+
+  if (roleRankingChanged) {
+    try {
+      await invalidateRecommendedSnapshotForUser(dbUser.id);
+    } catch (err) {
+      console.error("[profile PATCH] snapshot invalidation failed:", err);
+    }
   }
 
   const shouldSyncLinkedIn =

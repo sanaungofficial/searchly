@@ -105,6 +105,14 @@ export async function readRecommendedSnapshot(
   };
 }
 
+/** Drop today's cached recommended list so the next load picks up new role preferences. */
+export async function invalidateRecommendedSnapshotForUser(userId: string): Promise<void> {
+  const snapshotDate = utcSnapshotDate();
+  await prisma.recommendedJobSnapshot.deleteMany({
+    where: { userId, snapshotDate },
+  });
+}
+
 export async function runRecommendedJobsSnapshotCron(): Promise<RecommendedSnapshotCronSummary> {
   const snapshotDate = utcSnapshotDate();
   const limit = recommendedCronUserLimit();

@@ -69,11 +69,12 @@ describe("prioritized roles and categories", () => {
     expect(netAdjustment).toBeLessThan(0);
   });
 
-  it("builds match role list with prioritized before target", () => {
-    const roles = profileRoleTitlesForMatch({
-      prioritizedRoles: ["GTM Operations Manager"],
-      targetRoles: ["Commercial Product Lead", "GTM Operations Manager"],
-    });
-    expect(roles).toEqual(["GTM Operations Manager", "Commercial Product Lead"]);
+  it("matches product management pair inside a long deprioritized hirebase title", () => {
+    const { netAdjustment, deprioritizedMatch } = adjustMatchScoreForRoleTitlePreferences(
+      "Product Manager - Financial Operations",
+      { deprioritizedRoles: ["Principal I, Product Management"] },
+    );
+    expect(deprioritizedMatch).toBe("Principal I, Product Management");
+    expect(netAdjustment).toBeLessThan(0);
   });
 });

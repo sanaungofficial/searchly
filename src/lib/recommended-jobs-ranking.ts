@@ -1,6 +1,13 @@
 import { RECOMMENDED_MATCH_SCORE_FLOOR } from "@/lib/recommended-jobs-config";
 import { jobListingDedupeKey } from "@/lib/cached-job";
 import { compareJobFreshness, isRecommendedFreshnessVisible } from "@/lib/job-posted-freshness";
+import { matchScoreLabelFor } from "@/lib/match-score";
+import {
+  applyRoleTitlePreferenceToScore,
+  hasRoleTitlePreferenceSignals,
+  roleTitlePreferenceReasons,
+  type RoleTitlePreferences,
+} from "@/lib/role-title-preferences";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 export type RecommendedRankTier = 1 | 2 | 3;
@@ -83,4 +90,52 @@ export function finalizeRecommendedJobs(
     : enriched;
   const floored = applyRecommendedScoreFloor(freshnessFiltered);
   return sortRecommendedJobs(dedupeVectorMatchedJobs(floored)).slice(0, maxJobs);
+}
+
+function isStaleRolePreferenceReason(reason: string): boolean {
+  return (
+    reason.includes("deprioritized") ||
+    reason.includes("prioritized role") ||
+    reason.includes("target role") ||
+    reason.includes("Category boost") ||
+    reason.includes("Sorted lower")
+  );
+}
+
+/** Re-apply current profile role preferences to scored jobs (snapshot-safe). */
+export function applyRoleTitlePreferencesToMatchedJobs(
+  jobs: VectorMatchedJob[],
+  preferences: RoleTitlePreferences,
+): VectorMatchedJob[] {
+  if (!jobs.length || !hasRoleTitlePreferenceSignals(preferences)) {
+    return jobs;
+  }
+
+  const updated = jobs.map((job) => {
+    const categories = job.tags ?? [];
+    const base = job.baseMatchScore ?? job.matchScore;
+    const { matchScore, adjustment } = applyRoleTitlePreferenceToScore(
+      base,
+      job.title,
+      preferences,
+      categories,
+    );
+
+    const prefReasons = roleTitlePreferenceReasons(adjustment);
+    const otherReasons = job.matchReasons.filter((r) => !isStaleRolePreferenceReason(r));
+    const filteredOther =
+      adjustment.deprioritizedMatch || adjustment.deprioritizedCategoryMatch
+        ? otherReasons.filter((r) => !r.includes("matches your career targets"))
+        : otherReasons;
+
+    return {
+      ...job,
+      baseMatchScore: base,
+      matchScore,
+      matchLabel: matchScoreLabelFor(matchScore),
+      matchReasons: [...prefReasons, ...filteredOther].slice(0, 4),
+    };
+  });
+
+  return sortRecommendedJobs(updated);
 }

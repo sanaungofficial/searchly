@@ -60,6 +60,8 @@ export type VectorMatchedJob = CachedJob & {
   matchReasons: string[];
   matchedSkills: string[];
   gapSkills: string[];
+  /** Semantic/heuristic score before role-preference boost/penalty — used to re-rank snapshots. */
+  baseMatchScore?: number;
   /** 1 = watchlist · 2 = strong fit · 3 = related */
   rankTier?: 1 | 2 | 3;
   isTrackedCompany?: boolean;

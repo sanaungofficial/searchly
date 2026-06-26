@@ -101,8 +101,7 @@ function patternTokensMatchTitle(pattern: string, jobTitle: string): boolean {
   return patternParts.every((part) => expandToken(part).some((variant) => titleTokens.has(variant)));
 }
 
-/**
- * Match job titles against user-entered role/pattern strings.
+/** Match job titles against user-entered role/pattern strings.
  * Uses substring first, then token families (manager ↔ management, etc.).
  */
 export function jobTitleMatchesRolePattern(jobTitle: string, pattern: string): boolean {
@@ -123,6 +122,21 @@ export function jobTitleMatchesRolePattern(jobTitle: string, pattern: string): b
   const single = splitTitleTokens(pattern)[0];
   if (!single) return false;
   return expandToken(single).some((variant) => titleTokenSet(jobTitle).has(variant));
+}
+
+/** Long deprioritized labels — match significant consecutive token pairs (e.g. "Product Management" in a Hirebase title). */
+function deprioritizedPatternMatchesTitle(jobTitle: string, pattern: string): boolean {
+  if (jobTitleMatchesRolePattern(jobTitle, pattern)) return true;
+
+  const parts = splitTitleTokens(pattern);
+  if (parts.length < 3) return false;
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    const pair = `${parts[i]} ${parts[i + 1]}`;
+    if (pair.length >= 7 && jobTitleMatchesRolePattern(jobTitle, pair)) return true;
+  }
+
+  return false;
 }
 
 function normalizeCategory(value: string): string {
@@ -183,7 +197,7 @@ export function adjustMatchScoreForRoleTitlePreferences(
   for (const pattern of preferences.deprioritizedRoles ?? []) {
     const trimmed = pattern.trim();
     if (!trimmed) continue;
-    if (jobTitleMatchesRolePattern(jobTitle, trimmed)) {
+    if (deprioritizedPatternMatchesTitle(jobTitle, trimmed)) {
       penalty = Math.max(penalty, DEPRIORITIZED_ROLE_TITLE_PENALTY);
       deprioritizedMatch = trimmed;
     }

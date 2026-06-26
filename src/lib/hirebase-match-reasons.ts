@@ -39,7 +39,7 @@ function heuristicMatch(
   rank: number,
   total: number,
   roleTitlePreferences?: RoleTitlePreferences,
-): Pick<VectorMatchedJob, "matchScore" | "matchLabel" | "matchReasons" | "matchedSkills" | "gapSkills"> {
+): Pick<VectorMatchedJob, "matchScore" | "matchLabel" | "matchReasons" | "matchedSkills" | "gapSkills" | "baseMatchScore"> {
   const description = jobDescriptionForMatch(job, cached);
   const fallback = fallbackJobMatch(description, resumeText);
   const jobSkills = [...(job.skills ?? []), ...(job.technologies ?? [])].map((s) => s.trim()).filter(Boolean);
@@ -66,7 +66,7 @@ function heuristicMatch(
       `You're a good fit because your background aligns with ${matchedSkills.slice(0, 4).join(", ")}.`,
     );
   }
-  if (job.experience_level) {
+  if (job.experience_level && !adjustment.deprioritizedMatch && !adjustment.deprioritizedCategoryMatch) {
     reasons.push(`This is a ${job.experience_level}-level role that matches your career targets.`);
   }
   const keywordNote =
@@ -89,6 +89,7 @@ function heuristicMatch(
     matchReasons: reasons.slice(0, 4),
     matchedSkills,
     gapSkills,
+    baseMatchScore: baseScore,
   };
 }
 
@@ -174,7 +175,7 @@ export async function enrichVectorJobsWithMatchReasons(input: {
           return new Map<string, BatchMatchRow>();
         });
 
-  return pairs.map(({ job, cached, rank }) => {
+  const scored = pairs.map(({ job, cached, rank }) => {
     const jobId = job._id ?? `rank-${rank}`;
     const companyName = job.company_name?.trim() || companyNames[rank - 1] || "Unknown company";
     const ai = claudeRows.get(jobId);
@@ -192,6 +193,9 @@ export async function enrichVectorJobsWithMatchReasons(input: {
       matchReasons: ai?.reasons?.length ? ai.reasons.slice(0, 4) : heuristic.matchReasons,
       matchedSkills: ai?.matchedSkills?.length ? ai.matchedSkills : heuristic.matchedSkills,
       gapSkills: ai?.gapSkills?.length ? ai.gapSkills : heuristic.gapSkills,
+      baseMatchScore: heuristic.baseMatchScore,
     };
   });
+
+  return scored.sort((a, b) => b.matchScore - a.matchScore);
 }

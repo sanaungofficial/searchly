@@ -14,7 +14,10 @@ import {
   persistRecommendedSnapshot,
   readRecommendedSnapshot,
   recordManualRefresh,
+  invalidateRecommendedSnapshotForUser,
 } from "@/lib/recommended-jobs-snapshot";
+import { applyRoleTitlePreferencesToMatchedJobs } from "@/lib/recommended-jobs-ranking";
+import { buildRoleTitlePreferencesFromProfile } from "@/lib/role-title-preferences";
 import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
@@ -75,7 +78,8 @@ async function handleRecommended(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
+  const roleTitlePreferences = buildRoleTitlePreferencesFromProfile(profile);
+  const targetRoles = roleTitlePreferences.targetRoles ?? [];
   const { filters, preferCache, forceRefresh } = await parseRecommendedFilters(request);
   const semanticQuery = trimVSearchQuery(filters.semanticQuery ?? "");
   const searchFilters = semanticQuery ? { ...filters, semanticQuery } : filters;
@@ -89,6 +93,7 @@ async function handleRecommended(request: Request) {
   const resumeAsset = await findResumeAssetForUser(dbUser.id);
   const hasSignals = hasProfileSignals({
     targetRoles,
+    roleTitlePreferences,
     resumeAssetUrl: resumeAsset?.url ?? null,
     profileResumeUrl: profile?.resumeUrl,
     resumeText: profile?.resumeText ?? "",
@@ -111,7 +116,8 @@ async function handleRecommended(request: Request) {
     try {
       const cached = await readRecommendedSnapshot(dbUser.id, snapshotDate);
       if (cached?.jobs.length) {
-        return snapshotResponse(cached, { filtersApplied: searchFilters });
+        const jobs = applyRoleTitlePreferencesToMatchedJobs(cached.jobs, roleTitlePreferences);
+        return snapshotResponse({ ...cached, jobs }, { filtersApplied: searchFilters });
       }
     } catch (err) {
       console.warn("[recommended] snapshot read failed:", err);
@@ -156,7 +162,7 @@ async function handleRecommended(request: Request) {
     }
 
     return NextResponse.json({
-      jobs: result.jobs,
+      jobs: applyRoleTitlePreferencesToMatchedJobs(result.jobs, roleTitlePreferences),
       totalCount: result.jobs.length,
       page: 1,
       limit: VECTOR_SEARCH_RESULTS_MAX,
