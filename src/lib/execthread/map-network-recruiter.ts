@@ -91,6 +91,7 @@ function pushAllContacts(out: ExecThreadContactRaw[], value: unknown): void {
 
 function collectContactsFromRecord(out: ExecThreadContactRaw[], record: Record<string, unknown>): void {
   pushAllContacts(out, record.recruiters);
+  pushAllContacts(out, record.recruiterList);
   pushAllContacts(out, record.contacts);
   pushAllContacts(out, record.notificationRecipients);
   pushAllContacts(out, record.hiringManagers);
@@ -100,6 +101,15 @@ function collectContactsFromRecord(out: ExecThreadContactRaw[], record: Record<s
   pushContactObject(out, record.hiringManagerContact);
   pushContactObject(out, record.primaryRecruiter);
   pushContactObject(out, record.recruiter);
+
+  const existingRed = record.existingRed;
+  if (existingRed && isRecord(existingRed)) {
+    pushAllContacts(out, existingRed.recruiterList);
+    pushAllContacts(out, existingRed.hiringManagerList);
+    pushAllContacts(out, existingRed.hiringManagers);
+    pushContactObject(out, existingRed.companyContact);
+    pushContactObject(out, existingRed.hiringManager);
+  }
 
   const listing = record.listing ?? record.listingPreview;
   if (listing && isRecord(listing)) {

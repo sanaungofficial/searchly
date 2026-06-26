@@ -78,4 +78,22 @@ describe("mapExecThreadListingContacts", () => {
     expect(contacts.some((c) => c.name === "Robin Colwell")).toBe(true);
     expect(contacts[0]?.linkedInUrl).toBe("https://www.linkedin.com/in/example");
   });
+
+  it("collects contacts from redeem existingRed recruiter and hiring manager lists", () => {
+    const job = {
+      _id: "abc",
+      _kimchiExport: {
+        redeem: {
+          existingRed: {
+            recruiterList: [{ name: "Jane Recruiter", email: "jane@agency.com" }],
+            hiringManagerList: [{ name: "Robin Colwell", title: "VP Government Affairs" }],
+          },
+        },
+      },
+    } as ExecThreadListingRaw;
+
+    const contacts = mapExecThreadListingContacts(job);
+    expect(contacts.some((c) => c.name === "Jane Recruiter")).toBe(true);
+    expect(contacts.some((c) => c.name === "Robin Colwell")).toBe(true);
+  });
 });
