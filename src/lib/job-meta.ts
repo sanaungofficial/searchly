@@ -49,6 +49,8 @@ export interface JobMeta {
     networkId: string | null;
     topEchelonUrl: string | null;
     sourceUrl?: string | null;
+    applyUrl?: string | null;
+    listingUrl?: string | null;
     recruiterNotes: string | null;
     fee: string | null;
     networkStatus: string | null;
@@ -67,7 +69,21 @@ export interface JobMeta {
       email: string | null;
       phone: string | null;
       agencyName: string | null;
+      title?: string | null;
+      linkedInUrl?: string | null;
     } | null;
+    recruiters?: Array<{
+      id: string;
+      externalId: string;
+      name: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string | null;
+      phone: string | null;
+      agencyName: string | null;
+      title?: string | null;
+      linkedInUrl?: string | null;
+    }>;
   };
 }
 

@@ -1,5 +1,6 @@
 import type { ExecThreadListingRaw } from "@/lib/execthread/types";
 import { mapExecThreadNetworkJob } from "@/lib/execthread/map-network-job";
+import type { MappedExecThreadContact } from "@/lib/execthread/map-network-recruiter";
 import type { JobMeta } from "@/lib/job-meta";
 import type { KanbanCard } from "@/components/scout/workspace-data";
 import type { MappedNetworkJob } from "@/lib/topechelon/map-network-job";
@@ -8,6 +9,7 @@ import type { MappedNetworkRecruiter } from "@/lib/topechelon/map-network-recrui
 import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 import { mapTopEchelonNetworkJob } from "@/lib/topechelon/map-network-job";
 import { mapTopEchelonNetworkRecruiter } from "@/lib/topechelon/map-network-recruiter";
+import type { NetworkJobMatchFields } from "@/lib/network-job-match";
 import { SEED_RAW_NETWORK_JOBS } from "@/lib/network-job-seed-raw";
 import { parseJobDescriptionSections, hasParsedJobSections } from "@/lib/job-description-parse";
 import {
@@ -31,6 +33,8 @@ export type NetworkRecruiterDisplay = {
   email: string | null;
   phone: string | null;
   agencyName: string | null;
+  title?: string | null;
+  linkedInUrl?: string | null;
 };
 
 export type NetworkJobListing = {
@@ -68,6 +72,10 @@ export type NetworkJobListing = {
   sourceUrl: string | null;
   adminDetails: Array<{ label: string; value: string }>;
   recruiter: NetworkRecruiterDisplay | null;
+  recruiters?: NetworkRecruiterDisplay[];
+  applyUrl?: string | null;
+  listingUrl?: string | null;
+  companySummary?: string | null;
   raw: TopEchelonNetworkJobRaw | ExecThreadListingRaw;
 } & Partial<NetworkJobMatchFields>;
 
@@ -228,12 +236,28 @@ export function interpretNetworkJob(raw: TopEchelonNetworkJobRaw): NetworkJobLis
   };
 }
 
+function execThreadContactToDisplay(contact: MappedExecThreadContact): NetworkRecruiterDisplay {
+  return {
+    id: contact.externalId,
+    externalId: contact.externalId,
+    name: contact.name ?? "Recruiter contact",
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    email: contact.email,
+    phone: contact.phone,
+    agencyName: contact.agencyName,
+    title: contact.title,
+    linkedInUrl: contact.linkedInUrl,
+  };
+}
+
 export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobListing {
   const mapped = mapExecThreadNetworkJob(raw);
   const industries = mapped._display.industries ?? [];
   const sharedAtIso = mapped.sharedAt?.toISOString() ?? null;
   const shared = formatNetworkSharedDate(sharedAtIso);
-  const descriptionText = mapped.description?.replace(/\s+/g, " ").trim() ?? null;
+  const contacts = mapped._display.contacts ?? [];
+  const primary = contacts[0] ?? null;
 
   return {
     id: mapped.externalId,
@@ -249,10 +273,10 @@ export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobLis
     state: mapped.state,
     location: mapped.location,
     industries,
-    salary: mapped._display.hasCompensation ? "Compensation discussed with recruiter" : null,
-    compensationMin: null,
-    compensationMax: null,
-    compensationBand: null,
+    salary: mapped._display.salaryLabel ?? null,
+    compensationMin: mapped.minimumCompensation,
+    compensationMax: mapped.maximumCompensation,
+    compensationBand: compensationBand(mapped.minimumCompensation, mapped.maximumCompensation, mapped.jobType),
     jobType: mapped.jobType,
     remoteOption: mapped.remoteOption,
     fee: null,
@@ -264,12 +288,16 @@ export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobLis
     sharedAt: sharedAtIso,
     sharedAtLabel: shared.dateLabel,
     sharedAtRelative: shared.relativeLabel,
-    description: descriptionText,
+    description: mapped.description,
+    companySummary: mapped._display.companySummary,
     recruiterNotes: null,
     topEchelonUrl: null,
-    sourceUrl: mapped.sourceUrl,
-    adminDetails: internalViewAdminDetailsExecThread(mapped, industries),
-    recruiter: null,
+    sourceUrl: mapped.applyUrl ?? mapped.listingUrl ?? mapped.sourceUrl,
+    applyUrl: mapped.applyUrl,
+    listingUrl: mapped.listingUrl,
+    adminDetails: internalViewAdminDetailsExecThread(mapped, industries, contacts),
+    recruiter: primary ? execThreadContactToDisplay(primary) : null,
+    recruiters: contacts.map(execThreadContactToDisplay),
     raw,
   };
 }
@@ -277,6 +305,7 @@ export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobLis
 function internalViewAdminDetailsExecThread(
   mapped: ReturnType<typeof mapExecThreadNetworkJob>,
   industries: string[],
+  contacts: MappedExecThreadContact[],
 ): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [];
   const push = (label: string, value: string | null | undefined) => {
@@ -287,8 +316,15 @@ function internalViewAdminDetailsExecThread(
   push("Slug", mapped.networkId);
   push("Level", mapped.networkStatus);
   push("Functions", mapped._display.functions);
-  if (industries.length) push("Industry", industries.join(", "));
-  push("Listing URL", mapped.sourceUrl);
+  push("Travel %", mapped._display.travel);
+  if (industries.length) push("Industry / company type", industries.join(" · "));
+  push("Apply URL", mapped._display.applyUrl);
+  push("Listing URL", mapped._display.listingUrl);
+  for (const contact of contacts) {
+    const label = contact.title ? `${contact.name} (${contact.title})` : contact.name ?? "Recruiter";
+    const bits = [contact.email, contact.phone, contact.linkedInUrl, contact.agencyName].filter(Boolean);
+    if (bits.length) push(label, bits.join(" · "));
+  }
   return rows;
 }
 
@@ -324,7 +360,14 @@ export function buildNetworkProspectCard(
     requiredQualifications: parsed.requiredQualifications.length ? parsed.requiredQualifications : undefined,
     preferredQualifications: parsed.preferredQualifications.length ? parsed.preferredQualifications : undefined,
     benefits: parsed.benefits.length ? parsed.benefits : undefined,
-    tags: ["Recruiter network", networkSourceChannelCode(job.source), job.networkStatusLabel ?? job.networkStatus ?? ""].filter(Boolean),
+    tags: [
+      "Recruiter network",
+      networkSourceChannelCode(job.source),
+      job.networkStatusLabel ?? job.networkStatus ?? "",
+      ...(job.source === "EXECTHREAD" && job.industries.length ? job.industries.slice(0, 2) : []),
+    ].filter(Boolean),
+    companySummary: job.companySummary ?? undefined,
+    industries: job.industries.length ? job.industries : undefined,
     ...(job.matchScore != null && job.matchScore > 0
       ? {
           vectorMatch: {
@@ -343,6 +386,8 @@ export function buildNetworkProspectCard(
       networkId: job.networkId,
       topEchelonUrl: job.topEchelonUrl,
       sourceUrl: job.sourceUrl,
+      applyUrl: job.applyUrl ?? null,
+      listingUrl: job.listingUrl ?? null,
       recruiterNotes: internalView ? job.recruiterNotes : null,
       fee: internalView ? job.fee : null,
       networkStatus: internalView ? (job.networkStatusLabel ?? job.networkStatus) : null,
@@ -352,6 +397,7 @@ export function buildNetworkProspectCard(
       agencyWebsite: job.agencyWebsite,
       agencyLogoUrl: job.agencyLogoUrl,
       recruiter: job.recruiter,
+      recruiters: job.recruiters ?? (job.recruiter ? [job.recruiter] : []),
     },
   };
 
@@ -367,7 +413,7 @@ export function buildNetworkProspectCard(
     fit: job.matchScore && job.matchScore > 0 ? job.matchScore : 0,
     jobRef: null,
     days,
-    _url: job.topEchelonUrl ?? job.sourceUrl ?? undefined,
+    _url: job.applyUrl ?? job.topEchelonUrl ?? job.listingUrl ?? job.sourceUrl ?? undefined,
     _meta: meta,
     _networkJobId: job.id,
   };

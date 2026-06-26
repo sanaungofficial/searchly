@@ -23,6 +23,8 @@ type SyncSummary = {
   totalHits: number | null;
   durationMs: number;
   authenticated: boolean;
+  previewHits?: number;
+  redeemHits?: number;
 };
 
 const VERCEL_ENV_URL =
@@ -186,6 +188,8 @@ export function ExecThreadSyncPanel() {
             <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, margin: 0 }}>
               fetched {lastSummary.fetched} · upserted {lastSummary.upserted} · {lastSummary.durationMs}ms
               {lastSummary.authenticated ? " · authenticated" : ""}
+              {lastSummary.previewHits != null ? ` · ${lastSummary.previewHits} previews` : ""}
+              {lastSummary.redeemHits != null && lastSummary.redeemHits > 0 ? ` · ${lastSummary.redeemHits} redeems` : ""}
             </p>
           )}
         </>
