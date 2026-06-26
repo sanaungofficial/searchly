@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
-import { getAuthenticatedDbUser } from "@/lib/coach-api";
+import { getClientCoachingUser } from "@/lib/coach-api";
 
 function clampRating(n: unknown): number | null {
   const v = Number(n);
@@ -47,7 +47,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const me = await getAuthenticatedDbUser();
+  const me = await getClientCoachingUser(req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { slug } = await params;

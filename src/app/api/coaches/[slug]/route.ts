@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
-import { getAuthenticatedDbUser } from "@/lib/coach-api";
-import { canUserAccessCoach } from "@/lib/coach-client-assignment";
+import { getClientCoachingUser } from "@/lib/coach-api";
+import { canUserAccessCoach, isCoachAssignedToUser } from "@/lib/coach-client-assignment";
 import { requireAdmin } from "@/lib/auth";
 import { computeReviewAggregates } from "@/lib/coach-directory";
 import { isNylasConfigured } from "@/lib/nylas";
@@ -11,7 +11,7 @@ import { enrichPackages } from "@/lib/coach-pricing";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const me = await getAuthenticatedDbUser();
+  const me = await getClientCoachingUser();
   const admin = await requireAdmin();
 
   const coach = await prisma.coachProfile.findFirst({
@@ -90,11 +90,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   });
 
   let isFollowing = false;
+  let isMyCoach = false;
   if (me) {
     const follow = await prisma.coachFollow.findUnique({
       where: { userId_coachProfileId: { userId: me.id, coachProfileId: coach.id } },
     });
     isFollowing = Boolean(follow);
+    isMyCoach = await isCoachAssignedToUser(coach.id, me.id);
   }
 
   const aggregates = computeReviewAggregates(allReviews);
@@ -140,6 +142,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     reviewCount,
     followerCount: coach._count.followers,
     isFollowing,
+    isMyCoach,
     aggregates,
     reviews: coach.reviews.map((r) => ({
       ...r,

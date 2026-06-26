@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { CoachStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { canUserAccessCoach } from "@/lib/coach-client-assignment";
+import { getActingUser } from "@/lib/acting-user";
 import { isAdmin } from "@/lib/auth";
 
 export async function getAuthenticatedDbUser() {
@@ -14,6 +15,12 @@ export async function getAuthenticatedDbUser() {
     where: { email: user.email },
     select: { id: true, email: true, name: true, role: true },
   });
+}
+
+/** Client coaching APIs should use the impersonated user when an admin is viewing as client. */
+export async function getClientCoachingUser(request?: Request) {
+  const { dbUser } = await getActingUser(request);
+  return dbUser;
 }
 
 export async function findCoachBySlug(slug: string, userId?: string | null) {

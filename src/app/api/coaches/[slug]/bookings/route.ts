@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedDbUser, findCoachBySlugOrId } from "@/lib/coach-api";
+import { getClientCoachingUser, findCoachBySlugOrId } from "@/lib/coach-api";
 import {
   createCoachBookingRecord,
   INTRO_SESSION_MINUTES,
@@ -15,7 +15,7 @@ type BookBody = {
 };
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const me = await getAuthenticatedDbUser();
+  const me = await getClientCoachingUser(req);
   if (!me) return NextResponse.json({ error: "Sign in to book a session" }, { status: 401 });
 
   if (!isNylasConfigured()) {

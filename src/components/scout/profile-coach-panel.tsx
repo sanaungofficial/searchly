@@ -25,7 +25,8 @@ type AssignedCoach = {
 
 export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) {
   const router = useRouter();
-  const { openPricing } = useWorkspace();
+  const { openPricing, userRole, isImpersonating } = useWorkspace();
+  const canSelfAssignCoach = userRole === "USER" || isImpersonating;
   const [assigned, setAssigned] = useState<AssignedCoach[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
@@ -78,6 +79,17 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
   const goToCoachPage = (slug: string | null, id: string) => {
     if (slug) router.push(`/coaching/coach/${slug}`);
     else router.push(`/coaching?coach=${encodeURIComponent(id)}`);
+  };
+
+  const removeCoach = async (coachProfileId: string) => {
+    const res = await fetch(
+      `/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coachProfileId)}`,
+      { method: "DELETE" },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      setAssigned(data.coaches ?? []);
+    }
   };
 
   return (
@@ -150,6 +162,14 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
                       <ScoutSecondaryBtn onClick={() => goToCoachPage(coach.slug, coach.coachProfileId)} style={{ minHeight: 40, fontSize: 14 }}>
                         Open full page
                       </ScoutSecondaryBtn>
+                      {canSelfAssignCoach && !coach.isInternal && (
+                        <ScoutSecondaryBtn
+                          onClick={() => removeCoach(coach.coachProfileId)}
+                          style={{ minHeight: 40, fontSize: 14, color: color.muted }}
+                        >
+                          Remove coach
+                        </ScoutSecondaryBtn>
+                      )}
                     </div>
                   </div>
                 </div>
