@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontMono, fontSans, type as T } from "@/lib/typography";
@@ -136,8 +137,11 @@ export function JobSearchInboxPanel() {
           Job-search inbox agent
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.65 }}>
-          Create a dedicated Gmail or Outlook for your job search (recommended for money-back clients), connect it
-          here, and Kimchi will read application emails and calendar invites to keep your pipeline updated automatically.
+          Create a dedicated Gmail for your job search, connect it here, and manage mail in{" "}
+          <Link href="/opportunities/inbox" style={{ color: color.forest, fontWeight: 600 }}>
+            Opportunities → Inbox
+          </Link>
+          . Kimchi will read application emails and calendar invites to keep your pipeline updated.
         </p>
 
         {status?.connected ? (

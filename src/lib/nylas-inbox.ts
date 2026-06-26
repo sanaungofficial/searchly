@@ -16,6 +16,14 @@ export type NylasMessage = {
   unread?: boolean;
   starred?: boolean;
   folders?: string[];
+  attachments?: NylasAttachment[];
+};
+
+export type NylasAttachment = {
+  id: string;
+  filename?: string;
+  content_type?: string;
+  size?: number;
 };
 
 export type NylasFolder = {
@@ -142,10 +150,66 @@ export async function fetchRecentMessages(grantId: string, receivedAfter?: Date,
 
 export async function fetchMessage(grantId: string, messageId: string) {
   const res = await nylasFetch<{ data?: NylasMessage }>(
-    `/v3/grants/${grantId}/messages/${messageId}`,
+    `/v3/grants/${grantId}/messages/${messageId}?query_imap=true`,
     { grantId },
   );
   return res.data ?? null;
+}
+
+export type UpdateMessageInput = {
+  unread?: boolean;
+  starred?: boolean;
+  folders?: string[];
+};
+
+export async function updateMessage(grantId: string, messageId: string, input: UpdateMessageInput) {
+  const body: Record<string, unknown> = {};
+  if (input.unread !== undefined) body.unread = input.unread;
+  if (input.starred !== undefined) body.starred = input.starred;
+  if (input.folders !== undefined) body.folders = input.folders;
+
+  const res = await nylasFetch<{ data?: NylasMessage }>(
+    `/v3/grants/${grantId}/messages/${messageId}`,
+    { method: "PUT", grantId, body },
+  );
+  return res.data ?? null;
+}
+
+export async function listThreadMessages(grantId: string, threadId: string, limit = 20) {
+  return listMessages(grantId, { threadId, limit });
+}
+
+export async function downloadAttachment(grantId: string, attachmentId: string, messageId: string) {
+  const res = await nylasFetch<{ data?: { content?: string; content_type?: string; filename?: string } }>(
+    `/v3/grants/${grantId}/attachments/${attachmentId}/download?message_id=${encodeURIComponent(messageId)}`,
+    { grantId },
+  );
+  return res.data ?? null;
+}
+
+/** Find or create a Gmail label for agent-processed mail. */
+export async function ensureKimchiProcessedFolder(grantId: string): Promise<string | null> {
+  const folders = await fetchFolders(grantId);
+  const existing = folders.find((f) => f.name?.toLowerCase() === "kimchi/processed");
+  if (existing) return existing.id;
+
+  try {
+    const res = await nylasFetch<{ data?: NylasFolder }>(`/v3/grants/${grantId}/folders`, {
+      method: "POST",
+      grantId,
+      body: { name: "Kimchi/Processed" },
+    });
+    return res.data?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function markMessageProcessed(grantId: string, message: NylasMessage) {
+  const labelId = await ensureKimchiProcessedFolder(grantId);
+  if (!labelId || !message.id) return null;
+  const folders = [...(message.folders ?? []), labelId];
+  return updateMessage(grantId, message.id, { folders: [...new Set(folders)] });
 }
 
 export type SendMessageInput = {
@@ -251,5 +315,15 @@ export function serializeMessageSummary(msg: NylasMessage) {
     unread: Boolean(msg.unread),
     starred: Boolean(msg.starred),
     threadId: msg.thread_id ?? null,
+    attachmentCount: msg.attachments?.length ?? 0,
   };
+}
+
+export function serializeAttachments(msg: NylasMessage) {
+  return (msg.attachments ?? []).map((a) => ({
+    id: a.id,
+    filename: a.filename ?? "attachment",
+    contentType: a.content_type ?? "application/octet-stream",
+    size: a.size ?? 0,
+  }));
 }

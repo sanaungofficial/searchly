@@ -266,7 +266,12 @@ async function recordActivity(params: {
   return prisma.jobActivityLog.create({ data });
 }
 
-async function processMessageForUser(userId: string, grantId: string, message: NylasMessage) {
+async function processMessageForUser(
+  userId: string,
+  grantId: string,
+  message: NylasMessage,
+  options?: { force?: boolean },
+) {
   const settings = await getJobAgentSettings(userId);
   if (!settings.enabled) return null;
 
@@ -275,7 +280,7 @@ async function processMessageForUser(userId: string, grantId: string, message: N
         where: { userId_nylasMessageId: { userId, nylasMessageId: message.id } },
       })
     : null;
-  if (existing) return existing;
+  if (existing && !options?.force) return existing;
 
   const jobs = await prisma.job.findMany({ where: { userId }, orderBy: { updatedAt: "desc" } });
   const full = message.body ? message : (await fetchMessage(grantId, message.id)) ?? message;
@@ -436,4 +441,140 @@ export async function syncAllUserInboxes() {
     }
   }
   return { users: grants.length, processed: total };
+}
+
+/** On-demand classify + log a single message (Inbox "Analyze now"). */
+export async function analyzeMessageForUser(userId: string, messageId: string, force = false) {
+  const grant = await prisma.userEmailGrant.findUnique({ where: { userId } });
+  if (!grant) throw new Error("INBOX_NOT_CONNECTED");
+
+  const message = await fetchMessage(grant.nylasGrantId, messageId);
+  if (!message) throw new Error("MESSAGE_NOT_FOUND");
+
+  const log = await processMessageForUser(userId, grant.nylasGrantId, message, { force });
+  return log;
+}
+
+export async function draftReplyForMessage(userId: string, messageId: string) {
+  if (!isKimchiAiConfigured()) throw new Error("AI_NOT_CONFIGURED");
+
+  const grant = await prisma.userEmailGrant.findUnique({ where: { userId } });
+  if (!grant) throw new Error("INBOX_NOT_CONNECTED");
+
+  const [message, user, profile, activity] = await Promise.all([
+    fetchMessage(grant.nylasGrantId, messageId),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    prisma.profile.findUnique({
+      where: { userId },
+      select: { headline: true, summary: true },
+    }),
+    prisma.jobActivityLog.findFirst({
+      where: { userId, nylasMessageId: messageId },
+      include: { job: { select: { company: true, role: true, stage: true } } },
+    }),
+  ]);
+
+  if (!message) throw new Error("MESSAGE_NOT_FOUND");
+
+  const body = messagePlainText(message);
+  const from = messageFromLine(message);
+  const candidateName = user?.name?.trim() || "the candidate";
+  const jobContext = activity?.job
+    ? `${activity.job.role} at ${activity.job.company} (${activity.job.stage})`
+    : activity?.companyGuess
+      ? `${activity.roleGuess ?? "Role"} at ${activity.companyGuess}`
+      : "a job opportunity";
+
+  const prompt = `Draft a concise, professional email reply for a job seeker.
+
+Candidate: ${candidateName}
+${profile?.headline ? `Headline: ${profile.headline}` : ""}
+Context: replying about ${jobContext}
+
+Original email:
+From: ${from}
+Subject: ${message.subject ?? ""}
+Body:
+${body.slice(0, 4000)}
+
+Write ONLY the reply body text (no subject line, no "Dear" unless natural). Keep it warm, clear, and under 180 words. If scheduling an interview, express availability flexibly.`;
+
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 600,
+    userId,
+    tags: ["feature:inbox-draft-reply"],
+  });
+
+  await logAiUsage(userId, "EMAIL_JOB_SIGNAL", modelId, usage.inputTokens, usage.outputTokens);
+
+  return { body: text.trim() };
+}
+
+export async function generateInterviewPrep(userId: string, activityId: string) {
+  if (!isKimchiAiConfigured()) throw new Error("AI_NOT_CONFIGURED");
+
+  const activity = await prisma.jobActivityLog.findFirst({
+    where: { id: activityId, userId },
+    include: {
+      job: { select: { company: true, role: true, stage: true, notes: true } },
+    },
+  });
+  if (!activity) throw new Error("ACTIVITY_NOT_FOUND");
+
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+    select: { headline: true, summary: true, parsedData: true },
+  });
+
+  const company = activity.job?.company ?? activity.companyGuess ?? "the company";
+  const role = activity.job?.role ?? activity.roleGuess ?? "the role";
+  const interviewWhen = activity.interviewAt?.toLocaleString() ?? "upcoming";
+
+  const prompt = `You are a career coach preparing a candidate for a job interview.
+
+Company: ${company}
+Role: ${role}
+Interview timing: ${interviewWhen}
+Email/calendar context: ${activity.snippet ?? activity.title ?? ""}
+
+Candidate headline: ${profile?.headline ?? ""}
+Summary: ${profile?.summary?.slice(0, 800) ?? ""}
+
+Return ONLY valid JSON:
+{
+  "talkingPoints": string[] (3-5 bullets),
+  "questionsToAsk": string[] (3-4 questions for the interviewer),
+  "researchTips": string[] (2-3 company research actions),
+  "openingLine": string (one sentence to start the interview strong)
+}`;
+
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 900,
+    userId,
+    tags: ["feature:inbox-interview-prep"],
+  });
+
+  await logAiUsage(userId, "EMAIL_JOB_SIGNAL", modelId, usage.inputTokens, usage.outputTokens);
+
+  const jsonStart = text.indexOf("{");
+  const jsonEnd = text.lastIndexOf("}");
+  if (jsonStart < 0 || jsonEnd < 0) throw new Error("Could not parse interview prep");
+
+  const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1)) as {
+    talkingPoints?: string[];
+    questionsToAsk?: string[];
+    researchTips?: string[];
+    openingLine?: string;
+  };
+
+  return {
+    talkingPoints: parsed.talkingPoints ?? [],
+    questionsToAsk: parsed.questionsToAsk ?? [],
+    researchTips: parsed.researchTips ?? [],
+    openingLine: parsed.openingLine ?? "",
+  };
 }

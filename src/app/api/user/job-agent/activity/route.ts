@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { JobActivityStatus } from "@prisma/client";
 import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
 
@@ -7,9 +8,13 @@ export async function GET(req: NextRequest) {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const limit = Math.min(Number(req.nextUrl.searchParams.get("limit") ?? 20), 50);
+  const status = req.nextUrl.searchParams.get("status");
 
   const activities = await prisma.jobActivityLog.findMany({
-    where: { userId: dbUser.id },
+    where: {
+      userId: dbUser.id,
+      ...(status ? { status: status as JobActivityStatus } : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: {
@@ -31,6 +36,8 @@ export async function GET(req: NextRequest) {
       companyGuess: a.companyGuess,
       roleGuess: a.roleGuess,
       interviewAt: a.interviewAt?.toISOString() ?? null,
+      nylasMessageId: a.nylasMessageId,
+      nylasEventId: a.nylasEventId,
       createdAt: a.createdAt.toISOString(),
       job: a.job,
     })),
