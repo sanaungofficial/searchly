@@ -245,6 +245,14 @@ model CoachProfile {
   featured       Boolean     @default(false)
   status         CoachStatus @default(ACTIVE)
 
+  /// Pricing & offerings (Leland-style coach pricing page)
+  introOfferType              CoachIntroOfferType @default(FREE_INTRO)
+  introDurationMinutes        Int                 @default(15)
+  trialSessionDurationMinutes Int?
+  salesAssistedLeadsEnabled   Boolean             @default(false)
+  partnerProgramEnabled       Boolean             @default(false)
+  packagesSyncToHourly        Boolean             @default(true)
+
   slug                  String?  @unique
   calLink               String?
   nylasGrantId          String?  @unique
@@ -275,9 +283,51 @@ model CoachProfile {
   bookings       CoachBooking[]
   communications CoachBookingCommunication[]
   liveSessions   LiveSession[]
+  pricingPackages CoachPricingPackage[]
+  bulkDiscounts   CoachBulkDiscount[]
 
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+}
+
+enum CoachIntroOfferType {
+  FREE_INTRO
+  TRIAL_SESSION
+}
+
+model CoachPricingPackage {
+  id             String       @id @default(cuid())
+  coachProfileId String
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  title          String?
+  description    String?
+  hours          Int
+  hoursMax       Int?
+  label          String?
+  priceCents     Int?
+  syncedToHourly Boolean      @default(true)
+  isPublic       Boolean      @default(true)
+  enabled        Boolean      @default(true)
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([coachProfileId])
+}
+
+model CoachBulkDiscount {
+  id              String       @id @default(cuid())
+  coachProfileId  String
+  coachProfile    CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  minHours        Int
+  discountPercent Int
+  enabled         Boolean      @default(true)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([coachProfileId, minHours])
+  @@index([coachProfileId])
 }
 
 enum CoachBookingStatus {
