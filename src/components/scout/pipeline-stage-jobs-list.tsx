@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type { JobMeta } from "@/lib/job-meta";
+import { companyLogoFromJobData } from "@/lib/cached-job";
 import { STAGE_COLORS, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
 import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
 import { CompanyLogo } from "./company-logo";
@@ -120,7 +122,7 @@ export function PipelineStageJobsList({
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {stageCards.map((card) => {
-            const ext = card as KanbanCard & { _url?: string; _meta?: { location?: string } };
+            const ext = card as KanbanCard & { _url?: string; _meta?: JobMeta };
             return (
               <ScoutBox key={card.id} stack padding={18} style={{ borderTop: `2px solid ${stageColor}` }}>
                 <div
@@ -135,7 +137,7 @@ export function PipelineStageJobsList({
                   }}
                   style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
                 >
-                  <CompanyLogo name={card.company} website={ext._url} size={44} />
+                  <CompanyLogo {...companyLogoFromJobData(card.company, ext._meta)} size={44} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{card.role}</p>
                     <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>

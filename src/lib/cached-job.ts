@@ -36,6 +36,23 @@ export type CachedJob = {
   jobBoard?: string | null;
 };
 
+export type CompanyLogoJobFields = {
+  companyLogo?: string | null;
+  companyLink?: string | null;
+  companyWebsite?: string | null;
+};
+
+/** Logo props for list rows — use Hirebase company link/logo, not the job posting URL. */
+export function companyLogoFromJobData(companyName: string, data?: CompanyLogoJobFields | null) {
+  const link = data?.companyLink?.trim() || data?.companyWebsite?.trim() || null;
+  return {
+    name: companyName,
+    logoUrl: data?.companyLogo?.trim() || null,
+    website: link,
+    enrichmentWebsiteUrl: link,
+  };
+}
+
 export function normalizeJobUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) return null;
   try {

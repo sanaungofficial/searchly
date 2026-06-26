@@ -12,14 +12,7 @@ import {
   type VectorMatchedJob,
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
-import { cachedJobToMeta } from "@/lib/cached-job";
-import {
-  filterRoleListings,
-  roleListingToVectorMatchedJob,
-  vectorJobToRoleListing,
-  type RoleListing,
-} from "@/lib/role-listings";
-import { normalizeJobUrl } from "@/lib/cached-job";
+import { cachedJobToMeta, companyLogoFromJobData, normalizeJobUrl } from "@/lib/cached-job";
 import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
 import {
   mergeRecommendationPriorities,
@@ -614,7 +607,7 @@ function RecommendedResultsList({
               }}
               style={{ display: "flex", gap: 16, alignItems: "flex-start", cursor: "pointer" }}
             >
-              <CompanyLogo name={row.companyName} website={row.url} size={44} />
+              <CompanyLogo {...companyLogoFromJobData(row.companyName, row.cached)} size={44} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ minWidth: 0 }}>
