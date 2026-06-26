@@ -1,6 +1,11 @@
 import { fontSans, border as B, surface, color, displayTitleStyle } from "@/lib/typography";
 import { ScoutBox } from "./scout-box";
 import type { JobMeta } from "@/lib/job-meta";
+import {
+  networkSourceAdminName,
+  networkSourceChannelCode,
+  networkSourceListingLinkLabel,
+} from "@/lib/network-source-labels";
 
 const sans = fontSans;
 const line = B.line;
@@ -124,7 +129,7 @@ export function JobDrawerNetworkAdminSection({
   return (
     <ScoutBox padding={20} flat style={{ marginBottom: 22, background: "rgba(196,168,106,0.06)" }}>
       <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: color.muted, margin: "0 0 14px" }}>
-        Internal · network posting details
+        Internal · {networkJob.source ? `${networkSourceChannelCode(networkJob.source)} (${networkSourceAdminName(networkJob.source)})` : "network posting"} details
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "12px 24px" }}>
         {networkJob.adminDetails.map(({ label, value }) => (
@@ -142,9 +147,9 @@ export function JobDrawerNetworkAdminSection({
             rel="noopener noreferrer"
             style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, textDecoration: "none" }}
           >
-            {networkJob.source === "EXECTHREAD"
-              ? "Open on ExecThread ↗"
-              : "Open in Top Echelon Big Biller ↗"}
+            {networkJob.source
+              ? networkSourceListingLinkLabel(networkJob.source)
+              : "Partner listing ↗"}
           </a>
         </div>
       )}

@@ -7,6 +7,12 @@ import { networkAgencyDisplayName, previewPlainText, SEED_NETWORK_JOBS } from "@
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
+  NETWORK_JOB_CLIENT_BADGE,
+  NETWORK_JOB_CLIENT_INTRO,
+  networkSourceChannelCode,
+  networkSourceListingLinkLabel,
+} from "@/lib/network-source-labels";
+import {
   createEmptyNetworkJobFilterForm,
   buildNetworkJobFilterSuggestions,
   countActiveNetworkFilterFields,
@@ -319,8 +325,23 @@ function NetworkJobCard({
                 color: "#6B5A2A",
               }}
             >
-              Recruiter network
+              {NETWORK_JOB_CLIENT_BADGE}
             </span>
+            {internalView && (
+              <span
+                style={{
+                  padding: "2px 8px",
+                  border: border.line,
+                  fontFamily: fontMono,
+                  fontSize: T.label,
+                  fontWeight: 700,
+                  color: color.forest,
+                }}
+                title={`Partner channel: ${job.source}`}
+              >
+                {networkSourceChannelCode(job.source)}
+              </span>
+            )}
             {internalView && job.networkStatusLabel && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.forest }}>
                 {job.networkStatusLabel}
@@ -405,7 +426,7 @@ function NetworkJobCard({
             onClick={(e) => e.stopPropagation()}
             style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}
           >
-            {job.source === "EXECTHREAD" ? "ExecThread ↗" : "Top Echelon ↗"}
+            {networkSourceListingLinkLabel(job.source)}
           </a>
         )}
       </div>
@@ -546,7 +567,9 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
           In-Network Roles
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Shared through recruiter networks (Top Echelon, ExecThread) — not on public job boards. Same profile-based scoring as Open Roles.
+          {internalView
+            ? "Internal view — channel codes TE (Top Echelon) and ET (ExecThread), plus fee and status filters. Clients only see the recruiter network badge."
+            : NETWORK_JOB_CLIENT_INTRO}
         </p>
       </div>
       )}
@@ -557,7 +580,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
             <ScoutLabel>In-Network Roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               {internalView
-                ? "Internal view — fee, guarantee, status, and agency filters. Sorted by profile match."
+                ? "Staff view — TE/ET channel badges, fees, guarantees, and partner links. Sorted by profile match."
                 : "Roles shared with you — sorted by how well they match your profile."}
             </p>
           </div>

@@ -20,6 +20,7 @@ import {
   formatNetworkSharedDate,
   formatNetworkStatus,
 } from "@/lib/network-job-format";
+import { networkSourceAdminName } from "@/lib/network-source-labels";
 
 export type NetworkRecruiterDisplay = {
   id: string;
@@ -141,6 +142,7 @@ function buildAdminDetails(
     rows.push({ label, value: String(value) });
   };
 
+  push("Channel", `TE · ${networkSourceAdminName("TOPECHELON")}`);
   push("Network ID", mapped.networkId);
   push("Network status", formatNetworkStatus(mapped.networkStatus) ?? mapped.networkStatus);
   push("TE API job ID", mapped.externalId);
@@ -247,7 +249,7 @@ export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobLis
     state: mapped.state,
     location: mapped.location,
     industries,
-    salary: mapped._display.hasCompensation ? "Compensation disclosed on ExecThread" : null,
+    salary: mapped._display.hasCompensation ? "Compensation discussed with recruiter" : null,
     compensationMin: null,
     compensationMax: null,
     compensationBand: null,
@@ -280,7 +282,7 @@ function internalViewAdminDetailsExecThread(
   const push = (label: string, value: string | null | undefined) => {
     if (value?.trim()) rows.push({ label, value: value.trim() });
   };
-  push("Source", "ExecThread");
+  push("Channel", `ET · ${networkSourceAdminName("EXECTHREAD")}`);
   push("ExecThread ID", mapped.externalId);
   push("Slug", mapped.networkId);
   push("Level", mapped.networkStatus);

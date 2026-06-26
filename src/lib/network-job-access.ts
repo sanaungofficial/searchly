@@ -1,4 +1,9 @@
 import type { NetworkJobListing } from "@/lib/network-job-display";
+import {
+  sanitizeNetworkJobDescriptionForClient,
+  sanitizeNetworkJobSalaryForClient,
+  sanitizeNetworkJobTitleForClient,
+} from "@/lib/network-job-client-sanitize";
 
 /** Who can see internal network-job fields (fee, guarantee, admin block, TE ids, recruiter notes). */
 export function canViewNetworkJobInternal(
@@ -29,6 +34,9 @@ export function sanitizeNetworkJobListing(
   if (internalView) return job;
   return {
     ...job,
+    positionTitle: sanitizeNetworkJobTitleForClient(job.positionTitle),
+    description: sanitizeNetworkJobDescriptionForClient(job.description),
+    salary: sanitizeNetworkJobSalaryForClient(job.salary),
     recruiterNotes: null,
     fee: null,
     feeType: null,
