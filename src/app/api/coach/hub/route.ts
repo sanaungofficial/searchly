@@ -57,6 +57,10 @@ export async function GET(req: NextRequest) {
       nylasSchedulerSlug: true,
       nylasSchedulerConfigId: true,
       schedulerDurationMinutes: true,
+      schedulerTimezone: true,
+      schedulerOpenHourStart: true,
+      schedulerOpenHourEnd: true,
+      schedulerOpenDays: true,
     },
   });
 

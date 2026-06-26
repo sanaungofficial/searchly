@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { BookingRow } from "@/lib/booking-display";
 import { BookingsList } from "@/components/scout/bookings-list";
 import { ScoutBox } from "@/components/scout/scout-box";
-import { color, fontSans } from "@/lib/typography";
+import { border, color, displayTitleStyle, fontSans } from "@/lib/typography";
 
 export function CoachBookingsTab() {
   const [upcoming, setUpcoming] = useState<BookingRow[]>([]);
@@ -40,11 +41,32 @@ export function CoachBookingsTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+        <div>
+          <h1 style={{ ...displayTitleStyle(28), margin: "0 0 8px" }}>Calendar</h1>
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: color.muted, lineHeight: 1.6 }}>
+            Sessions booked through Kimchi and your connected Google or Outlook calendar.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/availability"
+          style={{
+            fontFamily: fontSans,
+            fontSize: 14,
+            fontWeight: 600,
+            color: color.forest,
+            textDecoration: "none",
+            padding: "10px 16px",
+            border: border.line,
+            background: "#fff",
+            flexShrink: 0,
+          }}
+        >
+          Edit availability
+        </Link>
+      </div>
+
       <ScoutBox padding={20}>
-        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 16px", lineHeight: 1.6 }}>
-          Sessions booked through Kimchi appear here when Nylas webhooks are configured. Calendar events are also on
-          your connected Google or Outlook calendar.
-        </p>
         <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Upcoming
         </p>
