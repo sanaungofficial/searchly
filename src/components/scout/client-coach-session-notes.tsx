@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachClientSessionNoteView } from "@/lib/coach-client-session-notes";
 import { border, color, fontMono, fontSans, surface } from "@/lib/typography";
 
@@ -13,17 +14,18 @@ export function ClientCoachSessionNotes({
   coachName?: string;
   compact?: boolean;
 }) {
+  const { withClientScope } = useWorkspace();
   const [notes, setNotes] = useState<CoachClientSessionNoteView[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const q = coachProfileId ? `?coachProfileId=${encodeURIComponent(coachProfileId)}` : "";
-    fetch(`/api/coaching/session-notes${q}`)
+    fetch(withClientScope(`/api/coaching/session-notes${q}`))
       .then((r) => (r.ok ? r.json() : { notes: [] }))
       .then((d) => setNotes(d.notes ?? []))
       .catch(() => setNotes([]))
       .finally(() => setLoading(false));
-  }, [coachProfileId]);
+  }, [coachProfileId, withClientScope]);
 
   if (loading) {
     return (

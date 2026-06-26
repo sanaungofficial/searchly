@@ -8,8 +8,8 @@ import {
 import { getClientCoachingUser } from "@/lib/coach-api";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
-  const me = await getClientCoachingUser();
+export async function GET(request: NextRequest) {
+  const me = await getClientCoachingUser(request);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const coaches = await getAssignedCoachesForUser(me.id);

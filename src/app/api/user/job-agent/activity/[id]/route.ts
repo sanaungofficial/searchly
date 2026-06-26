@@ -7,7 +7,7 @@ import { fetchMessage, markMessageProcessed } from "@/lib/nylas-inbox";
 import { getUserEmailGrant } from "@/lib/user-email-server";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(req);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

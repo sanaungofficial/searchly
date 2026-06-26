@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CreditBalance } from "@/lib/credits";
 import { CREDITS_CHANGED_EVENT } from "@/lib/credits";
+import { getAdminReviewClientId } from "@/lib/client-session";
+import { withClientUserId } from "@/lib/workspace-urls";
+
+function scopeSubscriptionPath(path: string): string {
+  if (typeof window === "undefined") return path;
+  return withClientUserId(path, getAdminReviewClientId());
+}
 
 interface SubscriptionState {
   isPro: boolean;
@@ -32,7 +39,7 @@ export function useSubscription(): SubscriptionState & {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/subscription");
+      const res = await fetch(scopeSubscriptionPath("/api/subscription"));
       const data = await res.json();
       if (!res.ok) return;
       setState({

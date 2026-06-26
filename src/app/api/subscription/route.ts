@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
 import { getUsage } from "@/lib/usage";
@@ -6,8 +6,8 @@ import { hasActiveProTrial } from "@/lib/referrals";
 import { FREE_MONTHLY_CREDITS, UNLIMITED_AI_FOR_ALL } from "@/lib/credits";
 import { getActingUser } from "@/lib/acting-user";
 
-export async function GET() {
-  const acting = await getActingUser();
+export async function GET(request: NextRequest) {
+  const acting = await getActingUser(request);
   const { authUser, dbUser, isImpersonating } = acting;
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });

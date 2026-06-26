@@ -2882,11 +2882,11 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const sectionRefs = useRef<Record<AboutSection, HTMLDivElement | null>>({ personal: null, education: null, experience: null, skills: null });
 
   useEffect(() => {
-    fetch("/api/subscription")
+    fetch(api("/api/subscription"))
       .then((r) => r.json())
       .then((d) => { if (d.isPro) setIsPro(true); })
       .catch(() => {});
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
     setLoading(true);

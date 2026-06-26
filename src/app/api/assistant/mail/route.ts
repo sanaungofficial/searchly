@@ -3,7 +3,7 @@ import { getActingUser } from "@/lib/acting-user";
 import { executeMailTool } from "@/lib/kimchi-assistant/mail/executor";
 
 export async function POST(req: NextRequest) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(req);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as {

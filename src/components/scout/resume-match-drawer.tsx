@@ -371,7 +371,7 @@ export function ResumeMatchDrawer({
     setDownloadingExport(true);
     setDownloadMenuOpen(false);
     try {
-      const res = await fetch("/api/resume/export", {
+      const res = await fetch(withClientScope("/api/resume/export"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -403,7 +403,7 @@ export function ResumeMatchDrawer({
     setCommitting(true);
     setGenerateError(null);
     try {
-      const res = await fetch(`/api/resume/tailored/${jobId}/commit`, {
+      const res = await fetch(withClientScope(`/api/resume/tailored/${jobId}/commit`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

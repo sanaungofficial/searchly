@@ -13,7 +13,15 @@ export type ActingUserResult = {
   /** Logged-in user (never swapped) */
   realDbUser: User | null;
   isImpersonating: boolean;
+  /** Admin viewing a client via ?clientUserId= (not impersonation). */
+  isAdminReviewing: boolean;
 };
+
+function readClientUserIdFromRequest(request?: Request): string | null {
+  if (!request) return null;
+  const id = new URL(request.url).searchParams.get("clientUserId");
+  return id?.trim() || null;
+}
 
 async function resolveImpersonateId(request?: Request): Promise<string | undefined> {
   if (request) {
@@ -32,7 +40,7 @@ export async function getActingUser(request?: Request): Promise<ActingUserResult
   } = await supabase.auth.getUser();
 
   if (!user?.email) {
-    return { authUser: null, dbUser: null, realDbUser: null, isImpersonating: false };
+    return { authUser: null, dbUser: null, realDbUser: null, isImpersonating: false, isAdminReviewing: false };
   }
 
   const realDbUser = await prisma.user.findUnique({ where: { email: user.email } });
@@ -42,6 +50,7 @@ export async function getActingUser(request?: Request): Promise<ActingUserResult
       dbUser: null,
       realDbUser: null,
       isImpersonating: false,
+      isAdminReviewing: false,
     };
   }
 
@@ -54,6 +63,21 @@ export async function getActingUser(request?: Request): Promise<ActingUserResult
         dbUser: target,
         realDbUser,
         isImpersonating: true,
+        isAdminReviewing: false,
+      };
+    }
+  }
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  if (clientUserId && realDbUser.role === "ADMIN") {
+    const client = await prisma.user.findUnique({ where: { id: clientUserId } });
+    if (client && client.role === "USER") {
+      return {
+        authUser: { id: user.id, email: user.email },
+        dbUser: client,
+        realDbUser,
+        isImpersonating: false,
+        isAdminReviewing: true,
       };
     }
   }
@@ -63,6 +87,7 @@ export async function getActingUser(request?: Request): Promise<ActingUserResult
     dbUser: realDbUser,
     realDbUser,
     isImpersonating: false,
+    isAdminReviewing: false,
   };
 }
 

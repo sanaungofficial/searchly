@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useWorkspace } from "@/contexts/workspace-context";
 import {
   ScoutDisplayTitle,
   ScoutLabel,
@@ -285,6 +286,7 @@ export function useResumeUploadFlow(options: {
   onFailed: (message: string) => void;
   onCancel: (assetId: string) => Promise<void>;
 }) {
+  const { withClientScope } = useWorkspace();
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
@@ -326,7 +328,7 @@ export function useResumeUploadFlow(options: {
     const current = jobRef.current;
     if (!current || current.phase !== "analyzing") return;
     try {
-      const res = await fetch(`/api/assets/${current.assetId}`);
+      const res = await fetch(withClientScope(`/api/assets/${current.assetId}`));
       const data = (await res.json()) as AssetStatus & { error?: string };
       if (!res.ok) return;
       if (data.parseStatus === "complete") {
@@ -368,7 +370,7 @@ export function useResumeUploadFlow(options: {
     if (!current) return;
     setSavingMeta(true);
     try {
-      await fetch(`/api/assets/${current.assetId}`, {
+      await fetch(withClientScope(`/api/assets/${current.assetId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, targetJobTitle: targetJobTitle || null }),

@@ -54,7 +54,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(updatedAtProp ?? null);
   const [stale, setStale] = useState(false);
-  const { openPricing } = useWorkspace();
+  const { openPricing, withClientScope } = useWorkspace();
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
       setLoading(true);
       setMatchData(null);
       setStale(false);
-      fetch(`/api/resume/tailored/${jobId}`)
+      fetch(withClientScope(`/api/resume/tailored/${jobId}`))
         .then((r) => r.json())
         .then((d) => {
           if (Array.isArray(d.sections)) setSections(d.sections);
@@ -74,7 +74,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         .finally(() => setLoading(false));
 
       setMatchLoading(true);
-      fetch(`/api/resume/tailored/${jobId}/match`)
+      fetch(withClientScope(`/api/resume/tailored/${jobId}/match`))
         .then((r) => r.json())
         .then((d) => { if (typeof d.score === "number") setMatchData(d); })
         .catch(() => {})
@@ -104,7 +104,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   async function save(updated: ResumeSection[], styleOverride?: ResumeStyleSettings) {
     setSaving(true);
     try {
-      const res = await fetch(`/api/resume/tailored/${jobId}`, {
+      const res = await fetch(withClientScope(`/api/resume/tailored/${jobId}`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -156,7 +156,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   async function regenerate() {
     setRegenerating(true);
     try {
-      const res = await fetch(`/api/resume/tailored/${jobId}/regenerate`, { method: "POST" });
+      const res = await fetch(withClientScope(`/api/resume/tailored/${jobId}/regenerate`), { method: "POST" });
       if (res.ok) {
         const d = await res.json();
         setPreviewSections(d.sections);
@@ -172,7 +172,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     save(previewSections);
     setPreviewSections(null);
     setMatchLoading(true);
-    fetch(`/api/resume/tailored/${jobId}/match`)
+      fetch(withClientScope(`/api/resume/tailored/${jobId}/match`))
       .then((r) => r.json())
       .then((d) => { if (typeof d.score === "number") setMatchData(d); })
       .catch(() => {})
@@ -183,7 +183,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     setDownloading(true);
     setDownloadMenuOpen(false);
     try {
-      const res = await fetch(`/api/resume/tailored/${jobId}/download?format=docx`);
+      const res = await fetch(withClientScope(`/api/resume/tailored/${jobId}/download?format=docx`));
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
@@ -202,7 +202,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     setDownloadMenuOpen(false);
     setDownloading(true);
     try {
-      const res = await fetch(`/api/resume/tailored/${jobId}/download?format=pdf`);
+      const res = await fetch(withClientScope(`/api/resume/tailored/${jobId}/download?format=pdf`));
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);

@@ -2,12 +2,12 @@ import { getActingUser } from "@/lib/acting-user";
 import { dbRowToMessage } from "@/lib/kimchi-assistant/thread-serialize";
 import { NEW_THREAD_TITLE, WELCOME_MESSAGE } from "@/lib/kimchi-assistant/chat-chips";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const { dbUser } = await getActingUser();
+export async function GET(request: NextRequest) {
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const threads = await prisma.assistantThread.findMany({
@@ -32,8 +32,8 @@ export async function GET() {
   });
 }
 
-export async function POST() {
-  const { dbUser } = await getActingUser();
+export async function POST(request: NextRequest) {
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const thread = await prisma.assistantThread.create({

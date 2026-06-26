@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
 import { revokeGrant } from "@/lib/nylas-inbox";
 
-export async function POST() {
-  const { dbUser } = await getActingUser();
+export async function POST(request: NextRequest) {
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const grant = await prisma.userEmailGrant.findUnique({ where: { userId: dbUser.id } });

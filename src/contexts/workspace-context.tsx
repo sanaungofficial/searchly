@@ -266,10 +266,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [adminReviewClientId, setAdminReviewClientId]);
 
   useEffect(() => {
-    if (staffUserId && !impersonation.active) {
+    if (staffUserId && !impersonation.active && !adminReviewClientId) {
       setStaffDashboardViewState(loadStaffDashboardView(staffUserId));
     }
-  }, [staffUserId, impersonation.active]);
+  }, [staffUserId, impersonation.active, adminReviewClientId]);
 
   const isStaffPortal = isStaffPortalRole(userRole);
   const isAdminReviewing = Boolean(adminReviewClientId) && !impersonation.active;

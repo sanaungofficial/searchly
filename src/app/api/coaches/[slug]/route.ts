@@ -11,7 +11,7 @@ import { enrichPackages } from "@/lib/coach-pricing";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const me = await getClientCoachingUser();
+  const me = await getClientCoachingUser(_req);
   const admin = await requireAdmin();
 
   const coach = await prisma.coachProfile.findFirst({
