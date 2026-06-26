@@ -1,24 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { InboxInsightsDrawer } from "./inbox/inbox-insights-drawer";
+import { InboxLensTabs } from "./inbox/inbox-lens-tabs";
 import { InboxMailView } from "./inbox/inbox-mail-view";
 import type { ActivitySummary, ComposeState, InboxLens, InboxStatus, PipelineJob } from "./inbox/inbox-types";
+import { inboxLensConnected } from "./inbox/inbox-types";
 import { fetchInboxInsights, type FollowUpSuggestion } from "@/lib/inbox-insights-api";
 import { INBOX_PATH } from "@/lib/workspace-urls";
 
 function parseLens(searchParams: URLSearchParams): InboxLens {
   if (searchParams.get("lens") === "work" || searchParams.get("mode") === "expert") return "work";
   return "job_search";
-}
-
-function lensConnected(status: InboxStatus, lens: InboxLens): boolean {
-  if (lens === "work") return Boolean(status.workInbox?.connected);
-  return Boolean(status.jobInbox?.connected ?? status.connected);
 }
 
 function lensEmail(status: InboxStatus, lens: InboxLens): string | null {
@@ -204,20 +201,12 @@ export function JobSearchEmailDashboard() {
   }
 
   const showStaffToggle = Boolean(status?.isStaff && status.workInbox?.available);
-  const connected = status ? lensConnected(status, lens) : false;
+  const connected = status ? inboxLensConnected(status, lens) : false;
   const displayEmail = status ? lensEmail(status, lens) : null;
-
-  const lensTabs: [InboxLens, string][] = useMemo(
-    () => [
-      ["job_search", "Job search"],
-      ["work", "Work"],
-    ],
-    [],
-  );
 
   if (loading) {
     return (
-      <ScoutBox padding="24px" style={{ marginTop: 16 }}>
+      <ScoutBox padding="16px" style={{ marginTop: 0 }}>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading inbox…</p>
       </ScoutBox>
     );
@@ -225,7 +214,7 @@ export function JobSearchEmailDashboard() {
 
   if (!status?.configured) {
     return (
-      <ScoutBox padding="24px" style={{ marginTop: 16, maxWidth: 560 }}>
+      <ScoutBox padding="16px" style={{ marginTop: 0, maxWidth: 560 }}>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: 0 }}>
           Email integration is not configured on this environment.
         </p>
@@ -236,14 +225,10 @@ export function JobSearchEmailDashboard() {
   if (!connected) {
     const isWork = lens === "work";
     return (
-      <ScoutBox padding={isMobile ? "20px 16px" : "28px 24px"} style={{ marginTop: 16, maxWidth: 560 }}>
+      <ScoutBox padding={isMobile ? "16px" : "20px"} style={{ marginTop: 0, maxWidth: 520 }}>
         {showStaffToggle && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {lensTabs.map(([id, label]) => (
-              <ScoutSecondaryBtn key={id} onClick={() => switchLens(id)}>
-                {label}
-              </ScoutSecondaryBtn>
-            ))}
+          <div style={{ marginBottom: 14 }}>
+            <InboxLensTabs lens={lens} onChange={switchLens} />
           </div>
         )}
         <h2 style={{ fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
@@ -276,51 +261,44 @@ export function JobSearchEmailDashboard() {
 
   return (
     <>
-      <ScoutBox flat padding="0" style={{ marginTop: 16, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: isMobile ? "14px 16px" : "16px 20px", borderBottom: border.line, background: surface.page }}>
-          <div>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <h2 style={{ margin: 0, fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest }}>Inbox</h2>
-              {showStaffToggle && (
-                <div style={{ display: "flex", border: border.line, borderRadius: "var(--scout-radius)", overflow: "hidden" }}>
-                  {lensTabs.map(([id, label]) => {
-                    const active = lens === id;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => switchLens(id)}
-                        style={{
-                          padding: "6px 12px",
-                          border: "none",
-                          borderRight: id === "job_search" ? border.line : "none",
-                          background: active ? color.forest : surface.card,
-                          color: active ? color.gold : color.stone,
-                          fontFamily: fontSans,
-                          fontSize: T.caption,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+      <ScoutBox flat padding="0" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: isMobile ? "12px 14px" : "14px 16px",
+            borderBottom: border.line,
+            background: surface.page,
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 10, marginBottom: showStaffToggle ? 10 : 4 }}>
+              <h2 style={{ margin: 0, fontFamily: fontSans, fontSize: 17, fontWeight: 600, color: color.forest }}>Inbox</h2>
+              {!showStaffToggle && displayEmail && (
+                <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+                  {displayEmail}
+                  {lens === "job_search" && status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
+                </span>
               )}
             </div>
-            <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-              {displayEmail}
-              {lens === "job_search" && status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
-              {lens === "work" ? " · Work mail" : ""}
-            </p>
+            {showStaffToggle && <InboxLensTabs lens={lens} onChange={switchLens} />}
+            {showStaffToggle && displayEmail && (
+              <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+                {displayEmail}
+                {lens === "job_search" && status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
+                {lens === "work" ? " · Work mail" : ""}
+              </p>
+            )}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             {lens === "job_search" && (
               <ScoutPrimaryBtn onClick={() => setCompose({ open: true, to: "", subject: "", body: "" })}>Compose</ScoutPrimaryBtn>
             )}
             <ScoutSecondaryBtn onClick={handleSync} disabled={syncing && lens === "job_search"}>
-              {syncing && lens === "job_search" ? "Syncing…" : lens === "work" ? "Refresh mail" : "Sync mail"}
+              {syncing && lens === "job_search" ? "Syncing…" : lens === "work" ? "Refresh" : "Sync mail"}
             </ScoutSecondaryBtn>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontMono, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,10 +16,24 @@ import type {
   MessageSummary,
   PipelineJob,
 } from "./inbox-types";
-import { signalLabel } from "./inbox-types";
+import { inboxLensConnected, signalLabel } from "./inbox-types";
 
 function pickInboxFolder(folders: Folder[]): Folder | null {
-  return folders.find((f) => f.id === "INBOX" || f.name.toLowerCase() === "inbox") ?? folders[0] ?? null;
+  return (
+    folders.find((f) => f.id === "INBOX" || f.name.toLowerCase() === "inbox" || f.name === "Inbox") ??
+    folders[0] ??
+    null
+  );
+}
+
+async function readFetchError(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    if (typeof data.error === "string" && data.error.trim()) return data.error;
+  } catch {
+    /* ignore */
+  }
+  return fallback;
 }
 
 function lensQuery(lens: InboxLens): string {
@@ -95,13 +109,15 @@ export function InboxMailView({
   const [analyzing, setAnalyzing] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [detailJobs, setDetailJobs] = useState<PipelineJob[]>([]);
+  const [foldersReady, setFoldersReady] = useState(false);
+  const connected = inboxLensConnected(status, lens);
 
   const loadFolders = useCallback(async () => {
     const res = await fetch(withLens("/api/user/email/folders", lens));
-    if (!res.ok) throw new Error("folders");
+    if (!res.ok) throw new Error(await readFetchError(res, "folders"));
     const data = await res.json();
     return (data.folders ?? []) as Folder[];
-  }, []);
+  }, [lens]);
 
   const loadMessages = useCallback(async (folderId: string | null, q: string, cursor?: string | null) => {
     const params = new URLSearchParams();
@@ -110,30 +126,42 @@ export function InboxMailView({
     if (cursor) params.set("pageToken", cursor);
     if (lens === "work") params.set("lens", "work");
     const res = await fetch(`/api/user/email/messages?${params.toString()}`);
-    if (!res.ok) throw new Error("messages");
+    if (!res.ok) throw new Error(await readFetchError(res, "messages"));
     const data = await res.json();
     return {
       messages: (data.messages ?? []) as MessageSummary[],
       nextCursor: (data.nextCursor as string | null) ?? null,
     };
-  }, []);
+  }, [lens]);
 
   const loadDetail = useCallback(async (id: string) => {
     const res = await fetch(withLens(`/api/user/email/messages/${encodeURIComponent(id)}?thread=1`, lens));
-    if (!res.ok) throw new Error("detail");
+    if (!res.ok) throw new Error(await readFetchError(res, "detail"));
     return res.json() as Promise<MessageDetail>;
-  }, []);
+  }, [lens]);
 
   useEffect(() => {
-    if (!status.connected) return;
+    if (!connected) return;
+    setFoldersReady(false);
+    setFolders([]);
+    setSelectedFolderId(null);
+    setMessages([]);
+    setSelectedId(null);
+    setDetail(null);
     loadFolders()
       .then((f) => {
         setFolders(f);
         const inbox = pickInboxFolder(f);
-        if (inbox) setSelectedFolderId(inbox.id);
+        setSelectedFolderId(inbox?.id ?? null);
       })
-      .catch(() => onNotice({ type: "error", text: "Could not load folders." }));
-  }, [status.connected, loadFolders, onNotice, lens, mailRefreshKey]);
+      .catch((err) =>
+        onNotice({
+          type: "error",
+          text: err instanceof Error && err.message !== "folders" ? err.message : "Could not load folders.",
+        }),
+      )
+      .finally(() => setFoldersReady(true));
+  }, [connected, loadFolders, onNotice, lens, mailRefreshKey]);
 
   useEffect(() => {
     if (!detail?.activity || detailJobs.length > 0 || jobs.length > 0) {
@@ -156,7 +184,7 @@ export function InboxMailView({
   }, [detail?.activity, detailJobs.length, jobs]);
 
   useEffect(() => {
-    if (!status.connected) return;
+    if (!connected || !foldersReady) return;
     setListLoading(true);
     const t = setTimeout(() => {
       loadMessages(selectedFolderId, search)
@@ -164,11 +192,21 @@ export function InboxMailView({
           setMessages(rows);
           setNextCursor(cursor);
         })
-        .catch(() => onNotice({ type: "error", text: "Could not load messages." }))
+        .catch((err) =>
+          onNotice({
+            type: "error",
+            text: err instanceof Error && err.message !== "messages" ? err.message : "Could not load messages.",
+          }),
+        )
         .finally(() => setListLoading(false));
     }, search ? 350 : 0);
     return () => clearTimeout(t);
-  }, [status.connected, selectedFolderId, search, loadMessages, onNotice, lens, mailRefreshKey]);
+  }, [connected, foldersReady, selectedFolderId, search, loadMessages, onNotice, lens, mailRefreshKey]);
+
+  useEffect(() => {
+    if (messages.length === 0 || initialMessageId || selectedId) return;
+    setSelectedId(messages[0].id);
+  }, [messages, initialMessageId, selectedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -188,11 +226,6 @@ export function InboxMailView({
     if (isMobile) setMobilePane("detail");
     onInitialMessageConsumed?.();
   }, [initialMessageId, isMobile, onInitialMessageConsumed]);
-
-  const selectedFolder = useMemo(
-    () => folders.find((f) => f.id === selectedFolderId) ?? null,
-    [folders, selectedFolderId],
-  );
 
   function selectMessage(id: string) {
     setSelectedId(id);
@@ -346,109 +379,75 @@ export function InboxMailView({
         onAction={onInsightAction}
       />
 
-      <div style={{ padding: "10px 16px", borderBottom: border.line, background: surface.page }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 14px",
+          borderBottom: border.line,
+          background: surface.page,
+        }}
+      >
+        {folders.length > 0 && (
+          <select
+            value={selectedFolderId ?? ""}
+            onChange={(e) => setSelectedFolderId(e.target.value)}
+            aria-label="Mail folder"
+            style={{
+              flexShrink: 0,
+              padding: "7px 10px",
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              border: border.line,
+              borderRadius: "var(--scout-radius)",
+              background: surface.card,
+              color: color.stone,
+              maxWidth: 140,
+            }}
+          >
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+                {f.unread_count ? ` (${f.unread_count})` : ""}
+              </option>
+            ))}
+          </select>
+        )}
         <input
           type="search"
           placeholder="Search mail…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
-            width: "100%",
-            maxWidth: 360,
-            padding: "9px 12px",
+            flex: 1,
+            minWidth: 0,
+            padding: "7px 10px",
             border: border.line,
             borderRadius: "var(--scout-radius)",
             fontFamily: fontSans,
-            fontSize: T.bodySm,
+            fontSize: T.caption,
             background: surface.card,
           }}
         />
-        {!search.trim() && lens === "job_search" && (
-          <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-            Job-related messages appear first. All mail stays visible.
-          </p>
-        )}
       </div>
 
-      <div style={{ display: "flex", flex: 1, minHeight: isMobile ? 420 : 520 }}>
-        {!isMobile && folders.length > 0 && (
-          <aside
-            style={{
-              width: 188,
-              flexShrink: 0,
-              borderRight: border.line,
-              overflowY: "auto",
-              background: surface.page,
-            }}
-          >
-            {folders.map((folder) => {
-              const active = folder.id === selectedFolderId;
-              return (
-                <button
-                  key={folder.id}
-                  type="button"
-                  onClick={() => setSelectedFolderId(folder.id)}
-                  style={{
-                    display: "flex",
-                    width: "100%",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    padding: "11px 14px",
-                    border: "none",
-                    borderBottom: border.line,
-                    background: active ? "rgba(26,58,47,0.08)" : "transparent",
-                    color: active ? color.forest : color.stone,
-                    fontFamily: fontSans,
-                    fontSize: T.bodySm,
-                    fontWeight: active ? 600 : 400,
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <span>{folder.name}</span>
-                  {folder.unread_count ? (
-                    <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted }}>{folder.unread_count}</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </aside>
-        )}
-
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {showList && (
           <section
             style={{
-              width: isMobile ? "100%" : 340,
+              width: isMobile ? "100%" : "min(360px, 38%)",
               flexShrink: 0,
               borderRight: isMobile ? "none" : border.line,
               overflowY: "auto",
               background: surface.card,
             }}
           >
-            {isMobile && folders.length > 0 && (
-              <div style={{ padding: "10px 12px", borderBottom: border.line }}>
-                <select
-                  value={selectedFolderId ?? ""}
-                  onChange={(e) => setSelectedFolderId(e.target.value)}
-                  style={{ width: "100%", padding: 9, fontFamily: fontSans, fontSize: T.bodySm, border: border.line }}
-                >
-                  {folders.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {listLoading && (
+              <p style={{ padding: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading…</p>
             )}
-            <div style={{ padding: "10px 14px", borderBottom: border.line, background: surface.page }}>
-              <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted }}>
-                {selectedFolder?.name ?? "All mail"}
-              </p>
-            </div>
-            {listLoading && <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading…</p>}
             {!listLoading && messages.length === 0 && (
-              <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No messages here.</p>
+              <p style={{ padding: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No messages here.</p>
             )}
             {messages.map((msg) => (
               <button
@@ -478,8 +477,17 @@ export function InboxMailView({
                 </p>
                 <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{msg.snippet}</p>
                 {msg.activity && (
-                  <span style={{ display: "inline-block", marginTop: 6, padding: "2px 8px", fontFamily: fontMono, fontSize: 10, fontWeight: 600, color: color.forest, background: "rgba(42,107,74,0.12)", borderRadius: 4 }}>
-                    Kimchi · {signalLabel(msg.activity.signal)}
+                  <span
+                    style={{
+                      display: "inline-block",
+                      marginTop: 4,
+                      fontFamily: fontSans,
+                      fontSize: T.label,
+                      color: color.forest,
+                      opacity: 0.85,
+                    }}
+                  >
+                    {signalLabel(msg.activity.signal)}
                   </span>
                 )}
               </button>

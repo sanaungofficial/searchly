@@ -1,11 +1,10 @@
 import { getActingUser } from "@/lib/acting-user";
+import { dbRowToMessage } from "@/lib/kimchi-assistant/thread-serialize";
+import { NEW_THREAD_TITLE, WELCOME_MESSAGE } from "@/lib/kimchi-assistant/chat-chips";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-
-const WELCOME =
-  "Ask anything about your search — or tap **Talk it out** to use your voice. I'll pick up from there.";
 
 export async function GET() {
   const { dbUser } = await getActingUser();
@@ -40,12 +39,12 @@ export async function POST() {
   const thread = await prisma.assistantThread.create({
     data: {
       userId: dbUser.id,
-      title: "New chat",
+      title: NEW_THREAD_TITLE,
       messages: {
         create: {
           kind: "text",
           role: "assistant",
-          content: WELCOME,
+          content: WELCOME_MESSAGE,
         },
       },
     },
@@ -57,7 +56,7 @@ export async function POST() {
       id: thread.id,
       title: thread.title,
       updatedAt: thread.updatedAt.toISOString(),
-      messages: thread.messages,
+      messages: thread.messages.map(dbRowToMessage),
     },
   });
 }

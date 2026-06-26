@@ -38,21 +38,22 @@ export function InboxInsightsStrip({
 }: Props) {
   const title = lens === "work" ? "Work insights" : "Insights";
   const emailRows = insightsLoaded ? activities.slice(0, STRIP_LIMIT) : [];
-  const hint =
-    lens === "work"
-      ? "Client and prospect updates — check when you're ready."
-      : "Job search updates from your mail — check when you're ready.";
 
   return (
-    <div style={{ borderBottom: border.line, background: surface.page, padding: "10px 16px" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-        <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
+    <div style={{ borderBottom: border.line, background: surface.page, padding: "8px 14px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+        <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest }}>
           {title}
-          {insightsLoaded && pendingCount > 0 ? ` (${pendingCount})` : ""}
-        </p>
+          {insightsLoaded && pendingCount > 0 ? ` · ${pendingCount}` : ""}
+        </span>
         <ScoutSecondaryBtn onClick={onCheckEmail} disabled={insightsLoading}>
           {insightsLoading ? "Checking…" : insightsLoaded ? "Check again" : "Check for updates"}
         </ScoutSecondaryBtn>
+        {!insightsLoaded && (
+          <span style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted }}>
+            {lens === "work" ? "Client & prospect mail" : "Roles & follow-ups from your mail"}
+          </span>
+        )}
         <button
           type="button"
           onClick={onViewAll}
@@ -72,14 +73,8 @@ export function InboxInsightsStrip({
         </button>
       </div>
 
-      {!insightsLoaded && (
-        <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5 }}>
-          {hint} Tips live in View all.
-        </p>
-      )}
-
       {emailRows.length > 0 && (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 6 }}>
           {emailRows.map((a) => (
             <InboxInsightRow
               key={a.id}

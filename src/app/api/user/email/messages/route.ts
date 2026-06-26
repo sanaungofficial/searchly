@@ -30,12 +30,25 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Number(sp.get("limit") ?? 30), 50);
 
   try {
-    const { messages, nextCursor } = await listMessages(grant.nylasGrantId, {
-      folderId,
-      pageToken,
-      limit,
-      searchQueryNative: q || undefined,
-    });
+    let messages: Awaited<ReturnType<typeof listMessages>>["messages"];
+    let nextCursor: string | null;
+
+    try {
+      ({ messages, nextCursor } = await listMessages(grant.nylasGrantId, {
+        folderId,
+        pageToken,
+        limit,
+        searchQueryNative: q || undefined,
+      }));
+    } catch (folderErr) {
+      if (!folderId) throw folderErr;
+      console.warn("[user/email/messages] folder filter failed, retrying without folder", folderId, folderErr);
+      ({ messages, nextCursor } = await listMessages(grant.nylasGrantId, {
+        pageToken,
+        limit,
+        searchQueryNative: q || undefined,
+      }));
+    }
 
     const ids = messages.map((m) => m.id);
     const activities =

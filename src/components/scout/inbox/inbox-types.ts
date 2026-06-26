@@ -1,5 +1,10 @@
 export type InboxLens = "job_search" | "work";
 
+export function inboxLensConnected(status: InboxStatus, lens: InboxLens): boolean {
+  if (lens === "work") return Boolean(status.workInbox?.connected);
+  return Boolean(status.jobInbox?.connected ?? status.connected);
+}
+
 export type InboxStatus = {
   configured: boolean;
   connected: boolean;

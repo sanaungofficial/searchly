@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StoredThreadMessage } from "@/lib/kimchi-assistant/thread-serialize";
+import { WELCOME_MESSAGE, NEW_THREAD_TITLE } from "@/lib/kimchi-assistant/chat-chips";
+import { normalizeThreadMessages } from "@/lib/kimchi-assistant/thread-messages";
 
 export type ThreadSummary = {
   id: string;
@@ -13,13 +15,13 @@ export type ThreadSummary = {
 const WELCOME: StoredThreadMessage = {
   kind: "text",
   role: "assistant",
-  content:
-    "Ask anything about your search — or tap **Talk it out** to use your voice. I'll pick up from there.",
+  content: WELCOME_MESSAGE,
 };
 
 export function useKimchiThreads() {
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [activeThreadTitle, setActiveThreadTitle] = useState<string>(NEW_THREAD_TITLE);
   const [messages, setMessages] = useState<StoredThreadMessage[]>([WELCOME]);
   const [loading, setLoading] = useState(true);
   const [threadMenuOpen, setThreadMenuOpen] = useState(false);
@@ -34,13 +36,21 @@ export function useKimchiThreads() {
     return list;
   }, []);
 
-  const loadThread = useCallback(async (threadId: string) => {
-    const res = await fetch(`/api/assistant/threads/${threadId}`, { cache: "no-store" });
-    if (!res.ok) return;
-    const data = await res.json();
-    setActiveThreadId(threadId);
-    setMessages(data.thread?.messages?.length ? data.thread.messages : [WELCOME]);
+  const applyThread = useCallback((thread: { id: string; title?: string; messages?: unknown }) => {
+    setActiveThreadId(thread.id);
+    setActiveThreadTitle(thread.title ?? NEW_THREAD_TITLE);
+    setMessages(normalizeThreadMessages(thread.messages));
   }, []);
+
+  const loadThread = useCallback(
+    async (threadId: string) => {
+      const res = await fetch(`/api/assistant/threads/${threadId}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.thread) applyThread(data.thread);
+    },
+    [applyThread],
+  );
 
   const ensureThread = useCallback(async () => {
     if (activeThreadId) return activeThreadId;
@@ -51,11 +61,10 @@ export function useKimchiThreads() {
     const thread = data.thread;
     if (!thread?.id) return null;
 
-    setActiveThreadId(thread.id);
-    setMessages(thread.messages?.length ? thread.messages : [WELCOME]);
+    applyThread(thread);
     void refreshThreadList();
     return thread.id as string;
-  }, [activeThreadId, refreshThreadList]);
+  }, [activeThreadId, applyThread, refreshThreadList]);
 
   useEffect(() => {
     if (initRef.current) return;
@@ -92,11 +101,10 @@ export function useKimchiThreads() {
     const thread = data.thread;
     if (!thread?.id) return;
 
-    setActiveThreadId(thread.id);
-    setMessages(thread.messages?.length ? thread.messages : [WELCOME]);
+    applyThread(thread);
     setThreadMenuOpen(false);
     void refreshThreadList();
-  }, [refreshThreadList]);
+  }, [applyThread, refreshThreadList]);
 
   const persistMessages = useCallback(
     async (threadId: string, toSave: StoredThreadMessage[]) => {
@@ -153,6 +161,7 @@ export function useKimchiThreads() {
   return {
     threads,
     activeThreadId,
+    activeThreadTitle,
     messages,
     setMessages,
     loading,
