@@ -126,6 +126,11 @@ export function mergeExecThreadJobExport(bundle: ExecThreadJobExportBundle): Exe
       layer.notificationRecipients,
     );
     merged.hiringManagers = mergeArrayField(merged.hiringManagers, layer.hiringManagers);
+    if (layer.hiringManager && isRecord(layer.hiringManager)) {
+      merged.hiringManagers = mergeArrayField(merged.hiringManagers, [
+        layer.hiringManager as NonNullable<ExecThreadListingRaw["hiringManagers"]>[number],
+      ]);
+    }
 
     if (layer.company && isRecord(layer.company)) {
       merged.company = mergeObjects(

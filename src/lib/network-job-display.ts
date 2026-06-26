@@ -286,8 +286,8 @@ export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobLis
     positionTitle: mapped.positionTitle,
     companyName: mapped.companyName,
     agencyName: mapped.agencyName,
-    agencyWebsite: null,
-    agencyLogoUrl: null,
+    agencyWebsite: mapped._display.companyWebsiteUrl ?? null,
+    agencyLogoUrl: mapped._display.companyLogoUrl ?? null,
     city: mapped.city,
     state: mapped.state,
     location: mapped.location,
@@ -397,6 +397,8 @@ export function buildNetworkProspectCard(
       ...(job.source === "EXECTHREAD" && job.industries.length ? job.industries.slice(0, 2) : []),
     ].filter(Boolean),
     companySummary: job.companySummary ?? undefined,
+    companyWebsite: job.agencyWebsite ?? undefined,
+    companyLogo: job.agencyLogoUrl ?? undefined,
     industries: job.industries.length ? job.industries : undefined,
     ...(job.matchScore != null && job.matchScore > 0
       ? {
