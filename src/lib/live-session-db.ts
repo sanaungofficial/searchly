@@ -233,6 +233,19 @@ export async function getAdminLiveOverview(): Promise<AdminLiveOverview> {
   };
 }
 
+export async function listCoachLiveSessions(coachProfileId: string) {
+  return prisma.liveSession.findMany({
+    where: {
+      coachProfileId,
+      status: { in: ["SCHEDULED", "LIVE"] },
+      scheduledEnd: { gte: new Date() },
+    },
+    include: sessionInclude,
+    orderBy: { scheduledStart: "asc" },
+    take: 6,
+  });
+}
+
 export async function listSessionRegistrations(liveSessionId: string) {
   return prisma.liveSessionRegistration.findMany({
     where: { liveSessionId },

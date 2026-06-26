@@ -72,6 +72,7 @@ type MapSessionArgs = {
   isRegistered?: boolean;
   activePeerCount?: number;
   roomEnabled?: boolean;
+  coachSlug?: string | null;
 };
 
 export function mapLiveSessionToView(
@@ -108,5 +109,10 @@ export function mapLiveSessionToView(
     isRegistered: args.isRegistered,
     activePeerCount: args.activePeerCount,
     roomEnabled: args.roomEnabled,
+    peakViewers: row.peakViewers,
+    totalUniqueJoins: row.totalUniqueJoins,
+    recordingUrl: row.recordingUrl,
+    hlsPlaybackUrl: row.hlsPlaybackUrl,
+    coachSlug: args.coachSlug ?? null,
   };
 }

@@ -1,24 +1,25 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BetaFeaturePage } from "@/lib/beta-feature-page";
-import { LiveSessionRoomPage } from "@/components/scout/live-session-room-page";
+import { LiveSessionReplayPage } from "@/components/scout/live-session-replay-page";
 import { findLiveSessionByRouteId, toLiveSessionView } from "@/lib/live-session-db";
 import { parseLiveSessionRouteId } from "@/lib/live-sessions";
 
-export default async function LiveSessionPage({
+export default async function LiveSessionReplayRoute({
   params,
-  searchParams,
 }: {
   params: Promise<{ sessionId: string }>;
-  searchParams: Promise<{ as?: string }>;
 }) {
   const { sessionId: raw } = await params;
-  const sp = await searchParams;
   const routeId = parseLiveSessionRouteId(raw);
   if (!routeId) notFound();
 
   const row = await findLiveSessionByRouteId(routeId);
   if (!row) notFound();
+
+  if (row.status !== "ENDED" && row.status !== "CANCELLED") {
+    redirect(`/live/${raw}`);
+  }
 
   let coachSlug: string | null = null;
   if (row.coachProfileId) {
@@ -30,10 +31,11 @@ export default async function LiveSessionPage({
   }
 
   const session = toLiveSessionView(row, { coachSlug });
+  const replayUrl = row.recordingUrl ?? row.hlsPlaybackUrl ?? null;
 
   return (
     <BetaFeaturePage feature="live">
-      <LiveSessionRoomPage session={session} joinAsGuest={sp.as === "guest"} />
+      <LiveSessionReplayPage session={session} replayUrl={replayUrl} />
     </BetaFeaturePage>
   );
 }

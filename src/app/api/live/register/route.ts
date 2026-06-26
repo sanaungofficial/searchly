@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { findLiveSessionByRouteId, registerForLiveSession } from "@/lib/live-session-db";
 import { sendLiveSessionRegistrationEmail } from "@/lib/live-session-emails";
+import { logLiveSessionEvent } from "@/lib/live-session-events";
 
 export async function POST(request: Request) {
   const { authUser, dbUser } = await getActingUser(request);
@@ -31,6 +32,14 @@ export async function POST(request: Request) {
   }
 
   const { created } = await registerForLiveSession(row.id, dbUser.id);
+
+  if (created) {
+    await logLiveSessionEvent({
+      liveSessionId: row.id,
+      userId: dbUser.id,
+      type: "REGISTERED",
+    });
+  }
 
   if (created && dbUser.email) {
     void sendLiveSessionRegistrationEmail({
