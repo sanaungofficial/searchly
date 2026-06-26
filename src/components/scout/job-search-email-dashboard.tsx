@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { color, fontMono, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -15,7 +15,7 @@ type InboxStatus = {
   autoApplyUpdates: boolean;
 };
 
-type Folder = { id: string; name?: string; system_folder?: string; unread_count?: number };
+type Folder = { id: string; name: string; unread_count?: number };
 
 type MessageSummary = {
   id: string;
@@ -62,10 +62,8 @@ type ComposeState = {
   replyToMessageId?: string;
 };
 
-const panelBorder = border.line;
-
-function folderLabel(folder: Folder): string {
-  return folder.name ?? folder.system_folder ?? "Folder";
+function pickInboxFolder(folders: Folder[]): Folder | null {
+  return folders.find((f) => f.id === "INBOX" || f.name.toLowerCase() === "inbox") ?? folders[0] ?? null;
 }
 
 export function JobSearchEmailDashboard() {
@@ -102,23 +100,26 @@ export function JobSearchEmailDashboard() {
 
   const loadFolders = useCallback(async () => {
     const res = await fetch("/api/user/email/folders");
-    if (!res.ok) throw new Error("folders");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(typeof data.error === "string" ? data.error : "Could not load folders");
+    }
     const data = await res.json();
     return (data.folders ?? []) as Folder[];
   }, []);
 
-  const loadMessages = useCallback(
-    async (folderId: string | null, q: string) => {
-      const params = new URLSearchParams();
-      if (folderId) params.set("folderId", folderId);
-      if (q.trim()) params.set("q", q.trim());
-      const res = await fetch(`/api/user/email/messages?${params.toString()}`);
-      if (!res.ok) throw new Error("messages");
-      const data = await res.json();
-      return (data.messages ?? []) as MessageSummary[];
-    },
-    [],
-  );
+  const loadMessages = useCallback(async (folderId: string | null, q: string) => {
+    const params = new URLSearchParams();
+    if (folderId) params.set("folderId", folderId);
+    if (q.trim()) params.set("q", q.trim());
+    const res = await fetch(`/api/user/email/messages?${params.toString()}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(typeof data.error === "string" ? data.error : "Could not load messages");
+    }
+    const data = await res.json();
+    return (data.messages ?? []) as MessageSummary[];
+  }, []);
 
   const loadDetail = useCallback(async (id: string) => {
     const res = await fetch(`/api/user/email/messages/${encodeURIComponent(id)}`);
@@ -126,19 +127,37 @@ export function JobSearchEmailDashboard() {
     return res.json() as Promise<MessageDetail>;
   }, []);
 
-  useEffect(() => {
-    loadStatus()
-      .then(async (st) => {
-        setStatus(st);
-        if (!st?.connected) return;
+  const bootstrap = useCallback(async () => {
+    setLoading(true);
+    setNotice(null);
+    try {
+      const st = await loadStatus();
+      setStatus(st);
+      if (!st?.connected) return;
+
+      try {
         const f = await loadFolders();
         setFolders(f);
-        const inbox = f.find((x) => x.system_folder?.toLowerCase() === "inbox") ?? f[0];
+        const inbox = pickInboxFolder(f);
         if (inbox) setSelectedFolderId(inbox.id);
-      })
-      .catch(() => setNotice({ type: "error", text: "Could not load inbox." }))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        setFolders([]);
+        setSelectedFolderId(null);
+        setNotice({
+          type: "error",
+          text: err instanceof Error ? err.message : "Could not load folders — showing recent mail instead.",
+        });
+      }
+    } catch {
+      setNotice({ type: "error", text: "Could not load inbox status." });
+    } finally {
+      setLoading(false);
+    }
   }, [loadStatus, loadFolders]);
+
+  useEffect(() => {
+    bootstrap().catch(() => setLoading(false));
+  }, [bootstrap]);
 
   useEffect(() => {
     const inbox = searchParams.get("inbox");
@@ -146,6 +165,7 @@ export function JobSearchEmailDashboard() {
     if (inbox === "connected") {
       setNotice({ type: "success", text: "Gmail connected — you can read and send from here." });
       router.replace("/opportunities/inbox");
+      bootstrap().catch(() => {});
     } else if (inbox === "error") {
       setNotice({
         type: "error",
@@ -156,10 +176,10 @@ export function JobSearchEmailDashboard() {
       });
       router.replace("/opportunities/inbox");
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, bootstrap]);
 
   useEffect(() => {
-    if (!status?.connected || !selectedFolderId) return;
+    if (!status?.connected) return;
     setListLoading(true);
     const t = setTimeout(() => {
       loadMessages(selectedFolderId, search)
@@ -170,7 +190,12 @@ export function JobSearchEmailDashboard() {
             setDetail(null);
           }
         })
-        .catch(() => setNotice({ type: "error", text: "Could not load messages." }))
+        .catch((err) =>
+          setNotice({
+            type: "error",
+            text: err instanceof Error ? err.message : "Could not load messages.",
+          }),
+        )
         .finally(() => setListLoading(false));
     }, search ? 350 : 0);
     return () => clearTimeout(t);
@@ -200,12 +225,9 @@ export function JobSearchEmailDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed");
       setNotice({ type: "success", text: `Synced — ${data.processed ?? 0} new signals processed.` });
-      if (selectedFolderId) {
-        const rows = await loadMessages(selectedFolderId, search);
-        setMessages(rows);
-      }
-    } catch {
-      setNotice({ type: "error", text: "Sync failed." });
+      setMessages(await loadMessages(selectedFolderId, search));
+    } catch (err) {
+      setNotice({ type: "error", text: err instanceof Error ? err.message : "Sync failed." });
     } finally {
       setSyncing(false);
     }
@@ -264,7 +286,7 @@ export function JobSearchEmailDashboard() {
       if (!res.ok) throw new Error(data.error ?? "Send failed");
       setCompose({ open: false, to: "", subject: "", body: "" });
       setNotice({ type: "success", text: "Message sent." });
-      if (selectedFolderId) setMessages(await loadMessages(selectedFolderId, search));
+      setMessages(await loadMessages(selectedFolderId, search));
     } catch (e) {
       setNotice({ type: "error", text: e instanceof Error ? e.message : "Send failed." });
     } finally {
@@ -279,23 +301,25 @@ export function JobSearchEmailDashboard() {
 
   if (loading) {
     return (
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, padding: 24 }}>
-        Loading inbox…
-      </p>
+      <ScoutBox padding="24px" style={{ marginTop: 16 }}>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>Loading inbox…</p>
+      </ScoutBox>
     );
   }
 
   if (!status?.configured) {
     return (
-      <div style={{ padding: 24, fontFamily: fontSans, color: color.stone }}>
-        Email integration is not configured on this environment.
-      </div>
+      <ScoutBox padding="24px" style={{ marginTop: 16, maxWidth: 560 }}>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: 0 }}>
+          Email integration is not configured on this environment.
+        </p>
+      </ScoutBox>
     );
   }
 
   if (!status.connected) {
     return (
-      <div style={{ padding: isMobile ? 16 : 24, maxWidth: 560 }}>
+      <ScoutBox padding={isMobile ? "20px 16px" : "28px 24px"} style={{ marginTop: 16, maxWidth: 560 }}>
         <h2 style={{ fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
           Job-search inbox
         </h2>
@@ -309,7 +333,7 @@ export function JobSearchEmailDashboard() {
         >
           Connect Gmail
         </ScoutPrimaryBtn>
-      </div>
+      </ScoutBox>
     );
   }
 
@@ -317,82 +341,112 @@ export function JobSearchEmailDashboard() {
   const showDetail = !isMobile || mobilePane === "detail";
 
   return (
-    <div
+    <ScoutBox
+      flat
+      padding="0"
       style={{
+        marginTop: 16,
+        flex: 1,
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
-        flex: 1,
-        minHeight: isMobile ? 480 : 560,
-        height: isMobile ? "calc(100dvh - 180px)" : "calc(100vh - 200px)",
-        border: panelBorder,
-        background: surface.card,
         overflow: "hidden",
       }}
     >
-      {/* Toolbar */}
+      {/* Header */}
       <div
         style={{
           display: "flex",
           flexWrap: "wrap",
-          alignItems: "center",
-          gap: 10,
-          padding: "12px 16px",
-          borderBottom: panelBorder,
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: isMobile ? "16px" : "18px 20px",
+          borderBottom: border.line,
           background: surface.page,
         }}
       >
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
-            {status.email}
-          </p>
-          <p style={{ margin: "2px 0 0", fontFamily: fontMono, fontSize: T.label, color: color.muted }}>
-            Gmail · job-search inbox
+        <div style={{ minWidth: 180 }}>
+          <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest }}>
+            Job-search inbox
+          </h2>
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+            {status.email} · Gmail
           </p>
         </div>
-        <input
-          type="search"
-          placeholder="Search mail…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: "1 1 200px",
-            maxWidth: 280,
-            padding: "8px 12px",
-            border: panelBorder,
-            fontFamily: fontSans,
-            fontSize: T.bodySm,
-            background: surface.card,
-          }}
-        />
-        <ScoutSecondaryBtn onClick={handleSync} disabled={syncing}>
-          {syncing ? "Syncing…" : "Sync"}
-        </ScoutSecondaryBtn>
-        <ScoutPrimaryBtn onClick={() => openCompose()}>Compose</ScoutPrimaryBtn>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, flex: "1 1 280px", justifyContent: "flex-end" }}>
+          <input
+            type="search"
+            placeholder="Search mail…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: "1 1 180px",
+              maxWidth: 260,
+              padding: "9px 12px",
+              border: border.line,
+              borderRadius: "var(--scout-radius)",
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              background: surface.card,
+            }}
+          />
+          <ScoutSecondaryBtn onClick={() => bootstrap()} disabled={loading}>
+            Refresh
+          </ScoutSecondaryBtn>
+          <ScoutSecondaryBtn onClick={handleSync} disabled={syncing}>
+            {syncing ? "Syncing…" : "Sync agent"}
+          </ScoutSecondaryBtn>
+          <ScoutPrimaryBtn onClick={() => openCompose()}>Compose</ScoutPrimaryBtn>
+        </div>
       </div>
 
       {notice && (
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
             padding: "10px 16px",
             fontFamily: fontSans,
             fontSize: T.caption,
             color: notice.type === "success" ? color.forest : "#C4574A",
             background: notice.type === "success" ? "rgba(42,107,74,0.08)" : "rgba(196,87,74,0.08)",
-            borderBottom: panelBorder,
+            borderBottom: border.line,
           }}
         >
-          {notice.text}
+          <span>{notice.text}</span>
+          {notice.type === "error" && (
+            <button
+              type="button"
+              onClick={() => bootstrap()}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "inherit",
+                fontFamily: fontSans,
+                fontSize: T.caption,
+                fontWeight: 600,
+                cursor: "pointer",
+                textDecoration: "underline",
+                flexShrink: 0,
+              }}
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", flex: 1, minHeight: isMobile ? 420 : 520 }}>
         {/* Folders */}
-        {!isMobile && (
+        {!isMobile && folders.length > 0 && (
           <aside
             style={{
-              width: 200,
+              width: 188,
               flexShrink: 0,
-              borderRight: panelBorder,
+              borderRight: border.line,
               overflowY: "auto",
               background: surface.page,
             }}
@@ -410,9 +464,9 @@ export function JobSearchEmailDashboard() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: 8,
-                    padding: "10px 14px",
+                    padding: "11px 14px",
                     border: "none",
-                    borderBottom: panelBorder,
+                    borderBottom: border.line,
                     background: active ? "rgba(26,58,47,0.08)" : "transparent",
                     color: active ? color.forest : color.stone,
                     fontFamily: fontSans,
@@ -422,7 +476,7 @@ export function JobSearchEmailDashboard() {
                     textAlign: "left",
                   }}
                 >
-                  <span>{folderLabel(folder)}</span>
+                  <span>{folder.name}</span>
                   {folder.unread_count ? (
                     <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted }}>
                       {folder.unread_count}
@@ -438,51 +492,59 @@ export function JobSearchEmailDashboard() {
         {showList && (
           <section
             style={{
-              width: isMobile ? "100%" : 320,
+              width: isMobile ? "100%" : 340,
               flexShrink: 0,
-              borderRight: isMobile ? "none" : panelBorder,
+              borderRight: isMobile ? "none" : border.line,
               overflowY: "auto",
               background: surface.card,
             }}
           >
-            {isMobile && (
-              <div style={{ padding: "8px 12px", borderBottom: panelBorder }}>
+            {isMobile && folders.length > 0 && (
+              <div style={{ padding: "10px 12px", borderBottom: border.line, background: surface.page }}>
                 <select
                   value={selectedFolderId ?? ""}
                   onChange={(e) => setSelectedFolderId(e.target.value)}
-                  style={{ width: "100%", padding: 8, fontFamily: fontSans, fontSize: T.bodySm, border: panelBorder }}
+                  style={{
+                    width: "100%",
+                    padding: "9px 10px",
+                    fontFamily: fontSans,
+                    fontSize: T.bodySm,
+                    border: border.line,
+                    borderRadius: "var(--scout-radius)",
+                    background: surface.card,
+                  }}
                 >
                   {folders.map((f) => (
                     <option key={f.id} value={f.id}>
-                      {folderLabel(f)}
+                      {f.name}
                     </option>
                   ))}
                 </select>
               </div>
             )}
-            <p
+            <div
               style={{
-                margin: 0,
                 padding: "10px 14px",
-                fontFamily: fontMono,
-                fontSize: T.label,
-                color: color.muted,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                borderBottom: panelBorder,
+                borderBottom: border.line,
+                background: surface.page,
               }}
             >
-              {selectedFolder ? folderLabel(selectedFolder) : "Inbox"}
-            </p>
-            {listLoading && (
-              <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-                Loading…
+              <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted }}>
+                {selectedFolder?.name ?? "All mail"}
               </p>
+            </div>
+            {listLoading && (
+              <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading messages…</p>
             )}
             {!listLoading && messages.length === 0 && (
-              <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-                No messages in this folder.
-              </p>
+              <div style={{ padding: 20, textAlign: "center" }}>
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, margin: "0 0 6px" }}>
+                  No messages here
+                </p>
+                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0 }}>
+                  Try another folder or run Sync agent to pull recruiter updates.
+                </p>
+              </div>
             )}
             {messages.map((msg) => {
               const active = msg.id === selectedId;
@@ -497,7 +559,7 @@ export function JobSearchEmailDashboard() {
                     textAlign: "left",
                     padding: "12px 14px",
                     border: "none",
-                    borderBottom: panelBorder,
+                    borderBottom: border.line,
                     background: active ? "rgba(26,58,47,0.06)" : msg.unread ? "rgba(26,58,47,0.03)" : "transparent",
                     cursor: "pointer",
                   }}
@@ -558,6 +620,7 @@ export function JobSearchEmailDashboard() {
                         fontWeight: 600,
                         color: color.forest,
                         background: "rgba(42,107,74,0.12)",
+                        borderRadius: 4,
                       }}
                     >
                       Kimchi · {msg.activity.signal.replace(/_/g, " ")}
@@ -579,26 +642,28 @@ export function JobSearchEmailDashboard() {
                 style={{
                   padding: "10px 14px",
                   border: "none",
-                  borderBottom: panelBorder,
+                  borderBottom: border.line,
                   background: surface.page,
                   fontFamily: fontSans,
                   fontSize: T.bodySm,
                   cursor: "pointer",
                   color: color.forest,
+                  width: "100%",
+                  textAlign: "left",
                 }}
               >
                 ← Back to list
               </button>
             )}
             {!selectedId && (
-              <p style={{ padding: 24, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
-                Select a message to read.
-              </p>
+              <div style={{ padding: 32, textAlign: "center" }}>
+                <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                  Select a message to read
+                </p>
+              </div>
             )}
             {selectedId && detailLoading && (
-              <p style={{ padding: 24, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
-                Opening…
-              </p>
+              <p style={{ padding: 24, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>Opening…</p>
             )}
             {detail && !detailLoading && (
               <div style={{ padding: isMobile ? 16 : 24 }}>
@@ -628,17 +693,16 @@ export function JobSearchEmailDashboard() {
                       padding: 16,
                       border: "1px solid rgba(42,107,74,0.25)",
                       background: "rgba(42,107,74,0.06)",
+                      borderRadius: "var(--scout-radius)",
                     }}
                   >
                     <p
                       style={{
                         margin: "0 0 8px",
-                        fontFamily: fontMono,
+                        fontFamily: fontSans,
                         fontSize: T.label,
                         fontWeight: 600,
                         color: color.forest,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
                       }}
                     >
                       Kimchi agent
@@ -692,7 +756,6 @@ export function JobSearchEmailDashboard() {
         )}
       </div>
 
-      {/* Compose modal */}
       {compose.open && (
         <>
           <div
@@ -710,11 +773,12 @@ export function JobSearchEmailDashboard() {
               overflow: "auto",
               background: surface.card,
               border: border.lineStrong,
+              borderRadius: "var(--scout-radius)",
               zIndex: 1001,
               boxShadow: "8px 8px 0 rgba(17,17,17,0.08)",
             }}
           >
-            <div style={{ padding: "16px 20px", borderBottom: panelBorder, display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "16px 20px", borderBottom: border.line, display: "flex", justifyContent: "space-between" }}>
               <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600 }}>New message</p>
               <button type="button" onClick={() => setCompose((c) => ({ ...c, open: false }))} style={{ border: "none", background: "none", cursor: "pointer" }}>
                 ✕
@@ -727,7 +791,7 @@ export function JobSearchEmailDashboard() {
                   type="email"
                   value={compose.to}
                   onChange={(e) => setCompose((c) => ({ ...c, to: e.target.value }))}
-                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", border: panelBorder, fontFamily: fontSans, fontSize: T.bodySm }}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", border: border.line, borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: T.bodySm }}
                 />
               </label>
               <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
@@ -736,7 +800,7 @@ export function JobSearchEmailDashboard() {
                   type="text"
                   value={compose.subject}
                   onChange={(e) => setCompose((c) => ({ ...c, subject: e.target.value }))}
-                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", border: panelBorder, fontFamily: fontSans, fontSize: T.bodySm }}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", border: border.line, borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: T.bodySm }}
                 />
               </label>
               <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
@@ -745,7 +809,7 @@ export function JobSearchEmailDashboard() {
                   value={compose.body}
                   onChange={(e) => setCompose((c) => ({ ...c, body: e.target.value }))}
                   rows={12}
-                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", border: panelBorder, fontFamily: fontSans, fontSize: T.bodySm, resize: "vertical" }}
+                  style={{ display: "block", width: "100%", marginTop: 4, padding: "10px 12px", border: border.line, borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: T.bodySm, resize: "vertical" }}
                 />
               </label>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
@@ -758,6 +822,6 @@ export function JobSearchEmailDashboard() {
           </div>
         </>
       )}
-    </div>
+    </ScoutBox>
   );
 }
