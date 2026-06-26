@@ -1,0 +1,281 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AgentMicrophone,
+  AgentPlayer,
+  AgentSession,
+  type AgentSettingsObject,
+  type ConversationTextMessage,
+} from "@deepgram/agents";
+import type { VoiceOrbState } from "@/components/voice/voice-orb";
+import {
+  applyVoiceAgentField,
+  type VoiceAgentFieldName,
+  type VoiceAgentFieldPatch,
+} from "@/lib/voice-intake";
+
+export type VoiceAgentContext = "onboarding" | "workspace";
+
+export type VoiceAgentSessionResult = {
+  summary: string;
+  transcript: string;
+};
+
+type UseVoiceAgentSessionOptions = {
+  context?: VoiceAgentContext;
+  disabled?: boolean;
+  onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
+  onComplete?: (result: VoiceAgentSessionResult) => void;
+};
+
+function buildTranscript(lines: Array<{ role: string; content: string }>): string {
+  return lines.map((line) => `${line.role}: ${line.content}`).join("\n");
+}
+
+export function useVoiceAgentSession({
+  context = "workspace",
+  disabled,
+  onFieldUpdate,
+  onComplete,
+}: UseVoiceAgentSessionOptions = {}) {
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [agentSettings, setAgentSettings] = useState<AgentSettingsObject | null>(null);
+  const [orbState, setOrbState] = useState<VoiceOrbState>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [agentLine, setAgentLine] = useState<string | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [sessionActive, setSessionActive] = useState(false);
+
+  const sessionRef = useRef<AgentSession | null>(null);
+  const micRef = useRef<AgentMicrophone | null>(null);
+  const playerRef = useRef<AgentPlayer | null>(null);
+  const transcriptRef = useRef<Array<{ role: string; content: string }>>([]);
+  const rafRef = useRef<number | null>(null);
+  const uiModeRef = useRef<VoiceOrbState>("idle");
+
+  const setUiMode = useCallback((mode: VoiceOrbState) => {
+    uiModeRef.current = mode;
+    setOrbState(mode);
+  }, []);
+
+  useEffect(() => {
+    void fetch(`/api/voice/agent/config?context=${context}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setAvailable(!!data?.agentAvailable);
+        setAgentSettings(data?.agent ?? null);
+      })
+      .catch(() => setAvailable(false));
+  }, [context]);
+
+  const stopVisualizer = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    setAudioLevel(0);
+  }, []);
+
+  const startVisualizer = useCallback(() => {
+    stopVisualizer();
+    const tick = () => {
+      const mic = micRef.current;
+      const player = playerRef.current;
+      const mode = uiModeRef.current;
+      const level =
+        mode === "speaking"
+          ? (player?.getOutputVolume() ?? 0)
+          : mode === "listening" || mode === "live"
+            ? (mic?.getInputVolume() ?? 0)
+            : 0;
+      setAudioLevel(level);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [stopVisualizer]);
+
+  const teardownSession = useCallback(() => {
+    stopVisualizer();
+    micRef.current?.stop();
+    micRef.current = null;
+    playerRef.current?.dispose();
+    playerRef.current = null;
+    sessionRef.current?.disconnect();
+    sessionRef.current = null;
+    setSessionActive(false);
+  }, [stopVisualizer]);
+
+  useEffect(() => () => teardownSession(), [teardownSession]);
+
+  const finishSession = useCallback(
+    (resultSummary: string) => {
+      const transcript = buildTranscript(transcriptRef.current);
+      const header = `[Voice agent ${new Date().toISOString()}]\n${resultSummary}\n\n`;
+      const payload: VoiceAgentSessionResult = {
+        summary: resultSummary,
+        transcript: `${header}${transcript}`.slice(0, 24000),
+      };
+
+      teardownSession();
+      setSummary(resultSummary);
+      setUiMode("done");
+      onComplete?.(payload);
+    },
+    [onComplete, setUiMode, teardownSession],
+  );
+
+  const handleFieldSave = useCallback(
+    (field: string, value: string) => {
+      if (!field || !value || context !== "onboarding") return;
+      const patch = applyVoiceAgentField(field as VoiceAgentFieldName, value);
+      if (Object.keys(patch).length) onFieldUpdate?.(patch);
+    },
+    [context, onFieldUpdate],
+  );
+
+  const startSession = useCallback(async () => {
+    if (disabled || !agentSettings || sessionActive) return;
+
+    setError(null);
+    setSummary(null);
+    setAgentLine(null);
+    transcriptRef.current = [];
+    setUiMode("connecting");
+
+    try {
+      const session = new AgentSession({
+        auth: {
+          tokenFactory: () =>
+            fetch("/api/voice/agent/token", { cache: "no-store" }).then((r) => {
+              if (!r.ok) throw new Error("Could not authorize voice agent");
+              return r.text();
+            }),
+        },
+        agent: agentSettings,
+        tags: ["kimchi", context],
+      });
+
+      const player = new AgentPlayer();
+      const mic = new AgentMicrophone((data) => session.sendAudio(data));
+
+      session.on("audio", (chunk) => player.queue(chunk));
+      session.on("user-started-speaking", () => {
+        player.interrupt();
+        setUiMode("listening");
+      });
+      session.on("agent-thinking", () => setUiMode("thinking"));
+      session.on("agent-started-speaking", () => setUiMode("speaking"));
+      session.on("agent-audio-done", () => setUiMode("live"));
+      session.on("conversation-text", (msg: ConversationTextMessage) => {
+        const role = msg.role === "assistant" ? "Kimchi" : "You";
+        transcriptRef.current.push({ role, content: msg.content });
+        if (msg.role === "assistant") setAgentLine(msg.content);
+      });
+      session.on("function-call-request", (msg) => {
+        for (const fn of msg.functions ?? []) {
+          if (!fn.client_side) continue;
+          try {
+            const args = JSON.parse(fn.arguments || "{}") as Record<string, string>;
+            if (fn.name === "save_onboarding_field") {
+              handleFieldSave(args.field, args.value);
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+            } else if (fn.name === "finish_onboarding_chat") {
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+              finishSession(args.summary || "Wrapped up your search preferences.");
+            }
+          } catch {
+            session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: false }));
+          }
+        }
+      });
+      session.on("connected", () => {
+        setSessionActive(true);
+        setUiMode("live");
+        startVisualizer();
+      });
+      session.on("disconnected", (reason) => {
+        if (uiModeRef.current !== "done" && uiModeRef.current !== "idle") {
+          setError(reason || "Voice session ended");
+          setUiMode("error");
+        }
+        setSessionActive(false);
+        stopVisualizer();
+      });
+      session.on("error", (msg) => {
+        setError(msg.description || "Voice agent error");
+        setUiMode("error");
+      });
+      session.on("sdk-error", (err) => {
+        setError(err.message || "Voice agent error");
+        setUiMode("error");
+      });
+
+      sessionRef.current = session;
+      micRef.current = mic;
+      playerRef.current = player;
+
+      await session.connect();
+      await mic.start();
+    } catch (err) {
+      teardownSession();
+      setError(err instanceof Error ? err.message : "Could not start voice agent");
+      setUiMode("error");
+    }
+  }, [
+    agentSettings,
+    context,
+    disabled,
+    finishSession,
+    handleFieldSave,
+    sessionActive,
+    setUiMode,
+    startVisualizer,
+    stopVisualizer,
+    teardownSession,
+  ]);
+
+  const endSession = useCallback(() => {
+    if (!sessionActive) return;
+    finishSession(summary || "Voice conversation ended.");
+  }, [finishSession, sessionActive, summary]);
+
+  const resetSession = useCallback(() => {
+    teardownSession();
+    setSummary(null);
+    setAgentLine(null);
+    setError(null);
+    setUiMode("idle");
+  }, [setUiMode, teardownSession]);
+
+  const toggleSession = useCallback(() => {
+    if (orbState === "done") {
+      resetSession();
+      return;
+    }
+    if (sessionActive) {
+      endSession();
+      return;
+    }
+    if (orbState === "idle" || orbState === "error") {
+      void startSession();
+    }
+  }, [endSession, orbState, resetSession, sessionActive, startSession]);
+
+  return {
+    available,
+    agentSettings,
+    orbState,
+    error,
+    summary,
+    agentLine,
+    audioLevel,
+    sessionActive,
+    startSession,
+    endSession,
+    resetSession,
+    toggleSession,
+    teardownSession,
+  };
+}

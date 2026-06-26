@@ -1,16 +1,27 @@
 import { getActingUser } from "@/lib/acting-user";
 import { deepgramConfigured } from "@/lib/deepgram";
-import { buildOnboardingVoiceAgentSettings } from "@/lib/voice-agent-config";
+import {
+  buildOnboardingVoiceAgentSettings,
+  buildWorkspaceVoiceAgentSettings,
+} from "@/lib/voice-agent-config";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   const { dbUser } = await getActingUser();
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const context = searchParams.get("context") === "onboarding" ? "onboarding" : "workspace";
 
   return NextResponse.json({
     agentAvailable: deepgramConfigured(),
     transcriptionAvailable: deepgramConfigured(),
     extractionAvailable: !!process.env.ANTHROPIC_API_KEY,
-    agent: deepgramConfigured() ? buildOnboardingVoiceAgentSettings() : null,
+    context,
+    agent: deepgramConfigured()
+      ? context === "onboarding"
+        ? buildOnboardingVoiceAgentSettings()
+        : buildWorkspaceVoiceAgentSettings()
+      : null,
   });
 }

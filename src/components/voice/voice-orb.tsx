@@ -19,6 +19,10 @@ interface VoiceOrbProps {
   disabled?: boolean;
   label?: string;
   sublabel?: string;
+  /** hero = onboarding panel; float = bottom-right launcher */
+  variant?: "hero" | "float";
+  /** Continuous bounce when idle (default true for float) */
+  bounce?: boolean;
 }
 
 export function VoiceOrb({
@@ -28,7 +32,11 @@ export function VoiceOrb({
   disabled,
   label,
   sublabel,
+  variant = "hero",
+  bounce,
 }: VoiceOrbProps) {
+  const isFloat = variant === "float";
+  const shouldBounce = bounce ?? (isFloat && (state === "idle" || state === "error" || state === "done"));
   const isListening = state === "listening" || state === "live";
   const isSpeaking = state === "speaking";
   const isThinking = state === "thinking" || state === "connecting";
@@ -52,10 +60,12 @@ export function VoiceOrb({
   return (
     <>
       <VoiceOrbStyles />
-      <div className="voice-orb-wrap">
+      <div className={["voice-orb-wrap", isFloat ? "voice-orb-wrap--float" : ""].filter(Boolean).join(" ")}>
         <div
           className={[
             "voice-orb-rings",
+            shouldBounce ? "voice-orb-rings--bounce" : "",
+            isFloat ? "voice-orb-rings--compact" : "",
             isListening ? "voice-orb-rings--active" : "",
             isSpeaking ? "voice-orb-rings--speaking" : "",
             isThinking ? "voice-orb-rings--processing" : "",
@@ -106,7 +116,7 @@ export function VoiceOrb({
                 </span>
               ) : state === "idle" ? (
                 <span className="voice-orb-mic" aria-hidden="true">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <svg width={isFloat ? 22 : 28} height={isFloat ? 22 : 28} viewBox="0 0 24 24" fill="none">
                     <path
                       d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"
                       fill="currentColor"
@@ -123,7 +133,9 @@ export function VoiceOrb({
                 </span>
               )}
             </span>
-            <span className="voice-orb-core__label">{label ?? defaultLabel}</span>
+            {!isFloat && (
+              <span className="voice-orb-core__label">{label ?? defaultLabel}</span>
+            )}
           </button>
         </div>
 
@@ -186,6 +198,10 @@ function VoiceOrbStyles() {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-8px); }
       }
+      @keyframes voice-orb-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-14px); }
+      }
       @keyframes voice-orb-spin {
         to { transform: rotate(360deg); }
       }
@@ -215,6 +231,37 @@ function VoiceOrbStyles() {
         width: min(220px, 58vw);
         height: min(220px, 58vw);
         animation: voice-orb-float 4.5s ease-in-out infinite;
+      }
+
+      .voice-orb-rings--bounce {
+        animation: voice-orb-bounce 2.4s ease-in-out infinite;
+      }
+
+      .voice-orb-rings--compact {
+        width: 100px;
+        height: 100px;
+        animation: none;
+      }
+
+      .voice-orb-rings--compact.voice-orb-rings--bounce {
+        animation: voice-orb-bounce 2.4s ease-in-out infinite;
+      }
+
+      .voice-orb-wrap--float .voice-orb-core {
+        inset: 6px;
+      }
+
+      .voice-orb-wrap--float .voice-orb-core__inner {
+        margin-bottom: 0;
+      }
+
+      .voice-orb-wrap--float .voice-orb-spinner {
+        width: 24px;
+        height: 24px;
+      }
+
+      .voice-orb-wrap--float .voice-orb-check {
+        font-size: 22px;
       }
 
       .voice-orb-ring {

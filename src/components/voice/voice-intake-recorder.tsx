@@ -1,27 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { VoiceOrb } from "@/components/voice/voice-orb";
 import {
-  AgentMicrophone,
-  AgentPlayer,
-  AgentSession,
-  type AgentSettingsObject,
-  type ConversationTextMessage,
-} from "@deepgram/agents";
-import { VoiceOrb, type VoiceOrbState } from "@/components/voice/voice-orb";
-import {
-  applyVoiceAgentField,
-  type VoiceAgentFieldName,
-  type VoiceAgentFieldPatch,
-} from "@/lib/voice-intake";
+  useVoiceAgentSession,
+  type VoiceAgentSessionResult,
+} from "@/hooks/use-voice-agent-session";
+import type { VoiceAgentFieldPatch } from "@/lib/voice-intake";
 
 export type { VoiceAgentFieldPatch };
 export type VoiceAgentFieldUpdate = VoiceAgentFieldPatch;
-
-export type VoiceAgentSessionResult = {
-  summary: string;
-  transcript: string;
-};
+export type { VoiceAgentSessionResult };
 
 /** @deprecated use VoiceAgentSessionResult */
 export type VoiceIntakeResult = VoiceAgentSessionResult & {
@@ -37,238 +25,36 @@ interface VoiceIntakeRecorderProps {
   disabled?: boolean;
 }
 
-type AgentUiMode = VoiceOrbState;
-
-function buildTranscript(lines: Array<{ role: string; content: string }>): string {
-  return lines.map((line) => `${line.role}: ${line.content}`).join("\n");
-}
-
 export function VoiceIntakeRecorder({
   onFieldUpdate,
   onComplete,
   onVoiceIntakeComplete,
   disabled,
 }: VoiceIntakeRecorderProps) {
-  const [available, setAvailable] = useState<boolean | null>(null);
-  const [agentSettings, setAgentSettings] = useState<AgentSettingsObject | null>(null);
-  const [orbState, setOrbState] = useState<AgentUiMode>("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [agentLine, setAgentLine] = useState<string | null>(null);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [sessionActive, setSessionActive] = useState(false);
-
-  const sessionRef = useRef<AgentSession | null>(null);
-  const micRef = useRef<AgentMicrophone | null>(null);
-  const playerRef = useRef<AgentPlayer | null>(null);
-  const transcriptRef = useRef<Array<{ role: string; content: string }>>([]);
-  const rafRef = useRef<number | null>(null);
-  const uiModeRef = useRef<AgentUiMode>("idle");
-
-  const setUiMode = useCallback((mode: AgentUiMode) => {
-    uiModeRef.current = mode;
-    setOrbState(mode);
-  }, []);
-
-  useEffect(() => {
-    void fetch("/api/voice/agent/config")
-      .then((res) => res.json())
-      .then((data) => {
-        setAvailable(!!data?.agentAvailable);
-        setAgentSettings(data?.agent ?? null);
-      })
-      .catch(() => setAvailable(false));
-  }, []);
-
-  const stopVisualizer = useCallback(() => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    setAudioLevel(0);
-  }, []);
-
-  const startVisualizer = useCallback(() => {
-    stopVisualizer();
-    const tick = () => {
-      const mic = micRef.current;
-      const player = playerRef.current;
-      const mode = uiModeRef.current;
-      const level =
-        mode === "speaking"
-          ? (player?.getOutputVolume() ?? 0)
-          : mode === "listening" || mode === "live"
-            ? (mic?.getInputVolume() ?? 0)
-            : 0;
-      setAudioLevel(level);
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  }, [stopVisualizer]);
-
-  const teardownSession = useCallback(() => {
-    stopVisualizer();
-    micRef.current?.stop();
-    micRef.current = null;
-    playerRef.current?.dispose();
-    playerRef.current = null;
-    sessionRef.current?.disconnect();
-    sessionRef.current = null;
-    setSessionActive(false);
-  }, [stopVisualizer]);
-
-  useEffect(() => () => teardownSession(), [teardownSession]);
-
-  const finishSession = useCallback(
-    (resultSummary: string) => {
-      const transcript = buildTranscript(transcriptRef.current);
-      const header = `[Voice agent ${new Date().toISOString()}]\n${resultSummary}\n\n`;
-      const payload: VoiceAgentSessionResult = {
-        summary: resultSummary,
-        transcript: `${header}${transcript}`.slice(0, 24000),
-      };
-
-      teardownSession();
-      setSummary(resultSummary);
-      setUiMode("done");
-      onComplete?.(payload);
+  const {
+    available,
+    agentSettings,
+    orbState,
+    error,
+    summary,
+    agentLine,
+    audioLevel,
+    sessionActive,
+    toggleSession,
+    resetSession,
+  } = useVoiceAgentSession({
+    context: "onboarding",
+    disabled,
+    onFieldUpdate,
+    onComplete: (result) => {
+      onComplete?.(result);
       onVoiceIntakeComplete?.({
-        ...payload,
+        ...result,
         proposed: {},
         fieldsFound: [],
       });
     },
-    [onComplete, onVoiceIntakeComplete, setUiMode, teardownSession],
-  );
-
-  const handleFieldSave = useCallback(
-    (field: string, value: string) => {
-      if (!field || !value) return;
-      const patch = applyVoiceAgentField(field as VoiceAgentFieldName, value);
-      if (Object.keys(patch).length) onFieldUpdate?.(patch);
-    },
-    [onFieldUpdate],
-  );
-
-  const startSession = useCallback(async () => {
-    if (disabled || !agentSettings || sessionActive) return;
-
-    setError(null);
-    setSummary(null);
-    setAgentLine(null);
-    transcriptRef.current = [];
-    setUiMode("connecting");
-
-    try {
-      const session = new AgentSession({
-        auth: {
-          tokenFactory: () => fetch("/api/voice/agent/token", { cache: "no-store" }).then((r) => {
-            if (!r.ok) throw new Error("Could not authorize voice agent");
-            return r.text();
-          }),
-        },
-        agent: agentSettings,
-        tags: ["kimchi", "onboarding"],
-      });
-
-      const player = new AgentPlayer();
-      const mic = new AgentMicrophone((data) => session.sendAudio(data));
-
-      session.on("audio", (chunk) => player.queue(chunk));
-      session.on("user-started-speaking", () => {
-        player.interrupt();
-        setUiMode("listening");
-      });
-      session.on("agent-thinking", () => setUiMode("thinking"));
-      session.on("agent-started-speaking", () => setUiMode("speaking"));
-      session.on("agent-audio-done", () => setUiMode("live"));
-      session.on("conversation-text", (msg: ConversationTextMessage) => {
-        const role = msg.role === "assistant" ? "Kimchi" : "You";
-        transcriptRef.current.push({ role, content: msg.content });
-        if (msg.role === "assistant") setAgentLine(msg.content);
-      });
-      session.on("function-call-request", (msg) => {
-        for (const fn of msg.functions ?? []) {
-          if (!fn.client_side) continue;
-          try {
-            const args = JSON.parse(fn.arguments || "{}") as Record<string, string>;
-            if (fn.name === "save_onboarding_field") {
-              handleFieldSave(args.field, args.value);
-              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
-            } else if (fn.name === "finish_onboarding_chat") {
-              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
-              finishSession(args.summary || "Wrapped up your search preferences.");
-            }
-          } catch {
-            session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: false }));
-          }
-        }
-      });
-      session.on("connected", () => {
-        setSessionActive(true);
-        setUiMode("live");
-        startVisualizer();
-      });
-      session.on("disconnected", (reason) => {
-        if (uiModeRef.current !== "done" && uiModeRef.current !== "idle") {
-          setError(reason || "Voice session ended");
-          setUiMode("error");
-        }
-        setSessionActive(false);
-        stopVisualizer();
-      });
-      session.on("error", (msg) => {
-        setError(msg.description || "Voice agent error");
-        setUiMode("error");
-      });
-      session.on("sdk-error", (err) => {
-        setError(err.message || "Voice agent error");
-        setUiMode("error");
-      });
-
-      sessionRef.current = session;
-      micRef.current = mic;
-      playerRef.current = player;
-
-      await session.connect();
-      await mic.start();
-    } catch (err) {
-      teardownSession();
-      setError(err instanceof Error ? err.message : "Could not start voice agent");
-      setUiMode("error");
-    }
-  }, [
-    agentSettings,
-    disabled,
-    finishSession,
-    handleFieldSave,
-    sessionActive,
-    setUiMode,
-    startVisualizer,
-    stopVisualizer,
-    teardownSession,
-  ]);
-
-  const endSession = useCallback(() => {
-    if (!sessionActive) return;
-    finishSession(summary || "Voice intake ended — your picks below are saved.");
-  }, [finishSession, sessionActive, summary]);
-
-  const handleOrbClick = useCallback(() => {
-    if (orbState === "done") {
-      setUiMode("idle");
-      setSummary(null);
-      setAgentLine(null);
-      return;
-    }
-    if (sessionActive) {
-      endSession();
-      return;
-    }
-    if (orbState === "idle" || orbState === "error") {
-      void startSession();
-    }
-  }, [endSession, orbState, sessionActive, setUiMode, startSession]);
+  });
 
   if (available === false) return null;
 
@@ -293,7 +79,7 @@ export function VoiceIntakeRecorder({
         <VoiceOrb
           state={orbState}
           audioLevel={audioLevel}
-          onClick={handleOrbClick}
+          onClick={toggleSession}
           disabled={disabled || available !== true || !agentSettings}
           label={
             orbState === "idle"
@@ -316,15 +102,7 @@ export function VoiceIntakeRecorder({
         {orbState === "done" && summary && (
           <div className="voice-intake-hero__success">
             <p>{summary}</p>
-            <button
-              type="button"
-              className="voice-intake-hero__again"
-              onClick={() => {
-                setUiMode("idle");
-                setSummary(null);
-                setAgentLine(null);
-              }}
-            >
+            <button type="button" className="voice-intake-hero__again" onClick={resetSession}>
               Talk again
             </button>
           </div>
