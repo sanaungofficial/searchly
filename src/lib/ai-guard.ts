@@ -7,19 +7,37 @@ import { hasActiveProTrial } from "@/lib/referrals";
 import { CREDITS_EXHAUSTED_ERROR, UNLIMITED_AI_FOR_ALL } from "@/lib/credits";
 import type { PlanCreditFeature } from "@prisma/client";
 import { getActingUser, quotaUserFor } from "@/lib/acting-user";
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 
-export async function getAuthedUserForAi() {
+export async function getAuthedUserForAi(request?: Request) {
   const supabase = await createClient();
-  const acting = await getActingUser();
+
+  let subjectUserId: string | null = null;
+  let isImpersonating = false;
+  let acting = await getActingUser(request);
+
+  if (request) {
+    const resolved = await resolveProfileApiSubject(request);
+    if ("error" in resolved) {
+      return { error: resolved.error as NextResponse };
+    }
+    acting = resolved.acting;
+    subjectUserId = resolved.dbUser.id;
+    isImpersonating = resolved.acting.isImpersonating;
+  } else if (acting.dbUser) {
+    subjectUserId = acting.dbUser.id;
+    isImpersonating = acting.isImpersonating;
+  }
+
   if (!acting.authUser) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) as NextResponse };
   }
-  if (!acting.dbUser) {
+  if (!subjectUserId) {
     return { error: NextResponse.json({ error: "User not found" }, { status: 404 }) as NextResponse };
   }
 
   const dbUser = await prisma.user.findUnique({
-    where: { id: acting.dbUser.id },
+    where: { id: subjectUserId },
     include: { profile: true, subscription: true },
   });
   if (!dbUser) {
@@ -37,7 +55,7 @@ export async function getAuthedUserForAi() {
   return {
     dbUser,
     quotaDbUser: quotaDbUser ?? dbUser,
-    isImpersonating: acting.isImpersonating,
+    isImpersonating,
     supabase,
   };
 }

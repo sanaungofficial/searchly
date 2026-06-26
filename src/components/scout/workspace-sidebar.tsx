@@ -340,6 +340,8 @@ export function WorkspaceSidebar({
     authChecked,
     isImpersonating,
     showAdminUi,
+    withClientScope,
+    withClientReviewPath,
   } = useWorkspace();
 
   const user = userProp ?? ctxUser ?? undefined;
@@ -358,7 +360,7 @@ export function WorkspaceSidebar({
 
   useEffect(() => {
     if (!authChecked) return;
-    fetch("/api/profile")
+    fetch(withClientScope("/api/profile"))
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data && !data.error) {
@@ -366,7 +368,7 @@ export function WorkspaceSidebar({
         }
       })
       .catch(() => {});
-  }, [authChecked]);
+  }, [authChecked, withClientScope]);
 
   // On mobile: collapsed = hidden (off-screen). On desktop: collapsed = icon rail.
   const isVisible = isMobile ? !collapsed : true;
@@ -374,7 +376,7 @@ export function WorkspaceSidebar({
   const sidebarWidth = isRail ? 60 : 252;
 
   const navigate = (path: string) => {
-    router.push(path);
+    router.push(withClientReviewPath(path));
     if (isMobile && onToggle) onToggle(); // close on mobile nav
   };
 

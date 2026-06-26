@@ -112,6 +112,7 @@ function CompanyTrackPanel({
   hqLocation: string | null;
 }) {
   const router = useRouter();
+  const { withClientScope, withClientReviewPath } = useWorkspace();
   const [tracked, setTracked] = useState<TrackedCompanySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -121,7 +122,7 @@ function CompanyTrackPanel({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/companies", { signal: AbortSignal.timeout(15000) });
+      const res = await fetch(withClientScope("/api/companies"), { signal: AbortSignal.timeout(15000) });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         const msg = (data as { error?: string } | null)?.error ?? "Couldn't load your tracked companies.";
@@ -140,7 +141,7 @@ function CompanyTrackPanel({
     } finally {
       setLoading(false);
     }
-  }, [companyName]);
+  }, [companyName, withClientScope]);
 
   useEffect(() => {
     loadTracked();
@@ -151,7 +152,7 @@ function CompanyTrackPanel({
     setError(null);
     try {
       const website = guessCompanyWebsite(jobUrl);
-      const res = await fetch("/api/companies", {
+      const res = await fetch(withClientScope("/api/companies"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -204,7 +205,7 @@ function CompanyTrackPanel({
           </p>
           <button
             type="button"
-            onClick={() => router.push("/profile/target-companies")}
+            onClick={() => router.push(withClientReviewPath("/profile/target-companies"))}
             style={{
               padding: "10px 18px",
               background: color.forest,

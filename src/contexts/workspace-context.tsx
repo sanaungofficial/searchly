@@ -21,7 +21,7 @@ import {
   clearAdminReviewClient,
   type AdminReviewMeta,
 } from "@/lib/client-session";
-import { parseAdminClientProfilePath, withClientUserId } from "@/lib/workspace-urls";
+import { parseAdminClientProfilePath, readClientUserIdFromBrowserSearch, withClientUserId, withClientReviewPagePath } from "@/lib/workspace-urls";
 
 const KIMCHI_CHAT_PINNED_KEY = "kimchi_chat_pinned";
 
@@ -113,6 +113,8 @@ interface WorkspaceContextValue {
   isAdminReviewing: boolean;
   /** Append clientUserId to API paths when admin-reviewing (impersonation uses cookie). */
   withClientScope: (path: string) => string;
+  /** Keep clientUserId on in-app links during admin profile review. */
+  withClientReviewPath: (path: string) => string;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -192,6 +194,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     [impersonation.active, adminReviewClientId],
   );
 
+  const withClientReviewPath = useCallback(
+    (path: string) => {
+      if (impersonation.active) return path;
+      if (adminReviewClientId) return withClientReviewPagePath(path, adminReviewClientId);
+      return path;
+    },
+    [impersonation.active, adminReviewClientId],
+  );
+
   const setStaffDashboardView = useCallback((view: StaffDashboardView) => {
     setStaffDashboardViewState(view);
     saveStaffDashboardView(staffUserId, view);
@@ -246,7 +257,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const meta = getAdminReviewMeta();
       if (meta) setAdminReviewClientMeta(meta);
     }
-  }, [adminReviewClientId]);
+    const fromUrl = readClientUserIdFromBrowserSearch();
+    if (fromUrl && fromUrl !== adminReviewClientId) {
+      setAdminReviewClientId(fromUrl);
+    }
+  }, [adminReviewClientId, setAdminReviewClientId]);
 
   useEffect(() => {
     if (staffUserId && !impersonation.active) {
@@ -267,6 +282,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setAdminReviewClientId(fromUrl.clientId);
     }
   }, [pathname, adminReviewClientId, setAdminReviewClientId]);
+
+  useEffect(() => {
+    if (!adminReviewClientId || impersonation.active || typeof window === "undefined") return;
+    const current = readClientUserIdFromBrowserSearch();
+    if (current === adminReviewClientId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("clientUserId", adminReviewClientId);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [adminReviewClientId, impersonation.active, pathname]);
 
   useEffect(() => {
     if (!adminReviewClientId || impersonation.active) return;
@@ -294,8 +318,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       let profileName: string | null = null;
       let profileEmail: string | null = null;
       let impersonating = false;
+      let reviewClientId = getAdminReviewClientId() ?? readClientUserIdFromBrowserSearch();
       try {
-        const res = await fetch("/api/profile", { cache: "no-store" });
+        const profileUrl =
+          reviewClientId && !impersonating
+            ? withClientUserId("/api/profile", reviewClientId)
+            : "/api/profile";
+        const res = await fetch(profileUrl, { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           headline = data?.headline ?? null;
@@ -311,13 +340,21 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             });
             setActingUserId(data.impersonating.userId ?? data.userId ?? null);
             setActingUserScope(data.impersonating.userId ?? data.userId ?? null);
+            reviewClientId = null;
           } else {
             setImpersonation({ active: false });
-            const reviewId = getAdminReviewClientId();
-            if (reviewId) {
-              setAdminReviewClientIdState(reviewId);
-              setActingUserId(reviewId);
-              setActingUserScope(reviewId);
+            if (data?.adminReview?.clientId) {
+              reviewClientId = data.adminReview.clientId as string;
+            }
+            if (reviewClientId) {
+              setAdminReviewClientIdState(reviewClientId);
+              setActingUserId(reviewClientId);
+              setActingUserScope(reviewClientId);
+              setAdminReviewClient(reviewClientId, {
+                name: profileName,
+                email: profileEmail,
+              });
+              setAdminReviewClientMeta({ name: profileName, email: profileEmail });
             } else {
               setActingUserId(data.userId ?? null);
               setActingUserScope(data.userId ?? null);
@@ -360,12 +397,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           if (data.userId) setStaffUserId(data.userId);
         }
       } catch {}
+      const viewingAsClient = impersonating || Boolean(reviewClientId);
       setUser({
         name:
           profileName ??
-          (impersonating ? null : authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? null),
-        email: profileEmail ?? (impersonating ? "" : authUser.email!),
-        avatarUrl: dbAvatarUrl ?? (impersonating ? null : authUser.user_metadata?.avatar_url ?? null),
+          (viewingAsClient ? null : authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? null),
+        email: profileEmail ?? (viewingAsClient ? "" : authUser.email!),
+        avatarUrl: dbAvatarUrl ?? (viewingAsClient ? null : authUser.user_metadata?.avatar_url ?? null),
         headline,
       });
       setAuthChecked(true);
@@ -423,7 +461,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         closePricing,
         actingUserId,
         isImpersonating: impersonation.active,
-        showAdminUi: isAdmin && !impersonation.active,
+        showAdminUi: isAdmin && !impersonation.active && !isAdminReviewing,
         staffDashboardView,
         setStaffDashboardView,
         showSeekerDashboard,
@@ -432,6 +470,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         adminReviewClient,
         isAdminReviewing,
         withClientScope,
+        withClientReviewPath,
       }}
     >
       <div

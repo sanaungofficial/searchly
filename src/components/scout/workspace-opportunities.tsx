@@ -53,14 +53,15 @@ export type { DrawerTool };
 interface OpportunitiesProps {}
 
 export function WorkspaceOpportunities() {
-  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId, isImpersonating, withClientScope } = useWorkspace();
+  const { kanbanCards, setKanbanCards, addJob, updateStage, removeJob, drawerCardId, setDrawerCardId, drawerTool, setDrawerTool, isAdmin, userRole, actingUserId, isImpersonating, withClientScope, withClientReviewPath } = useWorkspace();
   const isMobile = useIsMobile();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const loc = parseOpportunitiesLocation(pathname);
   const tab = loc.tab;
-  const setTab = (t: OppTab) => { router.push(opportunitiesTabUrl(t)); };
+  const go = useCallback((path: string) => router.push(withClientReviewPath(path)), [router, withClientReviewPath]);
+  const setTab = (t: OppTab) => { go(opportunitiesTabUrl(t)); };
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addJobUrl, setAddJobUrl] = useState("");
   const [addJobLoading, setAddJobLoading] = useState(false);
@@ -70,19 +71,19 @@ export function WorkspaceOpportunities() {
   useEffect(() => {
     const legacyPath = legacyOpportunitiesQueryToPath(searchParams.toString());
     if (legacyPath) {
-      router.replace(legacyPath);
+      router.replace(withClientReviewPath(legacyPath));
       return;
     }
     const companiesRedirect = parseLegacyCompaniesRedirect(pathname);
     if (companiesRedirect) {
-      router.replace(companiesRedirect);
+      router.replace(withClientReviewPath(companiesRedirect));
       return;
     }
     if (searchParams.get("addJob") === "1") {
       setShowAddPanel(true);
-      router.replace("/opportunities/pipeline");
+      router.replace(withClientReviewPath("/opportunities/pipeline"));
     }
-  }, [searchParams, router, pathname]);
+  }, [searchParams, router, pathname, withClientReviewPath]);
 
   const loadProspectFromPath = useCallback(async (prospectId: string) => {
     const drawerId = -Math.abs(Date.now() % 1_000_000);
@@ -278,18 +279,18 @@ export function WorkspaceOpportunities() {
   const openDrawer = (cardId: number, tool: DrawerTool = null) => {
     const ext = kanbanCards.find((c) => c.id === cardId) as (KanbanCard & { _dbId?: string }) | undefined;
     if (ext?._dbId) {
-      router.push(pipelineJobUrl(ext._dbId, tool));
+      go(pipelineJobUrl(ext._dbId, tool));
       return;
     }
     setDrawerCardId(cardId);
     setDrawerTool(tool);
   };
   const closeDrawer = () => {
-    router.push("/opportunities/pipeline");
+    go("/opportunities/pipeline");
   };
   const handleDrawerToolChange = (tool: DrawerTool) => {
     setDrawerTool(tool);
-    if (loc.jobId) router.replace(pipelineJobUrl(loc.jobId, tool));
+    if (loc.jobId) router.replace(withClientReviewPath(pipelineJobUrl(loc.jobId, tool)));
   };
 
   const closeProspectDrawer = () => {
@@ -300,14 +301,14 @@ export function WorkspaceOpportunities() {
     setProspectCard(null);
     setAddingProspect(false);
     setProspectDetailLoading(false);
-    router.push("/opportunities/pipeline");
+    go("/opportunities/pipeline");
   };
 
   const openRecommendedJob = useCallback((job: VectorMatchedJob) => {
     const prospectId = prospectPathId(job);
     pendingProspectNavRef.current = prospectId;
     loadedProspectRef.current = prospectId;
-    router.push(pipelineProspectUrl(prospectId));
+    go(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     const cached = readProspectJobCache(prospectId);
     const enriched: VectorMatchedJob = cached?.job
@@ -332,7 +333,7 @@ export function WorkspaceOpportunities() {
     const meta = buildRecommendedProspectCard(job, 0)._meta;
     const created = await addJob(job.companyName, job.title, job.url ?? undefined, meta);
     if (created) {
-      router.push(pipelineJobUrl(created.id));
+      go(pipelineJobUrl(created.id));
     }
   }, [addJob, router]);
 
@@ -340,7 +341,7 @@ export function WorkspaceOpportunities() {
     const prospectId = prospectPathId(job);
     pendingProspectNavRef.current = prospectId;
     loadedProspectRef.current = prospectId;
-    router.push(pipelineProspectUrl(prospectId));
+    go(pipelineProspectUrl(prospectId));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     const cached = readProspectJobCache(prospectId);
     const displayJob = cached?.job ?? job;
@@ -370,9 +371,9 @@ export function WorkspaceOpportunities() {
       setAddingProspect(false);
       setProspectDetailLoading(false);
       if (created) {
-        router.push(pipelineJobUrl(created.id));
+        go(pipelineJobUrl(created.id));
       } else {
-        router.push("/opportunities/pipeline");
+        go("/opportunities/pipeline");
       }
     } finally {
       setAddingProspect(false);
@@ -383,7 +384,7 @@ export function WorkspaceOpportunities() {
     if (!existingProspectPipelineCard) return;
     const ext = existingProspectPipelineCard as KanbanCard & { _dbId?: string };
     closeProspectDrawer();
-    if (ext._dbId) router.push(pipelineJobUrl(ext._dbId));
+    if (ext._dbId) go(pipelineJobUrl(ext._dbId));
     else setDrawerCardId(existingProspectPipelineCard.id);
   };
 
@@ -394,7 +395,7 @@ export function WorkspaceOpportunities() {
     setNetworkProspectJob(null);
     setNetworkProspectCard(null);
     setAddingNetworkJob(false);
-    router.push("/opportunities/network");
+    go("/opportunities/network");
   };
 
   const networkInternalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
@@ -402,7 +403,7 @@ export function WorkspaceOpportunities() {
   const openNetworkJob = useCallback((job: NetworkJobListing) => {
     pendingNetworkNavRef.current = job.id;
     loadedNetworkJobRef.current = job.id;
-    router.push(networkJobUrl(job.id));
+    go(networkJobUrl(job.id));
     const drawerId = -Math.abs(Date.now() % 1_000_000);
     setNetworkProspectJob(job);
     setNetworkProspectCard(buildNetworkProspectCard(job, drawerId, { internalView: networkInternalView }));
@@ -453,9 +454,9 @@ export function WorkspaceOpportunities() {
       setNetworkProspectCard(null);
       setAddingNetworkJob(false);
       if (created) {
-        router.push(pipelineJobUrl(created.id));
+        go(pipelineJobUrl(created.id));
       } else {
-        router.push("/opportunities/network");
+        go("/opportunities/network");
       }
     } finally {
       setAddingNetworkJob(false);
@@ -661,7 +662,7 @@ export function WorkspaceOpportunities() {
           onOpenInPipeline={existingNetworkPipelineCard ? () => {
             const ext = existingNetworkPipelineCard as KanbanCard & { _dbId?: string };
             closeNetworkDrawer();
-            if (ext._dbId) router.push(pipelineJobUrl(ext._dbId));
+            if (ext._dbId) go(pipelineJobUrl(ext._dbId));
             else setDrawerCardId(existingNetworkPipelineCard.id);
           } : undefined}
         />

@@ -210,7 +210,7 @@ export function ResumeMatchDrawer({
   const [downloadingExport, setDownloadingExport] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [committing, setCommitting] = useState(false);
-  const { openPricing } = useWorkspace();
+  const { openPricing, withClientScope } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
   const proUser = isPro || isAdmin;
   const kwInputRef = useRef<HTMLInputElement>(null);
@@ -220,7 +220,7 @@ export function ResumeMatchDrawer({
   }, []);
 
   useEffect(() => {
-    fetch("/api/assets")
+    fetch(withClientScope("/api/assets"))
       .then((r) => r.json())
       .then((assets: Array<ResumeAsset & { type?: string }>) => {
         if (!Array.isArray(assets)) return;
@@ -234,8 +234,8 @@ export function ResumeMatchDrawer({
         }
       })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- init resume list once
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when client scope changes
+  }, [withClientScope]);
 
   const activeResumeId =
     selectedResumeId ?? resumeAssets.find((a) => a.isPrimary)?.id ?? resumeAssets[0]?.id ?? null;
@@ -250,7 +250,7 @@ export function ResumeMatchDrawer({
     const body = jobId
       ? { jobId, jobTitle, company, description: desc, assetId: assetId ?? undefined }
       : { jobTitle, company, description: desc ?? "", assetId: assetId ?? undefined };
-    fetch("/api/ai/job-match", {
+    fetch(withClientScope("/api/ai/job-match"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -296,7 +296,7 @@ export function ResumeMatchDrawer({
     setTailoredData(null);
     setGenerateError(null);
     try {
-      const res = await fetch("/api/ai/tailor-resume", {
+      const res = await fetch(withClientScope("/api/ai/tailor-resume"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -333,7 +333,7 @@ export function ResumeMatchDrawer({
     if (!tailoredData || applyingTweakId) return;
     setApplyingTweakId(tweak.id);
     try {
-      const res = await fetch("/api/ai/apply-resume-tweak", {
+      const res = await fetch(withClientScope("/api/ai/apply-resume-tweak"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

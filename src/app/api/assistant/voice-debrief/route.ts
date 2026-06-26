@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const auth = await getAuthedUserForAi();
+  const auth = await getAuthedUserForAi(request);
   if ("error" in auth) {
     return auth.error;
   }
