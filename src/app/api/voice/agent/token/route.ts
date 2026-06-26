@@ -1,11 +1,11 @@
 import { getActingUser } from "@/lib/acting-user";
 import { createDeepgramGrantToken, deepgramConfigured } from "@/lib/deepgram";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const { dbUser } = await getActingUser();
+export async function GET(request: NextRequest) {
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!deepgramConfigured()) {
     return NextResponse.json({ error: "Voice agent not configured" }, { status: 503 });

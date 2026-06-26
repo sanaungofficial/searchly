@@ -18,8 +18,8 @@ function serializeSettings(settings: {
   };
 }
 
-export async function GET() {
-  const { dbUser } = await getActingUser();
+export async function GET(request: NextRequest) {
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const settings = await prisma.userDigestSettings.upsert({
@@ -32,7 +32,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(req);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as {

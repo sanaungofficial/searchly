@@ -4,7 +4,7 @@ import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(req);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const limit = Math.min(Number(req.nextUrl.searchParams.get("limit") ?? 20), 50);

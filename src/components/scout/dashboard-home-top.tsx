@@ -89,7 +89,7 @@ type AssignedCoach = {
 
 export function DashboardHomeTop({ isMobile }: Props) {
   const router = useRouter();
-  const { openPricing, userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope } =
+  const { openPricing, userRole, isImpersonating, showSeekerDashboard, showExpertDashboard, withClientScope, withClientReviewPath } =
     useWorkspace();
   const isStaffPortal = isStaffPortalRole(userRole);
   const showClientCoachUi = showSeekerDashboard;
@@ -142,14 +142,14 @@ export function DashboardHomeTop({ isMobile }: Props) {
   }, [loadProfile]);
 
   useEffect(() => {
-    fetch("/api/live/sessions")
+    fetch(withClientScope("/api/live/sessions"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (Array.isArray(d?.sessions)) setAllSessions(d.sessions);
       })
       .catch(() => {})
       .finally(() => setSessionsLoaded(true));
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
     if (!showClientCoachUi) {
@@ -160,17 +160,17 @@ export function DashboardHomeTop({ isMobile }: Props) {
     }
 
     setBookingLoading(true);
-    const assignedPromise = fetch("/api/coaching/assigned-coaches")
+    const assignedPromise = fetch(withClientScope("/api/coaching/assigned-coaches"))
       .then((r) => (r.ok ? r.json() : { coaches: [] }))
       .then((d) => setAssignedCoaches(d.coaches ?? []))
       .catch(() => setAssignedCoaches([]));
 
-    const bookingPromise = fetch("/api/bookings/me?upcoming=true&limit=1")
+    const bookingPromise = fetch(withClientScope("/api/bookings/me?upcoming=true&limit=1"))
       .then((r) => (r.ok ? r.json() : null))
       .then(async (d) => {
         let row = d?.bookings?.[0];
         if (!row) {
-          const pastRes = await fetch("/api/bookings/me?upcoming=false&limit=1");
+          const pastRes = await fetch(withClientScope("/api/bookings/me?upcoming=false&limit=1"));
           const pastData = pastRes.ok ? await pastRes.json() : null;
           row = pastData?.bookings?.[0];
         }
@@ -198,7 +198,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
     Promise.all([assignedPromise, bookingPromise])
       .finally(() => setBookingLoading(false));
-  }, [showClientCoachUi]);
+  }, [showClientCoachUi, withClientScope]);
 
   const goals = profile?.dashboardGoals ?? [];
   const usedValues = useMemo(() => new Set(goals.map((g) => g.value)), [goals]);
@@ -214,19 +214,19 @@ export function DashboardHomeTop({ isMobile }: Props) {
   }, [allSessions]);
 
   const reloadSessions = useCallback(() => {
-    return fetch("/api/live/sessions")
+    return fetch(withClientScope("/api/live/sessions"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (Array.isArray(d?.sessions)) setAllSessions(d.sessions);
       })
       .catch(() => {});
-  }, []);
+  }, [withClientScope]);
 
   const registerForSession = async (session: LiveSessionView) => {
     const routeId = liveSessionRouteId(session);
     setRegisterBusyId(session.id);
     try {
-      const res = await fetch("/api/live/register", {
+      const res = await fetch(withClientScope("/api/live/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: routeId }),
@@ -352,7 +352,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
       <ScoutBox padding={0} style={{ overflow: "hidden", position: "relative" }}>
         <button
           type="button"
-          onClick={() => router.push("/profile")}
+          onClick={() => router.push(withClientReviewPath("/profile"))}
           aria-label="Edit profile"
           style={{
             position: "absolute",
@@ -431,7 +431,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
           ) : (
             <button
               type="button"
-              onClick={() => router.push("/profile")}
+              onClick={() => router.push(withClientReviewPath("/profile"))}
               style={{
                 background: "none",
                 border: "none",

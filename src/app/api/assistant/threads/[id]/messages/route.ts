@@ -2,12 +2,12 @@ import { getActingUser } from "@/lib/acting-user";
 import { dbRowToMessage, messageToDbPayload, maybeRetitleThread } from "@/lib/kimchi-assistant/thread-serialize";
 import type { StoredThreadMessage } from "@/lib/kimchi-assistant/thread-serialize";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { dbUser } = await getActingUser();
+  const { dbUser } = await getActingUser(request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

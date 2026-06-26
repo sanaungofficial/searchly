@@ -27,7 +27,7 @@ type AssignedCoach = {
 
 export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMobile?: boolean; embedded?: boolean }) {
   const router = useRouter();
-  const { openPricing, userRole, isImpersonating } = useWorkspace();
+  const { openPricing, userRole, isImpersonating, withClientScope } = useWorkspace();
   const canSelfAssignCoach = userRole === "USER" || isImpersonating;
   const [assigned, setAssigned] = useState<AssignedCoach[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,19 +35,19 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
 
   useEffect(() => {
-    fetch("/api/coaching/assigned-coaches")
+    fetch(withClientScope("/api/coaching/assigned-coaches"))
       .then((r) => (r.ok ? r.json() : { coaches: [] }))
       .then((d) => setAssigned(d.coaches ?? []))
       .catch(() => setAssigned([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
-    fetch("/api/subscription")
+    fetch(withClientScope("/api/subscription"))
       .then((r) => r.json())
       .then((d) => { if (d.isPro) setIsPro(true); })
       .catch(() => {});
-  }, []);
+  }, [withClientScope]);
 
   const openCoach = useCallback((coach: AssignedCoach) => {
     setDrawerCoach({

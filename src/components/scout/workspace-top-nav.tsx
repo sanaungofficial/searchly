@@ -488,7 +488,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
           {/* Logo */}
           <button
             type="button"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push(withClientReviewPath("/dashboard"))}
             style={{
               background: "none",
               border: "none",

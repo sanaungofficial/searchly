@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useWorkspace } from "@/contexts/workspace-context";
 import type { AssistantChip, KnowsYouPreview } from "@/lib/kimchi-assistant/chat-chips";
 import type { AssistantSuggestion, AssistantInboxSnapshot } from "@/lib/kimchi-assistant/types";
 import { InboxInsightRow } from "@/components/scout/inbox/inbox-insight-row";
@@ -746,6 +747,7 @@ export function KimchiEmailInsightDrawer({
   onAskKimchi: (prompt: string) => void;
   onRefreshInbox: () => void;
 }) {
+  const { withClientScope } = useWorkspace();
   if (!open || !activityId) return null;
 
   const activity = inbox?.activities.find((a) => a.id === activityId);
@@ -788,7 +790,7 @@ export function KimchiEmailInsightDrawer({
             activity={activity}
             jobs={pipelineJobs}
             onAction={async (action, extra) => {
-              const res = await fetch(`/api/user/job-agent/activity/${activity.id}`, {
+              const res = await fetch(withClientScope(`/api/user/job-agent/activity/${activity.id}`), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action, ...extra }),
@@ -870,6 +872,7 @@ export function KimchiStrategyGenerateModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { withClientScope } = useWorkspace();
   const [status, setStatus] = useState<"idle" | "running" | "complete" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -888,7 +891,7 @@ export function KimchiStrategyGenerateModal({
       setStatus("running");
       setError(null);
       try {
-        const post = await fetch("/api/ai/career-strategy", { method: "POST" });
+        const post = await fetch(withClientScope("/api/ai/career-strategy"), { method: "POST" });
         const postData = await post.json().catch(() => ({}));
         if (post.status === 402) {
           setError("You need strategy credits — upgrade or check your balance.");
@@ -908,7 +911,7 @@ export function KimchiStrategyGenerateModal({
 
         const poll = async (): Promise<void> => {
           if (cancelled) return;
-          const res = await fetch("/api/ai/career-strategy");
+          const res = await fetch(withClientScope("/api/ai/career-strategy"));
           const data = await res.json().catch(() => ({}));
           if (data.generationStatus === "running") {
             await new Promise((r) => setTimeout(r, 2500));

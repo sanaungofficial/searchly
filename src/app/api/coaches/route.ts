@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getClientCoachingUser } from "@/lib/coach-api";
 import { getAssignedCoachIds } from "@/lib/coach-client-assignment";
 import { enrichCoachesWithMatch } from "@/lib/coach-match";
@@ -99,9 +99,9 @@ function mapCoachRow(c: {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const me = await getClientCoachingUser();
+    const me = await getClientCoachingUser(request);
 
     const publicCoaches = await prisma.coachProfile.findMany({
       where: activeCoachListWhere(me?.id),

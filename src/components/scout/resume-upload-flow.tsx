@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useWorkspace } from "@/contexts/workspace-context";
 import {
   ScoutDisplayTitle,
   ScoutLabel,
@@ -326,6 +327,7 @@ export function useResumeUploadFlow(options: {
   onCancel: (assetId: string) => Promise<void>;
   assetApiUrl?: (id: string) => string;
 }) {
+  const { withClientScope } = useWorkspace();
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
@@ -367,7 +369,9 @@ export function useResumeUploadFlow(options: {
     const current = jobRef.current;
     if (!current || current.phase !== "analyzing") return;
     try {
-      const assetUrl = optionsRef.current.assetApiUrl?.(current.assetId) ?? `/api/assets/${current.assetId}`;
+      const assetUrl =
+        optionsRef.current.assetApiUrl?.(current.assetId) ??
+        withClientScope(`/api/assets/${current.assetId}`);
       const res = await fetch(assetUrl);
       const data = (await res.json()) as AssetStatus & { error?: string };
       if (!res.ok) return;
@@ -410,7 +414,9 @@ export function useResumeUploadFlow(options: {
     if (!current) return;
     setSavingMeta(true);
     try {
-      const assetUrl = optionsRef.current.assetApiUrl?.(current.assetId) ?? `/api/assets/${current.assetId}`;
+      const assetUrl =
+        optionsRef.current.assetApiUrl?.(current.assetId) ??
+        withClientScope(`/api/assets/${current.assetId}`);
       await fetch(assetUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -421,14 +427,14 @@ export function useResumeUploadFlow(options: {
     } finally {
       setSavingMeta(false);
     }
-  }, [clearJob]);
+  }, [clearJob, withClientScope]);
 
   const viewResume = useCallback(() => {
     const current = jobRef.current;
     if (!current) return;
     clearJob();
     return current.assetId;
-  }, [clearJob]);
+  }, [clearJob, withClientScope]);
 
   return {
     job,
