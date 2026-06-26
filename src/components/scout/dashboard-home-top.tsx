@@ -26,7 +26,7 @@ import { ExpertDashboardOverview } from "@/components/scout/expert-dashboard-ove
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
 import { DashboardAddGoalModal } from "@/components/scout/dashboard-add-goal-modal";
-import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Props = {
@@ -42,11 +42,6 @@ type ProfileData = {
   careerMotivation: string | null;
   employmentStatus: string | null;
   dashboardGoals: DashboardGoal[];
-};
-
-const CARD: React.CSSProperties = {
-  background: surface.card,
-  border: border.line,
 };
 
 function initials(name: string): string {
@@ -351,51 +346,66 @@ export function DashboardHomeTop({ isMobile }: Props) {
   const showProPromo = !subLoading && !isPro;
 
   const leftColumn = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Profile card */}
-      <div style={{ ...CARD, padding: isMobile ? "20px 18px" : "24px 22px", position: "relative" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, height: isMobile ? undefined : "100%" }}>
+      {/* Profile card — mint header band like Profile sidebar */}
+      <ScoutBox padding={0} style={{ overflow: "hidden", position: "relative" }}>
         <button
           type="button"
           onClick={() => router.push("/profile")}
           aria-label="Edit profile"
           style={{
             position: "absolute",
-            top: 14,
-            right: 14,
+            top: 12,
+            right: 12,
+            zIndex: 2,
             width: 32,
             height: 32,
             border: border.line,
-            background: surface.inset,
+            borderRadius: "var(--scout-radius)",
+            background: surface.card,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: color.muted,
+            boxShadow: "var(--scout-shadow-card)",
           }}
         >
           ✎
         </button>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <div style={{ height: isMobile ? 44 : 52, background: "rgba(74,139,106,0.18)" }} />
+        <div
+          style={{
+            padding: isMobile ? "0 18px 20px" : "0 22px 24px",
+            marginTop: isMobile ? -36 : -44,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
           {profile?.avatarUrl ? (
             <img
               src={profile.avatarUrl}
               alt=""
               style={{
-                width: isMobile ? 88 : 108,
-                height: isMobile ? 88 : 108,
+                width: isMobile ? 80 : 96,
+                height: isMobile ? 80 : 96,
                 borderRadius: "50%",
                 objectFit: "cover",
                 marginBottom: 14,
+                border: "3px solid white",
+                boxShadow: "var(--scout-shadow-card)",
               }}
             />
           ) : (
             <div
               style={{
-                width: isMobile ? 88 : 108,
-                height: isMobile ? 88 : 108,
+                width: isMobile ? 80 : 96,
+                height: isMobile ? 80 : 96,
                 borderRadius: "50%",
-                background: color.cream,
-                border: border.line,
+                background: "rgba(74,139,106,0.15)",
+                border: "3px solid white",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -404,6 +414,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                 fontSize: 28,
                 fontWeight: 600,
                 color: color.forest,
+                boxShadow: "var(--scout-shadow-card)",
               }}
             >
               {profile ? initials(profile.name) : "…"}
@@ -437,16 +448,14 @@ export function DashboardHomeTop({ isMobile }: Props) {
             </button>
           )}
         </div>
-      </div>
+      </ScoutBox>
 
       {/* Kimchi Pro promo */}
       {showProPromo && (
-        <div
+        <ScoutBox
+          padding="18px 20px"
           style={{
-            ...CARD,
-            padding: "18px 20px",
             background: "linear-gradient(135deg, rgba(45,31,82,0.06) 0%, rgba(26,58,47,0.08) 100%)",
-            position: "relative",
             overflow: "hidden",
           }}
         >
@@ -459,11 +468,14 @@ export function DashboardHomeTop({ isMobile }: Props) {
           <ScoutSecondaryBtn onClick={openPricing} style={{ minHeight: 38, fontSize: T.caption }}>
             Check it out
           </ScoutSecondaryBtn>
-        </div>
+        </ScoutBox>
       )}
 
-      {/* Goals card */}
-      <div style={{ ...CARD, padding: isMobile ? "16px 18px" : "18px 20px" }}>
+      {/* Goals card — stretches to align with free events on desktop */}
+      <ScoutBox
+        padding={isMobile ? "16px 18px" : "18px 20px"}
+        style={isMobile ? undefined : { flex: 1, display: "flex", flexDirection: "column" }}
+      >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>
             Your goals
@@ -477,6 +489,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                 width: 28,
                 height: 28,
                 border: border.line,
+                borderRadius: "var(--scout-radius)",
                 background: surface.inset,
                 cursor: "pointer",
                 fontFamily: fontSans,
@@ -623,23 +636,42 @@ export function DashboardHomeTop({ isMobile }: Props) {
         {canAdd && goals.length > 0 && (
           <ScoutPrimaryBtn
             onClick={openGoalModal}
-            style={{ width: "100%", minHeight: 42 }}
+            style={{ width: "100%", minHeight: 42, marginTop: isMobile ? undefined : "auto" }}
           >
             Add your outcome
           </ScoutPrimaryBtn>
         )}
-      </div>
+      </ScoutBox>
     </div>
   );
 
+  const linkBtnStyle: React.CSSProperties = {
+    background: "none",
+    border: "none",
+    padding: 0,
+    fontFamily: fontSans,
+    fontSize: T.caption,
+    color: color.forest,
+    cursor: "pointer",
+    textDecoration: "underline",
+    textUnderlineOffset: 3,
+  };
+
   const rightColumn = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        minWidth: 0,
+        height: isMobile ? undefined : "100%",
+      }}
+    >
       {/* Coach status — seekers only */}
       {showClientCoachUi && !bookingLoading && !bookedCoach && assignedCoaches.length === 0 && (
-        <div
+        <ScoutBox
+          padding={isMobile ? "16px 18px" : "18px 22px"}
           style={{
-            ...CARD,
-            padding: isMobile ? "16px 18px" : "18px 22px",
             borderStyle: "dashed",
             display: "flex",
             flexDirection: isMobile ? "column" : "row",
@@ -654,19 +686,11 @@ export function DashboardHomeTop({ isMobile }: Props) {
           <ScoutSecondaryBtn onClick={() => router.push("/coaching/my-coaches")} style={{ minHeight: 40, flexShrink: 0 }}>
             My coaches
           </ScoutSecondaryBtn>
-        </div>
+        </ScoutBox>
       )}
 
       {showClientCoachUi && !bookingLoading && !bookedCoach && assignedCoaches.length > 0 && (
-        <div
-          style={{
-            ...CARD,
-            padding: isMobile ? "16px 18px" : "18px 22px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-          }}
-        >
+        <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Your Kimchi {assignedCoaches.length === 1 ? "coach" : "coaches"}
@@ -719,14 +743,13 @@ export function DashboardHomeTop({ isMobile }: Props) {
               </ScoutPrimaryBtn>
             </div>
           ))}
-        </div>
+        </ScoutBox>
       )}
 
       {showClientCoachUi && !bookingLoading && bookedCoach && (
-        <div
+        <ScoutBox
+          padding={isMobile ? "16px 18px" : "18px 22px"}
           style={{
-            ...CARD,
-            padding: isMobile ? "16px 18px" : "18px 22px",
             display: "flex",
             alignItems: isMobile ? "flex-start" : "center",
             gap: 14,
@@ -794,7 +817,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
               </button>
             </div>
           )}
-        </div>
+        </ScoutBox>
       )}
 
       {!showClientCoachUi && showExpertDashboard && (
@@ -802,14 +825,14 @@ export function DashboardHomeTop({ isMobile }: Props) {
       )}
 
       {/* Recommendation nudge */}
-      <div
+      <ScoutBox
+        padding={isMobile ? "18px 18px" : "20px 22px"}
         style={{
-          ...CARD,
-          padding: isMobile ? "18px 18px" : "20px 22px",
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
           alignItems: isMobile ? "stretch" : "center",
           gap: isMobile ? 16 : 20,
+          background: "rgba(74,139,106,0.04)",
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -845,10 +868,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
             {recommendationLabel}
           </ScoutPrimaryBtn>
         </div>
-      </div>
+      </ScoutBox>
 
-      {/* Free events carousel */}
-      <div style={{ minWidth: 0 }}>
+      {/* Free events — pinned to bottom on desktop to align with goals card */}
+      <div style={{ minWidth: 0, marginTop: isMobile ? 0 : "auto" }}>
         <div
           style={{
             display: "flex",
@@ -856,29 +879,21 @@ export function DashboardHomeTop({ isMobile }: Props) {
             justifyContent: "space-between",
             gap: 12,
             marginBottom: 12,
+            flexWrap: "wrap",
           }}
         >
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0 }}>
             Free events
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => router.push("/live")}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                color: color.forest,
-                cursor: "pointer",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
-            >
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 14, flexWrap: "wrap" }}>
+            <button type="button" onClick={() => router.push("/live")} style={linkBtnStyle}>
               Browse more
             </button>
+            {sessionsLoaded && eventSessions.length > 0 && (
+              <button type="button" onClick={() => setInterestOpen(true)} style={{ ...linkBtnStyle, color: color.muted }}>
+                Suggest a topic →
+              </button>
+            )}
             {!isMobile && eventSessions.length > 2 && (
               <>
                 <button
@@ -889,6 +904,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                     width: 28,
                     height: 28,
                     border: border.line,
+                    borderRadius: "var(--scout-radius)",
                     background: surface.card,
                     cursor: "pointer",
                     fontFamily: fontSans,
@@ -904,6 +920,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
                     width: 28,
                     height: 28,
                     border: border.line,
+                    borderRadius: "var(--scout-radius)",
                     background: surface.card,
                     cursor: "pointer",
                     fontFamily: fontSans,
@@ -917,14 +934,14 @@ export function DashboardHomeTop({ isMobile }: Props) {
         </div>
 
         {!sessionsLoaded ? null : eventSessions.length === 0 ? (
-          <div style={{ ...CARD, padding: "24px 20px", textAlign: "center" }}>
+          <ScoutBox padding="24px 20px" style={{ textAlign: "center" }}>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.6, margin: "0 0 14px" }}>
               No sessions scheduled yet. Tell us what topics you&apos;d like to see.
             </p>
             <ScoutPrimaryBtn onClick={() => setInterestOpen(true)} style={{ minHeight: 42 }}>
               Register interest
             </ScoutPrimaryBtn>
-          </div>
+          </ScoutBox>
         ) : (
           <div
             ref={eventsScrollRef}
@@ -944,10 +961,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
               const routeId = liveSessionRouteId(session);
               const isBusy = registerBusyId === session.id;
               return (
-              <div
+              <ScoutBox
                 key={session.id}
+                padding={0}
                 style={{
-                  ...CARD,
                   flex: "0 0 auto",
                   width: isMobile ? "min(280px, 85vw)" : 280,
                   scrollSnapAlign: "start",
@@ -1060,31 +1077,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
                           : "Register →"}
                   </ScoutPrimaryBtn>
                 </div>
-              </div>
+              </ScoutBox>
             );
             })}
           </div>
-        )}
-
-        {sessionsLoaded && eventSessions.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setInterestOpen(true)}
-            style={{
-              marginTop: 10,
-              background: "none",
-              border: "none",
-              padding: 0,
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              color: color.muted,
-              cursor: "pointer",
-              textDecoration: "underline",
-              textUnderlineOffset: 3,
-            }}
-          >
-            Suggest a topic →
-          </button>
         )}
       </div>
     </div>
@@ -1098,7 +1094,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
           gridTemplateColumns: isMobile ? "1fr" : "minmax(280px, 340px) minmax(0, 1fr)",
           gap: isMobile ? 20 : 28,
           marginBottom: isMobile ? 32 : 40,
-          alignItems: "start",
+          alignItems: "stretch",
         }}
       >
         {isMobile ? (
