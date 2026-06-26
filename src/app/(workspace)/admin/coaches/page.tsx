@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CoachHubDrawer } from "@/components/admin/coach-hub-drawer";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
@@ -24,11 +25,13 @@ type CoachRow = {
   };
 };
 
-export default function AdminCoachesPage() {
+function AdminCoachesInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/coach-hub")
@@ -40,6 +43,26 @@ export default function AdminCoachesPage() {
       .catch((e) => setError(e instanceof Error ? e.message : "Error"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const coachId = searchParams.get("coachId");
+    setSelectedCoachId(coachId);
+  }, [searchParams]);
+
+  const openCoach = useCallback(
+    (coachId: string) => {
+      setSelectedCoachId(coachId);
+      router.replace(`/admin/coaches?coachId=${encodeURIComponent(coachId)}`, { scroll: false });
+    },
+    [router],
+  );
+
+  const closeCoach = useCallback(() => {
+    setSelectedCoachId(null);
+    router.replace("/admin/coaches", { scroll: false });
+  }, [router]);
+
+  const selectedCoach = coaches.find((c) => c.id === selectedCoachId) ?? null;
 
   return (
     <div>
@@ -64,7 +87,7 @@ export default function AdminCoachesPage() {
             <button
               key={coach.id}
               type="button"
-              onClick={() => router.push(`/admin/coaches/${coach.id}`)}
+              onClick={() => openCoach(coach.id)}
               style={{
                 textAlign: "left",
                 border: border.line,
@@ -115,6 +138,38 @@ export default function AdminCoachesPage() {
           ))}
         </div>
       )}
+
+      {selectedCoachId && (
+        <CoachHubDrawer
+          coachId={selectedCoachId}
+          coachPreview={
+            selectedCoach
+              ? {
+                  id: selectedCoach.id,
+                  displayName: selectedCoach.displayName,
+                  photoUrl: selectedCoach.photoUrl,
+                  headline: selectedCoach.headline,
+                }
+              : null
+          }
+          onClose={closeCoach}
+        />
+      )}
     </div>
+  );
+}
+
+export default function AdminCoachesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div>
+          <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Coaches</h1>
+          <p style={{ fontFamily: fontSans, color: color.muted }}>Loading coaches…</p>
+        </div>
+      }
+    >
+      <AdminCoachesInner />
+    </Suspense>
   );
 }
