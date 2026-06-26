@@ -44,6 +44,8 @@ type Props = {
   coachId?: string;
   backHref?: string;
   showAdminLinks?: boolean;
+  /** When true, hides back navigation (e.g. inside a drawer). */
+  embedded?: boolean;
 };
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
@@ -76,7 +78,7 @@ function commLabel(type: HubCommunication["type"]) {
   }
 }
 
-export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks = false }: Props) {
+export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks = false, embedded = false }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<HubPayload | null>(null);
@@ -112,10 +114,10 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
       setNylasNotice({ type: "error", message });
     }
 
-    if (coachId) {
-      router.replace(`/admin/coaches/${coachId}`, { scroll: false });
+    if (coachId && mode === "admin") {
+      router.replace(`/admin/coaches?coachId=${encodeURIComponent(coachId)}`, { scroll: false });
     }
-  }, [searchParams, coachId, router]);
+  }, [searchParams, coachId, mode, router]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -190,7 +192,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
         </div>
       )}
 
-      {backHref && (
+      {backHref && !embedded && (
         <button
           type="button"
           onClick={() => router.push(backHref)}

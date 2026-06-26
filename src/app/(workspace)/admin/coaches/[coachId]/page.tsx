@@ -1,22 +1,22 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { use } from "react";
-import { CoachHubPanel } from "@/components/admin/coach-hub-panel";
-import { displayTitleStyle } from "@/lib/typography";
+/** Legacy detail URL — opens coach hub drawer on the list page. */
+export default async function AdminCoachDetailRedirect({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ coachId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { coachId } = await params;
+  const sp = await searchParams;
+  const qs = new URLSearchParams();
 
-export default function AdminCoachDetailPage({ params }: { params: Promise<{ coachId: string }> }) {
-  const { coachId } = use(params);
+  for (const [key, value] of Object.entries(sp)) {
+    if (typeof value === "string") qs.set(key, value);
+    else if (Array.isArray(value)) value.forEach((v) => qs.append(key, v));
+  }
 
-  return (
-    <div>
-      <h1 style={{ ...displayTitleStyle(28), margin: "0 0 24px" }}>Coach hub</h1>
-      <CoachHubPanel
-        apiPath={`/api/admin/coach-hub?coachId=${encodeURIComponent(coachId)}`}
-        mode="admin"
-        coachId={coachId}
-        backHref="/admin/coaches"
-        showAdminLinks
-      />
-    </div>
-  );
+  qs.set("coachId", coachId);
+  redirect(`/admin/coaches?${qs.toString()}`);
 }
