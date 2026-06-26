@@ -71,6 +71,7 @@ export type CoachProfileDetail = CoachListItem & {
   calLink: string | null;
   nylasSchedulerConfigId: string | null;
   hasNylasBooking: boolean;
+  schedulerDurationMinutes?: number;
   experienceLevel: string | null;
   clientTier: string | null;
   industryYears: number | null;
