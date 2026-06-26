@@ -6,14 +6,17 @@ import { normalizeTargetRoleSettings } from "@/lib/target-role-settings";
 import { upsertProfileFields } from "@/lib/profile-write";
 import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
 
 export async function GET() {
   try {
-    const { authUser, dbUser, isImpersonating } = await getActingUser();
+    const acting = await getActingUser();
+    const { authUser, dbUser } = acting;
     if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const includeIntakeNotes = canAccessAdminClientTools(acting);
 
     const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
 
@@ -49,7 +52,7 @@ export async function GET() {
       securityClearance: profile?.securityClearance || null,
       searchDuration: profile?.searchDuration || null,
       positioningStatement: profile?.positioningStatement || null,
-      strategyIntakeNotes: profile?.strategyIntakeNotes || null,
+      strategyIntakeNotes: includeIntakeNotes ? (profile?.strategyIntakeNotes || null) : null,
       strategyUpdatedAt: profile?.strategyUpdatedAt?.toISOString() || null,
       hasStrategy: !!profile?.strategyData,
       dashboardGoals: normalizeDashboardGoals(profile?.dashboardGoals),
@@ -64,11 +67,16 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const { authUser, dbUser } = await getActingUser();
+  const acting = await getActingUser();
+  const { authUser, dbUser } = acting;
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
   const body = await request.json();
   const { name, headline, linkedinUrl, targetRoles, parsedData, employmentStatus, currentSalary, targetSalary, priorities, careerMotivation, jobTimeline, attribution, roleAnalyses, skillGoals, upskillProgress, targetRoleSettings, summary, targetMarket, relocationOpenness, workAuthorization, securityClearance, searchDuration, positioningStatement, strategyIntakeNotes, dashboardGoals } = body;
+
+  if (strategyIntakeNotes !== undefined && !canAccessAdminClientTools(acting)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (name !== undefined) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { name } });

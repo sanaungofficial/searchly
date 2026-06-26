@@ -10,8 +10,7 @@ import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-sessi
 function DashboardClientsInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userRole } = useWorkspace();
-  const isAdmin = userRole === "ADMIN";
+  const { showAdminUi } = useWorkspace();
   const [starting, setStarting] = useState<string | null>(null);
 
   const tab = searchParams.get("tab");
@@ -51,12 +50,12 @@ function DashboardClientsInner() {
   return (
     <WorkspaceSubpageShell>
       <AdminClientsPanel
-        apiPath={isAdmin ? "/api/admin/clients" : "/api/coach/clients"}
-        onViewAsClient={isAdmin ? viewAsClient : undefined}
+        apiPath={showAdminUi ? "/api/admin/clients" : "/api/coach/clients"}
+        onViewAsClient={showAdminUi ? viewAsClient : undefined}
         startingUserId={starting}
         detailMode="drawer"
         embedded
-        canAddClient={isAdmin}
+        canAddClient={showAdminUi}
       />
     </WorkspaceSubpageShell>
   );

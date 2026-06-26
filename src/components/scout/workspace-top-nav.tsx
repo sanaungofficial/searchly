@@ -121,11 +121,12 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     updateAvatarUrl,
     authChecked,
     userRole,
+    showAdminUi,
   } = useWorkspace();
 
   const isStaffPortal = isStaffPortalRole(userRole);
   const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
-  const navLinks = buildNavLinks(isAdmin, isStaffPortal);
+  const navLinks = buildNavLinks(showAdminUi, isStaffPortal);
   const horizontalPad = isMobile ? 16 : 28;
   const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
 

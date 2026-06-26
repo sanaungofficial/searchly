@@ -70,3 +70,8 @@ export async function getActingUser(request?: Request): Promise<ActingUserResult
 export function quotaUserFor(result: ActingUserResult): User | null {
   return result.realDbUser ?? result.dbUser;
 }
+
+/** Admin-only client tooling (intake notes, admin nav) — hidden while impersonating. */
+export function canAccessAdminClientTools(result: ActingUserResult): boolean {
+  return result.realDbUser?.role === "ADMIN" && !result.isImpersonating;
+}
