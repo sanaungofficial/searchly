@@ -3,6 +3,7 @@ import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { isNylasConfigured } from "@/lib/nylas";
 import { sendMessage, serializeMessageSummary } from "@/lib/nylas-inbox";
 import { getUserEmailGrant } from "@/lib/user-email-server";
+import { logOutboundSend } from "@/lib/inbox-crm";
 
 function parseRecipients(raw: unknown): Array<{ email: string; name?: string }> {
   if (!Array.isArray(raw)) return [];
@@ -57,6 +58,16 @@ export async function POST(req: NextRequest) {
     });
 
     if (!sent) return NextResponse.json({ error: "Send failed" }, { status: 500 });
+
+    const toFirst = to[0];
+    logOutboundSend({
+      userId: dbUser.id,
+      sent,
+      toEmail: toFirst.email,
+      toName: toFirst.name,
+      subject,
+      body: text,
+    }).catch((err) => console.error("[user/email/messages/send] activity log", err));
 
     return NextResponse.json({ ok: true, message: serializeMessageSummary(sent) });
   } catch (err) {

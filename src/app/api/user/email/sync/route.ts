@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
-import { syncUserInbox } from "@/lib/job-email-agent";
+import { syncInboxActivities } from "@/lib/inbox-crm";
 import { isNylasConfigured } from "@/lib/nylas";
 import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   if (!grant) return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
 
   try {
-    const result = await syncUserInbox(dbUser.id);
+    const result = await syncInboxActivities(dbUser.id);
     await prisma.userEmailGrant.update({
       where: { id: grant.id },
       data: { lastSyncAt: new Date() },

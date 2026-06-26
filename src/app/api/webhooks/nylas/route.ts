@@ -13,9 +13,9 @@ import {
   verifyNylasWebhookSignature,
 } from "@/lib/nylas";
 import {
-  processUserEventWebhook,
-  processUserMessageWebhook,
-} from "@/lib/job-email-agent";
+  processInboxEventWebhook,
+  processInboxMessageWebhook,
+} from "@/lib/inbox-crm";
 import { resolveGuestUserId } from "@/lib/coach-hub";
 import { resolveCoachNotificationEmail } from "@/lib/coach-notification-email";
 import { markCoachGrantExpired } from "@/lib/coach-scheduler-sync";
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
     if (!coachGrant) {
-      processUserMessageWebhook(grantId, objectId).catch((err) =>
+      processInboxMessageWebhook(grantId, objectId).catch((err) =>
         console.error("[nylas/webhook] user message", err),
       );
     }
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
     objectId &&
     (type === "event.created" || type === "event.updated")
   ) {
-    processUserEventWebhook(grantId, objectId).catch((err) =>
+    processInboxEventWebhook(grantId, objectId).catch((err) =>
       console.error("[nylas/webhook] user event", err),
     );
   }

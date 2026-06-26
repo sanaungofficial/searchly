@@ -50,9 +50,12 @@ export async function GET(req: NextRequest) {
     const serialized = messages.map((m) => serializeMessageSummary(m));
     const messageIds = serialized.map((m) => m.id);
     const activities = messageIds.length
-      ? await prisma.jobActivityLog.findMany({
+      ? await prisma.inboxActivity.findMany({
           where: { userId: dbUser.id, nylasMessageId: { in: messageIds } },
-          include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+          include: {
+            job: { select: { id: true, company: true, role: true, stage: true } },
+            contact: { select: { id: true, email: true, name: true, company: true } },
+          },
         })
       : [];
     const activityByMessageId = Object.fromEntries(

@@ -50,9 +50,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       thread = threadMessages.map(serializeMessageSummary);
     }
 
-    const activityRow = await prisma.jobActivityLog.findFirst({
+    const activityRow = await prisma.inboxActivity.findFirst({
       where: { userId: dbUser.id, nylasMessageId: id },
-      include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+      include: {
+        job: { select: { id: true, company: true, role: true, stage: true } },
+        contact: { select: { id: true, email: true, name: true, company: true } },
+      },
     });
 
     return NextResponse.json({

@@ -59,6 +59,8 @@ model User {
   emailGrant           UserEmailGrant?
   jobAgentSettings     UserJobAgentSettings?
   jobActivityLogs      JobActivityLog[]
+  inboxContacts        InboxContact[]
+  inboxActivities      InboxActivity[]
   assistantThreads     AssistantThread[]
 
   @@index([referredByUserId])
@@ -221,6 +223,8 @@ model Job {
 
   tailoredResume TailoredResume?
   activityLogs   JobActivityLog[]
+  inboxActivities InboxActivity[]
+  inboxContacts  JobInboxContact[]
 }
 
 model TailoredResume {
@@ -1143,6 +1147,99 @@ model JobActivityLog {
   @@unique([userId, nylasEventId])
   @@index([userId, createdAt])
   @@index([userId, status])
+}
+
+enum InboxContactSource {
+  EMAIL
+  NYLAS
+  MANUAL
+}
+
+enum InboxActivityKind {
+  EMAIL
+  MEETING
+}
+
+enum InboxActivityDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum InboxActivityCategory {
+  NEWSLETTER
+  AUTOMATED
+  RECRUITER
+  JOB_SEARCH
+  PERSONAL
+  UNKNOWN
+}
+
+/// CRM contact derived from email/calendar participants (cold contacts OK).
+model InboxContact {
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email          String
+  name           String?
+  company        String?
+  title          String?
+  nylasContactId String?
+  source         InboxContactSource @default(EMAIL)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  activities InboxActivity[]
+  jobLinks   JobInboxContact[]
+
+  @@unique([userId, email])
+  @@index([userId])
+}
+
+/// Optional link between a CRM contact and a pipeline job.
+model JobInboxContact {
+  id        String       @id @default(cuid())
+  userId    String
+  jobId     String
+  contactId String
+  role      String?
+  createdAt DateTime     @default(now())
+
+  job     Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contact InboxContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, contactId])
+  @@index([userId])
+  @@index([contactId])
+}
+
+/// Rule-based activity log for all inbox mail and meetings (no AI on ingest).
+model InboxActivity {
+  id             String                 @id @default(cuid())
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind           InboxActivityKind
+  direction      InboxActivityDirection
+  category       InboxActivityCategory  @default(UNKNOWN)
+  contactId      String?
+  contact        InboxContact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  jobId          String?
+  job            Job?                   @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  nylasMessageId String?
+  nylasEventId   String?
+  nylasThreadId  String?
+  subject        String?
+  snippet        String?
+  userTag        String?
+  occurredAt     DateTime?
+  rawPayload     Json?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([userId, nylasMessageId])
+  @@unique([userId, nylasEventId])
+  @@index([userId, occurredAt])
+  @@index([userId, contactId])
+  @@index([userId, category])
 }
 
 /// Kimchi assistant conversation threads (chat + voice debrief blocks).

@@ -11,12 +11,13 @@ export type Folder = { id: string; name: string; unread_count?: number };
 
 export type MessageActivityMeta = {
   id: string;
-  signal: string;
-  status: string;
+  category: string;
+  direction: string;
   userTag: "needs_follow_up" | "answered" | "potential" | "waiting" | null;
-  companyGuess: string | null;
-  roleGuess: string | null;
+  contact: { id: string; email: string; name: string | null; company: string | null } | null;
   job: { id: string; company: string; role: string; stage: string } | null;
+  /** @deprecated */
+  signal?: string | null;
 };
 
 export type MessageSummary = {

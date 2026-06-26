@@ -88,7 +88,12 @@ export function InboxMessageRow({
             {msg.starred ? "★ " : ""}
             {msg.subject}
           </span>
-          <InboxStatusPills userTag={msg.activity?.userTag} signal={msg.activity?.signal} compact />
+          <InboxStatusPills
+            userTag={msg.activity?.userTag}
+            category={msg.activity?.category}
+            signal={msg.activity?.signal}
+            compact
+          />
         </div>
         {!expanded && (
           <p

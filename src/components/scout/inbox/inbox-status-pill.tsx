@@ -1,6 +1,6 @@
 "use client";
 
-import { signalStatusLabel, userTagStyle, type InboxUserTag } from "@/lib/email-sender-display";
+import { categoryStatusLabel, signalStatusLabel, userTagStyle, type InboxUserTag } from "@/lib/email-sender-display";
 
 type Tone = "green" | "amber" | "red" | "blue" | "neutral";
 
@@ -38,15 +38,18 @@ function Pill({ label, tone }: { label: string; tone: Tone }) {
 
 type Props = {
   userTag?: InboxUserTag | null;
+  category?: string | null;
   signal?: string | null;
   compact?: boolean;
 };
 
-export function InboxStatusPills({ userTag, signal, compact }: Props) {
+export function InboxStatusPills({ userTag, category, signal, compact }: Props) {
   const pills: { label: string; tone: Tone }[] = [];
 
   if (userTag) {
     pills.push(userTagStyle(userTag));
+  } else if (category && category !== "UNKNOWN") {
+    pills.push(categoryStatusLabel(category));
   } else if (signal && signal !== "OTHER") {
     pills.push(signalStatusLabel(signal));
   }

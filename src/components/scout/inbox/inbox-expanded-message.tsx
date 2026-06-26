@@ -56,7 +56,11 @@ export function InboxExpandedMessage({
             onChange={onTagChange}
           />
           <span style={{ marginLeft: 8 }}>
-            <InboxStatusPills userTag={detail.activity?.userTag} signal={detail.activity?.signal} />
+            <InboxStatusPills
+              userTag={detail.activity?.userTag}
+              category={detail.activity?.category}
+              signal={detail.activity?.signal}
+            />
           </span>
         </div>
         <button
