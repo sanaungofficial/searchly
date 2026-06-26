@@ -4,6 +4,7 @@ import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { UsersTable } from "./users-table";
 import { TopEchelonSyncPanel } from "./top-echelon-sync-panel";
 import { AirtableCoachesSyncPanel } from "./airtable-coaches-sync-panel";
+import { AdminJobMatchEmailPanel } from "@/components/admin/admin-job-match-email-panel";
 import { AdminUsagePanel } from "@/components/admin/admin-usage-panel";
 import { AdminLiveOverviewWidget } from "@/components/admin/admin-live-overview-widget";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "@/components/scout/scout-box";
@@ -197,6 +198,7 @@ export default async function AdminPage() {
       <section>
         <h2 className={adminSectionLabel}>Integrations</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <AdminJobMatchEmailPanel />
           <AirtableCoachesSyncPanel />
           <TopEchelonSyncPanel />
         </div>
