@@ -20,6 +20,7 @@ import { CoverLetterDrawer } from "./cover-letter-drawer";
 import { CreditsStatusBar } from "./credits-display";
 import { JobDrawerCompanySection } from "./job-drawer-company-section";
 import { JobDrawerNetworkAdminSection, JobDrawerRecruiterSection } from "./job-drawer-recruiter-section";
+import { isGenericNetworkCompanyLabel } from "@/lib/network-employer-labels";
 import { useHirebaseCompanyProfile } from "@/hooks/useHirebaseCompanyProfile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fontSans, fontMono, color, surface, border as B, type as T, drawerType as DT, displayTitleStyle } from "@/lib/typography";
@@ -86,6 +87,19 @@ type TrackedCompanySummary = { id: string; name: string };
 
 function normalizeCompanyName(name: string) {
   return name.trim().toLowerCase();
+}
+
+function isTrackableHirebaseCompany(
+  hirebase: import("@/lib/hirebase-company-profile").HirebaseCompanyProfileResponse | null | undefined,
+): boolean {
+  if (!hirebase?.configured || hirebase.error) return false;
+  const profile = hirebase.profile;
+  const slug = profile?.company_slug?.trim() || hirebase.enrichment?.hirebase?.slug?.trim();
+  const hasSummary = Boolean(
+    profile?.description_summary?.trim() ||
+    hirebase.enrichment?.description?.trim(),
+  );
+  return Boolean(slug || (profile && hasSummary));
 }
 
 function CompanyTrackPanel({
@@ -376,7 +390,6 @@ function resolveJobFields(meta: JobMeta | null) {
   const tags = meta?.tags ?? [];
   const hasStructuredSections = !!(
     meta?.jobSummary ||
-    meta?.companySummary ||
     responsibilities.length > 0 ||
     skills.length > 0 ||
     requiredQualifications.length > 0 ||
@@ -902,7 +915,17 @@ export function JobDrawer({
       : "APPLY NOW";
   const canRunMatch = Boolean(dbId || fullDescriptionText.length >= 40);
   const showParsedSections = hasStructuredSections;
-  const showFullDescriptionBlob = hasFullPosting && !showParsedSections;
+  const showStructuredJobSections =
+    showParsedSections && !(networkJob && fullDescriptionText.trim());
+  const showJobDescriptionPanel =
+    !showParsedSections ||
+    (detailLoading && !hasFullPosting) ||
+    Boolean(networkJob && fullDescriptionText.trim());
+  const canTrackCompany =
+    !networkJob &&
+    !hirebaseLoading &&
+    !isGenericNetworkCompanyLabel(card.company) &&
+    isTrackableHirebaseCompany(hirebaseCompany);
   const backdropZ = elevated ? 210 : 60;
   const drawerZ = elevated ? 211 : 70;
 
@@ -1066,7 +1089,7 @@ export function JobDrawer({
                 />
               ) : null}
 
-              {(!showParsedSections || (detailLoading && !hasFullPosting)) && (
+              {showJobDescriptionPanel && (
                 <JobDescriptionPanel
                   text={fullDescriptionText}
                   loading={detailLoading && !hasFullPosting}
@@ -1077,21 +1100,21 @@ export function JobDrawer({
                 />
               )}
 
-              {showParsedSections && jobSummary && (
+              {showStructuredJobSections && jobSummary && (
                 <div style={{ marginBottom: 22 }}>
                   <SectionTitle icon={<IconBriefcase />}>About the role</SectionTitle>
                   <p style={{ fontFamily: sans, fontSize: 15, color: "#2A2218", lineHeight: 1.7, margin: 0 }}>{jobSummary}</p>
                 </div>
               )}
 
-              {showParsedSections && responsibilities.length > 0 && (
+              {showStructuredJobSections && responsibilities.length > 0 && (
                 <div style={{ marginBottom: 22 }}>
                   <SectionTitle icon={<IconBriefcase />}>Responsibilities</SectionTitle>
                   <BulletList items={responsibilities} />
                 </div>
               )}
 
-              {showParsedSections && (skills.length > 0 || requiredQualifications.length > 0 || preferredQualifications.length > 0) && (
+              {showStructuredJobSections && (skills.length > 0 || requiredQualifications.length > 0 || preferredQualifications.length > 0) && (
                 <div style={{ marginBottom: 22 }}>
                   <SectionTitle icon={<IconTarget />}>Qualifications</SectionTitle>
                   {skills.length > 0 && (
@@ -1130,7 +1153,7 @@ export function JobDrawer({
                 </div>
               )}
 
-              {showParsedSections && benefits.length > 0 && (
+              {showStructuredJobSections && benefits.length > 0 && (
                 <div style={{ marginBottom: 22 }}>
                   <SectionTitle icon={<IconGift />}>Benefits</SectionTitle>
                   <BulletList items={benefits} />
@@ -1228,11 +1251,13 @@ export function JobDrawer({
                   loading={networkJob ? false : hirebaseLoading}
                   networkSourced={Boolean(networkJob)}
                   trackPanel={
-                    <CompanyTrackPanel
-                      companyName={card.company}
-                      jobUrl={companyWebsite ?? applicationUrl}
-                      hqLocation={location ?? null}
-                    />
+                    canTrackCompany ? (
+                      <CompanyTrackPanel
+                        companyName={card.company}
+                        jobUrl={companyWebsite ?? applicationUrl}
+                        hqLocation={location ?? null}
+                      />
+                    ) : null
                   }
                 />
               </div>
