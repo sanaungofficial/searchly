@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const WELCOME =
-  "Ask anything about your search — or tap **Talk it out** to use your voice. I'll pick up from there.";
+  "Hey — I'm Kimchi. Pick something below to get started, or type your own question.";
 
 export async function GET() {
   const { dbUser } = await getActingUser();

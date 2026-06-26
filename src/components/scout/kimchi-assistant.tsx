@@ -83,6 +83,8 @@ export function KimchiAssistant() {
 
   const activeTitle =
     threads.threads.find((t) => t.id === threads.activeThreadId)?.title ?? "Kimchi";
+  const displayTitle =
+    activeTitle === "New chat" ? "Kimchi" : activeTitle;
 
   return (
     <>
@@ -128,13 +130,19 @@ export function KimchiAssistant() {
                     onClick={() => threads.setThreadMenuOpen((v) => !v)}
                     aria-expanded={threads.threadMenuOpen}
                   >
-                    <span className="kimchi-drawer__name">{activeTitle}</span>
+                    <span className="kimchi-drawer__name">{displayTitle}</span>
                     <span className="kimchi-drawer__chev">▾</span>
                   </button>
                 </div>
                 <div className="kimchi-drawer__topbar-actions">
-                  <button type="button" className="kimchi-drawer__new" onClick={() => void threads.createThread()}>
-                    New chat
+                  <button
+                    type="button"
+                    className="kimchi-drawer__new"
+                    onClick={() => void threads.createThread()}
+                    aria-label="New chat"
+                    title="New chat"
+                  >
+                    +
                   </button>
                   <button type="button" className="kimchi-drawer__close" onClick={closePanel} aria-label="Close">
                     ×
@@ -154,7 +162,9 @@ export function KimchiAssistant() {
                       className={`kimchi-drawer__thread-item${t.id === threads.activeThreadId ? " kimchi-drawer__thread-item--active" : ""}`}
                       onClick={() => void threads.selectThread(t.id)}
                     >
-                      <span className="kimchi-drawer__thread-title">{t.title}</span>
+                      <span className="kimchi-drawer__thread-title">
+                        {t.title === "New chat" ? "Untitled chat" : t.title}
+                      </span>
                       <span className="kimchi-drawer__thread-meta">
                         {t.messageCount} msg · {new Date(t.updatedAt).toLocaleDateString()}
                       </span>
@@ -240,13 +250,13 @@ function KimchiAssistantStyles() {
       }
       .kimchi-drawer__name {
         font-family: ${sans};
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 600;
         color: #E8D5A3;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 220px;
+        max-width: 240px;
       }
       .kimchi-drawer__chev {
         color: rgba(232, 213, 163, 0.65);
@@ -259,14 +269,17 @@ function KimchiAssistantStyles() {
         flex-shrink: 0;
       }
       .kimchi-drawer__new {
-        padding: 6px 10px;
+        width: 32px;
+        height: 32px;
+        padding: 0;
         border: 1px solid rgba(232, 213, 163, 0.25);
         border-radius: var(--scout-radius);
         background: transparent;
         color: #E8D5A3;
         font-family: ${sans};
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 20px;
+        font-weight: 400;
+        line-height: 1;
         cursor: pointer;
       }
       .kimchi-drawer__close {

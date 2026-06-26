@@ -2,12 +2,81 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { ChatChip } from "@/lib/kimchi-assistant/chat-chips";
 import type { AssistantSuggestion, AssistantInboxSnapshot } from "@/lib/kimchi-assistant/types";
 import { InboxInsightRow } from "@/components/scout/inbox/inbox-insight-row";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { fontSans } from "@/lib/typography";
 
 const sans = fontSans;
+
+export function KimchiChipRow({
+  chips,
+  label,
+  onSelect,
+}: {
+  chips: ChatChip[];
+  label?: string;
+  onSelect: (prompt: string) => void;
+}) {
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="kimchi-chips">
+      {label && <p className="kimchi-chips__label">{label}</p>}
+      <div className="kimchi-chips__row">
+        {chips.map((chip) => (
+          <button key={chip.id} type="button" className="kimchi-chips__chip" onClick={() => onSelect(chip.prompt)}>
+            {chip.label}
+          </button>
+        ))}
+      </div>
+      <KimchiChipStyles />
+    </div>
+  );
+}
+
+function KimchiChipStyles() {
+  return (
+    <style>{`
+      .kimchi-chips {
+        margin: 0 0 14px;
+      }
+      .kimchi-chips__label {
+        margin: 0 0 8px;
+        font-family: ${sans};
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgba(26, 58, 47, 0.5);
+      }
+      .kimchi-chips__row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .kimchi-chips__chip {
+        padding: 10px 14px;
+        background: #fff;
+        border: 1.5px solid rgba(26, 58, 47, 0.14);
+        border-radius: 999px;
+        font-family: ${sans};
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.3;
+        color: #1A3A2F;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .kimchi-chips__chip:hover {
+        background: rgba(26, 58, 47, 0.05);
+        border-color: rgba(26, 58, 47, 0.28);
+      }
+    `}</style>
+  );
+}
 
 type Props = {
   suggestions: AssistantSuggestion[];
@@ -76,14 +145,14 @@ function KimchiDoNextStyles() {
     <style>{`
       .kimchi-do-next {
         flex-shrink: 0;
-        padding: 10px 14px 8px;
+        padding: 12px 18px 10px;
         border-bottom: 1px solid rgba(26, 58, 47, 0.08);
         background: rgba(26, 58, 47, 0.02);
       }
       .kimchi-do-next__label {
-        margin: 0 0 8px;
+        margin: 0 0 10px;
         font-family: ${sans};
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         letter-spacing: 0.06em;
         text-transform: uppercase;
@@ -92,31 +161,35 @@ function KimchiDoNextStyles() {
       .kimchi-do-next__list {
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        max-height: 140px;
+        gap: 8px;
+        max-height: 180px;
         overflow-y: auto;
       }
       .kimchi-do-next__card {
         text-align: left;
-        padding: 8px 10px;
+        padding: 12px 14px;
         background: #fff;
         border: 1px solid rgba(26, 58, 47, 0.1);
         border-radius: var(--scout-radius);
         cursor: pointer;
       }
+      .kimchi-do-next__card:hover {
+        background: rgba(26, 58, 47, 0.03);
+        border-color: rgba(26, 58, 47, 0.18);
+      }
       .kimchi-do-next__title {
         display: block;
         font-family: ${sans};
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 600;
         color: #1A3A2F;
       }
       .kimchi-do-next__detail {
         display: block;
-        margin-top: 2px;
+        margin-top: 4px;
         font-family: ${sans};
-        font-size: 12px;
-        line-height: 1.35;
+        font-size: 13px;
+        line-height: 1.4;
         color: var(--scout-muted);
       }
     `}</style>

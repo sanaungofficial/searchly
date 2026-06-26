@@ -12,6 +12,13 @@ import type {
   AssistantSuggestion,
 } from "@/lib/kimchi-assistant/types";
 import { VOICE_PRESETS, getVoicePreset, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
+import {
+  buildFollowUpChips,
+  buildStarterChips,
+  isWelcomeOnlyThread,
+  WELCOME_MESSAGE,
+  type ChatChip,
+} from "@/lib/kimchi-assistant/chat-chips";
 import { ProfileResumeEditor } from "@/components/scout/profile-resume-editor";
 import { CreditsInlineHint } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
@@ -22,6 +29,7 @@ import { STAGE_LABELS } from "./workspace-data";
 import {
   KimchiDoNextStrip,
   KimchiDoNextCollapsedStyles,
+  KimchiChipRow,
   KimchiEmailInsightDrawer,
   KimchiSaveIntakeModal,
   KimchiStrategyGenerateModal,
@@ -56,7 +64,7 @@ function contextQuery(pageHint?: AssistantPageHint): string {
 
 export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) {
   const { openPricing, kanbanCards } = useWorkspace();
-  const { messages, setMessages, ensureThread, updateLastAssistant, persistMessages } = threads;
+  const { messages, setMessages, ensureThread, updateLastAssistant, persistMessages, activeThreadId } = threads;
 
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -73,6 +81,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) 
   const [resumeContextNotes, setResumeContextNotes] = useState<string | null>(null);
   const [saveIntakeModal, setSaveIntakeModal] = useState<{ excerpt: string; presetTitle: string } | null>(null);
   const [strategyModalOpen, setStrategyModalOpen] = useState(false);
+  const [followUpChips, setFollowUpChips] = useState<ChatChip[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -196,6 +205,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) 
   }, [loadContext]);
 
   useEffect(() => {
+    setFollowUpChips([]);
+  }, [activeThreadId]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 
@@ -205,10 +218,29 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) 
 
   const suggestions = assistantCtx?.suggestions ?? [];
   const showDoNext = suggestions.length > 0 && (!doNextCollapsed || doNextForceOpen);
+  const welcomeOnly = isWelcomeOnlyThread(messages);
+  const starterChips = buildStarterChips(assistantCtx);
+
+  const loadFollowUpChips = useCallback(async (userMessage: string, assistantMessage: string) => {
+    try {
+      const res = await fetch("/api/assistant/follow-ups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userMessage, assistantMessage }),
+      });
+      const data = res.ok ? await res.json() : null;
+      const chips = (data?.chips ?? buildFollowUpChips({ userMessage, assistantMessage })) as ChatChip[];
+      setFollowUpChips(chips);
+    } catch {
+      setFollowUpChips(buildFollowUpChips({ userMessage, assistantMessage }));
+    }
+  }, []);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
+
+    setFollowUpChips([]);
 
     const textThread = messages.filter(
       (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
@@ -263,6 +295,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) 
       if (threadId && accumulated.trim()) {
         void persistMessages(threadId, [{ kind: "text", role: "assistant", content: accumulated }]);
       }
+      void loadFollowUpChips(trimmed, accumulated);
     } catch {
       updateLastAssistant("Couldn't reach Kimchi — check your connection.");
     } finally {
@@ -423,6 +456,8 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) 
             >
               {msg.role === "user" ? (
                 msg.content
+              ) : welcomeOnly && i === messages.length - 1 ? (
+                WELCOME_MESSAGE
               ) : (
                 <ReactMarkdown>
                   {msg.content || (streaming && i === messages.length - 1 ? "…" : "")}
@@ -431,6 +466,23 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) 
             </div>
           );
         })}
+
+        {welcomeOnly && starterChips.length > 0 && (
+          <KimchiChipRow
+            label="Try asking"
+            chips={starterChips}
+            onSelect={(prompt) => void sendMessage(prompt)}
+          />
+        )}
+
+        {!streaming && !welcomeOnly && followUpChips.length > 0 && (
+          <KimchiChipRow
+            label="Keep going"
+            chips={followUpChips}
+            onSelect={(prompt) => void sendMessage(prompt)}
+          />
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -469,7 +521,20 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads }: Props) 
       <div className="kimchi-chat-panel__composer">
         {!voiceUnavailable && voiceAvailable !== false && !sessionActive && (
           <button type="button" className="kimchi-chat-panel__talk-btn" onClick={() => setPresetMenuOpen((v) => !v)}>
-            Talk it out ▾
+            <span className="kimchi-chat-panel__talk-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V19H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-1.08A7 7 0 0 0 19 11Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+            <span>Talk it out</span>
+            <span className="kimchi-chat-panel__talk-chev" aria-hidden="true">▾</span>
           </button>
         )}
         <textarea
@@ -572,10 +637,10 @@ function KimchiChatPanelStyles() {
       .kimchi-chat-bubble {
         max-width: 92%;
         margin-bottom: 12px;
-        padding: 12px 14px;
+        padding: 14px 16px;
         border-radius: var(--scout-radius);
         font-family: ${sans};
-        font-size: 14px;
+        font-size: 15px;
         line-height: 1.55;
       }
       .kimchi-chat-bubble--user {
@@ -715,16 +780,33 @@ function KimchiChatPanelStyles() {
       }
       .kimchi-chat-panel__talk-btn {
         flex-shrink: 0;
-        padding: 12px 14px;
-        background: rgba(26, 58, 47, 0.06);
-        border: 1px solid rgba(26, 58, 47, 0.14);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: linear-gradient(180deg, rgba(26, 58, 47, 0.07) 0%, rgba(26, 58, 47, 0.04) 100%);
+        border: 1.5px solid rgba(26, 58, 47, 0.16);
         border-radius: var(--scout-radius);
         font-family: ${sans};
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
         color: #1A3A2F;
         cursor: pointer;
         white-space: nowrap;
+      }
+      .kimchi-chat-panel__talk-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: rgba(26, 58, 47, 0.1);
+        color: #1A3A2F;
+      }
+      .kimchi-chat-panel__talk-chev {
+        font-size: 10px;
+        color: rgba(26, 58, 47, 0.55);
       }
       .kimchi-chat-panel__input {
         flex: 1;
@@ -735,7 +817,7 @@ function KimchiChatPanelStyles() {
         border-radius: var(--scout-radius);
         padding: 12px 14px;
         font-family: ${sans};
-        font-size: 14px;
+        font-size: 15px;
         line-height: 1.45;
         outline: none;
       }

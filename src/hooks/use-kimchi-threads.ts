@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StoredThreadMessage } from "@/lib/kimchi-assistant/thread-serialize";
+import { WELCOME_MESSAGE } from "@/lib/kimchi-assistant/chat-chips";
 
 export type ThreadSummary = {
   id: string;
@@ -13,8 +14,7 @@ export type ThreadSummary = {
 const WELCOME: StoredThreadMessage = {
   kind: "text",
   role: "assistant",
-  content:
-    "Ask anything about your search — or tap **Talk it out** to use your voice. I'll pick up from there.",
+  content: WELCOME_MESSAGE,
 };
 
 export function useKimchiThreads() {
