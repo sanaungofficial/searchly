@@ -7,21 +7,14 @@ import {
   salvagePartialStrategyJson,
   type StrategySourceSnapshot,
 } from "@/lib/career-strategy";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { upsertProfileFields } from "@/lib/profile-write";
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
 
-const STRATEGY_MODEL = "claude-sonnet-4-6";
 const STALE_RUNNING_MS = 12 * 60 * 1000;
 
 export type StrategyGenerationStatus = "running" | "complete" | "failed" | null;
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export function normalizeStrategyGenerationStatus(value: unknown): StrategyGenerationStatus {
   if (value === "running" || value === "complete" || value === "failed") return value;
@@ -81,7 +74,7 @@ async function markGenerationFailed(userId: string, error: string) {
 }
 
 export async function runStrategyGeneration(userId: string): Promise<void> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     await markGenerationFailed(userId, "AI not configured");
     return;
   }
@@ -108,28 +101,24 @@ export async function runStrategyGeneration(userId: string): Promise<void> {
       intakeNotes: profile.strategyIntakeNotes,
     });
 
-    const message = await getAnthropic().messages.create({
-      model: STRATEGY_MODEL,
-      max_tokens: 16384,
-      messages: [{ role: "user", content: prompt }],
+    const { text, usage, modelId } = await kimchiGenerateText({
+      tier: "create",
+      prompt,
+      maxOutputTokens: 16384,
+      userId,
+      tags: ["feature:career-strategy"],
     });
 
     logAiUsage({
       userId,
       feature: "career_strategy",
-      model: STRATEGY_MODEL,
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
+      model: modelId,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
     }).catch(() => {});
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      await markGenerationFailed(userId, "Unexpected AI response");
-      return;
-    }
-
     try {
-      const { document, isPartial } = parseStrategyFromAi(content.text);
+      const { document, isPartial } = parseStrategyFromAi(text);
       const now = new Date();
       const history = archiveStrategyVersion({
         currentDocument: profile.strategyData,
@@ -163,7 +152,7 @@ export async function runStrategyGeneration(userId: string): Promise<void> {
       });
       return;
     } catch (parseErr) {
-      const salvaged = salvagePartialStrategyJson(content.text);
+      const salvaged = salvagePartialStrategyJson(text);
       if (salvaged) {
         const now = new Date();
         const history = archiveStrategyVersion({
@@ -199,12 +188,11 @@ export async function runStrategyGeneration(userId: string): Promise<void> {
         return;
       }
 
-      const truncated = message.stop_reason === "max_tokens";
+      const truncated = usage.outputTokens >= 16384;
       console.error("[career-strategy generate] parse failed", {
-        stopReason: message.stop_reason,
-        outputTokens: message.usage.output_tokens,
+        outputTokens: usage.outputTokens,
         err: parseErr,
-        preview: content.text.slice(0, 400),
+        preview: text.slice(0, 400),
       });
       await markGenerationFailed(
         userId,

@@ -1,19 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { getActingUser } from "@/lib/acting-user";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
-
 export async function GET(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -65,28 +59,24 @@ export async function GET(request: Request) {
   const template = await getPrompt("READBACK");
   const prompt = interpolate(template, { resumeSlice: resumeText.slice(0, 6000) });
 
-  const READBACK_MODEL = "claude-haiku-4-5-20251001";
-  const message = await getAnthropic().messages.create({
-    model: READBACK_MODEL,
-    max_tokens: 800,
-    messages: [{ role: "user", content: prompt }],
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 800,
+    userId: dbUser.id,
+    tags: ["feature:readback"],
   });
 
   logAiUsage({
     userId: dbUser.id,
     feature: "READBACK",
-    model: READBACK_MODEL,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    model: modelId,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
   }).catch(() => {});
 
-  const content = message.content[0];
-  if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-  }
-
   try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found");
     const parsed = JSON.parse(jsonMatch[0]);
 

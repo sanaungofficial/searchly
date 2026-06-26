@@ -162,7 +162,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
     <>
       {modalOpen && <SubmittedModal onClose={() => setModalOpen(false)} />}
 
-      <div style={{ background: "#F7F5F2", minHeight: "100vh" }}>
+      <div style={{ background: "var(--scout-page)", minHeight: "100vh" }}>
         <div className="onboarding-shell">
           <CoachOnboardingHeader screen={8} />
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#78716c", textAlign: "center", margin: "8px 0 0" }}>
@@ -249,7 +249,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                         fontFamily: "var(--font-ui)",
                         fontSize: 13,
                         color: "#1A1A1A",
-                        background: "#F7F5F2",
+                        background: "var(--scout-inset)",
                       }}
                     >
                       {label}
@@ -258,7 +258,7 @@ export function CoachVouchesScreen({ showWelcome }: { showWelcome?: boolean }) {
                 </div>
               </div>
 
-              <div style={{ ...CARD, background: "#F7F5F2" }}>
+              <div style={{ ...CARD, background: "var(--scout-inset)" }}>
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, margin: "0 0 12px" }}>Need help writing your post? Try this.</p>
                 <pre
                   style={{

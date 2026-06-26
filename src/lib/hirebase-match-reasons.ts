@@ -1,18 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { HirebaseJob } from "@/lib/hirebase";
 import { mapHirebaseJob } from "@/lib/hirebase";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { fallbackJobMatch } from "@/lib/resume-match";
 import { isLowQualityMatchReason, matchScoreLabelFor, usableKeywordSummary } from "@/lib/match-score";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
-
-const MODEL = "claude-haiku-4-5-20251001";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 function labelForScore(score: number): string {
   return matchScoreLabelFor(score);
@@ -99,7 +91,7 @@ async function claudeBatchMatchReasons(
   jobs: Array<{ job: HirebaseJob; cached: ReturnType<typeof mapHirebaseJob>; rank: number }>
 ): Promise<Map<string, BatchMatchRow>> {
   const out = new Map<string, BatchMatchRow>();
-  if (!process.env.ANTHROPIC_API_KEY || !jobs.length) return out;
+  if (!isKimchiAiConfigured() || !jobs.length) return out;
 
   const jobBlocks = jobs
     .map(({ job, cached, rank }) => {
@@ -121,17 +113,15 @@ async function claudeBatchMatchReasons(
     jobBlocks,
   });
 
-  const message = await getAnthropic().messages.create({
-    model: MODEL,
-    max_tokens: 2500,
-    messages: [{ role: "user", content: prompt }],
+  const { text } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 2500,
+    tags: ["feature:vector-job-match"],
   });
 
-  const content = message.content[0];
-  if (content.type !== "text") return out;
-
   try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return out;
     const parsed = JSON.parse(jsonMatch[0]) as { matches?: BatchMatchRow[] };
     for (const row of parsed.matches ?? []) {

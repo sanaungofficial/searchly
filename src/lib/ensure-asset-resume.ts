@@ -4,20 +4,12 @@ import {
   fileExtFromUrl,
   parseResumeFile,
 } from "@/lib/resume-extract";
+import { hasLegacyAnthropicClient, getLegacyAnthropicClient, isKimchiAiConfigured } from "@/lib/llm";
 import { hasResumeBodyContent, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { createClient } from "@/utils/supabase/server";
 import type { UserAsset } from "@prisma/client";
 import { Prisma } from "@prisma/client";
-import Anthropic from "@anthropic-ai/sdk";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic && process.env.ANTHROPIC_API_KEY) {
-    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  }
-  return _anthropic;
-}
 
 function urlsMatch(a: string, b: string): boolean {
   if (a === b) return true;
@@ -117,7 +109,12 @@ export async function ensureAssetResumeParsed(
   }
 
   const ext = fileExtFromUrl(asset.url) || "pdf";
-  const result = await parseResumeFile(getAnthropic(), bytes, ext, "", asset.name);
+  const anthropic = hasLegacyAnthropicClient() ? getLegacyAnthropicClient() : null;
+  if (!anthropic && !isKimchiAiConfigured()) {
+    return asset.resumeText?.trim() ? asset : null;
+  }
+
+  const result = await parseResumeFile(anthropic, bytes, ext, "", asset.name, userId);
   const resumeText = result.text.trim() || asset.resumeText?.trim() || "";
   const nextParsed = result.parsed ?? parsed;
 

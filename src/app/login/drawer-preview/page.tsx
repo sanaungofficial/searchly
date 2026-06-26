@@ -41,7 +41,7 @@ export default function DevJobDrawerPreviewPage() {
   if (process.env.NODE_ENV !== "development") notFound();
   const [open, setOpen] = useState(true);
   return (
-    <div style={{ minHeight: "100vh", background: "#E8E4DE", padding: 24 }}>
+    <div style={{ minHeight: "100vh", background: "var(--scout-page)", padding: 24 }}>
       <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#5C534A", marginBottom: 12 }}>Dev preview — JobDrawer (JobRight fields)</p>
       {!open && <button type="button" onClick={() => setOpen(true)} style={{ padding: "10px 16px", background: "#1A3A2F", color: "#E8D5A3", border: "none", borderRadius: 8, cursor: "pointer" }}>Open drawer</button>}
       {open && <JobDrawer card={MOCK_CARD} onClose={() => setOpen(false)} moveCard={() => {}} onDelete={() => setOpen(false)} onCardUpdate={() => {}} />}

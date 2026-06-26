@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import {
   normalizeLinkedInDraft,
@@ -8,17 +9,8 @@ import {
 } from "@/lib/linkedin-profile";
 import { syncLinkedInDraftFromAbout } from "@/lib/profile-linkedin-sync";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
-import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
-
-const MODEL = "claude-haiku-4-5-20251001";
 
 export async function POST() {
   const supabase = await createClient();
@@ -53,8 +45,7 @@ export async function POST() {
   let aiDraft = null as ReturnType<typeof normalizeLinkedInDraft>;
   let provider: "claude" | "heuristic" = "heuristic";
 
-  const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
-  if (anthropic) {
+  if (isKimchiAiConfigured()) {
     try {
       const template = await getPrompt("LINKEDIN_DRAFT");
       const prompt = interpolate(template, {
@@ -63,17 +54,18 @@ export async function POST() {
         resumeJson: JSON.stringify(resume).slice(0, 12000),
       });
 
-      const message = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 4096,
-        messages: [{ role: "user", content: prompt }],
+      const { text, usage, modelId } = await kimchiGenerateText({
+        tier: "create",
+        prompt,
+        maxOutputTokens: 4096,
+        userId: dbUser.id,
+        tags: ["feature:linkedin-draft"],
       });
 
-      const text = message.content[0]?.type === "text" ? message.content[0].text : "";
       aiDraft = parseLinkedInDraftFromModel(text);
       if (aiDraft) {
         provider = "claude";
-        logAiUsage(dbUser.id, "FIT_ANALYSIS", MODEL, message.usage.input_tokens, message.usage.output_tokens);
+        logAiUsage(dbUser.id, "FIT_ANALYSIS", modelId, usage.inputTokens, usage.outputTokens);
       }
     } catch (err) {
       console.error("[linkedin-draft] AI generation failed:", err);

@@ -1525,7 +1525,7 @@ export function ResumeMatchDrawer({
                     {/* Score jump */}
                     <div
                       style={{
-                        background: "#FAF7F2",
+                        background: "var(--scout-inset)",
                         borderRadius: 0,
                         padding: "16px 18px",
                         border: "1px solid rgba(0,0,0,0.06)",

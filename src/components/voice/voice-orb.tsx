@@ -19,8 +19,8 @@ interface VoiceOrbProps {
   disabled?: boolean;
   label?: string;
   sublabel?: string;
-  /** hero = onboarding panel; float = bottom-right launcher */
-  variant?: "hero" | "float";
+  /** hero = onboarding panel; float = bottom-right launcher; composer = inline mic button */
+  variant?: "hero" | "float" | "composer";
   /** Continuous bounce when idle (default true for float) */
   bounce?: boolean;
 }
@@ -48,6 +48,7 @@ export function VoiceOrb({
   bounce,
 }: VoiceOrbProps) {
   const isFloat = variant === "float";
+  const isComposer = variant === "composer";
   const shouldBounce = bounce ?? (isFloat && (state === "idle" || state === "error" || state === "done"));
   const isListening = state === "listening" || state === "live";
   const isSpeaking = state === "speaking";
@@ -72,12 +73,13 @@ export function VoiceOrb({
   return (
     <>
       <VoiceOrbStyles />
-      <div className={["voice-orb-wrap", isFloat ? "voice-orb-wrap--float" : ""].filter(Boolean).join(" ")}>
+      <div className={["voice-orb-wrap", isFloat ? "voice-orb-wrap--float" : "", isComposer ? "voice-orb-wrap--composer" : ""].filter(Boolean).join(" ")}>
         <div
           className={[
             "voice-orb-rings",
             shouldBounce ? "voice-orb-rings--bounce" : "",
             isFloat ? "voice-orb-rings--compact" : "",
+            isComposer ? "voice-orb-rings--composer" : "",
             isListening ? "voice-orb-rings--active" : "",
             isSpeaking ? "voice-orb-rings--speaking" : "",
             isThinking ? "voice-orb-rings--processing" : "",
@@ -95,8 +97,12 @@ export function VoiceOrb({
           }
         >
           <span className="voice-orb-ring voice-orb-ring--1" aria-hidden="true" />
-          <span className="voice-orb-ring voice-orb-ring--2" aria-hidden="true" />
-          <span className="voice-orb-ring voice-orb-ring--3" aria-hidden="true" />
+          {!isComposer && (
+            <>
+              <span className="voice-orb-ring voice-orb-ring--2" aria-hidden="true" />
+              <span className="voice-orb-ring voice-orb-ring--3" aria-hidden="true" />
+            </>
+          )}
 
           <button
             type="button"
@@ -128,7 +134,7 @@ export function VoiceOrb({
                 </span>
               ) : state === "idle" ? (
                 <span className="voice-orb-star-wrap" aria-hidden="true">
-                  <KimchiStar size={isFloat ? 26 : 32} />
+                  <KimchiStar size={isComposer ? 18 : isFloat ? 26 : 32} />
                 </span>
               ) : (
                 <span className="voice-orb-wave" aria-hidden="true">
@@ -136,7 +142,7 @@ export function VoiceOrb({
                 </span>
               )}
             </span>
-            {!isFloat && (
+            {!isFloat && !isComposer && (
               <span className="voice-orb-core__label">{label ?? defaultLabel}</span>
             )}
           </button>
@@ -248,6 +254,37 @@ function VoiceOrbStyles() {
 
       .voice-orb-rings--compact.voice-orb-rings--bounce {
         animation: voice-orb-bounce 2.4s ease-in-out infinite;
+      }
+
+      .voice-orb-wrap--composer {
+        flex-shrink: 0;
+      }
+
+      .voice-orb-rings--composer {
+        width: 44px;
+        height: 44px;
+        animation: none;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-core {
+        inset: 2px;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-core__inner {
+        margin-bottom: 0;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-spinner {
+        width: 18px;
+        height: 18px;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-check {
+        font-size: 16px;
+      }
+
+      .voice-orb-wrap--composer .voice-orb-ring--1 {
+        inset: -2px;
       }
 
       .voice-orb-wrap--float .voice-orb-core {

@@ -148,6 +148,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    background: var(--scout-page);
+  }
   body {
     @apply text-foreground;
     background: var(--scout-page);

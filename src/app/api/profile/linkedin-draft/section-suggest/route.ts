@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import {
   LINKEDIN_SECTION_TITLES,
@@ -7,14 +8,7 @@ import {
 import { normalizeLinkedInDraft, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import { parseJsonFromModel } from "@/lib/resume-parse";
 import { createClient } from "@/utils/supabase/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 function sectionSlice(
   draft: LinkedInProfileDraft,
@@ -81,7 +75,7 @@ export async function POST(request: Request) {
   const draftSlice = sectionSlice(draft, sectionId, entryId, entryLabel);
   const targetRoles = (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({
       issues: [],
       suggestions: [
@@ -103,13 +97,14 @@ export async function POST(request: Request) {
       targetRoles,
     });
 
-    const message = await getAnthropic().messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
+    const { text } = await kimchiGenerateText({
+      tier: "create",
+      prompt,
+      maxOutputTokens: 1500,
+      userId: dbUser.id,
+      tags: ["feature:linkedin-section-suggest"],
     });
 
-    const text = message.content[0]?.type === "text" ? message.content[0].text : "";
     const parsed = parseJsonFromModel(text) as {
       issues?: Array<Record<string, unknown>>;
       suggestions?: Array<{ label?: string; text?: string }>;

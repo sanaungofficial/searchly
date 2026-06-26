@@ -314,7 +314,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
         width: "100%",
         maxWidth: 1200,
         height: "90vh",
-        background: "#F7F5F2",
+        background: "var(--scout-inset)",
         borderRadius: 0,
         display: "flex",
         flexDirection: "column",

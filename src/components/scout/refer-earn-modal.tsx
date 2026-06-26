@@ -158,7 +158,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 { step: "2", title: "Your friend completes sign-up & finishes onboarding", icon: "👥" },
                 { step: "3", title: "You and your friend each get a bonus", icon: "🎁" },
               ].map((s) => (
-                <div key={s.step} style={{ background: "#F7F5F2", borderRadius: 12, padding: 16 }}>
+                <div key={s.step} style={{ background: "var(--scout-inset)", borderRadius: 12, padding: 16 }}>
                   <span style={{ fontSize: 20 }}>{s.icon}</span>
                   <p style={{ margin: "8px 0 0", fontSize: 13, fontWeight: 600, color: "#1A1A1A", lineHeight: 1.45 }}>{s.title}</p>
                 </div>
@@ -186,7 +186,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 { label: "Tailor Credits Earned", value: stats.tailorCreditsEarned },
                 { label: "Scout Credits Earned", value: stats.scoutCreditsEarned },
               ].map((card) => (
-                <div key={card.label} style={{ background: "#F7F5F2", borderRadius: 10, padding: "16px 12px", textAlign: "center" }}>
+                <div key={card.label} style={{ background: "var(--scout-inset)", borderRadius: 10, padding: "16px 12px", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#1A1A1A" }}>{card.value}</p>
                   <p style={{ margin: "6px 0 0", fontSize: 11, color: "#8A7F72", lineHeight: 1.35 }}>{card.label}</p>
                 </div>
@@ -203,7 +203,7 @@ export function ReferEarnModal({ onClose }: Props) {
                 { icon: "#", text: "Tag @Kimchi and include #kimchi and #jobsearch" },
                 { icon: "✉", text: `Send your post link to ${REFERRAL_SUPPORT_EMAIL} to claim your reward` },
               ].map((s, i) => (
-                <div key={i} style={{ background: "#F7F5F2", borderRadius: 12, padding: 16 }}>
+                <div key={i} style={{ background: "var(--scout-inset)", borderRadius: 12, padding: 16 }}>
                   <span style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", background: "#4A8B6A", color: "#fff", borderRadius: 6, fontSize: 13, fontWeight: 700 }}>{s.icon}</span>
                   <p style={{ margin: "10px 0 0", fontSize: 13, color: "#1A1A1A", lineHeight: 1.45 }}>{s.text}</p>
                 </div>

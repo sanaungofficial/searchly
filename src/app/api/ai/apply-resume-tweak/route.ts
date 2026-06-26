@@ -1,15 +1,9 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
-import Anthropic from "@anthropic-ai/sdk";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { NextRequest, NextResponse } from "next/server";
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
-
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -50,18 +44,15 @@ Rules:
 - Preserve overall structure and formatting`;
 
   try {
-    const message = await getAnthropic().messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
+    const { text } = await kimchiGenerateText({
+      tier: "create",
+      prompt,
+      maxOutputTokens: 4096,
+      userId: dbUser.id,
+      tags: ["feature:apply-resume-tweak"],
     });
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-    }
-
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON");
     const result = JSON.parse(jsonMatch[0]) as { tailoredText?: string; changeSummary?: string };
     if (!result.tailoredText?.trim()) {

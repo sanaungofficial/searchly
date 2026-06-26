@@ -88,7 +88,7 @@ const ONBOARDING_CARD: React.CSSProperties = {
   boxShadow: "0 2px 10px rgba(26,58,47,0.06)",
 };
 
-const ONBOARDING_FIELD_BG = "#F7F5F2";
+const ONBOARDING_FIELD_BG = "var(--scout-inset)";
 const ONBOARDING_FIELD_BORDER = "1.5px solid rgba(26,58,47,0.2)";
 const ONBOARDING_TEXT = "#1A1A1A";
 const ONBOARDING_TEXT_SECONDARY = "#52493F";
@@ -2962,7 +2962,7 @@ export function ScreenTransition({
                   gap: 16,
                   padding: "14px 16px",
                   marginBottom: 14,
-                  background: "#FAF7F2",
+                  background: "var(--scout-inset)",
                   borderRadius: 0,
                   border: "1px solid rgba(0,0,0,0.05)",
                 }}

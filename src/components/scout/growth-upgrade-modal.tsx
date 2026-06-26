@@ -139,7 +139,7 @@ export function GrowthUpgradeModal({ trigger, onClose, onOpenPricing, secondaryH
               display: "block",
               width: "100%",
               padding: "12px 0",
-              background: "#F7F5F2",
+              background: "var(--scout-inset)",
               color: "#1A3A2F",
               borderRadius: 0,
               fontFamily: "var(--font-ui)",

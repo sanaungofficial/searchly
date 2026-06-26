@@ -1,6 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
+import {
+  getLegacyAnthropicClient,
+  hasLegacyAnthropicClient,
+  isKimchiAiConfigured,
+  kimchiModelId,
+} from "@/lib/llm";
 import { getPrompt } from "@/lib/prompts";
 import { normalizeParsedResumeData, type ParsedResumeData } from "@/lib/resume-parse";
 import { hydrateResumeAsset } from "@/lib/ensure-asset-resume";
@@ -8,20 +14,12 @@ import {
   fetchResumeBytes,
   fileExtFromUrl,
   extractRawResumeText,
-  PARSE_MODEL,
   parseResumeFile,
   parseResumeFromText,
 } from "@/lib/resume-extract";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
-import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
@@ -49,8 +47,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "No resume text or PDF to parse" }, { status: 404 });
   }
 
-  const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
-  const structuredPrompt = anthropic ? await getPrompt("RESUME_PARSE") : "";
+  const anthropic = hasLegacyAnthropicClient() ? getLegacyAnthropicClient() : null;
+  const structuredPrompt =
+    isKimchiAiConfigured() || anthropic ? await getPrompt("RESUME_PARSE") : "";
   const ext = asset.url ? fileExtFromUrl(asset.url) : "txt";
 
   let parsed: ParsedResumeData | null = null;
@@ -58,9 +57,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   let tokensOut = 0;
   let usedFallback = false;
   let provider: "hirebase" | "claude" | "heuristic" = "heuristic";
+  let modelId = kimchiModelId("parse");
 
   if (bytes) {
-    const result = await parseResumeFile(anthropic, bytes, ext, structuredPrompt, asset.name);
+    const result = await parseResumeFile(anthropic, bytes, ext, structuredPrompt, asset.name, dbUser.id);
     resumeText = result.text || resumeText;
     parsed = result.parsed;
     tokensIn = result.tokensIn;
@@ -68,12 +68,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     usedFallback = result.usedFallback;
     provider = result.provider;
   } else {
-    const result = await parseResumeFromText(anthropic, resumeText, structuredPrompt);
+    const result = await parseResumeFromText(resumeText, structuredPrompt, dbUser.id);
     parsed = result.parsed;
     tokensIn = result.tokensIn;
     tokensOut = result.tokensOut;
     usedFallback = result.usedFallback;
     provider = result.provider;
+    if (result.modelId) modelId = result.modelId;
   }
 
   if (!parsed) {
@@ -81,7 +82,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   if (tokensIn > 0) {
-    logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
+    logAiUsage(dbUser.id, "RESUME_PARSE", modelId, tokensIn, tokensOut);
   }
 
   const updated = await prisma.userAsset.update({

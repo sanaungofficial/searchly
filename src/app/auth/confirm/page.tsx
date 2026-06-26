@@ -100,7 +100,7 @@ function AuthConfirmContent() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#F7F5F2",
+        background: "var(--scout-page)",
         fontFamily: "var(--font-ui)",
         color: "#1C3A2F",
       }}
