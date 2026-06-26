@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   await prisma.userDigestSettings.upsert({
     where: { userId },
     create: { userId, dailyEmailEnabled: false },
-    update: { dailyEmailEnabled: false },
+    update: { dailyEmailEnabled: false, watchlistEmailEnabled: false, pipelineEmailEnabled: false },
   });
 
   return NextResponse.redirect(`${APP_URL}/email/unsubscribed?ok=1`);

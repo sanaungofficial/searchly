@@ -199,6 +199,11 @@ export async function POST(req: NextRequest) {
 
       if (type === "booking.cancelled") {
         sendBookingCancelledEmail(emailPayload).catch((err) => console.error("[nylas/webhook] cancel email", err));
+      } else if (type === "booking.rescheduled") {
+        const { sendBookingRescheduledEmail } = await import("@/lib/comms/booking-emails");
+        sendBookingRescheduledEmail(emailPayload).catch((err) =>
+          console.error("[nylas/webhook] reschedule email", err),
+        );
       } else if (
         (type === "booking.created" || type === "booking.pending") &&
         result.isNew

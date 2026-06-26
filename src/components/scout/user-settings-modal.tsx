@@ -39,6 +39,8 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [referEarnOpen, setReferEarnOpen] = useState(false);
   const [dailyEmailEnabled, setDailyEmailEnabled] = useState(true);
+  const [watchlistEmailEnabled, setWatchlistEmailEnabled] = useState(true);
+  const [pipelineEmailEnabled, setPipelineEmailEnabled] = useState(true);
   const [digestLoading, setDigestLoading] = useState(true);
   const [digestSaving, setDigestSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,27 +58,109 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
         if (data && typeof data.dailyEmailEnabled === "boolean") {
           setDailyEmailEnabled(data.dailyEmailEnabled);
         }
+        if (data && typeof data.watchlistEmailEnabled === "boolean") {
+          setWatchlistEmailEnabled(data.watchlistEmailEnabled);
+        }
+        if (data && typeof data.pipelineEmailEnabled === "boolean") {
+          setPipelineEmailEnabled(data.pipelineEmailEnabled);
+        }
       })
       .catch(() => {})
       .finally(() => setDigestLoading(false));
   }, []);
 
-  async function toggleDailyEmail() {
-    const next = !dailyEmailEnabled;
+  async function patchDigestSetting(body: Record<string, boolean>) {
     setDigestSaving(true);
     try {
       const res = await fetch("/api/user/digest-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dailyEmailEnabled: next }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = await res.json();
-        setDailyEmailEnabled(Boolean(data.dailyEmailEnabled));
+        if (typeof data.dailyEmailEnabled === "boolean") setDailyEmailEnabled(data.dailyEmailEnabled);
+        if (typeof data.watchlistEmailEnabled === "boolean") setWatchlistEmailEnabled(data.watchlistEmailEnabled);
+        if (typeof data.pipelineEmailEnabled === "boolean") setPipelineEmailEnabled(data.pipelineEmailEnabled);
       }
     } finally {
       setDigestSaving(false);
     }
+  }
+
+  async function toggleDailyEmail() {
+    await patchDigestSetting({ dailyEmailEnabled: !dailyEmailEnabled });
+  }
+
+  async function toggleWatchlistEmail() {
+    await patchDigestSetting({ watchlistEmailEnabled: !watchlistEmailEnabled });
+  }
+
+  async function togglePipelineEmail() {
+    await patchDigestSetting({ pipelineEmailEnabled: !pipelineEmailEnabled });
+  }
+
+  function EmailToggle({
+    label,
+    description,
+    enabled,
+    onToggle,
+  }: {
+    label: string;
+    description: string;
+    enabled: boolean;
+    onToggle: () => void;
+  }) {
+    return (
+      <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>{label}</p>
+        <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px", lineHeight: 1.5 }}>{description}</p>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={digestLoading || digestSaving}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 14px",
+            border: "1px solid #EEE9E2",
+            borderRadius: "var(--scout-radius)",
+            background: enabled ? "rgba(26,58,47,0.06)" : "transparent",
+            cursor: digestLoading || digestSaving ? "not-allowed" : "pointer",
+            opacity: digestLoading || digestSaving ? 0.6 : 1,
+          }}
+        >
+          <span
+            style={{
+              width: 36,
+              height: 20,
+              borderRadius: "var(--scout-radius)",
+              background: enabled ? "#1A3A2F" : "#D4CCC0",
+              position: "relative",
+              transition: "background 0.15s",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                left: enabled ? 18 : 2,
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "#FFFDF9",
+                transition: "left 0.15s",
+              }}
+            />
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: "#52493F" }}>
+            {digestLoading ? "Loading…" : enabled ? "On" : "Off"}
+          </span>
+        </button>
+      </div>
+    );
   }
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
@@ -454,58 +538,24 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
             {tab === "security" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <Field label="Email" value={user.email} />
-                <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>
-                    Daily job match emails
-                  </p>
-                  <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px", lineHeight: 1.5 }}>
-                    Up to 3 matched roles per day with fit scores and why each role fits your profile.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={toggleDailyEmail}
-                    disabled={digestLoading || digestSaving}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 14px",
-                      border: "1px solid #EEE9E2",
-                      borderRadius: "var(--scout-radius)",
-                      background: dailyEmailEnabled ? "rgba(26,58,47,0.06)" : "transparent",
-                      cursor: digestLoading || digestSaving ? "not-allowed" : "pointer",
-                      opacity: digestLoading || digestSaving ? 0.6 : 1,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 36,
-                        height: 20,
-                        borderRadius: "var(--scout-radius)",
-                        background: dailyEmailEnabled ? "#1A3A2F" : "#D4CCC0",
-                        position: "relative",
-                        transition: "background 0.15s",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: 2,
-                          left: dailyEmailEnabled ? 18 : 2,
-                          width: 16,
-                          height: 16,
-                          borderRadius: "50%",
-                          background: "#FFFDF9",
-                          transition: "left 0.15s",
-                        }}
-                      />
-                    </span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "#52493F" }}>
-                      {digestLoading ? "Loading…" : dailyEmailEnabled ? "On — send daily matches" : "Off"}
-                    </span>
-                  </button>
-                </div>
+                <EmailToggle
+                  label="Daily job match emails"
+                  description="Up to 3 matched roles per day with fit scores and why each role fits your profile."
+                  enabled={dailyEmailEnabled}
+                  onToggle={toggleDailyEmail}
+                />
+                <EmailToggle
+                  label="Watchlist company alerts"
+                  description="Separate from your daily digest — emailed when a company you track posts new matching roles."
+                  enabled={watchlistEmailEnabled}
+                  onToggle={toggleWatchlistEmail}
+                />
+                <EmailToggle
+                  label="Pipeline follow-up reminders"
+                  description="A nudge when an application in your pipeline has gone quiet for 7+ days."
+                  enabled={pipelineEmailEnabled}
+                  onToggle={togglePipelineEmail}
+                />
                 <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>Password</p>
                   <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px" }}>

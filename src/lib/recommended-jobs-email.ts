@@ -1,4 +1,4 @@
-import { resend } from "@/lib/email";
+import { sendKimchiEmail } from "@/lib/comms/send-email";
 import { matchScoreStyle } from "@/lib/match-score";
 import { FRESHNESS_COLORS, getJobFreshness } from "@/lib/job-posted-freshness";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
@@ -104,18 +104,13 @@ export async function sendRecommendedJobsDigestEmail(input: {
     unsubscribeUrl: input.unsubscribeUrl,
   });
 
-  try {
-    await resend.emails.send({
-      from: "Kimchi <hello@kimchi.so>",
-      to: input.email,
-      subject,
-      html,
-    });
-    return true;
-  } catch (err) {
-    console.error("[recommended-jobs-email] send failed", err);
-    return false;
-  }
+  const result = await sendKimchiEmail({
+    to: input.email,
+    subject,
+    html,
+    template: "job_digest",
+  });
+  return result.sent;
 }
 
 function renderJobCard(job: VectorMatchedJob): string {
