@@ -244,6 +244,52 @@ export function roleTitlePreferenceReasons(adjustment: RoleTitlePreferenceAdjust
   return reasons;
 }
 
+type ProfileRoleFields = {
+  targetRoles?: string[];
+  prioritizedRoles?: string[];
+  prioritizedCategories?: string[];
+  deprioritizedRoles?: string[];
+  deprioritizedCategories?: string[];
+};
+
+/** Normalize profile role-preference fields for ranking (Open + In-network). */
+export function buildRoleTitlePreferencesFromProfile(
+  profile: ProfileRoleFields | null | undefined,
+): RoleTitlePreferences {
+  return {
+    targetRoles: (profile?.targetRoles ?? []).slice(0, 30),
+    prioritizedRoles: (profile?.prioritizedRoles ?? []).slice(0, 30),
+    prioritizedCategories: (profile?.prioritizedCategories ?? []).slice(0, 20),
+    deprioritizedRoles: (profile?.deprioritizedRoles ?? []).slice(0, 30),
+    deprioritizedCategories: (profile?.deprioritizedCategories ?? []).slice(0, 20),
+  };
+}
+
+/** Role titles used for keyword/resume matching — prioritized first, then targets. */
+export function profileRoleTitlesForMatch(preferences: RoleTitlePreferences): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const role of [...(preferences.prioritizedRoles ?? []), ...(preferences.targetRoles ?? [])]) {
+    const trimmed = role.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
+export function hasRoleTitlePreferenceSignals(preferences: RoleTitlePreferences): boolean {
+  return (
+    (preferences.prioritizedRoles?.length ?? 0) > 0 ||
+    (preferences.targetRoles?.length ?? 0) > 0 ||
+    (preferences.prioritizedCategories?.length ?? 0) > 0 ||
+    (preferences.deprioritizedRoles?.length ?? 0) > 0 ||
+    (preferences.deprioritizedCategories?.length ?? 0) > 0
+  );
+}
+
 /** UI quick-add suggestions only — not applied unless saved on the profile. */
 export const DEPRIORITIZED_ROLE_SUGGESTIONS: string[] = [
   "Account Executive",

@@ -1,7 +1,7 @@
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
 import { getActingUserScope } from "@/lib/client-session";
 
-const CACHE_PREFIX = "kimchi_network_jobs_v1";
+const CACHE_PREFIX = "kimchi_network_jobs_v2";
 
 export type NetworkJobsCacheEntry = {
   jobs: NetworkMatchedJob[];

@@ -8,6 +8,7 @@ import {
 import type { RoleTitlePreferences } from "@/lib/role-title-preferences";
 import {
   applyRoleTitlePreferenceToScore,
+  profileRoleTitlesForMatch,
   roleTitlePreferenceReasons,
 } from "@/lib/role-title-preferences";
 
@@ -41,6 +42,11 @@ export function networkJobDescriptionForMatch(job: NetworkJobListing): string {
   return parts.join("\n\n").slice(0, 2000);
 }
 
+/** Category hints for network listings — industries/type (no Hirebase job_categories on ET/TE). */
+export function networkJobCategoriesForMatch(job: NetworkJobListing): string[] {
+  return [job.jobType, ...job.industries].map((v) => v?.trim()).filter(Boolean) as string[];
+}
+
 const EMPTY_MATCH: NetworkJobMatchFields = {
   matchScore: 0,
   matchLabel: "",
@@ -49,34 +55,48 @@ const EMPTY_MATCH: NetworkJobMatchFields = {
   gapSkills: [],
 };
 
+function compareNetworkMatchScore(a: NetworkMatchedJob, b: NetworkMatchedJob): number {
+  if ((a.matchScore ?? 0) !== (b.matchScore ?? 0)) {
+    return (b.matchScore ?? 0) - (a.matchScore ?? 0);
+  }
+  return (a.matchRank ?? 99) - (b.matchRank ?? 99);
+}
+
+export function sortNetworkMatchedJobs(jobs: NetworkMatchedJob[]): NetworkMatchedJob[] {
+  return [...jobs].sort(compareNetworkMatchScore);
+}
+
 export function enrichNetworkJobsWithMatch(
   jobs: NetworkJobListing[],
   resumeText: string,
   roleTitlePreferences: RoleTitlePreferences = {},
 ): NetworkMatchedJob[] {
-  const targetRoles = roleTitlePreferences.targetRoles ?? [];
-  const rolesLine = targetRoles.map((r) => r.trim()).filter(Boolean).join(", ");
+  const rolesForMatch = profileRoleTitlesForMatch(roleTitlePreferences);
+  const rolesLine = rolesForMatch.join(", ");
   const profileText = [resumeText.trim(), rolesLine].filter(Boolean).join("\n");
   if (!profileText || !jobs.length) {
     return jobs.map((job) => ({ ...job, ...EMPTY_MATCH }));
   }
 
   const resumeLower = profileText.toLowerCase();
-  const ranked = jobs
+
+  const keywordRanked = jobs
     .map((job) => {
       const fallback = fallbackJobMatch(networkJobDescriptionForMatch(job), profileText);
       return { job, fallback, keywordScore: Math.round(fallback.score * 10) };
     })
     .sort((a, b) => b.keywordScore - a.keywordScore);
 
-  return ranked.map(({ job, fallback, keywordScore }, index) => {
-    const rank = index + 1;
-    const rankScore = vectorRankScore(rank, ranked.length);
+  const scored = keywordRanked.map(({ job, fallback, keywordScore }, index) => {
+    const keywordRank = index + 1;
+    const rankScore = vectorRankScore(keywordRank, keywordRanked.length);
     const baseScore = Math.round(rankScore * 0.55 + keywordScore * 0.45);
+    const jobCategories = networkJobCategoriesForMatch(job);
     const { matchScore, adjustment } = applyRoleTitlePreferenceToScore(
       baseScore,
       job.positionTitle,
       roleTitlePreferences,
+      jobCategories,
     );
 
     const industryMatches = job.industries.filter((industry) =>
@@ -120,9 +140,14 @@ export function enrichNetworkJobsWithMatch(
       matchReasons: reasons.slice(0, 4),
       matchedSkills,
       gapSkills,
-      matchRank: rank,
-    };
+      matchRank: keywordRank,
+    } satisfies NetworkMatchedJob;
   });
+
+  return sortNetworkMatchedJobs(scored).map((job, index) => ({
+    ...job,
+    matchRank: index + 1,
+  }));
 }
 
 export function enrichNetworkJobWithMatch(

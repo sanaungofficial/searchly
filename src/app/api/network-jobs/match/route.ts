@@ -9,12 +9,16 @@ import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
 import { buildProfileVSearchQuery, profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
+import {
+  buildRoleTitlePreferencesFromProfile,
+  profileRoleTitlesForMatch,
+} from "@/lib/role-title-preferences";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 function buildNetworkMatchProfileText(input: {
   headline?: string | null;
-  targetRoles: string[];
+  matchRoles: string[];
   careerMotivation?: string | null;
   priorities?: string[];
   resumeText: string;
@@ -23,7 +27,7 @@ function buildNetworkMatchProfileText(input: {
 
   const parts = [
     input.headline?.trim(),
-    input.targetRoles.join(", "),
+    input.matchRoles.join(", "),
     input.careerMotivation?.trim(),
     ...(input.priorities ?? []).map((p) => p.trim()).filter(Boolean),
   ].filter(Boolean);
@@ -51,11 +55,8 @@ export async function GET(request: Request) {
   }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 30);
-  const prioritizedRoles = (profile?.prioritizedRoles ?? []).slice(0, 30);
-  const prioritizedCategories = (profile?.prioritizedCategories ?? []).slice(0, 20);
-  const deprioritizedRoles = (profile?.deprioritizedRoles ?? []).slice(0, 30);
-  const deprioritizedCategories = (profile?.deprioritizedCategories ?? []).slice(0, 20);
+  const roleTitlePreferences = buildRoleTitlePreferencesFromProfile(profile);
+  const matchRoles = profileRoleTitlesForMatch(roleTitlePreferences);
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
   const resumeAsset = await findResumeAssetForUser(dbUser.id);
   const profileInput = {
     headline: profile?.headline,
-    targetRoles,
+    targetRoles: matchRoles,
     resumeText: profile?.resumeText,
     parsedData,
     careerMotivation: profile?.careerMotivation,
@@ -80,27 +81,22 @@ export async function GET(request: Request) {
     buildProfileVSearchQuery(profileInput) ||
     buildNetworkMatchProfileText({
       headline: profile?.headline,
-      targetRoles,
+      matchRoles,
       careerMotivation: profile?.careerMotivation,
       priorities: profile?.priorities ?? [],
       resumeText: "",
     });
 
   const needsProfile = !hasProfileSignals({
-    targetRoles,
+    targetRoles: matchRoles,
+    roleTitlePreferences,
     resumeAssetUrl: resumeAsset?.url ?? null,
     profileResumeUrl: profile?.resumeUrl,
     resumeText,
     parsedData,
   });
 
-  const matchedJobs = enrichNetworkJobsWithMatch(visibleJobs, resumeText, {
-    targetRoles,
-    prioritizedRoles,
-    prioritizedCategories,
-    deprioritizedRoles,
-    deprioritizedCategories,
-  });
+  const matchedJobs = enrichNetworkJobsWithMatch(visibleJobs, resumeText, roleTitlePreferences);
 
   return NextResponse.json({
     jobs: matchedJobs,
@@ -109,7 +105,7 @@ export async function GET(request: Request) {
     scored: true,
     needsProfile,
     hint: needsProfile
-      ? "Add target roles or upload a resume in Profile to unlock match scores for network roles."
+      ? "Add target or prioritized roles, or upload a resume in Profile to unlock match scores for network roles."
       : undefined,
   });
 }

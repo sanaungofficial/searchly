@@ -3,6 +3,7 @@ import {
   adjustMatchScoreForRoleTitlePreferences,
   jobCategoryMatchesPattern,
   jobTitleMatchesRolePattern,
+  profileRoleTitlesForMatch,
   PRIORITIZED_ROLE_TITLE_BOOST,
   TARGET_ROLE_TITLE_BOOST,
 } from "./role-title-preferences";
@@ -66,5 +67,13 @@ describe("prioritized roles and categories", () => {
     );
     expect(deprioritizedCategoryMatch).toBe("Sales Jobs");
     expect(netAdjustment).toBeLessThan(0);
+  });
+
+  it("builds match role list with prioritized before target", () => {
+    const roles = profileRoleTitlesForMatch({
+      prioritizedRoles: ["GTM Operations Manager"],
+      targetRoles: ["Commercial Product Lead", "GTM Operations Manager"],
+    });
+    expect(roles).toEqual(["GTM Operations Manager", "Commercial Product Lead"]);
   });
 });

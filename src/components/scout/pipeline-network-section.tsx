@@ -525,24 +525,34 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
 
     void fetch("/api/profile")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { targetRoles?: string[]; parsedData?: { location?: string | null } } | null) => {
+      .then((data: {
+        targetRoles?: string[];
+        prioritizedRoles?: string[];
+        parsedData?: { location?: string | null };
+      } | null) => {
         if (!data) {
           setForm({ ...createEmptyNetworkJobFilterForm(), search: loadScopedNetworkSearch() });
           return;
         }
         const fields = locationFieldsFromProfileString(data.parsedData?.location);
-        const targetRoles = Array.isArray(data.targetRoles) ? data.targetRoles.filter(Boolean) : [];
+        const matchRoles = [
+          ...(Array.isArray(data.prioritizedRoles) ? data.prioritizedRoles : []),
+          ...(Array.isArray(data.targetRoles) ? data.targetRoles : []),
+        ]
+          .map((r) => r.trim())
+          .filter(Boolean)
+          .filter((role, index, all) => all.findIndex((r) => r.toLowerCase() === role.toLowerCase()) === index);
         const profileForm: NetworkJobFilterForm = {
           ...createEmptyNetworkJobFilterForm(),
           search: loadScopedNetworkSearch(),
-          jobTitles: targetRoles.join(", "),
+          jobTitles: matchRoles.join(", "),
           locationCity: fields.city,
           locationState: fields.region,
         };
         profileFormRef.current = profileForm;
         setForm(profileForm);
         const labels: string[] = [];
-        if (targetRoles.length) labels.push(`Titles: ${targetRoles.join(", ")}`);
+        if (matchRoles.length) labels.push(`Titles: ${matchRoles.join(", ")}`);
         if (fields.display) labels.push(`Location: ${fields.display}`);
         setProfileSuggestedLabels(labels);
       })

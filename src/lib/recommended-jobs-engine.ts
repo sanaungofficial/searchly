@@ -1,5 +1,9 @@
 import { countUniqueDisplayListingKeys, jobListingDedupeKey } from "@/lib/cached-job";
-import type { RoleTitlePreferences } from "@/lib/role-title-preferences";
+import {
+  buildRoleTitlePreferencesFromProfile,
+  hasRoleTitlePreferenceSignals,
+  type RoleTitlePreferences,
+} from "@/lib/role-title-preferences";
 import { prisma } from "@/lib/prisma";
 import { isHirebaseConfigured } from "@/lib/hirebase";
 import { enrichRecommendedSources } from "@/lib/jobs-search-response";
@@ -65,11 +69,8 @@ function appendNotice(existing: string | undefined, next: string): string {
 
 async function loadUserContext(userId: string) {
   const profile = await prisma.profile.findUnique({ where: { userId } });
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 30);
-  const prioritizedRoles = (profile?.prioritizedRoles ?? []).slice(0, 30);
-  const prioritizedCategories = (profile?.prioritizedCategories ?? []).slice(0, 20);
-  const deprioritizedRoles = (profile?.deprioritizedRoles ?? []).slice(0, 30);
-  const deprioritizedCategories = (profile?.deprioritizedCategories ?? []).slice(0, 20);
+  const roleTitlePreferences = buildRoleTitlePreferencesFromProfile(profile);
+  const targetRoles = roleTitlePreferences.targetRoles ?? [];
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
@@ -97,10 +98,7 @@ async function loadUserContext(userId: string) {
     resumeText,
     profileLocation,
     priorities,
-    prioritizedRoles,
-    prioritizedCategories,
-    deprioritizedRoles,
-    deprioritizedCategories,
+    roleTitlePreferences,
   };
 }
 
@@ -379,18 +377,8 @@ export async function generateRecommendedJobsForUser(
     profile,
     profileLocation,
     priorities,
-    deprioritizedRoles,
-    deprioritizedCategories,
-    prioritizedRoles,
-    prioritizedCategories,
+    roleTitlePreferences,
   } = await loadUserContext(input.userId);
-  const roleTitlePreferences: RoleTitlePreferences = {
-    targetRoles,
-    prioritizedRoles,
-    prioritizedCategories,
-    deprioritizedRoles,
-    deprioritizedCategories,
-  };
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   /** Default feed uses profile location post-filter only. Custom searches use explicit UI filters — no silent profile merge. */
   const mergedFilters = normalizePostedDateFilters({
@@ -599,11 +587,13 @@ export async function generateRecommendedJobsForUser(
 
 export function hasProfileSignals(input: {
   targetRoles: string[];
+  roleTitlePreferences?: RoleTitlePreferences;
   resumeAssetUrl: string | null;
   profileResumeUrl: string | null | undefined;
   resumeText: string;
   parsedData: ReturnType<typeof normalizeParsedResumeData>;
 }): boolean {
+  if (input.roleTitlePreferences && hasRoleTitlePreferenceSignals(input.roleTitlePreferences)) return true;
   if (input.targetRoles.length > 0) return true;
   if (input.resumeAssetUrl || input.profileResumeUrl) return true;
   if (input.resumeText.trim().length >= 40) return true;
@@ -615,6 +605,7 @@ export async function userEligibleForRecommendedSnapshot(userId: string): Promis
   const resumeAsset = await findResumeAssetForUser(userId);
   return hasProfileSignals({
     targetRoles: ctx.targetRoles,
+    roleTitlePreferences: ctx.roleTitlePreferences,
     resumeAssetUrl: resumeAsset?.url ?? null,
     profileResumeUrl: ctx.profile?.resumeUrl,
     resumeText: ctx.resumeText,

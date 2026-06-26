@@ -9,6 +9,10 @@ import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
 import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
+import {
+  buildRoleTitlePreferencesFromProfile,
+  profileRoleTitlesForMatch,
+} from "@/lib/role-title-preferences";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -36,11 +40,8 @@ export async function GET(
   }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 30);
-  const prioritizedRoles = (profile?.prioritizedRoles ?? []).slice(0, 30);
-  const prioritizedCategories = (profile?.prioritizedCategories ?? []).slice(0, 20);
-  const deprioritizedRoles = (profile?.deprioritizedRoles ?? []).slice(0, 30);
-  const deprioritizedCategories = (profile?.deprioritizedCategories ?? []).slice(0, 20);
+  const roleTitlePreferences = buildRoleTitlePreferencesFromProfile(profile);
+  const matchRoles = profileRoleTitlesForMatch(roleTitlePreferences);
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
@@ -48,7 +49,7 @@ export async function GET(
   const resumeAsset = await findResumeAssetForUser(dbUser.id);
   const resumeText = profileTextForMatchReasons({
     headline: profile?.headline,
-    targetRoles,
+    targetRoles: matchRoles,
     resumeText: profile?.resumeText,
     parsedData,
     careerMotivation: profile?.careerMotivation,
@@ -61,7 +62,8 @@ export async function GET(
   });
 
   const needsProfile = !hasProfileSignals({
-    targetRoles,
+    targetRoles: matchRoles,
+    roleTitlePreferences,
     resumeAssetUrl: resumeAsset?.url ?? null,
     profileResumeUrl: profile?.resumeUrl,
     resumeText,
@@ -70,13 +72,7 @@ export async function GET(
 
   const enriched = needsProfile
     ? listing
-    : enrichNetworkJobWithMatch(listing, resumeText, {
-        targetRoles,
-        prioritizedRoles,
-        prioritizedCategories,
-        deprioritizedRoles,
-        deprioritizedCategories,
-      });
+    : enrichNetworkJobWithMatch(listing, resumeText, roleTitlePreferences);
 
   const job = sanitizeNetworkJobListing(enriched, internalView);
 
