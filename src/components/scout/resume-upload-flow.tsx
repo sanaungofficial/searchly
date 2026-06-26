@@ -389,7 +389,7 @@ export function useResumeUploadFlow(options: {
     } catch {
       /* ignore transient poll errors */
     }
-  }, [clearJob]);
+  }, [clearJob, withClientScope]);
 
   useEffect(() => {
     if (!job || job.phase !== "analyzing") return;
@@ -434,7 +434,7 @@ export function useResumeUploadFlow(options: {
     if (!current) return;
     clearJob();
     return current.assetId;
-  }, [clearJob, withClientScope]);
+  }, [clearJob]);
 
   return {
     job,
