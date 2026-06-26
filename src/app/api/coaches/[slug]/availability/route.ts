@@ -5,6 +5,7 @@ import {
   findNextCoachSlot,
   INTRO_SESSION_MINUTES,
 } from "@/lib/coach-booking-nylas";
+import { prepareCoachSchedulerForAvailability } from "@/lib/coach-scheduler-sync";
 import { isNylasConfigured } from "@/lib/nylas";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   }
 
   const coach = await findCoachBySlugOrId(slug);
-  if (!coach?.nylasSchedulerConfigId) {
+  if (!coach?.nylasSchedulerConfigId || !coach.nylasGrantId) {
     return NextResponse.json({ error: "Coach scheduling not configured" }, { status: 404 });
   }
 
@@ -29,16 +30,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const endTime = Number(req.nextUrl.searchParams.get("endTime")) || defaultEnd;
 
   try {
+    await prepareCoachSchedulerForAvailability(coach, durationMinutes);
+
     if (nextOnly) {
       const nextSlot = await findNextCoachSlot({
         configurationId: configId,
-        durationMinutes,
       });
       return NextResponse.json({
         nextSlot,
         sessionDurationMinutes: sessionMinutes,
         introDurationMinutes: INTRO_SESSION_MINUTES,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone: coach.schedulerTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     }
 
@@ -46,14 +48,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
       configurationId: configId,
       startTime,
       endTime,
-      durationMinutes,
     });
 
     return NextResponse.json({
       slots,
       sessionDurationMinutes: sessionMinutes,
       introDurationMinutes: INTRO_SESSION_MINUTES,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: coach.schedulerTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not load availability";

@@ -251,6 +251,10 @@ model CoachProfile {
   nylasSchedulerConfigId String? @unique
   nylasSchedulerSlug    String?
   schedulerDurationMinutes Int   @default(30)
+  schedulerTimezone        String? @default("America/New_York")
+  schedulerOpenHourStart   String? @default("09:00")
+  schedulerOpenHourEnd     String? @default("17:00")
+  schedulerOpenDays        Int[]   @default([1, 2, 3, 4, 5])
   clientSpecializations String[] @default([])
   experienceLevel       String?
   clientTier            String?

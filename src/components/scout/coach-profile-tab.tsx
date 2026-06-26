@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
+import {
+  CoachSchedulerSettingsForm,
+  defaultCoachSchedulerSettings,
+  type CoachSchedulerSettingsValues,
+} from "@/components/scout/coach-scheduler-settings-form";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
@@ -28,6 +33,10 @@ type CoachProfile = {
   nylasSchedulerConfigId?: string | null;
   nylasSchedulerSlug?: string | null;
   schedulerDurationMinutes?: number;
+  schedulerTimezone?: string | null;
+  schedulerOpenHourStart?: string | null;
+  schedulerOpenHourEnd?: string | null;
+  schedulerOpenDays?: number[];
 };
 
 const inputStyle: React.CSSProperties = {
@@ -479,9 +488,31 @@ export function CoachProfileTab({
           through Nylas — your external Cal.com link still works as a fallback.
         </p>
         {schedulerReady ? (
-          <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
-            Calendar connected — in-app booking is enabled.
-          </p>
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
+              Calendar connected — in-app booking is enabled.
+            </p>
+            <CoachSchedulerSettingsForm
+              values={defaultCoachSchedulerSettings({
+                schedulerTimezone: form.schedulerTimezone,
+                schedulerOpenHourStart: form.schedulerOpenHourStart,
+                schedulerOpenHourEnd: form.schedulerOpenHourEnd,
+                schedulerOpenDays: form.schedulerOpenDays,
+                schedulerDurationMinutes: form.schedulerDurationMinutes,
+              })}
+              onSave={async (values: CoachSchedulerSettingsValues) => {
+                const r = await fetch("/api/coach/profile", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(values),
+                });
+                const updated = await r.json();
+                if (!r.ok) throw new Error(updated.error ?? "Could not save availability");
+                setProfile(updated);
+                setForm(updated);
+              }}
+            />
+          </div>
         ) : calendarConnected ? (
           <div style={{ marginBottom: 12 }}>
             <p style={{ fontFamily: fontSans, fontSize: 14, color: "#b45309", margin: "0 0 10px" }}>
@@ -543,26 +574,6 @@ export function CoachProfileTab({
           </div>
         )}
 
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(26,58,47,0.08)" }}>
-          <label style={labelStyle}>Session duration (minutes)</label>
-          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 8px", lineHeight: 1.5 }}>
-            Default length for new bookings. Save changes after updating — syncs to your Nylas scheduler when connected.
-          </p>
-          <input
-            type="number"
-            min={15}
-            max={120}
-            step={15}
-            value={form.schedulerDurationMinutes ?? 30}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                schedulerDurationMinutes: Math.min(120, Math.max(15, Number(e.target.value) || 30)),
-              }))
-            }
-            style={{ ...inputStyle, maxWidth: 120 }}
-          />
-        </div>
       </div>
 
       <div

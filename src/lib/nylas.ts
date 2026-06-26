@@ -291,11 +291,19 @@ export type CoachSchedulerParams = {
   coachEmail: string;
   slug: string;
   durationMinutes?: number;
+  timezone?: string;
+  openHourStart?: string;
+  openHourEnd?: string;
+  openDays?: number[];
 };
 
 function schedulerConfigBody(params: CoachSchedulerParams) {
   const appBase = nylasOAuthAppUrl();
   const duration = params.durationMinutes ?? 30;
+  const timezone = params.timezone ?? "America/New_York";
+  const openStart = params.openHourStart ?? "09:00";
+  const openEnd = params.openHourEnd ?? "17:00";
+  const openDays = params.openDays ?? [1, 2, 3, 4, 5];
   return {
     requires_session_auth: false,
     slug: params.slug,
@@ -304,14 +312,28 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
         name: params.coachName,
         email: params.coachEmail,
         is_organizer: true,
+        timezone,
         availability: { calendar_ids: ["primary"] },
         booking: { calendar_id: "primary" },
       },
     ],
-    availability: { duration_minutes: duration },
+    availability: {
+      duration_minutes: duration,
+      availability_rules: {
+        default_open_hours: [
+          {
+            days: openDays,
+            start: openStart,
+            end: openEnd,
+            timezone,
+          },
+        ],
+      },
+    },
     event_booking: {
       title: `Coaching session with ${params.coachName}`,
       description: "Book a 1:1 coaching session via Kimchi.",
+      timezone,
     },
     scheduler: {
       rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
@@ -349,13 +371,8 @@ export async function updateCoachSchedulerConfig(
 }
 
 /** Create scheduler when grant exists but configId is missing (OAuth ok, setup failed). */
-export async function ensureCoachSchedulerConfig(params: {
-  grantId: string;
+export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & {
   configId: string | null;
-  coachName: string;
-  coachEmail: string;
-  slug: string;
-  durationMinutes?: number;
 }): Promise<{ configId: string; slug?: string; created: boolean }> {
   if (params.configId) {
     await updateCoachSchedulerConfig({
@@ -365,6 +382,10 @@ export async function ensureCoachSchedulerConfig(params: {
       coachEmail: params.coachEmail,
       slug: params.slug,
       durationMinutes: params.durationMinutes,
+      timezone: params.timezone,
+      openHourStart: params.openHourStart,
+      openHourEnd: params.openHourEnd,
+      openDays: params.openDays,
     });
     return { configId: params.configId, created: false };
   }
@@ -375,6 +396,10 @@ export async function ensureCoachSchedulerConfig(params: {
     coachEmail: params.coachEmail,
     slug: params.slug,
     durationMinutes: params.durationMinutes,
+    timezone: params.timezone,
+    openHourStart: params.openHourStart,
+    openHourEnd: params.openHourEnd,
+    openDays: params.openDays,
   });
   return { ...created, created: true };
 }
@@ -612,16 +637,12 @@ export async function getSchedulerAvailability(params: {
   configurationId: string;
   startTime: number;
   endTime: number;
-  durationMinutes?: number;
 }): Promise<NylasTimeSlot[]> {
   const query = new URLSearchParams({
     configuration_id: params.configurationId,
     start_time: String(params.startTime),
     end_time: String(params.endTime),
   });
-  if (params.durationMinutes) {
-    query.set("duration_minutes", String(params.durationMinutes));
-  }
 
   const res = await nylasFetch<NylasAvailabilityResponse>(`/v3/scheduling/availability?${query.toString()}`);
   const slots = res.data?.time_slots ?? res.time_slots ?? [];

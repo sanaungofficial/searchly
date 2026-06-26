@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus, UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
+import {
+  parseSchedulerAvailabilityPatch,
+  schedulerAvailabilityChanged,
+} from "@/lib/coach-scheduler-settings";
 import { syncCoachSchedulerFromProfile } from "@/lib/coach-scheduler-sync";
 import { pushCoachProfileToAirtable } from "@/lib/airtable/push-coach";
 
@@ -65,10 +69,7 @@ function profilePatchData(body: Record<string, unknown>) {
   if (body.hourlyRate !== undefined) d.hourlyRate = body.hourlyRate ? Number(body.hourlyRate) : null;
   if (body.category !== undefined) d.category = (body.category as string) || null;
   if (body.calLink !== undefined) d.calLink = (body.calLink as string) || null;
-  if (body.schedulerDurationMinutes !== undefined) {
-    const mins = Number(body.schedulerDurationMinutes);
-    d.schedulerDurationMinutes = Number.isFinite(mins) ? Math.min(120, Math.max(15, Math.round(mins))) : 30;
-  }
+  Object.assign(d, parseSchedulerAvailabilityPatch(body));
   if (body.clientSpecializations !== undefined) d.clientSpecializations = body.clientSpecializations;
   if (body.experienceLevel !== undefined) d.experienceLevel = (body.experienceLevel as string) || null;
   if (body.clientTier !== undefined) d.clientTier = (body.clientTier as string) || null;
@@ -109,7 +110,7 @@ export async function PATCH(req: NextRequest) {
 
   const updated = await prisma.coachProfile.update({ where: { id: profile.id }, data: d });
 
-  if (body.schedulerDurationMinutes !== undefined && updated.nylasGrantId) {
+  if (schedulerAvailabilityChanged(body) && updated.nylasGrantId) {
     try {
       await syncCoachSchedulerFromProfile(updated.id);
     } catch (err) {
