@@ -17,6 +17,7 @@ import { getActingUser } from "@/lib/acting-user";
 import { readClientUserIdFromRequest, resolveAdminClientSubject } from "@/lib/admin-client-subject";
 import { allMatchableSkills } from "@/lib/skills-tools";
 import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
+import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { NextResponse } from "next/server";
 
