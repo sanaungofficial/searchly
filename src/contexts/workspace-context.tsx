@@ -160,7 +160,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       let profileEmail: string | null = null;
       let impersonating = false;
       try {
-        const res = await fetch("/api/profile");
+        const res = await fetch("/api/profile", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           headline = data?.headline ?? null;
@@ -181,8 +181,31 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             setActingUserId(data.userId ?? null);
             setActingUserScope(data.userId ?? null);
           }
+        } else if (res.status === 401) {
+          setAuthChecked(true);
+          router.push("/login");
+          return;
         }
       } catch {}
+
+      if (!impersonating) {
+        try {
+          const impRes = await fetch("/api/admin/impersonate", { cache: "no-store" });
+          if (impRes.ok) {
+            const imp = await impRes.json();
+            if (imp.active && imp.user?.id) {
+              impersonating = true;
+              setImpersonation({
+                active: true,
+                name: imp.user.name,
+                email: imp.user.email,
+              });
+              setActingUserId(imp.user.id);
+              setActingUserScope(imp.user.id);
+            }
+          }
+        } catch {}
+      }
       try {
         const res = await fetch("/api/admin");
         setIsAdmin(res.ok);
@@ -260,8 +283,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         showAdminUi: isAdmin && !impersonation.active,
       }}
     >
-      <ImpersonationBanner state={impersonation} />
-      {children}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          overflow: "hidden",
+        }}
+      >
+        <ImpersonationBanner state={impersonation} />
+        {children}
+      </div>
     </WorkspaceContext.Provider>
   );
 }

@@ -12,7 +12,7 @@ import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
 export async function GET() {
   try {
     const acting = await getActingUser();
-    const { authUser, dbUser } = acting;
+    const { authUser, dbUser, isImpersonating } = acting;
     if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 

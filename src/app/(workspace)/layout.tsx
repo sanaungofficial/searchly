@@ -46,7 +46,8 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        flex: 1,
+        minHeight: 0,
         overflow: "hidden",
         background: surface.page,
       }}
