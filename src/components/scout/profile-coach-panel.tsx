@@ -99,7 +99,7 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
         <div style={{ marginBottom: isMobile ? 20 : 28 }}>
           <h2 style={{ ...displayTitleStyle(isMobile ? 22 : 26), margin: "0 0 8px" }}>Coach</h2>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.55, maxWidth: 560 }}>
-            Your matched Kimchi coaches. Book intro calls, review sessions, and message history here.
+            Your matched Kimchi coaches. Book intro calls, review sessions, and shared activity here.
           </p>
         </div>
 
@@ -195,7 +195,7 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
               margin: "0 0 12px",
             }}
           >
-            Sessions & updates
+            Sessions & activity
           </p>
           <div style={{ border: border.line, background: surface.card, padding: isMobile ? 16 : 20 }}>
             <MyCoachesPanel compact={isMobile} />
