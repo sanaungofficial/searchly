@@ -21,10 +21,67 @@ export type NylasMessage = {
 export type NylasFolder = {
   id: string;
   name?: string;
-  system_folder?: string;
+  /** Google: true when provider-created label/folder. */
+  system_folder?: boolean;
+  /** RFC-style folder role, e.g. `\\Inbox`, `\\Sent`. */
+  attributes?: string[];
   unread_count?: number;
   total_count?: number;
 };
+
+const FOLDER_ATTR_RANK: Record<string, number> = {
+  "\\Inbox": 0,
+  "\\Sent": 1,
+  "\\Drafts": 2,
+  "\\Archive": 3,
+  "\\Junk": 4,
+  "\\Trash": 5,
+};
+
+function folderAttributes(folder: NylasFolder): string[] {
+  return folder.attributes ?? [];
+}
+
+function folderPrimaryAttribute(folder: NylasFolder): string | null {
+  for (const attr of folderAttributes(folder)) {
+    if (attr in FOLDER_ATTR_RANK) return attr;
+  }
+  return null;
+}
+
+export function folderDisplayName(folder: NylasFolder): string {
+  const attr = folderPrimaryAttribute(folder);
+  if (attr === "\\Inbox") return "Inbox";
+  if (attr === "\\Sent") return "Sent";
+  if (attr === "\\Drafts") return "Drafts";
+  if (attr === "\\Archive") return "Archive";
+  if (attr === "\\Junk") return "Spam";
+  if (attr === "\\Trash") return "Trash";
+
+  const name = folder.name?.trim();
+  if (!name) return "Folder";
+  if (name === name.toUpperCase() && name.length > 1) {
+    return name.charAt(0) + name.slice(1).toLowerCase();
+  }
+  return name;
+}
+
+export function isInboxFolder(folder: NylasFolder): boolean {
+  if (folderAttributes(folder).includes("\\Inbox")) return true;
+  const name = folder.name?.trim().toLowerCase();
+  return folder.id === "INBOX" || name === "inbox";
+}
+
+export function folderSortRank(folder: NylasFolder): number {
+  const attr = folderPrimaryAttribute(folder);
+  if (attr) return FOLDER_ATTR_RANK[attr] ?? 10;
+  const name = folder.name?.toLowerCase() ?? "";
+  if (name.includes("inbox")) return 0;
+  if (name.includes("sent")) return 1;
+  if (name.includes("draft")) return 2;
+  if (name.includes("star")) return 3;
+  return 20;
+}
 
 export type NylasEvent = {
   id: string;
@@ -52,10 +109,13 @@ export type ListMessagesOptions = {
 };
 
 export async function fetchFolders(grantId: string): Promise<NylasFolder[]> {
-  const res = await nylasFetch<ListResponse<NylasFolder>>(`/v3/grants/${grantId}/folders?limit=50`, {
+  const res = await nylasFetch<ListResponse<NylasFolder>>(`/v3/grants/${grantId}/folders?limit=200`, {
     grantId,
   });
-  return res.data ?? [];
+  const folders = res.data ?? [];
+  return [...folders].sort(
+    (a, b) => folderSortRank(a) - folderSortRank(b) || folderDisplayName(a).localeCompare(folderDisplayName(b)),
+  );
 }
 
 export async function listMessages(grantId: string, options: ListMessagesOptions = {}) {
