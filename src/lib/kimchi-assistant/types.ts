@@ -56,6 +56,8 @@ export type AssistantContextPayload = {
   summary: string;
   strategySnippet: string;
   pipelineSnippet: string;
+  /** Profile, master resume, coaches, fit highlights — for prompt citation */
+  knowsYouSnippet: string;
   pageHint: string;
   creditsHint: string;
   suggestions: AssistantSuggestion[];

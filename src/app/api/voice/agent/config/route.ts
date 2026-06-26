@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       agent: deepgramConfigured()
         ? context === "onboarding"
           ? buildOnboardingVoiceAgentSettings()
-          : buildWorkspaceVoiceAgentSettings(assistantContext, voicePreset)
+          : await buildWorkspaceVoiceAgentSettings(assistantContext, voicePreset)
         : null,
       assistantSummary: assistantContext?.summary ?? null,
     },

@@ -1,6 +1,7 @@
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import type { VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import { getVoicePreset } from "@/lib/kimchi-assistant/voice-presets";
+import { getPrompt, interpolate } from "@/lib/prompts";
 
 export type DebriefActionType =
   | "append_strategy_intake"
@@ -15,6 +16,7 @@ export type LegacyDebriefActionType = "save_strategy_notes" | "open_inbox_peek";
 export type DebriefAction = {
   id: string;
   label: string;
+  hint?: string;
   type: DebriefActionType | LegacyDebriefActionType;
   payload?: Record<string, string>;
 };
@@ -31,32 +33,37 @@ function presetActions(presetId: VoicePresetId): DebriefAction[] {
       return [
         {
           id: "generate-strategy",
-          label: "Build my career strategy doc",
+          label: "Build my strategy doc",
+          hint: "Turn this into a career strategy on Profile",
           type: "generate_career_strategy",
         },
         {
-          id: "add-intake",
-          label: "Add to strategy intake",
-          type: "append_strategy_intake",
-        },
-        {
           id: "continue-search",
-          label: "Plan next steps in chat",
+          label: "Plan my week in chat",
+          hint: "Get a concrete next-step list here",
           type: "ask_in_chat",
           payload: { prompt: "Based on our voice chat, what should I focus on this week in my job search?" },
+        },
+        {
+          id: "add-intake",
+          label: "Save notes to Profile",
+          hint: "Adds a block to your strategy intake",
+          type: "append_strategy_intake",
         },
       ];
     case "interview_prep":
       return [
         {
           id: "prep-checklist",
-          label: "Turn this into a prep checklist",
+          label: "Make a prep checklist",
+          hint: "Short list you can use before the interview",
           type: "ask_in_chat",
           payload: { prompt: "Turn our voice prep into a short checklist I can use before the interview." },
         },
         {
           id: "add-intake",
-          label: "Save prep notes to strategy intake",
+          label: "Save prep notes to Profile",
+          hint: "Keeps stories and angles for later",
           type: "append_strategy_intake",
         },
       ];
@@ -64,44 +71,85 @@ function presetActions(presetId: VoicePresetId): DebriefAction[] {
       return [
         {
           id: "resume",
-          label: "Work on my resume",
+          label: "Apply to my resume",
+          hint: "Opens the resume editor with these notes",
           type: "open_resume_editor",
         },
         {
+          id: "positioning-chat",
+          label: "Polish my positioning",
+          hint: "Turn this into a headline or intro in chat",
+          type: "ask_in_chat",
+          payload: { prompt: "Help me turn what we discussed into a crisp positioning line and 2–3 proof points." },
+        },
+        {
           id: "add-intake",
-          label: "Save story notes to strategy intake",
+          label: "Save to Profile notes",
+          hint: "Stores positioning notes on your profile",
           type: "append_strategy_intake",
         },
       ];
     case "what_to_focus":
       return [
         {
-          id: "inbox",
-          label: "Review email updates",
-          type: "open_inbox_activity",
+          id: "focus-chat",
+          label: "What's my #1 priority?",
+          hint: "One clear next step in chat",
+          type: "ask_in_chat",
+          payload: { prompt: "Given everything we discussed, what should I focus on first — be specific." },
         },
         {
-          id: "focus-chat",
-          label: "Help me prioritize",
-          type: "ask_in_chat",
-          payload: { prompt: "Given everything we discussed, what should I focus on first?" },
+          id: "inbox",
+          label: "Review inbox updates",
+          hint: "See emails Kimchi flagged",
+          type: "open_inbox_activity",
         },
       ];
     default:
       return [
         {
-          id: "add-intake",
-          label: "Add to strategy intake",
-          type: "append_strategy_intake",
-        },
-        {
           id: "continue",
-          label: "Keep chatting here",
+          label: "Keep going in chat",
+          hint: "Pick up the thread here",
           type: "ask_in_chat",
           payload: { prompt: "What should I do next based on our conversation?" },
         },
+        {
+          id: "add-intake",
+          label: "Save to Profile notes",
+          hint: "Optional — only if you want to keep this",
+          type: "append_strategy_intake",
+        },
       ];
   }
+}
+
+function normalizeActions(parsed: DebriefAction[], allowed: DebriefAction[]): DebriefAction[] {
+  const byType = new Map(allowed.map((a) => [a.type, a]));
+  const seen = new Set<string>();
+  const out: DebriefAction[] = [];
+
+  for (const a of parsed) {
+    const type = a.type as DebriefActionType;
+    const canon = byType.get(type);
+    if (!canon || seen.has(type)) continue;
+    seen.add(type);
+    out.push({
+      ...canon,
+      id: a.id || canon.id,
+      payload: a.payload ?? canon.payload,
+    });
+  }
+
+  for (const a of allowed) {
+    if (out.length >= 3) break;
+    if (!seen.has(a.type)) {
+      seen.add(a.type);
+      out.push(a);
+    }
+  }
+
+  return out.slice(0, 3);
 }
 
 function fallbackDebrief(presetId: VoicePresetId, transcript: string): VoiceDebriefResult {
@@ -109,10 +157,10 @@ function fallbackDebrief(presetId: VoicePresetId, transcript: string): VoiceDebr
   const lines = transcript.split("\n").filter((l) => l.trim());
   const summary =
     lines.length > 2
-      ? `Wrapped up "${preset.title}" — here's what stood out. Use the buttons below to turn it into something useful.`
-      : `Short "${preset.title}" chat — tap below to keep going or save what we covered.`;
+      ? `Nice — here's what stood out from our ${preset.title.toLowerCase()} chat. Pick a next step below if you want to turn it into something.`
+      : `Quick chat on ${preset.title.toLowerCase()}. Use the buttons below if you want to keep going.`;
 
-  return { summary, bullets: [], actions: presetActions(presetId) };
+  return { summary, bullets: [], actions: presetActions(presetId).slice(0, 2) };
 }
 
 export async function runVoiceDebrief(params: {
@@ -129,31 +177,19 @@ export async function runVoiceDebrief(params: {
   }
 
   const allowedTypes = allowed.map((a) => a.type).join(", ");
+  const allowedActionsJson = JSON.stringify(
+    allowed.map((a) => ({ type: a.type, label: a.label, hint: a.hint })),
+    null,
+    2,
+  );
 
-  const prompt = `You debrief a voice conversation between a job seeker and Kimchi (${preset.title}).
-
-Return ONLY valid JSON:
-{
-  "summary": "2-3 sentences, plain language, second person",
-  "bullets": ["key point 1", "key point 2", ... max 5],
-  "actions": [
-    { "id": "unique", "label": "button label (short, friendly)", "type": "<one of allowed types>", "payload": {} }
-  ]
-}
-
-Allowed action types for this preset ONLY: ${allowedTypes}
-
-Rules:
-- Pick 2-3 actions from the allowed list — use the preset-appropriate ones, not generic resume/inbox unless relevant
-- append_strategy_intake: save conversation notes for career strategy (always include exactly one if allowed)
-- generate_career_strategy: only for search_plan when they discussed goals, timeline, or search approach
-- open_resume_editor: only for my_story preset when resume/positioning came up
-- open_inbox_activity: only when emails, follow-ups, or applications were discussed
-- ask_in_chat: optional; payload.prompt = user message to send Kimchi
-
-Preset: ${preset.title}
-Transcript:
-${transcript.slice(0, 12000)}`;
+  const template = await getPrompt("KIMCHI_VOICE_DEBRIEF");
+  const prompt = interpolate(template, {
+    presetTitle: preset.title,
+    allowedActionTypes: allowedTypes,
+    allowedActionsJson,
+    transcript: transcript.slice(0, 12000),
+  });
 
   try {
     const { text } = await kimchiGenerateText({
@@ -170,14 +206,7 @@ ${transcript.slice(0, 12000)}`;
     }
 
     parsed.bullets = Array.isArray(parsed.bullets) ? parsed.bullets.slice(0, 5) : [];
-
-    const allowedSet = new Set(allowed.map((a) => a.type));
-    parsed.actions = parsed.actions.filter((a) => allowedSet.has(a.type as DebriefActionType));
-
-    if (!parsed.actions.some((a) => a.type === "append_strategy_intake") && allowedSet.has("append_strategy_intake")) {
-      const intake = allowed.find((a) => a.type === "append_strategy_intake");
-      if (intake) parsed.actions.unshift(intake);
-    }
+    parsed.actions = normalizeActions(parsed.actions, allowed);
 
     if (parsed.actions.length === 0) {
       return fallbackDebrief(presetId, transcript);
@@ -187,4 +216,8 @@ ${transcript.slice(0, 12000)}`;
   } catch {
     return fallbackDebrief(presetId, transcript);
   }
+}
+
+export function allowedDebriefActionsForPreset(presetId: VoicePresetId): DebriefAction[] {
+  return presetActions(presetId);
 }

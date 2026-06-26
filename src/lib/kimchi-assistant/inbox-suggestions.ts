@@ -1,7 +1,65 @@
-import { JobActivityStatus } from "@prisma/client";
+import { JobActivitySignal, JobActivityStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFollowUpSuggestions } from "@/lib/job-follow-up-suggestions";
 import type { AssistantInboxSnapshot, AssistantSuggestion } from "@/lib/kimchi-assistant/types";
+
+const SIGNAL_LABELS: Partial<Record<JobActivitySignal, string>> = {
+  INTERVIEW_INVITE: "Interview invite",
+  APPLICATION_RECEIVED: "Application update",
+  REJECTION: "Decision",
+  OFFER: "Offer",
+  RECRUITER_OUTREACH: "Recruiter message",
+  FOLLOW_UP: "Needs a reply",
+  OTHER: "Job search email",
+};
+
+function inboxEmailActionLabel(a: {
+  title: string | null;
+  snippet: string | null;
+  signal: string;
+  companyGuess: string | null;
+  roleGuess: string | null;
+}): string {
+  const subject = a.title?.trim();
+  if (subject && subject.length > 4) {
+    return subject.length > 52 ? `${subject.slice(0, 49)}…` : subject;
+  }
+
+  const signalLabel = SIGNAL_LABELS[a.signal as JobActivitySignal] ?? "Email update";
+  if (a.roleGuess && a.companyGuess) {
+    return `${signalLabel}: ${a.roleGuess} at ${a.companyGuess}`;
+  }
+  if (a.companyGuess) {
+    return `${signalLabel} from ${a.companyGuess}`;
+  }
+  if (a.roleGuess) {
+    return `${signalLabel}: ${a.roleGuess}`;
+  }
+
+  const snippet = a.snippet?.trim();
+  if (snippet && snippet.length > 4) {
+    return snippet.length > 52 ? `${snippet.slice(0, 49)}…` : snippet;
+  }
+
+  return signalLabel;
+}
+
+function inboxEmailDetail(a: {
+  title: string | null;
+  snippet: string | null;
+  signal: string;
+  companyGuess: string | null;
+  roleGuess: string | null;
+}): string {
+  const signalLabel = SIGNAL_LABELS[a.signal as JobActivitySignal] ?? "Job search email";
+  const parts: string[] = [signalLabel];
+  if (a.companyGuess) parts.push(a.companyGuess);
+  if (a.roleGuess) parts.push(a.roleGuess);
+  const subject = a.title?.trim();
+  if (subject) parts.push(`Subject: ${subject.slice(0, 80)}`);
+  else if (a.snippet?.trim()) parts.push(a.snippet.trim().slice(0, 100));
+  return parts.join(" · ");
+}
 
 export async function loadInboxSnapshot(userId: string): Promise<AssistantInboxSnapshot> {
   const [activities, followUps, pendingCount] = await Promise.all([
@@ -50,13 +108,11 @@ export function inboxSuggestionsFromSnapshot(inbox: AssistantInboxSnapshot): Ass
   const out: AssistantSuggestion[] = [];
 
   for (const a of inbox.activities.slice(0, 4)) {
-    const label = a.title || a.snippet || "New email about your search";
-    const who = a.companyGuess || a.roleGuess || "Unknown company";
     out.push({
       id: `inbox-${a.id}`,
       kind: "inbox_email",
-      title: "Review this email",
-      detail: `${who} — ${label.slice(0, 120)}`,
+      title: inboxEmailActionLabel(a),
+      detail: inboxEmailDetail(a),
       priority: 95,
       meta: { activityId: a.id, nylasMessageId: a.nylasMessageId ?? "" },
     });
@@ -66,8 +122,8 @@ export function inboxSuggestionsFromSnapshot(inbox: AssistantInboxSnapshot): Ass
     out.push({
       id: `follow-${f.jobId}`,
       kind: "follow_up",
-      title: `Check in on ${f.role}`,
-      detail: `${f.company} — ${f.suggestion}`,
+      title: `Follow up: ${f.role}`,
+      detail: `${f.company} — quiet ${f.daysQuiet} day${f.daysQuiet === 1 ? "" : "s"}. ${f.suggestion}`,
       priority: 88,
       meta: { jobId: f.jobId, lastMessageId: f.lastMessageId ?? "" },
     });

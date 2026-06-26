@@ -3,6 +3,7 @@ import { logAiUsage } from "@/lib/ai-usage";
 import { buildAssistantContext, formatAssistantContextForPrompt } from "@/lib/kimchi-assistant/context";
 import { isKimchiAiConfigured, kimchiStreamText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   if (!isKimchiAiConfigured()) {
@@ -36,6 +37,11 @@ export async function POST(request: Request) {
 
   const resumeText = dbUser.profile?.resumeText || "";
 
+  const primaryResume = await prisma.userAsset.findFirst({
+    where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
+    select: { name: true },
+  });
+
   const pipelineContext = pipeline?.length
     ? `\nUser's current job pipeline:\n${pipeline.map((j) => `- ${j.role} at ${j.company} (${j.stage})`).join("\n")}`
     : "\nUser has no jobs in their pipeline yet.";
@@ -54,7 +60,7 @@ export async function POST(request: Request) {
     : "";
 
   const resumeContext = resumeText
-    ? `\n\nUser's resume:\n${resumeText.slice(0, 6000)}`
+    ? `\n\nUser's master resume${primaryResume ? ` ("${primaryResume.name}")` : ""}:\n${resumeText.slice(0, 6000)}`
     : "";
 
   const assistantCtx = await buildAssistantContext({ user: dbUser });

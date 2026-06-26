@@ -254,6 +254,9 @@ export function useVoiceAgentSession({
             } else if (fn.name === "finish_onboarding_chat") {
               session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
               finishSession(args.summary || "Wrapped up your search preferences.");
+            } else if (fn.name === "finish_voice_chat" && context === "workspace") {
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+              finishSession(args.summary || "Good chat — pick a next step below if you want.");
             } else if (fn.name === "open_ui_route" && args.route) {
               onNavigate?.(args.route, args.label);
               session.sendFunctionCallResponse(
@@ -338,7 +341,7 @@ export function useVoiceAgentSession({
 
   const endSession = useCallback(() => {
     if (!sessionActive) return;
-    finishSession("All set — tap Talk again when you want another chat.");
+    finishSession("Wrapped up — see your summary below.");
   }, [finishSession, sessionActive]);
 
   const resetSession = useCallback(() => {

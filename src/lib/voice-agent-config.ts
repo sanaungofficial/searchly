@@ -116,12 +116,12 @@ Help them think through roles, fit, interviews, and what to prioritize. Ask one 
 
 Never ask for passwords, SSN, or login credentials.`;
 
-export function buildWorkspaceVoiceAgentSettings(
+export async function buildWorkspaceVoiceAgentSettings(
   assistantContext?: AssistantContextPayload | null,
   presetId: VoicePresetId = "general",
-): AgentSettingsObject {
+): Promise<AgentSettingsObject> {
   const prompt = assistantContext
-    ? buildPresetVoicePrompt(presetId, assistantContext)
+    ? await buildPresetVoicePrompt(presetId, assistantContext)
     : WORKSPACE_VOICE_FALLBACK_PROMPT;
 
   return {
