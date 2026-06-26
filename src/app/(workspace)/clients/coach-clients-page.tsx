@@ -25,9 +25,9 @@ export function CoachClientsPage() {
           router.replace("/coach-onboarding");
           return;
         }
-        router.replace("/dashboard/ops?section=clients");
+        router.replace("/expert/ops?section=clients");
       })
-      .catch(() => router.replace("/dashboard/ops?section=clients"));
+      .catch(() => router.replace("/expert/ops?section=clients"));
   }, [userRole, isStaff, router]);
 
   return (

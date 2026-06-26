@@ -31,7 +31,7 @@ function ExpertOpsInner() {
 
   function selectTab(next: OpsTab) {
     setTab(next);
-    router.replace(`/dashboard/ops?section=${next}`, { scroll: false });
+    router.replace(`/expert/ops?section=${next}`, { scroll: false });
   }
 
   async function viewAsClient(userId: string) {

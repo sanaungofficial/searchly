@@ -272,7 +272,7 @@ export function ExpertInboxView() {
   }
 
   function openOps() {
-    router.push("/dashboard/ops?section=clients");
+    router.push("/expert/ops?section=clients");
   }
 
   if (loading && !data) {

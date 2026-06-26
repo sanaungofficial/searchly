@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function DashboardClientsPage() {
-  redirect("/dashboard/ops?section=clients");
+  redirect("/expert/ops?section=clients");
 }

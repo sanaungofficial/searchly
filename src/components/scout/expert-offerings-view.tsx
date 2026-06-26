@@ -34,7 +34,7 @@ export function ExpertOfferingsView() {
 
   function selectTab(next: OfferingsTab) {
     setTab(next);
-    router.replace(`/dashboard/offerings?section=${next}`, { scroll: false });
+    router.replace(`/expert/offerings?section=${next}`, { scroll: false });
   }
 
   return (
@@ -63,7 +63,7 @@ export function ExpertOfferingsView() {
         {tab === "profile" && <CoachProfileTab setupOnMissing />}
         {tab === "packages" && <CoachPricingDrawer embedded coachSlug={coachSlug} />}
         {tab === "availability" && (
-          <CoachEditAvailabilityView mode="coach" embedded backHref="/dashboard/offerings?section=availability" />
+          <CoachEditAvailabilityView mode="coach" embedded backHref="/expert/offerings?section=availability" />
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
-import { ExpertOpsView } from "@/components/scout/expert-ops-view";
+import { redirect } from "next/navigation";
 
 export default function DashboardOpsPage() {
-  return <ExpertOpsView />;
+  redirect("/expert/ops");
 }

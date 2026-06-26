@@ -1,14 +1,16 @@
-/** Coaches and admins share the Dashboard staff portal (expert workspace). */
+/** Coaches and admins share the expert workspace (/expert/*). Job seeker home stays on /dashboard. */
 export function isStaffPortalRole(role: string | null | undefined): boolean {
   return role === "COACH" || role === "ADMIN";
 }
 
-/** Leland-style expert workspace — left sidebar + top Expert dashboard dropdown. */
+export const EXPERT_BASE = "/expert";
+
+/** Leland-style expert workspace — left sidebar + top Expert mode dropdown. */
 export const EXPERT_WORKSPACE_NAV = [
-  { id: "inbox", label: "Inbox", path: "/dashboard/inbox" },
-  { id: "offerings", label: "Offerings", path: "/dashboard/offerings" },
-  { id: "reviews", label: "Reviews", path: "/dashboard/reviews" },
-  { id: "ops", label: "Ops Tools", path: "/dashboard/ops" },
+  { id: "inbox", label: "Inbox", path: "/expert/inbox" },
+  { id: "offerings", label: "Offerings", path: "/expert/offerings" },
+  { id: "reviews", label: "Reviews", path: "/expert/reviews" },
+  { id: "ops", label: "Ops Tools", path: "/expert/ops" },
 ] as const;
 
 export type ExpertWorkspaceNavId = (typeof EXPERT_WORKSPACE_NAV)[number]["id"];
@@ -20,12 +22,9 @@ export function matchStaffDashboardNavPath(pathname: string, itemPath: string): 
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
-/** True when the URL is an expert-workspace route (not the shared /dashboard home). */
+/** True when the URL is under /expert (expert mode workspace). */
 export function isExpertPortalPath(pathname: string): boolean {
-  if (pathname.startsWith("/dashboard/clients/") && pathname.includes("/profile")) {
-    return false;
-  }
-  return EXPERT_WORKSPACE_NAV.some((item) => pathname.startsWith(item.path));
+  return pathname === EXPERT_BASE || pathname.startsWith(`${EXPERT_BASE}/`);
 }
 
 export function expertWorkspaceNavId(pathname: string): ExpertWorkspaceNavId | null {

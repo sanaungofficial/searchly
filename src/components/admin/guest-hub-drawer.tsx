@@ -197,7 +197,7 @@ export function GuestHubDrawer({ guest, onClose, onOpenCoachHub }: Props) {
 
               {data.guest.userId && (
                 <p style={{ marginTop: 24, fontFamily: fontSans, fontSize: 13, color: color.muted }}>
-                  <Link href="/dashboard/ops?section=clients" style={{ color: color.forest }}>Open in clients →</Link>
+                  <Link href="/expert/ops?section=clients" style={{ color: color.forest }}>Open in clients →</Link>
                 </p>
               )}
             </>
