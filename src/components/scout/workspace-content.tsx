@@ -58,3 +58,23 @@ export const WorkspaceScroll = forwardRef<HTMLDivElement, { children: ReactNode 
     );
   },
 );
+
+/** Centered sub-page shell (admin, expert profile, staff dashboard routes). */
+export function WorkspaceSubpageShell({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        height: "100%",
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        background: surface.page,
+      }}
+    >
+      <WorkspaceScroll>
+        <WorkspaceContent>{children}</WorkspaceContent>
+      </WorkspaceScroll>
+    </div>
+  );
+}

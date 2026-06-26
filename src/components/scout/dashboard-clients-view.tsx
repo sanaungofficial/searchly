@@ -3,20 +3,18 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AdminClientsPanel } from "@/components/admin/admin-clients-panel";
+import { WorkspaceSubpageShell } from "@/components/scout/workspace-content";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
 
 function DashboardClientsInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isMobile = useIsMobile();
   const { userRole } = useWorkspace();
   const isAdmin = userRole === "ADMIN";
   const [starting, setStarting] = useState<string | null>(null);
 
   const tab = searchParams.get("tab");
-  const pad = isMobile ? "16px" : "28px";
 
   useEffect(() => {
     if (tab === "profile") {
@@ -51,18 +49,16 @@ function DashboardClientsInner() {
   }
 
   return (
-    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ padding: `0 ${pad} 32px` }}>
-        <AdminClientsPanel
-          apiPath={isAdmin ? "/api/admin/clients" : "/api/coach/clients"}
-          onViewAsClient={isAdmin ? viewAsClient : undefined}
-          startingUserId={starting}
-          detailMode="drawer"
-          embedded
-          canAddClient={isAdmin}
-        />
-      </div>
-    </div>
+    <WorkspaceSubpageShell>
+      <AdminClientsPanel
+        apiPath={isAdmin ? "/api/admin/clients" : "/api/coach/clients"}
+        onViewAsClient={isAdmin ? viewAsClient : undefined}
+        startingUserId={starting}
+        detailMode="drawer"
+        embedded
+        canAddClient={isAdmin}
+      />
+    </WorkspaceSubpageShell>
   );
 }
 
