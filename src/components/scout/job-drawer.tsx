@@ -195,7 +195,6 @@ function CompanyTrackPanel({
               padding: "10px 18px",
               background: color.forest,
               color: color.gold,
-              border: "none",
               borderRadius: "var(--scout-radius)",
               fontFamily: sans,
               fontSize: 14,
@@ -866,11 +865,12 @@ export function JobDrawer({
   const applicationUrl = jobWebsite;
   const companyWebsite = meta?.companyWebsite?.trim() || guessCompanyWebsite(jobWebsite);
   const hasStoredCompanyIntel = Boolean(meta?.companySummary?.trim() || meta?.companyWebsite?.trim());
+  const networkJob = meta?.networkJob ?? null;
   const { data: hirebaseCompany, loading: hirebaseLoading } = useHirebaseCompanyProfile({
     companyName: card.company,
     website: companyWebsite,
     slugHint: meta?.companySlug ?? null,
-    enabled: prospectMode || !hasStoredCompanyIntel,
+    enabled: !networkJob && (prospectMode || !hasStoredCompanyIntel),
   });
 
   const linkedinForCompany =
@@ -881,7 +881,6 @@ export function JobDrawer({
   const jobDescription = resolveJobDescriptionText(meta, card.role, card.company);
   const fullDescriptionText = meta?.description?.trim() || jobDescription;
   const hasFullPosting = (meta?.description?.trim().length ?? 0) >= 200;
-  const networkJob = meta?.networkJob ?? null;
   const displayFit = card.fit > 0 ? card.fit : (meta?.vectorMatch?.matchScore ?? 0);
   const scrollSections: ScrollSection[] = networkJob
     ? ["overview", "recruiter", "company"]
@@ -1010,10 +1009,11 @@ export function JobDrawer({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
                     <CompanyLogo
-                      name={networkJob?.agencyName ?? card.company}
+                      name={card.company}
                       website={networkJob?.agencyWebsite ?? companyWebsite ?? jobWebsite}
-                      enrichmentWebsiteUrl={hirebaseCompany?.profile?.company_link ?? hirebaseCompany?.enrichment?.websiteUrl}
-                      logoUrl={networkJob?.agencyLogoUrl ?? meta?.companyLogo ?? hirebaseCompany?.profile?.company_logo ?? hirebaseCompany?.enrichment?.hirebase?.logo}
+                      enrichmentWebsiteUrl={networkJob ? null : (hirebaseCompany?.profile?.company_link ?? hirebaseCompany?.enrichment?.websiteUrl)}
+                      logoUrl={networkJob?.agencyLogoUrl ?? meta?.companyLogo ?? (networkJob ? null : hirebaseCompany?.profile?.company_logo ?? hirebaseCompany?.enrichment?.hirebase?.logo)}
+                      skipDomainLookup={Boolean(networkJob) || !(networkJob?.agencyLogoUrl ?? meta?.companyLogo)}
                       size={isMobile ? 48 : 56}
                     />
                     <div>
@@ -1224,8 +1224,9 @@ export function JobDrawer({
                   location={location}
                   parsedSummary={companySummary}
                   jobUrl={companyWebsite}
-                  hirebase={hirebaseCompany}
-                  loading={hirebaseLoading}
+                  hirebase={networkJob ? null : hirebaseCompany}
+                  loading={networkJob ? false : hirebaseLoading}
+                  networkSourced={Boolean(networkJob)}
                   trackPanel={
                     <CompanyTrackPanel
                       companyName={card.company}

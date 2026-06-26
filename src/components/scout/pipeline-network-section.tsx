@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { networkAgencyDisplayName, previewPlainText, SEED_NETWORK_JOBS } from "@/lib/network-job-display";
+import { networkExecThreadRecruitingFirmLabel } from "@/lib/network-employer-labels";
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
@@ -290,6 +291,7 @@ function NetworkJobCard({
   saving?: boolean;
 }) {
   const company = networkAgencyDisplayName(job);
+  const recruitingFirm = job.source === "EXECTHREAD" ? networkExecThreadRecruitingFirmLabel(job) : job.agencyName;
   const hasAgencyLogo = Boolean(job.agencyLogoUrl?.trim());
   const summary = previewPlainText(job.description);
   const shareLabel = job.sharedAt
@@ -317,7 +319,7 @@ function NetworkJobCard({
           name={company}
           logoUrl={hasAgencyLogo ? job.agencyLogoUrl : null}
           website={hasAgencyLogo ? job.agencyWebsite : null}
-          skipDomainLookup={!hasAgencyLogo}
+          skipDomainLookup
           size={44}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -376,6 +378,11 @@ function NetworkJobCard({
                 {industry}
               </span>
             ))}
+            {recruitingFirm && (
+              <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
+                {recruitingFirm}
+              </span>
+            )}
             {job.jobType && (
               <span style={{ padding: "2px 8px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.stone }}>
                 {job.jobType}

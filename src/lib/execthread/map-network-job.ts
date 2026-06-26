@@ -169,7 +169,7 @@ export function mapExecThreadNetworkJob(job: ExecThreadListingRaw) {
     networkId: job.slug ?? null,
     positionTitle: job.title?.trim() || "Untitled role",
     companyName: hiringCompanyName(job),
-    agencyName: recruitingFirm ?? hiringCompanyName(job),
+    agencyName: recruitingFirm ?? null,
     city,
     state,
     location,
