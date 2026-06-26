@@ -6,6 +6,7 @@ import {
   syncLinkedInDraftFromAbout,
   syncParsedFromLinkedInDraft,
 } from "@/lib/profile-linkedin-sync";
+import { aboutProfileFingerprint, withAboutFingerprint } from "@/lib/linkedin-about-fingerprint";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
 import { Prisma } from "@prisma/client";
 
@@ -20,15 +21,22 @@ export async function refreshLinkedInDraftFromAbout(userId: string): Promise<Lin
   const storedDraft = normalizeLinkedInDraft(dbUser.profile.linkedInDraft ?? null);
   const targetRoles = (dbUser.profile.targetRoles as string[] | null) ?? [];
 
-  const draft = syncLinkedInDraftFromAbout({
-    parsed,
-    name: dbUser.name || "You",
-    targetRoles,
-    headline: dbUser.profile.headline,
-    summary: dbUser.profile.summary ?? parsed.summary,
-    existingDraft: storedDraft,
-    sourceAssetId: dbUser.profile.linkedInDraftSourceAssetId,
-  });
+  const draft = withAboutFingerprint(
+    syncLinkedInDraftFromAbout({
+      parsed,
+      name: dbUser.name || "You",
+      targetRoles,
+      headline: dbUser.profile.headline,
+      summary: dbUser.profile.summary ?? parsed.summary,
+      existingDraft: storedDraft,
+      sourceAssetId: dbUser.profile.linkedInDraftSourceAssetId,
+    }),
+    aboutProfileFingerprint({
+      parsed,
+      headline: dbUser.profile.headline,
+      summary: dbUser.profile.summary ?? parsed.summary,
+    }),
+  );
 
   await prisma.profile.update({
     where: { userId },

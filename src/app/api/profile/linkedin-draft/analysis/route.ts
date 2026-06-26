@@ -74,14 +74,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to parse analysis" }, { status: 500 });
   }
 
+  const baselineScore = cached?.baselineScore ?? cached?.score ?? parsed.score;
+
   const now = new Date();
+  const stored = { ...parsed, baselineScore };
   await prisma.profile.updateMany({
     where: { userId: dbUser.id },
     data: {
-      linkedInDraftAnalysis: parsed as object,
+      linkedInDraftAnalysis: stored as object,
       linkedInDraftAnalysisUpdatedAt: now,
     },
   });
 
-  return NextResponse.json({ ...parsed, _cachedAt: now.toISOString() });
+  return NextResponse.json({ ...stored, _cachedAt: now.toISOString() });
 }

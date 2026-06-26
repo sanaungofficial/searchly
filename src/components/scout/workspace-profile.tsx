@@ -84,6 +84,8 @@ import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondar
 import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { ProfileLayoutSidebar, type ProfileSidebarTab } from "./profile-layout-sidebar";
 import { ProfileCoachPanel } from "./profile-coach-panel";
+import { ProfileReadinessPanel } from "./profile-readiness-panel";
+import { profileCompletenessWithWeakest } from "@/lib/profile-readiness";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import {
@@ -262,6 +264,13 @@ function UpskillNextStepCard({
   );
 }
 
+interface ReadbackData {
+  picture: string;
+  strengths: string[];
+  targetRoles: { role: string; fit: string }[];
+  honestNote: string;
+}
+
 interface UserProfile {
   name: string;
   email: string | null;
@@ -292,6 +301,11 @@ interface UserProfile {
   searchDuration?: string | null;
   positioningStatement?: string | null;
   strategyIntakeNotes?: string | null;
+  readbackData?: ReadbackData | null;
+  readbackUpdatedAt?: string | null;
+  primaryResumeUpdatedAt?: string | null;
+  hasStrategy?: boolean;
+  linkedInAnalysisScore?: number | null;
 }
 
 type RoleAnalysisView = {
@@ -376,13 +390,6 @@ async function migrateLegacyProfileData(
 }
 
 type SkillGoal = SkillGoalRecord;
-
-interface ReadbackData {
-  picture: string;
-  strengths: string[];
-  targetRoles: { role: string; fit: string }[];
-  honestNote: string;
-}
 
 interface CustomLearningItem {
   id: string;
@@ -765,18 +772,18 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
               <div className="pb-5 flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-[#1C3A2F]">{entry.title}</p>
-                    <p className="text-xs text-[#52493F]">{entry.company}</p>
+                    <p className="text-base font-semibold text-[#1C3A2F]">{entry.title}</p>
+                    <p className="text-sm text-[#52493F] mt-0.5">{entry.company}</p>
                   </div>
                   {formatDateRange(entry.from, entry.to) && (
-                    <span className="text-xs text-[var(--scout-muted)] whitespace-nowrap shrink-0">{formatDateRange(entry.from, entry.to)}</span>
+                    <span className="text-sm text-[var(--scout-muted)] whitespace-nowrap shrink-0">{formatDateRange(entry.from, entry.to)}</span>
                   )}
                 </div>
                 {entry.bullets.length > 0 && (
-                  <ul className="mt-2 space-y-1">
+                  <ul className="mt-2.5 space-y-1.5">
                     {entry.bullets.map((b, bi) => (
-                      <li key={bi} className="text-xs text-[#52493F] flex gap-1.5">
-                        <span className="mt-1 w-1 h-1 rounded-[var(--scout-radius)] bg-[var(--scout-muted)] shrink-0" />{b}
+                      <li key={bi} className="text-sm text-[#52493F] leading-relaxed flex gap-2">
+                        <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[var(--scout-muted)] shrink-0" />{b}
                       </li>
                     ))}
                   </ul>
@@ -2639,6 +2646,8 @@ function ReadbackCard({
   embedded,
   stack,
   candidateName,
+  readbackUpdatedAt,
+  primaryResumeUpdatedAt,
 }: {
   data: ReadbackData | null;
   loading: boolean;
@@ -2646,10 +2655,16 @@ function ReadbackCard({
   embedded?: boolean;
   stack?: boolean;
   candidateName?: string | null;
+  readbackUpdatedAt?: string | null;
+  primaryResumeUpdatedAt?: string | null;
 }) {
   const isMobile = useIsMobile();
   const { showCredits } = useCredits();
   const displayData = data && candidateName ? formatReadbackForDisplay(data, candidateName) : data;
+  const resumeNewerThanReadback =
+    primaryResumeUpdatedAt &&
+    readbackUpdatedAt &&
+    new Date(primaryResumeUpdatedAt).getTime() > new Date(readbackUpdatedAt).getTime();
   if (!loading && !displayData) return null;
   return (
     <ScoutBox
@@ -2662,9 +2677,16 @@ function ReadbackCard({
       }}
     >
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 10, gap: isMobile ? 10 : 0 }}>
-        <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, textTransform: "uppercase" as const, letterSpacing: "0.08em", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <SparkleIcon /> Quick snapshot
-        </p>
+        <div>
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, textTransform: "uppercase" as const, letterSpacing: "0.08em", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <SparkleIcon /> Quick snapshot
+          </p>
+          {readbackUpdatedAt && !loading && (
+            <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, margin: "4px 0 0" }}>
+              Last updated {formatLastRefreshed(readbackUpdatedAt)}
+            </p>
+          )}
+        </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "flex-start" : "flex-end", gap: 4 }}>
           <ScoutSecondaryBtn onClick={onRefresh} disabled={loading} style={{ padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, opacity: loading ? 0.5 : 1 }}>
             ↻ {loading ? "Refreshing…" : "Refresh"}
@@ -2674,7 +2696,15 @@ function ReadbackCard({
           )}
         </div>
       </div>
-      {loading ? (
+      {resumeNewerThanReadback && !loading && (
+        <div style={{ fontFamily: fontSans, fontSize: 13, color: color.ink, background: "#FFF8E8", border: "1px solid #E8D5A3", padding: "10px 12px", marginBottom: 12, lineHeight: 1.5 }}>
+          Your resume changed since this snapshot was generated.{" "}
+          <button type="button" onClick={onRefresh} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
+            Refresh snapshot
+          </button>
+        </div>
+      )}
+      {loading && !displayData ? (
         <KimchiProcessLoader preset="profileAnalysis" variant="inline" />
       ) : displayData ? (
         <>
@@ -2851,6 +2881,10 @@ export function WorkspaceProfile() {
         setUpskillProgress(userProfile.upskillProgress ?? {});
         setTargetRoleSettings(normalizeTargetRoleSettings(userProfile.targetRoleSettings));
 
+        if (userProfile.readbackData) {
+          setReadback(userProfile.readbackData);
+        }
+
         if (!legacyMigratedRef.current) {
           legacyMigratedRef.current = true;
           const migrated = await migrateLegacyProfileData(userProfile, patchProfile);
@@ -2865,14 +2899,23 @@ export function WorkspaceProfile() {
 
   useEffect(() => {
     if (!profile?.resumeUrl) return;
+    if (profile.readbackData) return;
+
     setReadbackLoading(true);
     fetch(api("/api/ai/readback"))
       .then((r) => r.json())
-      .then((data) => { if (!data.error) setReadback(data); })
+      .then((data) => {
+        if (!data.error) {
+          setReadback(data);
+          setProfile((p) =>
+            p ? { ...p, readbackData: data, readbackUpdatedAt: data._cachedAt ?? p.readbackUpdatedAt ?? null } : p,
+          );
+        }
+      })
       .catch(() => {})
       .finally(() => setReadbackLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.resumeUrl]);
+  }, [profile?.resumeUrl, profile?.readbackData]);
 
   const refreshReadback = () => {
     if (!profile?.resumeUrl) return;
@@ -2887,6 +2930,9 @@ export function WorkspaceProfile() {
         const data = await r.json();
         if (!data.error) {
           setReadback(data);
+          setProfile((p) =>
+            p ? { ...p, readbackData: data, readbackUpdatedAt: data._cachedAt ?? new Date().toISOString() } : p,
+          );
           notifyCreditsChanged();
         }
       })
@@ -3249,6 +3295,8 @@ export function WorkspaceProfile() {
   const sectionCardPad = isMobile ? 18 : 22;
   const showReadback = !!(readback || readbackLoading);
   const completenessPct = profile ? profileCompleteness(profile) : 0;
+  const { weakest: weakestTab } = profile ? profileCompletenessWithWeakest(profile) : { weakest: null };
+  const strategyFileCount = assets.filter((a) => a.type === "JOB_SEARCH_STRATEGY").length;
   const missingItems = profile
     ? profileMissingItems(profile, {
         goToAssets: () => setPage("assets"),
@@ -3515,6 +3563,8 @@ export function WorkspaceProfile() {
               completenessPct={completenessPct}
               loading={loading}
               onCompletenessClick={missingItems.length > 0 ? () => setShowChecklist((s) => !s) : undefined}
+              weakestTab={weakestTab}
+              onWeakestTabClick={weakestTab ? () => setPage(weakestTab.tab) : undefined}
             />
           )}
 
@@ -3572,9 +3622,27 @@ export function WorkspaceProfile() {
             )}
             {page === "about" && profile && (
               <div style={{ paddingBottom: 40 }}>
+                <ProfileReadinessPanel
+                  resumeUrl={profile.resumeUrl}
+                  linkedinUrl={profile.linkedinUrl}
+                  hasStrategy={profile.hasStrategy}
+                  linkedInScore={profile.linkedInAnalysisScore}
+                  strategyFileCount={strategyFileCount}
+                  onNavigate={(tab) => setPage(tab)}
+                  compact={isMobile}
+                />
                 {showReadback && (
                   <div style={{ marginBottom: isMobile ? 16 : 20 }}>
-                    <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded candidateName={profile.name} />
+                    <ReadbackCard
+                      data={readback}
+                      loading={readbackLoading}
+                      onRefresh={refreshReadback}
+                      stack
+                      embedded
+                      candidateName={profile.name}
+                      readbackUpdatedAt={profile.readbackUpdatedAt}
+                      primaryResumeUpdatedAt={profile.primaryResumeUpdatedAt}
+                    />
                   </div>
                 )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3636,7 +3704,7 @@ export function WorkspaceProfile() {
             )}
 
             {page === "linkedin" && (
-              <ProfileLinkedInEditor isMobile={isMobile} />
+              <ProfileLinkedInEditor isMobile={isMobile} coachView={showAdminUi} />
             )}
           </div>
         </div>

@@ -5,6 +5,8 @@ import {
   buildEffectiveLinkedInDraftForUser,
   syncAboutFromLinkedInDraft,
 } from "@/lib/profile-linkedin-persist";
+import { aboutProfileFingerprint, linkedInDraftIsStaleFromAbout } from "@/lib/linkedin-about-fingerprint";
+import { loadParsedForSync } from "@/lib/profile-linkedin-sync";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -15,6 +17,13 @@ export async function GET(request: Request) {
 
     const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
     const targetRoles = (profile?.targetRoles as string[] | null) ?? [];
+    const parsed = loadParsedForSync(profile?.parsedData);
+    const aboutFingerprint = aboutProfileFingerprint({
+      parsed,
+      headline: profile?.headline,
+      summary: profile?.summary,
+    });
+    const storedDraft = normalizeLinkedInDraft(profile?.linkedInDraft ?? null);
     const draft = buildEffectiveLinkedInDraftForUser({
       name: dbUser.name || authUser.email.split("@")[0] || "You",
       targetRoles,
@@ -25,6 +34,12 @@ export async function GET(request: Request) {
       sourceAssetId: profile?.linkedInDraftSourceAssetId,
     });
 
+    const analysisRaw = profile?.linkedInDraftAnalysis;
+    const analysisScore =
+      analysisRaw && typeof analysisRaw === "object" && typeof (analysisRaw as { score?: number }).score === "number"
+        ? (analysisRaw as { score: number }).score
+        : null;
+
     return NextResponse.json({
       draft,
       updatedAt: profile?.linkedInDraftUpdatedAt?.toISOString() ?? null,
@@ -33,6 +48,10 @@ export async function GET(request: Request) {
       name: dbUser.name || authUser.email.split("@")[0] || "You",
       avatarUrl: dbUser.avatarUrl ?? null,
       syncedFromAbout: true,
+      aboutFingerprint,
+      aboutSyncStale: linkedInDraftIsStaleFromAbout({ draft: storedDraft, currentFingerprint: aboutFingerprint }),
+      linkedInAnalysisScore: analysisScore,
+      lastLinkedInImportAt: storedDraft?.lastLinkedInImportAt ?? null,
     });
   } catch (err) {
     console.error("[linkedin-draft GET]", err);

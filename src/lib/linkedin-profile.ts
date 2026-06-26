@@ -62,6 +62,11 @@ export interface LinkedInProfileDraft {
   coverPhotoUrl?: string | null;
   sourceAssetId?: string | null;
   generatedAt?: string | null;
+  /** Fingerprint of About at last sync — used to detect stale draft. */
+  aboutFingerprint?: string | null;
+  lastLinkedInImportAt?: string | null;
+  /** Coach notes keyed by section id (headline, about, exp_*, etc.) */
+  coachNotes?: Record<string, string> | null;
 }
 
 export function newLinkedInEntryId(prefix: string): string {
@@ -301,6 +306,16 @@ export function normalizeLinkedInDraft(raw: unknown): LinkedInProfileDraft | nul
     coverPhotoUrl: asStringOrNull(obj.coverPhotoUrl),
     sourceAssetId: asStringOrNull(obj.sourceAssetId),
     generatedAt: asStringOrNull(obj.generatedAt),
+    aboutFingerprint: asStringOrNull(obj.aboutFingerprint),
+    lastLinkedInImportAt: asStringOrNull(obj.lastLinkedInImportAt),
+    coachNotes:
+      obj.coachNotes && typeof obj.coachNotes === "object" && !Array.isArray(obj.coachNotes)
+        ? Object.fromEntries(
+            Object.entries(obj.coachNotes as Record<string, unknown>)
+              .map(([k, v]) => [k, asString(v)])
+              .filter(([, v]) => v),
+          )
+        : null,
   };
 }
 

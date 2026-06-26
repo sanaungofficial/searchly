@@ -158,6 +158,8 @@ export function syncLinkedInDraftFromAbout(input: {
     coverPhotoUrl: existingDraft?.coverPhotoUrl ?? null,
     sourceAssetId: sourceAssetId ?? existingDraft?.sourceAssetId ?? null,
     generatedAt: existingDraft?.generatedAt ?? new Date().toISOString(),
+    lastLinkedInImportAt: existingDraft?.lastLinkedInImportAt ?? null,
+    coachNotes: existingDraft?.coachNotes ?? null,
   })!;
 }
 
