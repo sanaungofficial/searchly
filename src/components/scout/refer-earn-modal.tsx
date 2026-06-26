@@ -232,7 +232,7 @@ export function ReferEarnModal({ onClose }: Props) {
               href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin : "https://app.kimchi.so")}`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: "block", textAlign: "center", marginTop: 24, padding: "14px", background: "#1A1A1A", color: "#fff", borderRadius: "var(--scout-radius)"0, fontWeight: 600, textDecoration: "none", fontSize: 15 }}
+              style={{ display: "block", textAlign: "center", marginTop: 24, padding: "14px", background: "#1A1A1A", color: "#fff", borderRadius: 100, fontWeight: 600, textDecoration: "none", fontSize: 15 }}
             >
               Share Now on LinkedIn
             </a>
