@@ -36,7 +36,8 @@ export async function GET(
   }
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
-  const targetRoles = (profile?.targetRoles ?? []).slice(0, 20);
+  const targetRoles = (profile?.targetRoles ?? []).slice(0, 30);
+  const deprioritizedRoles = (profile?.deprioritizedRoles ?? []).slice(0, 30);
   const parsedData = mergeParsedWithReadback(
     normalizeParsedResumeData(profile?.parsedData ?? null),
     profile?.readbackData,
@@ -66,7 +67,7 @@ export async function GET(
 
   const enriched = needsProfile
     ? listing
-    : enrichNetworkJobWithMatch(listing, resumeText, targetRoles);
+    : enrichNetworkJobWithMatch(listing, resumeText, { targetRoles, deprioritizedRoles });
 
   const job = sanitizeNetworkJobListing(enriched, internalView);
 

@@ -188,7 +188,7 @@ export function mapVoiceIntakeToOnboarding(
     currentSalary: pickSalaryRange(proposed.currentSalary),
     targetSalary: pickSalaryRange(proposed.targetSalary),
     priorities: pickPriorities(proposed.priorities),
-    targetRoles: (proposed.targetRoles ?? []).map((role) => role.trim()).filter(Boolean).slice(0, 3),
+    targetRoles: (proposed.targetRoles ?? []).map((role) => role.trim()).filter(Boolean).slice(0, 20),
     strategyIntakeNotes: buildVoiceIntakeNotes(transcript, result),
   };
 }

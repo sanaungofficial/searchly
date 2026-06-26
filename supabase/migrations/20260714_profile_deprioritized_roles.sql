@@ -1,0 +1,2 @@
+ALTER TABLE "Profile"
+ADD COLUMN IF NOT EXISTS "deprioritizedRoles" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

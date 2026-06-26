@@ -1578,15 +1578,13 @@ function TargetRoleAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const atMax = selectedTitles.length >= 3;
   const readbackSuggestions = suggestedTitles.filter((t) => !selectedTitles.includes(t));
 
   const dropdownOptions = useMemo(() => {
-    if (atMax) return [];
     return mergeRoleSuggestions(query, readbackSuggestions, 10).filter(
       (t) => !selectedTitles.includes(t)
     );
-  }, [query, readbackSuggestions, selectedTitles, atMax]);
+  }, [query, readbackSuggestions, selectedTitles]);
 
   useEffect(() => {
     setHighlight(0);
@@ -1609,7 +1607,7 @@ function TargetRoleAutocomplete({
 
   const tryAdd = (raw: string) => {
     const normalized = normalizeCustomRoleTitle(raw);
-    if (!normalized || selectedTitles.includes(normalized) || selectedTitles.length >= 3) return false;
+    if (!normalized || selectedTitles.includes(normalized)) return false;
     onAddTitle(normalized);
     setQuery("");
     setOpen(false);
@@ -1631,7 +1629,7 @@ function TargetRoleAutocomplete({
         </div>
       )}
 
-      {readbackSuggestions.length > 0 && !atMax && (
+      {readbackSuggestions.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <p
             style={{
@@ -1688,15 +1686,14 @@ function TargetRoleAutocomplete({
             marginBottom: 10,
           }}
         >
-          {atMax ? "Target roles · max 3 selected" : `Target role · ${selectedTitles.length}/3`}
+          Target roles · {selectedTitles.length} selected
         </label>
         <input
           id="target-role-input"
           ref={inputRef}
           type="text"
           value={query}
-          disabled={atMax}
-          placeholder={atMax ? "Remove one to add another" : "Start typing a role title…"}
+          placeholder="Start typing a role title…"
           autoComplete="off"
           role="combobox"
           aria-expanded={open && dropdownOptions.length > 0}
@@ -1729,7 +1726,7 @@ function TargetRoleAutocomplete({
             padding: "12px 14px",
             border: ONBOARDING_FIELD_BORDER,
             borderRadius: "var(--scout-radius)",
-            background: atMax ? "rgba(247,245,242,0.6)" : ONBOARDING_FIELD_BG,
+            background: ONBOARDING_FIELD_BG,
             fontFamily: "var(--font-ui)",
             fontSize: 16,
             fontWeight: 500,
@@ -1739,7 +1736,7 @@ function TargetRoleAutocomplete({
           }}
         />
 
-        {open && !atMax && dropdownOptions.length > 0 && (
+        {open && dropdownOptions.length > 0 && (
           <ul
             id="target-role-listbox"
             role="listbox"
@@ -1789,7 +1786,7 @@ function TargetRoleAutocomplete({
         )}
       </div>
 
-      {!atMax && query.trim() && dropdownOptions.length === 0 && (
+      {query.trim() && dropdownOptions.length === 0 && (
         <button
           type="button"
           onClick={() => tryAdd(query)}
@@ -1811,7 +1808,7 @@ function TargetRoleAutocomplete({
         </button>
       )}
 
-      {!query && !atMax && (
+      {!query && (
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: ONBOARDING_TEXT_SECONDARY, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
           {TARGET_ROLE_SUGGESTIONS.length}+ common titles — start typing, or pick a suggestion below.
         </p>
