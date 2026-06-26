@@ -214,10 +214,12 @@ export function WorkspaceSidebar({
     updateAvatarUrl,
     kanbanCards,
     authChecked,
+    isImpersonating,
   } = useWorkspace();
 
   const user = userProp ?? ctxUser ?? undefined;
   const isAdmin = isAdminProp ?? ctxIsAdmin;
+  const showAdminNav = isAdmin && !isImpersonating;
 
   const { loading: subLoading } = useSubscription();
   const { credits, showCredits, unlimitedAi } = useCredits();
@@ -498,7 +500,7 @@ export function WorkspaceSidebar({
           }}
         >
         <div style={{ padding: isRail ? "0 8px" : "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
-          {isAdmin && (
+          {showAdminNav && (
             <SidebarNavButton
               active={pathname === "/admin"}
               onClick={() => navigate("/admin")}
