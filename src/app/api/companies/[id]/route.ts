@@ -7,7 +7,7 @@ import { scanTrackedCompanyMatches } from "@/lib/company-jobs-scan";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
-  const dbUser = await ensureDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase, request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
@@ -48,7 +48,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
-  const dbUser = await ensureDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase, request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

@@ -713,7 +713,7 @@ export function JobDrawer({
   elevated = false,
   detailLoading = false,
 }: JobDrawerProps) {
-  const { openFitChat } = useWorkspace();
+  const { openFitChat, withClientScope } = useWorkspace();
   const isMobile = useIsMobile();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
@@ -825,7 +825,7 @@ export function JobDrawer({
   function patchNextStep(nextStep: string, nextStepDue: string) {
     if (!dbId) return;
     const updatedMeta = { ...(meta ?? {}), nextStep: nextStep || null, nextStepDue: nextStepDue || null };
-    fetch(`/api/jobs/${dbId}`, {
+    fetch(withClientScope(`/api/jobs/${dbId}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes: JSON.stringify(updatedMeta) }),
@@ -837,7 +837,7 @@ export function JobDrawer({
 
   function patchField(fields: Record<string, string | null>) {
     if (!dbId) return;
-    fetch(`/api/jobs/${dbId}`, {
+    fetch(withClientScope(`/api/jobs/${dbId}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(fields),
@@ -848,7 +848,7 @@ export function JobDrawer({
   function patchDescription(value: string) {
     if (!dbId) return;
     const updatedMeta = { ...(meta ?? {}), description: value || null };
-    fetch(`/api/jobs/${dbId}`, {
+    fetch(withClientScope(`/api/jobs/${dbId}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes: JSON.stringify(updatedMeta) }),

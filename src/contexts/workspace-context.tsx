@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useLayoutEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { INITIAL_KANBAN_CARDS, NOTIFICATIONS } from "@/components/scout/workspace-data";
@@ -235,6 +235,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     );
 
   const notifUnreadCount = NOTIFICATIONS.filter((n) => !notifRead[n.id] && n.unread).length;
+
+  // SSR renders with null — sync sessionStorage before children fetch scoped APIs.
+  useLayoutEffect(() => {
+    const reviewId = getAdminReviewClientId();
+    if (reviewId && reviewId !== adminReviewClientId) {
+      setAdminReviewClientIdState(reviewId);
+      setActingUserId(reviewId);
+      setActingUserScope(reviewId);
+      const meta = getAdminReviewMeta();
+      if (meta) setAdminReviewClientMeta(meta);
+    }
+  }, [adminReviewClientId]);
 
   useEffect(() => {
     if (staffUserId && !impersonation.active) {

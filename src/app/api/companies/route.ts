@@ -69,9 +69,9 @@ async function attachIntel(companies: TrackedCompany[]) {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
-  const dbUser = await ensureDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase, request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -86,7 +86,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const dbUser = await ensureDbUser(supabase);
+  const dbUser = await ensureDbUser(supabase, request);
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();

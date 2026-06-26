@@ -9,6 +9,7 @@ import type { CachedJob } from "@/lib/cached-job";
 import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { JobFreshnessIndicator } from "./job-freshness-indicator";
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
@@ -878,6 +879,7 @@ function CompanyDrawer({
   onOpenJob?: (job: CachedJob) => void;
   isMobile?: boolean;
 }) {
+  const { withClientScope } = useWorkspace();
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const cache = company.jobsCache as JobsCache | null;
@@ -894,7 +896,7 @@ function CompanyDrawer({
     }
     setScanning(true); setScanError(null);
     try {
-      const res = await fetch(`/api/companies/${company.id}/refresh`, { method: "POST" });
+      const res = await fetch(withClientScope(`/api/companies/${company.id}/refresh`), { method: "POST" });
       const data = await res.json();
       if (!res.ok) { setScanError(humanizeApiError(data.error, res.status)); } else { onRefreshed(data); }
     } catch { setScanError("Network error — couldn't scan careers page."); } finally { setScanning(false); }
@@ -1124,6 +1126,7 @@ export function WorkspaceCompanies({
   embeddedInProfile?: boolean;
 }) {
   const isMobile = useIsMobile();
+  const { withClientScope } = useWorkspace();
   const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1149,7 +1152,7 @@ export function WorkspaceCompanies({
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      const res = await fetch("/api/companies");
+      const res = await fetch(withClientScope("/api/companies"));
       if (res.ok) {
         setCompanies(await res.json());
       } else if (res.status === 401) {
@@ -1163,7 +1166,7 @@ export function WorkspaceCompanies({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -1185,17 +1188,17 @@ export function WorkspaceCompanies({
   }, [companies, pendingScanIds.length]);
 
   useEffect(() => {
-    fetch("/api/profile").then((r) => r.json()).then((d) => {
+    fetch(withClientScope("/api/profile")).then((r) => r.json()).then((d) => {
       const hasArtifact = !!d.parsedData?.hirebaseArtifactId?.trim();
       setUserHasResume(!!d.resumeUrl?.trim() || hasArtifact);
     }).catch(() => {});
-  }, []);
+  }, [withClientScope]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault(); if (!newName.trim()) return;
     setSaving(true); setAddError(null);
     try {
-      const res = await fetch("/api/companies", {
+      const res = await fetch(withClientScope("/api/companies"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1247,7 +1250,7 @@ export function WorkspaceCompanies({
     setSaveError(null);
 
     try {
-      const res = await fetch(`/api/companies/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: nextValue }) });
+      const res = await fetch(withClientScope(`/api/companies/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: nextValue }) });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setCompanies((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: previousValue } : c)));
@@ -1262,7 +1265,7 @@ export function WorkspaceCompanies({
   async function handleRemove(id: string) {
     setRemoveError(null);
     try {
-      const res = await fetch(`/api/companies/${id}`, { method: "DELETE" });
+      const res = await fetch(withClientScope(`/api/companies/${id}`), { method: "DELETE" });
       if (res.ok) {
         setCompanies((prev) => prev.filter((c) => c.id !== id));
         if (selectedId === id) selectCompany(null);
