@@ -1,67 +1,41 @@
 import type { CSSProperties, ReactNode } from "react";
-import { border, radius, surface, displayTitleStyle } from "@/lib/typography";
+import { border, radius, shadow, surface, displayTitleStyle } from "@/lib/typography";
 
 type ScoutBoxProps = {
   children: ReactNode;
   bg?: string;
   padding?: number | string;
+  /** Slightly stronger shadow for hero / featured cards (e.g. dashboard stat) */
   stack?: boolean;
+  /** No shadow — nested panels, inset surfaces, or custom backgrounds */
+  flat?: boolean;
   style?: CSSProperties;
   className?: string;
 };
 
-/** Bordered surface — white card on cream page by default */
+/** Bordered surface — white card on cream page with soft bottom elevation */
 export function ScoutBox({
   children,
   bg = surface.card,
   padding = 20,
   stack = false,
+  flat = false,
   style,
   className,
 }: ScoutBoxProps) {
-  if (!stack) {
-    return (
-      <div
-        className={className}
-        style={{
-          background: bg,
-          border: border.line,
-          borderRadius: radius.box,
-          padding,
-          ...style,
-        }}
-      >
-        {children}
-      </div>
-    );
-  }
-
   return (
-    <div className={className} style={{ position: "relative", paddingRight: 3, paddingBottom: 3, ...style }}>
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: 3,
-          top: 3,
-          right: 0,
-          bottom: 0,
-          background: surface.stackPlate,
-          border: border.line,
-          borderRadius: radius.box,
-        }}
-      />
-      <div
-        style={{
-          position: "relative",
-          background: bg,
-          border: border.lineStrong,
-          borderRadius: radius.box,
-          padding,
-        }}
-      >
-        {children}
-      </div>
+    <div
+      className={className}
+      style={{
+        background: bg,
+        border: border.line,
+        borderRadius: radius.box,
+        padding,
+        boxShadow: flat ? undefined : stack ? shadow.cardStrong : shadow.card,
+        ...style,
+      }}
+    >
+      {children}
     </div>
   );
 }

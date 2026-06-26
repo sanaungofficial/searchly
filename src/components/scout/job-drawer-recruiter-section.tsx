@@ -122,7 +122,7 @@ export function JobDrawerNetworkAdminSection({
   if (!networkJob.internalView || !networkJob.adminDetails.length) return null;
 
   return (
-    <ScoutBox padding={20} style={{ marginBottom: 22, background: "rgba(196,168,106,0.06)", borderTop: `3px solid rgba(196,168,106,0.5)` }}>
+    <ScoutBox padding={20} flat style={{ marginBottom: 22, background: "rgba(196,168,106,0.06)" }}>
       <p style={{ fontFamily: sans, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: color.muted, margin: "0 0 14px" }}>
         Internal · network posting details
       </p>
