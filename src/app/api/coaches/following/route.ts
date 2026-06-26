@@ -3,7 +3,7 @@ import { buildCoachMatchUserContext } from "@/lib/coach-match-context";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
-import { getAuthenticatedDbUser } from "@/lib/coach-api";
+import { getClientCoachingUser } from "@/lib/coach-api";
 
 const coachListSelect = {
   id: true,
@@ -33,7 +33,7 @@ const coachListSelect = {
 } as const;
 
 export async function GET() {
-  const me = await getAuthenticatedDbUser();
+  const me = await getClientCoachingUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const follows = await prisma.coachFollow.findMany({

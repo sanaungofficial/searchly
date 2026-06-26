@@ -18,6 +18,7 @@ function CoachingContent() {
   const [isPro, setIsPro] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
+  const [myCoachIds, setMyCoachIds] = useState<Set<string>>(new Set());
   const { openPricing } = useWorkspace();
 
   const coachParam = searchParams.get("coach");
@@ -65,6 +66,8 @@ function CoachingContent() {
           isPro={isPro}
           onSubscribe={openPricing}
           onOpenCoach={openCoach}
+          myCoachIds={myCoachIds}
+          onMyCoachIdsChange={setMyCoachIds}
         />
       </WorkspacePageShell>
 
@@ -75,6 +78,7 @@ function CoachingContent() {
           onClose={closeDrawer}
           isPro={isPro}
           onSubscribe={openPricing}
+          onMyCoachChange={(_id, _assigned, coachIds) => setMyCoachIds(new Set(coachIds))}
         />
       )}
 

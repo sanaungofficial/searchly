@@ -28,6 +28,7 @@ type Props = {
   onSubscribe: () => void;
   preview?: CoachListItem | null;
   onFollowChange?: (coachId: string, following: boolean) => void;
+  onMyCoachChange?: (coachId: string, isMyCoach: boolean, coachIds: string[]) => void;
 };
 
 function DimensionBar({ label, value }: { label: string; value: number }) {
@@ -185,9 +186,10 @@ function ReviewCard({ review }: { review: CoachReviewItem }) {
   );
 }
 
-export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange }: Props) {
+export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange, onMyCoachChange }: Props) {
   const isMobile = useIsMobile();
-  const { openCoachPrepChat, user, authChecked } = useWorkspace();
+  const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
+  const canSelfAssignCoach = userRole === "USER" || isImpersonating;
   const [visible, setVisible] = useState(false);
   const [coach, setCoach] = useState<CoachProfileDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -263,6 +265,25 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
       const data = await res.json();
       setCoach((c) => (c ? { ...c, isFollowing: data.isFollowing, followerCount: data.followerCount } : c));
       onFollowChange?.(coach.id, data.isFollowing);
+    }
+  };
+
+  const toggleMyCoach = async () => {
+    if (!coach || coach.isInternal) return;
+    const isAssigned = coach.isMyCoach ?? false;
+    const res = isAssigned
+      ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
+      : await fetch("/api/coaching/coach-assignment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ coachProfileId: coach.id }),
+        });
+    if (res.ok) {
+      const data = await res.json();
+      const coachIds = (data.coachIds as string[]) ?? [];
+      const nextAssigned = coachIds.includes(coach.id);
+      setCoach((c) => (c ? { ...c, isMyCoach: nextAssigned } : c));
+      onMyCoachChange?.(coach.id, nextAssigned, coachIds);
     }
   };
 
@@ -569,6 +590,24 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                   <ScoutSecondaryBtn onClick={toggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
                     {coach.isFollowing ? "Following ✓" : "+ Follow"}
                   </ScoutSecondaryBtn>
+                  {canSelfAssignCoach && !coach.isInternal && (
+                    <ScoutSecondaryBtn
+                      onClick={toggleMyCoach}
+                      style={{
+                        width: "100%",
+                        minHeight: 40,
+                        marginBottom: 8,
+                        ...(coach.isMyCoach ? { borderColor: color.forest, color: color.forest } : {}),
+                      }}
+                    >
+                      {coach.isMyCoach ? "My coach ✓ · Remove" : "Add as my coach"}
+                    </ScoutSecondaryBtn>
+                  )}
+                  {canSelfAssignCoach && coach.isInternal && coach.isMyCoach && (
+                    <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, textAlign: "center", margin: "0 0 8px" }}>
+                      Your Kimchi coach
+                    </p>
+                  )}
                   <button type="button" onClick={() => setShowReview(true)} style={{ width: "100%", background: "none", border: "none", fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, cursor: "pointer", textDecoration: "underline", padding: 8 }}>
                     Write a review
                   </button>

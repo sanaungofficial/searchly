@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findCoachBySlugOrId, getAuthenticatedDbUser } from "@/lib/coach-api";
+import { findCoachBySlugOrId, getClientCoachingUser } from "@/lib/coach-api";
 import {
   fetchCoachAvailabilitySlots,
   findNextCoachSlot,
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     return NextResponse.json({ error: "Scheduling not available" }, { status: 503 });
   }
 
-  const me = await getAuthenticatedDbUser();
+  const me = await getClientCoachingUser(req);
   const coach = await findCoachBySlugOrId(slug, me?.id);
   if (!coach?.nylasSchedulerConfigId || !coach.nylasGrantId) {
     return NextResponse.json({ error: "Coach scheduling not configured" }, { status: 404 });

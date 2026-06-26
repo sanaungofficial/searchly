@@ -80,6 +80,7 @@ export type CoachProfileDetail = CoachListItem & {
   whyCoach: string | null;
   aboutMe: string | null;
   isFollowing: boolean;
+  isMyCoach?: boolean;
   aggregates: CoachReviewAggregates | null;
   reviews: CoachReviewItem[];
 };
