@@ -47,6 +47,7 @@ interface PipelineNetworkSectionProps {
   onOpenJob: (job: NetworkJobListing) => void;
   onSaveJob?: (job: NetworkJobListing) => Promise<void>;
   actingUserId?: string | null;
+  embedded?: boolean;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -413,7 +414,7 @@ function NetworkJobCard({
   );
 }
 
-export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: PipelineNetworkSectionProps) {
+export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, embedded }: PipelineNetworkSectionProps) {
   const { isAdmin, userRole, isImpersonating } = useWorkspace();
   const isMobile = useIsMobile();
   const internalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
@@ -535,7 +536,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
   };
 
   return (
-    <div style={{ padding: isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
+    <div style={{ padding: embedded ? 0 : isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
+      {!embedded && (
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: "#C4A86A", display: "inline-block", flexShrink: 0 }} />
@@ -548,6 +550,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
           Shared through Top Echelon Big Biller — not on public job boards. Same profile-based scoring as Open Roles.
         </p>
       </div>
+      )}
 
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 12, marginBottom: 12 }}>

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCredits } from "@/hooks/useCredits";
+import { ReferEarnModal } from "./refer-earn-modal";
 import { fontSans } from "@/lib/typography";
 
 type SettingsTab = "profile" | "security" | "subscription";
@@ -36,6 +37,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [referEarnOpen, setReferEarnOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isPro, isAdmin, status, currentPeriodEnd, credits, loading, startCheckout, openPortal } = useSubscription();
   const { showCredits, unlimitedAi } = useCredits();
@@ -593,6 +595,31 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                   </div>
                 )}
 
+                {/* Refer & Earn */}
+                <button
+                  type="button"
+                  onClick={() => setReferEarnOpen(true)}
+                  data-offer="referral"
+                  data-trigger="settings_refer_earn"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    background: "rgba(74,139,106,0.08)",
+                    border: "1px solid rgba(74,139,106,0.22)",
+                    borderRadius: 0,
+                    padding: "14px 16px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "#1A3A2F" }}>
+                    Refer & Earn
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#8A7F72", lineHeight: 1.5 }}>
+                    Invite a friend or share on LinkedIn for bonus AI credits.
+                  </p>
+                </button>
+
                 {/* What&apos;s included */}
                 {!isPro && !isAdmin && !unlimitedAi && (
                   <div
@@ -660,6 +687,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
           </div>
         </div>
       </div>
+      {referEarnOpen && <ReferEarnModal onClose={() => setReferEarnOpen(false)} />}
     </>,
     document.body,
   );

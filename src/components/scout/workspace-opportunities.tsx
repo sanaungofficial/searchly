@@ -23,7 +23,7 @@ import { PipelineStageJobsList } from "./pipeline-stage-jobs-list";
 import { PipelineNetworkSection } from "./pipeline-network-section";
 import { JobAgentActivityBanner } from "./job-agent-activity-banner";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
-import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
+import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { buildNetworkProspectCard } from "@/lib/network-job-display";
@@ -468,6 +468,27 @@ export function WorkspaceOpportunities() {
     ? findPipelineCardByUrl(kanbanCards, networkProspectJob.topEchelonUrl)
     : null;
 
+  const oppTabs: [OppTab, string][] = [
+    ["pipeline", "Open Roles"],
+    ["network", "In-Network Roles"],
+  ];
+
+  const oppActionBtn: React.CSSProperties = {
+    padding: "8px 16px",
+    background: color.forest,
+    color: color.gold,
+    border: border.lineStrong,
+    borderRadius: 0,
+    fontFamily: fontSans,
+    fontSize: T.caption,
+    fontWeight: 600,
+    cursor: "pointer",
+    letterSpacing: "0.2px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+  };
+
   return (
     <div
       style={{
@@ -480,257 +501,116 @@ export function WorkspaceOpportunities() {
         animation: "fadeIn 0.3s ease both",
       }}
     >
-      {/* Tab bar */}
-      {isMobile ? (
-        <>
-          <WorkspaceMobileTopBar
-            center={
-              <div
-                style={{
-                  display: "flex",
-                  gap: 0,
-                  overflowX: "auto",
-                  WebkitOverflowScrolling: "touch",
-                  justifyContent: "center",
-                  maxWidth: "100%",
-                }}
-              >
-                {([
-                  ["pipeline", "Open Roles"],
-                  ["network", "In-Network Roles"],
-                ] as [OppTab, string][]).map(([id, label]) => {
-                  const active = tab === id;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setTab(id)}
-                      style={{
-                        padding: "8px 14px",
-                        border: "none",
-                        borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
-                        background: "transparent",
-                        color: active ? color.forest : color.muted,
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        fontWeight: active ? 600 : 500,
-                        cursor: "pointer",
-                        transition: "all 0.15s",
-                        letterSpacing: "0.1px",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            }
-          />
+      <WorkspaceScroll>
+        <WorkspaceContent>
           <div
             style={{
-              padding: "8px 12px",
-              borderBottom: border.line,
-              background: surface.card,
-              flexShrink: 0,
               display: "flex",
-              gap: 8,
-              alignItems: "center",
               flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              marginBottom: 20,
             }}
           >
-            <DataSourcesPopover compact />
-            {tab !== "network" && (
-              <button
-                onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
-                style={{
-                  padding: "8px 16px",
-                  background: color.forest,
-                  color: color.gold,
-                  border: border.lineStrong,
-                  borderRadius: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  letterSpacing: "0.2px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <PlusIcon /> Add job
-              </button>
-            )}
-            {tab === "pipeline" && (
-              <button
-                onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
-                style={{
-                  padding: "8px 16px",
-                  background: showCsvPanel ? color.forest : surface.card,
-                  color: showCsvPanel ? color.gold : color.forest,
-                  border: border.lineStrong,
-                  borderRadius: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  letterSpacing: "0.2px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <UploadIcon /> Upload CSV
-              </button>
-            )}
-          </div>
-        </>
-      ) : (
-        <div
-          style={{
-            padding: "12px 28px",
-            borderBottom: border.line,
-            background: surface.card,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ display: "flex", gap: 0 }}>
-            {([
-              ["pipeline", "Open Roles"],
-              ["network", "In-Network Roles"],
-            ] as [OppTab, string][]).map(([id, label]) => {
-              const active = tab === id;
-              return (
+            <div style={{ display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              {oppTabs.map(([id, label]) => {
+                const active = tab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setTab(id)}
+                    style={{
+                      padding: isMobile ? "10px 14px" : "10px 18px",
+                      border: "none",
+                      borderBottom: active ? `2px solid ${color.forest}` : "2px solid transparent",
+                      background: "transparent",
+                      color: active ? color.forest : color.muted,
+                      fontFamily: fontSans,
+                      fontSize: T.bodySm,
+                      fontWeight: active ? 600 : 500,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <DataSourcesPopover compact />
+              {tab !== "network" && (
                 <button
-                  key={id}
-                  onClick={() => setTab(id)}
+                  type="button"
+                  onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
+                  style={oppActionBtn}
+                >
+                  <PlusIcon /> Add job
+                </button>
+              )}
+              {tab === "pipeline" && (
+                <button
+                  type="button"
+                  onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
                   style={{
-                    padding: "7px 18px",
-                    border: "none",
-                    borderBottom: active ? "2px solid #1A3A2F" : "2px solid transparent",
-                    background: "transparent",
-                    color: active ? color.forest : color.muted,
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    fontWeight: active ? 600 : 500,
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                    letterSpacing: "0.1px",
-                    whiteSpace: "nowrap",
+                    ...oppActionBtn,
+                    background: showCsvPanel ? color.forest : surface.card,
+                    color: showCsvPanel ? color.gold : color.forest,
                   }}
                 >
-                  {label}
+                  <UploadIcon /> Upload CSV
                 </button>
-              );
-            })}
+              )}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <DataSourcesPopover compact />
-            {tab !== "network" && (
-              <button
-                onClick={() => { setShowAddPanel((p) => !p); setShowCsvPanel(false); }}
-                style={{
-                  padding: "8px 16px",
-                  background: color.forest,
-                  color: color.gold,
-                  border: border.lineStrong,
-                  borderRadius: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  letterSpacing: "0.2px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <PlusIcon /> Add job
-              </button>
-            )}
-            {tab === "pipeline" && (
-              <button
-                onClick={() => { setShowCsvPanel((p) => !p); setShowAddPanel(false); }}
-                style={{
-                  padding: "8px 16px",
-                  background: showCsvPanel ? color.forest : surface.card,
-                  color: showCsvPanel ? color.gold : color.forest,
-                  border: border.lineStrong,
-                  borderRadius: 0,
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  letterSpacing: "0.2px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <UploadIcon /> Upload CSV
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* URL paste panel — renders in Pipeline tab (DiscoverTab has its own inline panel) */}
-      {showAddPanel && tab === "pipeline" && (
-        <MyJobsUrlPastePanel
-          url={addJobUrl}
-          setUrl={setAddJobUrl}
-          onSubmit={submitAddJob}
-          loading={addJobLoading}
-          analysis={jobAnalysis}
-          error={addJobError}
-          onAddToKanban={addToKanban}
-          onDismiss={() => { setJobAnalysis(null); setShowAddPanel(false); setAddJobUrl(""); setAddJobError(null); }}
-        />
-      )}
+          {showAddPanel && tab === "pipeline" && (
+            <MyJobsUrlPastePanel
+              url={addJobUrl}
+              setUrl={setAddJobUrl}
+              onSubmit={submitAddJob}
+              loading={addJobLoading}
+              analysis={jobAnalysis}
+              error={addJobError}
+              onAddToKanban={addToKanban}
+              onDismiss={() => { setJobAnalysis(null); setShowAddPanel(false); setAddJobUrl(""); setAddJobError(null); }}
+            />
+          )}
 
-      {/* CSV upload panel — only in Pipeline */}
-      {showCsvPanel && tab === "pipeline" && (
-        <CsvUploadPanel
-          loading={csvLoading}
-          progress={csvProgress}
-          onFileSelected={onCsvFileSelected}
-          onClose={() => setShowCsvPanel(false)}
-          inputRef={csvInputRef}
-        />
-      )}
+          {showCsvPanel && tab === "pipeline" && (
+            <CsvUploadPanel
+              loading={csvLoading}
+              progress={csvProgress}
+              onFileSelected={onCsvFileSelected}
+              onClose={() => setShowCsvPanel(false)}
+              inputRef={csvInputRef}
+            />
+          )}
 
-      {/* Content area */}
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        {tab === "network" && (
-          <PipelineNetworkSection
-            onOpenJob={openNetworkJob}
-            onSaveJob={addNetworkJobToPipeline}
-            actingUserId={actingUserId}
-          />
-        )}
-        {tab === "pipeline" && (
-          <PipelineTab
-            cards={kanbanCards}
-            onOpenDrawer={openDrawer}
-            onChangeStage={changeStage}
-            onOpenRecommended={openRecommendedJob}
-            onSaveRecommended={saveRecommendedJob}
-            actingUserId={actingUserId}
-          />
-        )}
-      </div>
+          {tab === "network" && (
+            <PipelineNetworkSection
+              embedded
+              onOpenJob={openNetworkJob}
+              onSaveJob={addNetworkJobToPipeline}
+              actingUserId={actingUserId}
+            />
+          )}
+          {tab === "pipeline" && (
+            <PipelineTab
+              embedded
+              cards={kanbanCards}
+              onOpenDrawer={openDrawer}
+              onChangeStage={changeStage}
+              onOpenRecommended={openRecommendedJob}
+              onSaveRecommended={saveRecommendedJob}
+              actingUserId={actingUserId}
+            />
+          )}
+        </WorkspaceContent>
+      </WorkspaceScroll>
 
       {/* Job drawer — rendered at parent level so both My Jobs + Pipeline can open it */}
       {drawerCardId !== null && (() => {
@@ -1065,6 +945,7 @@ interface PipelineTabProps {
   onOpenRecommended: (job: VectorMatchedJob) => void;
   onSaveRecommended: (job: VectorMatchedJob) => Promise<void>;
   actingUserId?: string | null;
+  embedded?: boolean;
 }
 
 function PipelineTab({
@@ -1074,6 +955,7 @@ function PipelineTab({
   onOpenRecommended,
   onSaveRecommended,
   actingUserId,
+  embedded,
 }: PipelineTabProps) {
   const isMobile = useIsMobile();
   const [pipelineView, setPipelineView] = useState<PipelineView>("recommended");
@@ -1095,12 +977,14 @@ function PipelineTab({
   ];
 
   return (
-    <div style={{ padding: isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
+    <div style={{ padding: embedded ? 0 : isMobile ? "20px 16px 32px" : "32px 36px 48px" }}>
       <div style={{ marginBottom: 20 }}>
+        {!embedded && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
           <ScoutLabel>Open roles</ScoutLabel>
         </div>
+        )}
         <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
           {pipelineView === "recommended" ? "Find roles that fit" : STAGE_LABELS[pipelineView as KanbanStage] ?? "Pipeline"}
         </ScoutDisplayTitle>
