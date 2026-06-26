@@ -31,7 +31,7 @@ export function InboxPageClient() {
               minHeight: 0,
               display: "flex",
               flexDirection: "column",
-              padding: isMobile ? "16px 16px 16px" : "20px 24px 24px",
+              padding: isMobile ? "12px 12px 0" : "16px 20px 0",
             }}
           >
             <JobSearchEmailDashboard />
