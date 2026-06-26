@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { color, fontSans, type as T } from "@/lib/typography";
 
@@ -40,7 +41,14 @@ export function JobAgentActivityBanner() {
           <p key={a.id} style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, margin: 0, lineHeight: 1.5 }}>
             <strong>{a.job ? `${a.job.company} — ${a.job.role}` : a.title ?? "Update"}</strong>
             {a.snippet ? `: ${a.snippet}` : ""}
-            {a.suggestedStage && a.status === "PENDING_REVIEW" ? ` (review in Preferences)` : ""}
+            {a.suggestedStage && a.status === "PENDING_REVIEW" ? (
+              <>
+                {" "}
+                <Link href="/opportunities/inbox?mode=agent" style={{ color: color.forest, fontWeight: 600 }}>
+                  Review in Inbox →
+                </Link>
+              </>
+            ) : null}
           </p>
         ))}
       </div>
