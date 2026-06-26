@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { fontSans, drawerType as DT } from "@/lib/typography";
@@ -15,7 +15,9 @@ interface CoverLetterDrawerProps {
   description: string;
   jobId?: string;
   initialLetter?: string | null;
+  resumeAssetId?: string | null;
   onClose: () => void;
+  onLetterSaved?: (letter: string) => void;
 }
 
 const QUICK_ACTIONS = [
@@ -42,7 +44,7 @@ async function streamInto(
   onChunk(decoder.decode());
 }
 
-export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, onClose }: CoverLetterDrawerProps) {
+export function CoverLetterDrawer({ jobTitle, company, description, jobId, initialLetter, resumeAssetId, onClose, onLetterSaved }: CoverLetterDrawerProps) {
   const { user, openPricing } = useWorkspace();
   const [letter, setLetter] = useState<string | null>(initialLetter?.trim() || null);
   const [loading, setLoading] = useState(false);
@@ -59,6 +61,51 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
   const [mounted, setMounted] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(resumeAssetId ?? null);
+
+  useEffect(() => {
+    if (resumeAssetId) setSelectedAssetId(resumeAssetId);
+  }, [resumeAssetId]);
+
+  useEffect(() => {
+    fetch("/api/assets")
+      .then((r) => r.json())
+      .then((rows: Array<{ id: string; type?: string; isPrimary?: boolean }>) => {
+        if (!Array.isArray(rows)) return;
+        const resumes = rows.filter((a) => a.type === "RESUME");
+        if (selectedAssetId && resumes.some((r) => r.id === selectedAssetId)) return;
+        const primary = resumes.find((r) => r.isPrimary) ?? resumes[0];
+        if (primary) setSelectedAssetId(primary.id);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- init resume picker once
+  }, []);
+
+  const persistLetter = useCallback(
+    (text: string) => {
+      if (!jobId || !text.trim()) return;
+      void fetch(`/api/jobs/${jobId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coverLetter: text }),
+      })
+        .then((res) => {
+          if (res.ok) onLetterSaved?.(text);
+        })
+        .catch(() => {});
+    },
+    [jobId, onLetterSaved],
+  );
+
+  useEffect(() => {
+    if (!letter?.trim() || loading || streaming || refining) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => persistLetter(letter), 900);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [letter, loading, streaming, refining, persistLetter]);
 
   useEffect(() => {
     setMounted(true);
@@ -75,7 +122,13 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
       const res = await fetch("/api/ai/generate-cover-letter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, company, description: desc, jobId }),
+        body: JSON.stringify({
+          jobTitle,
+          company,
+          description: desc,
+          jobId,
+          assetId: selectedAssetId ?? undefined,
+        }),
         signal: abortRef.current.signal,
       });
       if (!res.ok) {

@@ -23,8 +23,9 @@ export function ResumeMatchPanel(props: {
   collapsed?: boolean;
   onToggle?: () => void;
   embedded?: boolean;
+  fullHeight?: boolean;
 }) {
-  const { jobDescription, onJobDescriptionChange, onRunMatch, loading, result, error, collapsed, onToggle, embedded } = props;
+  const { jobDescription, onJobDescriptionChange, onRunMatch, loading, result, error, collapsed, onToggle, embedded, fullHeight } = props;
 
   if (collapsed) {
     return (
@@ -35,7 +36,7 @@ export function ResumeMatchPanel(props: {
   }
 
   return (
-    <div style={{ width: embedded ? "100%" : 300, flexShrink: embedded ? undefined : 0, borderLeft: embedded ? "none" : `1px solid ${JR.border}`, borderTop: embedded ? `1px solid ${JR.border}` : "none", background: JR.panel, display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: embedded ? 320 : undefined }}>
+    <div style={{ width: embedded ? "100%" : fullHeight ? "100%" : 300, flexShrink: embedded ? undefined : 0, borderLeft: embedded || fullHeight ? "none" : `1px solid ${JR.border}`, borderTop: embedded ? `1px solid ${JR.border}` : "none", background: JR.panel, display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: embedded ? 320 : fullHeight ? undefined : undefined, flex: fullHeight ? 1 : undefined }}>
       <div style={{ padding: "16px 16px 12px", borderBottom: `1px solid ${JR.border}` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <ScoreExplainerLabel variant="job-match">

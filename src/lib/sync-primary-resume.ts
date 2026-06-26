@@ -13,8 +13,12 @@ export async function syncPrimaryResumeToProfile(userId: string) {
   const parsed = normalizeParsedResumeData(primary.parsedData);
   const existing = await prisma.profile.findUnique({
     where: { userId },
-    select: { linkedinUrl: true },
+    select: { linkedinUrl: true, resumeUrl: true, resumeText: true },
   });
+
+  const masterContentChanged =
+    existing?.resumeUrl !== primary.url ||
+    (existing?.resumeText ?? "") !== (primary.resumeText ?? "");
   const linkedinPatch =
     parsed?.linkedinUrl && !existing?.linkedinUrl?.trim()
       ? { linkedinUrl: parsed.linkedinUrl }
@@ -45,6 +49,11 @@ export async function syncPrimaryResumeToProfile(userId: string) {
     await refreshLinkedInDraftFromAbout(userId);
   } catch (err) {
     console.error("[syncPrimaryResumeToProfile linkedin sync]", err);
+  }
+
+  // Master resume file/text changed — per-job tailored drafts should be regenerated.
+  if (masterContentChanged) {
+    await prisma.tailoredResume.deleteMany({ where: { userId } });
   }
 }
 

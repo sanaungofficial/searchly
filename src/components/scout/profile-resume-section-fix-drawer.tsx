@@ -87,6 +87,11 @@ export function ResumeSectionFixDrawer({
   suggestionsLoading = false,
   onApplySuggestion,
   emptyMessage,
+  onGenerateRecommendation,
+  fixPreview,
+  onConfirmInsert,
+  onCancelPreview,
+  generateError,
 }: {
   open: boolean;
   sectionId: ResumeSectionId | string | null;
@@ -99,6 +104,11 @@ export function ResumeSectionFixDrawer({
   suggestionsLoading?: boolean;
   onApplySuggestion?: (text: string) => void;
   emptyMessage?: string;
+  onGenerateRecommendation?: () => void;
+  fixPreview?: { before: string; after: string } | null;
+  onConfirmInsert?: () => void;
+  onCancelPreview?: () => void;
+  generateError?: string | null;
 }) {
   const [visible, setVisible] = useState(false);
   const [activeIssueId, setActiveIssueId] = useState<string>("overall");
@@ -220,7 +230,21 @@ export function ResumeSectionFixDrawer({
               <p style={{ fontSize: 14, color: JR.muted, marginBottom: 16 }}>Generating options…</p>
             )}
 
-            {drawerMode === "fix" && suggestions.length > 0 && (
+            {drawerMode === "fix" && fixPreview && (
+              <div style={{ marginBottom: 24, padding: "16px 18px", border: `2px solid ${JR.green}`, background: JR.greenLight }}>
+                <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: JR.text }}>Preview update</p>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: JR.urgent, textTransform: "uppercase" }}>Before</p>
+                <p style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55, color: JR.muted, whiteSpace: "pre-wrap", textDecoration: "line-through" }}>{fixPreview.before}</p>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: JR.greenDark, textTransform: "uppercase" }}>After</p>
+                <p style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.55, color: JR.text, whiteSpace: "pre-wrap", background: JR.panel, padding: "10px 12px" }}>{fixPreview.after}</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button" onClick={onCancelPreview} style={{ flex: 1, padding: "10px 14px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                  <button type="button" onClick={onConfirmInsert} style={{ flex: 1, padding: "10px 14px", background: JR.green, color: JR.gold, border: "none", borderRadius: "var(--scout-radius)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Insert into resume</button>
+                </div>
+              </div>
+            )}
+
+            {drawerMode === "fix" && !fixPreview && suggestions.length > 0 && (
               <div style={{ marginBottom: 24 }}>
                 <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: JR.text }}>Apply a suggestion</p>
                 {suggestions.map((s) => (
@@ -235,14 +259,13 @@ export function ResumeSectionFixDrawer({
                           padding: "8px 14px",
                           fontSize: 12,
                           fontWeight: 700,
-                          border: "none",
-                          borderRadius: "var(--scout-radius)",
-                          background: JR.greenDark,
-                          color: "#fff",
+                          background: JR.panel,
+                          color: JR.greenDark,
+                          border: `1px solid ${JR.green}`,
                           cursor: "pointer",
                         }}
                       >
-                        Apply this option
+                        Preview this option
                       </button>
                     )}
                   </div>
@@ -296,6 +319,32 @@ export function ResumeSectionFixDrawer({
             )}
           </div>
         </div>
+
+        {drawerMode === "fix" && !fixPreview && onGenerateRecommendation && (
+          <div style={{ padding: "14px 20px", borderTop: `1px solid ${JR.border}`, background: JR.panel }}>
+            {generateError && (
+              <p style={{ margin: "0 0 10px", fontSize: 13, color: JR.urgent }}>{generateError}</p>
+            )}
+            <button
+              type="button"
+              onClick={onGenerateRecommendation}
+              disabled={suggestionsLoading}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                background: suggestionsLoading ? "rgba(26,58,47,0.35)" : JR.green,
+                color: JR.gold,
+                border: "none",
+                borderRadius: "var(--scout-radius)",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: suggestionsLoading ? "wait" : "pointer",
+              }}
+            >
+              {suggestionsLoading ? "Generating recommended update…" : "Generate recommended update"}
+            </button>
+          </div>
+        )}
       </div>
     </>,
     document.body,

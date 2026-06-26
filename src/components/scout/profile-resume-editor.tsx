@@ -4,12 +4,18 @@ import { useState, useEffect, useCallback, useLayoutEffect, useRef } from "react
 import { X, Download, Loader2, Check, RefreshCw, Share2, ChevronDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  type ParsedResumeData,
   emptyParsedResumeData,
-  resumeCompleteness,
   hasResumeBodyContent,
+  resumeCompleteness,
+  sectionTextBlob,
+  type ParsedResumeData,
   type ResumeSectionId,
 } from "@/lib/resume-parse";
+import { computeAnalysisStats, countSectionIssues } from "@/lib/resume-analysis-stats";
+import { DEFAULT_RESUME_STYLE, normalizeResumeStyle, type ResumeStyleSettings } from "@/lib/resume-style";
+import { ResumeDashboardPills } from "./resume-dashboard-pills";
+import { ResumeStylePanel } from "./resume-style-panel";
+import { ResumeImprovePreviewDrawer } from "./resume-improve-preview-drawer";
 import { JR, type ReportIssue } from "./profile-resume-editor-panels";
 import {
   ResumeAnalysisReportDrawer,
@@ -114,11 +120,22 @@ export function ProfileResumeEditor({
   const [matchResult, setMatchResult] = useState<JobMatchResult | null>(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
-  const [matchPanelOpen, setMatchPanelOpen] = useState(true);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [rightTab, setRightTab] = useState<"match" | "style">("match");
+  const [fixPreview, setFixPreview] = useState<{ before: string; after: string } | null>(null);
+  const [fixGenerateError, setFixGenerateError] = useState<string | null>(null);
+  const [improveOpen, setImproveOpen] = useState(false);
+  const [improveLoading, setImproveLoading] = useState(false);
+  const [improveError, setImproveError] = useState<string | null>(null);
+  const [improvePreview, setImprovePreview] = useState<ParsedResumeData | null>(null);
+  const [improveChanges, setImproveChanges] = useState<string[]>([]);
+  const [improveHighlights, setImproveHighlights] = useState<Array<{ sectionId?: string; label?: string; before?: string; after?: string; reason?: string }>>([]);
+  const [improveNewScore, setImproveNewScore] = useState<number | undefined>();
+  const [improvePreviousScore, setImprovePreviousScore] = useState<number | undefined>();
+  const [improveAccepting, setImproveAccepting] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
   const pendingAutoMatch = useRef(false);
@@ -145,6 +162,24 @@ export function ProfileResumeEditor({
     updatedAt: analysis?._cachedAt,
   });
 
+  const analysisStats = computeAnalysisStats(fullReport);
+  const resumeStyle = normalizeResumeStyle(parsedData.resumeStyle ?? DEFAULT_RESUME_STYLE);
+  const hasJobDescription = !!jobDescription.trim();
+
+  function sectionIssueCount(sectionId: ResumeSectionId, entryKey?: string) {
+    return countSectionIssues(sectionId, entryKey, fullReport);
+  }
+
+  function currentSectionText(sectionId: ResumeSectionId, entryId?: string, entryLabel?: string): string {
+    if (sectionId === "experience" && (entryId || entryLabel)) {
+      const entry = parsedData.workExperience.find(
+        (e) => (entryId && e.id === entryId) || (entryLabel && (e.company === entryLabel || e.title === entryLabel)),
+      );
+      return entry ? entry.bullets.join("\n") : sectionTextBlob(parsedData, sectionId);
+    }
+    return sectionTextBlob(parsedData, sectionId, entryId);
+  }
+
   const openFixSection = useCallback((
     sectionId: ResumeSectionId,
     options?: { entryLabel?: string; entryId?: string; mode?: "all" | "impact" },
@@ -153,57 +188,9 @@ export function ProfileResumeEditor({
     setFixSection({ sectionId, entryLabel: options?.entryLabel, entryId: options?.entryId, mode });
     setFixSuggestions([]);
     setFixSuggestIssues([]);
-    if (mode === "impact" || !assetId) return;
-
-    setFixSuggestionsLoading(true);
-    void fetch(`/api/assets/${assetId}/section-suggest`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sectionId,
-        entryId: options?.entryId,
-        entryLabel: options?.entryLabel,
-      }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (res.ok) {
-          if (Array.isArray(data.suggestions)) setFixSuggestions(data.suggestions);
-          if (Array.isArray(data.issues)) {
-            setFixSuggestIssues(
-              data.issues.map(
-                (
-                  row: {
-                    id?: string;
-                    severity?: string;
-                    title?: string;
-                    issueDetected?: string;
-                    whyItMatters?: string;
-                    howToImprove?: string;
-                  },
-                  i: number,
-                ) => ({
-                  id: row.id ?? `${sectionId}-s-${i}`,
-                  severity:
-                    row.severity === "Urgent" ||
-                    row.severity === "Critical" ||
-                    row.severity === "Optional" ||
-                    row.severity === "Minor"
-                      ? row.severity
-                      : "Optional",
-                  title: row.title ?? "Suggestion",
-                  issueDetected: row.issueDetected ?? "",
-                  whyItMatters: row.whyItMatters ?? "",
-                  howToImprove: row.howToImprove ?? "",
-                }),
-              ),
-            );
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setFixSuggestionsLoading(false));
-  }, [assetId]);
+    setFixPreview(null);
+    setFixGenerateError(null);
+  }, []);
 
   function sectionFromHighlight(item: ReportHighlightItem): ResumeSectionId {
     if (item.sectionHint) return item.sectionHint;
@@ -217,15 +204,84 @@ export function ProfileResumeEditor({
 
   function beginImprovements() {
     setReportOpen(false);
-    const firstUrgent = fullReport.highlights
-      .flatMap((g) => g.items)
-      .find((i) => i.severity === "Urgent" || i.severity === "Critical");
-    const sectionId = firstUrgent ? sectionFromHighlight(firstUrgent) : "experience";
-    openFixSection(sectionId, { mode: "all" });
+    if (!assetId) return;
+    setImproveOpen(true);
+    setImproveLoading(true);
+    setImproveError(null);
+    setImprovePreview(null);
+    void fetch(`/api/assets/${assetId}/improve`, { method: "POST" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          setImproveError(data.error ?? "Could not generate improvements — try on production.");
+          return;
+        }
+        setImprovePreview(data.parsedData ?? null);
+        setImproveChanges(Array.isArray(data.changes) ? data.changes : []);
+        setImproveHighlights(Array.isArray(data.highlights) ? data.highlights : []);
+        setImproveNewScore(data.newScore);
+        setImprovePreviousScore(data.previousScore);
+      })
+      .catch(() => setImproveError("Could not generate improvements"))
+      .finally(() => setImproveLoading(false));
   }
+
+  const generateFixRecommendation = useCallback(async () => {
+    if (!assetId || !fixSection) return;
+    setFixGenerateError(null);
+    setFixSuggestionsLoading(true);
+    setFixPreview(null);
+    try {
+      const res = await fetch(`/api/assets/${assetId}/section-suggest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionId: fixSection.sectionId,
+          entryId: fixSection.entryId,
+          entryLabel: fixSection.entryLabel,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFixGenerateError(data.error ?? "Could not generate update");
+        return;
+      }
+      if (Array.isArray(data.issues)) {
+        setFixSuggestIssues(
+          data.issues.map(
+            (row: { id?: string; severity?: string; title?: string; issueDetected?: string; whyItMatters?: string; howToImprove?: string }, i: number) => ({
+              id: row.id ?? `${fixSection.sectionId}-s-${i}`,
+              severity: row.severity === "Urgent" || row.severity === "Critical" || row.severity === "Optional" || row.severity === "Minor" ? row.severity : "Optional",
+              title: row.title ?? "Suggestion",
+              issueDetected: row.issueDetected ?? "",
+              whyItMatters: row.whyItMatters ?? "",
+              howToImprove: row.howToImprove ?? "",
+            }),
+          ),
+        );
+      }
+      const suggestion = Array.isArray(data.suggestions) ? data.suggestions[0] : null;
+      if (!suggestion?.text) {
+        setFixGenerateError("No recommendation returned — try Re-analyze first.");
+        return;
+      }
+      setFixSuggestions(data.suggestions);
+      setFixPreview({
+        before: currentSectionText(fixSection.sectionId, fixSection.entryId, fixSection.entryLabel),
+        after: suggestion.text,
+      });
+    } catch {
+      setFixGenerateError("Could not generate update");
+    } finally {
+      setFixSuggestionsLoading(false);
+    }
+  }, [assetId, fixSection, parsedData]);
 
   const displayScore = report?.score ?? completeness.pct;
   const { grade, label: gradeLabel } = scoreToGrade(displayScore);
+  const showJobMatchScore = hasJobDescription && matchResult?.score != null;
+  const headerScore = showJobMatchScore ? matchResult!.score : displayScore;
+  const headerScoreMax = showJobMatchScore ? 10 : 100;
   const fixIssues = fixSection
     ? (fixSuggestIssues.length
         ? fixSuggestIssues
@@ -276,9 +332,22 @@ export function ProfileResumeEditor({
     saveTimer.current = setTimeout(() => void saveParsedData(next), 600);
   }, [saveParsedData]);
 
+  const updateResumeStyle = useCallback((next: ResumeStyleSettings) => {
+    queueSave({ ...parsedData, resumeStyle: next });
+  }, [parsedData, queueSave]);
+
   const applyFixSuggestion = useCallback((text: string) => {
     if (!fixSection) return;
+    setFixPreview({
+      before: currentSectionText(fixSection.sectionId, fixSection.entryId, fixSection.entryLabel),
+      after: text,
+    });
+  }, [fixSection, parsedData]);
+
+  const confirmFixInsert = useCallback(() => {
+    if (!fixSection || !fixPreview?.after) return;
     const { sectionId, entryId, entryLabel } = fixSection;
+    const text = fixPreview.after;
     let next = { ...parsedData };
 
     if (sectionId === "summary") {
@@ -330,7 +399,22 @@ export function ProfileResumeEditor({
     setFixSection(null);
     setFixSuggestions([]);
     setFixSuggestIssues([]);
-  }, [fixSection, parsedData, saveParsedData]);
+    setFixPreview(null);
+  }, [fixSection, fixPreview, parsedData, saveParsedData]);
+
+  const acceptImprovePreview = useCallback(async () => {
+    if (!improvePreview) return;
+    setImproveAccepting(true);
+    try {
+      await saveParsedData({ ...improvePreview, resumeStyle });
+      setAnalysis((prev) => (prev && improveNewScore != null ? { ...prev, score: improveNewScore } : prev));
+      setImproveOpen(false);
+      setImprovePreview(null);
+      if (assetId) void loadAnalysis(assetId, true);
+    } finally {
+      setImproveAccepting(false);
+    }
+  }, [improvePreview, improveNewScore, resumeStyle, saveParsedData, assetId, loadAnalysis]);
 
   const runMatchAnalysis = useCallback(async () => {
     if (!assetId || !jobDescription.trim()) return;
@@ -429,7 +513,7 @@ export function ProfileResumeEditor({
   useEffect(() => {
     if (!open || loading || !initialJobDescription?.trim()) return;
     setJobDescription(initialJobDescription);
-    setMatchPanelOpen(true);
+    setRightTab("match");
     if (autoRunMatch) pendingAutoMatch.current = true;
   }, [open, loading, initialJobDescription, autoRunMatch]);
 
@@ -479,8 +563,15 @@ export function ProfileResumeEditor({
             {isPrimary && <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", background: JR.greenLight, color: JR.greenDark, borderRadius: "var(--scout-radius)" }}>Primary</span>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <JobrightScorePill score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} />
-            <ScoreExplainerPopover variant="resume-quality" />
+            <JobrightScorePill
+              score={headerScore}
+              scoreMax={headerScoreMax}
+              scoreDecimals={showJobMatchScore ? 1 : undefined}
+              grade={grade}
+              gradeLabel={showJobMatchScore ? "Job match" : gradeLabel}
+              onViewReport={() => (showJobMatchScore ? setRightTab("match") : setReportOpen(true))}
+            />
+            <ScoreExplainerPopover variant={showJobMatchScore ? "job-match" : "resume-quality"} />
             {saved && <span style={{ fontSize: 13, color: JR.green, display: "flex", alignItems: "center", gap: 4 }}><Check size={13} /> Saved</span>}
             {saving && <Loader2 size={14} style={{ animation: "spin 1s linear infinite", color: JR.muted }} />}
             <button type="button" onClick={shareResume} style={{ padding: "7px 12px", background: JR.panel, border: `1px solid ${JR.border}`, borderRadius: "var(--scout-radius)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Share2 size={14} /> Share</button>
@@ -522,22 +613,142 @@ export function ProfileResumeEditor({
                 variant="centered"
               />
             ) : (
-              <JobrightResumeDocument data={parsedData} onChange={queueSave} onFixSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "all" })} onImpactSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "impact" })} onOpenAiAnalysis={() => setReportOpen(true)} score={displayScore} grade={grade} gradeLabel={gradeLabel} onViewReport={() => setReportOpen(true)} sectionMatches={sectionMatches} entryMatches={entryMatches} />
+              <JobrightResumeDocument
+                data={parsedData}
+                onChange={queueSave}
+                onFixSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "all" })}
+                onImpactSection={(sectionId, entryLabel) => openFixSection(sectionId, { entryLabel, mode: "impact" })}
+                onOpenAiAnalysis={() => setReportOpen(true)}
+                score={displayScore}
+                grade={grade}
+                gradeLabel={gradeLabel}
+                onViewReport={() => setReportOpen(true)}
+                sectionMatches={sectionMatches}
+                entryMatches={entryMatches}
+                sectionIssueCount={sectionIssueCount}
+                hideInlineScore
+                resumeStyle={resumeStyle}
+                dashboardPills={
+                  <ResumeDashboardPills
+                    issueCount={analysisStats.issueCount}
+                    suggestionCount={analysisStats.suggestionCount}
+                    qualityScore={displayScore}
+                    jobMatchScore={matchResult?.score ?? null}
+                    hasJobDescription={hasJobDescription}
+                    onIssuesClick={() => setReportOpen(true)}
+                    onSuggestionsClick={() => setReportOpen(true)}
+                    onScoreClick={() => (showJobMatchScore ? setRightTab("match") : setReportOpen(true))}
+                    onReAnalyze={() => assetId && void loadAnalysis(assetId, true)}
+                    reAnalyzing={analysisLoading}
+                  />
+                }
+              />
             )}
           </div>
-          {!isMobile && (matchPanelOpen ? (
-            <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} onToggle={() => setMatchPanelOpen(false)} />
-          ) : (
-            <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} collapsed onToggle={() => setMatchPanelOpen(true)} />
-          ))}
+          {!isMobile && (
+            <div style={{ width: 300, flexShrink: 0, borderLeft: `1px solid ${JR.border}`, background: JR.panel, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div style={{ display: "flex", borderBottom: `1px solid ${JR.border}` }}>
+                {(["match", "style"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setRightTab(tab)}
+                    style={{
+                      flex: 1,
+                      padding: "12px 8px",
+                      background: rightTab === tab ? JR.bg : JR.panel,
+                      border: "none",
+                      borderBottom: rightTab === tab ? `2px solid ${JR.green}` : "2px solid transparent",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: rightTab === tab ? JR.text : JR.muted,
+                      cursor: "pointer",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                {rightTab === "match" ? (
+                  <ResumeMatchPanel
+                    jobDescription={jobDescription}
+                    onJobDescriptionChange={setJobDescription}
+                    onRunMatch={runMatchAnalysis}
+                    loading={matchLoading}
+                    result={matchResult}
+                    error={matchError}
+                    fullHeight
+                  />
+                ) : (
+                  <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} />
+                )}
+              </div>
+            </div>
+          )}
         </div>
         {isMobile && (
           <div className="resume-print-hide">
-            <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} embedded />
+            <div style={{ display: "flex", borderTop: `1px solid ${JR.border}`, borderBottom: `1px solid ${JR.border}`, background: JR.panel }}>
+              {(["match", "style"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setRightTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 8px",
+                    background: rightTab === tab ? JR.bg : JR.panel,
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: rightTab === tab ? JR.text : JR.muted,
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            {rightTab === "match" ? (
+              <ResumeMatchPanel jobDescription={jobDescription} onJobDescriptionChange={setJobDescription} onRunMatch={runMatchAnalysis} loading={matchLoading} result={matchResult} error={matchError} embedded />
+            ) : (
+              <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} compact />
+            )}
           </div>
         )}
+        <ResumeImprovePreviewDrawer
+          open={improveOpen}
+          loading={improveLoading}
+          error={improveError}
+          previousScore={improvePreviousScore}
+          newScore={improveNewScore}
+          changes={improveChanges}
+          highlights={improveHighlights}
+          previewData={improvePreview}
+          onClose={() => { setImproveOpen(false); setImprovePreview(null); setImproveError(null); }}
+          onAccept={() => void acceptImprovePreview()}
+          accepting={improveAccepting}
+        />
         <ResumeAnalysisReportDrawer open={reportOpen} onClose={() => setReportOpen(false)} report={fullReport} loading={analysisLoading} error={analysisLoading ? undefined : analysis?.error && !reportIssues.length ? analysis.error : undefined} onBeginImprovements={beginImprovements} onFixHighlight={(item) => { setReportOpen(false); openFixSection(sectionFromHighlight(item), { mode: "impact" }); }} onRefresh={() => assetId && loadAnalysis(assetId, true)} aiUnavailable={!!analysis?.error && reportIssues.length > 0} />
-        <ResumeSectionFixDrawer open={!!fixSection} sectionId={fixSection?.sectionId ?? null} entryLabel={fixSection?.entryLabel} issues={fixIssues} drawerMode={fixSection?.mode === "impact" ? "impact" : "fix"} suggestions={fixSuggestions} suggestionsLoading={fixSuggestionsLoading} onApplySuggestion={applyFixSuggestion} onClose={() => { setFixSection(null); setFixSuggestions([]); setFixSuggestIssues([]); }} />
+        <ResumeSectionFixDrawer
+          open={!!fixSection}
+          sectionId={fixSection?.sectionId ?? null}
+          entryLabel={fixSection?.entryLabel}
+          issues={fixIssues}
+          drawerMode={fixSection?.mode === "impact" ? "impact" : "fix"}
+          suggestions={fixSuggestions}
+          suggestionsLoading={fixSuggestionsLoading}
+          onApplySuggestion={applyFixSuggestion}
+          onGenerateRecommendation={() => void generateFixRecommendation()}
+          fixPreview={fixPreview}
+          onConfirmInsert={confirmFixInsert}
+          onCancelPreview={() => setFixPreview(null)}
+          generateError={fixGenerateError}
+          onClose={() => { setFixSection(null); setFixSuggestions([]); setFixSuggestIssues([]); setFixPreview(null); setFixGenerateError(null); }}
+        />
         <style>{`@media print { body > *:not(.resume-print-outer) { display: none !important; } .resume-print-outer { position: static !important; display: block !important; } .resume-print-backdrop, .resume-print-hide { display: none !important; } .resume-print-target { position: static !important; width: 100% !important; height: auto !important; box-shadow: none !important; border-radius: 0 !important; transform: none !important; } .resume-print-center { padding: 0 !important; overflow: visible !important; } } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>

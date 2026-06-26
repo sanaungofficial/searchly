@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 import { buildPlainTextResumePdf } from "@/lib/resume-pdf";
+import { filterDisplaySections } from "@/lib/tailored-resume-sections";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   const supabase = await createClient();
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
   const resume = await prisma.tailoredResume.findUnique({ where: { jobId } });
   if (!resume) return NextResponse.json({ error: "No resume found" }, { status: 404 });
 
-  const sections = resume.sections as Array<{
+  const sections = filterDisplaySections(resume.sections) as Array<{
     id: string;
     title: string;
     type: "text" | "bullets" | "header";

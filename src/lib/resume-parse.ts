@@ -61,6 +61,7 @@ export interface ParsedResumeData {
   sectionOrder?: ResumeSectionId[];
   /** Hirebase `/v2/resumes/embed` artifact — use with `/v2/jobs/vsearch` search_type resume. */
   hirebaseArtifactId?: string | null;
+  resumeStyle?: import("@/lib/resume-style").ResumeStyleSettings | null;
 }
 
 function asStringOrNull(value: unknown): string | null {

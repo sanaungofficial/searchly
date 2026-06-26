@@ -1,0 +1,104 @@
+import { createClient } from "@/utils/supabase/server";
+import { prisma } from "@/lib/prisma";
+import { logAiUsage } from "@/lib/ai-usage";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
+import { getPrompt, interpolate } from "@/lib/prompts";
+import {
+  normalizeParsedResumeData,
+  parseJsonFromModel,
+  type ParsedResumeData,
+} from "@/lib/resume-parse";
+import { normalizeQualityScore } from "@/components/scout/profile-resume-analysis-report";
+import { NextResponse } from "next/server";
+
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!isKimchiAiConfigured()) {
+    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    include: { profile: true },
+  });
+  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const asset = await prisma.userAsset.findFirst({
+    where: { id, userId: dbUser.id, type: "RESUME" },
+  });
+  if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const parsed = normalizeParsedResumeData(asset.parsedData);
+  if (!parsed) return NextResponse.json({ error: "No resume data" }, { status: 404 });
+
+  const analysis = (asset.analysisData ?? {}) as Record<string, unknown>;
+  const improvements = Array.isArray(analysis.improvements) ? analysis.improvements : [];
+  const gaps = Array.isArray(analysis.gaps) ? analysis.gaps : [];
+  const tips = Array.isArray(analysis.tips) ? analysis.tips : [];
+  const issuesPayload =
+    improvements.length > 0
+      ? improvements
+      : gaps.map((gap, i) => ({
+          priority: i === 0 ? "Urgent" : "Optional",
+          title: gap,
+          detail: tips[i] ?? "",
+        }));
+
+  const targetRoles =
+    (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "general professional roles";
+
+  const template = await getPrompt("RESUME_BULK_IMPROVE");
+  const prompt = interpolate(template, {
+    resumeJson: JSON.stringify(parsed).slice(0, 12000),
+    issuesJson: JSON.stringify(issuesPayload).slice(0, 6000),
+    targetRoles,
+  });
+
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "create",
+    prompt,
+    maxOutputTokens: 8192,
+    userId: dbUser.id,
+    tags: ["feature:resume-bulk-improve"],
+  });
+
+  logAiUsage(dbUser.id, "TAILOR", modelId, usage.inputTokens, usage.outputTokens);
+
+  const result = parseJsonFromModel(text) as {
+    parsedData?: ParsedResumeData;
+    changes?: string[];
+    highlights?: Array<{
+      sectionId?: string;
+      label?: string;
+      before?: string;
+      after?: string;
+      reason?: string;
+    }>;
+    newScore?: number;
+  } | null;
+
+  if (!result?.parsedData) {
+    return NextResponse.json({ error: "Failed to parse improved resume" }, { status: 500 });
+  }
+
+  const improved = normalizeParsedResumeData(result.parsedData);
+  if (!improved) {
+    return NextResponse.json({ error: "Invalid improved resume structure" }, { status: 500 });
+  }
+
+  if (parsed.resumeStyle) improved.resumeStyle = parsed.resumeStyle;
+
+  return NextResponse.json({
+    parsedData: improved,
+    changes: Array.isArray(result.changes) ? result.changes.filter((c) => typeof c === "string") : [],
+    highlights: Array.isArray(result.highlights) ? result.highlights : [],
+    newScore: normalizeQualityScore(result.newScore),
+    previousScore: normalizeQualityScore(typeof analysis.score === "number" ? analysis.score : undefined),
+  });
+}

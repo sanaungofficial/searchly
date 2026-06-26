@@ -6,8 +6,15 @@ import {
   type ParsedResumeData,
   type ResumeSectionId,
 } from "@/lib/resume-parse";
+import {
+  DEFAULT_RESUME_STYLE,
+  normalizeResumeStyle,
+  resumeStyleToCss,
+  type ResumeStyleSettings,
+} from "@/lib/resume-style";
 import { JR } from "./profile-resume-editor-panels";
 import { MatchTag } from "./profile-resume-match-panel";
+import { SectionIssueBadge } from "./resume-dashboard-pills";
 
 const SECTION_LABELS: Record<ResumeSectionId, string> = {
   summary: "Professional Summary",
@@ -66,14 +73,32 @@ function SectionActions({ onFix, onImpact }: { onFix: () => void; onImpact?: () 
   );
 }
 
-function SectionHeader({ title, onFix, onImpact, showMatch }: { title: string; onFix: () => void; onImpact?: () => void; showMatch?: boolean }) {
+function SectionHeader({
+  title,
+  onFix,
+  onImpact,
+  showMatch,
+  issueCount,
+  titleStyle,
+}: {
+  title: string;
+  onFix: () => void;
+  onImpact?: () => void;
+  showMatch?: boolean;
+  issueCount?: number;
+  titleStyle?: React.CSSProperties;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
       <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: JR.text, borderBottom: `1px solid ${JR.text}`, paddingBottom: 3 }}>{title}</p>
+        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: JR.text, borderBottom: `1px solid ${JR.text}`, paddingBottom: 3, ...titleStyle }}>{title}</p>
         {showMatch && <MatchTag />}
       </div>
-      <SectionActions onFix={onFix} onImpact={onImpact} />
+      {issueCount !== undefined ? (
+        <SectionIssueBadge count={issueCount} onFix={onFix} />
+      ) : (
+        <SectionActions onFix={onFix} onImpact={onImpact} />
+      )}
     </div>
   );
 }
@@ -114,6 +139,10 @@ export function JobrightResumeDocument({
   onViewReport,
   sectionMatches,
   entryMatches,
+  sectionIssueCount,
+  hideInlineScore,
+  resumeStyle: resumeStyleProp,
+  dashboardPills,
 }: {
   data: ParsedResumeData;
   onChange: (next: ParsedResumeData) => void;
@@ -126,6 +155,10 @@ export function JobrightResumeDocument({
   onViewReport: () => void;
   sectionMatches?: Partial<Record<ResumeSectionId, boolean>>;
   entryMatches?: Record<string, boolean>;
+  sectionIssueCount?: (sectionId: ResumeSectionId, entryKey?: string) => number;
+  hideInlineScore?: boolean;
+  resumeStyle?: ResumeStyleSettings;
+  dashboardPills?: React.ReactNode;
 }) {
   const sectionOrder = data.sectionOrder?.length ? data.sectionOrder : DEFAULT_SECTION_ORDER;
   const skillGroups = data.skillGroups.length
@@ -133,6 +166,22 @@ export function JobrightResumeDocument({
     : data.skills.length
       ? [{ id: "skills_0", label: "Skills", skills: data.skills }]
       : [];
+  const style = normalizeResumeStyle(resumeStyleProp ?? data.resumeStyle ?? DEFAULT_RESUME_STYLE);
+  const styleCss = resumeStyleToCss(style);
+  const accentOnHeadings = style.accentTarget === "headings" || style.accentTarget === "all";
+  const compact = style.template === "compact" || style.fitToOnePage;
+  const centered = style.template === "centered" || style.headerAlign === "center";
+  const bulletPrefix = style.bulletStyle === "dash" ? "– " : "• ";
+  const sectionTitleStyle: React.CSSProperties = {
+    margin: 0,
+    fontSize: style.fontSizeSection,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: accentOnHeadings ? style.accentColor : JR.text,
+    borderBottom: style.hideDivider ? "none" : `1px solid ${accentOnHeadings ? style.accentColor : JR.text}`,
+    paddingBottom: style.hideDivider ? 0 : 3,
+  };
 
   function patch(partial: Partial<ParsedResumeData>) {
     onChange({ ...data, ...partial });
@@ -156,14 +205,16 @@ export function JobrightResumeDocument({
         background: JR.panel,
         width: "100%",
         maxWidth: 820,
-        padding: "32px 48px 48px",
+        padding: compact ? "24px 32px 36px" : "32px 48px 48px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)",
         borderRadius: "var(--scout-radius)",
-        fontSize: 11,
-        lineHeight: 1.55,
+        fontSize: style.fontSizeBody,
+        lineHeight: compact ? 1.45 : 1.55,
         color: JR.text,
+        ...styleCss,
       }}
     >
+      {dashboardPills}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {[{ label: "AI Analysis", action: onOpenAiAnalysis }, { label: "Formatting", action: undefined }, { label: "Add Section", action: undefined }].map(({ label, action }) => (
           <button
@@ -186,31 +237,33 @@ export function JobrightResumeDocument({
         ))}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#FEF3C7", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#92400E" }}>
-          {grade}
+      {!hideInlineScore && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#FEF3C7", border: "2px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#92400E" }}>
+            {grade}
+          </div>
+          <div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: "var(--scout-radius)" }}>{gradeLabel}</span>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: JR.muted }}>Score: {score}/100</p>
+          </div>
+          <button
+            type="button"
+            onClick={onViewReport}
+            style={{ marginLeft: "auto", background: "none", border: "none", color: JR.greenDark, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+          >
+            View full report
+          </button>
         </div>
-        <div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: "var(--scout-radius)" }}>{gradeLabel}</span>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: JR.muted }}>Score: {score}/100</p>
-        </div>
-        <button
-          type="button"
-          onClick={onViewReport}
-          style={{ marginLeft: "auto", background: "none", border: "none", color: JR.greenDark, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
-        >
-          View full report
-        </button>
-      </div>
+      )}
 
-      <div style={{ textAlign: "center", marginBottom: 24, paddingBottom: 16, borderBottom: `1.5px solid ${JR.text}` }}>
+      <div style={{ textAlign: centered ? "center" : "left", marginBottom: 24, paddingBottom: 16, borderBottom: style.hideDivider ? "none" : `1.5px solid ${JR.text}` }}>
         <input
-          style={{ ...fieldStyle, fontSize: 22, fontWeight: 700, letterSpacing: 2, textAlign: "center", textTransform: "uppercase" }}
+          style={{ ...fieldStyle, fontSize: style.fontSizeName, fontWeight: 700, letterSpacing: 2, textAlign: centered ? "center" : "left", textTransform: "uppercase" }}
           value={data.name || ""}
           placeholder="YOUR NAME"
           onChange={(e) => patch({ name: e.target.value })}
         />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 16px", marginTop: 12, fontSize: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: centered ? "1fr 1fr 1fr" : "1fr 1fr", gap: "6px 16px", marginTop: 12, fontSize: style.fontSizeBody - 1 }}>
           {(
             [
               { key: "email", placeholder: "Email" },
@@ -222,7 +275,7 @@ export function JobrightResumeDocument({
           ).map((f) => (
             <input
               key={f.key}
-              style={{ ...fieldStyle, fontSize: 10, textAlign: "center" }}
+              style={{ ...fieldStyle, fontSize: style.fontSizeBody - 1, textAlign: centered ? "center" : "left" }}
               placeholder={f.placeholder}
               value={data[f.key] || ""}
               onChange={(e) => patch({ [f.key]: e.target.value })}
@@ -234,11 +287,11 @@ export function JobrightResumeDocument({
       {sectionOrder.map((sectionId) => {
         if (sectionId === "summary") {
           return (
-            <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.summary} onFix={() => onFixSection("summary")} onImpact={() => onImpactSection?.("summary")} showMatch={sectionMatches?.summary} />
+            <div key={sectionId} style={{ marginBottom: compact ? 14 : 20 }}>
+              <SectionHeader title={SECTION_LABELS.summary} titleStyle={sectionTitleStyle} onFix={() => onFixSection("summary")} onImpact={() => onImpactSection?.("summary")} showMatch={sectionMatches?.summary} issueCount={sectionIssueCount?.("summary")} />
               <textarea
                 rows={4}
-                style={{ ...fieldStyle, width: "100%", resize: "vertical", fontSize: 11, lineHeight: 1.55 }}
+                style={{ ...fieldStyle, width: "100%", resize: "vertical", fontSize: style.fontSizeBody, lineHeight: 1.55 }}
                 value={data.summary || ""}
                 placeholder="Write your professional summary…"
                 onChange={(e) => patch({ summary: e.target.value })}
@@ -249,8 +302,8 @@ export function JobrightResumeDocument({
 
         if (sectionId === "skills") {
           return (
-            <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.skills} onFix={() => onFixSection("skills")} onImpact={() => onImpactSection?.("skills")} showMatch={sectionMatches?.skills} />
+            <div key={sectionId} style={{ marginBottom: compact ? 14 : 20 }}>
+              <SectionHeader title={SECTION_LABELS.skills} titleStyle={sectionTitleStyle} onFix={() => onFixSection("skills")} onImpact={() => onImpactSection?.("skills")} showMatch={sectionMatches?.skills} issueCount={sectionIssueCount?.("skills")} />
               {skillGroups.map((g) => (
                 <div key={g.id} style={{ marginBottom: 10 }}>
                   <input
@@ -304,26 +357,40 @@ export function JobrightResumeDocument({
 
         if (sectionId === "experience") {
           return (
-            <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.experience} onFix={() => onFixSection("experience")} onImpact={() => onImpactSection?.("experience")} showMatch={sectionMatches?.experience} />
+            <div key={sectionId} style={{ marginBottom: compact ? 14 : 20 }}>
+              <SectionHeader title={SECTION_LABELS.experience} titleStyle={sectionTitleStyle} onFix={() => onFixSection("experience")} onImpact={() => onImpactSection?.("experience")} showMatch={sectionMatches?.experience} issueCount={sectionIssueCount?.("experience")} />
               {data.workExperience.map((w) => (
-                <div key={w.id} style={{ marginBottom: 16, padding: "12px 0", borderBottom: `1px solid ${JR.border}` }}>
+                <div key={w.id} style={{ marginBottom: 16, padding: "12px 0", borderBottom: style.hideDivider ? "none" : `1px solid ${JR.border}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
                     <div style={{ flex: 1 }}>
-                      <input style={{ ...fieldStyle, fontWeight: 700, fontSize: 11 }} value={w.title} placeholder="Job title" onChange={(e) => patch({ workExperience: data.workExperience.map((row) => (row.id === w.id ? { ...row, title: e.target.value } : row)) })} />
-                      <input style={{ ...fieldStyle, fontStyle: "italic", marginTop: 4 }} value={w.company} placeholder="Company" onChange={(e) => patch({ workExperience: data.workExperience.map((row) => (row.id === w.id ? { ...row, company: e.target.value } : row)) })} />
+                      <input style={{ ...fieldStyle, fontWeight: 700, fontSize: style.fontSizeSub }} value={w.title} placeholder="Job title" onChange={(e) => patch({ workExperience: data.workExperience.map((row) => (row.id === w.id ? { ...row, title: e.target.value } : row)) })} />
+                      <input style={{ ...fieldStyle, fontStyle: "italic", marginTop: 4, fontSize: style.fontSizeBody }} value={w.company} placeholder="Company" onChange={(e) => patch({ workExperience: data.workExperience.map((row) => (row.id === w.id ? { ...row, company: e.target.value } : row)) })} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                      {sectionIssueCount && (
+                        <SectionIssueBadge
+                          count={sectionIssueCount("experience", w.company || w.title)}
+                          onFix={() => onFixSection("experience", w.company || w.title)}
+                        />
+                      )}
                       {entryMatches?.[w.id] && <MatchTag />}
-                      <span style={{ fontSize: 10, color: JR.muted }}>{formatDateRange(w.from, w.to)}</span>
+                      <span style={{ fontSize: style.fontSizeBody - 1, color: JR.muted }}>{formatDateRange(w.from, w.to)}</span>
                     </div>
                   </div>
                   <textarea
                     rows={4}
-                    style={{ ...fieldStyle, width: "100%", resize: "vertical", fontSize: 11 }}
-                    value={w.bullets.join("\n")}
+                    style={{ ...fieldStyle, width: "100%", resize: "vertical", fontSize: style.fontSizeBody }}
+                    value={w.bullets.map((b) => `${bulletPrefix}${b.replace(/^[-•–]\s*/, "")}`).join("\n")}
                     placeholder="One bullet per line"
-                    onChange={(e) => patch({ workExperience: data.workExperience.map((row) => (row.id === w.id ? { ...row, bullets: e.target.value.split("\n").filter(Boolean) } : row)) })}
+                    onChange={(e) =>
+                      patch({
+                        workExperience: data.workExperience.map((row) =>
+                          row.id === w.id
+                            ? { ...row, bullets: e.target.value.split("\n").map((l) => l.replace(/^[-•–]\s*/, "").trim()).filter(Boolean) }
+                            : row,
+                        ),
+                      })
+                    }
                   />
                 </div>
               ))}
@@ -340,8 +407,8 @@ export function JobrightResumeDocument({
 
         if (sectionId === "education") {
           return (
-            <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.education} onFix={() => onFixSection("education")} onImpact={() => onImpactSection?.("education")} showMatch={sectionMatches?.education} />
+            <div key={sectionId} style={{ marginBottom: compact ? 14 : 20 }}>
+              <SectionHeader title={SECTION_LABELS.education} titleStyle={sectionTitleStyle} onFix={() => onFixSection("education")} onImpact={() => onImpactSection?.("education")} showMatch={sectionMatches?.education} issueCount={sectionIssueCount?.("education")} />
               {data.education.map((e) => (
                 <div key={e.id} style={{ marginBottom: 10 }}>
                   <input style={{ ...fieldStyle, fontWeight: 700 }} value={e.degree} placeholder="Degree" onChange={(ev) => patch({ education: data.education.map((row) => (row.id === e.id ? { ...row, degree: ev.target.value } : row)) })} />
@@ -354,8 +421,8 @@ export function JobrightResumeDocument({
 
         if (sectionId === "certifications") {
           return (
-            <div key={sectionId} style={{ marginBottom: 20 }}>
-              <SectionHeader title={SECTION_LABELS.certifications} onFix={() => onFixSection("certifications")} onImpact={() => onImpactSection?.("certifications")} showMatch={sectionMatches?.certifications} />
+            <div key={sectionId} style={{ marginBottom: compact ? 14 : 20 }}>
+              <SectionHeader title={SECTION_LABELS.certifications} titleStyle={sectionTitleStyle} onFix={() => onFixSection("certifications")} onImpact={() => onImpactSection?.("certifications")} showMatch={sectionMatches?.certifications} issueCount={sectionIssueCount?.("certifications")} />
               {data.certifications.map((c) => (
                 <input
                   key={c.id}
@@ -380,18 +447,25 @@ export function JobrightScorePill({
   grade,
   gradeLabel,
   onViewReport,
+  scoreMax = 100,
+  scoreDecimals,
 }: {
   score: number;
   grade: string;
   gradeLabel: string;
   onViewReport: () => void;
+  scoreMax?: number;
+  scoreDecimals?: number;
 }) {
+  const scoreText = scoreDecimals != null ? score.toFixed(scoreDecimals) : String(Math.round(score));
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", background: JR.greenLight, borderRadius: "var(--scout-radius)", border: `1px solid ${JR.green}` }}>
-      <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF3C7", border: "1.5px solid #D4AF37", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#92400E" }}>
-        {grade}
-      </span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: JR.text }}>{score}/100</span>
+      {scoreMax === 100 && (
+        <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF3C7", border: "1.5px solid #D4AF37", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#92400E" }}>
+          {grade}
+        </span>
+      )}
+      <span style={{ fontSize: 13, fontWeight: 700, color: JR.text }}>{scoreText}/{scoreMax}</span>
       <span style={{ fontSize: 12, fontWeight: 600, color: "#92400E" }}>{gradeLabel}</span>
       <button
         type="button"

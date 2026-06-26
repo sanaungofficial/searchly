@@ -1444,6 +1444,27 @@ export function JobDrawer({
                 buttonLabel={displayFit > 0 ? `Optimize (${displayFit}%)` : "Optimize my resume"}
                 onClick={() => setMatchDrawerOpen(true)}
               />
+              {dbId && (
+                <button
+                  type="button"
+                  onClick={() => setResumeEditorOpen(true)}
+                  style={{
+                    width: "100%",
+                    padding: "11px 14px",
+                    marginBottom: 12,
+                    background: surface.inset,
+                    border: line,
+                    borderRadius: "var(--scout-radius)",
+                    fontFamily: sans,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#1A1A1A",
+                    cursor: "pointer",
+                  }}
+                >
+                  Open tailored resume editor
+                </button>
+              )}
               <AiToolCard
                 creditCost={1}
                 title="Build cover letter"
@@ -1544,6 +1565,7 @@ export function JobDrawer({
           initialAssetId={null}
           onClose={() => setMatchDrawerOpen(false)}
           onTailorResume={() => {
+            setMatchDrawerOpen(false);
             if (dbId) setResumeEditorOpen(true);
             else if (onAddToPipeline) void onAddToPipeline();
           }}
@@ -1558,6 +1580,7 @@ export function JobDrawer({
           jobId={dbId ?? undefined}
           initialLetter={cardExt._coverLetter ?? null}
           onClose={() => setCoverDrawerOpen(false)}
+          onLetterSaved={(letter) => onCardUpdate({ coverLetter: letter })}
         />
       )}
     </>

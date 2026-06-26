@@ -210,6 +210,12 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     category: "Resume",
     variables: ["resumeSlice"],
   },
+  RESUME_BULK_IMPROVE: {
+    label: "Resume Bulk Improve",
+    description: "Rewrites a master resume applying analysis recommendations in one pass.",
+    category: "Resume",
+    variables: ["resumeJson", "issuesJson", "targetRoles"],
+  },
   COMPANY_JOBS_SCAN: {
     label: "Company Careers Scan",
     description: "Extracts open job listings from a careers page HTML snapshot. Shared across all users tracking the same company.",
@@ -1088,6 +1094,40 @@ Rules:
 - skills: return comma-separated skills ordered by relevance
 - experience entry: return bullet lines separated by newlines (each line one accomplishment)
 - education entry: suggest improved degree/school line
+- Return ONLY the JSON object`,
+  RESUME_BULK_IMPROVE: `${KIMCHI_VOICE}
+
+Rewrite this master resume applying ALL recommendations below. Improve clarity, impact, and best-practice formatting. Do NOT invent employers, degrees, dates, or metrics not supported by the original.
+
+Target roles: {{targetRoles}}
+
+CURRENT RESUME (JSON):
+{{resumeJson}}
+
+RECOMMENDATIONS TO APPLY:
+{{issuesJson}}
+
+Return ONLY valid JSON:
+{
+  "parsedData": { /* same schema as input: name, email, phone, location, linkedinUrl, website, summary, skills, skillGroups, workExperience, education, certifications, sectionOrder */ },
+  "changes": ["Past-tense bullet describing change 1", "Past-tense bullet describing change 2"],
+  "highlights": [
+    {
+      "sectionId": "summary",
+      "label": "Professional Summary",
+      "before": "short excerpt of old text",
+      "after": "short excerpt of new text",
+      "reason": "why this improved the resume"
+    }
+  ],
+  "newScore": 88
+}
+
+Rules:
+- parsedData must preserve all real experience/education entries — rewrite bullets and summary, do not delete roles
+- changes: 3-6 concise past-tense bullets (e.g. "Strengthened summary to lead with product leadership")
+- highlights: 4-10 items covering the most meaningful edits with before/after excerpts
+- newScore: integer 0-100 estimating resume quality after edits
 - Return ONLY the JSON object`,
   COMPANY_JOBS_SCAN: `You are extracting job listings from a company careers page.
 
