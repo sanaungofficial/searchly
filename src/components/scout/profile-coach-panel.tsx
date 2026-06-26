@@ -205,9 +205,9 @@ export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMo
           >
             Sessions & activity
           </p>
-          <div style={{ border: border.line, background: surface.card, padding: isMobile ? 16 : 20 }}>
+          <ScoutBox padding={isMobile ? 16 : 20}>
             <MyCoachesPanel compact={isMobile} />
-          </div>
+          </ScoutBox>
         </div>
       </div>
 

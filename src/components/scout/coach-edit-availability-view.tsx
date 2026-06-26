@@ -55,12 +55,6 @@ type Props = {
   embedded?: boolean;
 };
 
-const cardStyle: React.CSSProperties = {
-  background: surface.card,
-  border: border.line,
-  padding: "24px 28px",
-};
-
 const sectionTitle: React.CSSProperties = {
   margin: 0,
   fontFamily: fontSans,
@@ -92,7 +86,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   background: "#fff",
   border: border.line,
-  borderRadius: 0,
+  borderRadius: "var(--scout-radius)",
   padding: "10px 12px",
   outline: "none",
   fontFamily: fontSans,
@@ -481,8 +475,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
         </div>
       )}
 
-      <ScoutBox padding={0} style={{ overflow: "hidden" }}>
-        <div style={cardStyle}>
+      <ScoutBox padding="24px 28px">
           {!calendarConnected ? (
             mode === "admin" && coachId ? (
               <div>
@@ -626,12 +619,10 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
               )}
             </div>
           )}
-        </div>
       </ScoutBox>
 
       {calendarConnected && calendars.length > 0 && (
-        <ScoutBox padding={0}>
-          <div style={cardStyle}>
+        <ScoutBox padding="24px 28px">
             <p style={sectionTitle}>Calendars for busy blocking</p>
             <p style={sectionDesc}>Kimchi checks these calendars when showing open slots.</p>
             <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -662,12 +653,10 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
                 <option value="microsoft_teams">Microsoft Teams</option>
               </select>
             </div>
-          </div>
         </ScoutBox>
       )}
 
-      <ScoutBox padding={0}>
-        <div style={cardStyle}>
+      <ScoutBox padding="24px 28px">
           <p style={sectionTitle}>General settings</p>
           <div style={{ marginTop: 20, display: "grid", gap: 20 }}>
             <div>
@@ -701,11 +690,9 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
               </select>
             </div>
           </div>
-        </div>
       </ScoutBox>
 
-      <ScoutBox padding={0}>
-        <div style={cardStyle}>
+      <ScoutBox padding="24px 28px">
           <p style={sectionTitle}>Default hours</p>
           <p style={sectionDesc}>Set the days and hours you are typically available for coaching.</p>
           {needsMoreHours && (
@@ -772,11 +759,9 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
               );
             })}
           </div>
-        </div>
       </ScoutBox>
 
-      <ScoutBox padding={0}>
-        <div style={cardStyle}>
+      <ScoutBox padding="24px 28px">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
             <div>
               <p style={sectionTitle}>Conferencing</p>
@@ -792,11 +777,9 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
               </p>
             </div>
           </div>
-        </div>
       </ScoutBox>
 
-      <ScoutBox padding={0}>
-        <div style={cardStyle}>
+      <ScoutBox padding="24px 28px">
           <p style={sectionTitle}>Capacity & scheduling rules</p>
           <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
@@ -899,11 +882,9 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
               </p>
             </div>
           </div>
-        </div>
       </ScoutBox>
 
-      <ScoutBox padding={0}>
-        <div style={cardStyle}>
+      <ScoutBox padding="24px 28px">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
             <div>
               <p style={sectionTitle}>Blackout dates</p>
@@ -985,7 +966,6 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
               </div>
             </div>
           </div>
-        </div>
       </ScoutBox>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>

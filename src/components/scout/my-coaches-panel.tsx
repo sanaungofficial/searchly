@@ -99,7 +99,7 @@ function ClientSessionRow({
   const title = sessionTitle(booking.title);
 
   return (
-    <div style={{ border: border.line, background: "#fff" }}>
+    <ScoutBox padding={0} style={{ overflow: "hidden" }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -202,7 +202,7 @@ function ClientSessionRow({
           </div>
         </div>
       )}
-    </div>
+    </ScoutBox>
   );
 }
 
@@ -305,7 +305,7 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {activity.map((item) => (
-              <div key={item.id} style={{ border: border.line, padding: "10px 12px", background: "#fff" }}>
+              <ScoutBox key={item.id} flat padding="10px 12px">
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                   <p style={{ margin: 0, fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: color.forest }}>
                     {activityLabel(item.type)}
@@ -325,7 +325,7 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
                 <p style={{ margin: "6px 0 0", fontFamily: fontSans, fontSize: 11, color: color.stone }}>
                   with {item.coachName}
                 </p>
-              </div>
+              </ScoutBox>
             ))}
           </div>
         )}

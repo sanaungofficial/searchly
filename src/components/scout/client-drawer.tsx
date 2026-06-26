@@ -145,7 +145,7 @@ export function ClientDetailBody({
       </div>
 
       {client.profile && (client.profile.targetRoles.length > 0 || client.profile.targetSalary) && (
-        <div style={{ background: surface.card, border: border.line, padding: "16px 20px", marginBottom: 20 }}>
+        <ScoutBox padding="16px 20px" style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 12, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, marginBottom: 10 }}>
             Targets
           </p>
@@ -173,7 +173,7 @@ export function ClientDetailBody({
               </div>
             )}
           </div>
-        </div>
+        </ScoutBox>
       )}
 
       {onClientUpdated && (
@@ -198,7 +198,7 @@ export function ClientDetailBody({
         }))}
       />
 
-      <div style={{ background: surface.card, border: border.line, overflow: "hidden" }}>
+      <ScoutBox padding={0} style={{ overflow: "hidden" }}>
         <div style={{ padding: "14px 20px", borderBottom: border.line }}>
           <p style={{ fontSize: 12, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: fontMono, margin: 0 }}>
             Job pipeline ({client.jobs.length})
@@ -245,7 +245,7 @@ export function ClientDetailBody({
             </tbody>
           </table>
         )}
-      </div>
+      </ScoutBox>
     </>
   );
 }
