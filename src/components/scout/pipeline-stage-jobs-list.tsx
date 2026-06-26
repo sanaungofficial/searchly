@@ -6,6 +6,7 @@ import { companyLogoFromJobData } from "@/lib/cached-job";
 import { STAGE_COLORS, STAGE_LABELS, type KanbanCard, type KanbanStage } from "./workspace-data";
 import { ScoutBox, ScoutLabel, ScoutSecondaryBtn } from "./scout-box";
 import { CompanyLogo } from "./company-logo";
+import { JobFreshnessIndicator } from "./job-freshness-indicator";
 import { fontSans, color, border, displayTitleStyle, surface, type as T } from "@/lib/typography";
 
 function StageDropdown({
@@ -139,11 +140,17 @@ export function PipelineStageJobsList({
                   <CompanyLogo {...companyLogoFromJobData(card.company, ext._meta)} size={44} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={displayTitleStyle(T.heading, { margin: "0 0 4px", lineHeight: 1.15 })}>{card.role}</p>
-                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0 }}>
+                    <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 4px" }}>
                       {card.company}
                       {ext._meta?.location ? ` · ${ext._meta.location}` : ""}
-                      {card.days != null ? ` · ${card.days === 0 ? "Today" : `${card.days}d ago`}` : ""}
                     </p>
+                    {ext._meta?.datePosted ? (
+                      <JobFreshnessIndicator datePosted={ext._meta.datePosted} variant="compact" />
+                    ) : card.days != null ? (
+                      <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.muted, margin: 0 }}>
+                        Saved {card.days === 0 ? "today" : `${card.days}d ago`}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 14, paddingLeft: 60, flexWrap: "wrap" }}>

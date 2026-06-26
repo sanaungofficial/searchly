@@ -52,6 +52,8 @@ import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
 import { matchScoreStyle } from "@/lib/match-score";
+import { compareJobFreshness, daysSincePosted, isRecommendedFreshnessVisible } from "@/lib/job-posted-freshness";
+import { JobFreshnessIndicator, JobFreshnessLegend } from "./job-freshness-indicator";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -560,7 +562,7 @@ export function buildRecommendedProspectCard(
     stage: "saved",
     fit: job.matchScore,
     jobRef: null,
-    days: 0,
+    days: daysSincePosted(job.datePosted) ?? 0,
     _url: job.url ?? undefined,
     _meta: meta,
   };
@@ -622,6 +624,9 @@ function RecommendedResultsList({
                       {row.companyName}
                       {row.location ? ` · ${row.location}` : ""}
                     </p>
+                    <div style={{ marginBottom: 8 }}>
+                      <JobFreshnessIndicator datePosted={row.cached.datePosted} variant="compact" />
+                    </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <span
                         style={{
@@ -1055,10 +1060,12 @@ export function PipelineRecommendedSection({
     [jobs, savedKeys],
   );
 
-  const filteredListings = useMemo(
-    () => filterRoleListings(recommendedListings, formToFilters(appliedForm, 1), "all"),
-    [recommendedListings, appliedForm],
-  );
+  const filteredListings = useMemo(() => {
+    const filtered = filterRoleListings(recommendedListings, formToFilters(appliedForm, 1), "all");
+    return [...filtered]
+      .filter((row) => isRecommendedFreshnessVisible(row.cached.datePosted))
+      .sort((a, b) => compareJobFreshness(a.cached.datePosted, b.cached.datePosted));
+  }, [recommendedListings, appliedForm]);
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
@@ -1077,8 +1084,11 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles from Hirebase matched to your profile — local and remote. Match scores here are estimates; open a role and run Analyze fit for a full resume check. Save any role to track it in your saved jobs.
+              Roles from Hirebase matched to your profile — sorted by freshness first. Apply within 48 hours for the best response rate; we hide roles older than 3 days from this feed.
             </p>
+            <div style={{ marginTop: 10 }}>
+              <JobFreshnessLegend compact />
+            </div>
             {snapshotMeta?.generatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
                 {snapshotMeta.fromSnapshot ? "Daily snapshot" : "Live results"} · updated{" "}

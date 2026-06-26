@@ -55,6 +55,7 @@ export function kanbanCardToCachedJob(card: KanbanCard): CachedJob {
     tags: meta?.tags,
     benefits: meta?.benefits,
     requiredQualifications: meta?.requiredQualifications,
+    datePosted: meta?.datePosted ?? null,
   };
 }
 
