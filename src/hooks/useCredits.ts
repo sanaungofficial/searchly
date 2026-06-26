@@ -3,6 +3,7 @@ import {
   isCreditsExhausted,
   isCreditsLow,
   isUnlimitedBalance,
+  UNLIMITED_AI_FOR_ALL,
   type CreditBalance,
 } from "@/lib/credits";
 
@@ -13,13 +14,15 @@ export function shouldShowCredits(sub: {
   isPro: boolean;
   isAdmin: boolean;
 }): boolean {
+  if (UNLIMITED_AI_FOR_ALL) return false;
   if (sub.loading || !sub.credits) return false;
   if (sub.isAdmin) return true;
   return !sub.isPro;
 }
 
-/** Unlimited AI — no 402, no upgrade CTAs. Admin and paid Pro. */
+/** Unlimited AI — no 402, no upgrade CTAs. */
 export function hasUnlimitedAi(sub: { isPro: boolean; isAdmin: boolean }): boolean {
+  if (UNLIMITED_AI_FOR_ALL) return true;
   return sub.isPro || sub.isAdmin;
 }
 
