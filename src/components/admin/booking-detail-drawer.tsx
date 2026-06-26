@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatBookingWhen, bookingStatusColor } from "@/lib/booking-display";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -200,7 +201,7 @@ export function BookingDetailDrawer({ bookingId, onClose, onOpenGuestHub, onOpen
                   <p style={{ fontFamily: fontMono, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted, margin: "0 0 12px" }}>
                     Communications
                   </p>
-                  <div style={{ border: border.line, background: surface.card }}>
+                  <ScoutBox padding={0}>
                     {communications.map((c) => (
                       <div key={c.id} style={{ padding: "12px 14px", borderBottom: border.line }}>
                         <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>{c.subject}</p>
@@ -214,7 +215,7 @@ export function BookingDetailDrawer({ bookingId, onClose, onOpenGuestHub, onOpen
                         )}
                       </div>
                     ))}
-                  </div>
+                  </ScoutBox>
                 </div>
               )}
             </>

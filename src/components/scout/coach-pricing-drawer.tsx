@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn, ScoutBox } from "@/components/scout/scout-box";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   PLATFORM_TAKE_TIERS,
@@ -50,16 +50,9 @@ function Section({
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div
-      style={{
-        border: border.line,
-        background: surface.card,
-        padding: "16px 18px",
-        ...style,
-      }}
-    >
+    <ScoutBox padding="16px 18px" style={style}>
       {children}
-    </div>
+    </ScoutBox>
   );
 }
 
