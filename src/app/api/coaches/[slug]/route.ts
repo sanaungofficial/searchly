@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 import { computeReviewAggregates } from "@/lib/coach-directory";
 import { isNylasConfigured } from "@/lib/nylas";
 import { listCoachLiveSessions, toLiveSessionView } from "@/lib/live-session-db";
+import { enrichPackages } from "@/lib/coach-pricing";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -47,6 +48,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       experienceLevel: true,
       clientTier: true,
       industryYears: true,
+      packagesSyncToHourly: true,
+      bulkDiscounts: { where: { enabled: true } },
+      pricingPackages: {
+        where: { enabled: true, isPublic: true },
+        orderBy: { sortOrder: "asc" },
+      },
       _count: { select: { followers: true } },
       reviews: {
         orderBy: { createdAt: "desc" },
@@ -139,5 +146,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       createdAt: r.createdAt.toISOString(),
     })),
     upcomingLiveSessions,
+    purchasablePackages: enrichPackages(
+      coach.pricingPackages,
+      coach.hourlyRate,
+      coach.bulkDiscounts,
+      coach.packagesSyncToHourly,
+    ).filter((p) => p.displayPriceCents != null && p.displayPriceCents >= 100),
   });
 }

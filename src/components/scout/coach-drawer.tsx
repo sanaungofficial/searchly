@@ -251,6 +251,25 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
     setBookingModalOpen(true);
   };
 
+  async function buyPackage(packageId: string) {
+    if (!authChecked || !user) {
+      window.location.href = "/login";
+      return;
+    }
+    if (!coach) return;
+    const r = await fetch("/api/coaching/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ packageId, coachProfileId: coach.id, leadSource: "MARKETPLACE" }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      alert(d.error ?? "Could not start checkout");
+      return;
+    }
+    if (d.url) window.location.href = d.url;
+  }
+
   const close = () => {
     setVisible(false);
     setTimeout(onClose, 220);
@@ -392,6 +411,25 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                     style={{ marginTop: 10 }}
                   />
                 </ScoutBox>
+
+                {coach.purchasablePackages && coach.purchasablePackages.length > 0 && (
+                  <ScoutBox padding={20} style={{ marginBottom: 16 }}>
+                    <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>
+                      Coaching packages
+                    </h3>
+                    {coach.purchasablePackages.map((pkg) => (
+                      <OfferingRow
+                        key={pkg.id}
+                        title={pkg.displayTitle}
+                        subtitle={`${pkg.displayHoursLabel} · Purchase coaching hours`}
+                        priceLabel={pkg.displayPriceLabel ?? "—"}
+                        onBook={() => buyPackage(pkg.id)}
+                        bookLabel="Buy package"
+                        style={{ marginTop: 10 }}
+                      />
+                    ))}
+                  </ScoutBox>
+                )}
 
                 <ScoutBox padding={20} style={{ marginBottom: 16 }}>
                   <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>
