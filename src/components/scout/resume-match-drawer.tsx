@@ -302,6 +302,7 @@ export function ResumeMatchDrawer({
           company,
           description: description || manualDesc || undefined,
           jobId,
+          assetId: activeResumeId ?? undefined,
           selectedSections: Array.from(selectedSections),
           missingKeywords: selectedMissingKw,
           workEditMode,

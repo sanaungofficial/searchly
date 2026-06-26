@@ -7,6 +7,7 @@ import {
   DashboardIcon,
   OpportunitiesIcon,
   ProfileIcon,
+  CoachingIcon,
   BellIcon,
   ArrowLeftIcon,
 } from "./workspace-icons";
@@ -20,7 +21,7 @@ import { CreditsSidebarBlock, CreditsMeter } from "./credits-display";
 import { KimchiBySecondLadder } from "./scout-box";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { border as citeBorder } from "@/lib/typography";
-import { isProductionEnv } from "@/lib/beta-features";
+import { BETA_FEATURES, isProductionEnv } from "@/lib/beta-features";
 import { sidebarTheme as S } from "@/lib/sidebar-theme";
 
 interface SidebarProps {
@@ -52,6 +53,12 @@ const IS_PROD = isProductionEnv();
 const NAV_MAIN: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
   { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
+  {
+    id: "coaching",
+    label: BETA_FEATURES.coaching.navLabel,
+    path: "/coaching",
+    Icon: CoachingIcon,
+  },
   { id: "profile", label: "Profile", path: "/profile", Icon: ProfileIcon },
 ];
 
@@ -255,6 +262,7 @@ export function WorkspaceSidebar({
 
   const isActive = (path: string) => {
     if (path === "/opportunities") return pathname.startsWith("/opportunities");
+    if (path === "/coaching") return pathname.startsWith("/coaching");
     return pathname === path;
   };
 
