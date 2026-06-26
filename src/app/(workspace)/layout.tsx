@@ -98,7 +98,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <VoiceAgentFloat />
-      <ChatWidget hideLauncher />
+      <ChatWidget bottomStackOffset={112} />
       {pricingOpen && <PricingModal onClose={closePricing} />}
     </div>
   );

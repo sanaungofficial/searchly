@@ -33,6 +33,24 @@ function buildTranscript(lines: Array<{ role: string; content: string }>): strin
   return lines.map((line) => `${line.role}: ${line.content}`).join("\n");
 }
 
+export type VoiceTranscriptLine = { role: string; content: string };
+
+async function fetchVoiceAgentToken(): Promise<string> {
+  const res = await fetch("/api/voice/agent/token", { cache: "no-store" });
+  if (!res.ok) {
+    let message = "Could not authorize voice agent";
+    try {
+      const data = (await res.json()) as { error?: string };
+      if (data?.error) message = data.error;
+    } catch {
+      const text = await res.text().catch(() => "");
+      if (text) message = text.slice(0, 240);
+    }
+    throw new Error(message);
+  }
+  return res.text();
+}
+
 export function useVoiceAgentSession({
   context = "workspace",
   disabled,
@@ -45,6 +63,7 @@ export function useVoiceAgentSession({
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [agentLine, setAgentLine] = useState<string | null>(null);
+  const [transcriptLines, setTranscriptLines] = useState<VoiceTranscriptLine[]>([]);
   const [audioLevel, setAudioLevel] = useState(0);
   const [sessionActive, setSessionActive] = useState(false);
 
@@ -142,16 +161,13 @@ export function useVoiceAgentSession({
     setSummary(null);
     setAgentLine(null);
     transcriptRef.current = [];
+    setTranscriptLines([]);
     setUiMode("connecting");
 
     try {
       const session = new AgentSession({
         auth: {
-          tokenFactory: () =>
-            fetch("/api/voice/agent/token", { cache: "no-store" }).then((r) => {
-              if (!r.ok) throw new Error("Could not authorize voice agent");
-              return r.text();
-            }),
+          tokenFactory: fetchVoiceAgentToken,
         },
         agent: agentSettings,
         tags: ["kimchi", context],
@@ -170,7 +186,9 @@ export function useVoiceAgentSession({
       session.on("agent-audio-done", () => setUiMode("live"));
       session.on("conversation-text", (msg: ConversationTextMessage) => {
         const role = msg.role === "assistant" ? "Kimchi" : "You";
-        transcriptRef.current.push({ role, content: msg.content });
+        const line = { role, content: msg.content };
+        transcriptRef.current.push(line);
+        setTranscriptLines((prev) => [...prev, line]);
         if (msg.role === "assistant") setAgentLine(msg.content);
       });
       session.on("function-call-request", (msg) => {
@@ -245,6 +263,7 @@ export function useVoiceAgentSession({
     teardownSession();
     setSummary(null);
     setAgentLine(null);
+    setTranscriptLines([]);
     setError(null);
     setUiMode("idle");
   }, [setUiMode, teardownSession]);
@@ -270,6 +289,7 @@ export function useVoiceAgentSession({
     error,
     summary,
     agentLine,
+    transcriptLines,
     audioLevel,
     sessionActive,
     startSession,
