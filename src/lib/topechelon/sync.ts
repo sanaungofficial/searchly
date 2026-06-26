@@ -93,12 +93,14 @@ async function upsertNetworkJob(
 
   if (dbFields.networkId) {
     const existing = await prisma.networkJob.findFirst({
-      where: { networkId: dbFields.networkId },
+      where: { source: "TOPECHELON", networkId: dbFields.networkId },
       select: { externalId: true },
     });
     if (existing && existing.externalId !== dbFields.externalId) {
       await prisma.networkJob.update({
-        where: { externalId: existing.externalId },
+        where: {
+          source_externalId: { source: "TOPECHELON", externalId: existing.externalId },
+        },
         data,
       });
       return;
@@ -106,7 +108,12 @@ async function upsertNetworkJob(
   }
 
   await prisma.networkJob.upsert({
-    where: { externalId: dbFields.externalId },
+    where: {
+      source_externalId: {
+        source: "TOPECHELON",
+        externalId: dbFields.externalId,
+      },
+    },
     create: data,
     update: data,
   });

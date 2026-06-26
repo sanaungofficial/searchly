@@ -45,7 +45,7 @@ export async function recordTopEchelonSyncResult(ok: boolean, error?: string): P
 
 export async function getTopEchelonSyncStatus() {
   const row = await prisma.topEchelonSession.findUnique({ where: { id: SESSION_ID } });
-  const jobCount = await prisma.networkJob.count();
+  const jobCount = await prisma.networkJob.count({ where: { source: "TOPECHELON" } });
   return {
     hasSession: !!(row?.tokenPayload && typeof row.tokenPayload === "object"),
     lastSyncAt: row?.lastSyncAt ?? null,

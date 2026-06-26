@@ -3,6 +3,7 @@ import { SubscriptionStatus, UserRole } from "@prisma/client";
 import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { UsersTable } from "./users-table";
 import { TopEchelonSyncPanel } from "./top-echelon-sync-panel";
+import { ExecThreadSyncPanel } from "./execthread-sync-panel";
 import { AirtableCoachesSyncPanel } from "./airtable-coaches-sync-panel";
 import { AdminJobMatchEmailPanel } from "@/components/admin/admin-job-match-email-panel";
 import { AdminUsagePanel } from "@/components/admin/admin-usage-panel";
@@ -201,6 +202,7 @@ export default async function AdminPage() {
           <AdminJobMatchEmailPanel />
           <AirtableCoachesSyncPanel />
           <TopEchelonSyncPanel />
+          <ExecThreadSyncPanel />
         </div>
       </section>
 
