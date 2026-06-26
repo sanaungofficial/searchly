@@ -28,12 +28,14 @@ function PurchasesInner() {
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [status, setStatus] = useState(searchParams.get("status") ?? "");
   const [salesAssisted, setSalesAssisted] = useState(searchParams.get("salesAssisted") ?? "");
+  const coachId = searchParams.get("coachId") ?? "";
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("purchaseId"));
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
+    if (coachId) params.set("coachId", coachId);
     if (q.trim()) params.set("q", q.trim());
     if (status) params.set("status", status);
     if (salesAssisted) params.set("salesAssisted", salesAssisted);
@@ -48,7 +50,7 @@ function PurchasesInner() {
     } finally {
       setLoading(false);
     }
-  }, [q, status, salesAssisted]);
+  }, [coachId, q, status, salesAssisted]);
 
   useEffect(() => {
     load();
@@ -80,6 +82,17 @@ function PurchasesInner() {
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 24px", maxWidth: 720, lineHeight: 1.55 }}>
         Coaching package purchases through Kimchi checkout. Track client spend, platform fees, coach payouts, and refunds — similar to Leland&apos;s purchases dashboard.
       </p>
+
+      {coachId && (
+        <ScoutBox padding="12px 16px" style={{ marginBottom: 16 }}>
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.stone }}>
+            Filtered to one coach.{" "}
+            <a href="/admin/purchases" style={{ color: color.forest, fontWeight: 600 }}>
+              View all purchases
+            </a>
+          </p>
+        </ScoutBox>
+      )}
 
       {stats && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
