@@ -23,6 +23,17 @@ import {
 } from "@/lib/client-session";
 import { parseAdminClientProfilePath, withClientUserId } from "@/lib/workspace-urls";
 
+const KIMCHI_CHAT_PINNED_KEY = "kimchi_chat_pinned";
+
+function readPinnedChatOpen(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(KIMCHI_CHAT_PINNED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
 export type CoachPrepTarget = {
@@ -123,7 +134,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [notifRead, setNotifRead] = useState<Record<number, boolean>>({});
   const [drawerCardId, setDrawerCardId] = useState<number | null>(null);
   const [drawerTool, setDrawerTool] = useState<DrawerTool>(null);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpenState] = useState(false);
   const [chatView, setChatView] = useState<"tools" | "chat">("tools");
   const [chatPulse, setChatPulse] = useState(false);
   const [fitChatNonce, setFitChatNonce] = useState(0);
@@ -146,6 +157,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [adminReviewClient, setAdminReviewClientMeta] = useState<AdminReviewMeta | null>(() =>
     typeof window === "undefined" ? null : getAdminReviewMeta(),
   );
+
+  useEffect(() => {
+    if (readPinnedChatOpen()) setChatOpenState(true);
+  }, []);
+
+  const setChatOpen = useCallback((open: boolean) => {
+    setChatOpenState(open);
+    try {
+      sessionStorage.setItem(KIMCHI_CHAT_PINNED_KEY, open ? "1" : "0");
+    } catch {
+      /* ignore storage errors */
+    }
+  }, []);
 
   const setAdminReviewClientId = useCallback((id: string | null, meta?: AdminReviewMeta) => {
     setAdminReviewClientIdState(id);
