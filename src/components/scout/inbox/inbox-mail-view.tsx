@@ -10,19 +10,31 @@ import type {
   ActivitySummary,
   ComposeState,
   Folder,
+  InboxLens,
   InboxStatus,
   MessageDetail,
   MessageSummary,
   PipelineJob,
 } from "./inbox-types";
+import { signalLabel } from "./inbox-types";
 
 function pickInboxFolder(folders: Folder[]): Folder | null {
   return folders.find((f) => f.id === "INBOX" || f.name.toLowerCase() === "inbox") ?? folders[0] ?? null;
 }
 
-import { signalLabel } from "./inbox-types";
+function lensQuery(lens: InboxLens): string {
+  return lens === "work" ? "lens=work" : "";
+}
+
+function withLens(path: string, lens: InboxLens): string {
+  const q = lensQuery(lens);
+  if (!q) return path;
+  return path.includes("?") ? `${path}&${q}` : `${path}?${q}`;
+}
 
 type Props = {
+  lens: InboxLens;
+  mailRefreshKey?: number;
   status: InboxStatus;
   initialMessageId?: string | null;
   onInitialMessageConsumed?: () => void;
@@ -47,6 +59,8 @@ type Props = {
 };
 
 export function InboxMailView({
+  lens,
+  mailRefreshKey,
   status,
   initialMessageId,
   onInitialMessageConsumed,
@@ -83,7 +97,7 @@ export function InboxMailView({
   const [detailJobs, setDetailJobs] = useState<PipelineJob[]>([]);
 
   const loadFolders = useCallback(async () => {
-    const res = await fetch("/api/user/email/folders");
+    const res = await fetch(withLens("/api/user/email/folders", lens));
     if (!res.ok) throw new Error("folders");
     const data = await res.json();
     return (data.folders ?? []) as Folder[];
@@ -94,6 +108,7 @@ export function InboxMailView({
     if (folderId) params.set("folderId", folderId);
     if (q.trim()) params.set("q", q.trim());
     if (cursor) params.set("pageToken", cursor);
+    if (lens === "work") params.set("lens", "work");
     const res = await fetch(`/api/user/email/messages?${params.toString()}`);
     if (!res.ok) throw new Error("messages");
     const data = await res.json();
@@ -104,7 +119,7 @@ export function InboxMailView({
   }, []);
 
   const loadDetail = useCallback(async (id: string) => {
-    const res = await fetch(`/api/user/email/messages/${encodeURIComponent(id)}?thread=1`);
+    const res = await fetch(withLens(`/api/user/email/messages/${encodeURIComponent(id)}?thread=1`, lens));
     if (!res.ok) throw new Error("detail");
     return res.json() as Promise<MessageDetail>;
   }, []);
@@ -118,7 +133,7 @@ export function InboxMailView({
         if (inbox) setSelectedFolderId(inbox.id);
       })
       .catch(() => onNotice({ type: "error", text: "Could not load folders." }));
-  }, [status.connected, loadFolders, onNotice]);
+  }, [status.connected, loadFolders, onNotice, lens, mailRefreshKey]);
 
   useEffect(() => {
     if (!detail?.activity || detailJobs.length > 0 || jobs.length > 0) {
@@ -153,7 +168,7 @@ export function InboxMailView({
         .finally(() => setListLoading(false));
     }, search ? 350 : 0);
     return () => clearTimeout(t);
-  }, [status.connected, selectedFolderId, search, loadMessages, onNotice]);
+  }, [status.connected, selectedFolderId, search, loadMessages, onNotice, lens, mailRefreshKey]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -165,7 +180,7 @@ export function InboxMailView({
       .then(setDetail)
       .catch(() => onNotice({ type: "error", text: "Could not open message." }))
       .finally(() => setDetailLoading(false));
-  }, [selectedId, loadDetail, onNotice]);
+  }, [selectedId, loadDetail, onNotice, lens]);
 
   useEffect(() => {
     if (!initialMessageId) return;
@@ -198,7 +213,7 @@ export function InboxMailView({
 
   async function patchMessage(patch: { unread?: boolean; starred?: boolean; archive?: boolean }) {
     if (!selectedId) return;
-    const res = await fetch(`/api/user/email/messages/${encodeURIComponent(selectedId)}`, {
+    const res = await fetch(withLens(`/api/user/email/messages/${encodeURIComponent(selectedId)}`, lens), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
@@ -241,7 +256,9 @@ export function InboxMailView({
       const msg = e instanceof Error ? e.message : "Analyze failed.";
       onNotice({
         type: "error",
-        text: msg.includes("AI is not available") ? "Classification needs production AI." : msg,
+        text: msg.includes("NYLAS") || msg.includes("Nylas")
+          ? "Email AI needs Nylas Smart Compose on your connected inbox."
+          : msg,
       });
     } finally {
       setAnalyzing(false);
@@ -291,7 +308,7 @@ export function InboxMailView({
         replyToMessageId: selectedId,
       });
     } catch {
-      onNotice({ type: "error", text: "Draft reply needs production AI." });
+      onNotice({ type: "error", text: "Draft reply needs Nylas Smart Compose on your inbox." });
     } finally {
       setDrafting(false);
     }
@@ -317,6 +334,7 @@ export function InboxMailView({
   return (
     <>
       <InboxInsightsStrip
+        lens={lens}
         insightsLoaded={insightsLoaded}
         insightsLoading={insightsLoading}
         onCheckEmail={onCheckEmail}
@@ -345,7 +363,7 @@ export function InboxMailView({
             background: surface.card,
           }}
         />
-        {!search.trim() && (
+        {!search.trim() && lens === "job_search" && (
           <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
             Job-related messages appear first. All mail stays visible.
           </p>
@@ -503,7 +521,7 @@ export function InboxMailView({
                 {detail.to && <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>To: {detail.to}</p>}
                 <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, margin: "0 0 16px" }}>{detail.dateLabel}</p>
 
-                {/* Email insight panel */}
+                {lens === "job_search" ? (
                 <div style={{ marginBottom: 20, padding: 16, border: "1px solid rgba(42,107,74,0.25)", background: "rgba(42,107,74,0.06)", borderRadius: "var(--scout-radius)" }}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start", marginBottom: detail.activity ? 0 : 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -533,6 +551,13 @@ export function InboxMailView({
                     />
                   )}
                 </div>
+                ) : (
+                <div style={{ marginBottom: 20, padding: 14, border: border.line, background: surface.page, borderRadius: "var(--scout-radius)" }}>
+                  <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55 }}>
+                    Work inbox actions — link to clients, save assets, add notes — are coming in the next update.
+                  </p>
+                </div>
+                )}
 
                 {detail.attachments.length > 0 && (
                   <div style={{ marginBottom: 16 }}>

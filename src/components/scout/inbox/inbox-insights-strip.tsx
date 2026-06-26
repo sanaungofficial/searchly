@@ -1,17 +1,14 @@
 "use client";
 
-import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
+import { ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
-import { INSIGHTS_STRIP_TITLE } from "@/lib/inbox-human-copy";
-import { pickWisdomTips } from "@/lib/inbox-wisdom-tips";
 import { InboxInsightRow } from "./inbox-insight-row";
-import { InboxWisdomTipRow } from "./inbox-wisdom-tip-row";
-import type { ActivitySummary, PipelineJob } from "./inbox-types";
+import type { ActivitySummary, InboxLens, PipelineJob } from "./inbox-types";
 
-const STRIP_LIMIT = 3;
-const STRIP_TIPS = 2;
+const STRIP_LIMIT = 2;
 
 type Props = {
+  lens: InboxLens;
   insightsLoaded: boolean;
   insightsLoading: boolean;
   onCheckEmail: () => void;
@@ -28,6 +25,7 @@ type Props = {
 };
 
 export function InboxInsightsStrip({
+  lens,
   insightsLoaded,
   insightsLoading,
   onCheckEmail,
@@ -38,30 +36,28 @@ export function InboxInsightsStrip({
   onOpenMail,
   onAction,
 }: Props) {
-  const stripTips = pickWisdomTips(STRIP_TIPS);
+  const title = lens === "work" ? "Work insights" : "Insights";
   const emailRows = insightsLoaded ? activities.slice(0, STRIP_LIMIT) : [];
-  const showEmailRows = emailRows.length > 0;
-  const showTips = !showEmailRows;
+  const hint =
+    lens === "work"
+      ? "Client and prospect updates — check when you're ready."
+      : "Job search updates from your mail — check when you're ready.";
 
   return (
-    <div style={{ borderBottom: border.line, background: surface.page }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "12px 16px 0",
-        }}
-      >
+    <div style={{ borderBottom: border.line, background: surface.page, padding: "10px 16px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
         <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
-          {INSIGHTS_STRIP_TITLE}
+          {title}
           {insightsLoaded && pendingCount > 0 ? ` (${pendingCount})` : ""}
         </p>
+        <ScoutSecondaryBtn onClick={onCheckEmail} disabled={insightsLoading}>
+          {insightsLoading ? "Checking…" : insightsLoaded ? "Check again" : "Check for updates"}
+        </ScoutSecondaryBtn>
         <button
           type="button"
           onClick={onViewAll}
           style={{
+            marginLeft: "auto",
             border: "none",
             background: "none",
             fontFamily: fontSans,
@@ -76,9 +72,15 @@ export function InboxInsightsStrip({
         </button>
       </div>
 
-      <div style={{ padding: "0 16px 8px" }}>
-        {showEmailRows &&
-          emailRows.map((a) => (
+      {!insightsLoaded && (
+        <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5 }}>
+          {hint} Tips live in View all.
+        </p>
+      )}
+
+      {emailRows.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          {emailRows.map((a) => (
             <InboxInsightRow
               key={a.id}
               activity={a}
@@ -88,27 +90,8 @@ export function InboxInsightsStrip({
               compact
             />
           ))}
-
-        {showTips &&
-          stripTips.map((tip) => <InboxWisdomTipRow key={tip.id} tip={tip} compact />)}
-
-        <div style={{ padding: "10px 0 6px", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          {!insightsLoaded ? (
-            <ScoutPrimaryBtn onClick={onCheckEmail} disabled={insightsLoading}>
-              {insightsLoading ? "Checking…" : "Check email for updates"}
-            </ScoutPrimaryBtn>
-          ) : (
-            <ScoutSecondaryBtn onClick={onCheckEmail} disabled={insightsLoading}>
-              {insightsLoading ? "Checking…" : "Check again"}
-            </ScoutSecondaryBtn>
-          )}
-          {insightsLoaded && pendingCount > STRIP_LIMIT && (
-            <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-              {pendingCount - STRIP_LIMIT} more in View all
-            </span>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

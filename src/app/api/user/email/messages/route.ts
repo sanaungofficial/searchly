@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { sortMessagesByJobRelevance } from "@/lib/inbox-job-priority";
+import { parseInboxLens, resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import { listMessages, serializeMessageSummary } from "@/lib/nylas-inbox";
-import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
@@ -14,8 +14,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
 
-  const grant = await getUserEmailGrant(dbUser.id);
-  if (!grant) return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
+  const lens = parseInboxLens(req.nextUrl.searchParams.get("lens"));
+  const grant = await resolveInboxGrant(dbUser.id, dbUser.role, dbUser.email, lens);
+  if (!grant) {
+    return NextResponse.json(
+      { error: lens === "work" ? "Work inbox not connected" : "Inbox not connected" },
+      { status: 404 },
+    );
+  }
 
   const sp = req.nextUrl.searchParams;
   const folderId = sp.get("folderId") ?? undefined;
@@ -32,12 +38,13 @@ export async function GET(req: NextRequest) {
     });
 
     const ids = messages.map((m) => m.id);
-    const activities = ids.length
-      ? await prisma.jobActivityLog.findMany({
-          where: { userId: dbUser.id, nylasMessageId: { in: ids } },
-          include: { job: { select: { id: true, company: true, role: true, stage: true } } },
-        })
-      : [];
+    const activities =
+      lens === "job_search" && ids.length
+        ? await prisma.jobActivityLog.findMany({
+            where: { userId: dbUser.id, nylasMessageId: { in: ids } },
+            include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+          })
+        : [];
 
     const activityByMessageId = Object.fromEntries(
       activities.filter((a) => a.nylasMessageId).map((a) => [a.nylasMessageId!, a]),
@@ -57,18 +64,20 @@ export async function GET(req: NextRequest) {
         : null,
     }));
 
-    const ordered = q
-      ? serialized
-      : sortMessagesByJobRelevance(
-          serialized.map((m) => ({
-            ...m,
-            hasAgentActivity: Boolean(m.activity),
-          })),
-        );
+    const ordered =
+      lens === "work" || q
+        ? serialized
+        : sortMessagesByJobRelevance(
+            serialized.map((m) => ({
+              ...m,
+              hasAgentActivity: Boolean(m.activity),
+            })),
+          );
 
     return NextResponse.json({
       messages: ordered,
       nextCursor,
+      lens,
     });
   } catch (err) {
     console.error("[user/email/messages]", err);

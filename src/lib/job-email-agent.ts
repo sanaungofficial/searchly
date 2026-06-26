@@ -1,4 +1,9 @@
-import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
+import {
+  extractJsonObject,
+  isNylasSmartComposeAvailable,
+  nylasSmartComposeMessage,
+  nylasSmartComposeReply,
+} from "@/lib/nylas-smart-compose";
 import {
   JobActivitySignal,
   JobActivitySource,
@@ -7,7 +12,6 @@ import {
   type Job,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { logAiUsage } from "@/lib/ai-usage";
 import { getJobAgentSettings } from "@/lib/job-agent-settings";
 import {
   fetchEvent,
@@ -70,22 +74,24 @@ function matchJob(jobs: Job[], company: string | null, role: string | null): Job
 }
 
 async function classifyEmailSignal(params: {
+  grantId: string;
+  messageId: string;
   userId: string;
   subject: string;
   from: string;
   body: string;
   jobs: Job[];
 }): Promise<EmailSignalResult | null> {
-  if (!isKimchiAiConfigured()) return null;
+  if (!isNylasSmartComposeAvailable()) return null;
 
   const pipeline = params.jobs
     .slice(0, 40)
     .map((j) => `- ${j.company} | ${j.role} | stage=${j.stage}`)
     .join("\n");
 
-  const prompt = `You analyze job-search emails for a candidate tracking applications in Kimchi.
+  const prompt = `You are Kimchi's job-search email analyst. Do NOT write an email reply or greeting.
 
-Return ONLY valid JSON:
+Analyze the email in this thread and return ONLY valid JSON (no markdown):
 {
   "signal": "APPLICATION_RECEIVED" | "INTERVIEW_INVITE" | "REJECTION" | "OFFER" | "RECRUITER_OUTREACH" | "FOLLOW_UP" | "OTHER",
   "suggestedStage": "SAVED" | "APPLYING" | "APPLIED" | "SCREENING" | "INTERVIEWING" | "OFFER" | "REJECTED" | "WITHDRAWN" | null,
@@ -106,25 +112,22 @@ Rules:
 User pipeline:
 ${pipeline || "(empty)"}
 
-Email:
+Email metadata:
 From: ${params.from}
-Subject: ${params.subject}
-Body:
-${params.body.slice(0, 6000)}`;
+Subject: ${params.subject}`;
 
-  const { text, usage, modelId } = await kimchiGenerateText({
-    tier: "analyze",
-    prompt,
-    maxOutputTokens: 800,
-    userId: params.userId,
-    tags: ["feature:email-job-signal"],
-  });
+  let text: string;
+  try {
+    text = await nylasSmartComposeReply(params.grantId, params.messageId, prompt);
+  } catch (err) {
+    console.error("[job-email-agent] nylas classify", err);
+    return null;
+  }
 
-  const jsonStart = text.indexOf("{");
-  const jsonEnd = text.lastIndexOf("}");
-  if (jsonStart < 0 || jsonEnd < 0) return null;
+  const parsedRaw = extractJsonObject(text);
+  if (!parsedRaw) return null;
 
-  let parsed: {
+  const parsed = parsedRaw as {
     signal?: string;
     suggestedStage?: string | null;
     confidence?: number;
@@ -136,22 +139,8 @@ ${params.body.slice(0, 6000)}`;
     createJob?: boolean;
   };
 
-  try {
-    parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
-  } catch {
-    return null;
-  }
-
   const signal = (parsed.signal ?? "OTHER") as JobActivitySignal;
   if (signal === JobActivitySignal.OTHER && (parsed.confidence ?? 0) < 0.5) return null;
-
-  await logAiUsage(
-    params.userId,
-    "EMAIL_JOB_SIGNAL",
-    modelId,
-    usage.inputTokens,
-    usage.outputTokens,
-  );
 
   const suggestedStage =
     (parsed.suggestedStage as JobStage | null) ??
@@ -284,8 +273,11 @@ async function processMessageForUser(
 
   const jobs = await prisma.job.findMany({ where: { userId }, orderBy: { updatedAt: "desc" } });
   const full = message.body ? message : (await fetchMessage(grantId, message.id)) ?? message;
+  if (!full.id) return null;
 
   const result = await classifyEmailSignal({
+    grantId,
+    messageId: full.id,
     userId,
     subject: full.subject ?? "(no subject)",
     from: messageFromLine(full),
@@ -456,7 +448,7 @@ export async function analyzeMessageForUser(userId: string, messageId: string, f
 }
 
 export async function draftReplyForMessage(userId: string, messageId: string) {
-  if (!isKimchiAiConfigured()) throw new Error("AI_NOT_CONFIGURED");
+  if (!isNylasSmartComposeAvailable()) throw new Error("NYLAS_AI_NOT_CONFIGURED");
 
   const grant = await prisma.userEmailGrant.findUnique({ where: { userId } });
   if (!grant) throw new Error("INBOX_NOT_CONNECTED");
@@ -476,8 +468,6 @@ export async function draftReplyForMessage(userId: string, messageId: string) {
 
   if (!message) throw new Error("MESSAGE_NOT_FOUND");
 
-  const body = messagePlainText(message);
-  const from = messageFromLine(message);
   const candidateName = user?.name?.trim() || "the candidate";
   const jobContext = activity?.job
     ? `${activity.job.role} at ${activity.job.company} (${activity.job.stage})`
@@ -485,35 +475,20 @@ export async function draftReplyForMessage(userId: string, messageId: string) {
       ? `${activity.roleGuess ?? "Role"} at ${activity.companyGuess}`
       : "a job opportunity";
 
-  const prompt = `Draft a concise, professional email reply for a job seeker.
+  const prompt = `Draft a concise, professional email reply for a job seeker. Write ONLY the reply body (no subject, no signature block).
 
 Candidate: ${candidateName}
 ${profile?.headline ? `Headline: ${profile.headline}` : ""}
 Context: replying about ${jobContext}
 
-Original email:
-From: ${from}
-Subject: ${message.subject ?? ""}
-Body:
-${body.slice(0, 4000)}
+Keep it warm, clear, and under 180 words. If scheduling an interview, express availability flexibly.`;
 
-Write ONLY the reply body text (no subject line, no "Dear" unless natural). Keep it warm, clear, and under 180 words. If scheduling an interview, express availability flexibly.`;
-
-  const { text, usage, modelId } = await kimchiGenerateText({
-    tier: "analyze",
-    prompt,
-    maxOutputTokens: 600,
-    userId,
-    tags: ["feature:inbox-draft-reply"],
-  });
-
-  await logAiUsage(userId, "EMAIL_JOB_SIGNAL", modelId, usage.inputTokens, usage.outputTokens);
-
-  return { body: text.trim() };
+  const body = await nylasSmartComposeReply(grant.nylasGrantId, messageId, prompt);
+  return { body: body.trim() };
 }
 
 export async function generateInterviewPrep(userId: string, activityId: string) {
-  if (!isKimchiAiConfigured()) throw new Error("AI_NOT_CONFIGURED");
+  if (!isNylasSmartComposeAvailable()) throw new Error("NYLAS_AI_NOT_CONFIGURED");
 
   const activity = await prisma.jobActivityLog.findFirst({
     where: { id: activityId, userId },
@@ -522,6 +497,9 @@ export async function generateInterviewPrep(userId: string, activityId: string) 
     },
   });
   if (!activity) throw new Error("ACTIVITY_NOT_FOUND");
+
+  const grant = await prisma.userEmailGrant.findUnique({ where: { userId } });
+  if (!grant) throw new Error("INBOX_NOT_CONNECTED");
 
   const profile = await prisma.profile.findUnique({
     where: { userId },
@@ -532,15 +510,7 @@ export async function generateInterviewPrep(userId: string, activityId: string) 
   const role = activity.job?.role ?? activity.roleGuess ?? "the role";
   const interviewWhen = activity.interviewAt?.toLocaleString() ?? "upcoming";
 
-  const prompt = `You are a career coach preparing a candidate for a job interview.
-
-Company: ${company}
-Role: ${role}
-Interview timing: ${interviewWhen}
-Email/calendar context: ${activity.snippet ?? activity.title ?? ""}
-
-Candidate headline: ${profile?.headline ?? ""}
-Summary: ${profile?.summary?.slice(0, 800) ?? ""}
+  const prompt = `You are a career coach preparing a candidate for a job interview. Do NOT write an email.
 
 Return ONLY valid JSON:
 {
@@ -548,23 +518,26 @@ Return ONLY valid JSON:
   "questionsToAsk": string[] (3-4 questions for the interviewer),
   "researchTips": string[] (2-3 company research actions),
   "openingLine": string (one sentence to start the interview strong)
-}`;
+}
 
-  const { text, usage, modelId } = await kimchiGenerateText({
-    tier: "analyze",
-    prompt,
-    maxOutputTokens: 900,
-    userId,
-    tags: ["feature:inbox-interview-prep"],
-  });
+Company: ${company}
+Role: ${role}
+Interview timing: ${interviewWhen}
+Email/calendar context: ${activity.snippet ?? activity.title ?? ""}
+Candidate headline: ${profile?.headline ?? ""}
+Summary: ${profile?.summary?.slice(0, 800) ?? ""}`;
 
-  await logAiUsage(userId, "EMAIL_JOB_SIGNAL", modelId, usage.inputTokens, usage.outputTokens);
+  let text: string;
+  if (activity.nylasMessageId) {
+    text = await nylasSmartComposeReply(grant.nylasGrantId, activity.nylasMessageId, prompt);
+  } else {
+    text = await nylasSmartComposeMessage(grant.nylasGrantId, prompt);
+  }
 
-  const jsonStart = text.indexOf("{");
-  const jsonEnd = text.lastIndexOf("}");
-  if (jsonStart < 0 || jsonEnd < 0) throw new Error("Could not parse interview prep");
+  const parsedRaw = extractJsonObject(text);
+  if (!parsedRaw) throw new Error("Could not parse interview prep");
 
-  const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1)) as {
+  const parsed = parsedRaw as {
     talkingPoints?: string[];
     questionsToAsk?: string[];
     researchTips?: string[];

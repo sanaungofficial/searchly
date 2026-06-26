@@ -39,11 +39,10 @@ Subscribe at `https://app.kimchi.so/api/webhooks/nylas`:
 
 | Variable | Purpose |
 |----------|---------|
-| `NYLAS_API_KEY` | API key |
+| `NYLAS_API_KEY` | API key (includes Smart Compose when enabled on your Nylas app) |
 | `NYLAS_CLIENT_ID` | OAuth client |
 | `NYLAS_WEBHOOK_SECRET` | Webhook HMAC |
 | `NYLAS_OAUTH_APP_URL` | `https://app.kimchi.so` |
-| `ANTHROPIC_API_KEY` | Email signal classification (prod) |
 | `KIMCHI_AGENT_EMAIL` | Nylas Agent Account address |
 | `CRON_SECRET` | Cron auth for `/api/cron/email-agent-sync` |
 
@@ -60,4 +59,4 @@ Subscribe at `https://app.kimchi.so/api/webhooks/nylas`:
 
 ## Dev note
 
-AI classification requires `ANTHROPIC_API_KEY` (production). On dev, connect UI works; classification skips without the key.
+Email classification, draft replies, and interview prep use **Nylas Smart Compose** (hosted on Nylas — no Anthropic key). Requires `NYLAS_API_KEY` and Smart Compose enabled on your Nylas application. Users must connect Gmail/Outlook with inbox scopes; reconnect if Smart Compose returns scope errors.

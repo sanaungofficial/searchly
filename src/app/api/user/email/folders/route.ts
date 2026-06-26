@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
+import { parseInboxLens, resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import { fetchFolders, folderDisplayName, folderSortRank } from "@/lib/nylas-inbox";
-import { getUserEmailGrant } from "@/lib/user-email-server";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { dbUser } = await getActingUser();
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -12,8 +12,14 @@ export async function GET() {
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
 
-  const grant = await getUserEmailGrant(dbUser.id);
-  if (!grant) return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
+  const lens = parseInboxLens(req.nextUrl.searchParams.get("lens"));
+  const grant = await resolveInboxGrant(dbUser.id, dbUser.role, dbUser.email, lens);
+  if (!grant) {
+    return NextResponse.json(
+      { error: lens === "work" ? "Work inbox not connected" : "Inbox not connected" },
+      { status: 404 },
+    );
+  }
 
   try {
     const folders = await fetchFolders(grant.nylasGrantId);
@@ -21,6 +27,7 @@ export async function GET() {
       (a, b) => folderSortRank(a) - folderSortRank(b) || folderDisplayName(a).localeCompare(folderDisplayName(b)),
     );
     return NextResponse.json({
+      lens,
       folders: sorted.map((f) => ({
         id: f.id,
         name: folderDisplayName(f),

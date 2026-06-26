@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { analyzeMessageForUser } from "@/lib/job-email-agent";
-import { isKimchiAiConfigured } from "@/lib/llm";
 import { isNylasConfigured } from "@/lib/nylas";
 import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
@@ -11,11 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mes
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isNylasConfigured()) {
-    return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
-  }
-
-  if (!isKimchiAiConfigured()) {
-    return NextResponse.json({ error: "AI is not available in this environment." }, { status: 503 });
+    return NextResponse.json({ error: "Nylas is not configured." }, { status: 503 });
   }
 
   const grant = await getUserEmailGrant(dbUser.id);
@@ -39,8 +34,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mes
   } catch (err) {
     console.error("[job-agent/analyze]", err);
     const message = err instanceof Error ? err.message : "Analyze failed";
-    if (message === "AI_NOT_CONFIGURED") {
-      return NextResponse.json({ error: "AI is not available in this environment." }, { status: 503 });
+    if (message === "NYLAS_AI_NOT_CONFIGURED") {
+      return NextResponse.json({ error: "Nylas email AI is not available." }, { status: 503 });
     }
     return NextResponse.json({ error: "Could not analyze message" }, { status: 500 });
   }

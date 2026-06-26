@@ -1,4 +1,4 @@
-import type { ActivitySummary, PipelineJob } from "@/components/scout/inbox/inbox-types";
+import type { ActivitySummary, InboxLens, PipelineJob } from "@/components/scout/inbox/inbox-types";
 
 export type FollowUpSuggestion = {
   jobId: string;
@@ -17,7 +17,18 @@ export type InboxInsightsPayload = {
   pendingCount: number;
 };
 
-export async function fetchInboxInsights(): Promise<InboxInsightsPayload> {
+export async function fetchInboxInsights(lens: InboxLens = "job_search"): Promise<InboxInsightsPayload> {
+  if (lens === "work") {
+    const res = await fetch("/api/user/work-agent/check", { method: "POST" });
+    const data = res.ok ? await res.json() : { activities: [], pendingCount: 0, followUps: [] };
+    return {
+      activities: (data.activities ?? []) as ActivitySummary[],
+      pendingCount: data.pendingCount ?? 0,
+      followUps: (data.followUps ?? []) as FollowUpSuggestion[],
+      jobs: [],
+    };
+  }
+
   const [actRes, jobsRes, followRes, summaryRes] = await Promise.all([
     fetch("/api/user/job-agent/activity?limit=50&status=PENDING_REVIEW"),
     fetch("/api/jobs"),

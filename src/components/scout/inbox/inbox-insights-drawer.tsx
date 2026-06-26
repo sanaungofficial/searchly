@@ -4,15 +4,17 @@ import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { INBOX_WISDOM_TIPS } from "@/lib/inbox-wisdom-tips";
+import { INBOX_WORK_WISDOM_TIPS } from "@/lib/inbox-work-wisdom-tips";
 import type { FollowUpSuggestion, InboxInsightsPayload } from "@/lib/inbox-insights-api";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 import { InboxInsightRow } from "./inbox-insight-row";
 import { InboxWisdomTipRow } from "./inbox-wisdom-tip-row";
-import type { ActivitySummary, PipelineJob } from "./inbox-types";
+import type { ActivitySummary, InboxLens, PipelineJob } from "./inbox-types";
 
 const DRAWER_WIDTH = 440;
 
 type Props = {
+  lens: InboxLens;
   open: boolean;
   onClose: () => void;
   insightsLoaded: boolean;
@@ -30,6 +32,7 @@ type Props = {
 };
 
 export function InboxInsightsDrawer({
+  lens,
   open,
   onClose,
   insightsLoaded,
@@ -42,6 +45,12 @@ export function InboxInsightsDrawer({
   onAction,
 }: Props) {
   const isMobile = useIsMobile();
+  const tips = lens === "work" ? INBOX_WORK_WISDOM_TIPS : INBOX_WISDOM_TIPS;
+  const tipsTitle = lens === "work" ? "Work inbox tips" : "Job search tips";
+  const checkHint =
+    lens === "work"
+      ? "Check your work mail when you're ready — Kimchi will surface client and prospect updates. Nothing runs until you tap the button."
+      : "Check your email when you're ready — Kimchi will look for recruiters, interviews, and application updates. Nothing runs until you tap the button.";
 
   if (!open) return null;
 
@@ -112,7 +121,7 @@ export function InboxInsightsDrawer({
           {!insightsLoaded && (
             <div style={{ padding: "16px 20px", borderBottom: border.line, background: "rgba(42,107,74,0.06)" }}>
               <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.55 }}>
-                Check your email when you&apos;re ready — Kimchi will look for recruiters, interviews, and application updates. Nothing runs until you tap the button.
+                {checkHint}
               </p>
               <ScoutPrimaryBtn onClick={onCheckEmail} disabled={insightsLoading}>
                 {insightsLoading ? "Checking…" : "Check email for updates"}
@@ -188,9 +197,9 @@ export function InboxInsightsDrawer({
 
           <div style={{ padding: "16px 20px" }}>
             <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
-              Job search tips
+              {tipsTitle}
             </p>
-            {INBOX_WISDOM_TIPS.map((tip) => (
+            {tips.map((tip) => (
               <InboxWisdomTipRow key={tip.id} tip={tip} />
             ))}
           </div>
