@@ -5,7 +5,6 @@ import { CompanyLogo } from "@/components/scout/company-logo";
 import { CompanyHirebaseProfilePanel } from "@/components/scout/company-hirebase-profile-panel";
 import { getHirebaseProfileFromEnrichment } from "@/lib/hirebase-company-sync";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { buildMatchRoles, parseRolesText } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
 import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import { fontSans, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -97,7 +96,10 @@ function humanizeApiError(message: string | undefined, status: number): string {
     return "AI scanning isn't available on staging — try on app.kimchi.so.";
   }
   if (message?.includes("target roles")) {
-    return "Add target roles in Profile → Target Roles to find matching jobs.";
+    return "Upload a resume from Profile — matching roles are based on your background.";
+  }
+  if (message?.includes("Upload a resume") || message?.includes("upload your resume")) {
+    return message;
   }
   if (message?.includes("Careers URL or website")) {
     return "Add a careers URL (or website) before scanning.";
@@ -351,7 +353,12 @@ function linkHost(url: string | null | undefined): string | null {
 }
 
 function hirebaseMeta(company: TrackedCompany) {
-  return (company.enrichmentCache as (EnrichmentCache & { hirebase?: { slug?: string; linkedinLink?: string | null } }) | null)?.hirebase ?? null;
+  return (company.enrichmentCache as (EnrichmentCache & { hirebase?: { slug?: string; logo?: string | null; linkedinLink?: string | null } }) | null)?.hirebase ?? null;
+}
+
+function companyLogoUrl(intel: EnrichmentCache | null, company: TrackedCompany): string | null {
+  const profile = getHirebaseProfileFromEnrichment(intel ?? company.enrichmentCache);
+  return profile?.company_logo?.trim() || hirebaseMeta(company)?.logo?.trim() || null;
 }
 
 function profileLinkedIn(intel: EnrichmentCache | null, company: TrackedCompany): string | null {
@@ -509,22 +516,21 @@ function sortCompanies(list: TrackedCompany[]): TrackedCompany[] {
 
 function OpenRolesSummary({
   company,
-  userTargetRoles,
+  userHasResume,
   scanning,
 }: {
   company: TrackedCompany;
-  userTargetRoles: string[];
+  userHasResume: boolean;
   scanning?: boolean;
 }) {
   const cache = company.jobsCache as JobsCache | null;
   const jobCount = cache?.jobs?.length ?? 0;
-  const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
 
   if (scanning) {
     return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280" }}>Scanning…</span>;
   }
-  if (matchRoles.length === 0) {
-    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>Set target roles</span>;
+  if (!userHasResume) {
+    return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>Upload resume</span>;
   }
   if (jobCount === 0) {
     return <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#9ca3af" }}>No matches yet</span>;
@@ -540,7 +546,7 @@ function CompanyTableRow({
   company,
   selected,
   scanning,
-  userTargetRoles,
+  userHasResume,
   isLast,
   onOpen,
   onRemove,
@@ -549,7 +555,7 @@ function CompanyTableRow({
   company: TrackedCompany;
   selected: boolean;
   scanning: boolean;
-  userTargetRoles: string[];
+  userHasResume: boolean;
   isLast: boolean;
   onOpen: () => void;
   onRemove: () => void;
@@ -586,6 +592,7 @@ function CompanyTableRow({
             website={company.website}
             careersUrl={company.careersUrl}
             enrichmentWebsiteUrl={enrichmentWebsite(company)}
+            logoUrl={companyLogoUrl(company.enrichmentCache as EnrichmentCache | null, company)}
             size={28}
             borderRadius={0}
           />
@@ -608,7 +615,7 @@ function CompanyTableRow({
         <CompanyUrlCell url={company.careersUrl?.trim() || null} title="Careers page" onClick={(e) => e.stopPropagation()} />
       </td>
       <td style={rowTd}>
-        <OpenRolesSummary company={company} userTargetRoles={userTargetRoles} scanning={scanning} />
+        <OpenRolesSummary company={company} userHasResume={userHasResume} scanning={scanning} />
       </td>
       <td style={rowTd} onClick={(e) => e.stopPropagation()}>
         <PriorityBadge value={company.priority ?? ""} onChange={onPriorityChange} />
@@ -639,7 +646,7 @@ function MobileCompanyCard({
   company,
   selected,
   scanning,
-  userTargetRoles,
+  userHasResume,
   onOpen,
   onRemove,
   onPriorityChange,
@@ -648,7 +655,7 @@ function MobileCompanyCard({
   company: TrackedCompany;
   selected: boolean;
   scanning: boolean;
-  userTargetRoles: string[];
+  userHasResume: boolean;
   onOpen: () => void;
   onRemove: () => void;
   onPriorityChange: (value: string) => void;
@@ -689,6 +696,7 @@ function MobileCompanyCard({
           website={company.website}
           careersUrl={company.careersUrl}
           enrichmentWebsiteUrl={enrichmentWebsite(company)}
+          logoUrl={companyLogoUrl(company.enrichmentCache as EnrichmentCache | null, company)}
           size={32}
           borderRadius={0}
         />
@@ -718,7 +726,7 @@ function MobileCompanyCard({
             <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
               <PriorityBadge value={company.priority ?? ""} onChange={onPriorityChange} />
             </div>
-            <OpenRolesSummary company={company} userTargetRoles={userTargetRoles} scanning={scanning} />
+            <OpenRolesSummary company={company} userHasResume={userHasResume} scanning={scanning} />
             <span style={{ fontFamily: fontSans, fontSize: 13, color: company.lastJobsFetchedAt ? color.ink : color.muted }}>
               {scanning ? "Scanning…" : company.lastJobsFetchedAt ? timeAgo(company.lastJobsFetchedAt) : "Not scanned"}
             </span>
@@ -853,7 +861,7 @@ function DrawerField({ label, children }: { label: string; children: React.React
 
 function CompanyDrawer({
   company,
-  userTargetRoles,
+  userHasResume,
   onClose,
   onPatch,
   onRefreshed,
@@ -862,7 +870,7 @@ function CompanyDrawer({
   isMobile = false,
 }: {
   company: TrackedCompany;
-  userTargetRoles: string[];
+  userHasResume: boolean;
   onClose: () => void;
   onPatch: (id: string, field: Field, value: string) => void;
   onRefreshed: (updated: TrackedCompany) => void;
@@ -875,13 +883,13 @@ function CompanyDrawer({
   const cache = company.jobsCache as JobsCache | null;
   const jobs = cache?.jobs ?? [];
   const intel = company.enrichmentCache as EnrichmentCache | null;
-  const matchRoles = buildMatchRoles(userTargetRoles, company.targetRoles);
-  const canScan = matchRoles.length > 0;
+  const logoUrl = companyLogoUrl(intel, company);
+  const canScan = userHasResume;
   const matchingJobs = jobs;
 
   async function handleScan() {
-    if (!matchRoles.length) {
-      setScanError("Add target roles in Profile → Target Roles before scanning.");
+    if (!userHasResume) {
+      setScanError("Upload a resume from Profile — we match roles to your background.");
       return;
     }
     setScanning(true); setScanError(null);
@@ -925,65 +933,82 @@ function CompanyDrawer({
         }}
       >
         {/* Header */}
-        <div style={{ padding: isMobile ? "14px 16px 12px" : "20px 24px 16px", borderBottom: border.line, background: surface.card, flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 0 : 12, gap: 12, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-              <CompanyLogo
-                name={company.name}
-                website={company.website}
-                careersUrl={company.careersUrl}
-                enrichmentWebsiteUrl={enrichmentWebsite(company)}
-                size={isMobile ? 36 : 40}
-                borderRadius={0}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ ...displayTitleStyle(isMobile ? 20 : 22), margin: 0 }}>{company.name}</div>
-                <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>Priority</span>
-                    <PriorityBadge value={company.priority ?? ""} onChange={(v) => onPatch(company.id, "priority", v)} />
-                  </div>
-                  {(company.website ?? enrichmentWebsite(company)) && (
-                    <a
-                      href={formatExternalUrl(company.website ?? enrichmentWebsite(company)!)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
-                    >
-                      Website ↗
-                    </a>
-                  )}
-                  {company.careersUrl && (
-                    <a
-                      href={formatExternalUrl(company.careersUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
-                    >
-                      Careers ↗
-                    </a>
-                  )}
-                  {profileLinkedIn(intel, company) && (
-                    <a
-                      href={profileLinkedIn(intel, company)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
-                    >
-                      LinkedIn ↗
-                    </a>
-                  )}
+        <div style={{ padding: isMobile ? "14px 16px 12px" : "20px 24px 16px", borderBottom: border.line, background: surface.card, flexShrink: 0, position: "relative" }}>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              position: "absolute",
+              top: isMobile ? 12 : 16,
+              right: isMobile ? 12 : 20,
+              background: "none",
+              border: "none",
+              fontSize: 18,
+              color: "#aaa",
+              cursor: "pointer",
+              padding: "2px 6px",
+              borderRadius: "var(--scout-radius)",
+              lineHeight: 1,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#333")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
+          >
+            ×
+          </button>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12, paddingRight: 36 }}>
+            <CompanyLogo
+              name={company.name}
+              website={company.website}
+              careersUrl={company.careersUrl}
+              enrichmentWebsiteUrl={enrichmentWebsite(company)}
+              logoUrl={logoUrl}
+              size={isMobile ? 48 : 56}
+              borderRadius={0}
+            />
+            <div style={{ width: "100%", minWidth: 0 }}>
+              <div style={{ ...displayTitleStyle(isMobile ? 20 : 22), margin: 0 }}>{company.name}</div>
+              <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>Priority</span>
+                  <PriorityBadge value={company.priority ?? ""} onChange={(v) => onPatch(company.id, "priority", v)} />
                 </div>
+                {(company.website ?? enrichmentWebsite(company)) && (
+                  <a
+                    href={formatExternalUrl(company.website ?? enrichmentWebsite(company)!)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                  >
+                    Website ↗
+                  </a>
+                )}
+                {company.careersUrl && (
+                  <a
+                    href={formatExternalUrl(company.careersUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                  >
+                    Careers ↗
+                  </a>
+                )}
+                {profileLinkedIn(intel, company) && (
+                  <a
+                    href={profileLinkedIn(intel, company)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, textDecoration: "none" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                  >
+                    LinkedIn ↗
+                  </a>
+                )}
               </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#aaa", cursor: "pointer", padding: "2px 6px", borderRadius: "var(--scout-radius)", lineHeight: 1 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#333")} onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}>×</button>
             </div>
           </div>
         </div>
@@ -1010,9 +1035,9 @@ function CompanyDrawer({
 
           {/* Matching roles */}
           <DrawerSection title="Matching roles">
-            {matchRoles.length === 0 && (
+            {!userHasResume && (
               <div style={{ background: "#faf8f5", border: "1px solid #e8e3dd", borderRadius: "var(--scout-radius)", padding: "10px 12px", marginBottom: 12, fontFamily: "var(--font-ui)", fontSize: 14, color: "#6b7280", lineHeight: 1.5 }}>
-                Add target roles in Profile → Target Roles. We only pull openings that match your targets — not every role at this company.
+                Upload a resume in Profile → Assets. We find openings at this company that fit your background — not every role they post.
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -1025,10 +1050,10 @@ function CompanyDrawer({
 
             {jobs.length === 0 && !scanning ? (
               <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", padding: "16px 0", lineHeight: 1.5 }}>
-                {matchRoles.length === 0
-                  ? "Set your target roles first — then we'll search this company for matching openings."
+                {!userHasResume
+                  ? "Add your resume first — then we'll search this company for roles that match your experience."
                   : canScan
-                    ? "Click Find matching roles — we scan when you add a company if your target roles are set."
+                    ? "Click Find matching roles — we use your resume to rank openings at this company."
                     : "Matching scan runs via Hirebase when configured, or from the careers page on production."}
               </div>
             ) : (
@@ -1059,9 +1084,9 @@ function CompanyDrawer({
                 )}
               </div>
             )}
-            {jobs.length > 0 && matchRoles.length > 0 && (
+            {jobs.length > 0 && userHasResume && (
               <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", marginTop: 8, lineHeight: 1.45 }}>
-                Matching against: {matchRoles.slice(0, 4).join(", ")}{matchRoles.length > 4 ? ` +${matchRoles.length - 4} more` : ""}
+                Ranked by fit to your resume via Hirebase.
               </div>
             )}
           </DrawerSection>
@@ -1118,7 +1143,7 @@ export function WorkspaceCompanies({
     setSelectedId(id);
     onCompanySelect?.(id);
   };
-  const [userTargetRoles, setUserTargetRoles] = useState<string[]>([]);
+  const [userHasResume, setUserHasResume] = useState(false);
   const [pendingScanIds, setPendingScanIds] = useState<string[]>([]);
 
   const load = useCallback(async () => {
@@ -1161,7 +1186,8 @@ export function WorkspaceCompanies({
 
   useEffect(() => {
     fetch("/api/profile").then((r) => r.json()).then((d) => {
-      if (Array.isArray(d.targetRoles)) setUserTargetRoles(d.targetRoles);
+      const hasArtifact = !!d.parsedData?.hirebaseArtifactId?.trim();
+      setUserHasResume(!!d.resumeUrl?.trim() || hasArtifact);
     }).catch(() => {});
   }, []);
 
@@ -1350,7 +1376,7 @@ export function WorkspaceCompanies({
                   company={c}
                   selected={selectedId === c.id}
                   scanning={scanning}
-                  userTargetRoles={userTargetRoles}
+                  userHasResume={userHasResume}
                   onOpen={() => selectCompany(c.id)}
                   onRemove={() => handleRemove(c.id)}
                   onPriorityChange={(v) => patchField(c.id, "priority", v)}
@@ -1380,7 +1406,7 @@ export function WorkspaceCompanies({
                   company={c}
                   selected={selectedId === c.id}
                   scanning={pendingScanIds.includes(c.id)}
-                  userTargetRoles={userTargetRoles}
+                  userHasResume={userHasResume}
                   isLast={i === sortedCompanies.length - 1}
                   onOpen={() => selectCompany(c.id)}
                   onRemove={() => handleRemove(c.id)}
@@ -1398,7 +1424,7 @@ export function WorkspaceCompanies({
       {selectedCompany && (
         <CompanyDrawer
           company={selectedCompany}
-          userTargetRoles={userTargetRoles}
+          userHasResume={userHasResume}
           isMobile={isMobile}
           onClose={() => selectCompany(null)}
           onPatch={patchField}

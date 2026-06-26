@@ -11,12 +11,16 @@ import {
   type JobsScanProvider,
   recordCompanyScanCronRun,
 } from "@/lib/company-scan-config";
-import { fetchHirebaseCompanyJobs, fetchHirebaseMatchingJobs, isHirebaseConfigured } from "@/lib/hirebase";
+import {
+  fetchHirebaseCompanyJobs,
+  fetchHirebaseVectorJobs,
+  isHirebaseConfigured,
+} from "@/lib/hirebase";
 import { getHirebaseMetaFromEnrichment } from "@/lib/hirebase-company-sync";
+import { ensureHirebaseArtifactForUser } from "@/lib/resume-artifact";
 import {
   buildMatchRoles,
   filterMatchingJobs,
-  hasMatchRoles,
 } from "@/lib/job-match";
 import type { CachedJob } from "@/lib/cached-job";
 
@@ -71,14 +75,12 @@ function filterToMatches(jobs: CachedJob[], matchRoles: string[], maxJobs: numbe
 }
 
 export function canScanTrackedCompanyMatches(input: {
-  profileTargetRoles: string[];
-  companyTargetRoles: string | null;
   name: string;
   careersUrl: string | null;
   website: string | null;
 }): boolean {
-  if (!hasMatchRoles(input.profileTargetRoles, input.companyTargetRoles)) return false;
-  if (isHirebaseConfigured() && input.name?.trim()) return true;
+  if (!input.name?.trim()) return false;
+  if (isHirebaseConfigured()) return true;
   return !!getEffectiveCareersUrl(
     { careersUrl: input.careersUrl, website: input.website } as TrackedCompany,
     null
@@ -95,10 +97,7 @@ export async function trackedCompanyNeedsScan(trackedCompanyId: string, userId: 
   });
   if (!company) return false;
 
-  const profileRoles = company.user.profile?.targetRoles ?? [];
   if (!canScanTrackedCompanyMatches({
-    profileTargetRoles: profileRoles,
-    companyTargetRoles: company.targetRoles,
     name: company.name,
     careersUrl: company.careersUrl,
     website: company.website,
@@ -114,59 +113,54 @@ export async function intelNeedsScan(intel: CompanyIntel): Promise<boolean> {
   return false;
 }
 
-async function scanMatchesViaHirebase(
+/** Resume-based matching via Hirebase vector search, scoped to one tracked company. */
+async function scanMatchesViaResumeVSearch(
+  userId: string,
   companyName: string,
   slugHint: string | null,
-  website: string | null,
   enrichmentCache: unknown,
-  matchRoles: string[],
   settings: CompanyScanSettings
 ): Promise<{ ok: true; parsed: JobsCachePayload } | { ok: false; error: string }> {
+  const artifact = await ensureHirebaseArtifactForUser(userId);
+  if (!artifact.artifactId) {
+    return {
+      ok: false,
+      error:
+        artifact.error ??
+        "Upload a resume from Profile — we match roles to your background.",
+    };
+  }
+
   try {
     const hirebaseMeta = getHirebaseMetaFromEnrichment(enrichmentCache);
+    const companySlug = hirebaseMeta?.slug ?? slugHint;
     const maxJobs = capMatchJobs(settings);
-    const result = await fetchHirebaseMatchingJobs({
-      companyName,
-      slugHint,
-      hirebaseSlug: hirebaseMeta?.slug ?? slugHint,
-      website,
-      jobTitles: matchRoles,
-      maxJobs,
+    const fetchLimit = Math.min(100, Math.max(maxJobs, maxJobs * 2));
+
+    let result = await fetchHirebaseVectorJobs({
+      artifactId: artifact.artifactId,
+      companySlug: companySlug ?? undefined,
+      companyName: companySlug ? undefined : companyName,
+      limit: maxJobs,
+      fetchLimit,
     });
 
-    let matched = filterToMatches(result.jobs, matchRoles, maxJobs);
-
-    // Targeted search can miss titles like "Product Manager II" — fall back to company index + local filter.
-    if (matched.length === 0 && (result.hirebaseSlug || slugHint)) {
-      const fallback = await fetchHirebaseCompanyJobs({
+    if (result.jobs.length === 0 && companySlug) {
+      result = await fetchHirebaseVectorJobs({
+        artifactId: artifact.artifactId,
         companyName,
-        slugHint: result.hirebaseSlug ?? slugHint,
-        website,
-        maxJobs: Math.min(100, maxJobs * 2),
+        limit: maxJobs,
+        fetchLimit,
       });
-      matched = filterToMatches(fallback.jobs, matchRoles, maxJobs);
-      if (matched.length) {
-        return {
-          ok: true,
-          parsed: {
-            jobs: matched,
-            scanned_url: fallback.scannedUrl,
-            source: "hirebase",
-            hirebase_slug: fallback.hirebaseSlug,
-            total_count: fallback.totalCount,
-            match_only: true,
-          },
-        };
-      }
     }
 
     return {
       ok: true,
       parsed: {
-        jobs: matched,
-        scanned_url: result.scannedUrl,
+        jobs: result.jobs,
+        scanned_url: "hirebase:vsearch/resume",
         source: "hirebase",
-        hirebase_slug: result.hirebaseSlug,
+        hirebase_slug: companySlug ?? null,
         total_count: result.totalCount,
         match_only: true,
       },
@@ -273,42 +267,44 @@ export async function scanTrackedCompanyMatches(
 
   const profileRoles = company.user.profile?.targetRoles ?? [];
   const matchRoles = buildMatchRoles(profileRoles, company.targetRoles);
-  if (!matchRoles.length) {
-    return {
-      ok: false,
-      error: "Add target roles in Profile → Target Roles (or below) before scanning for matching jobs.",
-    };
-  }
 
   const settings = await getCompanyScanSettings();
   const provider = resolveJobsScanProvider(settings);
   const intel = company.companyIntel;
   const slugHint = intel?.slug ?? null;
   const enrichmentCache = intel?.enrichmentCache ?? company.enrichmentCache;
+  const companyName = intel?.name ?? company.name;
 
   let parsed: JobsCachePayload | null = null;
   let lastError: string | null = null;
 
   if (provider === "hirebase" || provider === "hirebase_then_ai") {
-    const hirebaseResult = await scanMatchesViaHirebase(
-      intel?.name ?? company.name,
+    const resumeResult = await scanMatchesViaResumeVSearch(
+      userId,
+      companyName,
       slugHint,
-      company.website ?? intel?.website ?? null,
       enrichmentCache,
-      matchRoles,
       settings
     );
-    if (hirebaseResult.ok) {
-      parsed = hirebaseResult.parsed;
+    if (resumeResult.ok) {
+      parsed = resumeResult.parsed;
     } else {
-      lastError = hirebaseResult.error;
+      lastError = resumeResult.error;
       if (provider === "hirebase") {
-        return { ok: false, error: hirebaseResult.error };
+        return { ok: false, error: resumeResult.error };
       }
     }
   }
 
   if (!parsed && (provider === "ai" || provider === "hirebase_then_ai")) {
+    if (!matchRoles.length) {
+      return {
+        ok: false,
+        error:
+          lastError ??
+          "Upload a resume from Profile — we match roles to your background.",
+      };
+    }
     const aiResult = await scanMatchesViaAi(intel, company, matchRoles, settings);
     if (aiResult.ok) {
       parsed = aiResult.parsed;
@@ -526,11 +522,8 @@ export async function runCompanyJobsCron(): Promise<CompanyScanCronSummary> {
   for (const row of trackedRows) {
     if (processed >= settings.maxCompaniesPerCronRun) break;
 
-    const profileRoles = row.user.profile?.targetRoles ?? [];
     if (
       !canScanTrackedCompanyMatches({
-        profileTargetRoles: profileRoles,
-        companyTargetRoles: row.targetRoles,
         name: row.name,
         careersUrl: row.careersUrl,
         website: row.website,

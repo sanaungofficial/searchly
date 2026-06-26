@@ -23,7 +23,11 @@ export async function POST(
   const result = await scanTrackedCompanyMatches(id, dbUser.id);
   if (!result.ok) {
     const status =
-      result.error.includes("not configured") ? 503 : result.error.includes("target roles") ? 422 : 422;
+      result.error.includes("not configured")
+        ? 503
+        : result.error.includes("Upload a resume") || result.error.includes("upload your resume")
+          ? 422
+          : 422;
     return NextResponse.json({ error: result.error }, { status });
   }
 
