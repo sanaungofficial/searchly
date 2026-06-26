@@ -8,7 +8,7 @@ import { UserSettingsModal } from "./user-settings-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { canAccessBetaFeature } from "@/lib/beta-features";
-import { isStaffPortalRole, STAFF_DASHBOARD_NAV } from "@/lib/staff-portal";
+import { isStaffPortalRole, STAFF_DASHBOARD_NAV, matchStaffDashboardNavPath, isExpertPortalPath } from "@/lib/staff-portal";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
@@ -26,33 +26,14 @@ type NavLink = {
   children?: NavChild[];
 };
 
-function buildNavLinks(isAdmin: boolean, isStaffPortal: boolean): NavLink[] {
+function buildNavLinks(isAdmin: boolean): NavLink[] {
   const links: NavLink[] = [];
-  if (isAdmin) {
-    links.push({
-      id: "admin",
-      label: "Admin",
-      path: "/admin",
-      match: (p) => p.startsWith("/admin"),
-      children: ADMIN_NAV.map(({ label, path }) => ({
-        label,
-        path,
-        match: (p) => matchAdminNavPath(p, path),
-      })),
-    });
-  }
   links.push({
     id: "dashboard",
     label: "Dashboard",
     path: "/dashboard",
-    match: (p) => p === "/dashboard" || p.startsWith("/dashboard/"),
-    children: isStaffPortal
-      ? STAFF_DASHBOARD_NAV.map(({ label, path }) => ({
-          label,
-          path,
-          match: (p) => (path === "/dashboard" ? p === "/dashboard" : p.startsWith(path)),
-        }))
-      : undefined,
+    match: (p) =>
+      (p === "/dashboard" || p.startsWith("/dashboard/")) && !isExpertPortalPath(p),
   });
   links.push({
     id: "opportunities",
@@ -138,6 +119,130 @@ function NavDropdownMenuItem({
   );
 }
 
+function NavChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        transform: open ? "rotate(180deg)" : "none",
+        transition: "transform 0.15s",
+        opacity: 0.7,
+        flexShrink: 0,
+      }}
+      aria-hidden
+    >
+      <path d="M2 4l4 4 4-4" />
+    </svg>
+  );
+}
+
+function UtilityPortalDropdown({
+  label,
+  defaultPath,
+  active,
+  items,
+  dropdownOpen,
+  isMobile,
+  onOpen,
+  onScheduleClose,
+  onToggle,
+  onNavigate,
+  pathname,
+}: {
+  label: string;
+  defaultPath: string;
+  active: boolean;
+  items: NavChild[];
+  dropdownOpen: boolean;
+  isMobile: boolean;
+  onOpen: () => void;
+  onScheduleClose: () => void;
+  onToggle: () => void;
+  onNavigate: (path: string) => void;
+  pathname: string;
+}) {
+  return (
+    <div
+      style={{ position: "relative", flexShrink: 0 }}
+      onMouseEnter={() => {
+        if (!isMobile) onOpen();
+      }}
+      onMouseLeave={() => {
+        if (!isMobile) onScheduleClose();
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          if (isMobile) onToggle();
+          else onNavigate(defaultPath);
+        }}
+        aria-expanded={dropdownOpen}
+        aria-haspopup="menu"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          padding: isMobile ? "6px 10px" : "7px 12px",
+          background: dropdownOpen || active ? "rgba(26,58,47,0.06)" : surface.card,
+          border: active ? border.lineStrong : border.line,
+          borderRadius: "var(--scout-radius)",
+          cursor: "pointer",
+          fontFamily: fontSans,
+          fontSize: isMobile ? 11 : T.caption,
+          fontWeight: active ? 600 : 500,
+          color: active ? color.forest : color.muted,
+          whiteSpace: "nowrap",
+          transition: "background 0.15s, color 0.15s, border-color 0.15s",
+        }}
+      >
+        {label}
+        <NavChevron open={dropdownOpen} />
+      </button>
+      {dropdownOpen && (
+        <div
+          role="menu"
+          onMouseEnter={() => {
+            if (!isMobile) onOpen();
+          }}
+          onMouseLeave={() => {
+            if (!isMobile) onScheduleClose();
+          }}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            minWidth: 200,
+            padding: 4,
+            background: surface.card,
+            border: border.lineStrong,
+            borderRadius: "var(--scout-radius)",
+            boxShadow: "var(--scout-shadow-card-strong)",
+            zIndex: 130,
+            animation: "fadeIn 0.15s ease both",
+          }}
+        >
+          {items.map(({ label: childLabel, path: childPath, match: childMatch }) => (
+            <NavDropdownMenuItem
+              key={childPath}
+              label={childLabel}
+              active={childMatch(pathname)}
+              onClick={() => onNavigate(childPath)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NotificationMenuItem({
   unread,
   onClick,
@@ -210,9 +315,44 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
 
   const isStaffPortal = isStaffPortalRole(userRole);
   const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
-  const navLinks = buildNavLinks(showAdminUi, isStaffPortal);
+  const navLinks = buildNavLinks(showAdminUi);
   const horizontalPad = isMobile ? 16 : 28;
   const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
+
+  const expertPortalActive =
+    isStaffPortal &&
+    !isImpersonating &&
+    (isExpertPortalPath(pathname) ||
+      (pathname === "/dashboard" && staffDashboardView === "expert"));
+  const adminPortalActive = showAdminUi && pathname.startsWith("/admin");
+
+  const expertNavItems: NavChild[] = STAFF_DASHBOARD_NAV.map(({ label, path }) => ({
+    label,
+    path,
+    match: (p) => matchStaffDashboardNavPath(p, path),
+  }));
+
+  const adminNavItems: NavChild[] = ADMIN_NAV.map(({ label, path }) => ({
+    label,
+    path,
+    match: (p) => matchAdminNavPath(p, path),
+  }));
+
+  const navigateToSeekerDashboard = () => {
+    if (isStaffPortal && !isImpersonating) setStaffDashboardView("seeker");
+    router.push("/dashboard");
+  };
+
+  const navigateExpertPortal = (path: string) => {
+    if (isStaffPortal && !isImpersonating) setStaffDashboardView("expert");
+    router.push(path);
+    setNavDropdownOpen(null);
+  };
+
+  const navigateAdminPortal = (path: string) => {
+    router.push(path);
+    setNavDropdownOpen(null);
+  };
 
   const clearNavDropdownCloseTimer = () => {
     if (navDropdownCloseTimer.current) {
@@ -259,6 +399,11 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   }, [navDropdownOpen, isMobile]);
 
   useEffect(() => () => clearNavDropdownCloseTimer(), []);
+
+  useEffect(() => {
+    if (!isStaffPortal || isImpersonating) return;
+    if (isExpertPortalPath(pathname)) setStaffDashboardView("expert");
+  }, [pathname, isStaffPortal, isImpersonating, setStaffDashboardView]);
 
   const onToggleNotif = () => setNotifOpen((p) => !p);
 
@@ -391,24 +536,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                       }}
                     >
                       {label}
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 12 12"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        style={{
-                          transform: dropdownOpen ? "rotate(180deg)" : "none",
-                          transition: "transform 0.15s",
-                          opacity: 0.7,
-                        }}
-                        aria-hidden
-                      >
-                        <path d="M2 4l4 4 4-4" />
-                      </svg>
+                      <NavChevron open={dropdownOpen} />
                     </button>
                     {dropdownOpen && (
                       <div
@@ -458,7 +586,10 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                 <button
                   key={id}
                   type="button"
-                  onClick={() => router.push(path)}
+                  onClick={() => {
+                    if (id === "dashboard") navigateToSeekerDashboard();
+                    else router.push(path);
+                  }}
                   style={{
                     background: "none",
                     border: "none",
@@ -482,53 +613,41 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
             })}
           </nav>
 
-          {/* Right actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {/* Right actions — expert/admin portals + account utilities */}
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0 }}>
             {isStaffPortal && !isImpersonating && (
-              <div
-                role="group"
-                aria-label="Dashboard view"
-                style={{
-                  display: "flex",
-                  border: border.line,
-                  borderRadius: 999,
-                  overflow: "hidden",
-                  flexShrink: 0,
-                }}
-              >
-                {(
-                  [
-                    { id: "seeker" as const, label: isMobile ? "Seeker" : "Job seeker" },
-                    { id: "expert" as const, label: "Expert" },
-                  ] as const
-                ).map(({ id, label }) => {
-                  const active = staffDashboardView === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => {
-                        setStaffDashboardView(id);
-                        if (pathname !== "/dashboard") router.push("/dashboard");
-                      }}
-                      aria-pressed={active}
-                      style={{
-                        border: "none",
-                        background: active ? color.forest : "transparent",
-                        color: active ? "#fff" : color.muted,
-                        fontFamily: fontSans,
-                        fontSize: isMobile ? 11 : 12,
-                        fontWeight: 600,
-                        padding: isMobile ? "6px 10px" : "7px 12px",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
+              <UtilityPortalDropdown
+                label={isMobile ? "Expert" : "Expert dashboard"}
+                defaultPath="/dashboard"
+                active={expertPortalActive}
+                items={expertNavItems}
+                dropdownOpen={navDropdownOpen === "expert-portal"}
+                isMobile={isMobile}
+                pathname={pathname}
+                onOpen={() => openNavDropdown("expert-portal")}
+                onScheduleClose={scheduleCloseNavDropdown}
+                onToggle={() =>
+                  setNavDropdownOpen((prev) => (prev === "expert-portal" ? null : "expert-portal"))
+                }
+                onNavigate={navigateExpertPortal}
+              />
+            )}
+            {showAdminUi && (
+              <UtilityPortalDropdown
+                label="Admin"
+                defaultPath="/admin"
+                active={adminPortalActive}
+                items={adminNavItems}
+                dropdownOpen={navDropdownOpen === "admin-portal"}
+                isMobile={isMobile}
+                pathname={pathname}
+                onOpen={() => openNavDropdown("admin-portal")}
+                onScheduleClose={scheduleCloseNavDropdown}
+                onToggle={() =>
+                  setNavDropdownOpen((prev) => (prev === "admin-portal" ? null : "admin-portal"))
+                }
+                onNavigate={navigateAdminPortal}
+              />
             )}
 
             <button

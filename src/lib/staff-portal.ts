@@ -13,3 +13,15 @@ export const STAFF_DASHBOARD_NAV = [
   { id: "bookings", label: "Bookings", path: "/dashboard/bookings" },
   { id: "live", label: "Live", path: "/dashboard/live" },
 ] as const;
+
+export function matchStaffDashboardNavPath(pathname: string, itemPath: string): boolean {
+  if (itemPath === "/dashboard") return pathname === "/dashboard";
+  return pathname.startsWith(itemPath);
+}
+
+/** True when the URL is an expert-workspace route (not the shared /dashboard home). */
+export function isExpertPortalPath(pathname: string): boolean {
+  return STAFF_DASHBOARD_NAV.some(
+    (item) => item.path !== "/dashboard" && pathname.startsWith(item.path),
+  );
+}
