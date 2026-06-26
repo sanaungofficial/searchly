@@ -350,7 +350,7 @@ function JobFiltersGrid({
     <div style={{ marginTop: 16, padding: 16, background: surface.inset, border: border.line }}>
       <FilterSectionHeader
         title="Where & how you want to work"
-        hint="Your location and work setup. Saved to your profile when you search."
+        hint="City, state, or country text match — not a mile radius. Remote roles always show. Saved to your profile when you search."
       />
       <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
         <FilterField label="City">
@@ -1062,11 +1062,13 @@ export function PipelineRecommendedSection({
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
-    : hasActiveSearch
-      ? "Nothing matched — try different keywords or loosen your filters."
-      : recommendedListings.length === 0 && jobs.length > 0
-        ? "You've saved everything in today's list — check back after the daily refresh."
-        : "No matches right now — add target roles or upload a resume under Profile, then refresh.";
+    : notice
+      ? "Review the note above — these are broader matches while we refine your personalized feed."
+      : hasActiveSearch
+        ? "Nothing matched — try different keywords or loosen your filters."
+        : recommendedListings.length === 0 && jobs.length > 0
+          ? "You've saved everything in today's list — check back after the daily refresh."
+          : "No matches right now — add target roles or upload a resume under Profile, then refresh.";
 
   return (
     <div>
