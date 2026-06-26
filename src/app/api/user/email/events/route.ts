@@ -33,13 +33,20 @@ export async function GET() {
     return NextResponse.json({
       events: events.map((ev) => {
         const start = ev.when?.start_time ? new Date(ev.when.start_time * 1000) : null;
+        const end = ev.when?.end_time ? new Date(ev.when.end_time * 1000) : null;
         const activity = activityByEventId[ev.id];
+        const participants = (ev.participants ?? [])
+          .map((p) => p.name?.trim() || p.email?.trim())
+          .filter(Boolean)
+          .slice(0, 4);
         return {
           id: ev.id,
           title: ev.title ?? "Calendar event",
           location: ev.location ?? null,
           startAt: start?.toISOString() ?? null,
+          endAt: end?.toISOString() ?? null,
           startLabel: start ? formatMessageDate(ev.when?.start_time) : "",
+          participants,
           activity: activity
             ? {
                 id: activity.id,

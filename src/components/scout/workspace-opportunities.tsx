@@ -21,7 +21,6 @@ import { DataSourcesPopover } from "./data-sources-popover";
 import { PipelineRecommendedSection, buildRecommendedProspectCard } from "./pipeline-recommended-section";
 import { PipelineStageJobsList } from "./pipeline-stage-jobs-list";
 import { PipelineNetworkSection } from "./pipeline-network-section";
-import { JobAgentActivityBanner } from "./job-agent-activity-banner";
 import { WorkspaceSegmentTabs } from "./workspace-segment-tabs";
 import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
@@ -993,8 +992,6 @@ function PipelineTab({
             : `${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline.`}
         </p>
       </div>
-
-      <JobAgentActivityBanner />
 
       <WorkspaceSegmentTabs tabs={pipelineTabs} active={pipelineView} onChange={setPipelineView} isMobile={isMobile} />
 

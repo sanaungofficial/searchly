@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
 import { resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
+import { serializeMessageActivity } from "@/lib/inbox-message-activity";
 import { listMessages, serializeMessageSummary } from "@/lib/nylas-inbox";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   const { dbUser } = await getActingUser();
@@ -45,9 +47,22 @@ export async function GET(req: NextRequest) {
     }
 
     const serialized = messages.map((m) => serializeMessageSummary(m));
+    const messageIds = serialized.map((m) => m.id);
+    const activities = messageIds.length
+      ? await prisma.jobActivityLog.findMany({
+          where: { userId: dbUser.id, nylasMessageId: { in: messageIds } },
+          include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+        })
+      : [];
+    const activityByMessageId = Object.fromEntries(
+      activities.filter((a) => a.nylasMessageId).map((a) => [a.nylasMessageId!, a]),
+    );
 
     return NextResponse.json({
-      messages: serialized,
+      messages: serialized.map((m) => ({
+        ...m,
+        activity: serializeMessageActivity(activityByMessageId[m.id]),
+      })),
       nextCursor,
     });
   } catch (err) {
