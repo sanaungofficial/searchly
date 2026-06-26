@@ -119,6 +119,31 @@ function NavDropdownMenuItem({
   );
 }
 
+function ExpertModeChip({ isMobile }: { isMobile: boolean }) {
+  return (
+    <span
+      aria-label="Expert mode"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: isMobile ? "4px 8px" : "5px 10px",
+        borderRadius: 999,
+        background: "rgba(26,58,47,0.08)",
+        border: "1px solid rgba(26,58,47,0.14)",
+        fontFamily: fontSans,
+        fontSize: isMobile ? 10 : T.caption,
+        fontWeight: 600,
+        color: color.forest,
+        letterSpacing: "0.02em",
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+      }}
+    >
+      Expert mode
+    </span>
+  );
+}
+
 function NavChevron({ open }: { open: boolean }) {
   return (
     <svg
@@ -324,6 +349,11 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     !isImpersonating &&
     (isExpertPortalPath(pathname) ||
       (pathname === "/dashboard" && staffDashboardView === "expert"));
+  const showExpertModeChip =
+    isStaffPortal &&
+    !isImpersonating &&
+    pathname === "/dashboard" &&
+    staffDashboardView === "expert";
   const adminPortalActive = showAdminUi && pathname.startsWith("/admin");
 
   const expertNavItems: NavChild[] = STAFF_DASHBOARD_NAV.map(({ label, path }) => ({
@@ -615,6 +645,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
 
           {/* Right actions — expert/admin portals + account utilities */}
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0 }}>
+            {showExpertModeChip && <ExpertModeChip isMobile={isMobile} />}
             {isStaffPortal && !isImpersonating && (
               <UtilityPortalDropdown
                 label={isMobile ? "Expert" : "Expert dashboard"}

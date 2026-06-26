@@ -4,7 +4,6 @@ export const ADMIN_NAV = [
   { id: "coaches", label: "Experts", path: "/admin/coaches" },
   { id: "bookings", label: "Bookings", path: "/admin/bookings" },
   { id: "purchases", label: "Purchases", path: "/admin/purchases" },
-  { id: "clients", label: "Clients", path: "/admin/clients" },
   { id: "live", label: "Live sessions", path: "/admin/live" },
   { id: "prompts", label: "Prompts", path: "/admin/prompts" },
   { id: "company-scans", label: "Company scans", path: "/admin/company-scans" },
