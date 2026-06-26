@@ -13,6 +13,7 @@ import type {
   PipelineJob,
 } from "./inbox-types";
 import { signalLabel } from "./inbox-types";
+import { InboxActivityActions } from "./inbox-activity-actions";
 
 function pickInboxFolder(folders: Folder[]): Folder | null {
   return folders.find((f) => f.id === "INBOX" || f.name.toLowerCase() === "inbox") ?? folders[0] ?? null;
@@ -216,7 +217,10 @@ export function InboxMailView({
     }
   }
 
-  async function handleAgentAction(action: "accept" | "dismiss", extra?: { jobId?: string; createJob?: boolean }) {
+  async function handleAgentAction(
+    action: "accept" | "dismiss" | "link",
+    extra?: { jobId?: string; createJob?: boolean; applyStage?: boolean },
+  ) {
     if (!detail?.activity) return;
     const res = await fetch(`/api/user/job-agent/activity/${detail.activity.id}`, {
       method: "POST",
@@ -227,7 +231,12 @@ export function InboxMailView({
       onNotice({ type: "error", text: "Could not update suggestion." });
       return;
     }
-    onNotice({ type: "success", text: action === "accept" ? "Pipeline updated." : "Dismissed." });
+    const labels: Record<string, string> = {
+      accept: extra?.applyStage ? "Pipeline updated." : "Added to pipeline.",
+      link: "Email linked to role.",
+      dismiss: "Dismissed.",
+    };
+    onNotice({ type: "success", text: labels[action] ?? "Updated." });
     setLinkJobOpen(false);
     setDetail(await loadDetail(selectedId!));
   }
@@ -450,16 +459,20 @@ export function InboxMailView({
                 {detail.to && <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>To: {detail.to}</p>}
                 <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, margin: "0 0 16px" }}>{detail.dateLabel}</p>
 
-                {/* Agent panel */}
+                {/* Pipeline link panel */}
                 <div style={{ marginBottom: 20, padding: 16, border: "1px solid rgba(42,107,74,0.25)", background: "rgba(42,107,74,0.06)", borderRadius: "var(--scout-radius)" }}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: detail.activity ? 10 : 0 }}>
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, flex: 1 }}>Kimchi agent</p>
+                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, flex: 1 }}>
+                      Pipeline link
+                    </p>
                     <ScoutSecondaryBtn onClick={() => handleAnalyze(Boolean(detail.activity))} disabled={analyzing}>
-                      {analyzing ? "Analyzing…" : detail.activity ? "Re-analyze" : "Analyze now"}
+                      {analyzing ? "Analyzing…" : detail.activity ? "Re-analyze" : "Analyze email"}
                     </ScoutSecondaryBtn>
                   </div>
                   {!detail.activity && (
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Not classified yet — run Analyze to detect application updates.</p>
+                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5 }}>
+                      Analyze this email to detect companies, roles, and suggested pipeline updates.
+                    </p>
                   )}
                   {detail.activity && (
                     <>
@@ -467,40 +480,18 @@ export function InboxMailView({
                         {detail.activity.title ?? signalLabel(detail.activity.signal)}
                       </p>
                       {detail.activity.snippet && (
-                        <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: T.caption, color: color.stone, lineHeight: 1.5 }}>{detail.activity.snippet}</p>
-                      )}
-                      {detail.activity.status === "PENDING_REVIEW" && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {detail.activity.suggestedStage && (
-                            <ScoutPrimaryBtn onClick={() => handleAgentAction("accept", { createJob: !detail.activity?.job && Boolean(detail.activity?.companyGuess) })}>
-                              Accept → {detail.activity.suggestedStage}
-                            </ScoutPrimaryBtn>
-                          )}
-                          <ScoutSecondaryBtn onClick={() => handleAgentAction("dismiss")}>Dismiss</ScoutSecondaryBtn>
-                          {!detail.activity.job && (
-                            <ScoutSecondaryBtn onClick={() => setLinkJobOpen((v) => !v)}>Link job</ScoutSecondaryBtn>
-                          )}
-                        </div>
-                      )}
-                      {linkJobOpen && (
-                        <select
-                          defaultValue=""
-                          onChange={(e) => {
-                            if (e.target.value) handleAgentAction("accept", { jobId: e.target.value });
-                          }}
-                          style={{ marginTop: 10, width: "100%", padding: 8, fontFamily: fontSans, fontSize: T.caption, border: border.line }}
-                        >
-                          <option value="">Select pipeline job…</option>
-                          {jobs.map((j) => (
-                            <option key={j.id} value={j.id}>{j.company} — {j.role}</option>
-                          ))}
-                        </select>
-                      )}
-                      {detail.activity.job && (
-                        <p style={{ margin: "10px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-                          Linked: {detail.activity.job.role} @ {detail.activity.job.company}
+                        <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: T.caption, color: color.stone, lineHeight: 1.5 }}>
+                          {detail.activity.snippet}
                         </p>
                       )}
+                      <InboxActivityActions
+                        activity={{ ...detail.activity, id: detail.activity.id }}
+                        jobs={jobs}
+                        linkOpen={linkJobOpen}
+                        onToggleLink={() => setLinkJobOpen((v) => !v)}
+                        onAction={handleAgentAction}
+                        compact
+                      />
                     </>
                   )}
                 </div>

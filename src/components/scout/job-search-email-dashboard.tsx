@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
@@ -15,8 +15,12 @@ export function JobSearchEmailDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [mode, setMode] = useState<InboxMode>(() => (searchParams.get("mode") === "agent" ? "agent" : "mail"));
+  const [mode, setMode] = useState<InboxMode>(() => {
+    if (searchParams.get("mode") === "mail") return "mail";
+    return "agent";
+  });
   const [status, setStatus] = useState<InboxStatus | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -26,9 +30,16 @@ export function JobSearchEmailDashboard() {
   const [sending, setSending] = useState(false);
 
   const loadStatus = useCallback(async () => {
-    const res = await fetch("/api/nylas/user/status");
-    if (!res.ok) return null;
-    return res.json() as Promise<InboxStatus>;
+    const [stRes, summaryRes] = await Promise.all([
+      fetch("/api/nylas/user/status"),
+      fetch("/api/user/job-agent/activity?summary=1"),
+    ]);
+    if (summaryRes.ok) {
+      const summary = await summaryRes.json();
+      setPendingCount(summary.pendingCount ?? 0);
+    }
+    if (!stRes.ok) return null;
+    return stRes.json() as Promise<InboxStatus>;
   }, []);
 
   const bootstrap = useCallback(async () => {
@@ -48,7 +59,8 @@ export function JobSearchEmailDashboard() {
   }, [bootstrap]);
 
   useEffect(() => {
-    if (searchParams.get("mode") === "agent") setMode("agent");
+    if (searchParams.get("mode") === "mail") setMode("mail");
+    else if (searchParams.get("mode") === "agent" || !searchParams.get("messageId")) setMode("agent");
     const msgId = searchParams.get("messageId");
     if (msgId) {
       setOpenMessageId(msgId);
@@ -60,8 +72,8 @@ export function JobSearchEmailDashboard() {
     const inbox = searchParams.get("inbox");
     const reason = searchParams.get("reason");
     if (inbox === "connected") {
-      setNotice({ type: "success", text: "Inbox connected — you can read and send from here." });
-      router.replace(INBOX_PATH);
+      setNotice({ type: "success", text: "Inbox connected — Kimchi will suggest pipeline links from your mail." });
+      router.replace(`${INBOX_PATH}?mode=agent`);
       bootstrap().catch(() => {});
     } else if (inbox === "error") {
       setNotice({
@@ -78,7 +90,8 @@ export function JobSearchEmailDashboard() {
       const res = await fetch("/api/user/email/sync", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Sync failed");
-      setNotice({ type: "success", text: `Synced — ${data.processed ?? 0} signals processed.` });
+      setNotice({ type: "success", text: `Synced — ${data.processed ?? 0} email signals processed.` });
+      await bootstrap();
     } catch (err) {
       setNotice({ type: "error", text: err instanceof Error ? err.message : "Sync failed." });
     } finally {
@@ -126,7 +139,7 @@ export function JobSearchEmailDashboard() {
 
   function switchMode(next: InboxMode) {
     setMode(next);
-    const url = next === "agent" ? `${INBOX_PATH}?mode=agent` : INBOX_PATH;
+    const url = next === "agent" ? `${INBOX_PATH}?mode=agent` : `${INBOX_PATH}?mode=mail`;
     router.replace(url);
   }
 
@@ -135,6 +148,14 @@ export function JobSearchEmailDashboard() {
     setMode("mail");
     router.replace(`${INBOX_PATH}?messageId=${encodeURIComponent(messageId)}`);
   }
+
+  const modeTabs: [InboxMode, string][] = useMemo(
+    () => [
+      ["agent", pendingCount > 0 ? `Insights (${pendingCount})` : "Insights"],
+      ["mail", "Mail"],
+    ],
+    [pendingCount],
+  );
 
   if (loading) {
     return (
@@ -161,7 +182,7 @@ export function JobSearchEmailDashboard() {
           Inbox
         </h2>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.6, margin: "0 0 20px" }}>
-          Connect Gmail or Outlook to read mail in Kimchi. The agent surfaces job-related messages first — nothing is hidden.
+          Connect Gmail or Outlook. Kimchi reads your mail, links emails to pipeline roles, and suggests follow-ups — you choose what to apply.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <ScoutPrimaryBtn onClick={() => { window.location.href = "/api/nylas/user/connect?returnTo=inbox&provider=google"; }}>
@@ -174,11 +195,6 @@ export function JobSearchEmailDashboard() {
       </ScoutBox>
     );
   }
-
-  const modeTabs: [InboxMode, string][] = [
-    ["mail", "Mail"],
-    ["agent", "Agent"],
-  ];
 
   return (
     <ScoutBox flat padding="0" style={{ marginTop: 16, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -202,7 +218,7 @@ export function JobSearchEmailDashboard() {
                   style={{
                     padding: "8px 16px",
                     border: "none",
-                    borderRight: id === "mail" ? border.line : "none",
+                    borderRight: id === "agent" ? border.line : "none",
                     background: active ? color.forest : surface.card,
                     color: active ? color.gold : color.stone,
                     fontFamily: fontSans,
@@ -219,10 +235,17 @@ export function JobSearchEmailDashboard() {
           {mode === "mail" && (
             <ScoutPrimaryBtn onClick={() => setCompose({ open: true, to: "", subject: "", body: "" })}>Compose</ScoutPrimaryBtn>
           )}
-          <ScoutSecondaryBtn onClick={handleSync} disabled={syncing}>{syncing ? "Syncing…" : "Sync agent"}</ScoutSecondaryBtn>
-          <ScoutSecondaryBtn onClick={() => bootstrap()} disabled={loading}>Refresh</ScoutSecondaryBtn>
+          <ScoutSecondaryBtn onClick={handleSync} disabled={syncing}>{syncing ? "Syncing…" : "Sync"}</ScoutSecondaryBtn>
         </div>
       </div>
+
+      {mode === "agent" && (
+        <div style={{ padding: "12px 16px", borderBottom: border.line, background: "rgba(42,107,74,0.06)" }}>
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.55 }}>
+            <strong style={{ color: color.forest }}>Insights</strong> links emails to your pipeline roles, suggests stage updates, and surfaces follow-ups. Nothing applies until you confirm.
+          </p>
+        </div>
+      )}
 
       {notice && (
         <div style={{ padding: "10px 16px", fontFamily: fontSans, fontSize: T.caption, color: notice.type === "success" ? color.forest : "#C4574A", background: notice.type === "success" ? "rgba(42,107,74,0.08)" : "rgba(196,87,74,0.08)", borderBottom: border.line }}>
@@ -250,8 +273,8 @@ export function JobSearchEmailDashboard() {
             syncing={syncing}
             onSettingsChange={updateSettings}
             savingSettings={savingSettings}
-            notice={notice}
             onNotice={setNotice}
+            onCountsChange={setPendingCount}
           />
         )}
       </div>

@@ -11,7 +11,7 @@ import { canAccessBetaFeature } from "@/lib/beta-features";
 import { isStaffPortalRole, STAFF_DASHBOARD_NAV } from "@/lib/staff-portal";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
-import { matchOpportunitiesNavPath, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
+import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
 
 export const TOP_NAV_HEIGHT = 64;
 export const TOP_NAV_HEIGHT_MOBILE = 56;
@@ -64,6 +64,12 @@ function buildNavLinks(isAdmin: boolean, isStaffPortal: boolean): NavLink[] {
       path,
       match,
     })),
+  });
+  links.push({
+    id: "inbox",
+    label: "Inbox",
+    path: INBOX_PATH,
+    match: matchInboxPath,
   });
   if (canAccessBetaFeature("coaching", isAdmin)) {
     links.push({

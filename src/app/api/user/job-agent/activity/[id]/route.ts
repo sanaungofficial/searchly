@@ -11,9 +11,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "accept" | "dismiss";
+    action?: "accept" | "dismiss" | "link";
     jobId?: string;
     createJob?: boolean;
+    applyStage?: boolean;
     labelProcessed?: boolean;
   };
 
@@ -30,8 +31,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ activity: updated });
   }
 
+  if (body.action === "link") {
+    const jobId = body.jobId ?? activity.jobId;
+    if (!jobId) {
+      return NextResponse.json({ error: "Select a pipeline job to link" }, { status: 400 });
+    }
+
+    const job = await prisma.job.findFirst({ where: { id: jobId, userId: dbUser.id } });
+    if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+    const updated = await prisma.jobActivityLog.update({
+      where: { id },
+      data: {
+        jobId,
+        status: JobActivityStatus.APPLIED,
+        appliedStage: null,
+      },
+    });
+
+    return NextResponse.json({ activity: updated, job });
+  }
+
   if (body.action === "accept") {
     let jobId = activity.jobId ?? body.jobId ?? null;
+    const applyStage = body.applyStage === true && Boolean(activity.suggestedStage);
 
     if (!jobId && body.createJob !== false && activity.companyGuess) {
       const created = await prisma.job.create({
@@ -39,14 +62,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           userId: dbUser.id,
           company: activity.companyGuess,
           role: activity.roleGuess ?? "Role from email",
-          stage: activity.suggestedStage ?? JobStage.SAVED,
+          stage: applyStage && activity.suggestedStage ? activity.suggestedStage : JobStage.SAVED,
+          ...(applyStage && activity.suggestedStage === JobStage.APPLIED ? { appliedAt: new Date() } : {}),
         },
       });
       jobId = created.id;
     }
 
     if (!jobId) {
-      return NextResponse.json({ error: "Link a pipeline job or enable create job" }, { status: 400 });
+      return NextResponse.json({ error: "Link a pipeline job or add this role" }, { status: 400 });
     }
 
     if (activity.jobId !== jobId) {
@@ -59,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let job = await prisma.job.findFirst({ where: { id: jobId, userId: dbUser.id } });
     if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-    if (activity.suggestedStage) {
+    if (applyStage && activity.suggestedStage) {
       job = await prisma.job.update({
         where: { id: jobId },
         data: {
@@ -73,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       where: { id },
       data: {
         status: JobActivityStatus.APPLIED,
-        appliedStage: activity.suggestedStage,
+        appliedStage: applyStage ? activity.suggestedStage : null,
         jobId,
       },
     });

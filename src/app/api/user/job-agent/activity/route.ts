@@ -10,6 +10,21 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Number(req.nextUrl.searchParams.get("limit") ?? 20), 50);
   const status = req.nextUrl.searchParams.get("status");
 
+  if (req.nextUrl.searchParams.get("summary") === "1") {
+    const [pendingCount, followUpCount] = await Promise.all([
+      prisma.jobActivityLog.count({
+        where: { userId: dbUser.id, status: JobActivityStatus.PENDING_REVIEW },
+      }),
+      prisma.job.count({
+        where: {
+          userId: dbUser.id,
+          stage: { in: ["APPLIED", "APPLYING", "SCREENING"] },
+        },
+      }),
+    ]);
+    return NextResponse.json({ pendingCount, followUpCount });
+  }
+
   const activities = await prisma.jobActivityLog.findMany({
     where: {
       userId: dbUser.id,
