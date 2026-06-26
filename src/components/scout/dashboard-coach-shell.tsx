@@ -10,6 +10,7 @@ import { border, surface } from "@/lib/typography";
 const STAFF_TABS: ProfileTabItem[] = [
   { id: "home", label: "Dashboard", href: "/dashboard" },
   { id: "expert-profile", label: "Expert Profile", href: "/dashboard/expert-profile" },
+  { id: "hub", label: "Hub", href: "/dashboard/hub" },
   { id: "clients", label: "Clients", href: "/dashboard/clients" },
   { id: "bookings", label: "Bookings", href: "/dashboard/bookings" },
   { id: "live", label: "Live", href: "/dashboard/live" },
