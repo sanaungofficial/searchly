@@ -18,8 +18,10 @@ type SyncStatus = {
 };
 
 type SyncSummary = {
+  mode?: "import" | "refresh";
   fetched: number;
   upserted: number;
+  failed?: number;
   totalHits: number | null;
   durationMs: number;
   authenticated: boolean;
@@ -46,6 +48,7 @@ export function ExecThreadSyncPanel() {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [limit, setLimit] = useState("5");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,22 +76,17 @@ export function ExecThreadSyncPanel() {
     void loadStatus();
   }, [loadStatus]);
 
-  const runSync = async (forceLogin = false) => {
+  const runRequest = async (body: Record<string, unknown>, mode: "import" | "refresh") => {
     if (!status?.configured) {
       setError("Add EXECTHREAD_EMAIL and EXECTHREAD_PASSWORD in Vercel first, then redeploy.");
       return;
     }
 
-    setSyncing(true);
+    const setBusy = mode === "refresh" ? setRefreshing : setSyncing;
+    setBusy(true);
     setError(null);
     setMessage(null);
     setLastSummary(null);
-
-    const parsedLimit = Number(limit);
-    const body = {
-      limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5,
-      forceLogin,
-    };
 
     try {
       const res = await fetch("/api/admin/execthread/sync", {
@@ -109,24 +107,48 @@ export function ExecThreadSyncPanel() {
       }
 
       setLastSummary(data.summary ?? null);
-      setMessage(
-        `Synced ${data.summary?.upserted ?? 0} ExecThread listings (${data.summary?.totalHits ?? "?"} total on ExecThread). Check Opportunities → In-Network Roles.`,
-      );
+      if (mode === "refresh") {
+        const failed = data.summary?.failed ?? 0;
+        setMessage(
+          `Refreshed ${data.summary?.upserted ?? 0} of ${data.summary?.fetched ?? 0} existing ExecThread jobs` +
+            (failed > 0 ? ` (${failed} failed)` : "") +
+            ". Check Opportunities → In-Network Roles for full descriptions and recruiter contacts.",
+        );
+      } else {
+        setMessage(
+          `Imported ${data.summary?.upserted ?? 0} listings from ExecThread search (${data.summary?.totalHits ?? "?"} total on ExecThread). Existing rows update when the same job appears in search results.`,
+        );
+      }
       await loadStatus();
     } catch {
       setError("Network error — try again.");
     } finally {
-      setSyncing(false);
+      setBusy(false);
     }
   };
 
-  const canSync = !!status?.configured && !syncing;
+  const runImport = (forceLogin = false) => {
+    const parsedLimit = Number(limit);
+    return runRequest(
+      {
+        limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5,
+        forceLogin,
+      },
+      "import",
+    );
+  };
+
+  const runRefresh = (forceLogin = false) => runRequest({ refreshExisting: true, forceLogin }, "refresh");
+
+  const busy = syncing || refreshing;
+  const canSync = !!status?.configured && !busy;
+  const canRefresh = canSync && (status?.jobCount ?? 0) > 0;
 
   return (
     <ScoutBox padding={24}>
       <ScoutLabel>ExecThread network jobs</ScoutLabel>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
-        Pull executive listings from ExecThread into Kimchi In-Network Roles — full descriptions, recruiter contacts, and apply links. Sync always reveals confidential info (premium/unlimited ET account; no point budgeting in Kimchi).
+        Import new listings from ExecThread search, or <strong>refresh existing</strong> jobs already in Kimchi to backfill full descriptions, recruiter contacts, and apply links. Sync always reveals confidential info (premium/unlimited ET account; no point budgeting in Kimchi).
       </p>
 
       {forbidden && (
@@ -169,24 +191,48 @@ export function ExecThreadSyncPanel() {
             </p>
           )}
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginBottom: 16 }}>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Limit</span>
-              <input style={inputStyle} value={limit} onChange={(e) => setLimit(e.target.value)} disabled={!canSync} />
-            </label>
-            <ScoutPrimaryBtn disabled={!canSync} onClick={() => void runSync(false)} style={{ minHeight: 40 }}>
-              {syncing ? "Syncing…" : "Sync ExecThread →"}
-            </ScoutPrimaryBtn>
-            <ScoutSecondaryBtn disabled={!canSync} onClick={() => void runSync(true)} style={{ minHeight: 40 }}>
-              Force re-login
-            </ScoutSecondaryBtn>
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.muted, margin: "0 0 8px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Import from search
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Limit</span>
+                <input style={inputStyle} value={limit} onChange={(e) => setLimit(e.target.value)} disabled={!canSync} />
+              </label>
+              <ScoutPrimaryBtn disabled={!canSync} onClick={() => void runImport(false)} style={{ minHeight: 40 }}>
+                {syncing ? "Importing…" : "Import from ExecThread →"}
+              </ScoutPrimaryBtn>
+            </div>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0", maxWidth: 560, lineHeight: 1.45 }}>
+              Pulls the top N listings from ExecThread search. Does not re-fetch jobs already in Kimchi unless they appear in this search batch.
+            </p>
           </div>
 
-          {error && <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#C4574A", margin: "0 0 12px" }}>{error}</p>}
-          {message && <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, margin: "0 0 12px" }}>{message}</p>}
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.muted, margin: "0 0 8px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Refresh existing
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+              <ScoutPrimaryBtn disabled={!canRefresh} onClick={() => void runRefresh(false)} style={{ minHeight: 40 }}>
+                {refreshing ? "Refreshing…" : `Refresh ${status.jobCount} existing job${status.jobCount === 1 ? "" : "s"}`}
+              </ScoutPrimaryBtn>
+            </div>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0", maxWidth: 560, lineHeight: 1.45 }}>
+              Re-downloads full posting text, company copy, recruiters, and apply links for every ExecThread job already stored in Kimchi. Use this after code fixes or when listings look truncated.
+            </p>
+          </div>
+
+          <ScoutSecondaryBtn disabled={!canSync} onClick={() => void runImport(true)} style={{ minHeight: 40 }}>
+            Force re-login
+          </ScoutSecondaryBtn>
+
+          {error && <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#C4574A", margin: "12px 0 0" }}>{error}</p>}
+          {message && <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, margin: "12px 0 0" }}>{message}</p>}
           {lastSummary && (
-            <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, margin: 0 }}>
-              fetched {lastSummary.fetched} · upserted {lastSummary.upserted} · {lastSummary.durationMs}ms
+            <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, margin: "8px 0 0" }}>
+              {lastSummary.mode ?? "import"} · fetched {lastSummary.fetched} · upserted {lastSummary.upserted}
+              {lastSummary.failed ? ` · failed ${lastSummary.failed}` : ""} · {lastSummary.durationMs}ms
               {lastSummary.authenticated ? " · authenticated" : ""}
               {lastSummary.previewHits != null ? ` · ${lastSummary.previewHits} previews` : ""}
               {lastSummary.redeemHits != null && lastSummary.redeemHits > 0 ? ` · ${lastSummary.redeemHits} redeems` : ""}

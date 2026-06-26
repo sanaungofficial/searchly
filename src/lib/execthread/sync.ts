@@ -22,6 +22,11 @@ export type RunExecThreadSyncOptions = {
   forceLogin?: boolean;
 };
 
+type ExportHitCounts = {
+  previewHits: number;
+  redeemHits: number;
+};
+
 async function upsertExecThreadRecruiter(job: ExecThreadListingRaw): Promise<string | null> {
   const mapped = mapExecThreadPrimaryRecruiter(job);
   if (!mapped) return null;
@@ -81,19 +86,13 @@ async function loginClient(): Promise<ExecThreadClient> {
   return client;
 }
 
-export async function runExecThreadSync(
-  options: RunExecThreadSyncOptions = {},
-): Promise<ExecThreadSyncSummary> {
-  const started = Date.now();
-  const limit = options.limit && options.limit > 0 ? options.limit : 5;
-
-  if (!execthreadConfigured()) {
-    throw new Error("EXECTHREAD_EMAIL and EXECTHREAD_PASSWORD are not configured.");
-  }
-
+async function getAuthenticatedExecThreadClient(forceLogin: boolean): Promise<{
+  client: ExecThreadClient;
+  authenticated: boolean;
+}> {
   let client: ExecThreadClient;
   let authenticated = false;
-  const stored = options.forceLogin ? null : await loadExecThreadSession();
+  const stored = forceLogin ? null : await loadExecThreadSession();
 
   if (stored?.cookies?.length) {
     client = new ExecThreadClient(stored);
@@ -114,6 +113,54 @@ export async function runExecThreadSync(
   }
 
   await saveExecThreadSession(client.getSession());
+  return { client, authenticated };
+}
+
+function exportHitCounts(job: ExecThreadListingRaw): ExportHitCounts {
+  const exportMeta = job._kimchiExport as {
+    publicPreview?: unknown;
+    redeem?: unknown;
+  } | undefined;
+  return {
+    previewHits: exportMeta?.publicPreview ? 1 : 0,
+    redeemHits: exportMeta?.redeem ? 1 : 0,
+  };
+}
+
+async function persistExecThreadListing(job: ExecThreadListingRaw): Promise<void> {
+  const dbFields = toExecThreadNetworkJobDbRecord(job);
+  const recruiterRecordId = await upsertExecThreadRecruiter(job);
+  await upsertExecThreadJob(dbFields, recruiterRecordId);
+}
+
+/** Build a minimal search row from a stored DB job for re-export. */
+export function searchRowFromStoredExecThreadJob(row: {
+  externalId: string;
+  networkId: string | null;
+  raw: unknown;
+}): ExecThreadListingRaw | null {
+  const raw = row.raw as ExecThreadListingRaw | null;
+  const externalId = raw?._id?.trim() || row.externalId?.trim();
+  if (!externalId) return null;
+
+  const slug = raw?.slug?.trim() || row.networkId?.trim() || undefined;
+  if (raw && typeof raw === "object") {
+    return { ...raw, _id: externalId, slug };
+  }
+  return { _id: externalId, slug };
+}
+
+export async function runExecThreadSync(
+  options: RunExecThreadSyncOptions = {},
+): Promise<ExecThreadSyncSummary> {
+  const started = Date.now();
+  const limit = options.limit && options.limit > 0 ? options.limit : 5;
+
+  if (!execthreadConfigured()) {
+    throw new Error("EXECTHREAD_EMAIL and EXECTHREAD_PASSWORD are not configured.");
+  }
+
+  const { client, authenticated } = await getAuthenticatedExecThreadClient(options.forceLogin === true);
 
   const searchPreview = await client.searchListings({
     q: "all",
@@ -136,16 +183,10 @@ export async function runExecThreadSync(
   let redeemHits = 0;
 
   for (const job of jobs) {
-    const exportMeta = job._kimchiExport as {
-      publicPreview?: unknown;
-      redeem?: unknown;
-    } | undefined;
-    if (exportMeta?.publicPreview) previewHits += 1;
-    if (exportMeta?.redeem) redeemHits += 1;
-
-    const dbFields = toExecThreadNetworkJobDbRecord(job);
-    const recruiterRecordId = await upsertExecThreadRecruiter(job);
-    await upsertExecThreadJob(dbFields, recruiterRecordId);
+    const hits = exportHitCounts(job);
+    previewHits += hits.previewHits;
+    redeemHits += hits.redeemHits;
+    await persistExecThreadListing(job);
     upserted += 1;
   }
 
@@ -153,9 +194,69 @@ export async function runExecThreadSync(
   await recordExecThreadSyncResult(true);
 
   return {
+    mode: "import",
     fetched: jobs.length,
     upserted,
     totalHits,
+    durationMs: Date.now() - started,
+    authenticated,
+    previewHits,
+    redeemHits,
+  };
+}
+
+/** Re-fetch full export for every ExecThread job already stored in Kimchi. */
+export async function runExecThreadRefreshExisting(
+  options: Pick<RunExecThreadSyncOptions, "forceLogin"> = {},
+): Promise<ExecThreadSyncSummary> {
+  const started = Date.now();
+
+  if (!execthreadConfigured()) {
+    throw new Error("EXECTHREAD_EMAIL and EXECTHREAD_PASSWORD are not configured.");
+  }
+
+  const storedJobs = await prisma.networkJob.findMany({
+    where: { source: "EXECTHREAD" },
+    select: { externalId: true, networkId: true, raw: true },
+    orderBy: { syncedAt: "asc" },
+  });
+
+  const { client, authenticated } = await getAuthenticatedExecThreadClient(options.forceLogin === true);
+
+  let upserted = 0;
+  let failed = 0;
+  let previewHits = 0;
+  let redeemHits = 0;
+
+  for (const row of storedJobs) {
+    const searchRow = searchRowFromStoredExecThreadJob(row);
+    if (!searchRow) {
+      failed += 1;
+      continue;
+    }
+
+    try {
+      const job = await client.fetchListingFullExport(searchRow);
+      const hits = exportHitCounts(job);
+      previewHits += hits.previewHits;
+      redeemHits += hits.redeemHits;
+      await persistExecThreadListing(job);
+      upserted += 1;
+    } catch (err) {
+      failed += 1;
+      console.warn(`[execthread] refresh failed for ${searchRow._id}:`, err);
+    }
+  }
+
+  await saveExecThreadSession(client.getSession());
+  await recordExecThreadSyncResult(true);
+
+  return {
+    mode: "refresh",
+    fetched: storedJobs.length,
+    upserted,
+    failed,
+    totalHits: null,
     durationMs: Date.now() - started,
     authenticated,
     previewHits,
