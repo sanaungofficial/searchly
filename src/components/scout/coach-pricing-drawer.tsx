@@ -1,0 +1,794 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  PLATFORM_TAKE_TIERS,
+  RECOMMENDED_TIERS,
+  SALES_ASSISTED_FEE_PERCENT,
+  formatUsdFromCents,
+  type BulkDiscountRow,
+  type CoachPricingPayload,
+  type PricingPackageRow,
+} from "@/lib/coach-pricing";
+import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
+
+const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
+
+type Props = {
+  onClose: () => void;
+  coachSlug?: string | null;
+};
+
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section style={{ marginBottom: 32 }}>
+      <h3 style={{ ...displayTitleStyle(20), margin: "0 0 6px" }}>{title}</h3>
+      {subtitle && (
+        <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
+          {subtitle}
+        </p>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div
+      style={{
+        border: border.line,
+        background: surface.card,
+        padding: "16px 18px",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  description: string;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 14, alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ flex: 1 }}>
+        <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>{label}</p>
+        <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        style={{
+          width: 44,
+          height: 24,
+          borderRadius: 12,
+          border: "none",
+          background: checked ? color.forest : "rgba(26,58,47,0.15)",
+          cursor: "pointer",
+          position: "relative",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: 3,
+            left: checked ? 23 : 3,
+            width: 18,
+            height: 18,
+            borderRadius: "50%",
+            background: "#fff",
+            transition: "left 0.15s ease",
+          }}
+        />
+      </button>
+    </div>
+  );
+}
+
+function FaqItem({ icon, title, body }: { icon: string; title: string; body: string }) {
+  return (
+    <div style={{ display: "flex", gap: 12, padding: "14px 0", borderBottom: border.line }}>
+      <span style={{ fontSize: 18, lineHeight: 1.2 }}>{icon}</span>
+      <div>
+        <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>{title}</p>
+        <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.stone, lineHeight: 1.6 }}>{body}</p>
+      </div>
+    </div>
+  );
+}
+
+export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
+  const isMobile = useIsMobile();
+  const [visible, setVisible] = useState(false);
+  const [data, setData] = useState<CoachPricingPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const [hourlyDraft, setHourlyDraft] = useState("");
+  const [editingRate, setEditingRate] = useState(false);
+  const [earningsOpen, setEarningsOpen] = useState(false);
+  const [showAllDiscounts, setShowAllDiscounts] = useState(false);
+  const [addingDiscount, setAddingDiscount] = useState(false);
+  const [newDiscountHours, setNewDiscountHours] = useState("");
+  const [newDiscountPercent, setNewDiscountPercent] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/coach/pricing");
+      if (!r.ok) throw new Error("Failed to load pricing");
+      const payload = (await r.json()) as CoachPricingPayload;
+      setData(payload);
+      setHourlyDraft(payload.hourlyRate != null ? String(payload.hourlyRate) : "");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error loading pricing");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
+
+  const close = useCallback(() => {
+    setVisible(false);
+    window.setTimeout(onClose, 220);
+  }, [onClose]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [close]);
+
+  async function patch(body: Record<string, unknown>) {
+    setSaving(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/coach/pricing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error ?? "Save failed");
+      }
+      const payload = (await r.json()) as CoachPricingPayload;
+      setData(payload);
+      setHourlyDraft(payload.hourlyRate != null ? String(payload.hourlyRate) : "");
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveHourlyRate() {
+    const rate = hourlyDraft.trim() ? Math.max(1, Math.round(Number(hourlyDraft))) : null;
+    if (hourlyDraft.trim() && !Number.isFinite(rate)) {
+      setError("Enter a valid hourly rate");
+      return;
+    }
+    await patch({ hourlyRate: rate });
+    setEditingRate(false);
+  }
+
+  async function updateField(body: Record<string, unknown>) {
+    await patch(body);
+  }
+
+  async function saveBulkDiscount(row: BulkDiscountRow, discountPercent: number) {
+    await patch({
+      bulkDiscounts: [{ id: row.id, minHours: row.minHours, discountPercent, enabled: row.enabled, sortOrder: row.sortOrder }],
+    });
+  }
+
+  async function addBulkDiscount() {
+    const minHours = Math.round(Number(newDiscountHours));
+    const discountPercent = Math.round(Number(newDiscountPercent));
+    if (!Number.isFinite(minHours) || minHours < 1) {
+      setError("Enter valid minimum hours");
+      return;
+    }
+    if (!Number.isFinite(discountPercent) || discountPercent < 1) {
+      setError("Enter a valid discount percent");
+      return;
+    }
+    await patch({
+      bulkDiscounts: [
+        {
+          minHours,
+          discountPercent,
+          enabled: true,
+          sortOrder: (data?.bulkDiscounts.length ?? 0) + 1,
+        },
+      ],
+    });
+    setAddingDiscount(false);
+    setNewDiscountHours("");
+    setNewDiscountPercent("");
+  }
+
+  const visibleDiscounts = data?.bulkDiscounts ?? [];
+  const discountsToShow = showAllDiscounts ? visibleDiscounts : visibleDiscounts.slice(0, 3);
+  const profileSlug = coachSlug ?? data?.slug;
+
+  return (
+    <>
+      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
+      <div
+        style={{
+          position: "fixed",
+          top: isMobile ? 0 : 8,
+          right: isMobile ? 0 : 8,
+          bottom: isMobile ? 0 : 8,
+          left: isMobile ? 0 : undefined,
+          width: isMobile ? "100vw" : DRAWER_WIDTH,
+          maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
+          background: surface.page,
+          overflow: "hidden",
+          zIndex: 70,
+          boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
+          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
+          transition: "transform 0.25s ease",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            padding: isMobile ? "12px 16px" : "14px 28px",
+            background: surface.card,
+            borderBottom: border.line,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Close"
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: color.muted, padding: 0, lineHeight: 1 }}
+          >
+            ×
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ ...displayTitleStyle(18), margin: 0 }}>Pricing</p>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "2px 0 0" }}>
+              Set pricing and settings around custom hourly coaching
+            </p>
+          </div>
+          {saved && (
+            <span style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>Saved</span>
+          )}
+        </div>
+
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
+            padding: isMobile ? "20px 16px 32px" : "28px 32px 36px",
+          }}
+        >
+          {loading && !data && (
+            <p style={{ fontFamily: fontSans, color: color.muted }}>Loading pricing…</p>
+          )}
+          {error && (
+            <div style={{ marginBottom: 16, padding: "12px 14px", border: border.line, background: "rgba(220,38,38,0.06)", color: "#b45309", fontFamily: fontSans, fontSize: 14 }}>
+              {error}
+            </div>
+          )}
+
+          {data && (
+            <>
+              <Section title="Hourly pricing">
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "240px 1fr", gap: 16, alignItems: "start" }}>
+                  <Card>
+                    <p style={{ margin: "0 0 4px", fontFamily: fontMono, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
+                      Packages
+                    </p>
+                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: color.stone }}>
+                      <strong>{data.syncedPackageCount}</strong> synced
+                      {data.unsyncedPackageCount > 0 ? (
+                        <>
+                          {" "}
+                          · <strong>{data.unsyncedPackageCount}</strong> unsynced
+                        </>
+                      ) : (
+                        " · 0 unsynced"
+                      )}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => updateField({ packagesSyncToHourly: !data.packagesSyncToHourly })}
+                      style={{ marginTop: 10, background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: 13, color: color.forest, cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      {data.packagesSyncToHourly ? "Packages sync to hourly rate" : "Custom package prices"}
+                    </button>
+                  </Card>
+
+                  <Card>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <div>
+                        <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 14, color: color.muted }}>Your hourly price</p>
+                        {editingRate ? (
+                          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <span style={{ fontFamily: fontSans, fontSize: 22, fontWeight: 600 }}>$</span>
+                            <input
+                              type="number"
+                              value={hourlyDraft}
+                              onChange={(e) => setHourlyDraft(e.target.value)}
+                              style={{ width: 100, fontSize: 22, fontWeight: 600, padding: "4px 8px", border: border.line, fontFamily: fontSans }}
+                              autoFocus
+                            />
+                            <span style={{ fontFamily: fontSans, fontSize: 16, color: color.muted }}>per hour</span>
+                            <ScoutPrimaryBtn onClick={saveHourlyRate} disabled={saving} style={{ minHeight: 36, fontSize: 13 }}>
+                              Save
+                            </ScoutPrimaryBtn>
+                            <ScoutSecondaryBtn onClick={() => { setEditingRate(false); setHourlyDraft(data.hourlyRate != null ? String(data.hourlyRate) : ""); }} style={{ minHeight: 36, fontSize: 13 }}>
+                              Cancel
+                            </ScoutSecondaryBtn>
+                          </div>
+                        ) : (
+                          <p style={{ margin: 0, fontFamily: fontSans, fontSize: 26, fontWeight: 600, color: color.forest }}>
+                            {data.hourlyRate != null ? `$${data.hourlyRate}` : "$0"}{" "}
+                            <span style={{ fontSize: 16, fontWeight: 400, color: color.muted }}>per hour</span>
+                          </p>
+                        )}
+                      </div>
+                      {!editingRate && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingRate(true)}
+                          aria-label="Edit hourly rate"
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: color.muted, padding: 4 }}
+                        >
+                          ✎
+                        </button>
+                      )}
+                    </div>
+                  </Card>
+                </div>
+
+                <div style={{ marginTop: 20 }}>
+                  <p style={{ margin: "0 0 10px", fontFamily: fontMono, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
+                    Recommended pricing
+                  </p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                    {RECOMMENDED_TIERS.map((tier) => {
+                      const active = data.recommendedTier.id === tier.id;
+                      return (
+                        <div
+                          key={tier.id}
+                          style={{
+                            padding: "10px 14px",
+                            background: tier.bg,
+                            border: active ? `2px solid ${color.forest}` : border.line,
+                            minWidth: 120,
+                          }}
+                        >
+                          <p style={{ margin: "0 0 2px", fontFamily: fontSans, fontSize: 13, fontWeight: 700, color: tier.color }}>{tier.label}</p>
+                          <p style={{ margin: 0, fontFamily: fontSans, fontSize: 12, color: color.stone }}>
+                            ${tier.minRate}
+                            {tier.maxRate != null ? ` – $${tier.maxRate}` : "+"}/hr
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p style={{ margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+                    Most clients have budget in the New and Experienced ranges
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setEarningsOpen((v) => !v)}
+                  style={{
+                    marginTop: 16,
+                    width: "100%",
+                    textAlign: "left",
+                    background: surface.inset,
+                    border: border.line,
+                    padding: "12px 14px",
+                    cursor: "pointer",
+                    fontFamily: fontSans,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: color.forest,
+                  }}
+                >
+                  {earningsOpen ? "▾" : "▸"} Learn about your take-home earnings
+                </button>
+                {earningsOpen && (
+                  <Card style={{ marginTop: 8 }}>
+                    <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: 13, color: color.stone, lineHeight: 1.55 }}>
+                      Pricing on your profile is what clients see — not your take-home rate. Kimchi&apos;s platform fee starts at 20% (plus Stripe fees) and slides down to 5% as a client spends more with you. Your own referrals are 5% + Stripe fees.
+                    </p>
+                    <div style={{ marginBottom: 16 }}>
+                      {PLATFORM_TAKE_TIERS.map((tier) => (
+                        <p key={tier.label} style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 13 }}>
+                          <strong>{tier.label}:</strong> {tier.platformPercent}% platform fee
+                        </p>
+                      ))}
+                      <p style={{ margin: "8px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+                        Sales-assisted leads add {SALES_ASSISTED_FEE_PERCENT}% on top of the platform fee.
+                      </p>
+                    </div>
+                    {data.takeHomeExamples.length > 0 && (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: fontSans }}>
+                          <thead>
+                            <tr style={{ borderBottom: border.line }}>
+                              {["Scenario", "Client pays", "Platform", "Stripe", "You keep"].map((h) => (
+                                <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", color: color.muted, fontWeight: 400 }}>
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.takeHomeExamples.map((row) => (
+                              <tr key={row.scenario} style={{ borderBottom: "1px solid rgba(26,58,47,0.06)" }}>
+                                <td style={{ padding: "8px 10px" }}>{row.scenario}</td>
+                                <td style={{ padding: "8px 10px" }}>{formatUsdFromCents(row.clientPays)}</td>
+                                <td style={{ padding: "8px 10px" }}>{formatUsdFromCents(row.platformFee)}</td>
+                                <td style={{ padding: "8px 10px" }}>{formatUsdFromCents(row.stripeFee)}</td>
+                                <td style={{ padding: "8px 10px", fontWeight: 600, color: color.forest }}>{formatUsdFromCents(row.takeHome)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </Card>
+                )}
+              </Section>
+
+              <Section title="Bulk discounts" subtitle="Give clients a discount when they purchase more hours at once.">
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {discountsToShow.map((row) => (
+                    <BulkDiscountRowEditor key={row.id} row={row} saving={saving} onSave={saveBulkDiscount} />
+                  ))}
+                </div>
+                {visibleDiscounts.length > 3 && !showAllDiscounts && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllDiscounts(true)}
+                    style={{ marginTop: 10, background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: 13, color: color.forest, cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Show more
+                  </button>
+                )}
+                {addingDiscount ? (
+                  <Card style={{ marginTop: 12 }}>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      <input
+                        type="number"
+                        placeholder="Min hours"
+                        value={newDiscountHours}
+                        onChange={(e) => setNewDiscountHours(e.target.value)}
+                        style={{ width: 100, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                      />
+                      <span style={{ fontFamily: fontSans, fontSize: 14 }}>+ hours =</span>
+                      <input
+                        type="number"
+                        placeholder="% off"
+                        value={newDiscountPercent}
+                        onChange={(e) => setNewDiscountPercent(e.target.value)}
+                        style={{ width: 80, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                      />
+                      <span style={{ fontFamily: fontSans, fontSize: 14 }}>% discount</span>
+                      <ScoutPrimaryBtn onClick={addBulkDiscount} disabled={saving} style={{ minHeight: 36 }}>
+                        Add
+                      </ScoutPrimaryBtn>
+                      <ScoutSecondaryBtn onClick={() => setAddingDiscount(false)} style={{ minHeight: 36 }}>
+                        Cancel
+                      </ScoutSecondaryBtn>
+                    </div>
+                  </Card>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingDiscount(true)}
+                    style={{ marginTop: 12, background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: 13, color: color.forest, cursor: "pointer", fontWeight: 600 }}
+                  >
+                    + Add bulk discount
+                  </button>
+                )}
+              </Section>
+
+              <Section title="Choose your first step" subtitle="Intro calls help clients get to know you and improve conversion.">
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+                  <FirstStepCard
+                    active={data.introOfferType === "FREE_INTRO"}
+                    badge="Recommended"
+                    title="Free intro call"
+                    subtitle={`${data.introDurationMinutes} minutes · Get to know your coach`}
+                    onSelect={() => updateField({ introOfferType: "FREE_INTRO" })}
+                  />
+                  <FirstStepCard
+                    active={data.introOfferType === "TRIAL_SESSION"}
+                    title="Trial session"
+                    subtitle={
+                      data.trialSessionDurationMinutes
+                        ? `${data.trialSessionDurationMinutes} min · Paid trial session`
+                        : "Custom duration · Paid trial session"
+                    }
+                    onSelect={() => updateField({ introOfferType: "TRIAL_SESSION", trialSessionDurationMinutes: data.trialSessionDurationMinutes ?? 30 })}
+                  />
+                </div>
+                {data.introOfferType === "TRIAL_SESSION" && (
+                  <Card style={{ marginTop: 12 }}>
+                    <label style={{ fontFamily: fontSans, fontSize: 13, color: color.stone }}>
+                      Trial duration (minutes)
+                      <input
+                        type="number"
+                        value={data.trialSessionDurationMinutes ?? 30}
+                        onChange={(e) => setData((d) => d && ({ ...d, trialSessionDurationMinutes: Number(e.target.value) }))}
+                        onBlur={() =>
+                          updateField({ trialSessionDurationMinutes: data.trialSessionDurationMinutes ?? 30 })
+                        }
+                        style={{ display: "block", marginTop: 6, width: 120, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                      />
+                    </label>
+                  </Card>
+                )}
+                {data.introOfferType === "FREE_INTRO" && (
+                  <Card style={{ marginTop: 12 }}>
+                    <label style={{ fontFamily: fontSans, fontSize: 13, color: color.stone }}>
+                      Intro call duration (minutes)
+                      <input
+                        type="number"
+                        value={data.introDurationMinutes}
+                        onChange={(e) => setData((d) => d && ({ ...d, introDurationMinutes: Number(e.target.value) }))}
+                        onBlur={() => updateField({ introDurationMinutes: data.introDurationMinutes })}
+                        style={{ display: "block", marginTop: 6, width: 120, padding: "8px 10px", border: border.line, fontFamily: fontSans }}
+                      />
+                    </label>
+                  </Card>
+                )}
+                <p style={{ margin: "12px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+                  Free intro calls generally result in more leads.
+                </p>
+              </Section>
+
+              <Section title="Want more leads?">
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <Toggle
+                    checked={data.salesAssistedLeadsEnabled}
+                    onChange={(v) => updateField({ salesAssistedLeadsEnabled: v })}
+                    label="Sales-assisted leads"
+                    description={`Opt in to receive high-intent clients matched by the Kimchi sales team. A ${SALES_ASSISTED_FEE_PERCENT}% sales fee applies only when we source the lead.`}
+                  />
+                  <Toggle
+                    checked={data.partnerProgramEnabled}
+                    onChange={(v) => updateField({ partnerProgramEnabled: v })}
+                    label="Receive partner program opportunities"
+                    description="Opt in for university and business partner leads. Typical rates are $50–$75/hr depending on program."
+                  />
+                </div>
+              </Section>
+
+              <Section title="Types of service offerings">
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                  <Card>
+                    <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>Packages</p>
+                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
+                      Fixed-hour bundles clients purchase upfront. Prices sync to your hourly rate and bulk discounts by default.
+                    </p>
+                    <PackageList packages={data.packages} />
+                  </Card>
+                  <Card>
+                    <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>Custom hourly services</p>
+                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted, lineHeight: 1.55 }}>
+                      Time added to a client&apos;s balance at your hourly rate — ideal for ongoing coaching relationships.
+                    </p>
+                  </Card>
+                </div>
+                {profileSlug && (
+                  <Link
+                    href={`/coaching/coach/${profileSlug}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "14px 16px",
+                      border: border.line,
+                      background: surface.inset,
+                      textDecoration: "none",
+                      color: color.forest,
+                      fontFamily: fontSans,
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    See how your clients view offerings
+                    <span>→</span>
+                  </Link>
+                )}
+              </Section>
+
+              <Section title="Good to know">
+                <FaqItem
+                  icon="💵"
+                  title="Refund policy"
+                  body="Clients may request a refund within 14 days of purchase for unused coaching credits. Used sessions are non-refundable. Refunds return to the client's original payment method."
+                />
+                <FaqItem
+                  icon="📅"
+                  title="Expiration terms"
+                  body="Purchased coaching hours expire based on package size — typically 90 days for small packages up to 12 months for larger bundles. Clients are notified before credits expire."
+                />
+                <FaqItem
+                  icon="❓"
+                  title="What do fees cover?"
+                  body="Platform fees cover marketing to bring you clients, payment processing, video hosting, scheduling tools, and ongoing product support."
+                />
+                <FaqItem
+                  icon="💳"
+                  title="Available payment plans"
+                  body="Clients can split larger purchases into payment plans at checkout. Payment plans do not affect your payout timing or take-home amount per session."
+                />
+              </Section>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function BulkDiscountRowEditor({
+  row,
+  saving,
+  onSave,
+}: {
+  row: BulkDiscountRow;
+  saving: boolean;
+  onSave: (row: BulkDiscountRow, percent: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(row.discountPercent));
+  useEffect(() => {
+    setDraft(String(row.discountPercent));
+  }, [row.discountPercent]);
+
+  return (
+    <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <span style={{ fontFamily: fontSans, fontSize: 14 }}>
+        {row.minHours}+ hours ={" "}
+        <input
+          type="number"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            const n = Math.round(Number(draft));
+            if (Number.isFinite(n) && n >= 0 && n !== row.discountPercent) onSave(row, n);
+          }}
+          style={{ width: 48, padding: "2px 6px", border: border.line, fontFamily: fontSans, fontSize: 14 }}
+        />
+        % discount
+      </span>
+      <button
+        type="button"
+        aria-label="Edit discount"
+        disabled={saving}
+        onClick={() => {
+          const n = Math.round(Number(draft));
+          if (Number.isFinite(n)) onSave(row, n);
+        }}
+        style={{ background: "none", border: "none", cursor: "pointer", color: color.muted, fontSize: 16 }}
+      >
+        ✎
+      </button>
+    </Card>
+  );
+}
+
+function FirstStepCard({
+  active,
+  badge,
+  title,
+  subtitle,
+  onSelect,
+}: {
+  active: boolean;
+  badge?: string;
+  title: string;
+  subtitle: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      style={{
+        textAlign: "left",
+        border: active ? `2px solid ${color.forest}` : border.line,
+        background: active ? "rgba(45,122,80,0.06)" : surface.card,
+        padding: "16px 18px",
+        cursor: "pointer",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            border: `2px solid ${active ? color.forest : color.muted}`,
+            background: active ? color.forest : "transparent",
+            boxShadow: active ? "inset 0 0 0 3px #fff" : "none",
+            flexShrink: 0,
+          }}
+        />
+        {badge && (
+          <span style={{ fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: color.forest, background: "rgba(45,122,80,0.1)", padding: "2px 6px" }}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 15, fontWeight: 600 }}>{title}</p>
+      <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted }}>{subtitle}</p>
+    </button>
+  );
+}
+
+function PackageList({ packages }: { packages: PricingPackageRow[] }) {
+  if (packages.length === 0) {
+    return <p style={{ margin: "12px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>No packages yet.</p>;
+  }
+  return (
+    <ul style={{ margin: "12px 0 0", padding: 0, listStyle: "none" }}>
+      {packages.map((p) => (
+        <li key={p.id} style={{ fontFamily: fontSans, fontSize: 13, color: color.stone, padding: "4px 0", borderTop: border.line }}>
+          {p.displayPriceLabel ?? `${p.hours}h`}
+          {p.syncedToHourly ? " · synced" : " · custom price"}
+        </li>
+      ))}
+    </ul>
+  );
+}
