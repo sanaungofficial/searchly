@@ -258,11 +258,30 @@ export function profileBasePath(clientId?: string, opts?: { sessionScoped?: bool
   return "/profile";
 }
 
+/** Query param for admin profile review — survives refresh and deep links. */
+export const CLIENT_USER_ID_PARAM = "clientUserId";
+
+export function readClientUserIdFromBrowserSearch(search?: string): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = search ?? window.location.search;
+  const id = new URLSearchParams(raw).get(CLIENT_USER_ID_PARAM);
+  return id?.trim() || null;
+}
+
 /** Append clientUserId for admin profile-review API calls (no impersonation). */
 export function withClientUserId(path: string, clientUserId?: string | null): string {
   if (!clientUserId) return path;
   const sep = path.includes("?") ? "&" : "?";
-  return `${path}${sep}clientUserId=${encodeURIComponent(clientUserId)}`;
+  if (path.includes(`${CLIENT_USER_ID_PARAM}=`)) return path;
+  return `${path}${sep}${CLIENT_USER_ID_PARAM}=${encodeURIComponent(clientUserId)}`;
+}
+
+/** Keep clientUserId on workspace page navigations during admin review. */
+export function withClientReviewPagePath(path: string, clientUserId?: string | null): string {
+  if (!clientUserId) return path;
+  const [base, hash = ""] = path.split("#");
+  const withParam = withClientUserId(base, clientUserId);
+  return hash ? `${withParam}#${hash}` : withParam;
 }
 
 export function profileTabPath(

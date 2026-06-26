@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "AI not configured" }), { status: 503 });
   }
 
-  const auth = await getAuthedUserForAi();
+  const auth = await getAuthedUserForAi(request);
   if ("error" in auth) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: auth.error.status,

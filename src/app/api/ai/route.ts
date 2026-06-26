@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
-  const auth = await getAuthedUserForAi();
+  const auth = await getAuthedUserForAi(request);
   if ("error" in auth) return auth.error;
   const { dbUser } = auth;
 

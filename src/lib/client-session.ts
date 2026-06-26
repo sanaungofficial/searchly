@@ -1,4 +1,5 @@
 import { clearCoachMatchCache } from "@/lib/coach-match-cache";
+import { clearNetworkJobsCache } from "@/lib/network-jobs-cache";
 import { clearRecommendedCache } from "@/lib/recommended-jobs-cache";
 
 const ACTING_USER_KEY = "kimchi_acting_user_id";
@@ -127,7 +128,23 @@ export function saveStaffDashboardView(userId: string | null, view: StaffDashboa
   }
 }
 
+export function clearMatchAnalysisCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith("kimchi-match:")) keys.push(key);
+    }
+    for (const key of keys) sessionStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function clearClientSessionCaches(): void {
   clearRecommendedCache();
   clearCoachMatchCache();
+  clearNetworkJobsCache();
+  clearMatchAnalysisCache();
 }

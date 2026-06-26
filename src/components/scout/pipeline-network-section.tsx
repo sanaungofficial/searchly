@@ -451,7 +451,7 @@ function NetworkJobCard({
 }
 
 export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, embedded }: PipelineNetworkSectionProps) {
-  const { isAdmin, userRole, isImpersonating } = useWorkspace();
+  const { isAdmin, userRole, isImpersonating, withClientScope } = useWorkspace();
   const isMobile = useIsMobile();
   const internalView = canViewNetworkJobInternal(userRole, isAdmin, isImpersonating);
 
@@ -483,7 +483,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
 
     setLoading(true);
     try {
-      const res = await fetch("/api/network-jobs/match");
+      const res = await fetch(withClientScope("/api/network-jobs/match"));
       const data = (await res.json()) as {
         jobs?: NetworkMatchedJob[];
         needsProfile?: boolean;
@@ -507,7 +507,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [withClientScope]);
 
   useEffect(() => {
     setAppliedForm(createEmptyNetworkJobFilterForm());
@@ -523,7 +523,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
       void loadJobs();
     }
 
-    void fetch("/api/profile")
+    void fetch(withClientScope("/api/profile"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: {
         targetRoles?: string[];
@@ -559,7 +559,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
       .catch(() => {
         setForm({ ...createEmptyNetworkJobFilterForm(), search: loadScopedNetworkSearch() });
       });
-  }, [actingUserId, loadJobs]);
+  }, [actingUserId, loadJobs, withClientScope]);
 
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
   const visibleJobs = useMemo(() => {

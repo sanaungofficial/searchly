@@ -69,23 +69,33 @@ export function ClientDetailBody({
             <p style={{ fontSize: T.bodySm, color: color.stone, margin: 0 }}>{client.profile.headline}</p>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
           {onViewClientProfile && (
-            <ScoutPrimaryBtn
-              onClick={() => onViewClientProfile(client.id)}
-              style={{ minHeight: 40 }}
-            >
-              View as admin
-            </ScoutPrimaryBtn>
+            <div>
+              <ScoutPrimaryBtn
+                onClick={() => onViewClientProfile(client.id)}
+                style={{ minHeight: 40 }}
+              >
+                View as admin
+              </ScoutPrimaryBtn>
+              <p style={{ fontSize: 11, color: color.muted, fontFamily: fontSans, margin: "4px 0 0", maxWidth: 200, lineHeight: 1.4 }}>
+                Review their fit and profile — Admin portal stays available.
+              </p>
+            </div>
           )}
           {showViewAsClient && onViewAsClient && (
-            <ScoutSecondaryBtn
-              onClick={() => onViewAsClient(client.id)}
-              disabled={startingUserId === client.id}
-              style={{ minHeight: 40, opacity: startingUserId === client.id ? 0.7 : 1 }}
-            >
-              {startingUserId === client.id ? "Opening…" : "View as client"}
-            </ScoutSecondaryBtn>
+            <div>
+              <ScoutSecondaryBtn
+                onClick={() => onViewAsClient(client.id)}
+                disabled={startingUserId === client.id}
+                style={{ minHeight: 40, opacity: startingUserId === client.id ? 0.7 : 1 }}
+              >
+                {startingUserId === client.id ? "Opening…" : "View as client"}
+              </ScoutSecondaryBtn>
+              <p style={{ fontSize: 11, color: color.muted, fontFamily: fontSans, margin: "4px 0 0", maxWidth: 200, lineHeight: 1.4 }}>
+                Full impersonation — you become them in the app.
+              </p>
+            </div>
           )}
           {client.profile?.linkedinUrl && (
             <a

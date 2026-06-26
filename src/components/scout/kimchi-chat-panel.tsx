@@ -83,7 +83,7 @@ function contextQuery(pageHint?: AssistantPageHint): string {
 
 export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigate }: Props) {
   const router = useRouter();
-  const { openPricing, kanbanCards, user, withClientScope } = useWorkspace();
+  const { openPricing, kanbanCards, user, withClientScope, withClientReviewPath } = useWorkspace();
   const { messages, setMessages, ensureThread, updateLastAssistant, persistMessages, activeThreadId, activeThreadTitle } =
     threads;
 
@@ -273,14 +273,15 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
 
   const goTo = useCallback(
     (href: string) => {
-      if (onNavigate) onNavigate(href);
-      else router.push(href);
+      const scoped = withClientReviewPath(href);
+      if (onNavigate) onNavigate(scoped);
+      else router.push(scoped);
     },
-    [onNavigate, router],
+    [onNavigate, router, withClientReviewPath],
   );
 
   const openResumeEditor = useCallback(async () => {
-    const res = await fetch("/api/assets");
+    const res = await fetch(withClientScope("/api/assets"));
     const rows = await res.json();
     const resume = Array.isArray(rows) ? rows.find((a: { type?: string }) => a.type === "RESUME") : null;
     if (!resume?.id) {
@@ -290,25 +291,25 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setResumeAssetId(resume.id);
     setResumeContextNotes(null);
     setResumeEditorOpen(true);
-  }, [goTo]);
+  }, [goTo, withClientScope]);
 
   const addSkillAndNavigate = useCallback(
     async (skill: string) => {
-      const profileRes = await fetch("/api/profile");
+      const profileRes = await fetch(withClientScope("/api/profile"));
       const profile = profileRes.ok ? await profileRes.json() : null;
       const existing = Array.isArray(profile?.skillGoals) ? profile.skillGoals : [];
       const next = [
         ...existing.filter((g: { skill?: string }) => g.skill?.toLowerCase() !== skill.toLowerCase()),
         { skill, status: "queued", addedAt: new Date().toISOString() },
       ];
-      await fetch("/api/profile", {
+      await fetch(withClientScope("/api/profile"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillGoals: next }),
       });
       goTo(profileLearningPathUrl(skill));
     },
-    [goTo],
+    [goTo, withClientScope],
   );
 
   const appendGuidanceMessage = useCallback(
@@ -581,7 +582,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       return;
     }
     if (action.type === "open_resume_editor") {
-      const res = await fetch("/api/assets");
+      const res = await fetch(withClientScope("/api/assets"));
       const rows = await res.json();
       const resume = Array.isArray(rows) ? rows.find((a: { type?: string }) => a.type === "RESUME") : null;
       if (!resume?.id) {

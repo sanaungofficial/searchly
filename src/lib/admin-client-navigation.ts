@@ -15,7 +15,7 @@ export async function navigateToAdminClientProfile(userId: string): Promise<void
   clearClientSessionCaches();
   setActingUserScope(userId);
   setAdminReviewClient(userId);
-  window.location.href = "/dashboard";
+  window.location.href = `/opportunities?clientUserId=${encodeURIComponent(userId)}`;
 }
 
 export async function exitAdminClientReview(): Promise<void> {

@@ -341,6 +341,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     isImpersonating,
     isAdminReviewing,
     withClientScope,
+    withClientReviewPath,
   } = useWorkspace();
 
   const isStaffPortal = isStaffPortalRole(userRole);
@@ -376,7 +377,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
 
   const navigateToSeekerDashboard = () => {
     if (isStaffPortal && !isImpersonating && !isAdminReviewing) setStaffDashboardView("seeker");
-    router.push("/dashboard");
+    router.push(withClientReviewPath("/dashboard"));
   };
 
   const navigateExpertPortal = (path: string) => {
@@ -445,7 +446,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
 
   const onNavigateNotif = (section: string) => {
     const path = section === "opportunities" ? "/opportunities" : `/${section}`;
-    router.push(path);
+    router.push(withClientReviewPath(path));
     const allRead: Record<number, boolean> = {};
     NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));
     setNotifRead(allRead);
@@ -547,7 +548,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                         if (isMobile) {
                           setNavDropdownOpen((prev) => (prev === id ? null : id));
                         } else {
-                          router.push(path);
+                          router.push(withClientReviewPath(path));
                         }
                       }}
                       aria-expanded={dropdownOpen}
@@ -606,7 +607,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                               label={childLabel}
                               active={childActive}
                               onClick={() => {
-                                router.push(childPath);
+                                router.push(withClientReviewPath(childPath));
                                 setNavDropdownOpen(null);
                               }}
                             />
@@ -624,7 +625,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                   type="button"
                   onClick={() => {
                     if (id === "dashboard") navigateToSeekerDashboard();
-                    else router.push(path);
+                    else router.push(withClientReviewPath(path));
                   }}
                   style={{
                     background: "none",
@@ -669,7 +670,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                 onNavigate={navigateExpertPortal}
               />
             )}
-            {showAdminUi && (
+            {(showAdminUi || isAdminReviewing) && (
               <UtilityPortalDropdown
                 label="Admin"
                 defaultPath="/admin"

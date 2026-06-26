@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fontSans, color, surface, border as B } from "@/lib/typography";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { friendlyResumeError } from "@/lib/user-facing-copy";
+import { getActingUserScope } from "@/lib/client-session";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import {
   MatchBreakdownBar,
@@ -19,7 +21,7 @@ const sans = fontSans;
 const line = B.line;
 
 function matchCacheKey(jobKey: string, assetId: string) {
-  return `kimchi-match:${jobKey}:${assetId}`;
+  return `kimchi-match:${getActingUserScope()}:${jobKey}:${assetId}`;
 }
 
 export function JobMatchScorePanel({
@@ -49,6 +51,7 @@ export function JobMatchScorePanel({
   }) => void;
   fullWidth?: boolean;
 }) {
+  const { withClientScope } = useWorkspace();
   const [assets, setAssets] = useState<ResumeAssetOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [aiMatch, setAiMatch] = useState<MatchData | null>(null);
@@ -59,7 +62,7 @@ export function JobMatchScorePanel({
   const canAnalyze = description.trim().length >= 40;
 
   useEffect(() => {
-    fetch("/api/assets")
+    fetch(withClientScope("/api/assets"))
       .then((r) => r.json())
       .then((rows: Array<{ id: string; name: string; isPrimary: boolean; type?: string }>) => {
         if (!Array.isArray(rows)) return;
@@ -70,7 +73,7 @@ export function JobMatchScorePanel({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [withClientScope]);
 
   const fetchMatch = useCallback(
     async (assetId: string) => {
@@ -81,7 +84,7 @@ export function JobMatchScorePanel({
         const body = jobId
           ? { jobId, jobTitle, company, description, assetId }
           : { jobTitle, company, description, assetId };
-        const res = await fetch("/api/ai/job-match", {
+        const res = await fetch(withClientScope("/api/ai/job-match"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -112,7 +115,7 @@ export function JobMatchScorePanel({
         setLoading(false);
       }
     },
-    [canAnalyze, company, description, jobId, jobKey, jobTitle],
+    [canAnalyze, company, description, jobId, jobKey, jobTitle, withClientScope],
   );
 
   // On job or resume selection change: restore session cache only — never auto-call AI on drawer open.

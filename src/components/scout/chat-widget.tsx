@@ -254,7 +254,7 @@ export function ChatWidget({
 
   useEffect(() => {
     if (chatView !== "chat" || !chatOpen) return;
-    void fetch("/api/assets")
+    void fetch(withClientScope("/api/assets"))
       .then((r) => r.json())
       .then((rows: Array<{ type?: string }>) => {
         if (!Array.isArray(rows)) {
@@ -264,7 +264,7 @@ export function ChatWidget({
         setHasResume(rows.some((a) => a.type === "RESUME"));
       })
       .catch(() => setHasResume(false));
-  }, [chatView, chatOpen, fitChatNonce]);
+  }, [chatView, chatOpen, fitChatNonce, withClientScope]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
