@@ -22,6 +22,7 @@ import {
   type LinkedInSectionId,
 } from "@/lib/linkedin-analysis";
 import { friendlyLinkedInImportError, LINKEDIN_SPARSE_MESSAGE } from "@/lib/user-facing-copy";
+import { withClientUserId } from "@/lib/workspace-urls";
 import { LINKEDIN_EMPLOYMENT_TYPES, newLinkedInEntryId, type LinkedInProfileDraft } from "@/lib/linkedin-profile";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
@@ -43,6 +44,8 @@ type Props = {
   isMobile?: boolean;
   /** Coach or admin viewing a client profile — show section notes. */
   coachView?: boolean;
+  /** Admin profile review — scope API calls to this client. */
+  clientUserId?: string;
 };
 
 type PhotoType = "profile" | "cover";
@@ -262,9 +265,10 @@ function PhotoEditOverlay({
   );
 }
 
-export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: Props) {
+export function ProfileLinkedInEditor({ isMobile = false, coachView = false, clientUserId }: Props) {
   const compact = useCompactLayout();
   const stackLayout = isMobile || compact;
+  const api = useCallback((path: string) => withClientUserId(path, clientUserId), [clientUserId]);
 
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -314,7 +318,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
     if (!draftRef.current) return;
     setAnalysisLoading(true);
     try {
-      const url = force ? "/api/profile/linkedin-draft/analysis?force=true" : "/api/profile/linkedin-draft/analysis";
+      const url = force ? api("/api/profile/linkedin-draft/analysis?force=true") : api("/api/profile/linkedin-draft/analysis");
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok) setAnalysis(data);
@@ -324,13 +328,13 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
     } finally {
       setAnalysisLoading(false);
     }
-  }, []);
+  }, [api]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/profile/linkedin-draft");
+      const res = await fetch(api("/api/profile/linkedin-draft"));
       const text = await res.text();
       let data: Record<string, unknown> = {};
       if (text) {
@@ -356,7 +360,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
     } finally {
       setLoading(false);
     }
-  }, [loadAnalysis]);
+  }, [loadAnalysis, api]);
 
   useEffect(() => {
     void load();
@@ -380,7 +384,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
     setSaving(true);
     setSaveHint(null);
     try {
-      const res = await fetch("/api/profile/linkedin-draft", {
+      const res = await fetch(api("/api/profile/linkedin-draft"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draft: payload }),
@@ -456,7 +460,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
     setGenerating(true);
     setError(null);
     try {
-      const res = await fetch("/api/profile/linkedin-draft/generate", { method: "POST" });
+      const res = await fetch(api("/api/profile/linkedin-draft/generate"), { method: "POST" });
       const text = await res.text();
       let data: Record<string, unknown> = {};
       if (text) {
@@ -497,7 +501,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
       const form = new FormData();
       form.append("file", file);
       form.append("type", type);
-      const res = await fetch("/api/profile/linkedin-draft/photo", { method: "POST", body: form });
+      const res = await fetch(api("/api/profile/linkedin-draft/photo"), { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Upload failed");
       const next: LinkedInProfileDraft = {
@@ -539,7 +543,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
     setError(null);
     setImportNotice(null);
     try {
-      const res = await fetch("/api/profile/linkedin-import", {
+      const res = await fetch(api("/api/profile/linkedin-import"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ linkedinUrl: url }),
@@ -581,7 +585,7 @@ export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: P
     setFixSuggestIssues([]);
 
     setFixSuggestionsLoading(true);
-    void fetch("/api/profile/linkedin-draft/section-suggest", {
+    void fetch(api("/api/profile/linkedin-draft/section-suggest"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sectionId, entryId, entryLabel }),

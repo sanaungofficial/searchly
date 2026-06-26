@@ -1,5 +1,5 @@
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 import { prisma } from "@/lib/prisma";
-import { getActingUser } from "@/lib/acting-user";
 import { NextResponse } from "next/server";
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
@@ -26,9 +26,9 @@ function isSparseProfileData(parsed: ParsedResumeData): boolean {
 }
 
 export async function POST(request: Request) {
-  const { authUser, dbUser } = await getActingUser(request);
-  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const resolved = await resolveProfileApiSubject(request);
+  if ("error" in resolved) return resolved.error;
+  const { dbUser } = resolved;
 
   if (!isApifyConfigured()) {
     return NextResponse.json({ error: "LinkedIn import is not configured on this environment." }, { status: 503 });

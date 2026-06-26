@@ -1,4 +1,3 @@
-import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
@@ -8,27 +7,26 @@ import {
   parseLinkedInDraftFromModel,
 } from "@/lib/linkedin-profile";
 import { syncLinkedInDraftFromAbout } from "@/lib/profile-linkedin-sync";
+import { aboutProfileFingerprint, withAboutFingerprint } from "@/lib/linkedin-about-fingerprint";
 import { normalizeParsedResumeData } from "@/lib/resume-parse";
+import { loadParsedForSync } from "@/lib/profile-linkedin-sync";
+import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-export async function POST() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(request: Request) {
+  const resolved = await resolveProfileApiSubject(request);
+  if ("error" in resolved) return resolved.error;
+  const { authUser, dbUser } = resolved;
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    include: { profile: true },
-  });
-  if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
 
   const primary = await prisma.userAsset.findFirst({
     where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
   });
 
   const resume =
-    normalizeParsedResumeData(primary?.parsedData ?? dbUser.profile?.parsedData ?? null);
+    normalizeParsedResumeData(primary?.parsedData ?? profile?.parsedData ?? null);
 
   if (!resume || (!resume.workExperience.length && !resume.summary && !resume.skills.length)) {
     return NextResponse.json(
@@ -37,10 +35,10 @@ export async function POST() {
     );
   }
 
-  const name = dbUser.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "You";
-  const targetRoles = dbUser.profile?.targetRoles ?? [];
+  const name = dbUser.name || authUser.email.split("@")[0] || "You";
+  const targetRoles = profile?.targetRoles ?? [];
   const sourceAssetId = primary?.id ?? null;
-  const existingDraft = normalizeLinkedInDraft(dbUser.profile?.linkedInDraft ?? null);
+  const existingDraft = normalizeLinkedInDraft(profile?.linkedInDraft ?? null);
 
   let aiDraft = null as ReturnType<typeof normalizeLinkedInDraft>;
   let provider: "claude" | "heuristic" = "heuristic";
@@ -76,8 +74,8 @@ export async function POST() {
     parsed: resume,
     name,
     targetRoles,
-    headline: aiDraft?.headline || dbUser.profile?.headline,
-    summary: aiDraft?.about || dbUser.profile?.summary || resume.summary,
+    headline: aiDraft?.headline || profile?.headline,
+    summary: aiDraft?.about || profile?.summary || resume.summary,
     existingDraft,
     sourceAssetId,
   });
@@ -91,14 +89,22 @@ export async function POST() {
     };
   }
 
-  draft = {
-    ...draft,
-    profilePhotoUrl:
-      existingDraft?.profilePhotoUrl ??
-      dbUser.avatarUrl ??
-      null,
-    coverPhotoUrl: existingDraft?.coverPhotoUrl ?? null,
-  };
+  const parsed = loadParsedForSync(profile?.parsedData);
+  draft = withAboutFingerprint(
+    {
+      ...draft,
+      profilePhotoUrl:
+        existingDraft?.profilePhotoUrl ??
+        dbUser.avatarUrl ??
+        null,
+      coverPhotoUrl: existingDraft?.coverPhotoUrl ?? null,
+    },
+    aboutProfileFingerprint({
+      parsed,
+      headline: profile?.headline,
+      summary: profile?.summary ?? resume.summary,
+    }),
+  );
 
   await prisma.profile.upsert({
     where: { userId: dbUser.id },

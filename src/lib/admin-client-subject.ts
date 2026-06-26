@@ -1,7 +1,7 @@
 import type { User } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { canAccessAdminClientTools, type ActingUserResult } from "@/lib/acting-user";
+import { canAccessAdminClientTools, getActingUser, type ActingUserResult } from "@/lib/acting-user";
 
 export function readClientUserIdFromRequest(request?: Request): string | null {
   if (!request) return null;
@@ -38,5 +38,32 @@ export async function resolveAdminClientSubject(
   }
 
   return { subject: client };
+}
+
+/** Shared resolver for profile-scoped API routes (self, impersonation, or admin client review). */
+export async function resolveProfileApiSubject(request: Request): Promise<
+  | { error: NextResponse }
+  | {
+      acting: ActingUserResult;
+      authUser: { id: string; email: string };
+      dbUser: User;
+      clientUserId: string | null;
+    }
+> {
+  const acting = await getActingUser(request);
+  if (!acting.authUser) {
+    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+
+  const clientUserId = readClientUserIdFromRequest(request);
+  const resolved = await resolveAdminClientSubject(acting, clientUserId);
+  if (resolved.error) return { error: resolved.error };
+
+  const dbUser = resolved.subject;
+  if (!dbUser) {
+    return { error: NextResponse.json({ error: "User not found" }, { status: 404 }) };
+  }
+
+  return { acting, authUser: acting.authUser, dbUser, clientUserId };
 }
 

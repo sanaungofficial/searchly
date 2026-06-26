@@ -3704,7 +3704,7 @@ export function WorkspaceProfile() {
             )}
 
             {page === "linkedin" && (
-              <ProfileLinkedInEditor isMobile={isMobile} coachView={showAdminUi} />
+              <ProfileLinkedInEditor isMobile={isMobile} coachView={showAdminUi || !!clientId} clientUserId={clientId} />
             )}
           </div>
         </div>
