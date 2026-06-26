@@ -25,8 +25,7 @@ import {
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
-import { mapVoiceIntakeToOnboarding } from "@/lib/voice-intake";
-import type { VoiceIntakeResult } from "@/components/voice/voice-intake-recorder";
+import type { VoiceAgentFieldPatch, VoiceAgentSessionResult } from "@/components/voice/voice-intake-recorder";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -367,27 +366,26 @@ export default function OnboardingPage() {
     setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }, []);
 
-  const onVoiceIntakeComplete = useCallback((result: VoiceIntakeResult) => {
-    const mapped = mapVoiceIntakeToOnboarding(result.transcript, result);
-    if (mapped.careerMotivation) setCareerMotivation(mapped.careerMotivation);
-    if (mapped.jobTimeline) setJobTimeline(mapped.jobTimeline);
-    if (mapped.currentSalary) setCurrentSalary(mapped.currentSalary);
-    if (mapped.targetSalary) setTargetSalary(mapped.targetSalary);
-    if (mapped.priorities.length) {
-      setPriorities((prev) => [...new Set([...prev, ...mapped.priorities])]);
+  const applyVoiceFieldPatch = useCallback((patch: VoiceAgentFieldPatch) => {
+    if (patch.careerMotivation) setCareerMotivation(patch.careerMotivation);
+    if (patch.jobTimeline) setJobTimeline(patch.jobTimeline);
+    if (patch.currentSalary) setCurrentSalary(patch.currentSalary);
+    if (patch.targetSalary) setTargetSalary(patch.targetSalary);
+    if (patch.priorities?.length) {
+      setPriorities((prev) => [...new Set([...prev, ...patch.priorities!])]);
     }
-    if (mapped.targetRoles.length) {
-      setReadbackRoleSuggestions((prev) => [...new Set([...prev, ...mapped.targetRoles])]);
-      setSelectedTitles((prev) => {
-        const merged = [...new Set([...prev, ...mapped.targetRoles])];
-        return merged.slice(0, 3);
-      });
+    if (patch.targetRoles?.length) {
+      setReadbackRoleSuggestions((prev) => [...new Set([...prev, ...patch.targetRoles!])]);
+      setSelectedTitles((prev) => [...new Set([...prev, ...patch.targetRoles!])].slice(0, 3));
     }
-    if (mapped.strategyIntakeNotes) {
+  }, []);
+
+  const onVoiceIntakeComplete = useCallback((result: VoiceAgentSessionResult) => {
+    if (result.transcript) {
       void fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategyIntakeNotes: mapped.strategyIntakeNotes }),
+        body: JSON.stringify({ strategyIntakeNotes: result.transcript }),
       });
     }
   }, []);
@@ -586,6 +584,7 @@ export default function OnboardingPage() {
               jobTimeline={jobTimeline}
               onCareerMotivationChange={setCareerMotivation}
               onJobTimelineChange={setJobTimeline}
+              onVoiceFieldUpdate={applyVoiceFieldPatch}
               onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onAboutSearchContinue}
               onSkip={onAboutSearchSkip}

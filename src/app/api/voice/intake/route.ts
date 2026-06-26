@@ -25,6 +25,7 @@ function getAnthropic() {
 export async function GET() {
   return NextResponse.json({
     transcriptionAvailable: deepgramConfigured(),
+    agentAvailable: deepgramConfigured(),
     extractionAvailable: !!process.env.ANTHROPIC_API_KEY,
   });
 }

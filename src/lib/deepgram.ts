@@ -1,7 +1,36 @@
 const DEEPGRAM_LISTEN_URL = "https://api.deepgram.com/v1/listen";
+const DEEPGRAM_GRANT_URL = "https://api.deepgram.com/v1/auth/grant";
 
 export function deepgramConfigured(): boolean {
   return !!process.env.DEEPGRAM_API_KEY?.trim();
+}
+
+/** Short-lived JWT for browser Voice Agent WebSocket (default TTL 30s — use ttlSeconds for sessions). */
+export async function createDeepgramGrantToken(ttlSeconds = 600): Promise<string> {
+  const apiKey = process.env.DEEPGRAM_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("DEEPGRAM_API_KEY is not configured");
+  }
+
+  const response = await fetch(DEEPGRAM_GRANT_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ttl_seconds: ttlSeconds }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Deepgram grant failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+  }
+
+  const data = (await response.json()) as { access_token?: string };
+  if (!data.access_token) {
+    throw new Error("Deepgram grant returned no access_token");
+  }
+  return data.access_token;
 }
 
 export type DeepgramTranscriptResult = {
@@ -25,14 +54,15 @@ export async function transcribeAudio(
     language: "en",
   });
 
-  const body = audio instanceof Buffer ? audio : Buffer.from(audio);
+  const bodyBytes =
+    audio instanceof Buffer ? new Uint8Array(audio) : new Uint8Array(audio);
   const response = await fetch(`${DEEPGRAM_LISTEN_URL}?${params}`, {
     method: "POST",
     headers: {
       Authorization: `Token ${apiKey}`,
       "Content-Type": mimeType || "audio/webm",
     },
-    body,
+    body: bodyBytes,
   });
 
   if (!response.ok) {

@@ -124,6 +124,48 @@ function pickPriorities(values: string[] | undefined): string[] {
   return [...picked];
 }
 
+export type VoiceAgentFieldName =
+  | "careerMotivation"
+  | "jobTimeline"
+  | "currentSalary"
+  | "targetSalary"
+  | "priorities"
+  | "targetRoles";
+
+export type VoiceAgentFieldPatch = Partial<
+  Pick<VoiceIntakeOnboardingFields, VoiceAgentFieldName>
+> & {
+  priorities?: string[];
+  targetRoles?: string[];
+};
+
+export function applyVoiceAgentField(
+  field: VoiceAgentFieldName,
+  rawValue: string,
+): VoiceAgentFieldPatch {
+  const value = rawValue.trim();
+  if (!value) return {};
+
+  switch (field) {
+    case "careerMotivation":
+      return { careerMotivation: pickMotivation(value) || value };
+    case "jobTimeline":
+      return { jobTimeline: pickClosestOption(value, ONBOARDING_TIMELINES) || value };
+    case "currentSalary":
+      return { currentSalary: pickSalaryRange(value) || value };
+    case "targetSalary":
+      return { targetSalary: pickSalaryRange(value) || value };
+    case "priorities": {
+      const picked = pickPriorities([value]);
+      return picked.length ? { priorities: picked } : { priorities: [value] };
+    }
+    case "targetRoles":
+      return { targetRoles: [value].filter(Boolean) };
+    default:
+      return {};
+  }
+}
+
 export function buildVoiceIntakeNotes(transcript: string, result: IntakeParseResult): string {
   const header = `[Voice intake ${new Date().toISOString()}]`;
   const summary = result.summary?.trim();

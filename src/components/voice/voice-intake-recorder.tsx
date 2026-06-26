@@ -1,209 +1,331 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { IntakeParseResult } from "@/lib/career-strategy";
-import { VoiceOrb, useAudioLevel, type VoiceOrbState } from "@/components/voice/voice-orb";
+import {
+  AgentMicrophone,
+  AgentPlayer,
+  AgentSession,
+  type AgentSettingsObject,
+  type ConversationTextMessage,
+} from "@deepgram/agents";
+import { VoiceOrb, type VoiceOrbState } from "@/components/voice/voice-orb";
+import {
+  applyVoiceAgentField,
+  type VoiceAgentFieldName,
+  type VoiceAgentFieldPatch,
+} from "@/lib/voice-intake";
 
-export type VoiceIntakeResult = IntakeParseResult & {
+export type { VoiceAgentFieldPatch };
+export type VoiceAgentFieldUpdate = VoiceAgentFieldPatch;
+
+export type VoiceAgentSessionResult = {
+  summary: string;
   transcript: string;
-  durationSeconds?: number | null;
-  parseSkipped?: boolean;
 };
 
-type RecorderPhase = "idle" | "recording" | "processing" | "done" | "error";
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-function pickMimeType(): string {
-  if (typeof MediaRecorder === "undefined") return "audio/webm";
-  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
-  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "audio/webm";
-}
-
-function phaseToOrbState(phase: RecorderPhase): VoiceOrbState {
-  if (phase === "error") return "idle";
-  return phase;
-}
+/** @deprecated use VoiceAgentSessionResult */
+export type VoiceIntakeResult = VoiceAgentSessionResult & {
+  proposed?: Record<string, unknown>;
+  fieldsFound?: string[];
+};
 
 interface VoiceIntakeRecorderProps {
-  onComplete: (result: VoiceIntakeResult) => void;
+  onFieldUpdate?: (patch: VoiceAgentFieldPatch) => void;
+  onComplete?: (result: VoiceAgentSessionResult) => void;
+  /** @deprecated use onFieldUpdate + onComplete */
+  onVoiceIntakeComplete?: (result: VoiceIntakeResult) => void;
   disabled?: boolean;
 }
 
-export function VoiceIntakeRecorder({ onComplete, disabled }: VoiceIntakeRecorderProps) {
-  const [phase, setPhase] = useState<RecorderPhase>("idle");
+type AgentUiMode = VoiceOrbState;
+
+function buildTranscript(lines: Array<{ role: string; content: string }>): string {
+  return lines.map((line) => `${line.role}: ${line.content}`).join("\n");
+}
+
+export function VoiceIntakeRecorder({
+  onFieldUpdate,
+  onComplete,
+  onVoiceIntakeComplete,
+  disabled,
+}: VoiceIntakeRecorderProps) {
   const [available, setAvailable] = useState<boolean | null>(null);
-  const [elapsed, setElapsed] = useState(0);
+  const [agentSettings, setAgentSettings] = useState<AgentSettingsObject | null>(null);
+  const [orbState, setOrbState] = useState<AgentUiMode>("idle");
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
-  const [liveStream, setLiveStream] = useState<MediaStream | null>(null);
+  const [agentLine, setAgentLine] = useState<string | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [sessionActive, setSessionActive] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<number | null>(null);
+  const sessionRef = useRef<AgentSession | null>(null);
+  const micRef = useRef<AgentMicrophone | null>(null);
+  const playerRef = useRef<AgentPlayer | null>(null);
+  const transcriptRef = useRef<Array<{ role: string; content: string }>>([]);
+  const rafRef = useRef<number | null>(null);
+  const uiModeRef = useRef<AgentUiMode>("idle");
 
-  const audioLevel = useAudioLevel(phase === "recording", liveStream);
+  const setUiMode = useCallback((mode: AgentUiMode) => {
+    uiModeRef.current = mode;
+    setOrbState(mode);
+  }, []);
 
   useEffect(() => {
-    void fetch("/api/voice/intake")
+    void fetch("/api/voice/agent/config")
       .then((res) => res.json())
-      .then((data) => setAvailable(!!data?.transcriptionAvailable))
+      .then((data) => {
+        setAvailable(!!data?.agentAvailable);
+        setAgentSettings(data?.agent ?? null);
+      })
       .catch(() => setAvailable(false));
   }, []);
 
-  const cleanupStream = useCallback(() => {
-    if (timerRef.current) {
-      window.clearInterval(timerRef.current);
-      timerRef.current = null;
+  const stopVisualizer = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setLiveStream(null);
-    mediaRecorderRef.current = null;
-    chunksRef.current = [];
+    setAudioLevel(0);
   }, []);
 
-  useEffect(() => cleanupStream, [cleanupStream]);
+  const startVisualizer = useCallback(() => {
+    stopVisualizer();
+    const tick = () => {
+      const mic = micRef.current;
+      const player = playerRef.current;
+      const mode = uiModeRef.current;
+      const level =
+        mode === "speaking"
+          ? (player?.getOutputVolume() ?? 0)
+          : mode === "listening" || mode === "live"
+            ? (mic?.getInputVolume() ?? 0)
+            : 0;
+      setAudioLevel(level);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [stopVisualizer]);
 
-  const uploadRecording = useCallback(
-    async (blob: Blob) => {
-      setPhase("processing");
-      setError(null);
+  const teardownSession = useCallback(() => {
+    stopVisualizer();
+    micRef.current?.stop();
+    micRef.current = null;
+    playerRef.current?.dispose();
+    playerRef.current = null;
+    sessionRef.current?.disconnect();
+    sessionRef.current = null;
+    setSessionActive(false);
+  }, [stopVisualizer]);
 
-      const formData = new FormData();
-      formData.append("audio", blob, "voice-intake.webm");
+  useEffect(() => () => teardownSession(), [teardownSession]);
 
-      try {
-        const res = await fetch("/api/voice/intake", { method: "POST", body: formData });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(typeof data?.error === "string" ? data.error : "Voice intake failed");
-        }
+  const finishSession = useCallback(
+    (resultSummary: string) => {
+      const transcript = buildTranscript(transcriptRef.current);
+      const header = `[Voice agent ${new Date().toISOString()}]\n${resultSummary}\n\n`;
+      const payload: VoiceAgentSessionResult = {
+        summary: resultSummary,
+        transcript: `${header}${transcript}`.slice(0, 24000),
+      };
 
-        const result = data as VoiceIntakeResult;
-        setSummary(result.summary || "Pulled a few things from your story — check the picks below.");
-        setPhase("done");
-        onComplete(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Voice intake failed");
-        setPhase("error");
-      }
+      teardownSession();
+      setSummary(resultSummary);
+      setUiMode("done");
+      onComplete?.(payload);
+      onVoiceIntakeComplete?.({
+        ...payload,
+        proposed: {},
+        fieldsFound: [],
+      });
     },
-    [onComplete],
+    [onComplete, onVoiceIntakeComplete, setUiMode, teardownSession],
   );
 
-  const stopRecording = useCallback(() => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder || recorder.state === "inactive") return;
-    recorder.stop();
-  }, []);
+  const handleFieldSave = useCallback(
+    (field: string, value: string) => {
+      if (!field || !value) return;
+      const patch = applyVoiceAgentField(field as VoiceAgentFieldName, value);
+      if (Object.keys(patch).length) onFieldUpdate?.(patch);
+    },
+    [onFieldUpdate],
+  );
 
-  const startRecording = useCallback(async () => {
-    if (disabled || phase === "recording" || phase === "processing") return;
+  const startSession = useCallback(async () => {
+    if (disabled || !agentSettings || sessionActive) return;
 
     setError(null);
     setSummary(null);
-    setElapsed(0);
-    chunksRef.current = [];
+    setAgentLine(null);
+    transcriptRef.current = [];
+    setUiMode("connecting");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      setLiveStream(stream);
+      const session = new AgentSession({
+        auth: {
+          tokenFactory: () => fetch("/api/voice/agent/token", { cache: "no-store" }).then((r) => {
+            if (!r.ok) throw new Error("Could not authorize voice agent");
+            return r.text();
+          }),
+        },
+        agent: agentSettings,
+        tags: ["kimchi", "onboarding"],
+      });
 
-      const mimeType = pickMimeType();
-      const recorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = recorder;
+      const player = new AgentPlayer();
+      const mic = new AgentMicrophone((data) => session.sendAudio(data));
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
-      };
-
-      recorder.onstop = () => {
-        cleanupStream();
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        chunksRef.current = [];
-        if (blob.size === 0) {
-          setError("We didn't catch any audio — try again and speak for a few seconds.");
-          setPhase("error");
-          return;
+      session.on("audio", (chunk) => player.queue(chunk));
+      session.on("user-started-speaking", () => {
+        player.interrupt();
+        setUiMode("listening");
+      });
+      session.on("agent-thinking", () => setUiMode("thinking"));
+      session.on("agent-started-speaking", () => setUiMode("speaking"));
+      session.on("agent-audio-done", () => setUiMode("live"));
+      session.on("conversation-text", (msg: ConversationTextMessage) => {
+        const role = msg.role === "assistant" ? "Kimchi" : "You";
+        transcriptRef.current.push({ role, content: msg.content });
+        if (msg.role === "assistant") setAgentLine(msg.content);
+      });
+      session.on("function-call-request", (msg) => {
+        for (const fn of msg.functions ?? []) {
+          if (!fn.client_side) continue;
+          try {
+            const args = JSON.parse(fn.arguments || "{}") as Record<string, string>;
+            if (fn.name === "save_onboarding_field") {
+              handleFieldSave(args.field, args.value);
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+            } else if (fn.name === "finish_onboarding_chat") {
+              session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: true }));
+              finishSession(args.summary || "Wrapped up your search preferences.");
+            }
+          } catch {
+            session.sendFunctionCallResponse(fn.id, fn.name, JSON.stringify({ ok: false }));
+          }
         }
-        void uploadRecording(blob);
-      };
+      });
+      session.on("connected", () => {
+        setSessionActive(true);
+        setUiMode("live");
+        startVisualizer();
+      });
+      session.on("disconnected", (reason) => {
+        if (uiModeRef.current !== "done" && uiModeRef.current !== "idle") {
+          setError(reason || "Voice session ended");
+          setUiMode("error");
+        }
+        setSessionActive(false);
+        stopVisualizer();
+      });
+      session.on("error", (msg) => {
+        setError(msg.description || "Voice agent error");
+        setUiMode("error");
+      });
+      session.on("sdk-error", (err) => {
+        setError(err.message || "Voice agent error");
+        setUiMode("error");
+      });
 
-      recorder.start(250);
-      setPhase("recording");
-      timerRef.current = window.setInterval(() => setElapsed((value) => value + 1), 1000);
+      sessionRef.current = session;
+      micRef.current = mic;
+      playerRef.current = player;
+
+      await session.connect();
+      await mic.start();
     } catch (err) {
-      cleanupStream();
-      const message =
-        err instanceof DOMException && err.name === "NotAllowedError"
-          ? "Microphone access is blocked — check your browser permissions."
-          : "Could not start recording.";
-      setError(message);
-      setPhase("error");
+      teardownSession();
+      setError(err instanceof Error ? err.message : "Could not start voice agent");
+      setUiMode("error");
     }
-  }, [cleanupStream, disabled, phase, uploadRecording]);
+  }, [
+    agentSettings,
+    disabled,
+    finishSession,
+    handleFieldSave,
+    sessionActive,
+    setUiMode,
+    startVisualizer,
+    stopVisualizer,
+    teardownSession,
+  ]);
+
+  const endSession = useCallback(() => {
+    if (!sessionActive) return;
+    finishSession(summary || "Voice intake ended — your picks below are saved.");
+  }, [finishSession, sessionActive, summary]);
 
   const handleOrbClick = useCallback(() => {
-    if (phase === "recording") stopRecording();
-    else if (phase === "idle" || phase === "error" || phase === "done") void startRecording();
-  }, [phase, startRecording, stopRecording]);
+    if (orbState === "done") {
+      setUiMode("idle");
+      setSummary(null);
+      setAgentLine(null);
+      return;
+    }
+    if (sessionActive) {
+      endSession();
+      return;
+    }
+    if (orbState === "idle" || orbState === "error") {
+      void startSession();
+    }
+  }, [endSession, orbState, sessionActive, setUiMode, startSession]);
 
   if (available === false) return null;
 
-  const orbLabel =
-    phase === "recording"
-      ? elapsed > 0
-        ? `Listening · ${formatDuration(elapsed)}`
-        : "Listening…"
-      : phase === "processing"
-        ? "One sec…"
-        : phase === "done"
-          ? "Got it"
-          : "Tap to talk";
-
-  const orbSublabel =
-    phase === "idle" || phase === "error"
-      ? "Tell us what you're looking for — target role, timeline, what matters. A minute is plenty."
-      : phase === "recording"
-        ? "Tap the orb again when you're done."
-        : phase === "processing"
-          ? "Transcribing and pulling out the useful bits."
-          : summary ?? undefined;
+  const hint =
+    orbState === "idle" || orbState === "error"
+      ? "Tap the orb — Kimchi will ask a few quick questions out loud. Prefer typing? Use the picks below anytime."
+      : orbState === "done"
+        ? undefined
+        : orbState === "connecting" || orbState === "thinking"
+          ? "Connecting…"
+          : sessionActive
+            ? "Tap the orb when you're done talking."
+            : undefined;
 
   return (
     <div className="voice-intake-hero anim-fade-up">
       <VoiceIntakeHeroStyles />
       <div className="voice-intake-hero__panel">
-        <p className="voice-intake-hero__eyebrow">Or just talk</p>
-        <h3 className="voice-intake-hero__title">Skip the forms — tell Kimchi your story.</h3>
+        <p className="voice-intake-hero__eyebrow">Talk to Kimchi</p>
+        <h3 className="voice-intake-hero__title">Skip the forms — have a quick conversation.</h3>
 
         <VoiceOrb
-          state={phaseToOrbState(phase)}
+          state={orbState}
           audioLevel={audioLevel}
           onClick={handleOrbClick}
-          disabled={disabled || available !== true}
-          label={orbLabel}
+          disabled={disabled || available !== true || !agentSettings}
+          label={
+            orbState === "idle"
+              ? "Tap to talk"
+              : orbState === "live"
+                ? "Listening"
+                : undefined
+          }
         />
 
-        {orbSublabel && phase !== "done" && (
-          <p className="voice-intake-hero__hint">{orbSublabel}</p>
+        {agentLine && orbState !== "idle" && orbState !== "done" && (
+          <div className="voice-intake-hero__bubble" aria-live="polite">
+            <span className="voice-intake-hero__bubble-label">Kimchi</span>
+            <p>{agentLine}</p>
+          </div>
         )}
 
-        {phase === "done" && summary && (
+        {hint && <p className="voice-intake-hero__hint">{hint}</p>}
+
+        {orbState === "done" && summary && (
           <div className="voice-intake-hero__success">
             <p>{summary}</p>
-            <button type="button" className="voice-intake-hero__again" onClick={() => {
-              setPhase("idle");
-              setSummary(null);
-            }}>
-              Record again
+            <button
+              type="button"
+              className="voice-intake-hero__again"
+              onClick={() => {
+                setUiMode("idle");
+                setSummary(null);
+                setAgentLine(null);
+              }}
+            >
+              Talk again
             </button>
           </div>
         )}
@@ -217,9 +339,7 @@ export function VoiceIntakeRecorder({ onComplete, disabled }: VoiceIntakeRecorde
 function VoiceIntakeHeroStyles() {
   return (
     <style>{`
-      .voice-intake-hero {
-        width: 100%;
-      }
+      .voice-intake-hero { width: 100%; }
 
       .voice-intake-hero__panel {
         position: relative;
@@ -241,8 +361,7 @@ function VoiceIntakeHeroStyles() {
         content: "";
         position: absolute;
         inset: 0;
-        background-image:
-          radial-gradient(rgba(26, 58, 47, 0.04) 1px, transparent 1px);
+        background-image: radial-gradient(rgba(26, 58, 47, 0.04) 1px, transparent 1px);
         background-size: 18px 18px;
         pointer-events: none;
         opacity: 0.5;
@@ -268,6 +387,35 @@ function VoiceIntakeHeroStyles() {
         line-height: 1.25;
         color: #1A3A2F;
         font-weight: 600;
+      }
+
+      .voice-intake-hero__bubble {
+        position: relative;
+        margin-top: 8px;
+        max-width: 420px;
+        padding: 14px 18px;
+        background: rgba(15, 36, 28, 0.92);
+        border: 1px solid rgba(91, 196, 184, 0.25);
+        text-align: left;
+      }
+
+      .voice-intake-hero__bubble-label {
+        display: block;
+        margin-bottom: 6px;
+        font-family: var(--font-ui);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(91, 196, 184, 0.85);
+      }
+
+      .voice-intake-hero__bubble p {
+        margin: 0;
+        font-family: var(--font-ui);
+        font-size: 15px;
+        line-height: 1.55;
+        color: rgba(247, 245, 242, 0.92);
       }
 
       .voice-intake-hero__hint {
