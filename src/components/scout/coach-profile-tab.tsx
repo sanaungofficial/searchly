@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
+import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
+import { ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
@@ -165,6 +167,7 @@ export function CoachProfileTab({
   } | null>(null);
   const [nylasNotice, setNylasNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [retryingScheduler, setRetryingScheduler] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
 
   async function loadProfile() {
     const r = await fetch("/api/coach/profile");
@@ -356,6 +359,44 @@ export function CoachProfileTab({
           borderRadius: "var(--scout-radius)",
           border: "1px solid rgba(26,58,47,0.08)",
           padding: "20px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--scout-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.8px",
+              fontFamily: fontMono,
+              margin: "0 0 6px",
+            }}
+          >
+            Pricing
+          </p>
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: 22, fontWeight: 600, color: color.forest }}>
+            {form.hourlyRate != null ? `$${form.hourlyRate}/hr` : "Not set"}
+          </p>
+          <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+            Hourly rate, packages, bulk discounts, and lead settings
+          </p>
+        </div>
+        <ScoutSecondaryBtn onClick={() => setPricingOpen(true)} style={{ minHeight: 40 }}>
+          Manage pricing
+        </ScoutSecondaryBtn>
+      </div>
+
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: "var(--scout-radius)",
+          border: "1px solid rgba(26,58,47,0.08)",
+          padding: "20px 24px",
         }}
       >
         <p
@@ -397,16 +438,6 @@ export function CoachProfileTab({
               inputStyle={inputStyle}
               logoSize={36}
               hintLabel="employer"
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Hourly Rate ($)</label>
-            <input
-              type="number"
-              value={form.hourlyRate ?? ""}
-              onChange={field("hourlyRate")}
-              placeholder="200"
-              style={inputStyle}
             />
           </div>
           <div>
@@ -696,6 +727,16 @@ export function CoachProfileTab({
           <p style={{ fontSize: 13, color: "#2d7a50", fontFamily: fontSans }}>Saved ✓</p>
         )}
       </div>
+
+      {pricingOpen && (
+        <CoachPricingDrawer
+          coachSlug={profile.slug}
+          onClose={() => {
+            setPricingOpen(false);
+            loadProfile().catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 }
