@@ -41,7 +41,11 @@ export async function GET(req: NextRequest) {
   const returnAppUrl = parsedEarly?.returnAppUrl ?? appUrl;
 
   function redirectUser(params: Record<string, string>) {
-    const response = NextResponse.redirect(nylasUserInboxReturnUrl(returnAppUrl, params));
+    const returnPath =
+      parsedEarly?.kind === "user" && parsedEarly.returnPath
+        ? parsedEarly.returnPath
+        : "/profile/preferences";
+    const response = NextResponse.redirect(nylasUserInboxReturnUrl(returnAppUrl, params, returnPath));
     clearNylasOAuthCookie(response);
     return response;
   }

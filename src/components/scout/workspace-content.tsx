@@ -39,8 +39,8 @@ export function WorkspaceContent({ children, flush, style }: Props) {
 }
 
 /** Full-height scroll region with cream page background */
-export const WorkspaceScroll = forwardRef<HTMLDivElement, { children: ReactNode }>(
-  function WorkspaceScroll({ children }, ref) {
+export const WorkspaceScroll = forwardRef<HTMLDivElement, { children: ReactNode; style?: CSSProperties }>(
+  function WorkspaceScroll({ children, style }, ref) {
     return (
       <div
         ref={ref}
@@ -51,6 +51,7 @@ export const WorkspaceScroll = forwardRef<HTMLDivElement, { children: ReactNode 
           overflowX: "hidden",
           WebkitOverflowScrolling: "touch",
           background: surface.page,
+          ...style,
         }}
       >
         {children}

@@ -87,8 +87,8 @@ export function nylasProfileReturnUrl(
 }
 
 /** Where job seekers land after connecting a dedicated job-search inbox. */
-export function nylasUserInboxReturnUrl(appUrl: string, params?: Record<string, string>): string {
-  const base = `${appUrl.replace(/\/$/, "")}/profile/preferences`;
+export function nylasUserInboxReturnUrl(appUrl: string, params?: Record<string, string>, returnPath = "/profile/preferences"): string {
+  const base = `${appUrl.replace(/\/$/, "")}${returnPath.startsWith("/") ? returnPath : `/${returnPath}`}`;
   if (!params || Object.keys(params).length === 0) return base;
   return `${base}?${new URLSearchParams(params).toString()}`;
 }
@@ -232,7 +232,12 @@ export function buildNylasAuthUrl(params: {
     const scope =
       params.provider === "microsoft"
         ? "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read"
-        : "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly";
+        : [
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/gmail.compose",
+            "https://www.googleapis.com/auth/calendar.readonly",
+          ].join(" ");
     query.set("scope", scope);
   }
 
@@ -451,7 +456,7 @@ export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & 
 
 export type NylasOAuthStatePayload =
   | { kind: "coach"; coachProfileId: string; ts: number; returnAppUrl?: string; returnPath?: string }
-  | { kind: "user"; userId: string; ts: number; returnAppUrl?: string };
+  | { kind: "user"; userId: string; ts: number; returnAppUrl?: string; returnPath?: string };
 
 export type NylasOAuthState = { coachProfileId: string; ts: number; returnAppUrl?: string };
 
