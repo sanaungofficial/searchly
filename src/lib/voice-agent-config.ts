@@ -1,5 +1,8 @@
 import type { AgentSettingsObject } from "@deepgram/agents";
 
+/** Deepgram-managed Anthropic model for Voice Agent think step (see LLM Models docs). */
+export const VOICE_AGENT_THINK_MODEL = "claude-4-5-haiku";
+
 export const ONBOARDING_VOICE_AGENT_PROMPT = `You are Kimchi — a sharp friend helping someone set up their job search during onboarding. You talk like a peer who's been through a senior search: direct, warm, no hype or corporate fluff.
 
 Your job is to learn enough to personalize their search by asking short follow-up questions about:
@@ -82,7 +85,8 @@ export function buildOnboardingVoiceAgentSettings(): AgentSettingsObject {
     think: {
       provider: {
         type: "anthropic",
-        model: "claude-4-5-haiku-latest",
+        version: "v1",
+        model: VOICE_AGENT_THINK_MODEL,
         temperature: 0.6,
       },
       prompt: ONBOARDING_VOICE_AGENT_PROMPT,
@@ -118,7 +122,8 @@ export function buildWorkspaceVoiceAgentSettings(): AgentSettingsObject {
     think: {
       provider: {
         type: "anthropic",
-        model: "claude-4-5-haiku-latest",
+        version: "v1",
+        model: VOICE_AGENT_THINK_MODEL,
         temperature: 0.6,
       },
       prompt: WORKSPACE_VOICE_AGENT_PROMPT,
