@@ -178,10 +178,11 @@ function CreateClientModal({
           style={{
             background: surface.card,
             border: border.lineStrong,
+            borderRadius: "var(--scout-radius)",
             width: "100%",
             maxWidth: 480,
             padding: 24,
-            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+            boxShadow: "var(--scout-shadow-card-strong)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -521,6 +522,8 @@ export function AdminClientsPanel({
               style={{
                 background: surface.card,
                 border: `1px solid ${hasOffer ? "rgba(5,150,105,0.3)" : inInterview ? "rgba(124,58,237,0.2)" : "rgba(26,58,47,0.08)"}`,
+                borderRadius: "var(--scout-radius)",
+                boxShadow: "var(--scout-shadow-card)",
                 padding: "16px 20px",
                 cursor: "pointer",
                 textAlign: "left",

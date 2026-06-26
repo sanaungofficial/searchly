@@ -50,12 +50,12 @@ type Props = {
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
-    <div style={{ border: border.line, background: surface.card, padding: "14px 16px" }}>
+    <ScoutBox padding="14px 16px">
       <p style={{ margin: 0, fontFamily: fontMono, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
         {label}
       </p>
       <p style={{ margin: "6px 0 0", fontFamily: fontSans, fontSize: 24, fontWeight: 600, color: color.forest }}>{value}</p>
-    </div>
+    </ScoutBox>
   );
 }
 
@@ -466,7 +466,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                   const { date, time } = formatBookingWhen(b.startAt, b.endAt);
                   const statusStyle = bookingStatusColor(b.status);
                   return (
-                    <div key={b.id} style={{ border: border.line, padding: "10px 12px", background: "#fff" }}>
+                    <ScoutBox key={b.id} flat padding="10px 12px">
                       <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>
                         {b.guestName ?? b.guestEmail ?? "Guest"}
                       </p>
@@ -476,7 +476,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                       <span style={{ fontFamily: fontMono, fontSize: 10, padding: "2px 6px", background: statusStyle.bg, color: statusStyle.color }}>
                         {b.status.toLowerCase()}
                       </span>
-                    </div>
+                    </ScoutBox>
                   );
                 })}
               </div>
