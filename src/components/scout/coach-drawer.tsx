@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
+import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
 import {
   CoachBookingModal,

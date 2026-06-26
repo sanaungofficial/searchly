@@ -18,6 +18,7 @@ import {
 import { writeCoachMatchCache } from "@/lib/coach-match-cache";
 import type { CoachListItem, CoachSpotlightBadge } from "@/lib/coach-types";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Props = {
   category?: string | null;
