@@ -1,27 +1,25 @@
 import { logAiUsage } from "@/lib/ai-usage";
+import {
+  getLegacyAnthropicClient,
+  hasLegacyAnthropicClient,
+  isKimchiAiConfigured,
+  kimchiModelId,
+} from "@/lib/llm";
 import { getPrompt } from "@/lib/prompts";
 import { shouldReplaceNameWithResumeName } from "@/lib/resume-parse";
 import {
   extractRawResumeText,
   fetchResumeBytes,
   fileExtFromUrl,
-  PARSE_MODEL,
   parseResumeFile,
 } from "@/lib/resume-extract";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
 
 const STALE_PARSE_MS = 12 * 60 * 1000;
 
 export type ResumeParseStatus = "running" | "complete" | "failed" | null;
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export function normalizeResumeParseStatus(value: unknown): ResumeParseStatus {
   if (value === "running" || value === "complete" || value === "failed") return value;
@@ -72,8 +70,9 @@ export async function runResumeAssetParse(assetId: string, userId: string): Prom
     }
 
     const ext = fileExtFromUrl(asset.url);
-    const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
-    const structuredPrompt = anthropic ? await getPrompt("RESUME_PARSE") : "";
+    const anthropic = hasLegacyAnthropicClient() ? getLegacyAnthropicClient() : null;
+    const structuredPrompt =
+      isKimchiAiConfigured() || anthropic ? await getPrompt("RESUME_PARSE") : "";
     const { text: resumeText, parsed, tokensIn, tokensOut } = await parseResumeFile(
       anthropic,
       bytes,
@@ -93,7 +92,7 @@ export async function runResumeAssetParse(assetId: string, userId: string): Prom
     }
 
     if (tokensIn > 0) {
-      logAiUsage(userId, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
+      logAiUsage(userId, "RESUME_PARSE", kimchiModelId("parse"), tokensIn, tokensOut);
     }
 
     const dbUser = await prisma.user.findUnique({ where: { id: userId } });

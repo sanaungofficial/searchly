@@ -5,28 +5,20 @@ import { anthropicErrorResponse } from "@/lib/anthropic-errors";
 import { parseIntakeJson } from "@/lib/career-strategy";
 import { fillIntakePrompt } from "@/lib/career-strategy-context";
 import { deepgramConfigured, transcribeAudio } from "@/lib/deepgram";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { ensureProfileRow } from "@/lib/profile-write";
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts";
 import { buildVoiceIntakeNotes } from "@/lib/voice-intake";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-
-const PARSE_MODEL = "claude-haiku-4-5-20251001";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export async function GET() {
   return NextResponse.json({
     transcriptionAvailable: deepgramConfigured(),
     agentAvailable: deepgramConfigured(),
-    extractionAvailable: !!process.env.ANTHROPIC_API_KEY,
+    extractionAvailable: isKimchiAiConfigured(),
   });
 }
 
@@ -57,7 +49,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const { transcript, durationSeconds } = await transcribeAudio(buffer, file.type || "audio/webm");
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!isKimchiAiConfigured()) {
       return NextResponse.json({
         transcript,
         durationSeconds,
@@ -91,28 +83,25 @@ export async function POST(request: Request) {
       intakeNotes: transcript,
     });
 
-    const message = await getAnthropic().messages.create({
-      model: PARSE_MODEL,
-      max_tokens: 3500,
-      messages: [{ role: "user", content: prompt }],
+    const { text, usage, modelId } = await kimchiGenerateText({
+      tier: "parse",
+      prompt,
+      maxOutputTokens: 3500,
+      userId: dbUser.id,
+      tags: ["feature:voice-intake"],
     });
 
     logAiUsage({
       userId: dbUser.id,
       feature: "voice_intake",
-      model: PARSE_MODEL,
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
+      model: modelId,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
     }).catch(() => {});
-
-    const content = message.content[0];
-    if (content.type !== "text") {
-      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-    }
 
     let parsed;
     try {
-      parsed = parseIntakeJson(content.text);
+      parsed = parseIntakeJson(text);
     } catch {
       return NextResponse.json({ error: "Failed to parse voice intake response" }, { status: 500 });
     }

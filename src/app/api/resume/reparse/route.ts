@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { logAiUsage } from "@/lib/ai-usage";
+import { isKimchiAiConfigured } from "@/lib/llm";
 import { getPrompt } from "@/lib/prompts";
 import {
   isLikelyBrokenWorkExperience,
@@ -8,18 +9,12 @@ import {
   normalizeParsedResumeData,
   shouldReplaceNameWithResumeName,
 } from "@/lib/resume-parse";
-import { PARSE_MODEL, parseResumeText } from "@/lib/resume-extract";
-import Anthropic from "@anthropic-ai/sdk";
+import { parseResumeText } from "@/lib/resume-extract";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
-
 export async function POST() {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -46,13 +41,13 @@ export async function POST() {
   }
 
   const structuredPrompt = await getPrompt("RESUME_PARSE");
-  const { parsed, tokensIn, tokensOut } = await parseResumeText(
-    getAnthropic(),
+  const { parsed, tokensIn, tokensOut, modelId } = await parseResumeText(
     dbUser.profile.resumeText,
     structuredPrompt,
+    dbUser.id,
   );
 
-  logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
+  logAiUsage(dbUser.id, "RESUME_PARSE", modelId, tokensIn, tokensOut);
 
   const parsedData = mergeParsedWithReadback(parsed, dbUser.profile.readbackData);
   if (!parsedData) {
@@ -72,7 +67,7 @@ export async function POST() {
 
   await prisma.profile.update({
     where: { id: dbUser.profile.id },
-    data: { parsedData },
+    data: { parsedData: parsedData as unknown as Prisma.InputJsonValue },
   });
 
   const updatedUser = await prisma.user.findUnique({ where: { id: dbUser.id } });

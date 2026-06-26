@@ -1,8 +1,8 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { loadJobDescriptionForUser } from "@/lib/job-description-server";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { prisma } from "@/lib/prisma";
 import { normalizeParsedResumeData, parseJsonFromModel, parsedResumeToText } from "@/lib/resume-parse";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
 const TAILOR_MAX_TOKENS = 8192;
@@ -74,14 +74,8 @@ function parseTailorResponse(text: string, stopReason: string | null): TailorRes
   return { error: "Failed to parse response. Please try again." };
 }
 
-let _a: Anthropic | null = null;
-function getAnthropic() {
-  if (!_a) _a = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _a;
-}
-
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -155,16 +149,14 @@ Return ONLY valid JSON:
 }`;
 
     try {
-      const message = await getAnthropic().messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: TAILOR_MAX_TOKENS,
-        messages: [{ role: "user", content: tweakPrompt }],
+      const { text } = await kimchiGenerateText({
+        tier: "create",
+        prompt: tweakPrompt,
+        maxOutputTokens: TAILOR_MAX_TOKENS,
+        userId: dbUser.id,
+        tags: ["feature:tailor-resume-tweak"],
       });
-      const content = message.content[0];
-      if (content.type !== "text") {
-        return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-      }
-      const parsed = parseTailorResponse(content.text, message.stop_reason);
+      const parsed = parseTailorResponse(text, null);
       if ("error" in parsed) {
         return NextResponse.json({ error: parsed.error }, { status: 500 });
       }
@@ -237,18 +229,15 @@ Rules:
 - injectedKeywords: list only keywords from the provided missing list that were actually added`;
 
   try {
-    const message = await getAnthropic().messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: TAILOR_MAX_TOKENS,
-      messages: [{ role: "user", content: prompt }],
+    const { text } = await kimchiGenerateText({
+      tier: "create",
+      prompt,
+      maxOutputTokens: TAILOR_MAX_TOKENS,
+      userId: dbUser.id,
+      tags: ["feature:tailor-resume"],
     });
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-    }
-
-    const parsed = parseTailorResponse(content.text, message.stop_reason);
+    const parsed = parseTailorResponse(text, null);
     if ("error" in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: 500 });
     }

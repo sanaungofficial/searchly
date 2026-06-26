@@ -1,17 +1,11 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { loadJobDescriptionForUser } from "@/lib/job-description-server";
+import { isKimchiAiConfigured, kimchiStreamText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-let _a: Anthropic | null = null;
-function getAnthropic() {
-  if (!_a) _a = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _a;
-}
-
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -55,31 +49,11 @@ export async function POST(req: NextRequest) {
     candidateName,
   });
 
-  const anthropicStream = getAnthropic().messages.stream({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 800,
+  return kimchiStreamText({
+    tier: "create",
     messages: [{ role: "user", content: prompt }],
-  });
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of anthropicStream) {
-        if (
-          chunk.type === "content_block_delta" &&
-          chunk.delta.type === "text_delta"
-        ) {
-          controller.enqueue(encoder.encode(chunk.delta.text));
-        }
-      }
-      controller.close();
-    },
-    cancel() {
-      anthropicStream.abort();
-    },
-  });
-
-  return new Response(readable, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+    maxOutputTokens: 800,
+    userId: dbUser.id,
+    tags: ["feature:cover-letter"],
   });
 }

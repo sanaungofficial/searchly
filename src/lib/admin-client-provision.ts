@@ -1,5 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { Prisma, UserRole, type User } from "@prisma/client";
 import { logAiUsage } from "@/lib/ai-usage";
 import {
   buildResumeTextFromParsed,
@@ -10,18 +8,14 @@ import {
 } from "@/lib/apify-linkedin";
 import { mergeLinkedInImportParsed } from "@/lib/merge-parsed-data";
 import { normalizeLinkedInUrl } from "@/lib/linkedin-url";
+import { getLegacyAnthropicClient, hasLegacyAnthropicClient, isKimchiAiConfigured, kimchiModelId } from "@/lib/llm";
 import { getPrompt } from "@/lib/prompts";
 import { prisma } from "@/lib/prisma";
-import { PARSE_MODEL, parseResumeFile } from "@/lib/resume-extract";
+import { parseResumeFile } from "@/lib/resume-extract";
 import { normalizeParsedResumeData, shouldReplaceNameWithResumeName } from "@/lib/resume-parse";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { findSupabaseAuthUserIdByEmail, getSupabaseAdmin } from "@/lib/supabase-admin";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
+import { Prisma, UserRole, type User } from "@prisma/client";
 
 export type ProvisionClientInput = {
   email: string;
@@ -100,8 +94,8 @@ async function uploadResumeForClient(input: {
     throw new Error("Could not generate resume file URL");
   }
 
-  const anthropic = process.env.ANTHROPIC_API_KEY ? getAnthropic() : null;
-  const structuredPrompt = anthropic ? await getPrompt("RESUME_PARSE") : "";
+  const anthropic = hasLegacyAnthropicClient() ? getLegacyAnthropicClient() : null;
+  const structuredPrompt = isKimchiAiConfigured() || anthropic ? await getPrompt("RESUME_PARSE") : "";
   const { text: resumeText, parsed: parsedRaw, tokensIn, tokensOut } = await parseResumeFile(
     anthropic,
     bytes,
@@ -116,7 +110,7 @@ async function uploadResumeForClient(input: {
   }
 
   if (tokensIn > 0) {
-    logAiUsage(dbUser.id, "RESUME_PARSE", PARSE_MODEL, tokensIn, tokensOut);
+    logAiUsage(dbUser.id, "RESUME_PARSE", kimchiModelId("parse"), tokensIn, tokensOut);
   }
 
   const parsedData = parsedRaw;

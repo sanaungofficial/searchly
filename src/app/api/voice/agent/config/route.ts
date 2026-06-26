@@ -1,5 +1,6 @@
 import { getActingUser } from "@/lib/acting-user";
 import { deepgramConfigured } from "@/lib/deepgram";
+import { isKimchiAiConfigured } from "@/lib/llm";
 import {
   buildOnboardingVoiceAgentSettings,
   buildWorkspaceVoiceAgentSettings,
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     {
       agentAvailable: deepgramConfigured(),
       transcriptionAvailable: deepgramConfigured(),
-      extractionAvailable: !!process.env.ANTHROPIC_API_KEY,
+      extractionAvailable: isKimchiAiConfigured(),
       context,
       thinkModel: "gpt-4o-mini",
       agent: deepgramConfigured()

@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { parseJsonFromModel, sectionTextBlob, normalizeParsedResumeData, type ResumeSectionId } from "@/lib/resume-parse";
 import { createClient } from "@/utils/supabase/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 const SECTION_LABELS: Record<ResumeSectionId, string> = {
@@ -12,12 +12,6 @@ const SECTION_LABELS: Record<ResumeSectionId, string> = {
   education: "Education & Training",
   certifications: "Certifications",
 };
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 function experienceSlice(
   parsed: ReturnType<typeof normalizeParsedResumeData>,
@@ -78,7 +72,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const targetRoles = (dbUser.profile?.targetRoles as string[] | null)?.join(", ") || "your target roles";
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({
       issues: [],
       suggestions: [
@@ -100,13 +94,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       targetRoles,
     });
 
-    const message = await getAnthropic().messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
+    const { text } = await kimchiGenerateText({
+      tier: "create",
+      prompt,
+      maxOutputTokens: 1500,
+      userId: dbUser.id,
+      tags: ["feature:resume-section-suggest"],
     });
 
-    const text = message.content[0]?.type === "text" ? message.content[0].text : "";
     const result = parseJsonFromModel(text) as {
       issues?: Array<Record<string, unknown>>;
       suggestions?: Array<{ label?: string; text?: string }>;

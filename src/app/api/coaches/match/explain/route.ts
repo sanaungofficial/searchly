@@ -1,21 +1,15 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { coachProfileTextForMatch } from "@/lib/coach-match";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
 import { CoachStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
-let _a: Anthropic | null = null;
-function getAnthropic() {
-  if (!_a) _a = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _a;
-}
-
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -101,19 +95,16 @@ export async function POST(req: NextRequest) {
     coachFirms: coach.firms.join(", ") || "Not specified",
   });
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1024,
-    messages: [{ role: "user", content: prompt }],
+  const { text } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 1024,
+    userId: dbUser.id,
+    tags: ["feature:coach-match-explain"],
   });
 
-  const content = message.content[0];
-  if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-  }
-
   try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found");
     const result = JSON.parse(jsonMatch[0]);
     return NextResponse.json(result);

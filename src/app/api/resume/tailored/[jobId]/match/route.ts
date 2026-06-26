@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
-
-let _a: Anthropic | null = null;
-function getAnthropic() {
-  if (!_a) _a = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _a;
-}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+  if (!isKimchiAiConfigured()) {
+    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { jobId } = await params;
 
-  const [job, profile] = await Promise.all([
+  const [job, profile, dbUser] = await Promise.all([
     prisma.job.findUnique({ where: { id: jobId } }),
     prisma.profile.findFirst({ where: { user: { email: user.email! } } }),
+    prisma.user.findUnique({ where: { email: user.email! }, select: { id: true } }),
   ]);
 
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
@@ -39,16 +38,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
   const template = await getPrompt("RESUME_MATCH");
   const promptContent = interpolate(template, { jobContext });
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 512,
-    messages: [{ role: "user", content: promptContent }],
+  const { text } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt: promptContent,
+    maxOutputTokens: 512,
+    userId: dbUser?.id,
+    tags: ["feature:resume-match"],
   });
 
-  const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "[]";
   let keywords: string[] = [];
   try {
-    keywords = JSON.parse(raw);
+    keywords = JSON.parse(text.trim());
     if (!Array.isArray(keywords)) keywords = [];
   } catch {
     keywords = [];

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import {
   JobActivitySignal,
   JobActivitySource,
@@ -20,13 +20,8 @@ import {
   type NylasMessage,
 } from "@/lib/nylas-inbox";
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
-const EMAIL_SIGNAL_MODEL = "claude-sonnet-4-6";
+const AUTO_APPLY_CONFIDENCE = 0.72;
 
 export type EmailSignalResult = {
   signal: JobActivitySignal;
@@ -81,7 +76,7 @@ async function classifyEmailSignal(params: {
   body: string;
   jobs: Job[];
 }): Promise<EmailSignalResult | null> {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!isKimchiAiConfigured()) return null;
 
   const pipeline = params.jobs
     .slice(0, 40)
@@ -117,14 +112,14 @@ Subject: ${params.subject}
 Body:
 ${params.body.slice(0, 6000)}`;
 
-  const anthropic = getAnthropic();
-  const res = await anthropic.messages.create({
-    model: EMAIL_SIGNAL_MODEL,
-    max_tokens: 800,
-    messages: [{ role: "user", content: prompt }],
+  const { text, usage, modelId } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 800,
+    userId: params.userId,
+    tags: ["feature:email-job-signal"],
   });
 
-  const text = res.content.find((c) => c.type === "text")?.text ?? "";
   const jsonStart = text.indexOf("{");
   const jsonEnd = text.lastIndexOf("}");
   if (jsonStart < 0 || jsonEnd < 0) return null;
@@ -153,9 +148,9 @@ ${params.body.slice(0, 6000)}`;
   await logAiUsage(
     params.userId,
     "EMAIL_JOB_SIGNAL",
-    EMAIL_SIGNAL_MODEL,
-    res.usage.input_tokens,
-    res.usage.output_tokens,
+    modelId,
+    usage.inputTokens,
+    usage.outputTokens,
   );
 
   const suggestedStage =

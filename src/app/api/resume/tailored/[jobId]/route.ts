@@ -2,16 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
-import Anthropic from "@anthropic-ai/sdk";
-
-let _a: Anthropic | null = null;
-function getAnthropic() {
-  if (!_a) _a = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _a;
-}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+  if (!isKimchiAiConfigured()) {
+    return NextResponse.json({ error: "AI not configured" }, { status: 503 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,13 +39,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ jobI
     resumeText: resumeText || "(no resume provided)",
   });
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4096,
-    messages: [{ role: "user", content: promptContent }],
+  const { text } = await kimchiGenerateText({
+    tier: "create",
+    prompt: promptContent,
+    maxOutputTokens: 4096,
+    userId: dbUser.id,
+    tags: ["feature:resume-tailor"],
   });
 
-  const text = message.content[0].type === "text" ? message.content[0].text : "[]";
   let sections: Record<string, unknown>[] = [];
   try {
     sections = JSON.parse(text.trim());

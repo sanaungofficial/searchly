@@ -1,21 +1,15 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
+import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { NextResponse } from "next/server";
 import { ensureDbUser } from "@/lib/ensure-db-user";
 import { mergeTrackedWithIntel, syncTrackedFromIntel } from "@/lib/company-intel";
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic() {
-  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _anthropic;
-}
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isKimchiAiConfigured()) {
     return NextResponse.json({ error: "AI not configured" }, { status: 503 });
   }
 
@@ -60,13 +54,13 @@ Rules:
 - Only include information you are confident about — use null rather than guessing
 - Do not include any text outside the JSON object`;
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1500,
-    messages: [{ role: "user", content: prompt }],
+  const { text } = await kimchiGenerateText({
+    tier: "analyze",
+    prompt,
+    maxOutputTokens: 1500,
+    userId: dbUser.id,
+    tags: ["feature:company-enrich"],
   });
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
 
   let parsed: object;
   try {
