@@ -158,7 +158,7 @@ function PurchasesInner() {
       )}
 
       {!loading && purchases.length > 0 && (
-        <div style={{ border: border.line, background: surface.card, overflowX: "auto" }}>
+        <ScoutBox padding={0} style={{ overflow: "hidden", overflowX: "auto" }}>
           <div
             style={{
               display: "grid",
@@ -238,7 +238,7 @@ function PurchasesInner() {
               </button>
             );
           })}
-        </div>
+        </ScoutBox>
       )}
 
       {selected && <CoachingPurchaseDrawer purchase={selected} onClose={closePurchase} />}

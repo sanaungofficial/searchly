@@ -708,13 +708,9 @@ interface CsvUploadPanelProps {
 function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }: CsvUploadPanelProps) {
   const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
   return (
-    <div
-      style={{
-        padding: "16px clamp(16px, 4vw, 28px)",
-        background: surface.card,
-        borderBottom: border.line,
-        animation: "fadeIn 0.2s ease both",
-      }}
+    <ScoutBox
+      padding="16px clamp(16px, 4vw, 28px)"
+      style={{ marginBottom: 16, animation: "fadeIn 0.2s ease both" }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
@@ -776,7 +772,7 @@ https://figma.com/careers/...,Figma,Design Systems PM`}
           </ScoutBox>
         </>
       )}
-    </div>
+    </ScoutBox>
   );
 }
 
@@ -794,13 +790,9 @@ interface MyJobsUrlPastePanelProps {
 
 function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, onAddToKanban, onDismiss }: MyJobsUrlPastePanelProps) {
   return (
-    <div
-      style={{
-        padding: "16px clamp(16px, 4vw, 28px)",
-        background: surface.card,
-        borderBottom: border.line,
-        animation: "fadeIn 0.2s ease both",
-      }}
+    <ScoutBox
+      padding="16px clamp(16px, 4vw, 28px)"
+      style={{ marginBottom: 16, animation: "fadeIn 0.2s ease both" }}
     >
       <div style={{ display: "flex", gap: 8, maxWidth: 560, marginBottom: loading || analysis || error ? 12 : 0 }}>
         <input
@@ -927,7 +919,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
           </button>
         </ScoutBox>
       )}
-    </div>
+    </ScoutBox>
   );
 }
 

@@ -74,7 +74,7 @@ export default function AdminBookingsPage() {
       )}
 
       {!loading && bookings.length > 0 && (
-        <div style={{ border: border.line, background: surface.card }}>
+        <ScoutBox padding={0} style={{ overflow: "hidden" }}>
           <div
             style={{
               display: "grid",
@@ -148,7 +148,7 @@ export default function AdminBookingsPage() {
               </button>
             );
           })}
-        </div>
+        </ScoutBox>
       )}
 
       {selectedBookingId && (

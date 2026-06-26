@@ -91,7 +91,9 @@ function AdminCoachesInner() {
               style={{
                 textAlign: "left",
                 border: border.line,
-                background: "#fff",
+                borderRadius: "var(--scout-radius)",
+                background: surface.card,
+                boxShadow: "var(--scout-shadow-card)",
                 padding: 20,
                 cursor: "pointer",
               }}

@@ -21,12 +21,6 @@ type HubPayload = {
   }>;
 };
 
-const CARD: React.CSSProperties = {
-  background: surface.card,
-  border: border.line,
-  borderRadius: 0,
-};
-
 export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boolean }) {
   const [hub, setHub] = useState<HubPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +38,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"} style={CARD}>
+      <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"}>
         <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Expert workspace
         </p>
@@ -64,7 +58,8 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
                 textDecoration: "none",
                 padding: "8px 14px",
                 border: border.line,
-                background: "#fff",
+                borderRadius: "var(--scout-radius)",
+                background: surface.card,
               }}
             >
               {item.label}
@@ -79,14 +74,14 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           { label: "Active clients", value: loading ? "…" : String(stats?.activeClients ?? 0) },
           { label: "Sessions this month", value: loading ? "…" : String(stats?.sessionsThisMonth ?? 0) },
         ].map((stat) => (
-          <ScoutBox key={stat.label} padding={16} style={CARD}>
+          <ScoutBox key={stat.label} padding={16}>
             <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 6px" }}>{stat.label}</p>
             <p style={{ fontFamily: fontSans, fontSize: 28, fontWeight: 600, color: color.forest, margin: 0 }}>{stat.value}</p>
           </ScoutBox>
         ))}
       </div>
 
-      <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"} style={CARD}>
+      <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.ink, margin: 0 }}>Upcoming sessions</p>
           <Link href="/dashboard/bookings" style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>
@@ -100,7 +95,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {upcoming.map((b) => (
-              <div key={b.id} style={{ padding: "10px 12px", border: border.line, background: surface.inset }}>
+              <div key={b.id} style={{ padding: "10px 12px", border: border.line, borderRadius: "var(--scout-radius)", background: surface.inset }}>
                 <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, margin: "0 0 4px", color: color.stone }}>
                   {b.title ?? "Session"}
                 </p>

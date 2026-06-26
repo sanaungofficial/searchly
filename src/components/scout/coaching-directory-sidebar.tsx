@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ScoutBox } from "@/components/scout/scout-box";
 import { CompanyLogo } from "@/components/scout/company-logo";
 import { COACH_CLIENT_SPECIALIZATIONS, COACH_RATE_BUCKETS } from "@/lib/coach-categories";
 import { coachCompanyNameForSlug } from "@/lib/coach-companies";
@@ -293,15 +294,10 @@ export function CoachingDirectorySidebar({
   }, [allSpecialties, serviceSearch]);
 
   return (
-    <aside
-      style={{
-        width: 280,
-        flexShrink: 0,
-        background: surface.card,
-        border: border.line,
-        padding: "18px 16px",
-        boxSizing: "border-box",
-      }}
+    <ScoutBox
+      padding="18px 16px"
+      style={{ width: 280, flexShrink: 0, boxSizing: "border-box", alignSelf: "flex-start" }}
+      className="coaching-directory-sidebar"
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 700, color: color.ink, margin: 0 }}>Filters</p>
@@ -401,6 +397,6 @@ export function CoachingDirectorySidebar({
           ))
         )}
       </FilterSection>
-    </aside>
+    </ScoutBox>
   );
 }
