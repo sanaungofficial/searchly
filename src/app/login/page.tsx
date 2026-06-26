@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthCredentialsForm } from "@/components/auth/auth-credentials-form";
 import { KimchiBySecondLadder } from "@/components/scout/scout-box";
+import { friendlyAuthMessage } from "@/lib/auth-errors";
 
 function LoginContent() {
   const router = useRouter();
@@ -16,12 +17,8 @@ function LoginContent() {
       setError("We signed you in but could not finish setting up your account. Please try again.");
     } else if (err === "no_code") {
       setError("Sign-in link expired or was invalid. Please try again.");
-    } else if (err.toLowerCase().includes("code verifier")) {
-      setError(
-        "This link must be opened in the same browser where you signed up. Try signing in with your email and password instead."
-      );
     } else if (err) {
-      setError(decodeURIComponent(err));
+      setError(friendlyAuthMessage(decodeURIComponent(err)));
     }
   }, [searchParams]);
 

@@ -1,15 +1,24 @@
 import { createClient } from "@/utils/supabase/server";
 import { authRedirectForUser, provisionUserFromAuth } from "@/lib/sync-auth-user";
+import {
+  friendlyAuthMessage,
+  isPkceVerifierError,
+  PKCE_FRIENDLY_MESSAGE,
+} from "@/lib/auth-errors";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 function loginRedirect(origin: string, message: string) {
-  return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(message)}`);
+  return NextResponse.redirect(
+    `${origin}/login?error=${encodeURIComponent(friendlyAuthMessage(message))}`
+  );
 }
 
-function isPkceVerifierError(message: string) {
-  return message.toLowerCase().includes("code verifier");
+function hasPkceVerifierCookie(
+  cookieStore: Awaited<ReturnType<typeof cookies>>
+) {
+  return cookieStore.getAll().some((c) => c.name.includes("code-verifier"));
 }
 
 export async function GET(request: Request) {
@@ -25,8 +34,9 @@ export async function GET(request: Request) {
     return loginRedirect(origin, oauthError);
   }
 
+  const cookieStore = await cookies();
   const supabase = await createClient();
-  let authError: { message: string } | null = null;
+  let authError: { message: string; code?: string } | null = null;
 
   // Email links should use token_hash (works cross-browser). Prefer over PKCE code.
   if (token_hash && type) {
@@ -36,16 +46,16 @@ export async function GET(request: Request) {
     });
     authError = error;
   } else if (code) {
+    if (!hasPkceVerifierCookie(cookieStore)) {
+      return loginRedirect(origin, PKCE_FRIENDLY_MESSAGE);
+    }
+
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error && isPkceVerifierError(error.message)) {
-      return loginRedirect(
-        origin,
-        "This confirmation link must be opened in the same browser where you signed up. Your email may already be confirmed — try signing in with your password."
-      );
+    if (error && isPkceVerifierError(error)) {
+      return loginRedirect(origin, PKCE_FRIENDLY_MESSAGE);
     }
     authError = error;
   } else {
-    // Implicit/hash tokens are client-only — preserve query string for /auth/confirm.
     const qs = searchParams.toString();
     return NextResponse.redirect(`${origin}/auth/confirm${qs ? `?${qs}` : ""}`);
   }
@@ -63,7 +73,6 @@ export async function GET(request: Request) {
   }
 
   try {
-    const cookieStore = await cookies();
     const { isNewUser } = await provisionUserFromAuth(user, cookieStore);
     const redirectTo = authRedirectForUser(isNewUser, next);
     return NextResponse.redirect(`${origin}${redirectTo}`);
