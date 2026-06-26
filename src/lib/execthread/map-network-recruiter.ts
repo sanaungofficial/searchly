@@ -51,7 +51,7 @@ function normalizeContact(
   const title = str(contact.title);
   const phone = str(contact.phone);
   const linkedInUrl = str(contact.linkedInUrl ?? contact.linkedinUrl);
-  const agencyName = str(contact.agencyName ?? contact.firmName ?? contact.companyName) ?? agencyFallback;
+  const agencyName = str(contact.agencyName ?? contact.firmName) ?? agencyFallback;
 
   if (!email && !name && !phone && !linkedInUrl) return null;
 

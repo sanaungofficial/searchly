@@ -23,6 +23,10 @@ import {
   formatNetworkStatus,
 } from "@/lib/network-job-format";
 import { networkSourceAdminName, networkSourceChannelCode } from "@/lib/network-source-labels";
+import {
+  networkCardEmployerLabel,
+  networkExecThreadRecruitingFirmLabel,
+} from "@/lib/network-employer-labels";
 
 export type NetworkRecruiterDisplay = {
   id: string;
@@ -81,11 +85,26 @@ export type NetworkJobListing = {
 
 /** Best agency label for cards/logos — avoids generic "Recruiting firm". */
 export function networkAgencyDisplayName(job: {
+  source?: "TOPECHELON" | "EXECTHREAD";
   agencyName?: string | null;
   companyName?: string | null;
+  companySummary?: string | null;
+  industries?: string[];
   networkId?: string | null;
   recruiter?: { agencyName?: string | null } | null;
 }): string {
+  if (job.source === "EXECTHREAD") {
+    return networkCardEmployerLabel({
+      source: "EXECTHREAD",
+      companyName: job.companyName,
+      companySummary: job.companySummary,
+      industries: job.industries,
+      agencyName: job.agencyName,
+      networkId: job.networkId,
+      recruiter: job.recruiter,
+    });
+  }
+
   const fromFields =
     job.agencyName?.trim() ||
     job.recruiter?.agencyName?.trim() ||
@@ -266,7 +285,7 @@ export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobLis
     networkId: mapped.networkId,
     positionTitle: mapped.positionTitle,
     companyName: mapped.companyName,
-    agencyName: mapped.agencyName ?? mapped.companyName,
+    agencyName: mapped.agencyName,
     agencyWebsite: null,
     agencyLogoUrl: null,
     city: mapped.city,
@@ -317,6 +336,10 @@ function internalViewAdminDetailsExecThread(
   push("Level", mapped.networkStatus);
   push("Functions", mapped._display.functions);
   push("Travel %", mapped._display.travel);
+  push("Recruiting firm", networkExecThreadRecruitingFirmLabel({
+    agencyName: mapped.agencyName,
+    recruiters: contacts.map((c) => ({ agencyName: c.agencyName })),
+  }));
   if (industries.length) push("Industry / company type", industries.join(" · "));
   push("Apply URL", mapped._display.applyUrl);
   push("Listing URL", mapped._display.listingUrl);
@@ -340,6 +363,9 @@ export function buildNetworkProspectCard(
         .join("\n\n")
     : job.description?.trim() || "";
   const parsed = parseJobDescriptionSections(aiDescription);
+  const company = networkCardEmployerLabel(job);
+  const recruitingFirm =
+    job.source === "EXECTHREAD" ? networkExecThreadRecruitingFirmLabel(job) : job.agencyName;
 
   const meta: JobMeta = {
     location: job.location,
@@ -364,6 +390,7 @@ export function buildNetworkProspectCard(
       "Recruiter network",
       networkSourceChannelCode(job.source),
       job.networkStatusLabel ?? job.networkStatus ?? "",
+      ...(recruitingFirm ? [recruitingFirm] : []),
       ...(job.source === "EXECTHREAD" && job.industries.length ? job.industries.slice(0, 2) : []),
     ].filter(Boolean),
     companySummary: job.companySummary ?? undefined,
@@ -401,7 +428,6 @@ export function buildNetworkProspectCard(
     },
   };
 
-  const company = job.agencyName ?? job.companyName ?? job.recruiter?.agencyName ?? "Recruiting firm";
   const days = daysSince(job.sharedAt);
 
   return {

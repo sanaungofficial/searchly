@@ -58,6 +58,7 @@ export function JobDrawerCompanySection({
   jobUrl,
   hirebase,
   loading,
+  networkSourced = false,
   trackPanel,
 }: {
   companyName: string;
@@ -66,6 +67,7 @@ export function JobDrawerCompanySection({
   jobUrl: string | null;
   hirebase: HirebaseCompanyProfileResponse | null;
   loading: boolean;
+  networkSourced?: boolean;
   trackPanel: React.ReactNode;
 }) {
   const profile = hirebase?.profile;
@@ -101,7 +103,8 @@ export function JobDrawerCompanySection({
   const uniqueSubindustries = [...new Set(subindustries)].slice(0, 4);
   const companyType = profile?.company_type ?? enrichment?.companyType ?? null;
   const hasRichProfile = Boolean(profile || enrichment?.description || enrichment?.hirebase?.slug);
-  const showLimitedNote = !loading && !summary && !hasRichProfile;
+  const showLimitedNote = !loading && !summary && !hasRichProfile && !networkSourced;
+  const showNetworkEmptyNote = networkSourced && !loading && !summary;
 
   return (
     <ScoutBox padding={20}>
@@ -109,8 +112,9 @@ export function JobDrawerCompanySection({
         <CompanyLogo
           name={companyName}
           website={jobUrl}
-          enrichmentWebsiteUrl={websiteUrl}
-          logoUrl={profile?.company_logo ?? enrichment?.hirebase?.logo ?? null}
+          enrichmentWebsiteUrl={networkSourced ? null : websiteUrl}
+          logoUrl={networkSourced ? null : (profile?.company_logo ?? enrichment?.hirebase?.logo ?? null)}
+          skipDomainLookup={networkSourced}
           size={52}
         />
         <div style={{ minWidth: 0 }}>
@@ -251,6 +255,12 @@ export function JobDrawerCompanySection({
             </ul>
           }
         />
+      )}
+
+      {showNetworkEmptyNote && (
+        <p style={{ fontFamily: sans, fontSize: 13, color: color.mutedLight, margin: "0 0 16px", lineHeight: 1.5 }}>
+          This is a confidential network listing — company details are only shown when the recruiter network provides them.
+        </p>
       )}
 
       {showLimitedNote && (
