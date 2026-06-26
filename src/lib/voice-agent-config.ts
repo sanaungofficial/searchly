@@ -1,7 +1,29 @@
 import type { AgentSettingsObject } from "@deepgram/agents";
 
-/** Deepgram-managed Anthropic model ID from GET /v1/agent/settings/think/models */
-export const VOICE_AGENT_THINK_MODEL = "claude-haiku-4-5";
+/**
+ * Deepgram-managed LLM for Voice Agent think step.
+ * Use IDs from GET https://agent.deepgram.com/v1/agent/settings/think/models
+ * gpt-4o-mini is Standard tier and most widely available on Voice Agent plans.
+ */
+export const VOICE_AGENT_THINK_PROVIDER = {
+  type: "open_ai" as const,
+  model: "gpt-4o-mini",
+  temperature: 0.6,
+};
+
+const VOICE_AGENT_LISTEN = {
+  provider: {
+    type: "deepgram" as const,
+    model: "nova-3",
+  },
+};
+
+const VOICE_AGENT_SPEAK = {
+  provider: {
+    type: "deepgram" as const,
+    model: "aura-2-thalia-en",
+  },
+};
 
 export const ONBOARDING_VOICE_AGENT_PROMPT = `You are Kimchi — a sharp friend helping someone set up their job search during onboarding. You talk like a peer who's been through a senior search: direct, warm, no hype or corporate fluff.
 
@@ -74,30 +96,13 @@ const AGENT_FUNCTIONS = [
 export function buildOnboardingVoiceAgentSettings(): AgentSettingsObject {
   return {
     language: "en",
-    listen: {
-      provider: {
-        type: "deepgram",
-        version: "v1",
-        model: "nova-3",
-        smart_format: false,
-      },
-    },
+    listen: VOICE_AGENT_LISTEN,
     think: {
-      provider: {
-        type: "anthropic",
-        model: VOICE_AGENT_THINK_MODEL,
-        temperature: 0.6,
-      },
+      provider: VOICE_AGENT_THINK_PROVIDER,
       prompt: ONBOARDING_VOICE_AGENT_PROMPT,
       functions: [...AGENT_FUNCTIONS],
     },
-    speak: {
-      provider: {
-        type: "deepgram",
-        version: "v1",
-        model: "aura-2-thalia-en",
-      },
-    },
+    speak: VOICE_AGENT_SPEAK,
   } as AgentSettingsObject;
 }
 
@@ -110,28 +115,11 @@ If they want to update profile details, ask clarifying questions and summarize w
 export function buildWorkspaceVoiceAgentSettings(): AgentSettingsObject {
   return {
     language: "en",
-    listen: {
-      provider: {
-        type: "deepgram",
-        version: "v1",
-        model: "nova-3",
-        smart_format: false,
-      },
-    },
+    listen: VOICE_AGENT_LISTEN,
     think: {
-      provider: {
-        type: "anthropic",
-        model: VOICE_AGENT_THINK_MODEL,
-        temperature: 0.6,
-      },
+      provider: VOICE_AGENT_THINK_PROVIDER,
       prompt: WORKSPACE_VOICE_AGENT_PROMPT,
     },
-    speak: {
-      provider: {
-        type: "deepgram",
-        version: "v1",
-        model: "aura-2-thalia-en",
-      },
-    },
+    speak: VOICE_AGENT_SPEAK,
   } as AgentSettingsObject;
 }

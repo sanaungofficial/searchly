@@ -80,7 +80,7 @@ export function useVoiceAgentSession({
   }, []);
 
   useEffect(() => {
-    void fetch(`/api/voice/agent/config?context=${context}`)
+    void fetch(`/api/voice/agent/config?context=${context}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         setAvailable(!!data?.agentAvailable);
