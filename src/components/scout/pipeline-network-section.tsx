@@ -280,10 +280,9 @@ function NetworkJobCard({
       : `Shared ${job.sharedAtLabel}`
     : null;
   const scoreStyle = job.matchScore && job.matchScore > 0 ? matchScoreStyle(job.matchScore) : null;
-  const borderAccent = scoreStyle?.accent ?? "rgba(196,168,106,0.55)";
 
   return (
-    <ScoutBox stack padding={18} style={{ borderTop: `3px solid ${borderAccent}` }}>
+    <ScoutBox padding={18}>
       <div
         role="button"
         tabIndex={0}

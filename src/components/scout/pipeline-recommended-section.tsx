@@ -600,7 +600,7 @@ function RecommendedResultsList({
         const score = matchScoreStyle(matchJob.matchScore);
 
         return (
-          <ScoutBox key={row.dedupeKey} stack padding={18} style={{ borderTop: `2px solid ${score.accent}` }}>
+          <ScoutBox key={row.dedupeKey} padding={18}>
             <div
               role="button"
               tabIndex={0}

@@ -61,6 +61,12 @@ export const radius = {
   px: 5,
 } as const;
 
+/** Soft elevation — white cards floating on cream page */
+export const shadow = {
+  card: "var(--scout-shadow-card)",
+  cardStrong: "var(--scout-shadow-card-strong)",
+} as const;
+
 /** Mobile-first type scale (px) — nothing below 12 for readable content */
 export const type = {
   displayLg: 28,

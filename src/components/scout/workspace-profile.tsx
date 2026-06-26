@@ -1643,7 +1643,7 @@ function LearningTab({
 
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
-      <ScoutBox stack padding={isMobile ? "18px 16px" : "22px 24px"} style={{ marginBottom: 28, background: surface.page }}>
+      <ScoutBox flat padding={isMobile ? "18px 16px" : "22px 24px"} style={{ marginBottom: 28, background: surface.page }}>
         <ScoutDisplayTitle size={isMobile ? 26 : 32} style={{ marginBottom: 8 }}>
           Learn &amp; grow
         </ScoutDisplayTitle>
@@ -1750,7 +1750,7 @@ function LearningTab({
       </div>
 
       {/* Progress bar */}
-      <ScoutBox stack padding={isMobile ? "16px" : "18px 20px"} style={{ marginBottom: 24, background: color.forest, border: border.lineStrong }}>
+      <ScoutBox flat padding={isMobile ? "16px" : "18px 20px"} style={{ marginBottom: 24, background: color.forest, border: border.lineStrong }}>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 16 : 0 }}>
           <div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
