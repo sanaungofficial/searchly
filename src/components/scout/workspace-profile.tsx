@@ -71,7 +71,6 @@ import { CareerStrategyPanel } from "./career-strategy-panel";
 import { UserAssetsList } from "./user-assets-list";
 import { assetTypeLabel } from "@/lib/asset-types";
 import { CareerPreferencesPanel, type CareerPrefPatch } from "./career-preferences-panel";
-import { JobSearchInboxPanel } from "./job-search-inbox-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
@@ -3684,7 +3683,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
             )}
             {page === "preferences" && profile && (
               <div style={{ paddingBottom: 40, paddingTop: 8, display: "flex", flexDirection: "column", gap: 24 }}>
-                <JobSearchInboxPanel />
                 <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
               </div>
             )}

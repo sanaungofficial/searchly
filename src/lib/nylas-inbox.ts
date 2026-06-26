@@ -1,4 +1,5 @@
 import { nylasFetch } from "@/lib/nylas";
+import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 
 export type NylasParticipant = { email?: string; name?: string };
 
@@ -304,12 +305,21 @@ export function formatMessageDate(unix?: number): string {
 }
 
 export function serializeMessageSummary(msg: NylasMessage) {
+  const fromLine = messageFromLine(msg);
+  const fromEmail = msg.from?.[0]?.email ?? null;
+  const sender = buildSenderAvatarUrls(fromLine, fromEmail);
   return {
     id: msg.id,
     subject: msg.subject ?? "(No subject)",
     snippet: msg.snippet ?? "",
-    from: messageFromLine(msg),
-    fromEmail: msg.from?.[0]?.email ?? null,
+    from: fromLine,
+    fromEmail: sender.email,
+    fromName: sender.displayName,
+    avatar: {
+      primary: sender.primary,
+      fallback: sender.fallback,
+      initials: sender.initials,
+    },
     date: msg.date ?? null,
     dateLabel: formatMessageDate(msg.date),
     unread: Boolean(msg.unread),

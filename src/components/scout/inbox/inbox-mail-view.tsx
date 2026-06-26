@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontMono, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { InboxUserTag } from "@/lib/email-sender-display";
+import { InboxExpandedMessage } from "./inbox-expanded-message";
+import { InboxFolderNav } from "./inbox-folder-nav";
+import { InboxMeetingsPanel } from "./inbox-meetings-panel";
+import { InboxStatusPills } from "./inbox-status-pill";
+import { SenderAvatar } from "./sender-avatar";
 import type { ComposeState, Folder, InboxStatus, MessageDetail, MessageSummary } from "./inbox-types";
 
 function pickInboxFolder(folders: Folder[]): Folder | null {
@@ -52,15 +58,15 @@ export function InboxMailView({
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<MessageDetail | null>(null);
   const [search, setSearch] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [mobilePane, setMobilePane] = useState<"list" | "detail">("list");
-  const [showThread, setShowThread] = useState(true);
   const [foldersReady, setFoldersReady] = useState(false);
+  const [meetingsCollapsed, setMeetingsCollapsed] = useState(false);
+  const [tagSaving, setTagSaving] = useState(false);
   const connected = Boolean(status.connected);
 
   const loadFolders = useCallback(async () => {
@@ -96,7 +102,7 @@ export function InboxMailView({
     setFolders([]);
     setSelectedFolderId(null);
     setMessages([]);
-    setSelectedId(null);
+    setExpandedId(null);
     setDetail(null);
     loadFolders()
       .then((f) => {
@@ -115,50 +121,43 @@ export function InboxMailView({
   useEffect(() => {
     if (!connected || !foldersReady) return;
     setListLoading(true);
+    setExpandedId(null);
+    setDetail(null);
     const t = setTimeout(() => {
       loadMessages(selectedFolderId, search)
         .then(({ messages: rows, nextCursor: cursor }) => {
           setMessages(rows);
           setNextCursor(cursor);
         })
-        .catch((err) =>
-          onNotice({
-            type: "error",
-            text: err instanceof Error && err.message !== "messages" ? err.message : "Could not load messages.",
-          }),
-        )
+        .catch(() => onNotice({ type: "error", text: "Could not load messages." }))
         .finally(() => setListLoading(false));
     }, search ? 350 : 0);
     return () => clearTimeout(t);
   }, [connected, foldersReady, selectedFolderId, search, loadMessages, onNotice, mailRefreshKey]);
 
   useEffect(() => {
-    if (messages.length === 0 || initialMessageId || selectedId) return;
-    setSelectedId(messages[0].id);
-  }, [messages, initialMessageId, selectedId]);
-
-  useEffect(() => {
-    if (!selectedId) {
+    if (!expandedId) {
       setDetail(null);
       return;
     }
     setDetailLoading(true);
-    loadDetail(selectedId)
+    loadDetail(expandedId)
       .then(setDetail)
-      .catch(() => onNotice({ type: "error", text: "Could not open message." }))
+      .catch(() => {
+        onNotice({ type: "error", text: "Could not open message." });
+        setExpandedId(null);
+      })
       .finally(() => setDetailLoading(false));
-  }, [selectedId, loadDetail, onNotice]);
+  }, [expandedId, loadDetail, onNotice]);
 
   useEffect(() => {
     if (!initialMessageId) return;
-    setSelectedId(initialMessageId);
-    if (isMobile) setMobilePane("detail");
+    setExpandedId(initialMessageId);
     onInitialMessageConsumed?.();
-  }, [initialMessageId, isMobile, onInitialMessageConsumed]);
+  }, [initialMessageId, onInitialMessageConsumed]);
 
-  function selectMessage(id: string) {
-    setSelectedId(id);
-    if (isMobile) setMobilePane("detail");
+  function toggleMessage(id: string) {
+    setExpandedId((current) => (current === id ? null : id));
   }
 
   async function loadMore() {
@@ -174,8 +173,8 @@ export function InboxMailView({
   }
 
   async function patchMessage(patch: { unread?: boolean; starred?: boolean; archive?: boolean }) {
-    if (!selectedId) return;
-    const res = await fetch(`/api/user/email/messages/${encodeURIComponent(selectedId)}`, {
+    if (!expandedId) return;
+    const res = await fetch(`/api/user/email/messages/${encodeURIComponent(expandedId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
@@ -186,13 +185,33 @@ export function InboxMailView({
     }
     const data = await res.json();
     setMessages((prev) =>
-      prev.map((m) => (m.id === selectedId ? { ...m, unread: data.message.unread, starred: data.message.starred } : m)),
+      prev.map((m) => (m.id === expandedId ? { ...m, unread: data.message.unread, starred: data.message.starred } : m)),
     );
     if (detail) setDetail({ ...detail, unread: data.message.unread, starred: data.message.starred });
     if (patch.archive) {
-      setSelectedId(null);
-      setMessages((prev) => prev.filter((m) => m.id !== selectedId));
+      setExpandedId(null);
+      setMessages((prev) => prev.filter((m) => m.id !== expandedId));
       onNotice({ type: "success", text: "Archived." });
+    }
+  }
+
+  async function updateTag(messageId: string, tag: InboxUserTag | null) {
+    setTagSaving(true);
+    try {
+      const res = await fetch(`/api/user/email/messages/${encodeURIComponent(messageId)}/tag`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag: tag ?? "none" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not save status");
+      const activity = data.activity ?? null;
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, activity } : m)));
+      if (detail?.id === messageId) setDetail({ ...detail, activity });
+    } catch (e) {
+      onNotice({ type: "error", text: e instanceof Error ? e.message : "Could not save status." });
+    } finally {
+      setTagSaving(false);
     }
   }
 
@@ -208,8 +227,7 @@ export function InboxMailView({
     });
   }
 
-  const showList = !isMobile || mobilePane === "list";
-  const showDetail = !isMobile || mobilePane === "detail";
+  const showMeetingsPanel = !isMobile && !meetingsCollapsed;
 
   return (
     <>
@@ -218,35 +236,11 @@ export function InboxMailView({
           display: "flex",
           alignItems: "center",
           gap: 10,
-          padding: "8px 14px",
+          padding: "10px 16px",
           borderBottom: border.line,
           background: surface.page,
         }}
       >
-        {folders.length > 0 && (
-          <select
-            value={selectedFolderId ?? ""}
-            onChange={(e) => setSelectedFolderId(e.target.value)}
-            aria-label="Mail folder"
-            style={{
-              flexShrink: 0,
-              padding: "7px 10px",
-              fontFamily: fontSans,
-              fontSize: T.caption,
-              border: border.line,
-              borderRadius: "var(--scout-radius)",
-              background: surface.card,
-              maxWidth: 140,
-            }}
-          >
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-                {f.unread_count ? ` (${f.unread_count})` : ""}
-              </option>
-            ))}
-          </select>
-        )}
         <input
           type="search"
           placeholder="Search mail…"
@@ -255,253 +249,202 @@ export function InboxMailView({
           style={{
             flex: 1,
             minWidth: 0,
-            padding: "7px 10px",
+            padding: "9px 12px",
             border: border.line,
-            borderRadius: "var(--scout-radius)",
+            borderRadius: 10,
             fontFamily: fontSans,
-            fontSize: T.caption,
+            fontSize: T.bodySm,
             background: surface.card,
           }}
         />
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={() => setMeetingsCollapsed((v) => !v)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: border.line,
+              background: meetingsCollapsed ? surface.card : "rgba(42,107,74,0.08)",
+              fontFamily: fontSans,
+              fontSize: T.caption,
+              fontWeight: 600,
+              color: color.forest,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {meetingsCollapsed ? "Show meetings" : "Hide meetings"}
+          </button>
+        )}
       </div>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {showList && (
-          <section
-            style={{
-              width: isMobile ? "100%" : "min(360px, 38%)",
-              flexShrink: 0,
-              borderRight: isMobile ? "none" : border.line,
-              overflowY: "auto",
-              background: surface.card,
-            }}
-          >
-            {listLoading && (
-              <p style={{ padding: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading…</p>
-            )}
-            {!listLoading && messages.length === 0 && (
-              <p style={{ padding: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No messages here.</p>
-            )}
-            {messages.map((msg) => (
-              <button
-                key={msg.id}
-                type="button"
-                onClick={() => selectMessage(msg.id)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "12px 14px",
-                  border: "none",
-                  borderBottom: border.line,
-                  background: msg.id === selectedId ? "rgba(26,58,47,0.06)" : msg.unread ? "rgba(26,58,47,0.03)" : "transparent",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                  <span
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: T.bodySm,
-                      fontWeight: msg.unread ? 700 : 500,
-                      color: color.ink,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {msg.starred ? "★ " : ""}
-                    {msg.from}
-                  </span>
-                  <span style={{ fontFamily: fontMono, fontSize: 10, color: color.muted, flexShrink: 0 }}>{msg.dateLabel}</span>
-                </div>
-                <p
-                  style={{
-                    margin: "0 0 4px",
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    fontWeight: 600,
-                    color: color.forest,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {msg.subject}
-                  {(msg.attachmentCount ?? 0) > 0 ? ` 📎${msg.attachmentCount}` : ""}
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: fontSans,
-                    fontSize: T.caption,
-                    color: color.muted,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {msg.snippet}
-                </p>
-              </button>
-            ))}
-            {nextCursor && (
-              <div style={{ padding: 12, textAlign: "center" }}>
-                <ScoutSecondaryBtn onClick={loadMore} disabled={loadingMore}>
-                  {loadingMore ? "Loading…" : "Load more"}
-                </ScoutSecondaryBtn>
-              </div>
-            )}
-          </section>
+        {!isMobile && folders.length > 0 && (
+          <InboxFolderNav folders={folders} selectedId={selectedFolderId} onSelect={setSelectedFolderId} />
         )}
 
-        {showDetail && (
-          <section style={{ flex: 1, minWidth: 0, overflowY: "auto", background: surface.card }}>
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setMobilePane("list")}
+        <section
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflowY: "auto",
+            background: "#FAFAF8",
+            borderRight: showMeetingsPanel ? border.line : undefined,
+          }}
+        >
+          {isMobile && folders.length > 0 && (
+            <div style={{ padding: "8px 12px", borderBottom: border.line, background: surface.page }}>
+              <select
+                value={selectedFolderId ?? ""}
+                onChange={(e) => setSelectedFolderId(e.target.value)}
+                aria-label="Mail folder"
                 style={{
-                  padding: "10px 14px",
-                  border: "none",
-                  borderBottom: border.line,
-                  background: surface.page,
-                  fontFamily: fontSans,
-                  fontSize: T.bodySm,
-                  cursor: "pointer",
-                  color: color.forest,
                   width: "100%",
-                  textAlign: "left",
+                  padding: "8px 10px",
+                  fontFamily: fontSans,
+                  fontSize: T.caption,
+                  border: border.line,
+                  borderRadius: 8,
+                  background: surface.card,
                 }}
               >
-                ← Back to list
-              </button>
-            )}
-            {!selectedId && (
-              <p style={{ padding: 32, textAlign: "center", fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
-                Select a message
-              </p>
-            )}
-            {selectedId && detailLoading && (
-              <p style={{ padding: 24, fontFamily: fontSans, color: color.muted }}>Opening…</p>
-            )}
-            {detail && !detailLoading && (
-              <div style={{ padding: isMobile ? 16 : 24 }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-                  <ScoutSecondaryBtn onClick={openReply}>Reply</ScoutSecondaryBtn>
-                  <ScoutSecondaryBtn onClick={() => patchMessage({ unread: !detail.unread })}>
-                    {detail.unread ? "Mark read" : "Mark unread"}
-                  </ScoutSecondaryBtn>
-                  <ScoutSecondaryBtn onClick={() => patchMessage({ starred: !detail.starred })}>
-                    {detail.starred ? "Unstar" : "Star"}
-                  </ScoutSecondaryBtn>
-                  <ScoutSecondaryBtn onClick={() => patchMessage({ archive: true })}>Archive</ScoutSecondaryBtn>
-                </div>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                    {f.unread_count ? ` (${f.unread_count})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-                <h2 style={{ fontFamily: fontSans, fontSize: 20, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>
-                  {detail.subject}
-                </h2>
-                <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>From: {detail.from}</p>
-                {detail.to && (
-                  <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>To: {detail.to}</p>
-                )}
-                <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, margin: "0 0 16px" }}>{detail.dateLabel}</p>
+          {listLoading && (
+            <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading…</p>
+          )}
+          {!listLoading && messages.length === 0 && (
+            <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>No messages here.</p>
+          )}
 
-                {detail.attachments.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.muted }}>
-                      Attachments
-                    </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {detail.attachments.map((a) => (
-                        <a
-                          key={a.id}
-                          href={`/api/user/email/messages/${encodeURIComponent(detail.id)}/attachments/${encodeURIComponent(a.id)}`}
-                          style={{
-                            fontFamily: fontSans,
-                            fontSize: T.caption,
-                            color: color.forest,
-                            padding: "6px 10px",
-                            border: border.line,
-                            borderRadius: "var(--scout-radius)",
-                            textDecoration: "none",
-                          }}
-                        >
-                          {a.filename}
-                        </a>
-                      ))}
+          {messages.map((msg) => {
+            const expanded = msg.id === expandedId;
+            const name = msg.fromName ?? msg.from;
+            const avatar = msg.avatar ?? { primary: null, fallback: null, initials: name.slice(0, 2).toUpperCase() };
+            return (
+              <div key={msg.id} style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                <button
+                  type="button"
+                  onClick={() => toggleMessage(msg.id)}
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "14px 16px",
+                    border: "none",
+                    background: expanded ? "#fff" : msg.unread ? "rgba(255,255,255,0.72)" : "transparent",
+                    boxShadow: expanded ? "inset 3px 0 0 #1C3A2F" : "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <SenderAvatar
+                    primary={avatar.primary}
+                    fallback={avatar.fallback}
+                    initials={avatar.initials}
+                    displayName={name}
+                    size={40}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontFamily: fontSans,
+                          fontSize: T.bodySm,
+                          fontWeight: msg.unread ? 700 : 600,
+                          color: color.ink,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {name}
+                      </span>
+                      <span style={{ fontFamily: fontMono, fontSize: 10, color: color.muted, flexShrink: 0 }}>
+                        {msg.dateLabel}
+                      </span>
                     </div>
-                  </div>
-                )}
-
-                {detail.thread.length > 1 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowThread((v) => !v)}
-                      style={{
-                        border: "none",
-                        background: "none",
-                        fontFamily: fontSans,
-                        fontSize: T.caption,
-                        color: color.forest,
-                        cursor: "pointer",
-                        padding: 0,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {showThread ? "Hide" : "Show"} thread ({detail.thread.length} messages)
-                    </button>
-                    {showThread && (
-                      <div style={{ marginTop: 8, border: border.line, borderRadius: "var(--scout-radius)" }}>
-                        {detail.thread.map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => selectMessage(t.id)}
-                            style={{
-                              display: "block",
-                              width: "100%",
-                              textAlign: "left",
-                              padding: "10px 12px",
-                              border: "none",
-                              borderBottom: border.line,
-                              background: t.id === detail.id ? "rgba(26,58,47,0.06)" : "transparent",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.ink }}>{t.from}</span>
-                            <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}> — {t.subject}</span>
-                          </button>
-                        ))}
-                      </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                      <span
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          fontFamily: fontSans,
+                          fontSize: T.caption,
+                          fontWeight: 600,
+                          color: msg.unread ? color.forest : color.ink,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {msg.starred ? "★ " : ""}
+                        {msg.subject}
+                      </span>
+                      <InboxStatusPills userTag={msg.activity?.userTag} signal={msg.activity?.signal} compact />
+                    </div>
+                    {!expanded && (
+                      <p
+                        style={{
+                          margin: 0,
+                          fontFamily: fontSans,
+                          fontSize: T.caption,
+                          color: color.muted,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {msg.snippet}
+                      </p>
                     )}
                   </div>
-                )}
+                </button>
 
-                {detail.bodyHtml ? (
-                  <div
-                    style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink, lineHeight: 1.65 }}
-                    dangerouslySetInnerHTML={{ __html: detail.bodyHtml }}
+                {expanded && detailLoading && (
+                  <p style={{ padding: "8px 16px 16px 68px", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
+                    Opening…
+                  </p>
+                )}
+                {expanded && detail && !detailLoading && detail.id === msg.id && (
+                  <InboxExpandedMessage
+                    detail={detail}
+                    tagSaving={tagSaving}
+                    onClose={() => setExpandedId(null)}
+                    onReply={openReply}
+                    onPatch={patchMessage}
+                    onTagChange={(tag) => void updateTag(detail.id, tag)}
+                    onOpenThreadMessage={(id) => setExpandedId(id)}
                   />
-                ) : (
-                  <pre
-                    style={{
-                      whiteSpace: "pre-wrap",
-                      fontFamily: fontSans,
-                      fontSize: T.bodySm,
-                      color: color.ink,
-                      lineHeight: 1.65,
-                      margin: 0,
-                    }}
-                  >
-                    {detail.bodyText}
-                  </pre>
                 )}
               </div>
-            )}
-          </section>
-        )}
+            );
+          })}
+
+          {nextCursor && (
+            <div style={{ padding: 16, textAlign: "center" }}>
+              <ScoutSecondaryBtn onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? "Loading…" : "Load more"}
+              </ScoutSecondaryBtn>
+            </div>
+          )}
+        </section>
+
+        {showMeetingsPanel ? (
+          <InboxMeetingsPanel refreshKey={mailRefreshKey} onToggleCollapse={() => setMeetingsCollapsed(true)} />
+        ) : !isMobile && meetingsCollapsed ? (
+          <InboxMeetingsPanel collapsed onToggleCollapse={() => setMeetingsCollapsed(false)} />
+        ) : null}
       </div>
 
       {compose.open && (
@@ -521,7 +464,7 @@ export function InboxMailView({
               overflow: "auto",
               background: surface.card,
               border: border.lineStrong,
-              borderRadius: "var(--scout-radius)",
+              borderRadius: 12,
               zIndex: 1001,
               boxShadow: "8px 8px 0 rgba(17,17,17,0.08)",
             }}
@@ -545,7 +488,7 @@ export function InboxMailView({
                     marginTop: 4,
                     padding: "10px 12px",
                     border: border.line,
-                    borderRadius: "var(--scout-radius)",
+                    borderRadius: 8,
                     fontFamily: fontSans,
                     fontSize: T.bodySm,
                   }}
@@ -563,7 +506,7 @@ export function InboxMailView({
                     marginTop: 4,
                     padding: "10px 12px",
                     border: border.line,
-                    borderRadius: "var(--scout-radius)",
+                    borderRadius: 8,
                     fontFamily: fontSans,
                     fontSize: T.bodySm,
                   }}
@@ -581,7 +524,7 @@ export function InboxMailView({
                     marginTop: 4,
                     padding: "10px 12px",
                     border: border.line,
-                    borderRadius: "var(--scout-radius)",
+                    borderRadius: 8,
                     fontFamily: fontSans,
                     fontSize: T.bodySm,
                     resize: "vertical",

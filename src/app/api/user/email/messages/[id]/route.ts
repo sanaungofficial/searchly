@@ -13,6 +13,8 @@ import {
   serializeMessageSummary,
   updateMessage,
 } from "@/lib/nylas-inbox";
+import { serializeMessageActivity } from "@/lib/inbox-message-activity";
+import { prisma } from "@/lib/prisma";
 
 async function loadGrant(userId: string) {
   return resolveInboxGrant(userId);
@@ -47,6 +49,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       thread = threadMessages.map(serializeMessageSummary);
     }
 
+    const activityRow = await prisma.jobActivityLog.findFirst({
+      where: { userId: dbUser.id, nylasMessageId: id },
+      include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+    });
+
     return NextResponse.json({
       ...serializeMessageSummary(message),
       to: participantsLine(message.to),
@@ -56,6 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       bodyText,
       attachments: serializeAttachments(message),
       thread,
+      activity: serializeMessageActivity(activityRow),
     });
   } catch (err) {
     console.error("[user/email/messages/id]", err);
