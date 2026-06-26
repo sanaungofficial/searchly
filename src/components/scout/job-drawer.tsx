@@ -393,6 +393,7 @@ function resolveJobFields(meta: JobMeta | null) {
   };
 }
 
+function JobDrawerMatchSection({
   meta,
   resumeMatch,
   resumeMatchLoading,
