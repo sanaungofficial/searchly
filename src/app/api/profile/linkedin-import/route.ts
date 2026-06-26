@@ -14,6 +14,16 @@ import {
 import { normalizeLinkedInDraft } from "@/lib/linkedin-profile";
 import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { Prisma } from "@prisma/client";
+import type { ParsedResumeData } from "@/lib/resume-parse";
+import { LINKEDIN_SPARSE_MESSAGE } from "@/lib/user-facing-copy";
+
+function isSparseProfileData(parsed: ParsedResumeData): boolean {
+  const hasExperience = (parsed.workExperience?.length ?? 0) > 0;
+  const hasSkills = (parsed.skills?.length ?? 0) > 0;
+  const hasSummary = !!parsed.summary?.trim();
+  const hasEducation = (parsed.education?.length ?? 0) > 0;
+  return !hasExperience && !hasSkills && !hasSummary && !hasEducation;
+}
 
 export async function POST(request: Request) {
   const { authUser, dbUser } = await getActingUser(request);
@@ -87,9 +97,12 @@ export async function POST(request: Request) {
     }
 
     const refreshedDraft = await refreshLinkedInDraftFromAbout(dbUser.id);
+    const sparse = isSparseProfileData(mergedParsed);
 
     return NextResponse.json({
       ok: true,
+      sparse,
+      sparseMessage: sparse ? LINKEDIN_SPARSE_MESSAGE : undefined,
       linkedinUrl,
       name: fullName ?? dbUser.name,
       headline: scraped.headline ?? null,
@@ -100,7 +113,10 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("[linkedin-import]", err);
-    const message = err instanceof Error ? err.message : "LinkedIn import failed.";
+    let message = err instanceof Error ? err.message : "LinkedIn import failed.";
+    if (message.startsWith("LINKEDIN_EMPTY:")) {
+      message = message.slice("LINKEDIN_EMPTY:".length);
+    }
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

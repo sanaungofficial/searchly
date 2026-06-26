@@ -216,11 +216,11 @@ export async function scrapeLinkedInProfile(
   const items = (await res.json()) as ApifyLinkedInProfile[];
   const raw = items?.[0];
   if (!raw) {
-    throw new Error("LinkedIn profile could not be loaded — check the URL is public.");
+    throw new Error("LINKEDIN_EMPTY:We couldn't find that LinkedIn profile. Double-check the link is public.");
   }
   const profile = normalizeApifyProfile(raw);
   if (!profile.publicIdentifier && !profile.firstName) {
-    throw new Error("LinkedIn profile could not be loaded — check the URL is public.");
+    throw new Error("LINKEDIN_EMPTY:We couldn't find that LinkedIn profile. Double-check the link is public.");
   }
 
   logApifyLinkedInRun(ctx?.userId);

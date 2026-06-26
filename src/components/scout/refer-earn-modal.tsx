@@ -133,7 +133,7 @@ export function ReferEarnModal({ onClose }: Props) {
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#1A1A1A", borderBottom: "2px solid #1A1A1A", paddingBottom: 8, display: "inline-block" }}>
                 Invite Friends →
               </p>
-              <p style={{ margin: "12px 0 0", fontSize: 16, fontWeight: 700, color: "#1A1A1A" }}>Extra AI credits per signup</p>
+              <p style={{ margin: "12px 0 0", fontSize: 16, fontWeight: 700, color: "#1A1A1A" }}>Rewards when friends join</p>
               <p style={{ margin: "16px 0 0", fontSize: 40 }}>👋</p>
             </button>
             <button
@@ -156,7 +156,7 @@ export function ReferEarnModal({ onClose }: Props) {
               {[
                 { step: "1", title: "Share your link", icon: "🔗" },
                 { step: "2", title: "Your friend completes sign-up & finishes onboarding", icon: "👥" },
-                { step: "3", title: "You and your friend each get +5 credits", icon: "🎁" },
+                { step: "3", title: "You and your friend each get a bonus", icon: "🎁" },
               ].map((s) => (
                 <div key={s.step} style={{ background: "#F7F5F2", borderRadius: 12, padding: 16 }}>
                   <span style={{ fontSize: 20 }}>{s.icon}</span>

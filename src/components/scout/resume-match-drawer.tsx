@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { fontSans, fontMono, color, drawerType as DT } from "@/lib/typography";
 import { GrowthMatchOffer, GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
+import { friendlyResumeError } from "@/lib/user-facing-copy";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -570,23 +571,51 @@ export function ResumeMatchDrawer({
                 </div>
               )}
 
-              {error && (
+              {error && (() => {
+                const friendly = friendlyResumeError(error);
+                return (
                 <div style={{ paddingTop: 20 }}>
                   <p
                     style={{
                       fontFamily: fontSans,
-                      fontSize: 14,
-                      color: "#C4574A",
-                      marginBottom:
-                        error === "No job description provided" ? 14 : 0,
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: "#1A1A1A",
+                      marginBottom: 8,
                     }}
                   >
-                    {error === "No resume found"
-                      ? "Upload a resume under Profile first."
-                      : error === "No job description provided"
-                      ? "No description on file for this job — paste it below:"
-                      : "Couldn't load match analysis — try again."}
+                    {friendly.headline}
                   </p>
+                  <p
+                    style={{
+                      fontFamily: fontSans,
+                      fontSize: 14,
+                      color: friendly.isMissingResume ? "#52493F" : "#C4574A",
+                      marginBottom:
+                        friendly.isMissingResume || error === "No job description provided" ? 14 : 0,
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {friendly.body}
+                  </p>
+                  {friendly.isMissingResume && (
+                    <a
+                      href="/profile"
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 16px",
+                        background: color.forest,
+                        color: color.gold,
+                        fontFamily: fontSans,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        marginBottom: 10,
+                      }}
+                    >
+                      Go to Profile →
+                    </a>
+                  )}
                   {error === "No job description provided" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <textarea
@@ -632,7 +661,8 @@ export function ResumeMatchDrawer({
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
               {data &&
                 (() => {
@@ -1350,7 +1380,9 @@ export function ResumeMatchDrawer({
               {aligning && <KimchiProcessLoader preset="resumeTailor" variant="centered" />}
 
               {/* Error state */}
-              {!aligning && generateError && (
+              {!aligning && generateError && (() => {
+                const friendly = friendlyResumeError(generateError);
+                return (
                 <div
                   style={{
                     display: "flex",
@@ -1360,19 +1392,51 @@ export function ResumeMatchDrawer({
                     minHeight: 300,
                     gap: 16,
                     textAlign: "center",
+                    padding: "0 24px",
                   }}
                 >
                   <p
                     style={{
                       fontFamily: fontSans,
-                      fontSize: 14,
-                      color: "#C4574A",
+                      fontSize: 16,
+                      fontWeight: 600,
+                      color: "#1A1A1A",
+                      margin: 0,
                     }}
                   >
-                    {generateError}
+                    {friendly.headline}
                   </p>
+                  <p
+                    style={{
+                      fontFamily: fontSans,
+                      fontSize: 14,
+                      color: "#52493F",
+                      margin: 0,
+                      lineHeight: 1.55,
+                      maxWidth: 360,
+                    }}
+                  >
+                    {friendly.body}
+                  </p>
+                  {friendly.isMissingResume && (
+                    <a
+                      href="/profile"
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 20px",
+                        background: color.forest,
+                        color: color.gold,
+                        fontFamily: fontSans,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                      }}
+                    >
+                      Add a resume in Profile →
+                    </a>
+                  )}
                   <button
-                    onClick={() => setStep(2)}
+                    onClick={() => setStep(friendly.isMissingResume ? 1 : 2)}
                     style={{
                       padding: "10px 20px",
                       background: "transparent",
@@ -1387,7 +1451,8 @@ export function ResumeMatchDrawer({
                     ← Go back
                   </button>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Result state */}
               {!aligning && tailoredData && (

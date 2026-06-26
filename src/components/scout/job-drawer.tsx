@@ -1269,10 +1269,10 @@ export function JobDrawer({
               boxSizing: "border-box",
             }}
           >
-            {/* Pipeline */}
+            {/* Save job */}
             <div>
               <p style={{ fontFamily: sans, fontSize: 12, fontWeight: 700, color: color.muted, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 12px" }}>
-                Pipeline
+                Save this job
               </p>
               {prospectMode && !dbId ? (
                 <>
@@ -1280,25 +1280,25 @@ export function JobDrawer({
                     <>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: mintLight, borderRadius: 0, marginBottom: 12 }}>
                         <span style={{ fontSize: 12, color: mint }}>✓</span>
-                        <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: color.forest }}>Already in your pipeline</span>
+                        <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: color.forest }}>Already saved</span>
                       </div>
                       <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
-                        Track stages, notes, and AI tools from your pipeline view.
+                        Track your progress, add notes, and use AI tools for this role.
                       </p>
                       {onOpenInPipeline && (
                         <button type="button" onClick={onOpenInPipeline} style={{ width: "100%", padding: "11px 16px", background: color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                          Open in pipeline →
+                          Open saved job →
                         </button>
                       )}
                     </>
                   ) : (
                     <>
                       <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
-                        Save this role to your pipeline to track stages, run match analysis, and generate tailored materials.
+                        Save this job to track your progress, see how you match, and create a tailored resume or cover letter.
                       </p>
                       {onAddToPipeline && (
                         <button type="button" onClick={() => void onAddToPipeline()} disabled={addingToPipeline} style={{ width: "100%", padding: "11px 16px", background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 14, fontWeight: 600, cursor: addingToPipeline ? "default" : "pointer", marginBottom: 10 }}>
-                          {addingToPipeline ? "Adding…" : "Add to pipeline"}
+                          {addingToPipeline ? "Saving…" : "Save this job"}
                         </button>
                       )}
                     </>
@@ -1321,7 +1321,7 @@ export function JobDrawer({
                 {dbId && (
                   <button
                     type="button"
-                    onClick={() => { if (window.confirm("Remove this job from your pipeline?")) onDelete(); }}
+                    onClick={() => { if (window.confirm("Remove this job from your saved list?")) onDelete(); }}
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#C4574A", fontFamily: sans, padding: 0 }}
                   >
                     Remove job
@@ -1464,7 +1464,7 @@ export function JobDrawer({
                 disabled={addingToPipeline}
                 style={{ width: "100%", padding: "14px 16px", minHeight: 48, background: addingToPipeline ? "rgba(26,58,47,0.35)" : color.forest, color: color.gold, border: lineStrong, borderRadius: 0, fontFamily: sans, fontSize: 15, fontWeight: 700, cursor: addingToPipeline ? "default" : "pointer" }}
               >
-                {addingToPipeline ? "Adding…" : "Add to pipeline"}
+                {addingToPipeline ? "Saving…" : "Save this job"}
               </button>
             ) : null}
             {mobileToolsOpen && (

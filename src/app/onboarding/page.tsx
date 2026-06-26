@@ -572,7 +572,7 @@ export default function OnboardingPage() {
               onLIKey={onLIKey}
               onContinue={onWelcomeContinue}
               onLinkedInOnly={onLinkedInOnly}
-              onSkip={onSkipProfile}
+              onStartFromScratch={onSkipProfile}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
