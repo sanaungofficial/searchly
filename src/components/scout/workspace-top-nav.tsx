@@ -35,7 +35,6 @@ function buildNavLinks(isAdmin: boolean): NavLink[] {
     path: "/dashboard",
     match: (p) =>
       (p === "/dashboard" || p.startsWith("/dashboard/")) &&
-      !isExpertPortalPath(p) &&
       !isAdminClientReviewPath(p),
   });
   links.push({
@@ -354,8 +353,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     isStaffPortal &&
     !isImpersonating &&
     !isAdminReviewing &&
-    (isExpertPortalPath(pathname) ||
-      (pathname === "/dashboard" && staffDashboardView === "expert"));
+    isExpertPortalPath(pathname);
   const showExpertModeChip =
     isStaffPortal &&
     !isImpersonating &&
@@ -655,8 +653,8 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
             {showExpertModeChip && <ExpertModeChip isMobile={isMobile} />}
             {isStaffPortal && !isImpersonating && !isAdminReviewing && (
               <UtilityPortalDropdown
-                label={isMobile ? "Expert" : "Expert dashboard"}
-                defaultPath="/dashboard/inbox"
+                label={isMobile ? "Expert" : "Expert mode"}
+                defaultPath="/expert/inbox"
                 active={expertPortalActive}
                 items={expertNavItems}
                 dropdownOpen={navDropdownOpen === "expert-portal"}

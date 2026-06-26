@@ -49,7 +49,7 @@ export function CoachBookingsTab() {
           </p>
         </div>
         <Link
-          href="/dashboard/offerings?section=availability"
+          href="/expert/offerings?section=availability"
           style={{
             fontFamily: fontSans,
             fontSize: 14,

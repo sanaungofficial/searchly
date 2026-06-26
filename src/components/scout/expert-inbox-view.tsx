@@ -283,11 +283,11 @@ export function ExpertInboxView() {
 
   function selectSection(next: InboxSection) {
     setSection(next);
-    router.replace(next === "bookings" ? "/dashboard/inbox" : `/dashboard/inbox?section=${next}`, { scroll: false });
+    router.replace(next === "bookings" ? "/expert/inbox" : `/expert/inbox?section=${next}`, { scroll: false });
   }
 
   function openClients() {
-    router.push("/dashboard/clients");
+    router.push("/expert/ops?section=clients");
   }
 
   if (loading && !data) {

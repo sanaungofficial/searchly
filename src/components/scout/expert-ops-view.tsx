@@ -31,7 +31,7 @@ function ExpertOpsInner() {
 
   function selectTab(next: OpsTab) {
     setTab(next);
-    router.replace(`/dashboard/ops?section=${next}`, { scroll: false });
+    router.replace(`/expert/ops?section=${next}`, { scroll: false });
   }
 
   async function viewAsClient(userId: string) {
@@ -55,7 +55,7 @@ function ExpertOpsInner() {
 
   return (
     <div style={{ height: "100%", minHeight: 0, overflowY: "auto" }}>
-      <div style={{ padding: isMobile ? "16px 16px 32px" : "24px 28px 40px" }}>
+      <div style={{ padding: isMobile ? "16px 16px 32px" : "24px 24px 40px" }}>
         <header style={{ marginBottom: isMobile ? 20 : 28 }}>
           <h1 style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: isMobile ? 22 : 26, fontWeight: 600, color: color.forest }}>
             Ops Tools

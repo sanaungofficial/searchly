@@ -34,12 +34,12 @@ export function ExpertOfferingsView() {
 
   function selectTab(next: OfferingsTab) {
     setTab(next);
-    router.replace(`/dashboard/offerings?section=${next}`, { scroll: false });
+    router.replace(`/expert/offerings?section=${next}`, { scroll: false });
   }
 
   return (
     <div style={{ height: "100%", minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ padding: isMobile ? "16px 16px 32px" : "24px 28px 40px", maxWidth: 960 }}>
+      <div style={{ padding: isMobile ? "16px 16px 32px" : "24px 24px 40px" }}>
         <header style={{ marginBottom: isMobile ? 20 : 28 }}>
           <h1 style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: isMobile ? 22 : 26, fontWeight: 600, color: color.forest }}>
             Offerings
@@ -63,7 +63,7 @@ export function ExpertOfferingsView() {
         {tab === "profile" && <CoachProfileTab setupOnMissing />}
         {tab === "packages" && <CoachPricingDrawer embedded coachSlug={coachSlug} />}
         {tab === "availability" && (
-          <CoachEditAvailabilityView mode="coach" embedded backHref="/dashboard/offerings?section=availability" />
+          <CoachEditAvailabilityView mode="coach" embedded backHref="/expert/offerings?section=availability" />
         )}
       </div>
     </div>

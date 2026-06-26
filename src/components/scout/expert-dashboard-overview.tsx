@@ -84,7 +84,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
       <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.ink, margin: 0 }}>Upcoming sessions</p>
-          <Link href="/dashboard/inbox" style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>
+          <Link href="/expert/inbox" style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>
             All bookings →
           </Link>
         </div>
@@ -109,10 +109,10 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           </div>
         )}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-          <Link href="/dashboard/clients" style={{ textDecoration: "none" }}>
+          <Link href="/expert/ops?section=clients" style={{ textDecoration: "none" }}>
             <ScoutPrimaryBtn type="button">View clients</ScoutPrimaryBtn>
           </Link>
-          <Link href="/dashboard/inbox" style={{ textDecoration: "none" }}>
+          <Link href="/expert/inbox" style={{ textDecoration: "none" }}>
             <ScoutSecondaryBtn type="button">Open inbox</ScoutSecondaryBtn>
           </Link>
         </div>

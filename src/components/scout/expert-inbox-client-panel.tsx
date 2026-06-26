@@ -326,7 +326,7 @@ export function ExpertInboxClientPanel({
           <p style={{ margin: "0 0 10px", fontFamily: fontSans, fontSize: 12, color: color.muted, lineHeight: 1.45 }}>
             Send your vouch link after a great session.
           </p>
-          <Link href="/dashboard/reviews" style={{ textDecoration: "none" }}>
+          <Link href="/expert/reviews" style={{ textDecoration: "none" }}>
             <ScoutSecondaryBtn type="button">Get vouch link</ScoutSecondaryBtn>
           </Link>
         </ScoutBox>
