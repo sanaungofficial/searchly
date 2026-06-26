@@ -19,6 +19,7 @@ import {
   buildStarterChatChips,
   isWelcomeOnlyThread,
   WELCOME_MESSAGE,
+  guidanceForChip,
   type AssistantChip,
   legacyToChips,
 } from "@/lib/kimchi-assistant/chat-chips";
@@ -28,14 +29,6 @@ import { CreditsInlineHint } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { fontSans } from "@/lib/typography";
-
-const KIMCHI_NAV_MARKER = /<!--kimchi-nav:([^>]+)-->/;
-
-function stripKimchiNavMarker(text: string): { text: string; route: string | null } {
-  const match = text.match(KIMCHI_NAV_MARKER);
-  if (!match) return { text, route: null };
-  return { text: text.replace(KIMCHI_NAV_MARKER, "").trimEnd(), route: match[1] ?? null };
-}
 import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS } from "./workspace-data";
 import {
@@ -49,6 +42,14 @@ import {
   KimchiTranscriptModal,
 } from "@/components/scout/kimchi-chat-extras";
 import { VoiceOrb } from "@/components/voice/voice-orb";
+
+const KIMCHI_NAV_MARKER = /<!--kimchi-nav:([^>]+)-->/;
+
+function stripKimchiNavMarker(text: string): { text: string; route: string | null } {
+  const match = text.match(KIMCHI_NAV_MARKER);
+  if (!match) return { text, route: null };
+  return { text: text.replace(KIMCHI_NAV_MARKER, "").trimEnd(), route: match[1] ?? null };
+}
 
 const sans = fontSans;
 
@@ -281,6 +282,25 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     [goTo],
   );
 
+  const appendGuidanceMessage = useCallback(
+    async (content: string) => {
+      const msg: StoredThreadMessage = { kind: "text", role: "assistant", content };
+      setMessages((prev) => [...prev, msg]);
+      const threadId = activeThreadId ?? (await ensureThread());
+      if (threadId) void persistMessages(threadId, [msg]);
+    },
+    [activeThreadId, ensureThread, persistMessages, setMessages],
+  );
+
+  const navigateWithGuidance = useCallback(
+    async (chip: AssistantChip, href: string) => {
+      const guidance = guidanceForChip(chip);
+      if (guidance) await appendGuidanceMessage(guidance);
+      goTo(href);
+    },
+    [appendGuidanceMessage, goTo],
+  );
+
   const sendMessageRef = useRef<(text: string) => void>(() => {});
 
   const handleChipActivate = useCallback(
@@ -291,27 +311,31 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           sendMessageRef.current(action.prompt);
           break;
         case "navigate":
-          goTo(action.href);
+          void navigateWithGuidance(chip, action.href);
           break;
         case "open_resume":
-          void openResumeEditor();
+          void navigateWithGuidance(chip, "/profile/assets");
           break;
         case "open_strategy":
-          goTo("/profile/career-strategy");
+          void navigateWithGuidance(chip, "/profile/career-strategy");
           break;
         case "generate_strategy":
           setStrategyModalOpen(true);
           break;
         case "inbox_insight":
           if (action.activityId) setInsightActivityId(action.activityId);
-          else goTo("/inbox");
+          else void navigateWithGuidance(chip, "/inbox");
           break;
         case "add_skill":
-          void addSkillAndNavigate(action.skill);
+          void (async () => {
+            await addSkillAndNavigate(action.skill);
+            const guidance = guidanceForChip(chip);
+            if (guidance) await appendGuidanceMessage(guidance);
+          })();
           break;
       }
     },
-    [goTo, openResumeEditor, addSkillAndNavigate],
+    [addSkillAndNavigate, appendGuidanceMessage, navigateWithGuidance],
   );
 
   const loadFollowUpChips = useCallback(async (userMessage: string, assistantMessage: string) => {
@@ -377,6 +401,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           setMessages((prev) => prev.slice(0, -1));
           return;
         }
+        if (res.status === 503) {
+          updateLastAssistant(
+            "Kimchi AI isn't available in this environment — try on production or ask San to enable the API key on dev.",
+          );
+          return;
+        }
         updateLastAssistant("That didn't work — try again.");
         return;
       }
@@ -392,8 +422,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       }
       const { text: finalText, route: navRoute } = stripKimchiNavMarker(accumulated);
       accumulated = finalText;
+      if (!accumulated.trim()) {
+        accumulated = "Sorry — I didn't get a reply. Try again or pick an action below.";
+      }
+      updateLastAssistant(accumulated);
       if (navRoute) {
-        updateLastAssistant(accumulated);
         goTo(navRoute);
       }
       notifyCreditsChanged();

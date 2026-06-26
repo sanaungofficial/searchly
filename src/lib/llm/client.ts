@@ -141,13 +141,41 @@ export function kimchiStreamTextWithTools(params: {
   const stream = new ReadableStream({
     async start(controller) {
       const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let streamedText = "";
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          if (value) controller.enqueue(value);
+          if (value) {
+            streamedText += decoder.decode(value, { stream: true });
+            controller.enqueue(value);
+          }
         }
-        const steps = await result.steps;
+        streamedText += decoder.decode();
+
+        const [finalText, steps] = await Promise.all([result.text, result.steps]);
+        const trimmedStreamed = streamedText.trim();
+        const trimmedFinal = (finalText ?? "").trim();
+
+        if (!trimmedStreamed && trimmedFinal) {
+          controller.enqueue(new TextEncoder().encode(trimmedFinal));
+        } else if (!trimmedStreamed && !trimmedFinal) {
+          let navigateReason: string | null = null;
+          for (const step of steps) {
+            for (const tr of step.toolResults ?? []) {
+              if (tr.toolName === "open_app_page") {
+                const payload = tr.output as { reason?: string | null } | undefined;
+                navigateReason = payload?.reason ?? null;
+              }
+            }
+          }
+          const fallback =
+            navigateReason?.trim() ||
+            "I'm here — try asking again or pick an action below.";
+          controller.enqueue(new TextEncoder().encode(fallback));
+        }
+
         let navigateRoute: string | null = null;
         for (const step of steps) {
           for (const tr of step.toolResults ?? []) {
