@@ -10,7 +10,7 @@ import {
   isNylasConfigured,
   nylasProfileReturnUrl,
   resolveKimchiAppUrl,
-  signNylasState,
+  signNylasOAuthState,
 } from "@/lib/nylas";
 
 async function getCoachProfileForUser() {
@@ -69,8 +69,8 @@ export async function GET(req: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
-  const oauthPayload = { coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
-  const state = signNylasState(oauthPayload);
+  const oauthPayload = { kind: "coach" as const, coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
+  const state = signNylasOAuthState(oauthPayload);
 
   try {
     const url = buildNylasAuthUrl({
@@ -105,8 +105,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as { provider?: string };
   const provider = body.provider === "microsoft" ? "microsoft" : "google";
-  const oauthPayload = { coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
-  const state = signNylasState(oauthPayload);
+  const oauthPayload = { kind: "coach" as const, coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
+  const state = signNylasOAuthState(oauthPayload);
 
   try {
     const url = buildNylasAuthUrl({

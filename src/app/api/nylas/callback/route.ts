@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CoachStatus, UserRole } from "@prisma/client";
 import { coachProfileSlug } from "@/lib/coach-slug";
+import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
+import { syncUserInbox } from "@/lib/job-email-agent";
 import {
   clearNylasOAuthCookie,
   createCoachSchedulerConfig,
@@ -10,6 +12,7 @@ import {
   mapNylasOAuthError,
   nylasOAuthRedirectUri,
   nylasProfileReturnUrl,
+  nylasUserInboxReturnUrl,
   resolveKimchiAppUrl,
   resolveNylasOAuthState,
   schedulerSlugForCoach,
@@ -18,9 +21,7 @@ import {
 async function profileOwnerRole(coachProfileId: string): Promise<UserRole | null> {
   const profile = await prisma.coachProfile.findUnique({
     where: { id: coachProfileId },
-    select: {
-      user: { select: { role: true } },
-    },
+    select: { user: { select: { role: true } } },
   });
   return profile?.user?.role ?? null;
 }
@@ -29,12 +30,6 @@ export async function GET(req: NextRequest) {
   const appUrl = resolveKimchiAppUrl(req);
   const cfg = getNylasConfig(appUrl);
 
-  if (!cfg) {
-    return NextResponse.redirect(
-      nylasProfileReturnUrl(appUrl, "ADMIN", { nylas: "error", reason: "config" }),
-    );
-  }
-
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
   const oauthError = req.nextUrl.searchParams.get("error");
@@ -42,14 +37,31 @@ export async function GET(req: NextRequest) {
   const oauthErrorDescription = req.nextUrl.searchParams.get("error_description");
 
   const parsedEarly = resolveNylasOAuthState(req, state);
-  const role = parsedEarly ? await profileOwnerRole(parsedEarly.coachProfileId) : UserRole.ADMIN;
-  const returnRole = role === UserRole.COACH ? "COACH" : "ADMIN";
-  const profileAppUrl = parsedEarly?.returnAppUrl ?? appUrl;
+  const isUserFlow = parsedEarly?.kind === "user";
+  const returnAppUrl = parsedEarly?.returnAppUrl ?? appUrl;
 
-  function redirectWith(params: Record<string, string>) {
-    const response = NextResponse.redirect(nylasProfileReturnUrl(profileAppUrl, returnRole, params));
+  function redirectUser(params: Record<string, string>) {
+    const response = NextResponse.redirect(nylasUserInboxReturnUrl(returnAppUrl, params));
     clearNylasOAuthCookie(response);
     return response;
+  }
+
+  async function redirectCoach(params: Record<string, string>) {
+    const role = parsedEarly?.kind === "coach"
+      ? await profileOwnerRole(parsedEarly.coachProfileId)
+      : UserRole.ADMIN;
+    const returnRole = role === UserRole.COACH ? "COACH" : "ADMIN";
+    const response = NextResponse.redirect(nylasProfileReturnUrl(returnAppUrl, returnRole, params));
+    clearNylasOAuthCookie(response);
+    return response;
+  }
+
+  async function redirectWith(params: Record<string, string>) {
+    return isUserFlow ? redirectUser(params) : redirectCoach(params);
+  }
+
+  if (!cfg) {
+    return await redirectWith(isUserFlow ? { inbox: "error", reason: "config" } : { nylas: "error", reason: "config" });
   }
 
   if (oauthError || oauthErrorReason) {
@@ -57,15 +69,15 @@ export async function GET(req: NextRequest) {
       error: oauthError,
       error_reason: oauthErrorReason,
       error_description: oauthErrorDescription,
-      params: Object.fromEntries(req.nextUrl.searchParams.entries()),
     });
     const mapped = mapNylasOAuthError({
       error: oauthError,
       errorReason: oauthErrorReason,
       errorDescription: oauthErrorDescription,
     });
-    return redirectWith({
-      nylas: "error",
+    const key = isUserFlow ? "inbox" : "nylas";
+    return await redirectWith({
+      [key]: "error",
       reason: mapped.reason,
       ...(mapped.detail ? { detail: mapped.detail } : {}),
     });
@@ -73,27 +85,53 @@ export async function GET(req: NextRequest) {
 
   if (!code) {
     console.error("[nylas/callback] Missing authorization code", {
-      params: Object.fromEntries(req.nextUrl.searchParams.entries()),
       redirectUri: nylasOAuthRedirectUri(),
     });
-    return redirectWith({ nylas: "error", reason: "auth", detail: "missing_code" });
+    return await redirectWith(
+      isUserFlow
+        ? { inbox: "error", reason: "auth", detail: "missing_code" }
+        : { nylas: "error", reason: "auth", detail: "missing_code" },
+    );
   }
 
   const parsed = parsedEarly;
   if (!parsed) {
-    console.error("[nylas/callback] Invalid OAuth state", {
-      hasState: Boolean(state),
-      hasCookie: Boolean(req.cookies.get("nylas_oauth_state")?.value),
-    });
-    return redirectWith({ nylas: "error", reason: "state" });
+    return await redirectWith(isUserFlow ? { inbox: "error", reason: "state" } : { nylas: "error", reason: "state" });
   }
 
   try {
     const { grantId, email } = await exchangeNylasCode(code, appUrl);
+
+    if (parsed.kind === "user") {
+      await ensureJobAgentSettings(parsed.userId);
+
+      await prisma.userEmailGrant.upsert({
+        where: { userId: parsed.userId },
+        create: {
+          userId: parsed.userId,
+          nylasGrantId: grantId,
+          email: email ?? null,
+          provider: req.nextUrl.searchParams.get("provider") ?? "google",
+        },
+        update: {
+          nylasGrantId: grantId,
+          email: email ?? null,
+          connectedAt: new Date(),
+        },
+      });
+
+      syncUserInbox(parsed.userId).catch((err) => console.error("[nylas/callback] initial sync", err));
+
+    return redirectUser({ inbox: "connected" });
+    }
+
     const profile = await prisma.coachProfile.findUnique({ where: { id: parsed.coachProfileId } });
     if (!profile) {
-      return redirectWith({ nylas: "error", reason: "profile" });
+      return await redirectCoach({ nylas: "error", reason: "profile" });
     }
+
+    const role = await profileOwnerRole(parsed.coachProfileId);
+    const returnRole = role === UserRole.COACH ? "COACH" : "ADMIN";
 
     const slug = profile.slug ?? coachProfileSlug(profile.displayName, profile.id);
     const schedulerSlug = schedulerSlugForCoach(slug, profile.id);
@@ -118,12 +156,12 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return redirectWith({ nylas: "connected" });
+    return await redirectCoach({ nylas: "connected" });
   } catch (err) {
     console.error("[nylas/callback]", err);
-    const message = err instanceof Error ? err.message : "Scheduler setup failed";
-    return redirectWith({
-      nylas: "error",
+    const message = err instanceof Error ? err.message : "Setup failed";
+    return await redirectWith({
+      ...(isUserFlow ? { inbox: "error" } : { nylas: "error" }),
       reason: "setup",
       ...(message ? { detail: message.slice(0, 200) } : {}),
     });

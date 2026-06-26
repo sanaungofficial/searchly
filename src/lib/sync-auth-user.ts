@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
 import { attachReferrer } from "@/lib/referrals";
+import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { ensurePartneroCustomer, partneroEnabled } from "@/lib/partnero";
 
 type CookieStore = {
@@ -69,6 +70,8 @@ export async function provisionUserFromAuth(user: User, cookieStore: CookieStore
     if (process.env.RESEND_API_KEY) {
       sendWelcomeEmail(user.email, name).catch(() => {});
     }
+
+    await ensureJobAgentSettings(created.id).catch(() => {});
   } else if (partneroEnabled()) {
     await ensurePartneroCustomer({
       userId: created.id,

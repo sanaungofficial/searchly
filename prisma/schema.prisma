@@ -47,6 +47,9 @@ model User {
   coachFollows         CoachFollow[]
   liveSessionRegistrations LiveSessionRegistration[]
   liveSessionEvents      LiveSessionEvent[]
+  emailGrant           UserEmailGrant?
+  jobAgentSettings     UserJobAgentSettings?
+  jobActivityLogs      JobActivityLog[]
 
   @@index([referredByUserId])
 }
@@ -198,6 +201,7 @@ model Job {
   updatedAt    DateTime  @updatedAt
 
   tailoredResume TailoredResume?
+  activityLogs   JobActivityLog[]
 }
 
 model TailoredResume {
@@ -476,6 +480,7 @@ enum AiFeature {
   JOB_PARSE
   CHAT
   RESUME_TAILOR
+  EMAIL_JOB_SIGNAL
 }
 
 enum ExternalApiProvider {
@@ -771,4 +776,95 @@ model UserDigestSettings {
   lastManualRefreshAt DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+}
+
+/// Dedicated job-search inbox connected via Nylas (Gmail/Outlook).
+model UserEmailGrant {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nylasGrantId String   @unique
+  email        String?
+  provider     String?
+  connectedAt  DateTime @default(now())
+  lastSyncAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([nylasGrantId])
+}
+
+/// Job-search email agent preferences (auto-enabled; user can opt out).
+model UserJobAgentSettings {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabled          Boolean  @default(true)
+  autoApplyUpdates Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+enum JobActivitySource {
+  EMAIL
+  CALENDAR
+  KIMCHI_AGENT
+}
+
+enum JobActivitySignal {
+  APPLICATION_RECEIVED
+  INTERVIEW_INVITE
+  REJECTION
+  OFFER
+  RECRUITER_OUTREACH
+  FOLLOW_UP
+  OTHER
+}
+
+enum JobActivityStatus {
+  APPLIED
+  PENDING_REVIEW
+  DISMISSED
+  SKIPPED
+  FAILED
+}
+
+/// Log of email/calendar signals processed by the job-search agent.
+model JobActivityLog {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId          String?
+  job            Job?              @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  source         JobActivitySource
+  signal         JobActivitySignal
+  suggestedStage JobStage?
+  appliedStage   JobStage?
+  status         JobActivityStatus @default(PENDING_REVIEW)
+  confidence     Float?
+  title          String?
+  snippet        String?
+  companyGuess   String?
+  roleGuess      String?
+  nylasMessageId String?
+  nylasEventId   String?
+  interviewAt    DateTime?
+  rawPayload     Json?
+  createdAt      DateTime          @default(now())
+
+  @@unique([userId, nylasMessageId])
+  @@unique([userId, nylasEventId])
+  @@index([userId, createdAt])
+  @@index([userId, status])
+}
+
+/// Kimchi-owned Nylas Agent Account (system mailbox).
+model KimchiAgentAccount {
+  id           String   @id @default(cuid())
+  purpose      String   @unique
+  email        String   @unique
+  nylasGrantId String   @unique
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

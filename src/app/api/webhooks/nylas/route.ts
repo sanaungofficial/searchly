@@ -12,6 +12,10 @@ import {
   parseBookingWebhookPayload,
   verifyNylasWebhookSignature,
 } from "@/lib/nylas";
+import {
+  processUserEventWebhook,
+  processUserMessageWebhook,
+} from "@/lib/job-email-agent";
 
 export async function GET(req: NextRequest) {
   const challenge = req.nextUrl.searchParams.get("challenge");
@@ -136,6 +140,29 @@ export async function POST(req: NextRequest) {
   }
 
   const type = body.type ?? "";
+  const grantId = body.data?.grant_id;
+  const objectId = body.data?.object?.id as string | undefined;
+
+  if (
+    grantId &&
+    objectId &&
+    (type === "message.created" || type === "message.updated")
+  ) {
+    processUserMessageWebhook(grantId, objectId).catch((err) =>
+      console.error("[nylas/webhook] user message", err),
+    );
+  }
+
+  if (
+    grantId &&
+    objectId &&
+    (type === "event.created" || type === "event.updated")
+  ) {
+    processUserEventWebhook(grantId, objectId).catch((err) =>
+      console.error("[nylas/webhook] user event", err),
+    );
+  }
+
   if (
     type === "booking.created" ||
     type === "booking.pending" ||
