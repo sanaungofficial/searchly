@@ -25,7 +25,7 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { resolveScopedDbUser } from "@/lib/admin-client-subject";
+import { readClientUserIdFromRequest, resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
 async function parseRecommendedFilters(request: Request): Promise<{
@@ -78,6 +78,8 @@ async function handleRecommended(request: Request) {
   if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const adminReviewClientId = readClientUserIdFromRequest(request);
+
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
   const roleTitlePreferences = buildRoleTitlePreferencesFromProfile(profile);
   const targetRoles = roleTitlePreferences.targetRoles ?? [];
@@ -113,7 +115,9 @@ async function handleRecommended(request: Request) {
     );
   }
 
-  if (!forceRefresh && defaultFeed) {
+  // Daily snapshot is for the member's own feed. Admin client review always regenerates live
+  // so roles and heuristic scores match the reviewed profile (not a stale or wrong-user cache).
+  if (!forceRefresh && defaultFeed && !adminReviewClientId) {
     try {
       const cached = await readRecommendedSnapshot(dbUser.id, snapshotDate);
       if (cached?.jobs.length) {

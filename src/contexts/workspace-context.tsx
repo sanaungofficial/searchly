@@ -148,13 +148,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [impersonation, setImpersonation] = useState<ImpersonationState>({ active: false });
   const [actingUserId, setActingUserId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
+    const reviewId = getAdminReviewClientId() ?? readClientUserIdFromBrowserSearch();
+    if (reviewId) return reviewId;
     const scope = getActingUserScope();
     return scope !== "self" ? scope : null;
   });
   const [staffDashboardView, setStaffDashboardViewState] = useState<StaffDashboardView>("seeker");
   const [staffUserId, setStaffUserId] = useState<string | null>(null);
   const [adminReviewClientId, setAdminReviewClientIdState] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : getAdminReviewClientId(),
+    typeof window === "undefined" ? null : getAdminReviewClientId() ?? readClientUserIdFromBrowserSearch(),
   );
   const [adminReviewClient, setAdminReviewClientMeta] = useState<AdminReviewMeta | null>(() =>
     typeof window === "undefined" ? null : getAdminReviewMeta(),

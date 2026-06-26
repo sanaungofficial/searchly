@@ -187,16 +187,21 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
   const reasons = job.matchReasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, 3);
   if (!reasons.length || job.matchScore <= 0) return null;
 
+  const tier = matchScoreTier(job.matchScore);
+  const isStretch = tier === "poor" || tier === "fair";
   const score = matchScoreStyle(job.matchScore);
   const matchedSkills = job.matchedSkills?.slice(0, 6) ?? [];
+  const bg = isStretch ? "rgba(17,17,17,0.04)" : score.bgSubtle;
+  const accent = isStretch ? color.muted : score.accent;
+  const borderColor = isStretch ? border.line : score.accent;
 
   return (
     <div
       style={{
         marginTop: 12,
         padding: "10px 12px",
-        background: score.bgSubtle,
-        borderLeft: `2px solid ${score.accent}`,
+        background: bg,
+        borderLeft: `2px solid ${borderColor}`,
       }}
     >
       <p
@@ -204,7 +209,7 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
           fontFamily: fontSans,
           fontSize: T.label,
           fontWeight: 700,
-          color: score.accent,
+          color: accent,
           margin: "0 0 4px",
           letterSpacing: "0.03em",
           textTransform: "uppercase",
@@ -213,8 +218,9 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
         Alignment check
       </p>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
-        <span style={{ fontWeight: 600, color: score.accent }}>{job.matchLabel}</span>
-        {" "}· {job.matchScore}/100 from your profile
+        <span style={{ fontWeight: 600, color: accent }}>{job.matchLabel}</span>
+        {" "}· {job.matchScore}/100 · quick estimate from title/resume overlap
+        {isStretch ? " — open the role and run Analyze with AI for a full read" : ""}
       </p>
       <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
         {reasons.map((reason) => (
@@ -230,7 +236,7 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
               lineHeight: 1.5,
             }}
           >
-            <span aria-hidden style={{ flexShrink: 0, color: score.accent, fontWeight: 700, marginTop: 1 }}>
+            <span aria-hidden style={{ flexShrink: 0, color: accent, fontWeight: 700, marginTop: 1 }}>
               →
             </span>
             <span>{reason}</span>
@@ -244,11 +250,11 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
               key={skill}
               style={{
                 padding: "3px 8px",
-                background: score.bg,
+                background: isStretch ? surface.inset : score.bg,
                 fontFamily: fontSans,
                 fontSize: T.label,
                 fontWeight: 500,
-                color: score.accent,
+                color: accent,
               }}
             >
               {skill}
