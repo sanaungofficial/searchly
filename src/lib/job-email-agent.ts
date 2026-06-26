@@ -26,7 +26,7 @@ function getAnthropic() {
   return _anthropic;
 }
 
-const AUTO_APPLY_CONFIDENCE = 0.72;
+const EMAIL_SIGNAL_MODEL = "claude-sonnet-4-6";
 
 export type EmailSignalResult = {
   signal: JobActivitySignal;
@@ -119,7 +119,7 @@ ${params.body.slice(0, 6000)}`;
 
   const anthropic = getAnthropic();
   const res = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: EMAIL_SIGNAL_MODEL,
     max_tokens: 800,
     messages: [{ role: "user", content: prompt }],
   });
@@ -153,7 +153,7 @@ ${params.body.slice(0, 6000)}`;
   await logAiUsage(
     params.userId,
     "EMAIL_JOB_SIGNAL",
-    "claude-sonnet-4-20250514",
+    EMAIL_SIGNAL_MODEL,
     res.usage.input_tokens,
     res.usage.output_tokens,
   );
