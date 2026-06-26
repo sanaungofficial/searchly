@@ -32,8 +32,15 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Passcode gate — production only (VERCEL_ENV=production). Dev/preview bypass.
+  // Auth callback/confirm must bypass passcode so email/OAuth links work on first click.
   if (process.env.VERCEL_ENV === "production") {
-    if (!pathname.startsWith("/passcode") && !pathname.startsWith("/api/")) {
+    const bypassPasscode =
+      pathname.startsWith("/passcode") ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/auth/callback") ||
+      pathname.startsWith("/auth/confirm");
+
+    if (!bypassPasscode) {
       const passcodeValid = request.cookies.get("kimchi_access")?.value === "granted";
       if (!passcodeValid) {
         const url = request.nextUrl.clone();

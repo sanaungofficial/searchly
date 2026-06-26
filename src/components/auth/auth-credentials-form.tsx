@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { friendlyAuthMessage } from "@/lib/auth-errors";
 
 type AuthMode = "login" | "signup";
 
@@ -22,7 +23,7 @@ function friendlyAuthError(message: string, mode: AuthMode) {
   if (lower.includes("email not confirmed")) {
     return "Please confirm your email before signing in.";
   }
-  return message || (mode === "login" ? "Could not sign in." : "Could not create account.");
+  return friendlyAuthMessage(message) || (mode === "login" ? "Could not sign in." : "Could not create account.");
 }
 
 async function completeSession(router: ReturnType<typeof useRouter>) {
