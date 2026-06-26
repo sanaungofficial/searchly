@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
-import { color, fontMono, fontSans, border, surface, type as T } from "@/lib/typography";
+import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { InboxExpandedMessage } from "./inbox-expanded-message";
 import { InboxFolderNav } from "./inbox-folder-nav";
 import { InboxMeetingsPanel } from "./inbox-meetings-panel";
-import { InboxStatusPills } from "./inbox-status-pill";
-import { SenderAvatar } from "./sender-avatar";
+import { InboxMessageRow } from "./inbox-message-row";
+import { readLastOpenedMessageId, writeLastOpenedMessageId } from "./inbox-row-styles";
 import type { ComposeState, Folder, InboxStatus, MessageDetail, MessageSummary } from "./inbox-types";
 
 function pickInboxFolder(folders: Folder[]): Folder | null {
@@ -67,6 +67,9 @@ export function InboxMailView({
   const [foldersReady, setFoldersReady] = useState(false);
   const [meetingsCollapsed, setMeetingsCollapsed] = useState(false);
   const [tagSaving, setTagSaving] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [lastOpenedId, setLastOpenedId] = useState<string | null>(null);
+  const [focusUnreadId, setFocusUnreadId] = useState<string | null>(null);
   const connected = Boolean(status.connected);
 
   const loadFolders = useCallback(async () => {
@@ -97,6 +100,10 @@ export function InboxMailView({
   }, []);
 
   useEffect(() => {
+    setLastOpenedId(readLastOpenedMessageId(status.email));
+  }, [status.email, mailRefreshKey]);
+
+  useEffect(() => {
     if (!connected) return;
     setFoldersReady(false);
     setFolders([]);
@@ -123,11 +130,22 @@ export function InboxMailView({
     setListLoading(true);
     setExpandedId(null);
     setDetail(null);
+    setFocusUnreadId(null);
+    setHoveredId(null);
     const t = setTimeout(() => {
       loadMessages(selectedFolderId, search)
         .then(({ messages: rows, nextCursor: cursor }) => {
           setMessages(rows);
           setNextCursor(cursor);
+          const stored = readLastOpenedMessageId(status.email);
+          const storedInList = stored ? rows.some((m) => m.id === stored) : false;
+          if (storedInList && stored) {
+            setLastOpenedId(stored);
+            setFocusUnreadId(null);
+          } else {
+            setLastOpenedId(null);
+            setFocusUnreadId(rows.find((m) => m.unread)?.id ?? null);
+          }
         })
         .catch(() => onNotice({ type: "error", text: "Could not load messages." }))
         .finally(() => setListLoading(false));
@@ -153,11 +171,31 @@ export function InboxMailView({
   useEffect(() => {
     if (!initialMessageId) return;
     setExpandedId(initialMessageId);
+    setLastOpenedId(initialMessageId);
+    writeLastOpenedMessageId(initialMessageId, status.email);
+    setFocusUnreadId(null);
     onInitialMessageConsumed?.();
-  }, [initialMessageId, onInitialMessageConsumed]);
+  }, [initialMessageId, onInitialMessageConsumed, status.email]);
 
   function toggleMessage(id: string) {
-    setExpandedId((current) => (current === id ? null : id));
+    setFocusUnreadId(null);
+    setExpandedId((current) => {
+      const next = current === id ? null : id;
+      if (next) {
+        setLastOpenedId(next);
+        writeLastOpenedMessageId(next, status.email);
+      }
+      return next;
+    });
+  }
+
+  function handleRowHover(id: string, hovering: boolean) {
+    if (hovering) {
+      setHoveredId(id);
+      setFocusUnreadId(null);
+    } else {
+      setHoveredId((current) => (current === id ? null : current));
+    }
   }
 
   async function loadMore() {
@@ -238,7 +276,7 @@ export function InboxMailView({
           gap: 10,
           padding: "10px 16px",
           borderBottom: border.line,
-          background: surface.page,
+          background: surface.card,
         }}
       >
         <input
@@ -289,7 +327,7 @@ export function InboxMailView({
             flex: 1,
             minWidth: 0,
             overflowY: "auto",
-            background: "#FAFAF8",
+            background: surface.card,
             borderRight: showMeetingsPanel ? border.line : undefined,
           }}
         >
@@ -328,88 +366,17 @@ export function InboxMailView({
 
           {messages.map((msg) => {
             const expanded = msg.id === expandedId;
-            const name = msg.fromName ?? msg.from;
-            const avatar = msg.avatar ?? { primary: null, fallback: null, initials: name.slice(0, 2).toUpperCase() };
             return (
-              <div key={msg.id} style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                <button
-                  type="button"
-                  onClick={() => toggleMessage(msg.id)}
-                  style={{
-                    display: "flex",
-                    gap: 12,
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "14px 16px",
-                    border: "none",
-                    background: expanded ? "#fff" : msg.unread ? "rgba(255,255,255,0.72)" : "transparent",
-                    boxShadow: expanded ? "inset 3px 0 0 #1C3A2F" : "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <SenderAvatar
-                    primary={avatar.primary}
-                    fallback={avatar.fallback}
-                    initials={avatar.initials}
-                    displayName={name}
-                    size={40}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span
-                        style={{
-                          flex: 1,
-                          fontFamily: fontSans,
-                          fontSize: T.bodySm,
-                          fontWeight: msg.unread ? 700 : 600,
-                          color: color.ink,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {name}
-                      </span>
-                      <span style={{ fontFamily: fontMono, fontSize: 10, color: color.muted, flexShrink: 0 }}>
-                        {msg.dateLabel}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                      <span
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          fontFamily: fontSans,
-                          fontSize: T.caption,
-                          fontWeight: 600,
-                          color: msg.unread ? color.forest : color.ink,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {msg.starred ? "★ " : ""}
-                        {msg.subject}
-                      </span>
-                      <InboxStatusPills userTag={msg.activity?.userTag} signal={msg.activity?.signal} compact />
-                    </div>
-                    {!expanded && (
-                      <p
-                        style={{
-                          margin: 0,
-                          fontFamily: fontSans,
-                          fontSize: T.caption,
-                          color: color.muted,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {msg.snippet}
-                      </p>
-                    )}
-                  </div>
-                </button>
+              <div key={msg.id} style={{ borderBottom: border.line }}>
+                <InboxMessageRow
+                  msg={msg}
+                  expanded={expanded}
+                  hovered={hoveredId === msg.id}
+                  isLastOpened={lastOpenedId === msg.id && !expanded}
+                  isFocusUnread={focusUnreadId === msg.id && !expanded && lastOpenedId !== msg.id}
+                  onToggle={() => toggleMessage(msg.id)}
+                  onHover={(hovering) => handleRowHover(msg.id, hovering)}
+                />
 
                 {expanded && detailLoading && (
                   <p style={{ padding: "8px 16px 16px 68px", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
@@ -424,7 +391,11 @@ export function InboxMailView({
                     onReply={openReply}
                     onPatch={patchMessage}
                     onTagChange={(tag) => void updateTag(detail.id, tag)}
-                    onOpenThreadMessage={(id) => setExpandedId(id)}
+                    onOpenThreadMessage={(id) => {
+                      setLastOpenedId(id);
+                      writeLastOpenedMessageId(id, status.email);
+                      setExpandedId(id);
+                    }}
                   />
                 )}
               </div>

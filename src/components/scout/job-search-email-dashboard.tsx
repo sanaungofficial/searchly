@@ -134,7 +134,18 @@ export function JobSearchEmailDashboard() {
   }
 
   return (
-    <ScoutBox flat padding="0" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <ScoutBox
+      padding={0}
+      style={{
+        flex: 1,
+        minHeight: isMobile ? 520 : "min(78vh, 880px)",
+        maxHeight: isMobile ? undefined : "calc(100vh - 132px)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        background: surface.card,
+      }}
+    >
       <div
         style={{
           display: "flex",
@@ -144,11 +155,13 @@ export function JobSearchEmailDashboard() {
           gap: 12,
           padding: isMobile ? "12px 14px" : "14px 16px",
           borderBottom: border.line,
-          background: surface.page,
+          background: surface.card,
         }}
       >
         <div>
-          <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 17, fontWeight: 600, color: color.forest }}>Inbox</h2>
+          <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 20, fontWeight: 600, color: color.forest }}>
+            Inbox
+          </h2>
           <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
             {status.email}
             {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}

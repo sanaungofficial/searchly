@@ -103,7 +103,7 @@ export function InboxMeetingsPanel({ refreshKey, collapsed, onToggleCollapse }: 
         width: 280,
         flexShrink: 0,
         borderLeft: border.line,
-        background: surface.page,
+        background: surface.inset,
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
