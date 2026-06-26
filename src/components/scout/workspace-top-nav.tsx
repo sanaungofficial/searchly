@@ -101,6 +101,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   const router = useRouter();
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
+  const navDropdownCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
 
@@ -122,6 +123,23 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   const horizontalPad = isMobile ? 16 : 28;
   const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
 
+  const clearNavDropdownCloseTimer = () => {
+    if (navDropdownCloseTimer.current) {
+      clearTimeout(navDropdownCloseTimer.current);
+      navDropdownCloseTimer.current = null;
+    }
+  };
+
+  const openNavDropdown = (id: string) => {
+    clearNavDropdownCloseTimer();
+    setNavDropdownOpen(id);
+  };
+
+  const scheduleCloseNavDropdown = () => {
+    clearNavDropdownCloseTimer();
+    navDropdownCloseTimer.current = setTimeout(() => setNavDropdownOpen(null), 120);
+  };
+
   useEffect(() => {
     if (!authChecked) return;
     fetch("/api/profile")
@@ -139,7 +157,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   }, [pathname]);
 
   useEffect(() => {
-    if (!navDropdownOpen) return;
+    if (!navDropdownOpen || !isMobile) return;
     const onDoc = (e: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setNavDropdownOpen(null);
@@ -147,7 +165,9 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [navDropdownOpen]);
+  }, [navDropdownOpen, isMobile]);
+
+  useEffect(() => () => clearNavDropdownCloseTimer(), []);
 
   const onToggleNotif = () => setNotifOpen((p) => !p);
 
@@ -239,10 +259,25 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
 
               if (hasChildren) {
                 return (
-                  <div key={id} style={{ position: "relative", flexShrink: 0 }}>
+                  <div
+                    key={id}
+                    style={{ position: "relative", flexShrink: 0 }}
+                    onMouseEnter={() => {
+                      if (!isMobile) openNavDropdown(id);
+                    }}
+                    onMouseLeave={() => {
+                      if (!isMobile) scheduleCloseNavDropdown();
+                    }}
+                  >
                     <button
                       type="button"
-                      onClick={() => setNavDropdownOpen((prev) => (prev === id ? null : id))}
+                      onClick={() => {
+                        if (isMobile) {
+                          setNavDropdownOpen((prev) => (prev === id ? null : id));
+                        } else {
+                          router.push(path);
+                        }
+                      }}
                       aria-expanded={dropdownOpen}
                       aria-haspopup="menu"
                       style={{

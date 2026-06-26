@@ -6,6 +6,7 @@ import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
 import { ScoutBox, ScoutPrimaryBtn } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
+import { WorkspaceSubpageShell } from "./workspace-content";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { border, color, fontSans, type as T } from "@/lib/typography";
 
@@ -265,12 +266,7 @@ export function WorkspaceLive({ embedded = false }: { embedded?: boolean }) {
   );
 
   if (embedded) {
-    const pad = isMobile ? "16px" : "28px";
-    return (
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ padding: `0 ${pad} ${pad}` }}>{body}</div>
-      </div>
-    );
+    return <WorkspaceSubpageShell>{body}</WorkspaceSubpageShell>;
   }
 
   return (
