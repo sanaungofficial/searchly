@@ -122,7 +122,7 @@ export function buildStrategyPdfHtml(params: StrategyPdfParams): string {
 
 ${section("Executive Summary", para(d.executiveSummary))}
 
-${section("Key Candidate Parameters", paramsHtml ? `<table><tbody>${paramsHtml}</tbody></table>` : "")}
+${section("Search preferences", paramsHtml ? `<table><tbody>${paramsHtml}</tbody></table>` : "")}
 
 ${section(
   "Target Roles (Profile)",

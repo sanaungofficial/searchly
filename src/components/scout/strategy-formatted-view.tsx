@@ -120,7 +120,7 @@ export function StrategyFormattedView({
       </DocSection>
 
       {params.length > 0 && (
-        <DocSection title="Key Candidate Parameters">
+        <DocSection title="Search preferences">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <tbody>
               {params.map((p) => (

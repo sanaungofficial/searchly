@@ -11,6 +11,8 @@ import {
   type StrategyVersion,
 } from "@/lib/career-strategy";
 import { mergeIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
+import { profileAboutSectionUrl, profileTargetCompaniesUrl } from "@/lib/workspace-urls";
+import { CareerPreferencesPanel } from "./career-preferences-panel";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message";
@@ -18,7 +20,7 @@ import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { StrategyFormattedView } from "./strategy-formatted-view";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { border, color, fontSans, surface, T } from "@/lib/typography";
+import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 type TrackedCompanyRow = {
   id: string;
@@ -52,6 +54,27 @@ type Props = {
   profile: CareerStrategyProfile;
   onPatchProfile: (patch: Record<string, unknown>) => Promise<void>;
   isMobile?: boolean;
+  isAdmin?: boolean;
+};
+
+type StrategyFileAsset = {
+  id: string;
+  name: string;
+  url: string;
+  createdAt: string;
+};
+
+const STRATEGY_FILE_ACCEPT = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+const navLinkStyle: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  color: color.forest,
+  textDecoration: "underline",
+  cursor: "pointer",
+  fontFamily: fontSans,
+  fontSize: 12,
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -151,7 +174,7 @@ function applyStrategyPayload(
   setters.setGenerationError(data.generationError ? String(data.generationError) : null);
 }
 
-export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props) {
+export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin = false }: Props) {
   const router = useRouter();
   const [intakeNotes, setIntakeNotes] = useState("");
   const [document, setDocument] = useState<CareerStrategyDocument>(EMPTY_STRATEGY);
@@ -174,6 +197,9 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
   const [generationStatus, setGenerationStatus] = useState<StrategyGenerationStatus>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [showCompleteBanner, setShowCompleteBanner] = useState(false);
+  const [uploadedStrategyFile, setUploadedStrategyFile] = useState<StrategyFileAsset | null>(null);
+  const [strategyFileUploading, setStrategyFileUploading] = useState(false);
+  const strategyFileInputRef = useRef<HTMLInputElement>(null);
   const generationStatusRef = useRef<StrategyGenerationStatus>(null);
 
   const isGenerating = generationStatus === "running";
@@ -237,6 +263,21 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
       .then((d) => {
         if (Array.isArray(d)) setCompanies(d);
         else if (d.companies) setCompanies(d.companies);
+      })
+      .catch(() => {});
+    fetch("/api/assets")
+      .then((r) => r.json())
+      .then((assets: Array<{ id: string; name: string; url: string; createdAt: string; type: string }>) => {
+        if (!Array.isArray(assets)) return;
+        const latest = assets.find((a) => a.type === "JOB_SEARCH_STRATEGY");
+        if (latest?.url) {
+          setUploadedStrategyFile({
+            id: latest.id,
+            name: latest.name,
+            url: latest.url,
+            createdAt: latest.createdAt,
+          });
+        }
       })
       .catch(() => {});
   }, [loadStrategy]);
@@ -409,19 +450,49 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
 
   const hasViewableDocument = !!(viewingDocument && viewingDocument.executiveSummary?.trim());
 
-  function buildKeyParameters() {
+  function buildSearchPreferencesSummary() {
     return [
-      { label: "Current Location", value: profile.parsedData?.location ?? "—" },
-      { label: "Target Market", value: profile.targetMarket ?? "—" },
-      { label: "Target Base Salary", value: profile.targetSalary ?? "—" },
-      { label: "Work Arrangement", value: (profile.priorities ?? []).filter((p) => p.includes("Remote") || p.includes("Hybrid")).join(", ") || "—" },
+      { label: "Current location", value: profile.parsedData?.location ?? "—" },
+      { label: "Target market", value: profile.targetMarket ?? "—" },
+      { label: "Target salary", value: profile.targetSalary ?? "—" },
+      { label: "Work arrangement", value: (profile.priorities ?? []).filter((p) => p.includes("Remote") || p.includes("Hybrid")).join(", ") || "—" },
       { label: "Relocation", value: profile.relocationOpenness ?? "—" },
-      { label: "Target Start", value: timelineLabel(profile.jobTimeline) },
-      { label: "Target Roles", value: profile.targetRoles.join(", ") || "—" },
-      { label: "Security Clearance", value: profile.securityClearance ?? "—" },
-      { label: "Work Authorization", value: profile.workAuthorization ?? "—" },
-      { label: "Search Duration", value: profile.searchDuration ?? "—" },
+      { label: "Target start", value: timelineLabel(profile.jobTimeline) },
+      { label: "Work authorization", value: profile.workAuthorization ?? "—" },
+      { label: "Security clearance", value: profile.securityClearance ?? "—" },
+      { label: "Search duration", value: profile.searchDuration ?? "—" },
     ];
+  }
+
+  async function handleStrategyFileUpload(file: File) {
+    setStrategyFileUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("type", "JOB_SEARCH_STRATEGY");
+      const res = await fetch("/api/assets/upload", { method: "POST", body: form });
+      const data = await readResponseJson(res);
+      if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Upload failed"));
+      const asset = data.asset as StrategyFileAsset;
+      setUploadedStrategyFile(asset);
+    } catch (e) {
+      setError(formatApiErrorMessage(e, "Failed to upload strategy file"));
+    } finally {
+      setStrategyFileUploading(false);
+    }
+  }
+
+  async function handleRemoveStrategyFile() {
+    if (!uploadedStrategyFile) return;
+    if (!window.confirm("Remove this uploaded strategy file?")) return;
+    try {
+      const res = await fetch(`/api/assets?id=${encodeURIComponent(uploadedStrategyFile.id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      setUploadedStrategyFile(null);
+    } catch {
+      setError("Failed to remove strategy file");
+    }
   }
 
   function handleDownloadPdf(forDocument?: CareerStrategyDocument, forUpdatedAt?: string | null) {
@@ -436,7 +507,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         ? new Date(at).toLocaleDateString(undefined, { month: "long", year: "numeric" })
         : new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" }),
       targetPlacementWindow: timelineLabel(profile.jobTimeline),
-      keyParameters: buildKeyParameters(),
+      keyParameters: buildSearchPreferencesSummary(),
       trackedCompanies: companies.map((c) => ({
         name: c.name,
         priority: c.priority,
@@ -458,7 +529,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
             {partialWarning ??
               "Generation was cut short. Review the sections below — regenerate only when you want the full document (uses 1 credit)."}
           </p>
-          <ScoutSecondaryBtn onClick={handleGenerate} disabled={isGenerating}>
+          <ScoutSecondaryBtn onClick={handleGenerate} disabled={isGenerating || !isAdmin}>
             {isGenerating ? "Regenerating…" : "Regenerate full strategy"}
           </ScoutSecondaryBtn>
         </ScoutBox>
@@ -472,110 +543,130 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
           <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
             Changes: {profileChanges.join(", ")}. Regenerate only if these updates should change the strategy.
           </p>
-          <ScoutSecondaryBtn onClick={handleGenerate} disabled={isGenerating}>
+          <ScoutSecondaryBtn onClick={handleGenerate} disabled={isGenerating || !isAdmin}>
             {isGenerating ? "Regenerating…" : "Regenerate strategy"}
           </ScoutSecondaryBtn>
         </ScoutBox>
       )}
 
+      {isAdmin && (
+        <ScoutBox padding={isMobile ? 16 : 22}>
+          <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px" }}>
+            Client intake notes
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: color.forest, textTransform: "none", letterSpacing: 0 }}>Admin only</span>
+          </p>
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
+            Paste onboarding answers, target company lists, or external strategy docs. Parse to update profile fields and target companies, then generate a Kimchi strategy draft.
+          </p>
+          <textarea
+            value={intakeNotes}
+            onChange={(e) => setIntakeNotes(e.target.value)}
+            placeholder="Paste client intake responses here…"
+            style={{ ...textareaStyle, minHeight: 140 }}
+          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || isGenerating || !intakeNotes.trim()}>
+              {parsing ? "Parsing…" : "Parse & review profile updates"}
+            </ScoutSecondaryBtn>
+            <ScoutPrimaryBtn onClick={handleGenerate} disabled={isGenerating || parsing}>
+              {isGenerating ? "Generating…" : hasDocument ? "Regenerate Kimchi strategy" : "Generate Kimchi strategy"}
+            </ScoutPrimaryBtn>
+          </div>
+          {parsing && (
+            <div style={{ marginTop: 16 }}>
+              <KimchiProcessLoader preset="strategyIntake" variant="inline" />
+            </div>
+          )}
+          {isGenerating && (
+            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "12px 0 0" }}>
+              Generation runs in the background — you can leave this page and come back anytime.
+            </p>
+          )}
+          <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
+            Kimchi strategy generation uses 1 AI credit.
+          </p>
+        </ScoutBox>
+      )}
+
+      {error && (
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: "#b04040", margin: 0 }}>{error}</p>
+      )}
+
+      <CareerPreferencesPanel
+        profile={profile}
+        onSave={onPatchProfile}
+        title="Search preferences"
+        subtitle="Salary, timeline, location targets, and priorities — these shape role matching and your strategy document."
+        locationEditHref={profileAboutSectionUrl("personal")}
+      />
+
       <ScoutBox padding={isMobile ? 16 : 22}>
-        <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px" }}>
-          Client intake notes
-        </p>
-        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px" }}>
-          Paste answers from your external intake form, target companies list, or career strategy doc. Parse to update profile fields and target companies (with your approval), then generate the strategy doc.
-        </p>
-        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 10px" }}>
-          Full onboarding forms are supported — paste everything. Credentials and passwords are ignored and never stored.
-        </p>
-        <textarea
-          value={intakeNotes}
-          onChange={(e) => setIntakeNotes(e.target.value)}
-          placeholder="Paste client intake responses here…"
-          style={{ ...textareaStyle, minHeight: 140 }}
-        />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-          <ScoutSecondaryBtn onClick={handleParseIntake} disabled={parsing || isGenerating || !intakeNotes.trim()}>
-            {parsing ? "Parsing…" : "Parse & review profile updates"}
-          </ScoutSecondaryBtn>
-          <ScoutPrimaryBtn onClick={handleGenerate} disabled={isGenerating || parsing}>
-            {isGenerating ? "Generating…" : hasDocument ? "Regenerate strategy" : "Generate strategy"}
-          </ScoutPrimaryBtn>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <div>
+            <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
+              Target roles
+            </p>
+            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "6px 0 0" }}>
+              Synced from your Target Roles tab
+            </p>
+          </div>
+          <button type="button" onClick={() => router.push("/profile/dream-role")} style={navLinkStyle}>
+            Edit target roles →
+          </button>
         </div>
-        {parsing && (
-          <div style={{ marginTop: 16 }}>
-            <KimchiProcessLoader preset="strategyIntake" variant="inline" />
+        {profile.targetRoles.length === 0 ? (
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>
+            No target roles yet.{" "}
+            <button type="button" onClick={() => router.push("/profile/dream-role")} style={{ ...navLinkStyle, fontSize: 13 }}>
+              Add roles →
+            </button>
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {profile.targetRoles.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => router.push("/profile/dream-role")}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "var(--scout-radius)",
+                  border: border.line,
+                  background: surface.inset,
+                  fontFamily: fontSans,
+                  fontSize: T.bodySm,
+                  color: color.forest,
+                  cursor: "pointer",
+                }}
+              >
+                {role}
+              </button>
+            ))}
           </div>
         )}
-        {isGenerating && (
-          <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "12px 0 0" }}>
-            Generation runs in the background — you can leave this page and come back anytime.
-          </p>
-        )}
-        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
-          Strategy generation uses 1 AI credit and only runs when you click the button above.
-        </p>
-        {error && (
-          <p style={{ fontFamily: fontSans, fontSize: 13, color: "#b04040", marginTop: 10 }}>{error}</p>
-        )}
-      </ScoutBox>
-
-      {/* Compiled from profile — not duplicated */}
-      <ScoutBox padding={isMobile ? 16 : 22}>
-        <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 12px" }}>
-          Key parameters (from profile)
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "8px 24px", fontFamily: fontSans, fontSize: 13 }}>
-          {[
-            ["Location", profile.parsedData?.location],
-            ["Target market", profile.targetMarket],
-            ["Target salary", profile.targetSalary],
-            ["Timeline", timelineLabel(profile.jobTimeline)],
-            ["Relocation", profile.relocationOpenness],
-            ["Clearance", profile.securityClearance],
-            ["Work auth", profile.workAuthorization],
-            ["Search duration", profile.searchDuration],
-          ].map(([label, val]) => (
-            <div key={String(label)}>
-              <span style={{ color: color.muted }}>{label}: </span>
-              <span style={{ color: color.forest }}>{val || "—"}</span>
-            </div>
-          ))}
-        </div>
-        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "12px 0 0" }}>
-          <button type="button" onClick={() => router.push("/profile/preferences")} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", fontFamily: fontSans, fontSize: 12 }}>
-            Edit in Preferences →
-          </button>
-        </p>
       </ScoutBox>
 
       <ScoutBox padding={isMobile ? 16 : 22}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
           <div>
             <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
-              Target roles (from profile)
+              Target companies
             </p>
-            <p style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, margin: "6px 0 0" }}>
-              {profile.targetRoles.length ? profile.targetRoles.join(" · ") : "None set"}
+            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "6px 0 0" }}>
+              Synced from your Target Companies watchlist
             </p>
           </div>
-          <button type="button" onClick={() => router.push("/profile/dream-role")} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", fontFamily: fontSans, fontSize: 12 }}>
-            Edit target roles →
-          </button>
-        </div>
-      </ScoutBox>
-
-      <ScoutBox padding={isMobile ? 16 : 22}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
-            Target companies (watchlist)
-          </p>
-          <button type="button" onClick={() => router.push("/profile/target-companies")} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", fontFamily: fontSans, fontSize: 12 }}>
-            Manage in Target Companies →
+          <button type="button" onClick={() => router.push("/profile/target-companies")} style={navLinkStyle}>
+            Manage companies →
           </button>
         </div>
         {companies.length === 0 ? (
-          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>No companies tracked yet.</p>
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>
+            No companies tracked yet.{" "}
+            <button type="button" onClick={() => router.push("/profile/target-companies")} style={{ ...navLinkStyle, fontSize: 13 }}>
+              Add companies →
+            </button>
+          </p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: fontSans, fontSize: 13 }}>
             <thead>
@@ -586,8 +677,12 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
             </thead>
             <tbody>
               {companies.slice(0, 12).map((c) => (
-                <tr key={c.id} style={{ borderBottom: border.line }}>
-                  <td style={{ padding: "8px" }}>{c.name}</td>
+                <tr
+                  key={c.id}
+                  style={{ borderBottom: border.line, cursor: "pointer" }}
+                  onClick={() => router.push(profileTargetCompaniesUrl(c.id))}
+                >
+                  <td style={{ padding: "8px", color: color.forest, textDecoration: "underline" }}>{c.name}</td>
                   <td style={{ padding: "8px", color: color.muted }}>{c.priority ?? "—"}</td>
                 </tr>
               ))}
@@ -601,63 +696,114 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
           <div>
             <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.forest, margin: 0 }}>
-              Career Strategy document
+              Career strategy document
             </p>
-            {viewingUpdatedAt && (
-              <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "4px 0 0" }}>
-                {selectedVersionId === "current" ? "Current version · " : "Previous version · "}
-                {new Date(viewingUpdatedAt).toLocaleString()}
-              </p>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {(hasDocument || history.length > 0) && (
-              <select
-                value={selectedVersionId}
-                onChange={(e) => {
-                  setSelectedVersionId(e.target.value);
-                  setEditMode(false);
-                }}
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 13,
-                  padding: "6px 10px",
-                  border: border.line,
-                  background: surface.inset,
-                  color: color.forest,
-                }}
-              >
-                {hasDocument && (
-                  <option value="current">
-                    Current{updatedAt ? ` (${new Date(updatedAt).toLocaleDateString()})` : ""}
-                  </option>
-                )}
-                {history.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.label ?? "Previous"} ({new Date(h.savedAt).toLocaleDateString()})
-                  </option>
-                ))}
-              </select>
-            )}
-            {hasViewableDocument && selectedVersionId === "current" && (
-              <>
-                <ScoutSecondaryBtn onClick={() => setEditMode(!editMode)}>
-                  {editMode ? "Preview" : "Edit"}
-                </ScoutSecondaryBtn>
-                {editMode && (
-                  <ScoutPrimaryBtn onClick={handleSaveDocument} disabled={saving}>
-                    {saving ? "Saving…" : "Save edits"}
-                  </ScoutPrimaryBtn>
-                )}
-              </>
-            )}
-            {hasViewableDocument && (
-              <ScoutSecondaryBtn onClick={() => handleDownloadPdf()} disabled={!hasViewableDocument}>
-                Download PDF
-              </ScoutSecondaryBtn>
-            )}
+            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "6px 0 0", maxWidth: 520, lineHeight: 1.5 }}>
+              Upload your own PDF or Word doc, or use a Kimchi-generated strategy below.
+            </p>
           </div>
         </div>
+
+        <input
+          ref={strategyFileInputRef}
+          type="file"
+          accept={STRATEGY_FILE_ACCEPT}
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleStrategyFileUpload(file);
+            e.target.value = "";
+          }}
+        />
+
+        <div style={{ marginBottom: 20, padding: 14, background: surface.inset, border: border.line, borderRadius: "var(--scout-radius)" }}>
+          <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>Your uploaded file</p>
+          {uploadedStrategyFile ? (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <span style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>{uploadedStrategyFile.name}</span>
+              <span style={{ fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+                · {new Date(uploadedStrategyFile.createdAt).toLocaleDateString()}
+              </span>
+              <ScoutSecondaryBtn onClick={() => window.open(uploadedStrategyFile.url, "_blank", "noopener,noreferrer")}>
+                Download
+              </ScoutSecondaryBtn>
+              <ScoutSecondaryBtn onClick={() => strategyFileInputRef.current?.click()} disabled={strategyFileUploading}>
+                Replace
+              </ScoutSecondaryBtn>
+              <ScoutSecondaryBtn onClick={() => void handleRemoveStrategyFile()}>Remove</ScoutSecondaryBtn>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>No file uploaded yet.</p>
+              <ScoutPrimaryBtn onClick={() => strategyFileInputRef.current?.click()} disabled={strategyFileUploading}>
+                {strategyFileUploading ? "Uploading…" : "Upload PDF or Word doc"}
+              </ScoutPrimaryBtn>
+            </div>
+          )}
+        </div>
+
+        {(hasDocument || history.length > 0 || isGenerating) && (
+          <>
+            <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.muted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 12px" }}>
+              Kimchi-generated strategy
+            </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {viewingUpdatedAt && (
+                <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: 0 }}>
+                  {selectedVersionId === "current" ? "Current version · " : "Previous version · "}
+                  {new Date(viewingUpdatedAt).toLocaleString()}
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+                {(hasDocument || history.length > 0) && (
+                  <select
+                    value={selectedVersionId}
+                    onChange={(e) => {
+                      setSelectedVersionId(e.target.value);
+                      setEditMode(false);
+                    }}
+                    style={{
+                      fontFamily: fontSans,
+                      fontSize: 13,
+                      padding: "6px 10px",
+                      border: border.line,
+                      background: surface.inset,
+                      color: color.forest,
+                    }}
+                  >
+                    {hasDocument && (
+                      <option value="current">
+                        Current{updatedAt ? ` (${new Date(updatedAt).toLocaleDateString()})` : ""}
+                      </option>
+                    )}
+                    {history.map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.label ?? "Previous"} ({new Date(h.savedAt).toLocaleDateString()})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {hasViewableDocument && selectedVersionId === "current" && (
+                  <>
+                    <ScoutSecondaryBtn onClick={() => setEditMode(!editMode)}>
+                      {editMode ? "Preview" : "Edit"}
+                    </ScoutSecondaryBtn>
+                    {editMode && (
+                      <ScoutPrimaryBtn onClick={handleSaveDocument} disabled={saving}>
+                        {saving ? "Saving…" : "Save edits"}
+                      </ScoutPrimaryBtn>
+                    )}
+                  </>
+                )}
+                {hasViewableDocument && (
+                  <ScoutSecondaryBtn onClick={() => handleDownloadPdf()} disabled={!hasViewableDocument}>
+                    Download PDF
+                  </ScoutSecondaryBtn>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {isGenerating && (
           <div
@@ -722,9 +868,9 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile }: Props
 
         {loading ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading…</p>
-        ) : !hasViewableDocument && !isGenerating ? (
+        ) : !hasViewableDocument && !isGenerating && !uploadedStrategyFile ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
-            No strategy yet. Paste intake notes and click Generate strategy.
+            Upload a strategy file above{isAdmin ? ", or use client intake notes to generate one with Kimchi" : ""}.
           </p>
         ) : !hasViewableDocument && isGenerating ? (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>
