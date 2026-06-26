@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { friendlyAuthMessage } from "@/lib/auth-errors";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 function AuthConfirmContent() {
@@ -20,6 +21,13 @@ function AuthConfirmContent() {
 
       const token_hash = searchParams.get("token_hash");
       const type = searchParams.get("type");
+      const code = searchParams.get("code");
+
+      if (code) {
+        const qs = searchParams.toString();
+        window.location.replace(`/auth/callback${qs ? `?${qs}` : ""}`);
+        return;
+      }
 
       if (token_hash && type) {
         const { error } = await supabase.auth.verifyOtp({
@@ -45,7 +53,9 @@ function AuthConfirmContent() {
 
       if (authError) {
         if (!cancelled) {
-          router.replace(`/login?error=${encodeURIComponent(authError.message)}`);
+          router.replace(
+            `/login?error=${encodeURIComponent(friendlyAuthMessage(authError.message))}`
+          );
         }
         return;
       }
