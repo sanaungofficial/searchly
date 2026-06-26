@@ -15,6 +15,7 @@ import {
   PRIORITIZED_ROLE_SUGGESTIONS,
 } from "@/lib/role-title-preferences";
 import { JobCategoryPicker, RoleTitlePicker } from "./role-title-picker";
+import { RoleListBulkPaste } from "./role-list-bulk-paste";
 import {
   parseProfileLocation,
   profileBasePath,
@@ -1260,6 +1261,35 @@ function DreamRoleTab({
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 28, lineHeight: 1.7 }}>
         Control how Open and In-network jobs are ordered. Target roles unlock fit analysis; prioritized patterns get the strongest boost; deprioritized patterns sort lower — nothing is hidden.
       </p>
+
+      <RoleListBulkPaste
+        dreamList={dreamList}
+        onTargetChange={(next) => {
+          setDreamList(next);
+          onSave(next);
+        }}
+        prioritizedList={prioritizedList}
+        onPrioritizedChange={(next) => {
+          setPrioritizedList(next);
+          onPrioritizedSave(next);
+        }}
+        deprioritizedList={deprioritizedList}
+        onDeprioritizedChange={(next) => {
+          setDeprioritizedList(next);
+          onDeprioritizedSave(next);
+        }}
+        prioritizedCategories={prioritizedCategories}
+        onPrioritizedCategoriesChange={(next) => {
+          setPrioritizedCategories(next);
+          onPrioritizedCategoriesSave(next);
+        }}
+        deprioritizedCategories={deprioritizedCategories}
+        onDeprioritizedCategoriesChange={(next) => {
+          setDeprioritizedCategories(next);
+          onDeprioritizedCategoriesSave(next);
+        }}
+        onInitRoleSettings={onInitRoleSettings}
+      />
 
       <div style={{ marginBottom: 32 }}>
         <ScoutLabel>Target roles</ScoutLabel>

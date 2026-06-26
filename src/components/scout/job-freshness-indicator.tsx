@@ -52,12 +52,6 @@ export function JobFreshnessIndicator({ datePosted, variant = "compact", style }
     >
       <FreshnessDot level={freshness.level} />
       <span>{freshness.cardLabel}</span>
-      {variant === "detail" && freshness.level === "stale" && (
-        <span style={{ fontWeight: 500, opacity: 0.9 }}>· likely low response rate</span>
-      )}
-      {variant === "detail" && freshness.level === "fresh" && (
-        <span style={{ fontWeight: 500, opacity: 0.9 }}>· apply within 48h</span>
-      )}
     </span>
   );
 }

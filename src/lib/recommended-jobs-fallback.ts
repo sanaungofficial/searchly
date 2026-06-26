@@ -167,8 +167,8 @@ async function liveCompanyMatches(input: {
 }
 
 /**
- * Recommended jobs = matching roles at tracked companies only (same path as Companies drawer).
- * Never uses resume embed. Uses cached scan results, live Hirebase fetch per company if cache empty.
+ * Watchlist company jobs — supplements the global recommended feed (same scan path as Companies drawer).
+ * Never the sole source when target-title search can run.
  */
 export async function fetchRecommendedFromTrackedCompanies(input: {
   userId: string;
