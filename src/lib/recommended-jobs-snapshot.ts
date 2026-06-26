@@ -12,6 +12,7 @@ import {
 } from "@/lib/recommended-jobs-config";
 import { digestUnsubscribeUrl } from "@/lib/digest-unsubscribe";
 import { sendRecommendedJobsDigestEmail } from "@/lib/recommended-jobs-email";
+import { shouldSendAutomatedDigest } from "@/lib/digest-email-admin";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import { Prisma } from "@prisma/client";
 
@@ -165,6 +166,8 @@ export async function runRecommendedJobsSnapshotCron(): Promise<RecommendedSnaps
         }));
 
       if (!settings.dailyEmailEnabled) continue;
+
+      if (!shouldSendAutomatedDigest(user.email)) continue;
 
       const alreadySentToday =
         settings.lastDigestSentAt?.toISOString().slice(0, 10) === snapshotDate;
