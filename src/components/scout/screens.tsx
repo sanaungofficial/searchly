@@ -25,6 +25,7 @@ import {
 import { KimchiBySecondLadder } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import { VoiceIntakeRecorder, type VoiceIntakeResult } from "@/components/voice/voice-intake-recorder";
 
 /* ──────────────────────────────────────────────────────────────
    Types
@@ -2283,6 +2284,7 @@ interface AboutYouSearchProps {
   jobTimeline: string;
   onCareerMotivationChange: (v: string) => void;
   onJobTimelineChange: (v: string) => void;
+  onVoiceIntakeComplete?: (result: VoiceIntakeResult) => void;
   onContinue: () => void;
   onSkip: () => void;
 }
@@ -2292,6 +2294,7 @@ export function ScreenAboutYouSearch({
   jobTimeline,
   onCareerMotivationChange,
   onJobTimelineChange,
+  onVoiceIntakeComplete,
   onContinue,
   onSkip,
 }: AboutYouSearchProps) {
@@ -2299,8 +2302,14 @@ export function ScreenAboutYouSearch({
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
         title="A few questions about your search."
-        body="Two quick picks while we finish reading your resume — helps us skip poor fits."
+        body="Two quick picks while we finish reading your resume — or hit the mic and talk for a minute."
       />
+
+      {onVoiceIntakeComplete && (
+        <div className="anim-fade-up" style={{ animationDelay: "0.15s" }}>
+          <VoiceIntakeRecorder onComplete={onVoiceIntakeComplete} />
+        </div>
+      )}
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
         {aboutYouSectionLabel("What's driving your move?", "So we surface roles that match why you're looking — not just your title.")}

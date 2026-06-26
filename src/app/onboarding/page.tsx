@@ -25,6 +25,8 @@ import {
 import { ONBOARDING_MAX_TARGET_COMPANIES } from "@/lib/company-catalog";
 import { linkedInHandleFromUrl, normalizeLinkedInUrl } from "@/lib/linkedin-url";
 import { writeOnboardingFinishPayload } from "@/lib/onboarding-finish";
+import { mapVoiceIntakeToOnboarding } from "@/lib/voice-intake";
+import type { VoiceIntakeResult } from "@/components/voice/voice-intake-recorder";
 
 function saveLinkedIn(handle: string): Promise<void> {
   const url = normalizeLinkedInUrl(handle);
@@ -365,6 +367,31 @@ export default function OnboardingPage() {
     setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }, []);
 
+  const onVoiceIntakeComplete = useCallback((result: VoiceIntakeResult) => {
+    const mapped = mapVoiceIntakeToOnboarding(result.transcript, result);
+    if (mapped.careerMotivation) setCareerMotivation(mapped.careerMotivation);
+    if (mapped.jobTimeline) setJobTimeline(mapped.jobTimeline);
+    if (mapped.currentSalary) setCurrentSalary(mapped.currentSalary);
+    if (mapped.targetSalary) setTargetSalary(mapped.targetSalary);
+    if (mapped.priorities.length) {
+      setPriorities((prev) => [...new Set([...prev, ...mapped.priorities])]);
+    }
+    if (mapped.targetRoles.length) {
+      setReadbackRoleSuggestions((prev) => [...new Set([...prev, ...mapped.targetRoles])]);
+      setSelectedTitles((prev) => {
+        const merged = [...new Set([...prev, ...mapped.targetRoles])];
+        return merged.slice(0, 3);
+      });
+    }
+    if (mapped.strategyIntakeNotes) {
+      void fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ strategyIntakeNotes: mapped.strategyIntakeNotes }),
+      });
+    }
+  }, []);
+
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
     goTo(6);
@@ -559,6 +586,7 @@ export default function OnboardingPage() {
               jobTimeline={jobTimeline}
               onCareerMotivationChange={setCareerMotivation}
               onJobTimelineChange={setJobTimeline}
+              onVoiceIntakeComplete={onVoiceIntakeComplete}
               onContinue={onAboutSearchContinue}
               onSkip={onAboutSearchSkip}
             />
