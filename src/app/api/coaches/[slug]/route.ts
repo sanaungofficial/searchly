@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
 import { getAuthenticatedDbUser } from "@/lib/coach-api";
+import { canUserAccessCoach } from "@/lib/coach-client-assignment";
+import { requireAdmin } from "@/lib/auth";
 import { computeReviewAggregates } from "@/lib/coach-directory";
 import { isNylasConfigured } from "@/lib/nylas";
 import { listCoachLiveSessions, toLiveSessionView } from "@/lib/live-session-db";
@@ -9,6 +11,7 @@ import { listCoachLiveSessions, toLiveSessionView } from "@/lib/live-session-db"
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const me = await getAuthenticatedDbUser();
+  const admin = await requireAdmin();
 
   const coach = await prisma.coachProfile.findFirst({
     where: {
@@ -40,6 +43,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       category: true,
       featured: true,
       isProfessionalCoach: true,
+      isInternal: true,
       experienceLevel: true,
       clientTier: true,
       industryYears: true,
@@ -64,6 +68,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   });
 
   if (!coach) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
+
+  const allowed = await canUserAccessCoach({
+    coachProfileId: coach.id,
+    userId: me?.id,
+    isAdmin: Boolean(admin),
+    isInternal: coach.isInternal,
+  });
+  if (!allowed) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
 
   const allReviews = await prisma.coachReview.findMany({
     where: { coachProfileId: coach.id },
@@ -109,10 +121,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     specialties: coach.specialties,
     industries: coach.industries,
     clientSpecializations: coach.clientSpecializations,
-    hourlyRate: coach.hourlyRate,
+    hourlyRate: coach.isInternal ? null : coach.hourlyRate,
     category: coach.category,
     featured: coach.featured,
     isProfessionalCoach: coach.isProfessionalCoach,
+    isInternal: coach.isInternal,
     experienceLevel: coach.experienceLevel,
     clientTier: coach.clientTier,
     industryYears: coach.industryYears,

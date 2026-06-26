@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
+import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
 import {
   CoachBookingModal,
@@ -386,7 +386,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                     title="1:1 coaching session"
                     subtitle={`${sessionDurationMinutes} minutes · Tailored to your goals`}
                     priceLabel="Free"
-                    secondaryPrice={coach.hourlyRate ? `$${coach.hourlyRate}/hr later` : undefined}
+                    secondaryPrice={!coach.isInternal && coach.hourlyRate ? `$${coach.hourlyRate}/hr later` : undefined}
                     onBook={canBookInApp ? () => openBooking("session") : undefined}
                     bookLabel="Book session"
                     style={{ marginTop: 10 }}
@@ -483,7 +483,12 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                   <div style={{ textAlign: "center", marginBottom: 16 }}>
                     <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={80} />
                     <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
-                    {coach.hourlyRate && (
+                    {coach.isInternal && (
+                      <div style={{ marginTop: 10 }}>
+                        <InternalCoachBadge />
+                      </div>
+                    )}
+                    {!coach.isInternal && coach.hourlyRate && (
                       <p style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest, margin: "12px 0 0" }}>
                         ${coach.hourlyRate}/hr
                       </p>

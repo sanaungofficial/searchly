@@ -45,6 +45,8 @@ model User {
   digestSettings       UserDigestSettings?
   coachReviews         CoachReview[]
   coachFollows         CoachFollow[]
+  coachAssignments     CoachClientAssignment[] @relation("ClientCoachAssignments")
+  coachAssignmentsMade CoachClientAssignment[] @relation("CoachAssignmentAdmin")
   coachBookings        CoachBooking[]       @relation("CoachBookingGuest")
   coachBookingComms    CoachBookingCommunication[] @relation("CoachBookingComms")
   liveSessionRegistrations LiveSessionRegistration[]
@@ -243,6 +245,7 @@ model CoachProfile {
   hourlyRate     Int?
   category       String?
   featured       Boolean     @default(false)
+  isInternal     Boolean     @default(false)
   status         CoachStatus @default(ACTIVE)
 
   /// Pricing & offerings (Leland-style coach pricing page)
@@ -281,6 +284,7 @@ model CoachProfile {
   vouches        CoachVouch[]
   reviews        CoachReview[]
   followers      CoachFollow[]
+  clientAssignments CoachClientAssignment[]
   bookings       CoachBooking[]
   communications CoachBookingCommunication[]
   liveSessions   LiveSession[]
@@ -556,6 +560,25 @@ model CoachFollow {
   @@unique([userId, coachProfileId])
   @@index([coachProfileId])
   @@index([userId])
+}
+
+/// Admin-assigned coach for a client (internal Kimchi coaches, not marketplace).
+model CoachClientAssignment {
+  id               String       @id @default(cuid())
+  userId           String
+  user             User         @relation("ClientCoachAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  coachProfileId   String
+  coachProfile     CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  assignedByUserId String?
+  assignedBy       User?        @relation("CoachAssignmentAdmin", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  notes            String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, coachProfileId])
+  @@index([userId])
+  @@index([coachProfileId])
 }
 
 enum CoachStatus {

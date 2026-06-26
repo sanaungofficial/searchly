@@ -4,6 +4,7 @@ export interface JobMeta {
   location?: string | null;
   salary?: string | null;
   jobType?: string | null;
+  locationType?: string | null;
   remote?: boolean | null;
   seniority?: string | null;
   experienceLevel?: string | null;

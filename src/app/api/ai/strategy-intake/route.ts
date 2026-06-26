@@ -38,11 +38,17 @@ export async function POST(request: Request) {
     });
     if (!user?.profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
+    const trackedCompanies = await prisma.trackedCompany.findMany({
+      where: { userId: dbUser.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
     const template = await getPrompt("STRATEGY_INTAKE_PARSE");
     const prompt = fillIntakePrompt(template, notes, {
       user,
       profile: user.profile,
-      trackedCompanies: [],
+      trackedCompanies,
       intakeNotes: notes,
     });
 

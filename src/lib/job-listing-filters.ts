@@ -22,14 +22,27 @@ function haystackForJob(cached: CachedJob, companyName: string): string {
 
 function matchesLocationTypes(cached: CachedJob, locationTypes: string[]): boolean {
   const loc = (cached.location ?? "").toLowerCase();
+  const locationType = (cached.locationType ?? "").toLowerCase();
   return locationTypes.some((type) => {
     const t = type.toLowerCase();
-    if (t.includes("remote")) return cached.remote === true || loc.includes("remote");
-    if (t.includes("hybrid")) return loc.includes("hybrid");
-    if (t.includes("in-person") || t.includes("onsite")) {
-      return cached.remote === false || loc.includes("in-person") || loc.includes("on-site") || loc.includes("onsite");
+    if (t.includes("remote")) {
+      return cached.remote === true || locationType.includes("remote") || loc.includes("remote");
     }
-    return loc.includes(t);
+    if (t.includes("hybrid")) {
+      return locationType.includes("hybrid") || loc.includes("hybrid");
+    }
+    if (t.includes("in-person") || t.includes("onsite")) {
+      return (
+        cached.remote === false ||
+        locationType.includes("in-person") ||
+        locationType.includes("on-site") ||
+        locationType.includes("onsite") ||
+        loc.includes("in-person") ||
+        loc.includes("on-site") ||
+        loc.includes("onsite")
+      );
+    }
+    return locationType.includes(t) || loc.includes(t);
   });
 }
 

@@ -1,5 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
+import { CoachStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { canUserAccessCoach } from "@/lib/coach-client-assignment";
+import { isAdmin } from "@/lib/auth";
 
 export async function getAuthenticatedDbUser() {
   const supabase = await createClient();
@@ -13,18 +16,38 @@ export async function getAuthenticatedDbUser() {
   });
 }
 
-export async function findCoachBySlug(slug: string) {
-  return prisma.coachProfile.findFirst({
-    where: { slug, status: "ACTIVE" },
+export async function findCoachBySlug(slug: string, userId?: string | null) {
+  const coach = await prisma.coachProfile.findFirst({
+    where: { slug, status: CoachStatus.ACTIVE },
   });
+  if (!coach) return null;
+  const admin = userId ? await isAdmin() : false;
+  const allowed = await canUserAccessCoach({
+    coachProfileId: coach.id,
+    userId,
+    isAdmin: admin,
+    isInternal: coach.isInternal,
+  });
+  return allowed ? coach : null;
 }
 
-export async function findCoachBySlugOrId(slugOrId: string) {
+export async function findCoachBySlugOrId(slugOrId: string, userId?: string | null) {
   const bySlug = await prisma.coachProfile.findFirst({
-    where: { slug: slugOrId, status: "ACTIVE" },
+    where: { slug: slugOrId, status: CoachStatus.ACTIVE },
   });
-  if (bySlug) return bySlug;
-  return prisma.coachProfile.findFirst({
-    where: { id: slugOrId, status: "ACTIVE" },
+  const coach =
+    bySlug ??
+    (await prisma.coachProfile.findFirst({
+      where: { id: slugOrId, status: CoachStatus.ACTIVE },
+    }));
+  if (!coach) return null;
+
+  const admin = userId ? await isAdmin() : false;
+  const allowed = await canUserAccessCoach({
+    coachProfileId: coach.id,
+    userId,
+    isAdmin: admin,
+    isInternal: coach.isInternal,
   });
+  return allowed ? coach : null;
 }

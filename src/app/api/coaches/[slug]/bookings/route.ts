@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   }
 
   const { slug } = await params;
-  const coach = await findCoachBySlugOrId(slug);
+  const coach = await findCoachBySlugOrId(slug, me.id);
   if (!coach?.nylasSchedulerConfigId) {
     return NextResponse.json({ error: "Coach scheduling not configured" }, { status: 404 });
   }

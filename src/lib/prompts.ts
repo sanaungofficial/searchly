@@ -128,7 +128,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     label: "Strategy Intake Parser",
     description: "Extracts structured profile fields from pasted client intake notes.",
     category: "Profile",
-    variables: ["intakeNotes", "targetRoles", "targetSalary", "currentSalary", "targetMarket", "headline"],
+    variables: ["intakeNotes", "targetRoles", "targetSalary", "currentSalary", "targetMarket", "headline", "trackedCompaniesSummary"],
   },
   PROFILE_COACH_SYSTEM: {
     label: "Profile Coach Chat",
@@ -616,12 +616,17 @@ Respond with ONLY the JSON object — no markdown code fences, no commentary bef
 
   STRATEGY_INTAKE_PARSE: `You are parsing client intake notes from an external career coaching / onboarding form into structured profile fields for Kimchi.
 
+The pasted text may include one or more of: onboarding questionnaire answers, a target companies watchlist or table, and/or a career search strategy document. Extract ALL applicable fields from every section.
+
 EXISTING PROFILE (may be incomplete — prefer new evidence from intake when richer):
 - Target roles: {{targetRoles}}
 - Target salary: {{targetSalary}}
 - Current salary: {{currentSalary}}
 - Target market: {{targetMarket}}
 - Headline: {{headline}}
+
+EXISTING TARGET COMPANIES WATCHLIST (skip duplicates; still extract NEW companies from intake):
+{{trackedCompaniesSummary}}
 
 INTAKE NOTES TO PARSE:
 {{intakeNotes}}
@@ -641,6 +646,9 @@ Map common onboarding questions:
 - Target role types (top 3) → targetRoles array (short labels)
 - Industries, company stage, benefits, deal-breakers → priorities entries AND intakeContext fields
 - Dream companies list → suggestedDreamCompanies (company names only, not duplicated elsewhere)
+- Target companies document / watchlist / strategy "Target Companies" section → suggestedTrackedCompanies (preferred — include priority, notes, candidateEdge when present)
+- Company tables (name + tier/priority + rationale) → suggestedTrackedCompanies rows
+- If only names are available, use suggestedDreamCompanies; if any row has priority/notes/edge, use suggestedTrackedCompanies
 - Roles/industries to avoid → intakeContext.avoidNotes
 - Search activity (apps, interviews) → searchDuration (e.g. "50 apps / 10 interviews last 30 days, actively searching")
 - Timeline / moving quickly → jobTimeline: asap | 3-6mo | open
@@ -675,6 +683,10 @@ Respond in this exact JSON format:
     "positioningStatement": "optional first-person positioning draft"
   },
   "suggestedDreamCompanies": ["Plaid", "Stripe", "Ramp"],
+  "suggestedTrackedCompanies": [
+    { "name": "Plaid", "priority": "HIGH", "notes": "Fintech infra; strong product ops fit", "candidateEdge": "Prior payments experience" },
+    { "name": "Stripe", "priority": "HIGH", "notes": "Scale + GTM ops", "candidateEdge": "B2B SaaS growth background" }
+  ],
   "intakeContext": {
     "recentEmployer": "McKinsey",
     "recentTitle": "Associate",

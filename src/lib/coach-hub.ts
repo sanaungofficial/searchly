@@ -6,6 +6,7 @@ import {
   type CoachProfile,
   type User,
 } from "@prisma/client";
+import { getAssignedCoachesForUser } from "@/lib/coach-client-assignment";
 import { prisma } from "@/lib/prisma";
 
 export type CoachHubStats = {
@@ -39,6 +40,8 @@ export type ClientCoachSummary = {
   upcomingCount: number;
   lastSessionAt: string | null;
   nextSessionAt: string | null;
+  isAssigned?: boolean;
+  isInternal?: boolean;
 };
 
 export type HubCommunication = {
@@ -268,11 +271,184 @@ export async function getClientCoachSummaries(
     byCoach.set(coach.id, existing);
   }
 
+  const assigned = await getAssignedCoachesForUser(userId);
+  for (const a of assigned) {
+    if (!byCoach.has(a.coachProfileId)) {
+      byCoach.set(a.coachProfileId, {
+        coachProfileId: a.coachProfileId,
+        displayName: a.displayName,
+        slug: a.slug,
+        photoUrl: a.photoUrl,
+        headline: a.headline,
+        email: null,
+        sessionCount: 0,
+        completedCount: 0,
+        upcomingCount: 0,
+        lastSessionAt: null,
+        nextSessionAt: null,
+        isAssigned: true,
+        isInternal: a.isInternal,
+      });
+    } else {
+      const row = byCoach.get(a.coachProfileId)!;
+      row.isAssigned = true;
+      row.isInternal = a.isInternal;
+    }
+  }
+
   return Array.from(byCoach.values()).sort((a, b) => {
     const aTime = a.nextSessionAt ?? a.lastSessionAt ?? "";
     const bTime = b.nextSessionAt ?? b.lastSessionAt ?? "";
     return bTime.localeCompare(aTime);
   });
+}
+
+export type GuestHubGuest = {
+  userId: string | null;
+  email: string;
+  name: string | null;
+};
+
+export type GuestHubPayload = {
+  guest: GuestHubGuest;
+  assignedCoaches: Array<{
+    coachProfileId: string;
+    displayName: string;
+    slug: string | null;
+    photoUrl: string | null;
+    isInternal: boolean;
+    assignedAt: string;
+    notes: string | null;
+  }>;
+  coaches: ClientCoachSummary[];
+  upcomingBookings: HubBooking[];
+  pastBookings: HubBooking[];
+  communications: HubCommunication[];
+  stats: {
+    totalSessions: number;
+    completedSessions: number;
+    upcomingSessions: number;
+    uniqueCoaches: number;
+  };
+};
+
+export async function getGuestHubData(params: { userId?: string; email?: string }): Promise<GuestHubPayload | null> {
+  let userId = params.userId?.trim() || null;
+  let email = params.email?.trim() || null;
+  let name: string | null = null;
+
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true },
+    });
+    if (!user) return null;
+    email = user.email;
+    name = user.name;
+    userId = user.id;
+  } else if (email) {
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { id: true, email: true, name: true },
+    });
+    if (user) {
+      userId = user.id;
+      email = user.email;
+      name = user.name;
+    }
+  } else {
+    return null;
+  }
+
+  const guestEmail = email!;
+  const coaches = userId
+    ? await getClientCoachSummaries(userId, guestEmail)
+    : [];
+
+  const bookingWhere = userId
+    ? { OR: [{ userId }, { guestEmail: { equals: guestEmail, mode: "insensitive" as const } }] }
+    : { guestEmail: { equals: guestEmail, mode: "insensitive" as const } };
+
+  const allBookings = await prisma.coachBooking.findMany({
+    where: bookingWhere,
+    orderBy: { startAt: "desc" },
+    include: {
+      coachProfile: { select: { id: true, displayName: true, slug: true } },
+    },
+  });
+
+  const now = new Date();
+  const mapBooking = (b: typeof allBookings[number]): HubBooking => ({
+    id: b.id,
+    coachProfileId: b.coachProfileId,
+    coachName: b.coachProfile.displayName,
+    coachSlug: b.coachProfile.slug,
+    userId: b.userId,
+    guestName: b.guestName,
+    guestEmail: b.guestEmail,
+    title: b.title,
+    location: b.location,
+    startAt: b.startAt.toISOString(),
+    endAt: b.endAt.toISOString(),
+    status: b.status,
+    nylasBookingRef: b.nylasBookingRef,
+    durationMinutes: Math.round((b.endAt.getTime() - b.startAt.getTime()) / 60000),
+  });
+
+  const upcomingBookings = allBookings
+    .filter((b) => b.startAt >= now && ACTIVE_STATUSES.includes(b.status))
+    .map(mapBooking);
+  const pastBookings = allBookings
+    .filter((b) => b.startAt < now || !ACTIVE_STATUSES.includes(b.status))
+    .map(mapBooking);
+
+  const coachProfileIds = [...new Set(allBookings.map((b) => b.coachProfileId))];
+  const communications = coachProfileIds.length
+    ? (
+        await Promise.all(
+          coachProfileIds.map((coachProfileId) =>
+            getCoachHubCommunications({
+              coachProfileId,
+              clientUserId: userId ?? undefined,
+              clientEmail: guestEmail,
+              limit: 20,
+            }),
+          ),
+        )
+      ).flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    : [];
+
+  const assignedCoaches = userId ? await getAssignedCoachesForUser(userId) : [];
+
+  const completedSessions = allBookings.filter(
+    (b) => b.startAt < now && ACTIVE_STATUSES.includes(b.status),
+  ).length;
+  const upcomingSessions = allBookings.filter(
+    (b) => b.startAt >= now && ACTIVE_STATUSES.includes(b.status),
+  ).length;
+
+  return {
+    guest: { userId, email: guestEmail, name },
+    assignedCoaches: assignedCoaches.map((a) => ({
+      coachProfileId: a.coachProfileId,
+      displayName: a.displayName,
+      slug: a.slug,
+      photoUrl: a.photoUrl,
+      isInternal: a.isInternal,
+      assignedAt: a.assignedAt,
+      notes: a.notes,
+    })),
+    coaches,
+    upcomingBookings,
+    pastBookings,
+    communications: communications.slice(0, 40),
+    stats: {
+      totalSessions: allBookings.length,
+      completedSessions,
+      upcomingSessions,
+      uniqueCoaches: coachProfileIds.length,
+    },
+  };
 }
 
 function syntheticCommFromBooking(

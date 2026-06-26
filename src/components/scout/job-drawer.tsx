@@ -28,6 +28,8 @@ import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-po
 import { JobMatchScorePanel } from "./job-match-score-panel";
 import type { MatchData } from "./job-match-ui";
 import { matchDataToFitDisplay } from "./job-match-ui";
+import { getJobFreshness } from "@/lib/job-posted-freshness";
+import { JobFreshnessIndicator } from "./job-freshness-indicator";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -391,13 +393,6 @@ function resolveJobFields(meta: JobMeta | null) {
   };
 }
 
-function formatDatePosted(value: string | null | undefined): string | null {
-  if (!value?.trim()) return null;
-  const parsed = new Date(value.trim());
-  if (Number.isNaN(parsed.getTime())) return value.trim();
-  return parsed.toLocaleDateString(undefined, { dateStyle: "medium" });
-}
-
 function JobDrawerMatchSection({
   meta,
   resumeMatch,
@@ -470,7 +465,8 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 function JobDrawerDetailsSection({ meta }: { meta: JobMeta | null }) {
   if (!meta) return null;
 
-  const posted = formatDatePosted(meta.datePosted);
+  const freshness = getJobFreshness(meta.datePosted);
+  const posted = meta.datePosted?.trim() ? freshness.detailLabel : null;
   const visa =
     meta.visaSponsored === true ? "Visa sponsorship available" : meta.visaSponsored === false ? "No visa sponsorship listed" : null;
   const industries = [...new Set([...(meta.industries ?? []), ...(meta.subindustries ?? [])])];
@@ -1003,11 +999,15 @@ export function JobDrawer({
                       size={isMobile ? 48 : 56}
                     />
                     <div>
-                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
+                      <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                         <a href={linkedinForCompany} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>
                           {card.company}
                         </a>
-                        {" · "}{daysLabel(card.days)}
+                        {meta?.datePosted ? (
+                          <JobFreshnessIndicator datePosted={meta.datePosted} variant="compact" />
+                        ) : (
+                          <span>· Saved {daysLabel(card.days)}</span>
+                        )}
                       </p>
                     </div>
                   </div>

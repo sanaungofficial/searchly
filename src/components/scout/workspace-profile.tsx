@@ -60,6 +60,7 @@ import { SparkleIcon } from "./workspace-icons";
 import { ProfileResumeEditor } from "./profile-resume-editor";
 import { ProfileLinkedInEditor } from "./profile-linkedin-editor";
 import { CareerStrategyPanel } from "./career-strategy-panel";
+import { CareerPreferencesPanel, type CareerPrefPatch } from "./career-preferences-panel";
 import { JobSearchInboxPanel } from "./job-search-inbox-panel";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
@@ -70,6 +71,7 @@ import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "./workspace-content";
+import { ProfileLayoutSidebar, type ProfileSidebarTab } from "./profile-layout-sidebar";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import {
@@ -418,6 +420,12 @@ function profileCompleteness(p: UserProfile): number {
   if (p.targetSalary) score++;
   if ((p.priorities || []).length > 0) score++;
   return Math.round((score / 13) * 100);
+}
+
+function primaryEducationLabel(education: EducationEntry[]): string | null {
+  if (!education.length) return null;
+  const e = education[0];
+  return e.degree || e.field || e.school || null;
 }
 
 // ─── Shared small components ──────────────────────────────────────────────────
@@ -2317,7 +2325,11 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
     <ScoutBox
       stack={stack}
       padding={isMobile ? "14px 16px" : "16px 20px"}
-      style={{ marginBottom: embedded ? 0 : (isMobile ? 16 : 20), height: embedded && !isMobile ? "100%" : undefined }}
+      style={{
+        marginBottom: embedded ? 0 : (isMobile ? 16 : 20),
+        height: embedded && !isMobile ? "100%" : undefined,
+        ...(embedded ? { borderColor: "rgba(74,139,106,0.35)", background: "rgba(74,139,106,0.06)" } : {}),
+      }}
     >
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 10, gap: isMobile ? 10 : 0 }}>
         <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.gold, textTransform: "uppercase" as const, letterSpacing: "0.08em", margin: 0, display: "inline-flex", alignItems: "center", gap: 4, background: color.forest, padding: "4px 10px", border: border.lineStrong }}>
@@ -2358,317 +2370,39 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
   );
 }
 
-// ─── Career Preferences Panel ─────────────────────────────────────────────────
-
-function PrefChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>{label}</p>
-      <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{value}</span>
-    </div>
-  );
-}
-
-const PREF_EMPLOYMENT = [
-  { value: "employed", label: "Employed — not actively looking" },
-  { value: "open", label: "Employed — open to opportunities" },
-  { value: "searching", label: "Actively searching" },
-];
-
-const PREF_JOB_TIMELINES = [
-  { value: "asap", label: "As soon as possible" },
-  { value: "3-6mo", label: "In the next 3–6 months" },
-  { value: "open", label: "Whenever the right role appears" },
-];
-
-const PREF_MOTIVATIONS = [
-  "Higher compensation",
-  "More interesting work",
-  "Better work-life balance",
-  "Step up in level",
-  "A career pivot",
-];
-
-const PREF_PRIORITIES = [
-  "Remote-first",
-  "Hybrid-friendly",
-  "Work-life balance",
-  "High compensation",
-  "Equity / ownership",
-  "Mission-driven",
-  "Fast growth",
-  "Strong team culture",
-  "Specific location",
-  "Open to relocating within my country",
-  "Open to relocating internationally",
-];
-
-type CareerPrefPatch = Partial<Pick<UserProfile,
-  "careerMotivation" | "jobTimeline" | "currentSalary" | "targetSalary" | "priorities" | "employmentStatus"
-  | "targetMarket" | "relocationOpenness" | "workAuthorization" | "securityClearance" | "searchDuration" | "positioningStatement"
->>;
-
-function CareerPreferencesPanel({ profile, onSave }: {
-  profile: UserProfile;
-  onSave: (patch: CareerPrefPatch) => Promise<void>;
-}) {
-  const isMobile = useIsMobile();
-  const [editing, setEditing] = useState(false);
-  const [empStatus, setEmpStatus] = useState(profile.employmentStatus || "");
-  const [timeline, setTimeline] = useState(profile.jobTimeline || "");
-  const [currentSalary, setCurrentSalary] = useState(profile.currentSalary || "");
-  const [targetSalary, setTargetSalary] = useState(profile.targetSalary || "");
-  const [motivation, setMotivation] = useState(profile.careerMotivation || "");
-  const [priorities, setPriorities] = useState<string[]>(profile.priorities || []);
-  const [targetMarket, setTargetMarket] = useState(profile.targetMarket || "");
-  const [relocationOpenness, setRelocationOpenness] = useState(profile.relocationOpenness || "");
-  const [workAuthorization, setWorkAuthorization] = useState(profile.workAuthorization || "");
-  const [securityClearance, setSecurityClearance] = useState(profile.securityClearance || "");
-  const [searchDuration, setSearchDuration] = useState(profile.searchDuration || "");
-  const [positioningStatement, setPositioningStatement] = useState(profile.positioningStatement || "");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setEmpStatus(profile.employmentStatus || "");
-    setTimeline(profile.jobTimeline || "");
-    setCurrentSalary(profile.currentSalary || "");
-    setTargetSalary(profile.targetSalary || "");
-    setMotivation(profile.careerMotivation || "");
-    setPriorities(profile.priorities || []);
-    setTargetMarket(profile.targetMarket || "");
-    setRelocationOpenness(profile.relocationOpenness || "");
-    setWorkAuthorization(profile.workAuthorization || "");
-    setSecurityClearance(profile.securityClearance || "");
-    setSearchDuration(profile.searchDuration || "");
-    setPositioningStatement(profile.positioningStatement || "");
-  }, [profile]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    await onSave({
-      employmentStatus: empStatus || null,
-      jobTimeline: timeline || null,
-      currentSalary: currentSalary || null,
-      targetSalary: targetSalary || null,
-      careerMotivation: motivation || null,
-      priorities,
-      targetMarket: targetMarket || null,
-      relocationOpenness: relocationOpenness || null,
-      workAuthorization: workAuthorization || null,
-      securityClearance: securityClearance || null,
-      searchDuration: searchDuration || null,
-      positioningStatement: positioningStatement || null,
-    });
-    setSaving(false);
-    setEditing(false);
-  };
-
-  const handleCancel = () => {
-    setEmpStatus(profile.employmentStatus || "");
-    setTimeline(profile.jobTimeline || "");
-    setCurrentSalary(profile.currentSalary || "");
-    setTargetSalary(profile.targetSalary || "");
-    setMotivation(profile.careerMotivation || "");
-    setPriorities(profile.priorities || []);
-    setTargetMarket(profile.targetMarket || "");
-    setRelocationOpenness(profile.relocationOpenness || "");
-    setWorkAuthorization(profile.workAuthorization || "");
-    setSecurityClearance(profile.securityClearance || "");
-    setSearchDuration(profile.searchDuration || "");
-    setPositioningStatement(profile.positioningStatement || "");
-    setEditing(false);
-  };
-
-  const statusLabel = PREF_EMPLOYMENT.find(e => e.value === profile.employmentStatus)?.label;
-  const timelineLabel = PREF_JOB_TIMELINES.find(t => t.value === profile.jobTimeline)?.label;
-  const hasAnyData = profile.employmentStatus || profile.jobTimeline || profile.currentSalary || profile.targetSalary || profile.careerMotivation || (profile.priorities || []).length > 0 || profile.targetMarket || profile.relocationOpenness || profile.workAuthorization || profile.securityClearance || profile.searchDuration || profile.positioningStatement;
-
-  const inputStyle: React.CSSProperties = { width: "100%", padding: isMobile ? "12px 10px" : "8px 10px", fontSize: isMobile ? 16 : 13, borderRadius: "var(--scout-radius)", border: border.line, background: surface.inset, color: color.forest, fontFamily: fontSans, outline: "none", boxSizing: "border-box" };
-
-  return (
-    <ScoutBox padding={isMobile ? "18px 16px" : "22px 24px"}>
-      <SectionHeader title="Career Preferences" onEdit={() => setEditing(!editing)} />
-
-      {editing ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {/* Status */}
-          <div>
-            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Status</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {PREF_EMPLOYMENT.map(({ value, label }) => (
-                <button key={value} onClick={() => setEmpStatus(empStatus === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: empStatus === value ? border.lineStrong : border.line, background: empStatus === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Timeline */}
-          <div>
-            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Timeline</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {PREF_JOB_TIMELINES.map(({ value, label }) => (
-                <button key={value} onClick={() => setTimeline(timeline === value ? "" : value)}
-                  style={{ textAlign: "left", padding: isMobile ? "12px 12px" : "8px 12px", minHeight: isMobile ? 44 : undefined, borderRadius: "var(--scout-radius)", border: timeline === value ? border.lineStrong : border.line, background: timeline === value ? "rgba(26,58,47,0.06)" : surface.inset, fontSize: T.bodySm, color: color.forest, fontFamily: fontSans, cursor: "pointer" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Salary */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
-            {([["Current salary", currentSalary, setCurrentSalary], ["Target salary", targetSalary, setTargetSalary]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
-              <div key={label}>
-                <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>{label}</p>
-                <input value={val} onChange={(e) => setter(e.target.value)} placeholder="e.g. $120K" style={inputStyle} />
-              </div>
-            ))}
-          </div>
-
-          {/* Motivation */}
-          <div>
-            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Primary motivation</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {PREF_MOTIVATIONS.map((m) => (
-                <button key={m} onClick={() => setMotivation(motivation === m ? "" : m)}
-                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: motivation === m ? border.lineStrong : border.line, background: motivation === m ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: motivation === m ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Priorities */}
-          <div>
-            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>What matters most</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {PREF_PRIORITIES.map((p) => (
-                <button key={p} onClick={() => setPriorities(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])}
-                  style={{ padding: "5px 12px", borderRadius: "var(--scout-radius)", border: priorities.includes(p) ? border.lineStrong : border.line, background: priorities.includes(p) ? "rgba(26,58,47,0.08)" : surface.inset, fontSize: T.bodySm, color: priorities.includes(p) ? color.forest : color.muted, fontFamily: fontSans, cursor: "pointer" }}>
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>Search strategy details</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {([
-                ["Target market (geo)", targetMarket, setTargetMarket, "e.g. Greater Philadelphia / Southern NJ"],
-                ["Relocation", relocationOpenness, setRelocationOpenness, "e.g. Open depending on role"],
-                ["Work authorization", workAuthorization, setWorkAuthorization, "e.g. U.S. Citizen"],
-                ["Security clearance", securityClearance, setSecurityClearance, "e.g. Secret (verify status)"],
-                ["Search duration", searchDuration, setSearchDuration, "e.g. 6+ months actively searching"],
-              ] as [string, string, (v: string) => void, string][]).map(([label, val, setter, placeholder]) => (
-                <div key={label}>
-                  <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 4 }}>{label}</p>
-                  <input value={val} onChange={(e) => setter(e.target.value)} placeholder={placeholder} style={inputStyle} />
-                </div>
-              ))}
-              <div>
-                <p style={{ fontSize: 13, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 4 }}>Positioning statement</p>
-                <textarea value={positioningStatement} onChange={(e) => setPositioningStatement(e.target.value)} placeholder="First-person positioning narrative…" style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 8, paddingTop: 2 }}>
-            <ScoutPrimaryBtn onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.5 : 1 }}>
-              {saving ? "Saving…" : "Save"}
-            </ScoutPrimaryBtn>
-            <ScoutSecondaryBtn onClick={handleCancel}>Cancel</ScoutSecondaryBtn>
-          </div>
-        </div>
-      ) : !hasAnyData ? (
-        <div style={{ paddingTop: 4 }}>
-          <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>
-            No preferences yet.{" "}
-            <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: "#C4A86A", fontSize: 14, cursor: "pointer", fontFamily: "var(--font-ui)", padding: 0 }}>
-              Add them →
-            </button>
-          </p>
-          <p style={{ fontSize: 14, color: "#C0B8B0", fontFamily: "var(--font-ui)" }}>
-            We use these to filter and rank matched roles.
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {profile.employmentStatus && (
-            <div>
-              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Status</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{statusLabel || profile.employmentStatus}</span>
-            </div>
-          )}
-          {profile.jobTimeline && (
-            <div>
-              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Timeline</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{timelineLabel || profile.jobTimeline}</span>
-            </div>
-          )}
-          {(profile.currentSalary || profile.targetSalary) && (
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
-              {profile.currentSalary && (
-                <div>
-                  <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Current</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.currentSalary}</span>
-                </div>
-              )}
-              {profile.targetSalary && (
-                <div>
-                  <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Target</p>
-                  <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.targetSalary}</span>
-                </div>
-              )}
-            </div>
-          )}
-          {profile.careerMotivation && (
-            <div>
-              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Looking for</p>
-              <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{profile.careerMotivation}</span>
-            </div>
-          )}
-          {(profile.priorities || []).length > 0 && (
-            <div>
-              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Priorities</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {profile.priorities.map((p) => (
-                  <span key={p} style={{ padding: "5px 11px", borderRadius: "var(--scout-radius)", background: "var(--scout-inset)", border: "1px solid rgba(0,0,0,0.08)", fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)" }}>{p}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {(profile.targetMarket || profile.relocationOpenness || profile.workAuthorization || profile.securityClearance || profile.searchDuration) && (
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
-              {profile.targetMarket && <PrefChip label="Target market" value={profile.targetMarket} />}
-              {profile.relocationOpenness && <PrefChip label="Relocation" value={profile.relocationOpenness} />}
-              {profile.workAuthorization && <PrefChip label="Work auth" value={profile.workAuthorization} />}
-              {profile.securityClearance && <PrefChip label="Clearance" value={profile.securityClearance} />}
-              {profile.searchDuration && <PrefChip label="Search duration" value={profile.searchDuration} />}
-            </div>
-          )}
-          {profile.positioningStatement && (
-            <div>
-              <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>Positioning</p>
-              <p style={{ fontSize: 14, color: "#1C3A2F", fontFamily: "var(--font-ui)", margin: 0, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{profile.positioningStatement}</p>
-            </div>
-          )}
-        </div>
-      )}
-    </ScoutBox>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 type PageTab = "dreamrole" | "targetcompanies" | "about" | "learning" | "assets" | "preferences" | "linkedin" | "strategy";
 type AboutSection = "personal" | "education" | "experience" | "skills";
 
 const ABOUT_SECTIONS: AboutSection[] = ["personal", "experience", "education", "skills"];
+const ABOUT_STACK_ORDER: AboutSection[] = ["experience", "personal", "education", "skills"];
 const ABOUT_LABEL: Record<AboutSection, string> = { personal: "Personal information", experience: "Work experience", education: "Education", skills: "Skills" };
 const ABOUT_NUM: Record<AboutSection, string> = { personal: "01", experience: "02", education: "03", skills: "04" };
+
+type ProfileMissingItem = { label: string; points: number; action: () => void };
+
+function profileMissingItems(
+  p: UserProfile,
+  actions: {
+    goToAssets: () => void;
+    goToSection: (s: AboutSection) => void;
+    goToPreferences: () => void;
+  },
+): ProfileMissingItem[] {
+  const missing: ProfileMissingItem[] = [];
+  if (!p.resumeUrl) missing.push({ label: "Upload your resume", points: 2, action: actions.goToAssets });
+  if (!p.parsedData?.phone) missing.push({ label: "Add phone number", points: 1, action: () => actions.goToSection("personal") });
+  if (!p.parsedData?.location) missing.push({ label: "Add your location", points: 1, action: () => actions.goToSection("personal") });
+  if (!p.linkedinUrl) missing.push({ label: "Link your LinkedIn", points: 1, action: () => actions.goToSection("personal") });
+  if (!(p.parsedData?.education || []).length) missing.push({ label: "Add education history", points: 1, action: () => actions.goToSection("education") });
+  if (!(p.parsedData?.workExperience || []).length) missing.push({ label: "Add work experience", points: 1, action: () => actions.goToSection("experience") });
+  if (!(p.parsedData?.skills || []).length) missing.push({ label: "Add your skills", points: 1, action: () => actions.goToSection("skills") });
+  if (!p.jobTimeline) missing.push({ label: "Set your job timeline", points: 1, action: actions.goToPreferences });
+  if (!p.targetSalary) missing.push({ label: "Set your target salary", points: 1, action: actions.goToPreferences });
+  if (!(p.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: actions.goToPreferences });
+  return missing;
+}
 
 function AboutSectionCard({
   section,
@@ -2736,7 +2470,7 @@ export function WorkspaceProfile() {
   const [readbackNudge, setReadbackNudge] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const { openPricing } = useWorkspace();
+  const { openPricing, user, isAdmin } = useWorkspace();
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
   const openResumeEditor = (assetId: string) => {
@@ -3146,6 +2880,94 @@ export function WorkspaceProfile() {
 
   const sectionCardPad = isMobile ? 18 : 22;
   const showReadback = !!(readback || readbackLoading);
+  const completenessPct = profile ? profileCompleteness(profile) : 0;
+  const missingItems = profile
+    ? profileMissingItems(profile, {
+        goToAssets: () => setPage("assets"),
+        goToSection,
+        goToPreferences: () => setPage("preferences"),
+      })
+    : [];
+
+  const SIDEBAR_TABS: { id: ProfileSidebarTab; label: string }[] = [
+    { id: "about", label: "About" },
+    { id: "linkedin", label: "LinkedIn" },
+    { id: "dreamrole", label: "Target Roles" },
+    { id: "targetcompanies", label: "Target Companies" },
+    { id: "strategy", label: "Career Strategy" },
+    { id: "learning", label: "Upskill" },
+    { id: "assets", label: "Resumes" },
+    { id: "preferences", label: "Preferences" },
+  ];
+
+  const renderAboutSection = (s: AboutSection) => {
+    switch (s) {
+      case "personal":
+        return (
+          <AboutSectionCard key={s} section="personal" stack={isMobile} sectionRef={(el) => { sectionRefs.current.personal = el; }} padding={sectionCardPad}>
+            <PersonalTab profile={profile!} onSave={handlePersonalSave} />
+          </AboutSectionCard>
+        );
+      case "experience":
+        return (
+          <AboutSectionCard key={s} section="experience" sectionRef={(el) => { sectionRefs.current.experience = el; }} padding={sectionCardPad}>
+            <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
+          </AboutSectionCard>
+        );
+      case "education":
+        return (
+          <AboutSectionCard key={s} section="education" sectionRef={(el) => { sectionRefs.current.education = el; }} padding={sectionCardPad}>
+            <EducationTab entries={education} onSave={handleEducationSave} />
+          </AboutSectionCard>
+        );
+      case "skills":
+        return (
+          <AboutSectionCard key={s} section="skills" sectionRef={(el) => { sectionRefs.current.skills = el; }} padding={sectionCardPad}>
+            <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
+          </AboutSectionCard>
+        );
+    }
+  };
+
+  const completenessChecklist = profile && missingItems.length > 0 && showChecklist ? (
+    <ScoutBox style={{ marginBottom: 20 }} padding={16}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <ScoreExplainerLabel variant="profile-completeness">
+          <ScoutLabel>Complete your profile</ScoutLabel>
+        </ScoreExplainerLabel>
+        <button
+          type="button"
+          onClick={() => setShowChecklist(false)}
+          style={{ background: "none", border: "none", color: color.muted, cursor: "pointer", fontSize: 16, padding: "0 4px" }}
+          aria-label="Close checklist"
+        >
+          ✕
+        </button>
+      </div>
+      {missingItems.map((item, i) => (
+        <button
+          key={item.label}
+          type="button"
+          onClick={() => { item.action(); setShowChecklist(false); }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            padding: "10px 0",
+            border: "none",
+            borderBottom: i < missingItems.length - 1 ? border.line : "none",
+            background: "transparent",
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
+          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink }}>{item.label}</span>
+          <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>+{item.points}%</span>
+        </button>
+      ))}
+    </ScoutBox>
+  ) : null;
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
@@ -3162,68 +2984,52 @@ export function WorkspaceProfile() {
             />
           </div>
         )}
-        {/* Header */}
-        <div style={{ marginBottom: isMobile ? 24 : 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-            <ScoutLabel>Your profile</ScoutLabel>
-          </div>
-          <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
-            {loading ? "Loading…" : profile?.name || "Your profile"}
-          </ScoutDisplayTitle>
-          {profile?.headline && (
-            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
-              {profile.headline}
-            </p>
-          )}
-          {!profile?.headline && !loading && (
-            <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: "0 0 12px", lineHeight: 1.6, maxWidth: 520 }}>
-              Resume, preferences, and target roles — fill these in so we can score fit accurately.
-            </p>
-          )}
-          {profile && (() => {
-            const pct = profileCompleteness(profile);
-            const missing: { label: string; points: number; action: () => void }[] = [];
-            if (!profile.resumeUrl) missing.push({ label: "Upload your resume", points: 2, action: () => setPage("assets") });
-            if (!profile.parsedData?.phone) missing.push({ label: "Add phone number", points: 1, action: () => goToSection("personal") });
-            if (!profile.parsedData?.location) missing.push({ label: "Add your location", points: 1, action: () => goToSection("personal") });
-            if (!profile.linkedinUrl) missing.push({ label: "Link your LinkedIn", points: 1, action: () => goToSection("personal") });
-            if (!(profile.parsedData?.education || []).length) missing.push({ label: "Add education history", points: 1, action: () => goToSection("education") });
-            if (!(profile.parsedData?.workExperience || []).length) missing.push({ label: "Add work experience", points: 1, action: () => goToSection("experience") });
-            if (!(profile.parsedData?.skills || []).length) missing.push({ label: "Add your skills", points: 1, action: () => goToSection("skills") });
-            if (!profile.jobTimeline) missing.push({ label: "Set your job timeline", points: 1, action: () => setPage("preferences") });
-            if (!profile.targetSalary) missing.push({ label: "Set your target salary", points: 1, action: () => setPage("preferences") });
-            if (!(profile.priorities || []).length) missing.push({ label: "Add job priorities", points: 1, action: () => setPage("preferences") });
 
-            return (
+        {/* Mobile header */}
+        {isMobile && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+              <ScoutLabel>Your profile</ScoutLabel>
+            </div>
+            <ScoutDisplayTitle size={28} style={{ marginBottom: 8 }}>
+              {loading ? "Loading…" : profile?.name || "Your profile"}
+            </ScoutDisplayTitle>
+            {profile?.headline && (
+              <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
+                {profile.headline}
+              </p>
+            )}
+            {profile && (
               <ScoutBox style={{ marginTop: 14 }} padding={16}>
                 <button
-                  onClick={() => missing.length > 0 && setShowChecklist(s => !s)}
-                  style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missing.length > 0 ? "pointer" : "default" }}
+                  type="button"
+                  onClick={() => missingItems.length > 0 && setShowChecklist((s) => !s)}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: missingItems.length > 0 ? "pointer" : "default" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <ScoreExplainerLabel variant="profile-completeness">
                       <ScoutLabel>Profile completeness</ScoutLabel>
                     </ScoreExplainerLabel>
-                    <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: pct >= 80 ? color.forest : "#C4A86A" }}>
-                      {pct}%{missing.length > 0 ? (showChecklist ? " ▲" : " ▼") : " ✓"}
+                    <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: completenessPct >= 80 ? color.forest : "#C4A86A" }}>
+                      {completenessPct}%{missingItems.length > 0 ? (showChecklist ? " ▲" : " ▼") : " ✓"}
                     </span>
                   </div>
                   <div style={{ height: 3, background: "rgba(17,17,17,0.08)" }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? color.forest : "#C4A86A", transition: "width 0.4s ease" }} />
+                    <div style={{ height: "100%", width: `${completenessPct}%`, background: completenessPct >= 80 ? color.forest : "#C4A86A", transition: "width 0.4s ease" }} />
                   </div>
-                  {missing.length > 0 && (
+                  {missingItems.length > 0 && (
                     <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-                      {missing.length} item{missing.length !== 1 ? "s" : ""} left — tap to fix
+                      {missingItems.length} item{missingItems.length !== 1 ? "s" : ""} left — tap to fix
                     </p>
                   )}
                 </button>
-
-                {showChecklist && missing.length > 0 && (
+                {showChecklist && missingItems.length > 0 && (
                   <div style={{ marginTop: 12, borderTop: border.line, paddingTop: 8 }}>
-                    {missing.map((item, i) => (
+                    {missingItems.map((item, i) => (
                       <button
                         key={item.label}
+                        type="button"
                         onClick={() => { item.action(); setShowChecklist(false); }}
                         style={{
                           display: "flex",
@@ -3232,7 +3038,7 @@ export function WorkspaceProfile() {
                           width: "100%",
                           padding: "10px 0",
                           border: "none",
-                          borderBottom: i < missing.length - 1 ? border.line : "none",
+                          borderBottom: i < missingItems.length - 1 ? border.line : "none",
                           background: "transparent",
                           cursor: "pointer",
                           textAlign: "left",
@@ -3245,11 +3051,10 @@ export function WorkspaceProfile() {
                   </div>
                 )}
               </ScoutBox>
-            );
-          })()}
-        </div>
+            )}
+          </div>
+        )}
 
-        {/* Resume upload nudge */}
         {readbackNudge && (
           <ScoutBox style={{ marginBottom: 16, borderColor: "rgba(74,139,106,0.35)" }} padding={14}>
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12 }}>
@@ -3261,30 +3066,32 @@ export function WorkspaceProfile() {
           </ScoutBox>
         )}
 
-        <div style={{ display: "flex", border: border.line, overflowX: "auto", marginBottom: page === "about" && isMobile ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flexShrink: 0 }}>
-          {PAGE_TABS.map(({ id, label }, i) => (
-            <button
-              key={id}
-              onClick={() => setPage(id)}
-              style={{
-                padding: isMobile ? "10px 14px" : "8px 16px",
-                minHeight: 44,
-                border: "none",
-                borderRight: i < PAGE_TABS.length - 1 ? border.line : "none",
-                background: page === id ? color.forest : surface.card,
-                color: page === id ? color.gold : color.muted,
-                fontFamily: fontSans,
-                fontSize: T.bodySm,
-                fontWeight: page === id ? 600 : 500,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {isMobile && (
+          <div style={{ display: "flex", border: border.line, overflowX: "auto", marginBottom: page === "about" ? 0 : 24, WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flexShrink: 0 }}>
+            {PAGE_TABS.map(({ id, label }, i) => (
+              <button
+                key={id}
+                onClick={() => setPage(id)}
+                style={{
+                  padding: "10px 14px",
+                  minHeight: 44,
+                  border: "none",
+                  borderRight: i < PAGE_TABS.length - 1 ? border.line : "none",
+                  background: page === id ? color.forest : surface.card,
+                  color: page === id ? color.gold : color.muted,
+                  fontFamily: fontSans,
+                  fontSize: T.bodySm,
+                  fontWeight: page === id ? 600 : 500,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {resumeUploadError && (
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 12 }}>
@@ -3292,7 +3099,6 @@ export function WorkspaceProfile() {
           </p>
         )}
 
-        {/* Sub-tabs — mobile About only; desktop uses side nav */}
         {page === "about" && isMobile && (
           <div style={{ display: "flex", gap: 6, marginBottom: 24, flexWrap: "wrap" }}>
             {ABOUT_SECTIONS.map((s) => (
@@ -3319,155 +3125,127 @@ export function WorkspaceProfile() {
           </div>
         )}
 
-        {/* Tab content */}
-        {page === "dreamrole" && (
-          <DreamRoleTab
-            dreamList={dreamList}
-            setDreamList={setDreamList}
-            onSave={(list) => patchProfile({ targetRoles: list })}
-            resumeAssets={resumeAssets}
-            userSkills={skills}
-            skillGoals={skillGoals}
-            roleAnalyses={roleAnalyses}
-            targetRoleSettings={targetRoleSettings}
-            onTargetRoleSettingsChange={handleTargetRoleSettingsChange}
-            onRoleAnalysisUpdate={handleRoleAnalysisUpdate}
-            onClearRoleAnalysis={handleClearRoleAnalysis}
-            onAddToPortfolio={addSkillToPortfolio}
-            onObtainSkill={obtainSkill}
-            onGoToUpskill={goToUpskill}
-            onClearUpskillPrompt={() => setUpskillPrompt(null)}
-            onInitRoleSettings={initRoleSettings}
-          />
-        )}
+        <div style={{ display: isMobile ? "block" : "flex", gap: 32, alignItems: "flex-start" }}>
+          {!isMobile && (
+            <ProfileLayoutSidebar
+              tabs={SIDEBAR_TABS}
+              activePage={page as ProfileSidebarTab}
+              onNavigate={(tab) => setPage(tab)}
+              name={profile?.name || user?.name || "Your profile"}
+              headline={profile?.headline || user?.headline}
+              location={profile?.parsedData?.location}
+              educationLabel={primaryEducationLabel(education)}
+              avatarUrl={user?.avatarUrl}
+              completenessPct={completenessPct}
+              loading={loading}
+              onCompletenessClick={missingItems.length > 0 ? () => setShowChecklist((s) => !s) : undefined}
+            />
+          )}
 
-        {page === "targetcompanies" && (
-          <WorkspaceCompanies
-            embeddedInProfile
-            onOpenProspectJob={openCompanyProspectJob}
-            selectedCompanyId={profileLoc.companyId ?? null}
-            onCompanySelect={(id) => router.push(profileTargetCompaniesUrl(id))}
-          />
-        )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {!isMobile && completenessChecklist}
 
-        {page === "about" && loading && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Loading…</p>
-        )}
-        {page === "about" && !loading && !profile && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
-        )}
-        {page === "about" && profile && (
-          <div style={{ paddingBottom: 40 }}>
-            {showReadback && (
-              <div style={{ marginBottom: isMobile ? 16 : 20 }}>
-                <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded />
+            {page === "dreamrole" && (
+              <DreamRoleTab
+                dreamList={dreamList}
+                setDreamList={setDreamList}
+                onSave={(list) => patchProfile({ targetRoles: list })}
+                resumeAssets={resumeAssets}
+                userSkills={skills}
+                skillGoals={skillGoals}
+                roleAnalyses={roleAnalyses}
+                targetRoleSettings={targetRoleSettings}
+                onTargetRoleSettingsChange={handleTargetRoleSettingsChange}
+                onRoleAnalysisUpdate={handleRoleAnalysisUpdate}
+                onClearRoleAnalysis={handleClearRoleAnalysis}
+                onAddToPortfolio={addSkillToPortfolio}
+                onObtainSkill={obtainSkill}
+                onGoToUpskill={goToUpskill}
+                onClearUpskillPrompt={() => setUpskillPrompt(null)}
+                onInitRoleSettings={initRoleSettings}
+              />
+            )}
+
+            {page === "targetcompanies" && (
+              <WorkspaceCompanies
+                embeddedInProfile
+                onOpenProspectJob={openCompanyProspectJob}
+                selectedCompanyId={profileLoc.companyId ?? null}
+                onCompanySelect={(id) => router.push(profileTargetCompaniesUrl(id))}
+              />
+            )}
+
+            {page === "about" && loading && (
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Loading…</p>
+            )}
+            {page === "about" && !loading && !profile && (
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
+            )}
+            {page === "about" && profile && (
+              <div style={{ paddingBottom: 40 }}>
+                {showReadback && (
+                  <div style={{ marginBottom: isMobile ? 16 : 20 }}>
+                    <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded />
+                  </div>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {(isMobile ? ABOUT_SECTIONS : ABOUT_STACK_ORDER).map(renderAboutSection)}
+                </div>
               </div>
             )}
-            <div style={{ display: isMobile ? "block" : "flex", gap: 24, alignItems: "flex-start" }}>
-            {!isMobile && (
-              <ScoutBox padding={0} style={{ width: 196, flexShrink: 0, position: "sticky", top: 16, alignSelf: "flex-start" }}>
-                <div style={{ padding: "14px 18px", borderBottom: border.line, background: surface.inset }}>
-                  <ScoutLabel>Sections</ScoutLabel>
-                </div>
-                {ABOUT_SECTIONS.map((s, i) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => goToSection(s)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      padding: "11px 18px",
-                      minHeight: 44,
-                      border: "none",
-                      borderBottom: i < ABOUT_SECTIONS.length - 1 ? border.line : "none",
-                      background: activeSection === s ? surface.inset : surface.card,
-                      color: activeSection === s ? color.ink : color.muted,
-                      fontFamily: fontSans,
-                      fontSize: T.bodySm,
-                      fontWeight: activeSection === s ? 600 : 500,
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    {ABOUT_LABEL[s]}
-                  </button>
-                ))}
-              </ScoutBox>
+
+            {page === "preferences" && !profile && !loading && (
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
             )}
-            <div style={{
-              flex: 1,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-            }}>
-            <AboutSectionCard section="personal" stack sectionRef={(el) => { sectionRefs.current.personal = el; }} padding={sectionCardPad}>
-              <PersonalTab profile={profile} onSave={handlePersonalSave} />
-            </AboutSectionCard>
-            <AboutSectionCard section="experience" sectionRef={(el) => { sectionRefs.current.experience = el; }} padding={sectionCardPad}>
-              <ExperienceTab entries={workExperience} onSave={handleExperienceSave} />
-            </AboutSectionCard>
-            <AboutSectionCard section="education" sectionRef={(el) => { sectionRefs.current.education = el; }} padding={sectionCardPad}>
-              <EducationTab entries={education} onSave={handleEducationSave} />
-            </AboutSectionCard>
-            <AboutSectionCard section="skills" sectionRef={(el) => { sectionRefs.current.skills = el; }} padding={sectionCardPad}>
-              <SkillsTab skills={skills} onSave={handleSkillsSave} skillGoals={skillGoals} onGraduate={graduateSkill} />
-            </AboutSectionCard>
-            </div>
-            </div>
+            {page === "preferences" && profile && (
+              <div style={{ paddingBottom: 40, paddingTop: 8, display: "flex", flexDirection: "column", gap: 24 }}>
+                <JobSearchInboxPanel />
+                <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
+              </div>
+            )}
+
+            {page === "strategy" && !profile && !loading && (
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
+            )}
+            {page === "strategy" && profile && (
+              <div style={{ paddingBottom: 40, paddingTop: 8 }}>
+                <CareerStrategyPanel
+                  profile={profile}
+                  isMobile={isMobile}
+                  isAdmin={isAdmin}
+                  onPatchProfile={async (patch) => {
+                    await patchProfile(patch);
+                    setProfile((p) => (p ? { ...p, ...patch } as UserProfile : p));
+                  }}
+                />
+              </div>
+            )}
+
+            {page === "learning" && (
+              <LearningTab
+                progress={upskillProgress}
+                setProgress={persistUpskillProgress}
+                skillGoals={skillGoals}
+                dreamList={dreamList}
+                onGraduate={graduateSkill}
+                onAddSkill={addSkillGoal}
+                onDismissSkill={dismissSkillGoal}
+                highlightSkill={highlightSkill}
+              />
+            )}
+
+            {page === "assets" && !profile && !loading && (
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
+            )}
+            {page === "assets" && profile && (
+              <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
+            )}
+
+            {page === "linkedin" && (
+              <ProfileLinkedInEditor isMobile={isMobile} />
+            )}
           </div>
-        )}
-
-        {page === "preferences" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
-        )}
-        {page === "preferences" && profile && (
-          <div style={{ paddingBottom: 40, paddingTop: 8, display: "flex", flexDirection: "column", gap: 24 }}>
-            <JobSearchInboxPanel />
-            <CareerPreferencesPanel profile={profile} onSave={handleCareerPrefSave} />
-          </div>
-        )}
-
-        {page === "strategy" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
-        )}
-        {page === "strategy" && profile && (
-          <div style={{ paddingBottom: 40, paddingTop: 8 }}>
-            <CareerStrategyPanel
-              profile={profile}
-              isMobile={isMobile}
-              onPatchProfile={async (patch) => {
-                await patchProfile(patch);
-                setProfile((p) => (p ? { ...p, ...patch } as UserProfile : p));
-              }}
-            />
-          </div>
-        )}
-
-        {page === "learning" && (
-          <LearningTab
-            progress={upskillProgress}
-            setProgress={persistUpskillProgress}
-            skillGoals={skillGoals}
-            dreamList={dreamList}
-            onGraduate={graduateSkill}
-            onAddSkill={addSkillGoal}
-            onDismissSkill={dismissSkillGoal}
-            highlightSkill={highlightSkill}
-          />
-        )}
-
-        {page === "assets" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
-        )}
-        {page === "assets" && profile && (
-          <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />
-        )}
-
-        {page === "linkedin" && (
-          <ProfileLinkedInEditor isMobile={isMobile} />
-        )}
+        </div>
         </WorkspaceContent>
       </WorkspaceScroll>
       <ProfileResumeEditor
