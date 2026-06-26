@@ -99,7 +99,6 @@ export function PipelineStageJobsList({
   onBackToRecommendations: () => void;
 }) {
   const stageCards = cards.filter((c) => c.stage === stage);
-  const stageColor = STAGE_COLORS[stage];
 
   return (
     <div>
@@ -124,7 +123,7 @@ export function PipelineStageJobsList({
           {stageCards.map((card) => {
             const ext = card as KanbanCard & { _url?: string; _meta?: JobMeta };
             return (
-              <ScoutBox key={card.id} stack padding={18} style={{ borderTop: `2px solid ${stageColor}` }}>
+              <ScoutBox key={card.id} padding={18}>
                 <div
                   role="button"
                   tabIndex={0}
