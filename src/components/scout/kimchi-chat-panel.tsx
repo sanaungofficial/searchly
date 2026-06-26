@@ -70,7 +70,7 @@ function contextQuery(pageHint?: AssistantPageHint): string {
 
 export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigate }: Props) {
   const router = useRouter();
-  const { openPricing, kanbanCards } = useWorkspace();
+  const { openPricing, kanbanCards, withClientScope } = useWorkspace();
   const { messages, setMessages, ensureThread, updateLastAssistant, persistMessages, activeThreadId, activeThreadTitle } =
     threads;
 
@@ -201,13 +201,13 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   }, [pendingVoiceStart, agentSettings, sessionActive, toggleSession]);
 
   const loadContext = useCallback(() => {
-    void fetch(`/api/assistant/context${contextQuery(pageHint)}`, { cache: "no-store" })
+    void fetch(withClientScope(`/api/assistant/context${contextQuery(pageHint)}`), { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) setAssistantCtx(data as AssistantContextPayload);
       })
       .catch(() => {});
-  }, [pageHint]);
+  }, [pageHint, withClientScope]);
 
   useEffect(() => {
     loadContext();
