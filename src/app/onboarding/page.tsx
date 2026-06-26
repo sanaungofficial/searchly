@@ -546,7 +546,7 @@ export default function OnboardingPage() {
     screen >= 1 && screen <= 2 && (resumeUploading || readbackStatus === "loading");
 
   return (
-    <div style={{ background: "#F7F5F2" }}>
+    <div style={{ background: "var(--scout-page)" }}>
       <input
         id="scout-file"
         type="file"

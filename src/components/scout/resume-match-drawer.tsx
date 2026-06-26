@@ -693,7 +693,7 @@ export function ResumeMatchDrawer({
                           justifyContent: "space-between",
                           marginBottom: 20,
                           padding: "24px 28px",
-                          background: "#FAF7F2",
+                          background: "var(--scout-inset)",
                           borderRadius: 0,
                           border: "1px solid rgba(0,0,0,0.05)",
                         }}

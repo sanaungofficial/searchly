@@ -140,7 +140,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
         <div
           style={{
             width: 200,
-            background: "#F7F5F2",
+            background: "var(--scout-cream)",
             borderRight: "1px solid #EEE9E2",
             display: "flex",
             flexDirection: "column",
@@ -385,7 +385,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                           marginBottom: 6,
                           display: "block",
                         }}
-                        onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.background = "#F7F5F2"; }}
+                        onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.background = "var(--scout-cream)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                       >
                         {uploading ? "Uploading…" : "Upload photo"}
@@ -406,7 +406,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 <div
                   style={{
                     padding: "12px 16px",
-                    background: "#F7F5F2",
+                    background: "var(--scout-cream)",
                     borderRadius: 0,
                     fontSize: 14,
                     color: "#8A7F72",
@@ -513,7 +513,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                           cursor: "pointer",
                           transition: "background 0.15s",
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#F7F5F2")}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--scout-cream)")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                       >
                         Manage Billing
@@ -654,7 +654,7 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
                 <div
                   style={{
                     padding: "14px 16px",
-                    background: "#F7F5F2",
+                    background: "var(--scout-cream)",
                     border: "1px dashed #D5CFC8",
                     borderRadius: 0,
                     textAlign: "center",
@@ -699,7 +699,7 @@ function Field({ label, value }: { label: string; value: string }) {
       <p style={{ fontSize: 14, fontWeight: 500, color: "#8A7F72", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.6px" }}>
         {label}
       </p>
-      <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "#F7F5F2", borderRadius: 0, border: "1px solid #EEE9E2" }}>
+      <p style={{ fontSize: 13, color: "#1A1A1A", margin: 0, padding: "10px 12px", background: "var(--scout-inset)", borderRadius: 0, border: "1px solid #EEE9E2" }}>
         {value}
       </p>
     </div>

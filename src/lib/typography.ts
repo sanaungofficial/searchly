@@ -17,7 +17,7 @@ export const color = {
   muted: "#5C534A",
   mutedLight: "#8A8178",
   gold: "#E8D5A3",
-  cream: "#F7F5F2",
+  cream: "var(--scout-cream)",
 } as const;
 
 /** Source Sans 3 — Kimchi uses three weights only (no hairline/thin on UI) */
