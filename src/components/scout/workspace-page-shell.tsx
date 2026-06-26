@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ScoutDisplayTitle, ScoutLabel } from "./scout-box";
-import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
+import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { color, fontSans, surface, type as T } from "@/lib/typography";
 
 type Props = {
@@ -10,12 +10,12 @@ type Props = {
   title?: ReactNode;
   subtitle?: ReactNode;
   isMobile?: boolean;
-  /** Short title for mobile top bar (defaults to label) */
+  /** Short title for mobile top bar (defaults to label) — kept for API compat, unused with top nav */
   mobileBarTitle?: string;
   /** Omit label + title chrome — content only (Dashboard staff sub-tabs). */
   compact?: boolean;
   children: ReactNode;
-  /** Optional max content width; omit for full-width layout (matches Opportunities). */
+  /** Max content width; defaults to WORKSPACE_MAX_WIDTH */
   maxWidth?: number;
 };
 
@@ -25,14 +25,10 @@ export function WorkspacePageShell({
   title,
   subtitle,
   isMobile = false,
-  mobileBarTitle,
   children,
-  maxWidth,
+  maxWidth = WORKSPACE_MAX_WIDTH,
   compact = false,
 }: Props) {
-  const pad = isMobile ? "20px 16px 48px" : "32px 36px 48px";
-  const barTitle = mobileBarTitle ?? label;
-
   if (compact) {
     return (
       <div style={{ width: "100%", boxSizing: "border-box" }}>
@@ -53,34 +49,13 @@ export function WorkspacePageShell({
         animation: "fadeIn 0.3s ease both",
       }}
     >
-      {isMobile && (
-        <WorkspaceMobileTopBar center={<ScoutLabel>{barTitle}</ScoutLabel>} />
-      )}
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-          background: surface.page,
-        }}
-      >
-        <div
-          style={{
-            padding: pad,
-            ...(maxWidth != null ? { maxWidth, margin: "0 auto" } : {}),
-            width: "100%",
-            boxSizing: "border-box",
-          }}
-        >
+      <WorkspaceScroll>
+        <WorkspaceContent style={{ maxWidth }}>
           <div style={{ marginBottom: isMobile ? 20 : 24 }}>
-            {!isMobile && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-                <ScoutLabel>{label}</ScoutLabel>
-              </div>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+              <ScoutLabel>{label}</ScoutLabel>
+            </div>
             <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: subtitle ? 10 : 0 }}>
               {title}
             </ScoutDisplayTitle>
@@ -91,8 +66,8 @@ export function WorkspacePageShell({
             ) : null}
           </div>
           {children}
-        </div>
-      </div>
+        </WorkspaceContent>
+      </WorkspaceScroll>
     </div>
   );
 }

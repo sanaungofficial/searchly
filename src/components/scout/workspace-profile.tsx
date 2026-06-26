@@ -69,7 +69,7 @@ import { notifyCreditsChanged } from "@/lib/credits";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
+import { WORKSPACE_MAX_WIDTH, WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import {
@@ -3144,22 +3144,13 @@ export function WorkspaceProfile() {
     { id: "preferences", label: isMobile ? "Prefs" : "Preferences" },
   ];
 
-  const scrollPad = isMobile ? "24px 16px 40px 16px" : "32px 36px 48px";
   const sectionCardPad = isMobile ? 18 : 22;
-  const contentShell: React.CSSProperties = {
-    width: "100%",
-    maxWidth: isMobile ? undefined : 1120,
-    margin: "0 auto",
-  };
   const showReadback = !!(readback || readbackLoading);
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
-      {isMobile && (
-        <WorkspaceMobileTopBar center={<ScoutLabel>Your profile</ScoutLabel>} />
-      )}
-      <div ref={scrollRef} style={{ padding: scrollPad, overflowY: "auto", flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" }}>
-        <div style={contentShell}>
+      <WorkspaceScroll ref={scrollRef}>
+        <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH }}>
         {upskillPrompt && page !== "learning" && page !== "dreamrole" && (
           <div style={{ marginBottom: 16 }}>
             <UpskillNextStepCard
@@ -3173,12 +3164,10 @@ export function WorkspaceProfile() {
         )}
         {/* Header */}
         <div style={{ marginBottom: isMobile ? 24 : 28 }}>
-          {!isMobile && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
-              <ScoutLabel>Your profile</ScoutLabel>
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ width: 8, height: 8, background: color.forest, display: "inline-block", flexShrink: 0 }} />
+            <ScoutLabel>Your profile</ScoutLabel>
+          </div>
           <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
             {loading ? "Loading…" : profile?.name || "Your profile"}
           </ScoutDisplayTitle>
@@ -3479,8 +3468,8 @@ export function WorkspaceProfile() {
         {page === "linkedin" && (
           <ProfileLinkedInEditor isMobile={isMobile} />
         )}
-        </div>
-      </div>
+        </WorkspaceContent>
+      </WorkspaceScroll>
       <ProfileResumeEditor
         open={!!editorAssetId}
         assetId={editorAssetId}

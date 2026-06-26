@@ -4,8 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { WorkspaceTopNav } from "@/components/scout/workspace-top-nav";
-import { ChatWidget } from "@/components/scout/chat-widget";
-import { VoiceAgentFloat } from "@/components/voice/voice-agent-float";
+import { KimchiAssistant } from "@/components/scout/kimchi-assistant";
 import { PricingModal } from "@/components/scout/pricing-modal";
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) {
@@ -63,8 +62,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </div>
-      <VoiceAgentFloat />
-      <ChatWidget bottomStackOffset={112} />
+      <KimchiAssistant />
       {pricingOpen && <PricingModal onClose={closePricing} />}
     </div>
   );

@@ -11,7 +11,7 @@ import { DashboardHomeTop } from "@/components/scout/dashboard-home-top";
 import { type KanbanCard } from "./workspace-data";
 import { PlusIcon } from "./workspace-icons";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { WorkspaceMobileTopBar } from "./workspace-mobile-top-bar";
+import { WorkspaceContent, WorkspaceScroll } from "./workspace-content";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 const STAT_LABEL: React.CSSProperties = {
@@ -205,15 +205,7 @@ export function WorkspaceDashboard() {
     { key: "offer", label: "Offer" },
   ];
 
-  const headerPad = isMobile ? "12px 16px" : "12px 28px";
   const panelPad = isMobile ? "12px 16px" : "12px 28px";
-  const contentPad = isMobile
-    ? isStaffPortal
-      ? "20px 16px 40px"
-      : "24px 16px 40px 16px"
-    : isStaffPortal
-      ? "24px 28px 40px"
-      : "32px 36px 48px";
   const statValueSize = isMobile ? 36 : T.stat;
   const statCardPad = isMobile ? "16px 18px" : "20px 24px";
 
@@ -288,50 +280,38 @@ export function WorkspaceDashboard() {
         animation: "fadeIn 0.3s ease both",
       }}
     >
-      {!isStaffPortal && (isMobile ? (
-        <WorkspaceMobileTopBar
-          center={<ScoutLabel>Dashboard</ScoutLabel>}
-          right={
-            <ScoutPrimaryBtn
-              onClick={() => setShowAddPanel((p) => !p)}
-              style={{ minHeight: 36, padding: "8px 12px", fontSize: T.caption }}
+      <WorkspaceScroll>
+        <WorkspaceContent>
+          {!isStaffPortal && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: 12,
+                marginBottom: showAddPanel ? 16 : 24,
+                flexWrap: "wrap",
+              }}
             >
-              <PlusIcon /> {showAddPanel ? "Close" : "Add job"}
-            </ScoutPrimaryBtn>
-          }
-        />
-      ) : (
-        <div
-          style={{
-            padding: headerPad,
-            borderBottom: border.line,
-            background: surface.card,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <ScoutLabel>Dashboard</ScoutLabel>
-          <ScoutPrimaryBtn
-            onClick={() => setShowAddPanel((p) => !p)}
-            style={{ minHeight: 44, padding: "8px 16px" }}
-          >
-            <PlusIcon /> Add job
-          </ScoutPrimaryBtn>
-        </div>
-      ))}
+              <ScoutPrimaryBtn
+                onClick={() => setShowAddPanel((p) => !p)}
+                style={{ minHeight: isMobile ? 40 : 44, padding: isMobile ? "8px 14px" : "8px 16px" }}
+              >
+                <PlusIcon /> {showAddPanel ? "Close" : "Add job"}
+              </ScoutPrimaryBtn>
+            </div>
+          )}
 
-      {!isStaffPortal && showAddPanel && (
-        <div
-          style={{
-            padding: panelPad,
-            background: surface.inset,
-            borderBottom: border.line,
-            animation: "fadeIn 0.2s ease both",
-          }}
-        >
+          {!isStaffPortal && showAddPanel && (
+            <div
+              style={{
+                padding: panelPad,
+                background: surface.inset,
+                border: border.line,
+                marginBottom: 24,
+                animation: "fadeIn 0.2s ease both",
+              }}
+            >
           <div
             style={{
               display: "flex",
@@ -451,18 +431,7 @@ export function WorkspaceDashboard() {
             </div>
           )}
         </div>
-      )}
-
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        <div style={{ padding: contentPad, width: "100%", boxSizing: "border-box" }}>
+          )}
 
           <DashboardHomeTop isMobile={isMobile} />
 
@@ -551,8 +520,8 @@ export function WorkspaceDashboard() {
             )}
           </div>
 
-        </div>
-      </div>
+        </WorkspaceContent>
+      </WorkspaceScroll>
       {showWelcome && <GrowthWelcomeModal onClose={() => setShowWelcome(false)} />}
     </div>
   );

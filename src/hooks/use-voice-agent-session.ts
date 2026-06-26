@@ -73,6 +73,7 @@ export function useVoiceAgentSession({
   const transcriptRef = useRef<Array<{ role: string; content: string }>>([]);
   const rafRef = useRef<number | null>(null);
   const uiModeRef = useRef<VoiceOrbState>("idle");
+  const endingIntentionallyRef = useRef(false);
 
   const setUiMode = useCallback((mode: VoiceOrbState) => {
     uiModeRef.current = mode;
@@ -137,9 +138,13 @@ export function useVoiceAgentSession({
         transcript: `${header}${transcript}`.slice(0, 24000),
       };
 
-      teardownSession();
+      // Mark done before disconnect so the SDK "user requested disconnect" event
+      // does not surface as an error.
+      endingIntentionallyRef.current = true;
+      setError(null);
       setSummary(resultSummary);
       setUiMode("done");
+      teardownSession();
       onComplete?.(payload);
     },
     [onComplete, setUiMode, teardownSession],
@@ -214,7 +219,12 @@ export function useVoiceAgentSession({
         startVisualizer();
       });
       session.on("disconnected", (reason) => {
-        if (uiModeRef.current !== "done" && uiModeRef.current !== "idle") {
+        const benign =
+          endingIntentionallyRef.current ||
+          /user requested disconnect/i.test(reason ?? "");
+        if (benign) {
+          endingIntentionallyRef.current = false;
+        } else if (uiModeRef.current !== "done" && uiModeRef.current !== "idle") {
           setError(reason || "Voice session ended");
           setUiMode("error");
         }
@@ -256,10 +266,11 @@ export function useVoiceAgentSession({
 
   const endSession = useCallback(() => {
     if (!sessionActive) return;
-    finishSession(summary || "Voice conversation ended.");
-  }, [finishSession, sessionActive, summary]);
+    finishSession("All set — tap Talk again when you want another chat.");
+  }, [finishSession, sessionActive]);
 
   const resetSession = useCallback(() => {
+    endingIntentionallyRef.current = false;
     teardownSession();
     setSummary(null);
     setAgentLine(null);
