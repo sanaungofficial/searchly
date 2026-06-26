@@ -70,12 +70,14 @@ export async function GET(req: NextRequest) {
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
   const returnPath = req.nextUrl.searchParams.get("returnPath")?.trim();
+  const emailSync = req.nextUrl.searchParams.get("emailSync") === "true";
   const oauthPayload = {
     kind: "coach" as const,
     coachProfileId: ctx.profile.id,
     ts: Date.now(),
     returnAppUrl: appUrl,
     ...(returnPath?.startsWith("/") ? { returnPath } : {}),
+    ...(emailSync ? { emailSync: true } : {}),
   };
   const state = signNylasOAuthState(oauthPayload);
 
@@ -84,6 +86,7 @@ export async function GET(req: NextRequest) {
       provider,
       state,
       loginHint: ctx.profile.email ?? ctx.dbUser.email,
+      emailSync,
     });
     const response = NextResponse.redirect(url);
     attachNylasOAuthCookie(response, oauthPayload);
@@ -110,9 +113,16 @@ export async function POST(req: NextRequest) {
   const ctx = await getCoachProfileForUser();
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json().catch(() => ({})) as { provider?: string };
+  const body = await req.json().catch(() => ({})) as { provider?: string; emailSync?: boolean };
   const provider = body.provider === "microsoft" ? "microsoft" : "google";
-  const oauthPayload = { kind: "coach" as const, coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
+  const emailSync = Boolean(body.emailSync);
+  const oauthPayload = {
+    kind: "coach" as const,
+    coachProfileId: ctx.profile.id,
+    ts: Date.now(),
+    returnAppUrl: appUrl,
+    ...(emailSync ? { emailSync: true } : {}),
+  };
   const state = signNylasOAuthState(oauthPayload);
 
   try {
@@ -120,6 +130,7 @@ export async function POST(req: NextRequest) {
       provider,
       state,
       loginHint: ctx.profile.email ?? ctx.dbUser.email,
+      emailSync,
     });
     return NextResponse.json({ url });
   } catch (err) {

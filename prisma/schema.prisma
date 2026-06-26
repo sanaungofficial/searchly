@@ -271,8 +271,14 @@ model CoachProfile {
   calLink               String?
   nylasGrantId          String?  @unique
   nylasGrantEmail       String?
+  nylasGrantStatus      String?  @default("active") // active | expired
+  nylasEmailSyncEnabled Boolean  @default(false)
   nylasSchedulerConfigId String? @unique
+  nylasIntroSchedulerConfigId String? @unique
   nylasSchedulerSlug    String?
+  nylasIntroSchedulerSlug String?
+  nylasSchedulerCalendarIds Json?
+  nylasConferenceProvider String? // google_meet | microsoft_teams
   schedulerDurationMinutes Int   @default(30)
   schedulerTimezone        String? @default("America/New_York")
   schedulerOpenHourStart   String? @default("09:00")

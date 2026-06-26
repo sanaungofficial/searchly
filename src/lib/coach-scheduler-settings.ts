@@ -303,6 +303,19 @@ export function parseSchedulerAvailabilityPatch(body: Record<string, unknown>) {
   if (body.schedulerBlackoutDates !== undefined) {
     patch.schedulerBlackoutDates = parseBlackoutDates(body.schedulerBlackoutDates);
   }
+  if (body.nylasSchedulerCalendarIds !== undefined) {
+    const ids = body.nylasSchedulerCalendarIds;
+    if (Array.isArray(ids)) {
+      patch.nylasSchedulerCalendarIds = ids.filter((v): v is string => typeof v === "string" && v.length > 0);
+    } else if (ids === null) {
+      patch.nylasSchedulerCalendarIds = null;
+    }
+  }
+  if (body.nylasConferenceProvider !== undefined) {
+    const p = String(body.nylasConferenceProvider ?? "").trim();
+    patch.nylasConferenceProvider =
+      p === "google_meet" || p === "microsoft_teams" ? p : null;
+  }
 
   return patch;
 }
@@ -319,7 +332,9 @@ export function schedulerAvailabilityChanged(body: Record<string, unknown>) {
     body.schedulerMinBookingNoticeMinutes !== undefined ||
     body.schedulerCapacityHoursPerWeek !== undefined ||
     body.schedulerAvailabilityNotes !== undefined ||
-    body.schedulerBlackoutDates !== undefined
+    body.schedulerBlackoutDates !== undefined ||
+    body.nylasSchedulerCalendarIds !== undefined ||
+    body.nylasConferenceProvider !== undefined
   );
 }
 

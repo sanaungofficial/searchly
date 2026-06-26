@@ -38,12 +38,14 @@ export async function GET(
   }
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
+  const emailSync = req.nextUrl.searchParams.get("emailSync") === "true";
   const oauthPayload = {
     kind: "coach" as const,
     coachProfileId: coach.id,
     ts: Date.now(),
     returnAppUrl: appUrl,
     returnPath: adminCoachReturnPath(coach.id),
+    ...(emailSync ? { emailSync: true } : {}),
   };
   const state = signNylasOAuthState(oauthPayload);
 
@@ -52,6 +54,7 @@ export async function GET(
       provider,
       state,
       loginHint: coach.email ?? undefined,
+      emailSync,
     });
     const response = NextResponse.redirect(url);
     attachNylasOAuthCookie(response, oauthPayload);
@@ -88,8 +91,9 @@ export async function POST(
     return NextResponse.json({ error: "Coach not found" }, { status: 404 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { provider?: string };
+  const body = (await req.json().catch(() => ({}))) as { provider?: string; emailSync?: boolean };
   const provider = body.provider === "microsoft" ? "microsoft" : "google";
+  const emailSync = Boolean(body.emailSync);
   const appUrl = resolveKimchiAppUrl(req);
   const oauthPayload = {
     kind: "coach" as const,
@@ -97,6 +101,7 @@ export async function POST(
     ts: Date.now(),
     returnAppUrl: appUrl,
     returnPath: adminCoachReturnPath(coach.id),
+    ...(emailSync ? { emailSync: true } : {}),
   };
   const state = signNylasOAuthState(oauthPayload);
 
@@ -105,6 +110,7 @@ export async function POST(
       provider,
       state,
       loginHint: coach.email ?? undefined,
+      emailSync,
     });
     return NextResponse.json({ url });
   } catch (err) {

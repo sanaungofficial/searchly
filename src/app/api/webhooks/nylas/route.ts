@@ -17,6 +17,8 @@ import {
   processUserMessageWebhook,
 } from "@/lib/job-email-agent";
 import { resolveGuestUserId } from "@/lib/coach-hub";
+import { resolveCoachNotificationEmail } from "@/lib/coach-notification-email";
+import { markCoachGrantExpired } from "@/lib/coach-scheduler-sync";
 
 export async function GET(req: NextRequest) {
   const challenge = req.nextUrl.searchParams.get("challenge");
@@ -48,11 +50,16 @@ async function upsertBookingFromWebhook(
   const coach = await prisma.coachProfile.findFirst({
     where: {
       OR: [
-        ...(payload.configId ? [{ nylasSchedulerConfigId: payload.configId }] : []),
+        ...(payload.configId
+          ? [
+              { nylasSchedulerConfigId: payload.configId },
+              { nylasIntroSchedulerConfigId: payload.configId },
+            ]
+          : []),
         ...(payload.grantId ? [{ nylasGrantId: payload.grantId }] : []),
       ],
     },
-    select: { id: true, displayName: true, email: true },
+    select: { id: true, displayName: true, email: true, nylasGrantEmail: true },
   });
   if (!coach) return null;
 
@@ -118,7 +125,7 @@ async function upsertBookingFromWebhook(
     coachProfileId: coach.id,
     clientUserId: userId,
     coachName: coach.displayName,
-    coachEmail: coach.email,
+    coachEmail: resolveCoachNotificationEmail(coach),
     guestName: payload.guestName,
     guestEmail: payload.guestEmail,
     title: payload.title,
@@ -154,14 +161,33 @@ export async function POST(req: NextRequest) {
   const grantId = body.data?.grant_id;
   const objectId = body.data?.object?.id as string | undefined;
 
+  if (type === "grant.expired" || type === "grant.deleted") {
+    if (grantId) {
+      const coach = await prisma.coachProfile.findFirst({
+        where: { nylasGrantId: grantId },
+        select: { id: true },
+      });
+      if (coach) {
+        await markCoachGrantExpired(coach.id);
+      }
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   if (
     grantId &&
     objectId &&
     (type === "message.created" || type === "message.updated")
   ) {
-    processUserMessageWebhook(grantId, objectId).catch((err) =>
-      console.error("[nylas/webhook] user message", err),
-    );
+    const coachGrant = await prisma.coachProfile.findFirst({
+      where: { nylasGrantId: grantId, nylasEmailSyncEnabled: true },
+      select: { id: true },
+    });
+    if (!coachGrant) {
+      processUserMessageWebhook(grantId, objectId).catch((err) =>
+        console.error("[nylas/webhook] user message", err),
+      );
+    }
   }
 
   if (

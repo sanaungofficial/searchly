@@ -6,7 +6,6 @@ import { ensureJobAgentSettings } from "@/lib/job-agent-settings";
 import { syncUserInbox } from "@/lib/job-email-agent";
 import {
   clearNylasOAuthCookie,
-  createCoachSchedulerConfig,
   exchangeNylasCode,
   getNylasConfig,
   mapNylasOAuthError,
@@ -17,6 +16,8 @@ import {
   resolveNylasOAuthState,
   schedulerSlugForCoach,
 } from "@/lib/nylas";
+import { introSchedulerSlugSuffix } from "@/lib/coach-scheduler-config";
+import { syncCoachSchedulerFromProfile } from "@/lib/coach-scheduler-sync";
 
 async function profileOwnerRole(coachProfileId: string): Promise<UserRole | null> {
   const profile = await prisma.coachProfile.findUnique({
@@ -150,27 +151,24 @@ export async function GET(req: NextRequest) {
 
     const slug = profile.slug ?? coachProfileSlug(profile.displayName, profile.id);
     const schedulerSlug = schedulerSlugForCoach(slug, profile.id);
-    const coachEmail = email ?? profile.email ?? "";
-
-    const { configId, slug: hostedSlug } = await createCoachSchedulerConfig({
-      grantId,
-      coachName: profile.displayName,
-      coachEmail,
-      slug: schedulerSlug,
-      durationMinutes: profile.schedulerDurationMinutes ?? 30,
-    });
+    const introSlug = introSchedulerSlugSuffix(schedulerSlug);
+    const emailSync = parsed.kind === "coach" && Boolean(parsed.emailSync);
 
     await prisma.coachProfile.update({
       where: { id: profile.id },
       data: {
         nylasGrantId: grantId,
         nylasGrantEmail: email ?? null,
-        nylasSchedulerConfigId: configId,
-        nylasSchedulerSlug: hostedSlug ?? schedulerSlug,
+        nylasGrantStatus: "active",
+        nylasEmailSyncEnabled: emailSync,
+        nylasSchedulerSlug: schedulerSlug,
+        nylasIntroSchedulerSlug: introSlug,
         ...(returnRole === "ADMIN" ? { status: CoachStatus.ACTIVE } : {}),
         ...(slug !== profile.slug ? { slug } : {}),
       },
     });
+
+    await syncCoachSchedulerFromProfile(profile.id);
 
     return await redirectCoach({ nylas: "connected" });
   } catch (err) {
