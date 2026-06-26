@@ -1,5 +1,9 @@
-import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
-import { adminClientProfileBase } from "@/lib/workspace-urls";
+import {
+  clearClientSessionCaches,
+  clearAdminReviewClient,
+  setAdminReviewClient,
+  setActingUserScope,
+} from "@/lib/client-session";
 
 /** Open admin profile review (not impersonation) for a client. */
 export async function navigateToAdminClientProfile(userId: string): Promise<void> {
@@ -9,6 +13,14 @@ export async function navigateToAdminClientProfile(userId: string): Promise<void
     /* best-effort — admin review cannot run while impersonating */
   }
   clearClientSessionCaches();
+  setActingUserScope(userId);
+  setAdminReviewClient(userId);
+  window.location.href = "/dashboard";
+}
+
+export async function exitAdminClientReview(): Promise<void> {
+  clearAdminReviewClient();
+  clearClientSessionCaches();
   setActingUserScope(null);
-  window.location.href = adminClientProfileBase(userId);
+  window.location.href = "/dashboard/clients";
 }

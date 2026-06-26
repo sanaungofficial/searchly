@@ -207,6 +207,11 @@ export function parseAdminClientProfilePath(pathname: string): { clientId: strin
   return { clientId, suffix };
 }
 
+/** Admin reviewing a client profile — not the expert portal (coach tools). */
+export function isAdminClientReviewPath(pathname: string): boolean {
+  return parseAdminClientProfilePath(pathname) !== null;
+}
+
 function parseProfileLocationInner(pathname: string): ProfileLocation {
   if (pathname === "/profile/dream-role") return { page: "dreamrole" };
   if (pathname === "/profile/learning-path") return { page: "learning" };
@@ -248,8 +253,9 @@ export function parseProfileLocation(pathname: string): ProfileLocation {
   return parseProfileLocationInner(pathname);
 }
 
-export function profileBasePath(clientId?: string): string {
-  return clientId ? adminClientProfileBase(clientId) : "/profile";
+export function profileBasePath(clientId?: string, opts?: { sessionScoped?: boolean }): string {
+  if (clientId && !opts?.sessionScoped) return adminClientProfileBase(clientId);
+  return "/profile";
 }
 
 /** Append clientUserId for admin profile-review API calls (no impersonation). */

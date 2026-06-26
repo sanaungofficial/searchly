@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 
 // PATCH /api/jobs/[id] — update stage, notes, etc.
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
@@ -39,7 +40,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

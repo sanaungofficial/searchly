@@ -25,7 +25,7 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getActingUser } from "@/lib/acting-user";
+import { resolveScopedDbUser } from "@/lib/admin-client-subject";
 import { formatApiErrorMessage } from "@/lib/api-error-message";
 
 async function parseRecommendedFilters(request: Request): Promise<{
@@ -74,7 +74,8 @@ async function handleRecommended(request: Request) {
     return NextResponse.json({ error: "Hirebase is not configured on this environment." }, { status: 503 });
   }
 
-  const { dbUser } = await getActingUser(request);
+  const { dbUser, error } = await resolveScopedDbUser(request);
+  if (error) return error;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
