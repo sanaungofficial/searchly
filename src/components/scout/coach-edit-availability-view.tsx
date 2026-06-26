@@ -45,6 +45,8 @@ type Props = {
   mode: "coach" | "admin";
   coachId?: string;
   backHref?: string;
+  /** Hide page title and back link (e.g. inside admin coach drawer tab) */
+  embedded?: boolean;
 };
 
 const cardStyle: React.CSSProperties = {
@@ -196,7 +198,7 @@ function ConnectCalendarCard({ returnPath }: { returnPath: string }) {
   );
 }
 
-export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboard/bookings" }: Props) {
+export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboard/bookings", embedded = false }: Props) {
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfilePayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,7 +218,10 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
   const [blackoutDates, setBlackoutDates] = useState<string[]>([]);
   const [newBlackoutDate, setNewBlackoutDate] = useState("");
 
-  const returnPath = mode === "admin" && coachId ? `/admin/coaches/${coachId}` : "/dashboard/availability";
+  const returnPath =
+    mode === "admin" && coachId
+      ? `/admin/coaches?coachId=${encodeURIComponent(coachId)}&tab=availability`
+      : "/dashboard/availability";
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -353,7 +358,8 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 80 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: embedded ? 24 : 80 }}>
+      {!embedded && (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div>
           <h1 style={{ ...displayTitleStyle(32), margin: "0 0 8px" }}>Edit Availability</h1>
@@ -378,6 +384,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
           Back to Calendar
         </Link>
       </div>
+      )}
 
       {notice && (
         <div
@@ -396,7 +403,51 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
       <ScoutBox padding={0} style={{ overflow: "hidden" }}>
         <div style={cardStyle}>
           {!calendarConnected ? (
-            <ConnectCalendarCard returnPath={returnPath} />
+            mode === "admin" && coachId ? (
+              <div>
+                <p style={{ margin: 0, fontFamily: fontSans, fontSize: 16, fontWeight: 600, color: color.forest }}>
+                  Connect calendar for this coach
+                </p>
+                <p style={{ margin: "8px 0 16px", fontFamily: fontSans, fontSize: 14, color: color.muted, lineHeight: 1.5 }}>
+                  Connect Google or Outlook so clients can book sessions through Kimchi.
+                </p>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <a
+                    href={`/api/admin/coaches/${coachId}/nylas/connect?provider=google`}
+                    style={{
+                      display: "inline-flex",
+                      padding: "10px 18px",
+                      background: color.forest,
+                      color: color.gold,
+                      fontFamily: fontSans,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Connect Google Calendar
+                  </a>
+                  <a
+                    href={`/api/admin/coaches/${coachId}/nylas/connect?provider=microsoft`}
+                    style={{
+                      display: "inline-flex",
+                      padding: "10px 18px",
+                      background: "#fff",
+                      border: border.line,
+                      fontFamily: fontSans,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: color.stone,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Connect Outlook
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <ConnectCalendarCard returnPath={returnPath} />
+            )
           ) : (
             <div>
               <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: color.forest, fontWeight: 600 }}>
@@ -427,18 +478,37 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
                 </button>
               )}
               <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <a
-                  href={`/api/nylas/connect?provider=google&returnPath=${encodeURIComponent(returnPath)}`}
-                  style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
-                >
-                  Reconnect Google
-                </a>
-                <a
-                  href={`/api/nylas/connect?provider=microsoft&returnPath=${encodeURIComponent(returnPath)}`}
-                  style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
-                >
-                  Reconnect Outlook
-                </a>
+                {mode === "admin" && coachId ? (
+                  <>
+                    <a
+                      href={`/api/admin/coaches/${coachId}/nylas/connect?provider=google`}
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                    >
+                      Reconnect Google
+                    </a>
+                    <a
+                      href={`/api/admin/coaches/${coachId}/nylas/connect?provider=microsoft`}
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                    >
+                      Reconnect Outlook
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <a
+                      href={`/api/nylas/connect?provider=google&returnPath=${encodeURIComponent(returnPath)}`}
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                    >
+                      Reconnect Google
+                    </a>
+                    <a
+                      href={`/api/nylas/connect?provider=microsoft&returnPath=${encodeURIComponent(returnPath)}`}
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                    >
+                      Reconnect Outlook
+                    </a>
+                  </>
+                )}
               </div>
             </div>
           )}

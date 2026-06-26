@@ -304,7 +304,7 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                 )}
                 {coach.calendarConnected && coach.schedulerReady && coachId && (
                   <Link
-                    href={`/admin/coaches/${coachId}/availability`}
+                    href={`/admin/coaches?coachId=${encodeURIComponent(coachId)}&tab=availability`}
                     style={{
                       display: "block",
                       marginTop: 12,

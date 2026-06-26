@@ -18,8 +18,12 @@ import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 
 type Props = {
-  onClose: () => void;
+  onClose?: () => void;
   coachSlug?: string | null;
+  /** Admin: edit another coach's pricing */
+  coachId?: string;
+  /** Render inline (no overlay drawer shell) */
+  embedded?: boolean;
 };
 
 function Section({
@@ -121,9 +125,10 @@ function FaqItem({ icon, title, body }: { icon: string; title: string; body: str
   );
 }
 
-export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
+export function CoachPricingDrawer({ onClose, coachSlug, coachId, embedded = false }: Props) {
   const isMobile = useIsMobile();
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(embedded);
+  const pricingApi = coachId ? `/api/admin/coaches/${coachId}/pricing` : "/api/coach/pricing";
   const [data, setData] = useState<CoachPricingPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -144,7 +149,7 @@ export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch("/api/coach/pricing");
+      const r = await fetch(pricingApi);
       if (!r.ok) throw new Error("Failed to load pricing");
       const payload = (await r.json()) as CoachPricingPayload;
       setData(payload);
@@ -154,35 +159,38 @@ export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pricingApi]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   useEffect(() => {
+    if (embedded) return;
     const t = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(t);
-  }, []);
+  }, [embedded]);
 
   const close = useCallback(() => {
+    if (embedded) return;
     setVisible(false);
-    window.setTimeout(onClose, 220);
-  }, [onClose]);
+    if (onClose) window.setTimeout(onClose, 220);
+  }, [onClose, embedded]);
 
   useEffect(() => {
+    if (embedded) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") close();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
+  }, [close, embedded]);
 
   async function patch(body: Record<string, unknown>) {
     setSaving(true);
     setError(null);
     try {
-      const r = await fetch("/api/coach/pricing", {
+      const r = await fetch(pricingApi, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -280,68 +288,51 @@ export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
   const discountsToShow = showAllDiscounts ? visibleDiscounts : visibleDiscounts.slice(0, 3);
   const profileSlug = coachSlug ?? data?.slug;
 
-  return (
-    <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
-      <div
-        style={{
-          position: "fixed",
-          top: isMobile ? 0 : 8,
-          right: isMobile ? 0 : 8,
-          bottom: isMobile ? 0 : 8,
-          left: isMobile ? 0 : undefined,
-          width: isMobile ? "100vw" : DRAWER_WIDTH,
-          maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
-          background: surface.page,
-          overflow: "hidden",
-          zIndex: 70,
-          boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
-          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
-          transition: "transform 0.25s ease",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div
-          style={{
-            padding: isMobile ? "12px 16px" : "14px 28px",
-            background: surface.card,
-            borderBottom: border.line,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexShrink: 0,
-          }}
+  const header = (
+    <div
+      style={{
+        padding: isMobile ? "12px 16px" : embedded ? "0 0 14px" : "14px 28px",
+        background: embedded ? "transparent" : surface.card,
+        borderBottom: embedded ? "none" : border.line,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        flexShrink: 0,
+      }}
+    >
+      {!embedded && (
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Close"
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: color.muted, padding: 0, lineHeight: 1 }}
         >
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Close"
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: color.muted, padding: 0, lineHeight: 1 }}
-          >
-            ×
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ ...displayTitleStyle(18), margin: 0 }}>Pricing</p>
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "2px 0 0" }}>
-              Set pricing and settings around custom hourly coaching
-            </p>
-          </div>
-          {saved && (
-            <span style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>Saved</span>
-          )}
-        </div>
+          ×
+        </button>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ ...displayTitleStyle(embedded ? 22 : 18), margin: 0 }}>Pricing</p>
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "2px 0 0" }}>
+          Set pricing and settings around custom hourly coaching
+        </p>
+      </div>
+      {saved && (
+        <span style={{ fontFamily: fontSans, fontSize: 13, color: color.forest, fontWeight: 600 }}>Saved</span>
+      )}
+    </div>
+  );
 
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: "auto",
-            overflowX: "hidden",
-            WebkitOverflowScrolling: "touch",
-            padding: isMobile ? "20px 16px 32px" : "28px 32px 36px",
-          }}
-        >
+  const body = (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        overflowY: "auto",
+        overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",
+        padding: isMobile ? "20px 16px 32px" : embedded ? "0 0 32px" : "28px 32px 36px",
+      }}
+    >
           {loading && !data && (
             <p style={{ fontFamily: fontSans, color: color.muted }}>Loading pricing…</p>
           )}
@@ -698,7 +689,42 @@ export function CoachPricingDrawer({ onClose, coachSlug }: Props) {
               </Section>
             </>
           )}
-        </div>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, height: "100%" }}>
+        {header}
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
+      <div
+        style={{
+          position: "fixed",
+          top: isMobile ? 0 : 8,
+          right: isMobile ? 0 : 8,
+          bottom: isMobile ? 0 : 8,
+          left: isMobile ? 0 : undefined,
+          width: isMobile ? "100vw" : DRAWER_WIDTH,
+          maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
+          background: surface.page,
+          overflow: "hidden",
+          zIndex: 70,
+          boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
+          transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
+          transition: "transform 0.25s ease",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {header}
+        {body}
       </div>
     </>
   );

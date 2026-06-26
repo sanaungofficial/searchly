@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { pushCoachProfileToAirtable } from "@/lib/airtable/push-coach";
+import { coachProfileSlug } from "@/lib/coach-slug";
 import { parseSchedulerAvailabilityPatch, schedulerAvailabilityChanged } from "@/lib/coach-scheduler-settings";
 import { syncCoachSchedulerFromProfile } from "@/lib/coach-scheduler-sync";
 import { prisma } from "@/lib/prisma";
@@ -18,6 +19,7 @@ function coachData(body: Record<string, unknown>) {
   if (body.linkedinUrl !== undefined) d.linkedinUrl = (body.linkedinUrl as string) || null;
   if (body.lelandUrl !== undefined) d.lelandUrl = (body.lelandUrl as string) || null;
   if (body.photoUrl !== undefined) d.photoUrl = (body.photoUrl as string) || null;
+  if (body.calLink !== undefined) d.calLink = (body.calLink as string) || null;
   if (body.firms !== undefined) d.firms = body.firms;
   if (body.schools !== undefined) d.schools = body.schools;
   if (body.specialties !== undefined) d.specialties = body.specialties;
@@ -27,16 +29,48 @@ function coachData(body: Record<string, unknown>) {
   if (body.featured !== undefined) d.featured = body.featured;
   if (body.isInternal !== undefined) d.isInternal = Boolean(body.isInternal);
   if (body.status !== undefined) d.status = body.status as CoachStatus;
+  if (body.clientSpecializations !== undefined) d.clientSpecializations = body.clientSpecializations;
+  if (body.experienceLevel !== undefined) d.experienceLevel = (body.experienceLevel as string) || null;
+  if (body.clientTier !== undefined) d.clientTier = (body.clientTier as string) || null;
+  if (body.industryYears !== undefined) d.industryYears = body.industryYears != null ? Number(body.industryYears) : null;
+  if (body.isProfessionalCoach !== undefined) d.isProfessionalCoach = Boolean(body.isProfessionalCoach);
+  if (body.whyCoach !== undefined) d.whyCoach = (body.whyCoach as string) || null;
+  if (body.aboutMe !== undefined) d.aboutMe = (body.aboutMe as string) || null;
   Object.assign(d, parseSchedulerAvailabilityPatch(body));
   return d;
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await requireAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+function ensureSlug(
+  profile: { id: string; displayName: string; slug: string | null },
+  patch: Record<string, unknown>,
+) {
+  const name = (patch.displayName as string) ?? profile.displayName;
+  if (!profile.slug || patch.displayName !== undefined) {
+    patch.slug = coachProfileSlug(name, profile.id);
+  }
+}
+
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  const coach = await prisma.coachProfile.findUnique({ where: { id } });
+  if (!coach) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
+  return NextResponse.json(coach);
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { id } = await params;
+  const existing = await prisma.coachProfile.findUnique({ where: { id } });
+  if (!existing) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
+
   const body = await req.json();
-  const coach = await prisma.coachProfile.update({ where: { id }, data: coachData(body) });
+  const d = coachData(body);
+  ensureSlug(existing, d);
+
+  const coach = await prisma.coachProfile.update({ where: { id }, data: d });
 
   if (schedulerAvailabilityChanged(body) && coach.nylasGrantId) {
     try {
@@ -58,7 +92,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await requireAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   await prisma.coachProfile.delete({ where: { id } });
