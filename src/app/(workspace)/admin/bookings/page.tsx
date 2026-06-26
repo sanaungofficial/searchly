@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AdminNav } from "@/app/(workspace)/admin/admin-nav";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -44,10 +43,7 @@ export default function AdminBookingsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-        <h1 style={{ ...displayTitleStyle(28), margin: 0 }}>Bookings</h1>
-        <AdminNav />
-      </div>
+      <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Bookings</h1>
 
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 20px" }}>
         Coaching sessions booked through Nylas Scheduler. Register webhooks in the Nylas dashboard pointing to{" "}

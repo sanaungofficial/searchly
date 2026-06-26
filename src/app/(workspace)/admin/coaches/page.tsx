@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AdminNav } from "@/app/(workspace)/admin/admin-nav";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { ScoutBox } from "@/components/scout/scout-box";
 import { border, color, displayTitleStyle, fontMono, fontSans, type as T } from "@/lib/typography";
@@ -44,10 +43,7 @@ export default function AdminCoachesPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-        <h1 style={{ ...displayTitleStyle(28), margin: 0 }}>Coaches</h1>
-        <AdminNav />
-      </div>
+      <h1 style={{ ...displayTitleStyle(28), margin: "0 0 20px" }}>Coaches</h1>
 
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 20px", maxWidth: 720 }}>
         Coach hub — clients, Kimchi-booked sessions, and booking communications in one view. Sessions come from Nylas Scheduler webhooks only.

@@ -9,6 +9,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { canAccessBetaFeature } from "@/lib/beta-features";
 import { isStaffPortalRole, STAFF_DASHBOARD_NAV } from "@/lib/staff-portal";
+import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 
 export const TOP_NAV_HEIGHT = 64;
@@ -32,6 +33,11 @@ function buildNavLinks(isAdmin: boolean, isStaffPortal: boolean): NavLink[] {
       label: "Admin",
       path: "/admin",
       match: (p) => p.startsWith("/admin"),
+      children: ADMIN_NAV.map(({ label, path }) => ({
+        label,
+        path,
+        match: (p) => matchAdminNavPath(p, path),
+      })),
     });
   }
   links.push({
