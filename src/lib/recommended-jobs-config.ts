@@ -16,7 +16,7 @@ export function recommendedDigestMinScore(): number {
 export const RECOMMENDED_FETCH_POOL = 60;
 
 /** Max jobs stored per user snapshot / API response. */
-export const RECOMMENDED_SNAPSHOT_MAX_JOBS = 20;
+export const RECOMMENDED_SNAPSHOT_MAX_JOBS = 40;
 
 /** Cooldown between manual live refreshes — 0 disables rate limiting. */
 export const RECOMMENDED_MANUAL_REFRESH_COOLDOWN_MS = 0;

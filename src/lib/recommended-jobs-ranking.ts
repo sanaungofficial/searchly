@@ -20,21 +20,21 @@ export function applyRecommendedScoreFloor(
   return jobs.filter((j) => j.matchScore >= floor);
 }
 
+export function compareRecommendedMatchScore(a: VectorMatchedJob, b: VectorMatchedJob): number {
+  if (a.matchScore !== b.matchScore) return b.matchScore - a.matchScore;
+  const tierA = a.rankTier ?? 3;
+  const tierB = b.rankTier ?? 3;
+  if (tierA !== tierB) return tierA - tierB;
+  if (a.isTrackedCompany !== b.isTrackedCompany) {
+    return (b.isTrackedCompany ? 1 : 0) - (a.isTrackedCompany ? 1 : 0);
+  }
+  const freshnessCmp = compareJobFreshness(a.datePosted, b.datePosted);
+  if (freshnessCmp !== 0) return freshnessCmp;
+  return (a.vectorRank ?? 99) - (b.vectorRank ?? 99);
+}
+
 export function sortRecommendedJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[] {
-  return [...jobs].sort((a, b) => {
-    const tierA = a.rankTier ?? 3;
-    const tierB = b.rankTier ?? 3;
-    if (tierA !== tierB) return tierA - tierB;
-
-    const freshnessCmp = compareJobFreshness(a.datePosted, b.datePosted);
-    if (freshnessCmp !== 0) return freshnessCmp;
-
-    if (a.isTrackedCompany !== b.isTrackedCompany) {
-      return (b.isTrackedCompany ? 1 : 0) - (a.isTrackedCompany ? 1 : 0);
-    }
-    if (a.matchScore !== b.matchScore) return b.matchScore - a.matchScore;
-    return (a.vectorRank ?? 99) - (b.vectorRank ?? 99);
-  });
+  return [...jobs].sort(compareRecommendedMatchScore);
 }
 
 export function dedupeVectorMatchedJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[] {

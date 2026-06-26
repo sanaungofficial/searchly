@@ -11,6 +11,7 @@ export const LOCATION_RADIUS_OPTIONS = [
 ] as const;
 
 const geocodeCache = new Map<string, { lat: number; lon: number } | null>();
+const MAX_GEOCODE_LOOKUPS = 24;
 
 function locationQuery(parts: ParsedProfileLocation, fallback?: string | null): string {
   const fromParts = [parts.city, parts.region, parts.country].filter(Boolean).join(", ");
@@ -50,7 +51,7 @@ export async function geocodePlace(query: string): Promise<{ lat: number; lon: n
     })}`;
     const res = await fetch(url, {
       headers: { "User-Agent": "Kimchi/1.0 (https://app.kimchi.so)" },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(4000),
       next: { revalidate: 86400 },
     });
     if (!res.ok) {
@@ -73,6 +74,17 @@ export async function geocodePlace(query: string): Promise<{ lat: number; lon: n
     geocodeCache.set(key, null);
     return null;
   }
+}
+
+async function prefetchGeocodes(queries: string[]): Promise<void> {
+  const pending = queries
+    .map((q) => q.trim())
+    .filter(Boolean)
+    .filter((q, i, arr) => arr.indexOf(q) === i)
+    .slice(0, MAX_GEOCODE_LOOKUPS)
+    .filter((q) => !geocodeCache.has(q.toLowerCase()));
+
+  await Promise.all(pending.map((q) => geocodePlace(q)));
 }
 
 export function haversineMiles(
@@ -121,7 +133,17 @@ export async function filterSourcesByRadiusMiles<T extends RecommendedJobSourceL
   if (!home?.city?.trim()) return sources;
 
   const homeQuery = locationQuery(home);
-  const homeCoord = await geocodePlace(homeQuery);
+  const jobQueries = sources
+    .filter((entry) => !isRemoteJob(entry.cached, entry.raw))
+    .map((entry) => {
+      const jobParts = jobLocationParts(entry.cached, entry.raw);
+      return locationQuery(jobParts, entry.cached.location);
+    })
+    .filter(Boolean);
+
+  await prefetchGeocodes([homeQuery, ...jobQueries]);
+
+  const homeCoord = geocodeCache.get(homeQuery.toLowerCase()) ?? null;
   if (!homeCoord) return sources;
 
   const kept: T[] = [];
@@ -138,7 +160,7 @@ export async function filterSourcesByRadiusMiles<T extends RecommendedJobSourceL
       continue;
     }
 
-    const jobCoord = await geocodePlace(jobQuery);
+    const jobCoord = geocodeCache.get(jobQuery.toLowerCase()) ?? null;
     if (!jobCoord) {
       if (regionMatches(home, jobParts)) kept.push(entry);
       continue;

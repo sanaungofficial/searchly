@@ -2,7 +2,7 @@ import { hostnameFromUrl } from "@/lib/company-domain";
 import type { CachedJob } from "@/lib/cached-job";
 import { jobListingDedupeKey } from "@/lib/cached-job";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
-import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
+import { VECTOR_SEARCH_RESULTS_MAX, HIREBASE_SEARCH_PAGE_MAX } from "@/lib/vector-matched-job";
 import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 import { resolveDatePostedFrom } from "@/lib/job-posted-filter";
@@ -673,7 +673,7 @@ export async function fetchHirebaseRoleMatchingJobs(input: {
     }
   }
 
-  const limit = Math.max(1, Math.min(input.filters.limit ?? 20, 20));
+  const limit = Math.max(1, Math.min(input.filters.limit ?? HIREBASE_SEARCH_PAGE_MAX, HIREBASE_SEARCH_PAGE_MAX));
   const page = Math.max(1, input.filters.page ?? 1);
 
   const body: Record<string, unknown> = {
@@ -725,7 +725,7 @@ export async function fetchHirebaseRecentJobs(input: {
   companyNames: string[];
   totalCount: number;
 }> {
-  const limit = Math.max(1, Math.min(input.maxJobs ?? 20, 20));
+  const limit = Math.max(1, Math.min(input.maxJobs ?? HIREBASE_SEARCH_PAGE_MAX, HIREBASE_SEARCH_PAGE_MAX));
   const keywords = (input.keywords ?? [])
     .map((k) => k.trim().toLowerCase())
     .filter((k) => k.length >= 3)

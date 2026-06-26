@@ -39,8 +39,10 @@ import {
   filtersCacheKey,
   readRecommendedCache,
   writeRecommendedCache,
+  clearRecommendedCacheForKey,
   type RecommendedCacheEntry,
 } from "@/lib/recommended-jobs-cache";
+import { compareRecommendedMatchScore } from "@/lib/recommended-jobs-ranking";
 import {
   loadScopedSemanticQuery,
   saveScopedSemanticQuery,
@@ -54,7 +56,7 @@ import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
 import { matchScoreStyle } from "@/lib/match-score";
-import { compareJobFreshness, daysSincePosted } from "@/lib/job-posted-freshness";
+import { daysSincePosted } from "@/lib/job-posted-freshness";
 import { JobFreshnessIndicator, JobFreshnessLegend } from "./job-freshness-indicator";
 
 type JobsApiResponse = {
@@ -822,6 +824,7 @@ export function PipelineRecommendedSection({
         const res = await fetch("/api/jobs/recommended", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: forceRefresh ? "no-store" : "default",
           body: JSON.stringify({
             ...filters,
             preferCache: options?.preferCache ?? !forceRefresh,
@@ -834,7 +837,7 @@ export function PipelineRecommendedSection({
         if (!res.ok) {
           const rawMsg = formatApiErrorMessage(data.error, "Couldn't load recommended roles.");
           const isEmbedNoise =
-            /embed|artifact|hirebase|permission|forbidden|403|vector/i.test(rawMsg);
+            !forceRefresh && /embed|artifact|hirebase|permission|forbidden|403|vector/i.test(rawMsg);
           const msg = isEmbedNoise ? null : data.hint ? `${rawMsg} ${data.hint}` : rawMsg;
           setError(msg);
           setNotice(null);
@@ -1046,10 +1049,11 @@ export function PipelineRecommendedSection({
   };
 
   const handleRefresh = () => {
+    clearRecommendedCacheForKey(filtersCacheKey(formToFilters(appliedForm, 1)));
     void fetchRecommended(appliedForm, {
       forceRefresh: true,
       preferCache: false,
-      background: jobs.length > 0,
+      background: false,
     });
   };
 
@@ -1102,9 +1106,11 @@ export function PipelineRecommendedSection({
 
   const filteredListings = useMemo(
     () =>
-      [...recommendedListings].sort((a, b) =>
-        compareJobFreshness(a.cached.datePosted, b.cached.datePosted),
-      ),
+      [...recommendedListings].sort((a, b) => {
+        const jobA = roleListingToVectorMatchedJob(a);
+        const jobB = roleListingToVectorMatchedJob(b);
+        return compareRecommendedMatchScore(jobA, jobB);
+      }),
     [recommendedListings],
   );
 
@@ -1127,7 +1133,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles from Hirebase matched to your profile — sorted by freshness first. Apply within 48 hours for the best response rate.
+              Roles from Hirebase matched to your profile — sorted by match score (best fits first). Apply within 48 hours for the best response rate.
             </p>
             <div style={{ marginTop: 10 }}>
               <JobFreshnessLegend compact />

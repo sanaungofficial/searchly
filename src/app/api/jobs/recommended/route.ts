@@ -7,6 +7,7 @@ import {
 import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
 import {
   RECOMMENDED_MATCH_SCORE_FLOOR,
+  RECOMMENDED_SNAPSHOT_MAX_JOBS,
   utcSnapshotDate,
 } from "@/lib/recommended-jobs-config";
 import {
@@ -121,7 +122,8 @@ async function handleRecommended(request: Request) {
     const result = await generateRecommendedJobsForUser({
       userId: dbUser.id,
       filters: searchFilters,
-      preferCache,
+      preferCache: forceRefresh ? false : preferCache,
+      maxJobs: RECOMMENDED_SNAPSHOT_MAX_JOBS,
     });
 
     if (!result?.jobs.length) {

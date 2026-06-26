@@ -51,6 +51,15 @@ export function isCacheFresh(entry: RecommendedCacheEntry, ttlMs = RECOMMENDED_C
   return Date.now() - entry.fetchedAt < ttlMs;
 }
 
+export function clearRecommendedCacheForKey(filtersKey: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(storageKey(filtersKey));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function clearRecommendedCache(): void {
   if (typeof window === "undefined") return;
   try {

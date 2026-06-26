@@ -86,4 +86,7 @@ export const DEFAULT_VECTOR_SEARCH_FILTERS: VectorSearchFilters = {
 };
 
 /** Max jobs returned per recommended search (product cap). */
-export const VECTOR_SEARCH_RESULTS_MAX = 20;
+export const VECTOR_SEARCH_RESULTS_MAX = 40;
+
+/** Hirebase `/v2/jobs/search` page size cap per request. */
+export const HIREBASE_SEARCH_PAGE_MAX = 40;
