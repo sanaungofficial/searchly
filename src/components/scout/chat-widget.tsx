@@ -110,9 +110,11 @@ function ChatMessageBody({
 
 export function ChatWidget({
   hideLauncher = false,
+  embedded = false,
   bottomStackOffset = 0,
 }: {
   hideLauncher?: boolean;
+  embedded?: boolean;
   bottomStackOffset?: number;
 }) {
   const router = useRouter();
@@ -516,86 +518,18 @@ export function ChatWidget({
       ? "min(640px, calc(100vh - 120px))"
       : undefined;
 
-  return (
+  const panelChrome = (
     <>
-      {!hideLauncher && (
-      <button
-        onClick={toggleOpen}
-        aria-label={chatOpen ? "Close Scout" : "Open Scout AI"}
+      <div
         style={{
-          position: "fixed",
-          bottom: isMobile ? "max(16px, env(safe-area-inset-bottom))" : 24,
-          right: isMobile ? 12 : 24,
-          left: isMobile ? 12 : undefined,
-          width: 52,
-          height: 52,
-          borderRadius: 0,
-          background: chatOpen ? "#1A3A2F" : "#FFFFFF",
-          border: chatPulse ? `2px solid ${color.forest}` : "1px solid rgba(26,58,47,0.15)",
-          boxShadow: chatPulse
-            ? "0 0 0 6px rgba(26,58,47,0.2), 0 4px 16px rgba(0,0,0,0.12)"
-            : "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
-          cursor: "pointer",
-          zIndex: 90,
+          padding: embedded ? "10px 14px" : "14px 18px 12px",
+          background: "#1A3A2F",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.2s",
-          animation: chatPulse ? "chatPulse 1.2s ease-in-out 2" : undefined,
+          justifyContent: "space-between",
+          flexShrink: 0,
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
       >
-        <span style={{ fontSize: 22, color: chatOpen ? "#E8D5A3" : "#1A3A2F", lineHeight: 1 }}>✦</span>
-      </button>
-      )}
-
-      <style>{`
-        @keyframes chatPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.08); }
-        }
-      `}</style>
-
-      {chatOpen && (
-        <>
-          <div
-            onClick={() => {
-              setChatOpen(false);
-              setSelectedJobId(null);
-            }}
-            style={{ position: "fixed", inset: 0, zIndex: 95 }}
-          />
-          <div
-            style={{
-              position: "fixed",
-              bottom: panelBottom,
-              right: isMobile ? 12 : 24,
-              left: isMobile ? 12 : undefined,
-              width: panelWidth,
-              height: panelHeight,
-              maxHeight: isMobile ? "calc(100vh - 96px - env(safe-area-inset-bottom))" : undefined,
-              background: "#FFFFFF",
-              borderRadius: 0,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
-              border: "1px solid rgba(0,0,0,0.06)",
-              zIndex: 100,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              animation: "fadeIn 0.2s ease both",
-            }}
-          >
-            <div
-              style={{
-                padding: "14px 18px 12px",
-                background: "#1A3A2F",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexShrink: 0,
-              }}
-            >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14, color: "#E8D5A3" }}>✦</span>
                 <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#E8D5A3" }}>
@@ -652,6 +586,7 @@ export function ChatWidget({
                     Chat
                   </button>
                 )}
+                {!embedded && (
                 <button
                   onClick={() => {
                     setChatOpen(false);
@@ -669,6 +604,7 @@ export function ChatWidget({
                 >
                   ×
                 </button>
+                )}
               </div>
             </div>
 
@@ -1243,6 +1179,106 @@ export function ChatWidget({
                 )}
               </div>
             )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            background: "#FFFFFF",
+          }}
+        >
+          {panelChrome}
+        </div>
+        {showUpgrade && (
+          <GrowthUpgradeModal
+            trigger="limit_hit"
+            onClose={() => setShowUpgrade(false)}
+            onOpenPricing={openPricing}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {!hideLauncher && (
+      <button
+        onClick={toggleOpen}
+        aria-label={chatOpen ? "Close Scout" : "Open Scout AI"}
+        style={{
+          position: "fixed",
+          bottom: isMobile ? "max(16px, env(safe-area-inset-bottom))" : 24,
+          right: isMobile ? 12 : 24,
+          left: isMobile ? 12 : undefined,
+          width: 52,
+          height: 52,
+          borderRadius: 0,
+          background: chatOpen ? "#1A3A2F" : "#FFFFFF",
+          border: chatPulse ? `2px solid ${color.forest}` : "1px solid rgba(26,58,47,0.15)",
+          boxShadow: chatPulse
+            ? "0 0 0 6px rgba(26,58,47,0.2), 0 4px 16px rgba(0,0,0,0.12)"
+            : "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+          cursor: "pointer",
+          zIndex: 90,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.2s",
+          animation: chatPulse ? "chatPulse 1.2s ease-in-out 2" : undefined,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      >
+        <span style={{ fontSize: 22, color: chatOpen ? "#E8D5A3" : "#1A3A2F", lineHeight: 1 }}>✦</span>
+      </button>
+      )}
+
+      <style>{`
+        @keyframes chatPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+        }
+      `}</style>
+
+      {chatOpen && (
+        <>
+          <div
+            onClick={() => {
+              setChatOpen(false);
+              setSelectedJobId(null);
+            }}
+            style={{ position: "fixed", inset: 0, zIndex: 95 }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              bottom: panelBottom,
+              right: isMobile ? 12 : 24,
+              left: isMobile ? 12 : undefined,
+              width: panelWidth,
+              height: panelHeight,
+              maxHeight: isMobile ? "calc(100vh - 96px - env(safe-area-inset-bottom))" : undefined,
+              background: "#FFFFFF",
+              borderRadius: 0,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
+              border: "1px solid rgba(0,0,0,0.06)",
+              zIndex: 100,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              animation: "fadeIn 0.2s ease both",
+            }}
+          >
+            {panelChrome}
           </div>
         </>
       )}
