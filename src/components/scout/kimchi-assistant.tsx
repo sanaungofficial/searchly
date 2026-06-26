@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { KimchiChatPanel } from "@/components/scout/kimchi-chat-panel";
+import { KimchiThreadSidebar } from "@/components/scout/kimchi-thread-sidebar";
 import { VoiceOrb } from "@/components/voice/voice-orb";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKimchiThreads } from "@/hooks/use-kimchi-threads";
@@ -12,7 +13,7 @@ import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import { fontSans } from "@/lib/typography";
 
 const sans = fontSans;
-const DRAWER_WIDTH = "min(720px, calc(100vw - 24px))";
+const DRAWER_WIDTH = "min(980px, calc(100vw - 24px))";
 
 function launcherBottom(isMobile: boolean): string {
   return isMobile ? "max(16px, env(safe-area-inset-bottom))" : "24px";
@@ -125,64 +126,38 @@ export function KimchiAssistant() {
               <div className="kimchi-drawer__topbar">
                 <div className="kimchi-drawer__topbar-left">
                   <span className="kimchi-drawer__star">✦</span>
-                  <button
-                    type="button"
-                    className="kimchi-drawer__thread-btn"
-                    onClick={() => threads.setThreadMenuOpen((v) => !v)}
-                    aria-expanded={threads.threadMenuOpen}
-                  >
+                  <div className="kimchi-drawer__title-block">
+                    <span className="kimchi-drawer__brand">Kimchi</span>
                     <span className="kimchi-drawer__name">{displayTitle}</span>
-                    <span className="kimchi-drawer__chev">▾</span>
-                  </button>
+                  </div>
                 </div>
                 <div className="kimchi-drawer__topbar-actions">
-                  <button
-                    type="button"
-                    className="kimchi-drawer__new"
-                    onClick={() => void threads.createThread()}
-                    aria-label="New chat"
-                    title="New chat"
-                  >
-                    +
-                  </button>
                   <button type="button" className="kimchi-drawer__close" onClick={closePanel} aria-label="Close">
                     ×
                   </button>
                 </div>
               </div>
 
-              {threads.threadMenuOpen && (
-                <div className="kimchi-drawer__thread-menu">
-                  {threads.threads.length === 0 && (
-                    <p className="kimchi-drawer__thread-empty">No past chats yet.</p>
-                  )}
-                  {threads.threads.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={`kimchi-drawer__thread-item${t.id === threads.activeThreadId ? " kimchi-drawer__thread-item--active" : ""}`}
-                      onClick={() => void threads.selectThread(t.id)}
-                    >
-                      <span className="kimchi-drawer__thread-title">
-                        {t.title === "New chat" || t.title === "New thread" ? "New thread" : t.title}
-                      </span>
-                      <span className="kimchi-drawer__thread-meta">
-                        {t.messageCount} msg · {new Date(t.updatedAt).toLocaleDateString()}
-                      </span>
-                    </button>
-                  ))}
+              <div className="kimchi-drawer__body">
+                <div className="kimchi-drawer__main">
+                  <KimchiChatPanel
+                    key={threads.activeThreadId ?? "none"}
+                    pageHint={pageHint}
+                    voiceUnavailable={voiceConfigured === false}
+                    threads={threads}
+                    onNavigate={(href) => {
+                      router.push(href);
+                    }}
+                  />
                 </div>
-              )}
-
-              <KimchiChatPanel
-                key={threads.activeThreadId ?? "none"}
-                pageHint={pageHint}
-                voiceUnavailable={voiceConfigured === false}
-                threads={threads}
-                onNavigate={(href) => {
-                  router.push(href);
-                }}
-              />
+                <KimchiThreadSidebar
+                  threads={threads.threads}
+                  activeThreadId={threads.activeThreadId}
+                  loading={threads.loading}
+                  onSelect={(id) => void threads.selectThread(id)}
+                  onCreate={() => void threads.createThread()}
+                />
+              </div>
             </div>
           </>,
           document.body,
@@ -230,6 +205,19 @@ function KimchiAssistantStyles() {
         transition: transform 0.28s cubic-bezier(0.32, 0, 0.16, 1);
         overflow: hidden;
       }
+      .kimchi-drawer__body {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: row;
+      }
+      .kimchi-drawer__main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
       .kimchi-drawer__topbar {
         display: flex;
         align-items: center;
@@ -248,16 +236,19 @@ function KimchiAssistantStyles() {
         flex: 1;
       }
       .kimchi-drawer__star { color: #E8913A; font-size: 16px; flex-shrink: 0; }
-      .kimchi-drawer__thread-btn {
+      .kimchi-drawer__title-block {
         display: flex;
-        align-items: center;
-        gap: 6px;
+        flex-direction: column;
         min-width: 0;
-        padding: 6px 10px;
-        border: 1px solid rgba(26, 58, 47, 0.1);
-        border-radius: 10px;
-        background: #FAFAF8;
-        cursor: pointer;
+        gap: 1px;
+      }
+      .kimchi-drawer__brand {
+        font-family: ${sans};
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: rgba(26, 58, 47, 0.45);
       }
       .kimchi-drawer__name {
         font-family: ${sans};
@@ -267,31 +258,13 @@ function KimchiAssistantStyles() {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 360px;
-      }
-      .kimchi-drawer__chev {
-        color: rgba(26, 58, 47, 0.45);
-        font-size: 10px;
+        max-width: min(420px, 42vw);
       }
       .kimchi-drawer__topbar-actions {
         display: flex;
         align-items: center;
         gap: 8px;
         flex-shrink: 0;
-      }
-      .kimchi-drawer__new {
-        width: 34px;
-        height: 34px;
-        padding: 0;
-        border: 1px solid rgba(26, 58, 47, 0.12);
-        border-radius: 10px;
-        background: #fff;
-        color: #1A3A2F;
-        font-family: ${sans};
-        font-size: 20px;
-        font-weight: 400;
-        line-height: 1;
-        cursor: pointer;
       }
       .kimchi-drawer__close {
         width: 34px;
@@ -302,47 +275,6 @@ function KimchiAssistantStyles() {
         color: rgba(26, 58, 47, 0.55);
         font-size: 20px;
         cursor: pointer;
-      }
-      .kimchi-drawer__thread-menu {
-        flex-shrink: 0;
-        max-height: 220px;
-        overflow-y: auto;
-        border-bottom: 1px solid rgba(26, 58, 47, 0.1);
-        background: #FAFAF8;
-      }
-      .kimchi-drawer__thread-empty {
-        margin: 0;
-        padding: 12px 14px;
-        font-family: ${sans};
-        font-size: 13px;
-        color: var(--scout-muted);
-      }
-      .kimchi-drawer__thread-item {
-        display: block;
-        width: 100%;
-        text-align: left;
-        padding: 10px 14px;
-        border: none;
-        border-bottom: 1px solid rgba(0,0,0,0.04);
-        background: transparent;
-        cursor: pointer;
-      }
-      .kimchi-drawer__thread-item--active {
-        background: rgba(26, 58, 47, 0.06);
-      }
-      .kimchi-drawer__thread-title {
-        display: block;
-        font-family: ${sans};
-        font-size: 13px;
-        font-weight: 600;
-        color: #1A3A2F;
-      }
-      .kimchi-drawer__thread-meta {
-        display: block;
-        margin-top: 2px;
-        font-family: ${sans};
-        font-size: 11px;
-        color: var(--scout-muted);
       }
     `}</style>
   );
