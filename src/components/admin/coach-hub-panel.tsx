@@ -7,6 +7,7 @@ import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { BookingsList } from "@/components/scout/bookings-list";
 import { ScoutBox } from "@/components/scout/scout-box";
 import type { HubBooking, HubCommunication, CoachClientSummary, CoachHubStats } from "@/lib/coach-hub";
+import { formatCoachActivityLabel } from "@/lib/coach-activity";
 import { bookingStatusColor, formatBookingWhen } from "@/lib/booking-display";
 import { emailDomainLooksMicrosoft } from "@/lib/nylas";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
@@ -60,22 +61,7 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
 }
 
 function commLabel(type: HubCommunication["type"]) {
-  switch (type) {
-    case "GUEST_CONFIRMATION":
-      return "Confirmation sent";
-    case "COACH_NOTIFICATION":
-      return "Coach notified";
-    case "CANCELLATION":
-      return "Cancellation";
-    case "SESSION_BOOKED":
-      return "Session booked";
-    case "SESSION_RESCHEDULED":
-      return "Rescheduled";
-    case "SESSION_CANCELLED":
-      return "Cancelled";
-    default:
-      return type;
-  }
+  return formatCoachActivityLabel(type);
 }
 
 export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks = false, embedded = false }: Props) {
