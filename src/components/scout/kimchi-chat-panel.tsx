@@ -274,35 +274,33 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   }, [loadContext]);
 
   const loadForYou = useCallback(async () => {
-      if (forYouLoading) return;
-      setForYouLoading(true);
-      try {
-        const res = await fetch(withClientScope("/api/assistant/for-you"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pageHint }),
-        });
-        if (res.status === 402) {
-          notifyCreditsChanged();
-          return;
-        }
-        const data = res.ok ? await res.json() : null;
-        if (Array.isArray(data?.chips) && data.chips.length > 0) {
-          setForYouChips(data.chips as AssistantChip[]);
-          setSuggestionsVisible(true);
-        }
-        if (typeof data?.opener === "string" && data.opener.trim()) {
-          setForYouOpener(data.opener.trim());
-        }
-        if (data?.source === "ai") notifyCreditsChanged();
-      } catch {
-        /* rule-based fallback handled server-side */
-      } finally {
-        setForYouLoading(false);
+    if (forYouLoading) return;
+    setForYouLoading(true);
+    try {
+      const res = await fetch(withClientScope("/api/assistant/for-you"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageHint }),
+      });
+      if (res.status === 402) {
+        notifyCreditsChanged();
+        return;
       }
-    },
-    [forYouLoading, pageHint, withClientScope],
-  );
+      const data = res.ok ? await res.json() : null;
+      if (Array.isArray(data?.chips) && data.chips.length > 0) {
+        setForYouChips(data.chips as AssistantChip[]);
+        setSuggestionsVisible(true);
+      }
+      if (typeof data?.opener === "string" && data.opener.trim()) {
+        setForYouOpener(data.opener.trim());
+      }
+      if (data?.source === "ai") notifyCreditsChanged();
+    } catch {
+      /* rule-based fallback handled server-side */
+    } finally {
+      setForYouLoading(false);
+    }
+  }, [forYouLoading, pageHint, withClientScope]);
 
   useEffect(() => {
     loadContext();
@@ -337,7 +335,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       .autoForYouOnOpen;
     if (autoForYou && welcomeOnly) {
       forYouRequestedRef.current = true;
-      void loadForYou({ auto: true });
+      void loadForYou();
     }
   }, [assistantCtx, welcomeOnly, loadForYou]);
 
