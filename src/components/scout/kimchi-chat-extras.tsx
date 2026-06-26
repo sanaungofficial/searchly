@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { ChatChip } from "@/lib/kimchi-assistant/chat-chips";
+import type { AssistantChip } from "@/lib/kimchi-assistant/chat-chips";
 import type { AssistantSuggestion, AssistantInboxSnapshot } from "@/lib/kimchi-assistant/types";
 import { InboxInsightRow } from "@/components/scout/inbox/inbox-insight-row";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
@@ -10,14 +10,14 @@ import { fontSans } from "@/lib/typography";
 
 const sans = fontSans;
 
-export function KimchiChipRow({
+export function KimchiAssistantChipRow({
   chips,
   label,
-  onSelect,
+  onActivate,
 }: {
-  chips: ChatChip[];
+  chips: AssistantChip[];
   label?: string;
-  onSelect: (prompt: string) => void;
+  onActivate: (chip: AssistantChip) => void;
 }) {
   if (chips.length === 0) return null;
 
@@ -26,8 +26,19 @@ export function KimchiChipRow({
       {label && <p className="kimchi-chips__label">{label}</p>}
       <div className="kimchi-chips__row">
         {chips.map((chip) => (
-          <button key={chip.id} type="button" className="kimchi-chips__chip" onClick={() => onSelect(chip.prompt)}>
-            {chip.label}
+          <button
+            key={chip.id}
+            type="button"
+            className={`kimchi-chips__chip kimchi-chips__chip--${chip.variant}`}
+            onClick={() => onActivate(chip)}
+          >
+            {chip.variant === "action" && <span className="kimchi-chips__arrow" aria-hidden="true">→</span>}
+            <span className="kimchi-chips__chip-text">
+              <span className="kimchi-chips__chip-label">{chip.label}</span>
+              {chip.hint && chip.variant === "action" && (
+                <span className="kimchi-chips__chip-hint">{chip.hint}</span>
+              )}
+            </span>
           </button>
         ))}
       </div>
@@ -36,11 +47,67 @@ export function KimchiChipRow({
   );
 }
 
+/** @deprecated use KimchiAssistantChipRow */
+export function KimchiChipRow({
+  chips,
+  label,
+  onSelect,
+}: {
+  chips: Array<{ id: string; label: string; prompt: string }>;
+  label?: string;
+  onSelect: (prompt: string) => void;
+}) {
+  return (
+    <KimchiAssistantChipRow
+      label={label}
+      chips={chips.map((c) => ({
+        id: c.id,
+        label: c.label,
+        variant: "chat" as const,
+        action: { type: "chat" as const, prompt: c.prompt },
+      }))}
+      onActivate={(chip) => {
+        if (chip.action.type === "chat") onSelect(chip.action.prompt);
+      }}
+    />
+  );
+}
+
+export function KimchiStarterSection({
+  actions,
+  chatChips,
+  onActivate,
+}: {
+  actions: AssistantChip[];
+  chatChips: AssistantChip[];
+  onActivate: (chip: AssistantChip) => void;
+}) {
+  return (
+    <div className="kimchi-starter">
+      <KimchiAssistantChipRow label="Do this" chips={actions} onActivate={onActivate} />
+      <KimchiAssistantChipRow label="Or ask about" chips={chatChips} onActivate={onActivate} />
+      <KimchiStarterStyles />
+    </div>
+  );
+}
+
+function KimchiStarterStyles() {
+  return (
+    <style>{`
+      .kimchi-starter {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+    `}</style>
+  );
+}
+
 function KimchiChipStyles() {
   return (
     <style>{`
       .kimchi-chips {
-        margin: 0 0 14px;
+        margin: 0 0 16px;
       }
       .kimchi-chips__label {
         margin: 0 0 8px;
@@ -53,26 +120,62 @@ function KimchiChipStyles() {
       }
       .kimchi-chips__row {
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 8px;
       }
       .kimchi-chips__chip {
-        padding: 10px 14px;
-        background: #fff;
-        border: 1.5px solid rgba(26, 58, 47, 0.14);
-        border-radius: 999px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: var(--scout-radius);
         font-family: ${sans};
-        font-size: 14px;
-        font-weight: 600;
-        line-height: 1.3;
-        color: #1A3A2F;
         cursor: pointer;
         text-align: left;
         transition: background 0.15s ease, border-color 0.15s ease;
       }
-      .kimchi-chips__chip:hover {
-        background: rgba(26, 58, 47, 0.05);
-        border-color: rgba(26, 58, 47, 0.28);
+      .kimchi-chips__chip--chat {
+        background: #fff;
+        border: 1.5px solid rgba(26, 58, 47, 0.14);
+        color: #1A3A2F;
+      }
+      .kimchi-chips__chip--chat:hover {
+        background: rgba(26, 58, 47, 0.04);
+        border-color: rgba(26, 58, 47, 0.24);
+      }
+      .kimchi-chips__chip--action {
+        background: rgba(26, 58, 47, 0.06);
+        border: 1.5px solid rgba(26, 58, 47, 0.12);
+        color: #1A3A2F;
+      }
+      .kimchi-chips__chip--action:hover {
+        background: rgba(26, 58, 47, 0.1);
+        border-color: rgba(26, 58, 47, 0.22);
+      }
+      .kimchi-chips__arrow {
+        flex-shrink: 0;
+        margin-top: 2px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #1A3A2F;
+      }
+      .kimchi-chips__chip-text {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+      .kimchi-chips__chip-label {
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+      .kimchi-chips__chip-hint {
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 1.4;
+        color: var(--scout-muted);
       }
     `}</style>
   );
@@ -162,8 +265,6 @@ function KimchiDoNextStyles() {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        max-height: 180px;
-        overflow-y: auto;
       }
       .kimchi-do-next__card {
         text-align: left;

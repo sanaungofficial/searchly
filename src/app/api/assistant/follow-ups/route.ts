@@ -57,7 +57,8 @@ Kimchi replied: ${assistantMessage.slice(0, 2000)}`,
           .map((c, i) => ({
             id: c.id || `ai-${i}`,
             label: c.label.slice(0, 48),
-            prompt: c.prompt.slice(0, 400),
+            variant: "chat" as const,
+            action: { type: "chat" as const, prompt: c.prompt.slice(0, 400) },
           }))
       : [];
 

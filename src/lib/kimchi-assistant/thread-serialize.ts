@@ -84,7 +84,7 @@ export function titleFromMessages(messages: StoredThreadMessage[]): string {
   }
   const voice = messages.find((m) => m.kind === "voice");
   if (voice && voice.kind === "voice") return voice.presetTitle;
-  return "New chat";
+  return "New thread";
 }
 
 export async function maybeRetitleThread(
@@ -96,11 +96,11 @@ export async function maybeRetitleThread(
     where: { id: threadId, userId },
     include: { messages: { orderBy: { createdAt: "asc" }, take: 6 } },
   });
-  if (!thread || thread.title !== "New chat") return;
+  if (!thread || (thread.title !== "New chat" && thread.title !== "New thread")) return;
 
   const msgs = thread.messages.map(dbRowToMessage);
   const title = titleFromMessages(msgs);
-  if (title !== "New chat") {
+  if (title !== "New chat" && title !== "New thread") {
     await prisma.assistantThread.update({ where: { id: threadId }, data: { title } });
   }
 }

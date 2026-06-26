@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { KimchiChatPanel } from "@/components/scout/kimchi-chat-panel";
 import { VoiceOrb } from "@/components/voice/voice-orb";
@@ -21,6 +21,7 @@ function launcherBottom(isMobile: boolean): string {
 export function KimchiAssistant() {
   const isMobile = useIsMobile();
   const pathname = usePathname();
+  const router = useRouter();
   const { chatOpen, setChatOpen, chatPulse, kanbanCards, drawerCardId, chatView } = useWorkspace();
   const [panelOpen, setPanelOpen] = useState(false);
   const [voiceConfigured, setVoiceConfigured] = useState<boolean | null>(null);
@@ -82,9 +83,9 @@ export function KimchiAssistant() {
   };
 
   const activeTitle =
-    threads.threads.find((t) => t.id === threads.activeThreadId)?.title ?? "Kimchi";
+    threads.threads.find((t) => t.id === threads.activeThreadId)?.title ?? threads.activeThreadTitle;
   const displayTitle =
-    activeTitle === "New chat" ? "Kimchi" : activeTitle;
+    activeTitle === "New chat" || activeTitle === "New thread" ? "New thread" : activeTitle;
 
   return (
     <>
@@ -163,7 +164,7 @@ export function KimchiAssistant() {
                       onClick={() => void threads.selectThread(t.id)}
                     >
                       <span className="kimchi-drawer__thread-title">
-                        {t.title === "New chat" ? "Untitled chat" : t.title}
+                        {t.title === "New chat" || t.title === "New thread" ? "New thread" : t.title}
                       </span>
                       <span className="kimchi-drawer__thread-meta">
                         {t.messageCount} msg · {new Date(t.updatedAt).toLocaleDateString()}
@@ -174,9 +175,14 @@ export function KimchiAssistant() {
               )}
 
               <KimchiChatPanel
+                key={threads.activeThreadId ?? "none"}
                 pageHint={pageHint}
                 voiceUnavailable={voiceConfigured === false}
                 threads={threads}
+                onNavigate={(href) => {
+                  closePanel();
+                  router.push(href);
+                }}
               />
             </div>
           </>,
