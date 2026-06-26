@@ -49,9 +49,10 @@ export function DashboardCoachShell({ children }: Props) {
     >
       <div
         style={{
-          padding: `${isMobile ? 12 : 16}px ${horizontalPad}px ${isMobile ? 12 : 16}px`,
+          padding: `${isMobile ? 12 : 12}px ${horizontalPad}px ${isMobile ? 12 : 12}px`,
           flexShrink: 0,
           borderBottom: border.line,
+          background: surface.card,
         }}
       >
         <WorkspaceProfileTabBar
@@ -59,7 +60,7 @@ export function DashboardCoachShell({ children }: Props) {
           activeHref={activeHref}
           onNavigate={(href) => router.push(href)}
           isMobile={isMobile}
-          variant="pills"
+          variant="underline"
         />
       </div>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>

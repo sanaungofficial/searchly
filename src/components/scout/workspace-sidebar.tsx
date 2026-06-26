@@ -61,7 +61,7 @@ const SIDEBAR_LINE_ACTIVE = "1px solid rgba(232,213,163,0.35)";
 
 const NAV_SEARCH: NavItem[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", Icon: DashboardIcon },
-  { id: "opportunities", label: "Opportunities", path: "/opportunities", Icon: OpportunitiesIcon },
+  { id: "opportunities", label: "Opportunities", path: "/opportunities/pipeline", Icon: OpportunitiesIcon },
 ];
 
 const NAV_PROFILE: NavItem = {
@@ -76,12 +76,6 @@ const NAV_COMMUNITY: NavItem[] = [
   { id: "coaching", label: BETA_FEATURES.coaching.navLabel, path: "/coaching", Icon: CoachingIcon },
   { id: "network", label: BETA_FEATURES.network.navLabel, path: "/network", Icon: NetworkIcon },
 ];
-
-const OPP_SUBNAV = [
-  { label: "Open Roles", path: "/opportunities/pipeline" },
-  { label: "In-Network Roles", path: "/opportunities/network" },
-  { label: "Companies", path: "/opportunities/companies" },
-] as const;
 
 function SidebarSectionLabel({ children, isRail }: { children: React.ReactNode; isRail: boolean }) {
   if (isRail) return null;
@@ -316,14 +310,15 @@ export function WorkspaceSidebar({
   };
 
   const isActive = (path: string) => {
-    if (path === "/opportunities") return pathname.startsWith("/opportunities");
+    if (path.startsWith("/opportunities")) return pathname.startsWith("/opportunities");
+    if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     return pathname === path;
   };
 
   const onToggleNotif = () => setNotifOpen((p) => !p);
 
   const onNavigateNotif = (section: string) => {
-    const path = section === "opportunities" ? "/opportunities" : `/${section}`;
+    const path = section === "opportunities" ? "/opportunities/pipeline" : `/${section}`;
     router.push(path);
     const allRead: Record<number, boolean> = {};
     NOTIFICATIONS.forEach((n) => (allRead[n.id] = true));
@@ -584,33 +579,15 @@ export function WorkspaceSidebar({
 
           <SidebarSectionLabel isRail={isRail}>Search</SidebarSectionLabel>
           {NAV_SEARCH.map(({ id, label, path, Icon }) => (
-            <React.Fragment key={id}>
-              <SidebarNavButton
-                active={isActive(path)}
-                onClick={() => navigate(path)}
-                label={label}
-                Icon={Icon}
-                isRail={isRail}
-                badge={id === "opportunities" ? activePipelineCount : undefined}
-              />
-              {id === "opportunities" && !isRail && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 2 }}>
-                  {OPP_SUBNAV.map(({ label: subLabel, path: subPath }) => (
-                    <SidebarNavButton
-                      key={subPath}
-                      active={pathname.startsWith(subPath)}
-                      onClick={() => navigate(subPath)}
-                      label={subLabel}
-                      Icon={() => (
-                        <span style={{ width: 15, height: 15, display: "inline-block", borderLeft: `2px solid ${pathname.startsWith(subPath) ? SIDEBAR_GOLD : SIDEBAR_GOLD_FAINT}` }} />
-                      )}
-                      isRail={false}
-                      indent
-                    />
-                  ))}
-                </div>
-              )}
-            </React.Fragment>
+            <SidebarNavButton
+              key={id}
+              active={isActive(path)}
+              onClick={() => navigate(path)}
+              label={label}
+              Icon={Icon}
+              isRail={isRail}
+              badge={id === "opportunities" ? activePipelineCount : undefined}
+            />
           ))}
 
           <SidebarSectionLabel isRail={isRail}>You</SidebarSectionLabel>
