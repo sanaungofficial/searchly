@@ -145,6 +145,145 @@ function parseNumberInput(value: string): number | null {
   return value.trim() && !Number.isNaN(n) ? n : null;
 }
 
+/** Staff-only fields that still hard-hide non-matching rows when set. */
+function passesInternalHardFilters(
+  job: NetworkJobListing,
+  form: NetworkJobFilterForm,
+): boolean {
+  if (!matchesContains(job.networkStatusLabel ?? job.networkStatus, form.networkStatus)) return false;
+  if (!matchesContains(job.feeType, form.feeType)) return false;
+
+  if (form.feeQuery.trim()) {
+    const q = form.feeQuery.trim().toLowerCase();
+    if (!(job.fee ?? "").toLowerCase().includes(q)) return false;
+  }
+
+  if (form.guaranteeQuery.trim()) {
+    const q = form.guaranteeQuery.trim().toLowerCase();
+    const guaranteeHay = [job.guarantee, job.guaranteeLabel].filter(Boolean).join(" ").toLowerCase();
+    if (!guaranteeHay.includes(q)) return false;
+  }
+
+  return true;
+}
+
+/** Preference boosts for sorting — never hide rows (except explicit search / staff hard filters). */
+function computeNetworkJobPreferenceScore(
+  job: NetworkJobListing,
+  form: NetworkJobFilterForm,
+  internalView: boolean,
+): number {
+  let score = 0;
+  const hay = jobHaystack(job, internalView);
+
+  if (form.channel.trim()) {
+    const want = form.channel.trim().toUpperCase();
+    score +=
+      networkSourceChannelCode(job.source).toUpperCase() === want ? 40 : 0;
+  }
+
+  const titles = splitInputList(form.jobTitles);
+  if (titles.length) {
+    const titleHay = (job.positionTitle ?? "").toLowerCase();
+    if (titles.some((t) => titleHay.includes(t.toLowerCase()))) score += 24;
+  }
+
+  if (matchesList(splitInputList(form.keywords), hay)) score += 16;
+
+  if (form.companyName.trim()) {
+    const q = form.companyName.trim().toLowerCase();
+    const companyHay = [job.companyName, job.agencyName].filter(Boolean).join(" ").toLowerCase();
+    if (companyHay.includes(q)) score += 12;
+  }
+
+  if (form.agencyName.trim()) {
+    const q = form.agencyName.trim().toLowerCase();
+    const agencyHay = [job.agencyName, job.recruiter?.agencyName].filter(Boolean).join(" ").toLowerCase();
+    if (agencyHay.includes(q)) score += 12;
+  }
+
+  const industryTerms = splitInputList(form.industries);
+  if (industryTerms.length) {
+    const industryHay = job.industries.join(" ").toLowerCase();
+    if (industryTerms.some((t) => industryHay.includes(t.toLowerCase()))) score += 10;
+  }
+
+  if (form.locationCity.trim()) {
+    const q = form.locationCity.trim().toLowerCase();
+    const locHay = [job.city, job.location].filter(Boolean).join(" ").toLowerCase();
+    if (locHay.includes(q)) score += 14;
+  }
+
+  if (form.locationState.trim()) {
+    const q = form.locationState.trim().toLowerCase();
+    const locHay = [job.state, job.location].filter(Boolean).join(" ").toLowerCase();
+    if (locHay.includes(q)) score += 10;
+  }
+
+  if (form.sharedAfter.trim() && job.sharedAt) {
+    const shared = new Date(job.sharedAt);
+    const from = new Date(form.sharedAfter);
+    if (!Number.isNaN(shared.getTime()) && !Number.isNaN(from.getTime()) && shared >= from) {
+      score += 8;
+    }
+  }
+
+  const salaryFrom = parseNumberInput(form.salaryFrom);
+  const salaryTo = parseNumberInput(form.salaryTo);
+  const compTop = job.compensationMax ?? job.compensationMin;
+  const compBottom = job.compensationMin ?? job.compensationMax;
+  if (salaryFrom != null && compTop != null && compTop >= salaryFrom) score += 6;
+  if (salaryTo != null && compBottom != null && compBottom <= salaryTo) score += 6;
+
+  if (form.jobType.trim() && matchesContains(job.jobType, form.jobType)) score += 6;
+  if (form.remoteOption.trim() && matchesContains(job.remoteOption, form.remoteOption)) score += 6;
+
+  return score;
+}
+
+export function hasNetworkPreferenceFilters(
+  form: NetworkJobFilterForm,
+  internalView: boolean,
+): boolean {
+  return countActiveNetworkFilterFields(form, internalView) > 0 && !form.search.trim();
+}
+
+/**
+ * Show every in-network role. Profile/filter fields boost sort order; only the search box
+ * (and staff-only fee/status fields) hard-hide rows — same spirit as Open Roles defaults.
+ */
+export function rankNetworkJobsFromForm<T extends NetworkJobListing & { matchScore?: number }>(
+  jobs: T[],
+  form: NetworkJobFilterForm,
+  options?: { internalView?: boolean },
+): T[] {
+  const internalView = options?.internalView ?? false;
+  const hasHardSearch = Boolean(form.search.trim());
+
+  return [...jobs]
+    .filter((job) => {
+      if (hasHardSearch && !matchesSearchTerms(jobHaystack(job, internalView), form.search)) {
+        return false;
+      }
+      if (internalView && !passesInternalHardFilters(job, form)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const prefDelta =
+        computeNetworkJobPreferenceScore(b, form, internalView) -
+        computeNetworkJobPreferenceScore(a, form, internalView);
+      if (prefDelta !== 0) return prefDelta;
+
+      const fitDelta = (b.matchScore ?? 0) - (a.matchScore ?? 0);
+      if (fitDelta !== 0) return fitDelta;
+
+      const sharedA = a.sharedAt ? new Date(a.sharedAt).getTime() : 0;
+      const sharedB = b.sharedAt ? new Date(b.sharedAt).getTime() : 0;
+      return sharedB - sharedA;
+    });
+}
+
+/** @deprecated Prefer rankNetworkJobsFromForm — hard filters hide non-matching roles. */
 export function filterNetworkJobsFromForm<T extends NetworkJobListing>(
   jobs: T[],
   form: NetworkJobFilterForm,

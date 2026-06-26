@@ -16,7 +16,8 @@ import {
   createEmptyNetworkJobFilterForm,
   buildNetworkJobFilterSuggestions,
   countActiveNetworkFilterFields,
-  filterNetworkJobsFromForm,
+  hasNetworkPreferenceFilters,
+  rankNetworkJobsFromForm,
   type NetworkJobFilterForm,
   type NetworkJobFilterSuggestions,
 } from "@/lib/network-job-filters";
@@ -139,7 +140,7 @@ function NetworkJobFiltersGrid({
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: isMobile ? "12px 0" : "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
       <FilterSectionHeader
         title="Type to filter"
-        hint="Free text — matches title, company, location, industry, and description. Separate multiple job titles or keywords with commas."
+        hint="Optional — boosts matching roles toward the top. All in-network roles stay visible unless you use Search above."
       />
       <FilterField label="Job titles">
         <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Key Account Manager, Attorney" />
@@ -195,7 +196,7 @@ function NetworkJobFiltersGrid({
 
       <FilterSectionHeader
         title="Narrow further"
-        hint="Type or pick from suggestions — partial matches work. Use compensation from/to for pay range instead of bands."
+        hint="Preferences for sort order — not hard cutoffs. Use Search for keyword-only results."
       />
 
       <FilterField label="Job type">
@@ -217,15 +218,15 @@ function NetworkJobFiltersGrid({
         />
       </FilterField>
 
-      <FilterField label="Channel">
+      <FilterField label="Channel preference">
         <select
           style={inputStyle}
           value={form.channel}
           onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
         >
           <option value="">All channels</option>
-          <option value="TE">TE</option>
-          <option value="ET">ET</option>
+          <option value="TE">TE (boost Top Echelon)</option>
+          <option value="ET">ET (boost ExecThread)</option>
         </select>
       </FilterField>
 
@@ -462,6 +463,16 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const profileFormRef = useRef<NetworkJobFilterForm | null>(null);
 
+  const applyProfileSuggestions = () => {
+    const suggested = profileFormRef.current;
+    if (!suggested) return;
+    setForm({
+      ...suggested,
+      search: form.search,
+    });
+    setShowFilters(true);
+  };
+
   const loadJobs = useCallback(async (options?: { force?: boolean }) => {
     if (!options?.force) {
       const cached = readNetworkJobsCache();
@@ -533,7 +544,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
           locationState: fields.region,
         };
         profileFormRef.current = profileForm;
-        setForm(profileForm);
+        setForm({ ...createEmptyNetworkJobFilterForm(), search: loadScopedNetworkSearch() });
         const labels: string[] = [];
         if (targetRoles.length) labels.push(`Titles: ${targetRoles.join(", ")}`);
         if (fields.display) labels.push(`Location: ${fields.display}`);
@@ -546,11 +557,12 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
 
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
   const visibleJobs = useMemo(() => {
-    const filtered = filterNetworkJobsFromForm(jobs, appliedForm, { internalView });
-    return [...filtered].sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+    return rankNetworkJobsFromForm(jobs, appliedForm, { internalView });
   }, [jobs, appliedForm, internalView]);
   const activeFilterCount = countActiveNetworkFilterFields(appliedForm, internalView);
   const hasActiveSearch = Boolean(appliedForm.search.trim());
+  const hasPreferences = hasNetworkPreferenceFilters(appliedForm, internalView);
+  const isDefaultFeed = activeFilterCount === 0;
 
   const applyFilters = (nextForm = form) => {
     saveScopedNetworkSearch(nextForm.search);
@@ -558,9 +570,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   };
 
   const clearFilters = () => {
-    const empty = profileFormRef.current ?? createEmptyNetworkJobFilterForm();
     saveScopedNetworkSearch("");
-    setForm({ ...empty, search: "" });
+    setForm(createEmptyNetworkJobFilterForm());
     setAppliedForm(createEmptyNetworkJobFilterForm());
   };
 
@@ -589,8 +600,10 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
             <ScoutLabel>In-Network Roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               {internalView
-                ? "Staff view — fees, guarantees, and partner links in the drawer. Filter by TE or ET channel."
-                : "Roles shared with you — filter by TE or ET channel, sorted by profile match."}
+                ? "Staff view — fees, guarantees, and partner links in the drawer. Filters boost sort order; Search narrows the list."
+                : hasPreferences
+                  ? "All in-network roles shown — sorted by your preferences, then profile match."
+                  : "All in-network roles — sorted by profile match. Filters are suggestions, not cutoffs."}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -625,10 +638,18 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
           />
         </FilterField>
 
-        {showFilters && profileSuggestedLabels.length > 0 && activeFilterCount === 0 && (
+        {showFilters && profileSuggestedLabels.length > 0 && isDefaultFeed && (
           <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: "0 0 8px" }}>
-              From your profile — hit Apply filters to use
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+              <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: 0 }}>
+                Suggested from your profile
+              </p>
+              <ScoutSecondaryBtn onClick={applyProfileSuggestions} style={{ padding: "4px 10px", fontSize: T.label }}>
+                Apply suggestions
+              </ScoutSecondaryBtn>
+            </div>
+            <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "0 0 8px", lineHeight: 1.45 }}>
+              Not applied automatically — boosts matching roles toward the top without hiding everything else.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {profileSuggestedLabels.map((label) => (
@@ -662,9 +683,9 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
 
         {!loading && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
-            {visibleJobs.length === jobs.length
-              ? `${jobs.length} role${jobs.length === 1 ? "" : "s"}`
-              : `${visibleJobs.length} of ${jobs.length} roles match`}
+            {hasActiveSearch
+              ? `${visibleJobs.length} of ${jobs.length} role${jobs.length === 1 ? "" : "s"} match search`
+              : `${jobs.length} role${jobs.length === 1 ? "" : "s"}${hasPreferences ? " · preferences applied to sort" : " · sorted by fit"}`}
           </p>
         )}
       </ScoutBox>
@@ -676,7 +697,9 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
       ) : visibleJobs.length === 0 ? (
         <ScoutBox style={{ padding: 48, textAlign: "center" }}>
           <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
-            No roles match these filters — broaden your search or clear filters.
+            {hasActiveSearch
+              ? "Nothing matched your search — try different keywords or clear search."
+              : "No in-network roles loaded yet — hit Refresh or sync from Admin."}
           </p>
         </ScoutBox>
       ) : (
