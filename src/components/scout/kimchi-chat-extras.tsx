@@ -225,6 +225,10 @@ export function KimchiStarterSection({
   knowsYou?: KnowsYouPreview | null;
   onActivate: (chip: AssistantChip) => void;
 }) {
+  const chips = [...actions, ...chatChips].filter(
+    (chip, index, list) => list.findIndex((c) => c.id === chip.id) === index,
+  );
+
   return (
     <div className="kimchi-starter">
       {knowsYou && (
@@ -238,8 +242,9 @@ export function KimchiStarterSection({
           ))}
         </div>
       )}
-      <KimchiAssistantChipRow label="Do this" chips={actions} layout="inline" onActivate={onActivate} />
-      <KimchiAssistantChipRow label="Or ask" chips={chatChips} layout="inline" onActivate={onActivate} />
+      {chips.length > 0 && (
+        <KimchiAssistantChipRow chips={chips} layout="inline" emphasis="cta" onActivate={onActivate} />
+      )}
       <KimchiStarterStyles />
     </div>
   );
@@ -521,35 +526,117 @@ function KimchiChipStyles() {
 }
 
 type DoNextProps = {
-  suggestions: AssistantSuggestion[];
-  onSelect: (s: AssistantSuggestion) => void;
+  suggestions: AssistantChip[];
+  onActivate: (chip: AssistantChip) => void;
+  onGenerate?: () => void;
+  generating?: boolean;
+  visible?: boolean;
 };
 
-export function KimchiDoNextStrip({ suggestions, onSelect }: DoNextProps) {
-  if (suggestions.length === 0) return null;
+export function KimchiSuggestionsBar({
+  chips,
+  onActivate,
+  onGenerate,
+  generating,
+  visible,
+}: DoNextProps) {
+  if (!visible && chips.length === 0) {
+    if (!onGenerate) return null;
+    return (
+      <div className="kimchi-suggestions-bar">
+        <button
+          type="button"
+          className="kimchi-suggest-trigger"
+          disabled={generating}
+          onClick={onGenerate}
+        >
+          {generating ? "Loading…" : "✦ Show suggestions"}
+        </button>
+        <KimchiSuggestionsBarStyles />
+      </div>
+    );
+  }
 
-  const items = suggestions.slice(0, 6);
+  if (chips.length === 0) return null;
 
   return (
-    <div className="kimchi-do-next">
-      <div className="kimchi-do-next__head">
-        <span className="kimchi-do-next__label">Suggested</span>
-      </div>
-      <div className="kimchi-do-next__row">
-        {items.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className="kimchi-do-next__pill"
-            title={s.detail}
-            onClick={() => onSelect(s)}
-          >
-            {s.title}
-          </button>
-        ))}
-      </div>
-      <KimchiDoNextStyles />
+    <div className="kimchi-suggestions-bar">
+      <KimchiAssistantChipRow
+        chips={chips}
+        onActivate={onActivate}
+        layout="inline"
+        emphasis="cta"
+      />
+      <KimchiSuggestionsBarStyles />
     </div>
+  );
+}
+
+/** @deprecated use KimchiSuggestionsBar */
+export function KimchiDoNextStrip({
+  suggestions,
+  onSelect,
+}: {
+  suggestions: AssistantSuggestion[];
+  onSelect: (s: AssistantSuggestion) => void;
+}) {
+  const chips = suggestions.map((s) => ({
+    id: s.id,
+    label: s.title,
+    hint: s.detail,
+    variant: "chat" as const,
+    action: {
+      type: "chat" as const,
+      prompt: s.detail ? `${s.title} — ${s.detail}` : s.title,
+    },
+  }));
+
+  return (
+    <KimchiSuggestionsBar
+      chips={chips}
+      visible
+      onActivate={(chip) => {
+        const s = suggestions.find((x) => x.id === chip.id);
+        if (s) onSelect(s);
+      }}
+    />
+  );
+}
+
+function KimchiSuggestionsBarStyles() {
+  return (
+    <style>{`
+      .kimchi-suggestions-bar {
+        flex-shrink: 0;
+        padding: 8px 16px 4px;
+        border-top: 1px solid rgba(26, 58, 47, 0.06);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 248, 235, 0.5) 100%);
+      }
+      .kimchi-suggest-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border: 1px solid rgba(26, 58, 47, 0.14);
+        border-radius: 10px;
+        background: #fff;
+        font-family: ${sans};
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(26, 58, 47, 0.72);
+        cursor: pointer;
+        transition: background 0.12s ease, border-color 0.12s ease;
+      }
+      .kimchi-suggest-trigger:hover:not(:disabled) {
+        background: rgba(26, 58, 47, 0.04);
+        border-color: rgba(26, 58, 47, 0.22);
+        color: #1A3A2F;
+      }
+      .kimchi-suggest-trigger:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+    `}</style>
   );
 }
 

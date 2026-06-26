@@ -10,7 +10,7 @@ export function usesAiGateway(): boolean {
   return !!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
 }
 
-/** True when gateway auth or legacy Anthropic key is available. */
+/** True when Vercel AI Gateway or legacy Anthropic key is available. */
 export function isKimchiAiConfigured(): boolean {
   return usesAiGateway() || !!process.env.ANTHROPIC_API_KEY;
 }

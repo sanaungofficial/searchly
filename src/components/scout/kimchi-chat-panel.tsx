@@ -10,11 +10,11 @@ import type { StoredThreadMessage } from "@/lib/kimchi-assistant/thread-serializ
 import type {
   AssistantContextPayload,
   AssistantPageHint,
-  AssistantSuggestion,
 } from "@/lib/kimchi-assistant/types";
 import { VOICE_PRESETS, getVoicePreset, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import {
   buildFollowUpChips,
+  buildContextSuggestionChips,
   buildKnowsYouPreview,
   buildStarterActions,
   buildStarterChatChips,
@@ -36,7 +36,6 @@ import { fontSans } from "@/lib/typography";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS } from "./workspace-data";
 import {
-  KimchiDoNextStrip,
   KimchiAssistantChipRow,
   KimchiStarterSection,
   KimchiTypingIndicator,
@@ -104,6 +103,8 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [followUpChips, setFollowUpChips] = useState<AssistantChip[]>([]);
   const [followUpAiLoading, setFollowUpAiLoading] = useState(false);
   const [canAskAiSuggestions, setCanAskAiSuggestions] = useState(false);
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
+  const [nextStepsVisible, setNextStepsVisible] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -244,18 +245,31 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   useEffect(() => {
     setFollowUpChips([]);
     setCanAskAiSuggestions(false);
+    setNextStepsVisible(false);
+    setSuggestionsVisible(false);
   }, [activeThreadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, followUpChips]);
 
-  const suggestions = assistantCtx?.suggestions ?? [];
+  const contextSuggestionChips = buildContextSuggestionChips(assistantCtx);
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
-  const showDoNext = !welcomeOnly && suggestions.length > 0;
   const starterActions = buildStarterActions(assistantCtx);
   const starterChatChips = buildStarterChatChips(assistantCtx);
   const knowsYouPreview = buildKnowsYouPreview(assistantCtx);
+  const hasUserMessages = messages.some((m) => (m.kind === "text" || !m.kind) && m.role === "user");
+  const lastTextMessages = messages.filter(
+    (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
+  );
+  const lastUserMessage = [...lastTextMessages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const lastAssistantMessage = [...lastTextMessages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+  const canGenerateNextSteps =
+    !streaming &&
+    !welcomeOnly &&
+    hasUserMessages &&
+    !!lastAssistantMessage.trim() &&
+    !isFailedAssistantReply(lastAssistantMessage);
 
   const goTo = useCallback(
     (href: string) => {
@@ -353,40 +367,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     [addSkillAndNavigate, appendGuidanceMessage, navigateWithGuidance],
   );
 
-  const refreshFollowUpChips = useCallback(
-    (
-      userMessage: string,
-      assistantMessage: string,
-      threadOverride?: Array<{ role: string; content: string }>,
-    ) => {
-      const textThread =
-        threadOverride ??
-        messages
-          .filter((m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text")
-          .map((m) => ({ role: m.role, content: m.content }));
-      const threadContext = formatThreadForFollowUps(textThread.slice(0, -1));
-
-      lastFollowUpContextRef.current = {
-        userMessage,
-        assistantMessage,
-        thread: textThread,
-        threadContext,
-      };
-
-      setFollowUpChips(
-        buildFollowUpChips({
-          userMessage,
-          assistantMessage,
-          threadContext,
-          profileGaps: assistantCtx?.profileGaps,
-          ctx: assistantCtx,
-        }),
-      );
-      setCanAskAiSuggestions(!isFailedAssistantReply(assistantMessage));
-    },
-    [assistantCtx, messages],
-  );
-
   const loadAiFollowUpChips = useCallback(async () => {
     const ctx = lastFollowUpContextRef.current;
     if (!ctx || followUpAiLoading || isFailedAssistantReply(ctx.assistantMessage)) return;
@@ -427,12 +407,48 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     followUpAiLoading,
   ]);
 
+  const generateNextSteps = useCallback(() => {
+    if (!canGenerateNextSteps) return;
+
+    const textThread = messages
+      .filter((m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text")
+      .map((m) => ({ role: m.role, content: m.content }));
+    const threadContext = formatThreadForFollowUps(textThread.slice(0, -1));
+
+    lastFollowUpContextRef.current = {
+      userMessage: lastUserMessage,
+      assistantMessage: lastAssistantMessage,
+      thread: textThread,
+      threadContext,
+    };
+
+    setFollowUpChips(
+      buildFollowUpChips({
+        userMessage: lastUserMessage,
+        assistantMessage: lastAssistantMessage,
+        threadContext,
+        profileGaps: assistantCtx?.profileGaps,
+        ctx: assistantCtx,
+      }),
+    );
+    setCanAskAiSuggestions(!isFailedAssistantReply(lastAssistantMessage));
+    setNextStepsVisible(true);
+  }, [
+    assistantCtx,
+    canGenerateNextSteps,
+    lastAssistantMessage,
+    lastUserMessage,
+    messages,
+  ]);
+
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
 
     setFollowUpChips([]);
     setCanAskAiSuggestions(false);
+    setNextStepsVisible(false);
+    setSuggestionsVisible(false);
 
     const textThread = messages.filter(
       (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
@@ -471,7 +487,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         }
         if (res.status === 503) {
           updateLastAssistant(
-            "Kimchi AI isn't available in this environment — try on production or ask San to enable the API key on dev.",
+            "Kimchi AI isn't available — check that Vercel AI Gateway is configured on this environment.",
           );
           return;
         }
@@ -502,11 +518,20 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
       if (threadId && accumulated.trim() && !isFailedAssistantReply(accumulated)) {
         void persistMessages(threadId, [{ kind: "text", role: "assistant", content: accumulated }]);
       }
-      refreshFollowUpChips(trimmed, accumulated, [
+      const fullThread = [
         ...textThread.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: trimmed },
         { role: "assistant", content: accumulated },
-      ]);
+      ];
+      lastFollowUpContextRef.current = {
+        userMessage: trimmed,
+        assistantMessage: accumulated,
+        thread: fullThread,
+        threadContext: formatThreadForFollowUps(fullThread.slice(0, -1)),
+      };
+      setCanAskAiSuggestions(!isFailedAssistantReply(accumulated));
+      setNextStepsVisible(false);
+      setFollowUpChips([]);
     } catch {
       updateLastAssistant("Couldn't reach Kimchi — check your connection.");
     } finally {
@@ -516,22 +541,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
 
   sendMessageRef.current = (text: string) => {
     void sendMessage(text);
-  };
-
-  const handleDoNextSelect = (s: AssistantSuggestion) => {
-    if (s.kind === "inbox_email" && s.meta?.activityId) {
-      setInsightActivityId(s.meta.activityId);
-      return;
-    }
-    if (s.kind === "follow_up") {
-      void sendMessage(`Help me follow up: ${s.title} — ${s.detail}`);
-      return;
-    }
-    if (s.route) {
-      void sendMessage(`Help me with: ${s.title} — ${s.detail}`);
-      return;
-    }
-    void sendMessage(s.title);
   };
 
   const appendStrategyIntake = async (msg: VoiceMessage, opts?: { silent?: boolean }) => {
@@ -617,10 +626,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
 
   return (
     <div className="kimchi-chat-panel">
-      {showDoNext ? (
-        <KimchiDoNextStrip suggestions={suggestions} onSelect={handleDoNextSelect} />
-      ) : null}
-
       <div className="kimchi-chat-panel__thread">
         {messages.map((msg, i) => {
           if (msg.kind === "voice") {
@@ -733,16 +738,46 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           />
         )}
 
-        {!streaming && !welcomeOnly && followUpChips.length > 0 && (
-          <div className="kimchi-message-actions">
+        <div ref={messagesEndRef} />
+      </div>
+
+      {!welcomeOnly && (contextSuggestionChips.length > 0 || canGenerateNextSteps) && (
+        <div className="kimchi-suggestions-bar">
+          {!suggestionsVisible && contextSuggestionChips.length > 0 && (
+            <button
+              type="button"
+              className="kimchi-suggest-trigger"
+              onClick={() => setSuggestionsVisible(true)}
+            >
+              ✦ Show suggestions
+            </button>
+          )}
+          {suggestionsVisible && contextSuggestionChips.length > 0 && (
             <KimchiAssistantChipRow
-              label="Keep going"
-              chips={followUpChips.slice(0, 5)}
+              chips={contextSuggestionChips}
               onActivate={handleChipActivate}
               layout="inline"
               emphasis="cta"
             />
-            {canAskAiSuggestions && (
+          )}
+          {canGenerateNextSteps && !nextStepsVisible && (
+            <button
+              type="button"
+              className="kimchi-suggest-trigger"
+              onClick={() => generateNextSteps()}
+            >
+              ✦ Suggest next steps
+            </button>
+          )}
+          {nextStepsVisible && followUpChips.length > 0 && (
+            <>
+              <KimchiAssistantChipRow
+                chips={followUpChips.slice(0, 5)}
+                onActivate={handleChipActivate}
+                layout="inline"
+                emphasis="cta"
+              />
+              {canAskAiSuggestions && (
                 <button
                   type="button"
                   className="kimchi-ai-suggest-btn"
@@ -752,11 +787,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                   {followUpAiLoading ? "Suggesting…" : "✦ Smarter suggestions (uses credits)"}
                 </button>
               )}
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
+            </>
+          )}
+        </div>
+      )}
 
       {!voiceUnavailable && voiceAvailable !== false && (
         <div className="kimchi-chat-panel__voice-bar">
@@ -1016,6 +1050,36 @@ function KimchiChatPanelStyles() {
       .kimchi-message-actions {
         max-width: 100%;
         margin: -6px 0 16px 44px;
+      }
+      .kimchi-suggestions-bar {
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px 16px 6px;
+        border-top: 1px solid rgba(26, 58, 47, 0.06);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 248, 235, 0.45) 100%);
+      }
+      .kimchi-suggest-trigger {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border: 1px solid rgba(26, 58, 47, 0.14);
+        border-radius: 10px;
+        background: #fff;
+        font-family: ${sans};
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(26, 58, 47, 0.72);
+        cursor: pointer;
+        transition: background 0.12s ease, border-color 0.12s ease;
+      }
+      .kimchi-suggest-trigger:hover:not(:disabled) {
+        background: rgba(26, 58, 47, 0.04);
+        border-color: rgba(26, 58, 47, 0.22);
+        color: #1A3A2F;
       }
       .kimchi-ai-suggest-btn {
         display: inline-flex;
