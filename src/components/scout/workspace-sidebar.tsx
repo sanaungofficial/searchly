@@ -338,11 +338,12 @@ export function WorkspaceSidebar({
     kanbanCards,
     authChecked,
     isImpersonating,
+    showAdminUi,
   } = useWorkspace();
 
   const user = userProp ?? ctxUser ?? undefined;
   const isAdmin = isAdminProp ?? ctxIsAdmin;
-  const showAdminNav = isAdmin && !isImpersonating;
+  const showAdminNav = showAdminUi;
 
   const { loading: subLoading } = useSubscription();
   const { credits, showCredits, unlimitedAi } = useCredits();

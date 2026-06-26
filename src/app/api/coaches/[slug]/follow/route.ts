@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
-import { getAuthenticatedDbUser } from "@/lib/coach-api";
+import { getClientCoachingUser } from "@/lib/coach-api";
 
 async function resolveCoach(slug: string) {
   return prisma.coachProfile.findFirst({
@@ -14,7 +14,7 @@ async function resolveCoach(slug: string) {
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const me = await getAuthenticatedDbUser();
+  const me = await getClientCoachingUser(_req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { slug } = await params;
@@ -32,7 +32,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ sl
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const me = await getAuthenticatedDbUser();
+  const me = await getClientCoachingUser(_req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { slug } = await params;

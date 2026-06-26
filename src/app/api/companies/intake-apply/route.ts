@@ -28,6 +28,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No companies to apply" }, { status: 400 });
   }
 
-  const result = await applyIntakeTrackedCompanies(dbUser.id, companies);
+  const result = await applyIntakeTrackedCompanies(dbUser.id, companies, { max: 100 });
   return NextResponse.json(result);
 }

@@ -74,6 +74,10 @@ interface WorkspaceContextValue {
   closePricing: () => void;
   actingUserId: string | null;
   isImpersonating: boolean;
+  /** Admin UI (nav, settings badge) — false while impersonating a client. */
+  showAdminUi: boolean;
+  /** Admin client setup tools (intake notes, parse) — true for admins even while impersonating. */
+  showAdminClientTools: boolean;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -255,6 +259,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         closePricing,
         actingUserId,
         isImpersonating: impersonation.active,
+        showAdminUi: isAdmin && !impersonation.active,
+        showAdminClientTools: isAdmin,
       }}
     >
       <ImpersonationBanner state={impersonation} />

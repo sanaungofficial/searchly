@@ -1,4 +1,4 @@
-import { getActingUser, quotaUserFor } from "@/lib/acting-user";
+import { getActingUser, quotaUserFor, canAccessAdminClientTools } from "@/lib/acting-user";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
 import { anthropicErrorResponse } from "@/lib/anthropic-errors";
@@ -19,6 +19,9 @@ export async function POST(request: Request) {
     const acting = await getActingUser(request);
     const { dbUser } = acting;
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!canAccessAdminClientTools(acting)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const notes = (body.notes as string)?.trim();

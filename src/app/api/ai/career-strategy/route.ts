@@ -1,4 +1,4 @@
-import { getActingUser, quotaUserFor } from "@/lib/acting-user";
+import { getActingUser, quotaUserFor, canAccessAdminClientTools } from "@/lib/acting-user";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { anthropicErrorResponse } from "@/lib/anthropic-errors";
 import {
@@ -40,6 +40,7 @@ async function loadProfileBundle(userId: string) {
 function strategyReadResponse(
   profile: NonNullable<Awaited<ReturnType<typeof loadProfileBundle>>>["profile"],
   trackedCompanies: { name: string }[],
+  includeIntakeNotes: boolean,
 ) {
   const currentSnapshot = buildStrategySnapshot({
     profile: {
@@ -61,7 +62,7 @@ function strategyReadResponse(
     hasDocument,
     isPartial,
     history: normalizeStrategyHistory(profile.strategyHistory),
-    intakeNotes: profile.strategyIntakeNotes ?? "",
+    intakeNotes: includeIntakeNotes ? (profile.strategyIntakeNotes ?? "") : "",
     updatedAt: profile.strategyUpdatedAt?.toISOString() ?? null,
     profileChanges,
     isStale: hasDocument && profileChanges.length > 0,
@@ -76,8 +77,11 @@ function strategyReadResponse(
 /** Read cached strategy + staleness — never calls AI. */
 export async function GET(request: Request) {
   try {
-    const { dbUser } = await getActingUser(request);
+    const acting = await getActingUser(request);
+    const { dbUser } = acting;
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const includeIntakeNotes = canAccessAdminClientTools(acting);
 
     const bundle = await loadProfileBundle(dbUser.id);
     if (!bundle) {
@@ -97,7 +101,7 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json(strategyReadResponse(bundle.profile, bundle.trackedCompanies));
+    return NextResponse.json(strategyReadResponse(bundle.profile, bundle.trackedCompanies, includeIntakeNotes));
   } catch (err) {
     console.error("[career-strategy GET]", err);
     return NextResponse.json({ error: "Failed to load strategy" }, { status: 500 });
@@ -114,6 +118,9 @@ export async function POST(request: Request) {
     const acting = await getActingUser(request);
     const { dbUser } = acting;
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!canAccessAdminClientTools(acting)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     await ensureProfileRow(dbUser.id);
 
@@ -174,7 +181,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const { dbUser } = await getActingUser(request);
+  const acting = await getActingUser(request);
+  const { dbUser } = acting;
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
@@ -190,6 +198,9 @@ export async function PATCH(request: Request) {
     data.strategyUpdatedAt = new Date();
   }
   if (intakeNotes !== undefined) {
+    if (!canAccessAdminClientTools(acting)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     data.strategyIntakeNotes = intakeNotes;
   }
   if (clearGenerationStatus) {

@@ -71,6 +71,9 @@ export function CoachingDirectoryCard({
   onFollow,
   following,
   onOpenCoach,
+  isMyCoach = false,
+  canSelfAssignCoach = false,
+  onToggleMyCoach,
 }: {
   coach: CoachListItem;
   isMobile: boolean;
@@ -79,6 +82,9 @@ export function CoachingDirectoryCard({
   onFollow: (coach: CoachListItem) => void;
   following: boolean;
   onOpenCoach: (coach: CoachListItem) => void;
+  isMyCoach?: boolean;
+  canSelfAssignCoach?: boolean;
+  onToggleMyCoach?: (coach: CoachListItem) => void;
 }) {
   const matchScore = coach.matchScore ?? 0;
   const tier = matchScore > 0 ? matchScoreTier(matchScore) : null;
@@ -210,6 +216,24 @@ export function CoachingDirectoryCard({
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {canSelfAssignCoach && !coach.isInternal && onToggleMyCoach && (
+                  <ScoutSecondaryBtn
+                    onClick={() => onToggleMyCoach(coach)}
+                    style={{
+                      minHeight: 38,
+                      fontSize: 13,
+                      padding: "8px 14px",
+                      ...(isMyCoach ? { borderColor: color.forest, color: color.forest } : {}),
+                    }}
+                  >
+                    {isMyCoach ? "My coach ✓" : "Add as my coach"}
+                  </ScoutSecondaryBtn>
+                )}
+                {canSelfAssignCoach && coach.isInternal && isMyCoach && (
+                  <span style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, padding: "8px 4px" }}>
+                    My coach ✓
+                  </span>
+                )}
                 <ScoutSecondaryBtn onClick={() => onFollow(coach)} style={{ minHeight: 38, fontSize: 13, padding: "8px 14px" }}>
                   {following ? "Following" : "+ Follow"}
                 </ScoutSecondaryBtn>

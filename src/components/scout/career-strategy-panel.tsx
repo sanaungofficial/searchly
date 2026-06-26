@@ -19,6 +19,7 @@ import { formatApiErrorMessage, readResponseJson } from "@/lib/api-error-message
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { StrategyFormattedView } from "./strategy-formatted-view";
+import { UserAssetsList, type UserAssetListItem } from "./user-assets-list";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -57,12 +58,7 @@ type Props = {
   isAdmin?: boolean;
 };
 
-type StrategyFileAsset = {
-  id: string;
-  name: string;
-  url: string;
-  createdAt: string;
-};
+type StrategyFileAsset = UserAssetListItem;
 
 const STRATEGY_FILE_ACCEPT = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -197,8 +193,9 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
   const [generationStatus, setGenerationStatus] = useState<StrategyGenerationStatus>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [showCompleteBanner, setShowCompleteBanner] = useState(false);
-  const [uploadedStrategyFile, setUploadedStrategyFile] = useState<StrategyFileAsset | null>(null);
+  const [uploadedStrategyFiles, setUploadedStrategyFiles] = useState<StrategyFileAsset[]>([]);
   const [strategyFileUploading, setStrategyFileUploading] = useState(false);
+  const [applySuccess, setApplySuccess] = useState<string | null>(null);
   const strategyFileInputRef = useRef<HTMLInputElement>(null);
   const generationStatusRef = useRef<StrategyGenerationStatus>(null);
 
@@ -256,6 +253,26 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
     await refreshStrategy();
   }, [refreshStrategy]);
 
+  const refreshStrategyAssets = useCallback(() => {
+    fetch("/api/assets")
+      .then((r) => r.json())
+      .then((assets: Array<{ id: string; name: string; url: string; createdAt: string; type: string }>) => {
+        if (!Array.isArray(assets)) return;
+        setUploadedStrategyFiles(
+          assets
+            .filter((a) => a.type === "JOB_SEARCH_STRATEGY")
+            .map((a) => ({
+              id: a.id,
+              type: "JOB_SEARCH_STRATEGY" as const,
+              name: a.name,
+              url: a.url,
+              createdAt: a.createdAt,
+            })),
+        );
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     loadStrategy();
     fetch("/api/companies")
@@ -265,22 +282,8 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
         else if (d.companies) setCompanies(d.companies);
       })
       .catch(() => {});
-    fetch("/api/assets")
-      .then((r) => r.json())
-      .then((assets: Array<{ id: string; name: string; url: string; createdAt: string; type: string }>) => {
-        if (!Array.isArray(assets)) return;
-        const latest = assets.find((a) => a.type === "JOB_SEARCH_STRATEGY");
-        if (latest?.url) {
-          setUploadedStrategyFile({
-            id: latest.id,
-            name: latest.name,
-            url: latest.url,
-            createdAt: latest.createdAt,
-          });
-        }
-      })
-      .catch(() => {});
-  }, [loadStrategy]);
+    refreshStrategyAssets();
+  }, [loadStrategy, refreshStrategyAssets]);
 
   useEffect(() => {
     if (generationStatus !== "running") return;
@@ -405,6 +408,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       }
 
       const trackedCompanies = mergeIntakeTrackedCompanies(parseResult);
+      let companyMessage = "";
       if (trackedCompanies.length > 0) {
         const res = await fetch("/api/companies/intake-apply", {
           method: "POST",
@@ -415,10 +419,19 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
         if (!res.ok) {
           throw new Error(formatApiErrorMessage(data.error, "Failed to add target companies"));
         }
+        const added = Number(data.added ?? 0);
+        const updated = Number(data.updated ?? 0);
+        const skipped = Number(data.skipped ?? 0);
+        const errors = Array.isArray(data.errors) ? data.errors.length : 0;
+        companyMessage = `Target companies: ${added} added, ${updated} updated${skipped ? `, ${skipped} unchanged` : ""}${errors ? `, ${errors} failed` : ""}.`;
       }
 
       setShowApplyModal(false);
       setParseResult(null);
+      if (companyMessage) {
+        setApplySuccess(companyMessage);
+        window.setTimeout(() => setApplySuccess(null), 12000);
+      }
       await loadStrategy();
       if (trackedCompanies.length > 0) {
         fetch("/api/companies")
@@ -474,8 +487,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
       const res = await fetch("/api/assets/upload", { method: "POST", body: form });
       const data = await readResponseJson(res);
       if (!res.ok) throw new Error(formatApiErrorMessage(data.error, "Upload failed"));
-      const asset = data.asset as StrategyFileAsset;
-      setUploadedStrategyFile(asset);
+      refreshStrategyAssets();
     } catch (e) {
       setError(formatApiErrorMessage(e, "Failed to upload strategy file"));
     } finally {
@@ -483,13 +495,11 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
     }
   }
 
-  async function handleRemoveStrategyFile() {
-    if (!uploadedStrategyFile) return;
-    if (!window.confirm("Remove this uploaded strategy file?")) return;
+  async function handleRemoveStrategyFile(id: string) {
     try {
-      const res = await fetch(`/api/assets?id=${encodeURIComponent(uploadedStrategyFile.id)}`, { method: "DELETE" });
+      const res = await fetch(`/api/assets?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-      setUploadedStrategyFile(null);
+      refreshStrategyAssets();
     } catch {
       setError("Failed to remove strategy file");
     }
@@ -585,6 +595,12 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
           <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "10px 0 0" }}>
             Kimchi strategy generation uses 1 AI credit.
           </p>
+        </ScoutBox>
+      )}
+
+      {applySuccess && (
+        <ScoutBox padding={16} style={{ background: "rgba(74,139,106,0.08)", borderColor: "rgba(74,139,106,0.35)" }}>
+          <p style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.forest, margin: 0 }}>{applySuccess}</p>
         </ScoutBox>
       )}
 
@@ -699,7 +715,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
               Career strategy document
             </p>
             <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "6px 0 0", maxWidth: 520, lineHeight: 1.5 }}>
-              Upload your own PDF or Word doc, or use a Kimchi-generated strategy below.
+              Upload PDF or Word strategy documents — stored in your file library alongside resumes. Add as many as you need.
             </p>
           </div>
         </div>
@@ -708,39 +724,36 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
           ref={strategyFileInputRef}
           type="file"
           accept={STRATEGY_FILE_ACCEPT}
+          multiple
           style={{ display: "none" }}
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleStrategyFileUpload(file);
+            const files = e.target.files;
+            if (files?.length) {
+              void (async () => {
+                for (const file of Array.from(files)) {
+                  await handleStrategyFileUpload(file);
+                }
+              })();
+            }
             e.target.value = "";
           }}
         />
 
-        <div style={{ marginBottom: 20, padding: 14, background: surface.inset, border: border.line, borderRadius: "var(--scout-radius)" }}>
-          <p style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 600, color: color.forest, margin: "0 0 8px" }}>Your uploaded file</p>
-          {uploadedStrategyFile ? (
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}>{uploadedStrategyFile.name}</span>
-              <span style={{ fontFamily: fontSans, fontSize: 12, color: color.muted }}>
-                · {new Date(uploadedStrategyFile.createdAt).toLocaleDateString()}
-              </span>
-              <ScoutSecondaryBtn onClick={() => window.open(uploadedStrategyFile.url, "_blank", "noopener,noreferrer")}>
-                Download
-              </ScoutSecondaryBtn>
-              <ScoutSecondaryBtn onClick={() => strategyFileInputRef.current?.click()} disabled={strategyFileUploading}>
-                Replace
-              </ScoutSecondaryBtn>
-              <ScoutSecondaryBtn onClick={() => void handleRemoveStrategyFile()}>Remove</ScoutSecondaryBtn>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-              <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>No file uploaded yet.</p>
-              <ScoutPrimaryBtn onClick={() => strategyFileInputRef.current?.click()} disabled={strategyFileUploading}>
-                {strategyFileUploading ? "Uploading…" : "Upload PDF or Word doc"}
-              </ScoutPrimaryBtn>
-            </div>
-          )}
-        </div>
+        <UserAssetsList
+          assets={uploadedStrategyFiles}
+          types={["JOB_SEARCH_STRATEGY"]}
+          compact
+          isMobile={isMobile}
+          emptyMessage="No strategy documents uploaded yet."
+          uploadLabel="+ Add strategy document"
+          uploading={strategyFileUploading}
+          onUpload={() => strategyFileInputRef.current?.click()}
+          onDelete={(id) => void handleRemoveStrategyFile(id)}
+        />
+
+        <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "12px 0 0" }}>
+          All files live in Profile → Resumes under your shared document library, tagged by type.
+        </p>
 
         {(hasDocument || history.length > 0 || isGenerating) && (
           <>
@@ -888,7 +901,7 @@ export function CareerStrategyPanel({ profile, onPatchProfile, isMobile, isAdmin
                 : new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
             }
             targetPlacementWindow={timelineLabel(profile.jobTimeline)}
-            keyParameters={buildKeyParameters()}
+            keyParameters={buildSearchPreferencesSummary()}
             trackedCompanies={companies.map((c) => ({
               name: c.name,
               priority: c.priority,
