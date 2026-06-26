@@ -2,14 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown, Copy, FileText } from "lucide-react";
+import { X, Pencil, Trash2, Plus, Download, RefreshCw, Loader2, Check, ChevronDown } from "lucide-react";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
+import { ResumeStylePanel } from "./resume-style-panel";
 import { fontSans, fontMono } from "@/lib/typography";
+import {
+  DEFAULT_RESUME_STYLE,
+  normalizeResumeStyle,
+  resumeStyleToCss,
+  type ResumeStyleSettings,
+} from "@/lib/resume-style";
 
 interface ResumeSection {
   id: string;
@@ -27,7 +34,7 @@ interface ResumeEditorProps {
   updatedAt?: string;
 }
 
-export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, updatedAt }: ResumeEditorProps) {
+export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, updatedAt: updatedAtProp }: ResumeEditorProps) {
   const router = useRouter();
   const [sections, setSections] = useState<ResumeSection[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,17 +47,13 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<string>("");
   const [fitToPage, setFitToPage] = useState(false);
+  const [resumeStyle, setResumeStyle] = useState<ResumeStyleSettings>(DEFAULT_RESUME_STYLE);
+  const [rightTab, setRightTab] = useState<"sections" | "style">("sections");
   const [matchData, setMatchData] = useState<{ score: number; matched: string[]; missing: string[]; total: number } | null>(null);
   const [matchLoading, setMatchLoading] = useState(false);
-  const [coverLetter, setCoverLetter] = useState<string | null>(null);
-  const [coverLoading, setCoverLoading] = useState(false);
-  const [coverCopied, setCoverCopied] = useState(false);
-  const [coverOpen, setCoverOpen] = useState(false);
-  const [fitAnalysis, setFitAnalysis] = useState<string | null>(null);
-  const [fitLoading, setFitLoading] = useState(false);
-  const [fitOpen, setFitOpen] = useState(false);
-  const [fitCopied, setFitCopied] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(updatedAtProp ?? null);
+  const [stale, setStale] = useState(false);
   const { openPricing } = useWorkspace();
   const downloadRef = useRef<HTMLDivElement>(null);
 
@@ -58,9 +61,15 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
     if (open && jobId) {
       setLoading(true);
       setMatchData(null);
+      setStale(false);
       fetch(`/api/resume/tailored/${jobId}`)
         .then((r) => r.json())
-        .then((d) => { if (d.sections) setSections(d.sections); })
+        .then((d) => {
+          if (Array.isArray(d.sections)) setSections(d.sections);
+          if (d.updatedAt) setLastUpdated(d.updatedAt);
+          if (d.stale) setStale(true);
+          if (d.resumeStyle) setResumeStyle(normalizeResumeStyle(d.resumeStyle));
+        })
         .catch(() => {})
         .finally(() => setLoading(false));
 
@@ -87,20 +96,35 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
   if (!open) return null;
 
   const activeSections = previewSections ?? sections;
+  const style = normalizeResumeStyle(resumeStyle);
+  const styleCss = resumeStyleToCss(style);
+  const compactPreview = fitToPage || style.fitToOnePage;
+  const bulletPrefix = style.bulletStyle === "dash" ? "– " : "• ";
 
-  async function save(updated: ResumeSection[]) {
+  async function save(updated: ResumeSection[], styleOverride?: ResumeStyleSettings) {
     setSaving(true);
     try {
-      await fetch(`/api/resume/tailored/${jobId}`, {
+      const res = await fetch(`/api/resume/tailored/${jobId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sections: updated }),
+        body: JSON.stringify({
+          sections: updated,
+          resumeStyle: styleOverride ?? resumeStyle,
+        }),
       });
+      const d = await res.json().catch(() => ({}));
+      if (d.updatedAt) setLastUpdated(d.updatedAt);
+      setStale(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
       setSaving(false);
     }
+  }
+
+  function updateResumeStyle(next: ResumeStyleSettings) {
+    setResumeStyle(next);
+    if (sections.length) save(sections, next);
   }
 
   function updateSection(id: string, content: string) {
@@ -197,87 +221,16 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
 
   function editBaseResume() {
     onOpenChange(false);
-    router.push("?tab=profile");
+    router.push("/profile/assets");
   }
 
-  async function generateCoverLetter() {
-    setCoverLoading(true);
-    setCoverOpen(true);
+  function formatUpdatedAt(iso: string | null) {
+    if (!iso) return null;
     try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: "cover", company, role: jobTitle, jobId }),
-      });
-      if (res.status === 402) {
-        notifyCreditsChanged();
-        setShowUpgrade(true);
-      } else if (res.ok) {
-        const d = await res.json();
-        if (d.text) {
-          setCoverLetter(d.text);
-          notifyCreditsChanged();
-        }
-      }
-    } finally {
-      setCoverLoading(false);
+      return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return null;
     }
-  }
-
-  async function copyCoverLetter() {
-    if (!coverLetter) return;
-    await navigator.clipboard.writeText(coverLetter);
-    setCoverCopied(true);
-    setTimeout(() => setCoverCopied(false), 2000);
-  }
-
-  async function downloadCoverLetterDocx() {
-    if (!coverLetter) return;
-    const res = await fetch("/api/ai/cover-letter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: coverLetter, company }),
-    });
-    if (res.ok) {
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `cover-letter-${company || "application"}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  }
-
-  async function generateFitAnalysis() {
-    setFitLoading(true);
-    setFitOpen(true);
-    try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: "fit", company, role: jobTitle, jobId }),
-      });
-      if (res.status === 402) {
-        notifyCreditsChanged();
-        setShowUpgrade(true);
-      } else if (res.ok) {
-        const d = await res.json();
-        if (d.text) {
-          setFitAnalysis(d.text);
-          notifyCreditsChanged();
-        }
-      }
-    } finally {
-      setFitLoading(false);
-    }
-  }
-
-  async function copyFitAnalysis() {
-    if (!fitAnalysis) return;
-    await navigator.clipboard.writeText(fitAnalysis);
-    setFitCopied(true);
-    setTimeout(() => setFitCopied(false), 2000);
   }
 
   const personalInfo = activeSections.find((s) => s.type === "header");
@@ -344,9 +297,11 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             <X size={16} />
           </button>
           <div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>View Your Tailored Resume</span>
-            {updatedAt && (
-              <span style={{ fontSize: 14, color: "var(--scout-muted)", marginLeft: 10 }}>Last updated {updatedAt}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#1A1A1A" }}>Tailored resume for this role</span>
+            {formatUpdatedAt(lastUpdated) && (
+              <span style={{ fontSize: 14, color: "var(--scout-muted)", marginLeft: 10 }}>
+                Last updated {formatUpdatedAt(lastUpdated)}
+              </span>
             )}
           </div>
         </div>
@@ -384,7 +339,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               cursor: "pointer",
             }}
           >
-            Edit Base Resume
+            Edit master resume
           </button>
         </div>
       </div>
@@ -504,192 +459,22 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             ) : null}
           </div>
 
-          {/* Cover letter */}
-          <div style={{ marginBottom: 16 }}>
-            <button
-              onClick={coverOpen ? () => setCoverOpen(false) : generateCoverLetter}
-              disabled={coverLoading}
+          {stale && (
+            <div
               style={{
-                width: "100%",
-                padding: "10px 14px",
-                background: coverOpen ? "#F5F3EF" : "#1C3A2F",
-                color: coverOpen ? "#52493F" : "#E8D5A3",
-                border: coverOpen ? "1px solid #D8D0C5" : "none",
+                marginBottom: 16,
+                padding: "12px 14px",
+                background: "#FFF8F0",
+                border: "1px solid #F0E8D8",
                 borderRadius: "var(--scout-radius)",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: coverLoading ? "wait" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 7,
-                opacity: coverLoading ? 0.7 : 1,
+                fontSize: 13,
+                color: "#7A6E64",
+                lineHeight: 1.55,
               }}
             >
-              {coverLoading
-                ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Generating…</>
-                : coverOpen
-                ? "Hide Cover Letter"
-                : <><FileText size={13} /> Generate Cover Letter</>
-              }
-            </button>
-
-            {coverOpen && (
-              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)" }}>
-                {coverLoading ? (
-                  <p style={{ fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>Writing your cover letter…</p>
-                ) : coverLetter ? (
-                  <>
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 8 }}>
-                      <button
-                        onClick={copyCoverLetter}
-                        style={{
-                          padding: "4px 10px",
-                          background: "#F5F3EF",
-                          border: "1px solid #D8D0C5",
-                          borderRadius: "var(--scout-radius)",
-                          fontSize: 13,
-                          color: "#52493F",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        {coverCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-                      </button>
-                      <button
-                        onClick={downloadCoverLetterDocx}
-                        style={{
-                          padding: "4px 10px",
-                          background: "#F5F3EF",
-                          border: "1px solid #D8D0C5",
-                          borderRadius: "var(--scout-radius)",
-                          fontSize: 13,
-                          color: "#52493F",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <Download size={11} /> Download
-                      </button>
-                      <button
-                        onClick={generateCoverLetter}
-                        style={{
-                          padding: "4px 10px",
-                          background: "#F5F3EF",
-                          border: "1px solid #D8D0C5",
-                          borderRadius: "var(--scout-radius)",
-                          fontSize: 13,
-                          color: "#52493F",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <RefreshCw size={11} /> Retry
-                      </button>
-                    </div>
-                    <p style={{ fontSize: 14, color: "#1A1A1A", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
-                      {coverLetter}
-                    </p>
-                  </>
-                ) : (
-                  <p style={{ fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
-                    Could not generate. Check that you have a resume uploaded and job notes added.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Fit analysis */}
-          <div style={{ marginBottom: 16 }}>
-            <button
-              onClick={fitOpen ? () => setFitOpen(false) : generateFitAnalysis}
-              disabled={fitLoading}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                background: fitOpen ? "#F5F3EF" : "#2C5F8A",
-                color: fitOpen ? "#52493F" : "#DDEEFF",
-                border: fitOpen ? "1px solid #D8D0C5" : "none",
-                borderRadius: "var(--scout-radius)",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: fitLoading ? "wait" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 7,
-                opacity: fitLoading ? 0.7 : 1,
-              }}
-            >
-              {fitLoading
-                ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Analyzing…</>
-                : fitOpen
-                ? "Hide Fit Analysis"
-                : "Why am I a fit?"
-              }
-            </button>
-
-            {fitOpen && (
-              <div style={{ marginTop: 10, padding: "12px 14px", background: "#FFFFFF", border: "1px solid #E5DDD0", borderRadius: "var(--scout-radius)" }}>
-                {fitLoading ? (
-                  <KimchiProcessLoader preset="jobMatch" variant="inline" />
-                ) : fitAnalysis ? (
-                  <>
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 8 }}>
-                      <button
-                        onClick={copyFitAnalysis}
-                        style={{
-                          padding: "4px 10px",
-                          background: "#F5F3EF",
-                          border: "1px solid #D8D0C5",
-                          borderRadius: "var(--scout-radius)",
-                          fontSize: 13,
-                          color: "#52493F",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        {fitCopied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-                      </button>
-                      <button
-                        onClick={generateFitAnalysis}
-                        style={{
-                          padding: "4px 10px",
-                          background: "#F5F3EF",
-                          border: "1px solid #D8D0C5",
-                          borderRadius: "var(--scout-radius)",
-                          fontSize: 13,
-                          color: "#52493F",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <RefreshCw size={11} /> Retry
-                      </button>
-                    </div>
-                    <div style={{ fontSize: 14, color: "#1A1A1A", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                      {fitAnalysis}
-                    </div>
-                  </>
-                ) : (
-                  <p style={{ fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
-                    Could not analyze fit. Check that you have a resume uploaded.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+              Your master resume changed since this draft was saved. Regenerate from the job drawer to refresh for this role.
+            </div>
+          )}
 
           <div
             style={{
@@ -703,7 +488,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             }}
           >
             <span style={{ color: "#C0392B", marginRight: 4 }}>⚠</span>
-            Section order changes will be saved, other edits here apply only to this resume. For major updates like editing experiences, update your Base Resume to affect future resumes.
+            Section edits here apply only to this job. Update your master resume in Profile for changes that carry across roles. Cover letters live in the job drawer.
           </div>
         </div>
 
@@ -726,9 +511,11 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               variant="centered"
             />
           ) : activeSections.length === 0 ? (
-            <div style={{ textAlign: "center", marginTop: 80, color: "var(--scout-muted)" }}>
-              <p style={{ fontSize: 14 }}>No resume content yet.</p>
-              <p style={{ fontSize: 14, marginTop: 6 }}>Upload a resume or click Regenerate.</p>
+            <div style={{ textAlign: "center", marginTop: 80, color: "var(--scout-muted)", maxWidth: 360 }}>
+              <p style={{ fontSize: 14 }}>No tailored resume saved for this role yet.</p>
+              <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.55 }}>
+                Close this editor and use <strong>Improve resume match</strong> in the job drawer — then choose <strong>Save &amp; open editor</strong> after tailoring.
+              </p>
             </div>
           ) : (
             <div
@@ -736,19 +523,21 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
                 background: "#FFFFFF",
                 width: "100%",
                 maxWidth: 720,
-                padding: "52px 60px",
+                padding: compactPreview ? "40px 48px" : "52px 60px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.10)",
                 borderRadius: "var(--scout-radius)",
-                fontSize: fitToPage ? 10 : 11,
-                lineHeight: 1.55,
+                fontSize: compactPreview ? style.fontSizeBody - 1 : style.fontSizeBody,
+                lineHeight: compactPreview ? 1.45 : 1.55,
                 color: "#1A1A1A",
+                fontFamily: style.fontFamily,
+                ...styleCss,
               }}
             >
               {/* Personal info header */}
               {personalInfo ? (
-                <div style={{ textAlign: "center", marginBottom: 24, paddingBottom: 20, borderBottom: "1.5px solid #1A1A1A" }}>
+                <div style={{ textAlign: style.headerAlign === "left" ? "left" : "center", marginBottom: 24, paddingBottom: 20, borderBottom: style.hideDivider ? "none" : "1.5px solid #1A1A1A" }}>
                   {personalInfo.content.split("\n").map((line, i) => (
-                    <p key={i} style={{ margin: 0, fontSize: i === 0 ? (fitToPage ? 18 : 22) : 10, fontWeight: i === 0 ? 700 : 400, letterSpacing: i === 0 ? 2 : 0, color: "#1A1A1A", lineHeight: i === 0 ? 1.2 : 1.8 }}>
+                    <p key={i} style={{ margin: 0, fontSize: i === 0 ? (compactPreview ? style.fontSizeName - 4 : style.fontSizeName) : style.fontSizeBody - 1, fontWeight: i === 0 ? 700 : 400, letterSpacing: i === 0 ? 2 : 0, color: "#1A1A1A", lineHeight: i === 0 ? 1.2 : 1.8 }}>
                       {line}
                     </p>
                   ))}
@@ -758,17 +547,17 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               {/* Content sections */}
               {contentSections.map((section) => (
                 <div key={section.id} style={{ marginBottom: 18 }}>
-                  <p style={{ fontSize: fitToPage ? 9 : 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#1A1A1A", marginBottom: 6, borderBottom: "1px solid #1A1A1A", paddingBottom: 3 }}>
+                  <p style={{ fontSize: style.fontSizeSection, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: style.accentTarget === "headings" || style.accentTarget === "all" ? style.accentColor : "#1A1A1A", marginBottom: 6, borderBottom: style.hideDivider ? "none" : "1px solid #1A1A1A", paddingBottom: 3 }}>
                     {section.title}
                   </p>
                   {section.type === "bullets" ? (
                     <ul style={{ margin: 0, paddingLeft: 16 }}>
                       {section.content.split("\n").filter(Boolean).map((b, i) => (
-                        <li key={i} style={{ marginBottom: 3, fontSize: fitToPage ? 9 : 11 }}>{b.replace(/^[-•]\s*/, "")}</li>
+                        <li key={i} style={{ marginBottom: 3, fontSize: style.fontSizeBody }}>{bulletPrefix}{b.replace(/^[-•–]\s*/, "")}</li>
                       ))}
                     </ul>
                   ) : (
-                    <p style={{ margin: 0, fontSize: fitToPage ? 9 : 11, whiteSpace: "pre-wrap" }}>{section.content}</p>
+                    <p style={{ margin: 0, fontSize: style.fontSizeBody, whiteSpace: "pre-wrap" }}>{section.content}</p>
                   )}
                 </div>
               ))}
@@ -797,7 +586,7 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
           )}
         </div>
 
-        {/* Right — section editor */}
+        {/* Right — section editor + style */}
         <div
           className="resume-print-hide"
           style={{
@@ -809,6 +598,34 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
             flexShrink: 0,
           }}
         >
+          <div style={{ display: "flex", borderBottom: "1px solid #E5DDD0" }}>
+            {(["sections", "style"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setRightTab(tab)}
+                style={{
+                  flex: 1,
+                  padding: "12px 8px",
+                  background: rightTab === tab ? "#F0EDE8" : "#FDFAF5",
+                  border: "none",
+                  borderBottom: rightTab === tab ? "2px solid #1C3A2F" : "2px solid transparent",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: rightTab === tab ? "#1A1A1A" : "#7A6E64",
+                  cursor: "pointer",
+                  textTransform: "capitalize",
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {rightTab === "style" ? (
+            <ResumeStylePanel style={resumeStyle} onChange={updateResumeStyle} compact />
+          ) : (
+            <>
           <div style={{ padding: "20px 20px 0", borderBottom: "1px solid #E5DDD0", paddingBottom: 16 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: "var(--scout-muted)", letterSpacing: 1, textTransform: "uppercase", margin: 0 }}>Sections</p>
           </div>
@@ -899,6 +716,8 @@ export function ResumeEditor({ open, onOpenChange, jobId, jobTitle, company, upd
               <Plus size={13} /> Add
             </button>
           </div>
+            </>
+          )}
         </div>
       </div>
 

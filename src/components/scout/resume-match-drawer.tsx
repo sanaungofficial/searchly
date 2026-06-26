@@ -209,6 +209,7 @@ export function ResumeMatchDrawer({
   const [applyingTweakId, setApplyingTweakId] = useState<string | null>(null);
   const [downloadingExport, setDownloadingExport] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [committing, setCommitting] = useState(false);
   const { openPricing } = useWorkspace();
   const { isPro, isAdmin } = useSubscription();
   const proUser = isPro || isAdmin;
@@ -390,6 +391,38 @@ export function ResumeMatchDrawer({
       }
     } finally {
       setDownloadingExport(false);
+    }
+  }
+
+  async function saveAndOpenEditor() {
+    if (!tailoredData) return;
+    if (!jobId) {
+      onTailorResume();
+      return;
+    }
+    setCommitting(true);
+    setGenerateError(null);
+    try {
+      const res = await fetch(`/api/resume/tailored/${jobId}/commit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tailoredText: tailoredData.tailoredText,
+          sourceAssetId: activeResumeId,
+          injectedKeywords: tailoredData.injectedKeywords,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGenerateError((json as { error?: string }).error ?? "Couldn't save tailored resume — try again.");
+        return;
+      }
+      handleClose();
+      onTailorResume();
+    } catch {
+      setGenerateError("Couldn't save tailored resume — try again.");
+    } finally {
+      setCommitting(false);
     }
   }
 
@@ -1814,6 +1847,7 @@ export function ResumeMatchDrawer({
             <button
               type="button"
               onClick={() => setStep(2)}
+              disabled={committing}
               style={{
                 padding: "14px 20px",
                 background: "transparent",
@@ -1823,7 +1857,7 @@ export function ResumeMatchDrawer({
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 500,
-                cursor: "pointer",
+                cursor: committing ? "default" : "pointer",
                 flexShrink: 0,
               }}
             >
@@ -1831,23 +1865,42 @@ export function ResumeMatchDrawer({
             </button>
             <button
               type="button"
-              onClick={() => setDownloadMenuOpen((v) => !v)}
-              disabled={downloadingExport}
+              onClick={() => void saveAndOpenEditor()}
+              disabled={committing || downloadingExport}
               style={{
                 flex: 1,
                 padding: "14px",
-                background: "#1A3A2F",
+                background: committing ? "rgba(26,58,47,0.35)" : "#1A3A2F",
                 color: "#E8D5A3",
                 border: "none",
                 borderRadius: "var(--scout-radius)",
                 fontFamily: fontSans,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: downloadingExport ? "wait" : "pointer",
+                cursor: committing ? "wait" : "pointer",
                 letterSpacing: "0.3px",
               }}
             >
-              {downloadingExport ? "Preparing…" : "⬇ Download Resume"}
+              {committing ? "Saving…" : jobId ? "Save & open editor →" : "Save job to continue →"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDownloadMenuOpen((v) => !v)}
+              disabled={downloadingExport || committing}
+              style={{
+                padding: "14px 20px",
+                background: "transparent",
+                color: "#52493F",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: "var(--scout-radius)",
+                fontFamily: fontSans,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: downloadingExport ? "wait" : "pointer",
+                flexShrink: 0,
+              }}
+            >
+              {downloadingExport ? "…" : "Download"}
             </button>
             {downloadMenuOpen && (
               <div
