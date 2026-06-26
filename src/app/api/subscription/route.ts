@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isPro } from "@/lib/stripe";
 import { getUsage } from "@/lib/usage";
 import { hasActiveProTrial } from "@/lib/referrals";
-import { FREE_MONTHLY_CREDITS } from "@/lib/credits";
+import { FREE_MONTHLY_CREDITS, UNLIMITED_AI_FOR_ALL } from "@/lib/credits";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -35,7 +35,8 @@ export async function GET() {
   const paidPro = isPro(dbUser.subscription);
   const trialPro = await hasActiveProTrial(dbUser.id);
   const proUser = adminUser || paidPro || trialPro;
-  const credits = await getUsage(dbUser.id, { unlimited: adminUser || paidPro || trialPro });
+  const unlimitedCredits = UNLIMITED_AI_FOR_ALL || adminUser || paidPro || trialPro;
+  const credits = await getUsage(dbUser.id, { unlimited: unlimitedCredits });
 
   return NextResponse.json({
     isPro: proUser,

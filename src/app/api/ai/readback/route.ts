@@ -37,13 +37,30 @@ export async function GET(request: Request) {
     }
   }
 
+  let resumeText = dbUser.profile?.resumeText?.trim() ?? "";
+  if (!resumeText) {
+    const primary = await prisma.userAsset.findFirst({
+      where: { userId: dbUser.id, type: "RESUME", isPrimary: true },
+      select: { resumeText: true },
+      orderBy: { createdAt: "desc" },
+    });
+    resumeText = primary?.resumeText?.trim() ?? "";
+    if (resumeText && dbUser.profile) {
+      await prisma.profile
+        .update({ where: { id: dbUser.profile.id }, data: { resumeText } })
+        .catch(() => {});
+    }
+  }
+
+  if (!resumeText) {
+    return NextResponse.json(
+      { error: "No resume found", retryable: true },
+      { status: 404 },
+    );
+  }
+
   const quotaError = await requireAiQuota(dbUser, "READBACK");
   if (quotaError) return quotaError;
-
-  const resumeText = dbUser?.profile?.resumeText;
-  if (!resumeText) {
-    return NextResponse.json({ error: "No resume found" }, { status: 404 });
-  }
 
   const template = await getPrompt("READBACK");
   const prompt = interpolate(template, { resumeSlice: resumeText.slice(0, 6000) });
@@ -56,8 +73,8 @@ export async function GET(request: Request) {
   });
 
   logAiUsage({
-    userId: dbUser?.id ?? user.id,
-    feature: "readback",
+    userId: dbUser.id,
+    feature: "READBACK",
     model: READBACK_MODEL,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,

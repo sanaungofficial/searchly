@@ -52,16 +52,22 @@ export const KIMCHI_LOADER_PRESETS = {
     durationSec: 8,
   },
   onboardingBackground: {
-    emoji: "👋",
-    title: "Analyzing your background…",
-    hint: "We're personalizing your workspace.",
+    emoji: "✨",
+    title: "Doing a little magic in the background…",
+    hint: "Keep going with the questions — we've got you.",
     durationSec: 15,
   },
   resumeUpload: {
     emoji: "📄",
     title: "Reading your resume…",
-    hint: "It usually takes about 10–20 seconds.",
+    hint: "No need to wait here — hit Continue and we'll catch up.",
     durationSec: 18,
+  },
+  onboardingReadback: {
+    emoji: "🥬",
+    title: "Putting together your read…",
+    hint: "Almost ready to show you who we see.",
+    durationSec: 20,
   },
   resumeRegenerate: {
     emoji: "🔄",

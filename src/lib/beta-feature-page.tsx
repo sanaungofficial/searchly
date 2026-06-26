@@ -3,7 +3,7 @@ import { canAccessBetaFeature, type BetaFeatureId } from "@/lib/beta-features";
 import { isAdmin } from "@/lib/auth";
 import type { ReactNode } from "react";
 
-/** Prod non-admins get coming soon for gated beta features; coaching is live for everyone. */
+/** Non-admins see coming soon for gated beta features; coaching is live on production. */
 export async function BetaFeaturePage({
   feature,
   children,

@@ -13,6 +13,12 @@ import {
   type VectorSearchFilters,
 } from "@/lib/vector-matched-job";
 import { cachedJobToMeta, companyLogoFromJobData, normalizeJobUrl } from "@/lib/cached-job";
+import {
+  filterRoleListings,
+  roleListingToVectorMatchedJob,
+  vectorJobToRoleListing,
+  type RoleListing,
+} from "@/lib/role-listings";
 import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
 import {
   mergeRecommendationPriorities,

@@ -60,8 +60,15 @@
   --scout-forest: #1A3A2F;
   --scout-gold: #E8D5A3;
   --scout-stone: #52493F;
-  --scout-muted: #6B6258;
-  --scout-muted-light: #A09890;
+  --scout-muted: #5C534A;
+  --scout-muted-light: #8A8178;
+
+  /* Sidebar (forest) — high-contrast cream/gold tiers */
+  --sidebar-bg: #1A3A2F;
+  --sidebar-text: #E8D5A3;
+  --sidebar-text-active: #FFF8E7;
+  --sidebar-text-muted: #C9BC98;
+  --sidebar-text-subtle: #A89878;
 
   /* Typography aliases — use in inline styles without JS imports */
   --font-ui: var(--font-source-sans), system-ui, sans-serif;
