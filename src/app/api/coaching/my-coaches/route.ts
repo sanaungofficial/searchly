@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getClientCoachingUser } from "@/lib/coach-api";
+import { dedupeCoachCommunications } from "@/lib/coach-activity";
 import {
+  coachAssignmentActivity,
   getClientCoachSummaries,
   getCoachHubBookings,
   getCoachHubCommunications,
@@ -31,14 +33,29 @@ export async function GET() {
           coachProfileId: coach.coachProfileId,
           clientUserId: me.id,
           limit: 20,
+          view: "client",
         }),
       ]);
+
+      let activity = [...communications];
+      if (coach.isAssigned && coach.assignedAt) {
+        activity.push(
+          coachAssignmentActivity({
+            coachProfileId: coach.coachProfileId,
+            coachName: coach.displayName,
+            assignedAt: coach.assignedAt,
+          }),
+        );
+      }
+      activity = dedupeCoachCommunications(activity)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 20);
 
       return {
         ...coach,
         upcomingBookings,
         pastBookings,
-        communications,
+        communications: activity,
       };
     }),
   );

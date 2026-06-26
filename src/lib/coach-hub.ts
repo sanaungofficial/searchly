@@ -6,6 +6,7 @@ import {
   type CoachProfile,
   type User,
 } from "@prisma/client";
+import { dedupeCoachCommunications, coachActivityKind } from "@/lib/coach-activity";
 import { getAssignedCoachesForUser } from "@/lib/coach-client-assignment";
 import { prisma } from "@/lib/prisma";
 
@@ -42,11 +43,17 @@ export type ClientCoachSummary = {
   nextSessionAt: string | null;
   isAssigned?: boolean;
   isInternal?: boolean;
+  assignedAt?: string | null;
 };
 
 export type HubCommunication = {
   id: string;
-  type: CoachBookingCommType | "SESSION_BOOKED" | "SESSION_RESCHEDULED" | "SESSION_CANCELLED";
+  type:
+    | CoachBookingCommType
+    | "SESSION_BOOKED"
+    | "SESSION_RESCHEDULED"
+    | "SESSION_CANCELLED"
+    | "COACH_ASSIGNED";
   audience: CoachBookingCommAudience | "SYSTEM";
   recipientEmail: string;
   subject: string;
@@ -288,11 +295,13 @@ export async function getClientCoachSummaries(
         nextSessionAt: null,
         isAssigned: true,
         isInternal: a.isInternal,
+        assignedAt: a.assignedAt,
       });
     } else {
       const row = byCoach.get(a.coachProfileId)!;
       row.isAssigned = true;
       row.isInternal = a.isInternal;
+      row.assignedAt = a.assignedAt;
     }
   }
 
@@ -412,6 +421,7 @@ export async function getGuestHubData(params: { userId?: string; email?: string 
               clientUserId: userId ?? undefined,
               clientEmail: guestEmail,
               limit: 20,
+              view: "client",
             }),
           ),
         )
@@ -511,13 +521,36 @@ function syntheticCommFromBooking(
   return rows;
 }
 
+export function coachAssignmentActivity(params: {
+  coachProfileId: string;
+  coachName: string;
+  assignedAt: string;
+}): HubCommunication {
+  return {
+    id: `coach-assigned-${params.coachProfileId}`,
+    type: "COACH_ASSIGNED",
+    audience: "SYSTEM",
+    recipientEmail: "",
+    subject: `Matched with ${params.coachName}`,
+    bodyPreview: `${params.coachName} is on your Kimchi coaching team.`,
+    createdAt: params.assignedAt,
+    bookingId: null,
+    clientName: null,
+    clientEmail: null,
+    coachName: params.coachName,
+  };
+}
+
 export async function getCoachHubCommunications(params: {
   coachProfileId: string;
   clientUserId?: string;
   clientEmail?: string;
   limit?: number;
+  /** Client timeline hides coach-only notifications and dedupes booking lifecycle events. */
+  view?: "client" | "coach" | "all";
 }): Promise<HubCommunication[]> {
   const limit = params.limit ?? 50;
+  const view = params.view ?? "all";
 
   const stored = await prisma.coachBookingCommunication.findMany({
     where: {
@@ -551,8 +584,6 @@ export async function getCoachHubCommunications(params: {
     take: limit,
   });
 
-  const synthetic = bookings.flatMap(syntheticCommFromBooking);
-
   const mappedStored: HubCommunication[] = stored.map((c) => ({
     id: c.id,
     type: c.type,
@@ -567,16 +598,33 @@ export async function getCoachHubCommunications(params: {
     coachName: c.coachProfile.displayName,
   }));
 
-  const merged = [...mappedStored, ...synthetic]
+  const audienceFiltered =
+    view === "client"
+      ? mappedStored.filter((c) => c.audience !== CoachBookingCommAudience.COACH)
+      : view === "coach"
+        ? mappedStored
+        : mappedStored;
+
+  const storedBookingKinds = new Set(
+    audienceFiltered
+      .filter((c) => c.bookingId && coachActivityKind(c.type))
+      .map((c) => `${c.bookingId}:${coachActivityKind(c.type)}`),
+  );
+
+  const includeSynthetic = view !== "coach";
+  const synthetic = includeSynthetic
+    ? bookings.flatMap(syntheticCommFromBooking).filter((c) => {
+        const kind = coachActivityKind(c.type);
+        if (kind && c.bookingId && storedBookingKinds.has(`${c.bookingId}:${kind}`)) {
+          return false;
+        }
+        return true;
+      })
+    : [];
+
+  return dedupeCoachCommunications([...audienceFiltered, ...synthetic])
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, limit);
-
-  const seen = new Set<string>();
-  return merged.filter((row) => {
-    if (seen.has(row.id)) return false;
-    seen.add(row.id);
-    return true;
-  });
 }
 
 export async function getCoachHubBookings(params: {

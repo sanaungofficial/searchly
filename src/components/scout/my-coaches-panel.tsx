@@ -6,6 +6,8 @@ import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { BookingsList } from "@/components/scout/bookings-list";
 import { ScoutBox } from "@/components/scout/scout-box";
+import { formatCoachActivityLabel, formatCoachActivityWhen } from "@/lib/coach-activity";
+import type { HubCommunication } from "@/lib/coach-hub";
 import { border, color, fontMono, fontSans, type as T } from "@/lib/typography";
 
 type ClientCoachRow = {
@@ -52,7 +54,7 @@ type ClientCoachRow = {
     subject: string;
     bodyPreview: string | null;
     createdAt: string;
-    type: string;
+    type: HubCommunication["type"];
   }>;
 };
 
@@ -86,7 +88,7 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
           >
             coaching directory
           </button>{" "}
-          — your sessions and updates will show up here.
+          — your sessions and activity will show up here.
         </p>
       </ScoutBox>
     );
@@ -147,17 +149,27 @@ export function MyCoachesPanel({ compact = false }: { compact?: boolean }) {
                 </div>
                 <div>
                   <p style={{ margin: "0 0 10px", fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
-                    Updates
+                    Activity
                   </p>
                   {coach.communications.length === 0 ? (
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted }}>No booking updates yet.</p>
+                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+                      No shared activity yet — booking confirmations and updates will appear here.
+                    </p>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {coach.communications.slice(0, 5).map((c) => (
+                      {coach.communications.slice(0, 8).map((c) => (
                         <div key={c.id} style={{ border: border.line, padding: "10px 12px", background: "#fff" }}>
-                          <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 13, fontWeight: 600 }}>{c.subject}</p>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+                            <p style={{ margin: 0, fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: color.forest }}>
+                              {formatCoachActivityLabel(c.type)}
+                            </p>
+                            <span style={{ fontFamily: fontMono, fontSize: 10, color: color.stone, flexShrink: 0 }}>
+                              {formatCoachActivityWhen(c.createdAt)}
+                            </span>
+                          </div>
+                          <p style={{ margin: "6px 0 0", fontFamily: fontSans, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{c.subject}</p>
                           {c.bodyPreview && (
-                            <p style={{ margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>{c.bodyPreview}</p>
+                            <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: 12, color: color.muted, lineHeight: 1.45 }}>{c.bodyPreview}</p>
                           )}
                         </div>
                       ))}
