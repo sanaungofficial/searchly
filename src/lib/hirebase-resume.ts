@@ -5,6 +5,7 @@ import {
   parsedResumeToText,
   type ParsedResumeData,
 } from "@/lib/resume-parse";
+import { formatHirebaseErrorBody } from "@/lib/api-error-message";
 import { logHirebaseApiCall } from "@/lib/external-api-usage";
 
 const HIREBASE_BASE = "https://api.hirebase.org";

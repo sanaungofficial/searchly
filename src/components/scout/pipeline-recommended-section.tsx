@@ -67,6 +67,7 @@ type JobsApiResponse = {
   hint?: string;
   error?: string;
   fromSnapshot?: boolean;
+  needsRefresh?: boolean;
   generatedAt?: string;
   snapshotDate?: string;
   scoreFloor?: number;
@@ -802,6 +803,20 @@ export function PipelineRecommendedSection({
           });
         } else {
           const nextJobs = data.jobs ?? [];
+          const snapshotPending =
+            nextJobs.length === 0 &&
+            data.needsRefresh === true &&
+            !forceRefresh &&
+            (options?.preferCache ?? true);
+
+          if (snapshotPending) {
+            void fetchRecommended(filtersForm, {
+              preferCache: false,
+              background: background || hasLoadedOnce,
+            });
+            return;
+          }
+
           setJobs(nextJobs);
           setError(null);
           setNotice(data.notice?.trim() || null);
@@ -917,7 +932,7 @@ export function PipelineRecommendedSection({
       return;
     }
 
-    void fetchRecommended(feedForm, { preferCache: true });
+    void fetchRecommended(feedForm, { preferCache: false });
   }, [fetchRecommended, actingUserId, defaultsLoaded]);
 
   const saveProfileFromForm = useCallback(async (filtersForm: FilterForm) => {
@@ -986,7 +1001,7 @@ export function PipelineRecommendedSection({
         setLoading(false);
         return;
       }
-      void fetchRecommended(filtersForm, { preferCache: true });
+      void fetchRecommended(filtersForm, { preferCache: false });
       return;
     }
 
@@ -1030,7 +1045,7 @@ export function PipelineRecommendedSection({
       setLoading(false);
       return;
     }
-    void fetchRecommended(reset, { preferCache: true });
+    void fetchRecommended(reset, { preferCache: false });
   };
 
   const recommendedListings = useMemo(
