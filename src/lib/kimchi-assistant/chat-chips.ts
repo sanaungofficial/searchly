@@ -413,6 +413,24 @@ function suggestionToChatChip(s: AssistantSuggestion): AssistantChip {
   };
 }
 
+/** Profile-aware suggestion chips (same source as the old "Suggested" strip). */
+export function buildContextSuggestionChips(ctx: AssistantContextPayload | null): AssistantChip[] {
+  if (!ctx?.suggestions?.length) return [];
+
+  const chips: AssistantChip[] = [];
+  const seen = new Set<string>();
+
+  for (const s of ctx.suggestions) {
+    const chip = suggestionToActionChip(s) ?? suggestionToChatChip(s);
+    if (seen.has(chip.label)) continue;
+    if (shouldSkipChipForContext(chip, ctx)) continue;
+    seen.add(chip.label);
+    chips.push(chip);
+  }
+
+  return chips.slice(0, 6);
+}
+
 export function buildStarterActions(ctx: AssistantContextPayload | null): AssistantChip[] {
   const fromContext = (ctx?.suggestions ?? [])
     .map(suggestionToActionChip)
