@@ -44,6 +44,7 @@ export async function recordAirtableSyncResult(ok: boolean, summary?: AirtableSy
           updated: summary.updated,
           skipped: summary.skipped,
           photoUploaded: summary.photoUploaded,
+          photoErrors: summary.photoErrors,
           durationMs: summary.durationMs,
         }
       : prev.lastSummary,
