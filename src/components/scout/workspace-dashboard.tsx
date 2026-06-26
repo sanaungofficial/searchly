@@ -236,12 +236,12 @@ export function WorkspaceDashboard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setAddJobError(data.error ?? "Could not analyze this URL.");
+        setAddJobError(data.error ?? "Couldn't parse this URL — check the link and try again.");
       } else {
         setJobAnalysis(data);
       }
     } catch {
-      setAddJobError("Network error. Please try again.");
+      setAddJobError("Network error — try again.");
     } finally {
       setAddJobLoading(false);
     }
@@ -472,7 +472,7 @@ export function WorkspaceDashboard() {
             {total === 0 ? (
               <ScoutBox style={{ marginTop: 10, textAlign: "center" }} padding={isMobile ? "24px 20px" : "20px 24px"}>
                 <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: isMobile ? 16 : 0, lineHeight: 1.5 }}>
-                  No jobs tracked yet — add your first job to start building your pipeline.
+                  No jobs tracked yet — paste a job URL above to add your first one.
                 </p>
                 {isMobile && (
                   <ScoutPrimaryBtn onClick={openAddPanel} style={{ marginTop: 16, minHeight: 44 }}>

@@ -106,7 +106,7 @@ export function CreditsSidebarBlock({
           }}
         >
           <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>Upgrade to Pro</p>
-          <p style={{ margin: 0, fontSize: 12, color: "rgba(26,58,47,0.65)", lineHeight: 1.45 }}>Unlimited AI — no credit limits</p>
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(26,58,47,0.65)", lineHeight: 1.45 }}>No monthly cap on AI actions</p>
         </button>
       ) : onUpgrade ? (
         <button
@@ -125,7 +125,7 @@ export function CreditsSidebarBlock({
             textAlign: "center",
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted }}>Upgrade for unlimited →</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted }}>Pro removes the credit cap →</span>
         </button>
       ) : (
         <Link
@@ -142,7 +142,7 @@ export function CreditsSidebarBlock({
             textAlign: "center",
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted }}>Upgrade for unlimited →</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted }}>Pro removes the credit cap →</span>
         </Link>
       ))}
     </div>
@@ -235,7 +235,7 @@ export function CreditsStatusBar({ variant = "light", onUpgrade }: StatusBarProp
             {unlimitedAi
               ? creditsUsageCount(credits, true) + " · " + creditsUsageSubtitle(credits, true)
               : showExhausted
-                ? "Upgrade for unlimited AI, or wait until next month."
+                ? "Out of credits — Pro removes the monthly cap, or wait until next month."
                 : `${credits.used} of ${credits.limit} used · 1 credit per AI action`}
           </p>
         </div>
@@ -287,7 +287,7 @@ export function CreditsInlineHint() {
       {unlimitedAi
         ? `${creditsUsageCount(credits, true)} · resets monthly`
         : exhausted
-          ? "No credits left this month — upgrade for unlimited AI"
+          ? "No credits left this month — Pro removes the cap"
           : `${credits.remaining} of ${credits.limit} credits left · 1 per AI action`}
     </p>
   );

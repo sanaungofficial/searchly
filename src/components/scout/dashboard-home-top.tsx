@@ -727,7 +727,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
               ⚡
             </span>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: 0, lineHeight: 1.35 }}>
-              Not sure? Get personalized recommendations.
+              Not sure where to start? Try recommended roles on Opportunities.
             </p>
           </div>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.55, margin: 0, paddingLeft: 30 }}>

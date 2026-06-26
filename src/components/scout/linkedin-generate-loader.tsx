@@ -4,12 +4,12 @@ import React, { useEffect, useState } from "react";
 
 const STEPS = [
   "Reading your resume…",
-  "Studying your experience…",
-  "Crafting a killer headline…",
-  "Writing your About in LinkedIn voice…",
-  "Turning bullets into story paragraphs…",
-  "Ranking skills recruiters search for…",
-  "Almost there — polishing the preview…",
+  "Pulling out your experience…",
+  "Drafting your headline…",
+  "Writing your About section…",
+  "Turning bullets into paragraphs…",
+  "Ranking searchable skills…",
+  "Finalizing the preview…",
 ];
 
 export function LinkedInGenerateLoader({ active }: { active: boolean }) {
@@ -92,7 +92,7 @@ export function LinkedInGenerateLoader({ active }: { active: boolean }) {
           </svg>
         </div>
 
-        <p className="li-gen-title">Building your LinkedIn</p>
+        <p className="li-gen-title">Building your LinkedIn profile</p>
         <p className="li-gen-step" key={stepIndex}>
           {STEPS[stepIndex]}
         </p>

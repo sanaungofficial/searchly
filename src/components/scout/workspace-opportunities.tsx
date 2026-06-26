@@ -216,12 +216,12 @@ export function WorkspaceOpportunities() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setAddJobError(data.error ?? "Could not analyze this URL.");
+        setAddJobError(data.error ?? "Couldn't parse this URL — check the link and try again.");
       } else {
         setJobAnalysis(data);
       }
     } catch {
-      setAddJobError("Network error. Please try again.");
+      setAddJobError("Network error — try again.");
     } finally {
       setAddJobLoading(false);
     }
@@ -838,7 +838,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "#1A1A1A" }}>
-          Upload CSV — bulk add jobs
+          Bulk add jobs from CSV
         </p>
         {!loading && (
           <button
@@ -856,7 +856,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
               style={{ width: 7, height: 7, borderRadius: "50%", background: "#1A3A2F", animation: "pulse 1s ease infinite", flexShrink: 0 }}
             />
             <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest }}>
-              Kimchi is analyzing {progress.done} of {progress.total} URLs…
+              Parsing {progress.done} of {progress.total} URLs…
             </p>
           </div>
           <div style={{ height: 4, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
@@ -866,7 +866,7 @@ function CsvUploadPanel({ loading, progress, onFileSelected, onClose, inputRef }
       ) : (
         <>
           <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 400, color: color.stone, lineHeight: 1.55, marginBottom: 10, maxWidth: 520 }}>
-            Upload a CSV file with job URLs. One URL per line, or columns: <code style={{ fontFamily: fontMono, fontSize: T.label, background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: 3 }}>url,company,role</code>
+            One URL per line, or columns <code style={{ fontFamily: fontMono, fontSize: T.label, background: "rgba(0,0,0,0.05)", padding: "1px 5px", borderRadius: 3 }}>url,company,role</code>. We&apos;ll add each role to your pipeline.
           </p>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <ScoutPrimaryBtn onClick={() => inputRef.current?.click()}>
@@ -1043,7 +1043,7 @@ function MyJobsUrlPastePanel({ url, setUrl, onSubmit, loading, analysis, error, 
               cursor: "pointer",
             }}
           >
-            + Add to My Jobs
+            + Add to pipeline
           </button>
         </ScoutBox>
       )}
@@ -1088,7 +1088,7 @@ function PipelineTab({
   };
 
   const pipelineTabs: { id: PipelineView; label: string }[] = [
-    { id: "recommended", label: "Discover" },
+    { id: "recommended", label: "Find roles" },
     ...stageCounts.map(({ stage, count }) => ({ id: stage, label: stageTabLabel(stage, count) })),
     ...(closedCount > 0 ? [{ id: "closed" as const, label: `${STAGE_LABELS.closed} · ${closedCount}` }] : []),
   ];
@@ -1101,12 +1101,12 @@ function PipelineTab({
           <ScoutLabel>Open roles</ScoutLabel>
         </div>
         <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
-          {pipelineView === "recommended" ? "Discover your next role" : STAGE_LABELS[pipelineView as KanbanStage] ?? "Pipeline"}
+          {pipelineView === "recommended" ? "Find roles that fit" : STAGE_LABELS[pipelineView as KanbanStage] ?? "Pipeline"}
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
           {pipelineView === "recommended"
-            ? "Personalized matches from Hirebase — refine once, then save roles to your pipeline."
-            : `${activeCount} active role${activeCount === 1 ? "" : "s"} across your pipeline.`}
+            ? "Hirebase roles scored against your profile — save any you want to track."
+            : `${activeCount} active role${activeCount === 1 ? "" : "s"} in your pipeline.`}
         </p>
       </div>
 

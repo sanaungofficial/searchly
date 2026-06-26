@@ -116,9 +116,9 @@ export function ReferEarnModal({ onClose }: Props) {
             <span />
           )}
           <h2 id="refer-earn-title" style={{ margin: 0, fontSize: view === "hub" ? 22 : 18, fontWeight: 700, color: "#1A1A1A", flex: 1, textAlign: view === "hub" ? "center" : "left", paddingLeft: view === "hub" ? 0 : 8 }}>
-            {view === "hub" && "Refer & Earn Center"}
-            {view === "invite" && "Invite Friends To Kimchi And Earn Extra AI Credits"}
-            {view === "linkedin" && `Get ${LINKEDIN_SHARE_PRO_DAYS} Days Pro With Unlimited Credits — For Free!`}
+            {view === "hub" && "Referrals"}
+            {view === "invite" && "Invite a friend — you both get credits"}
+            {view === "linkedin" && `Share on LinkedIn — ${LINKEDIN_SHARE_PRO_DAYS} days of Pro`}
           </h2>
           <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", padding: 4, color: "#8A7F72" }} aria-label="Close">×</button>
         </div>
@@ -133,7 +133,7 @@ export function ReferEarnModal({ onClose }: Props) {
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#1A1A1A", borderBottom: "2px solid #1A1A1A", paddingBottom: 8, display: "inline-block" }}>
                 Invite Friends →
               </p>
-              <p style={{ margin: "12px 0 0", fontSize: 16, fontWeight: 700, color: "#1A1A1A" }}>Earn Resume Credits</p>
+              <p style={{ margin: "12px 0 0", fontSize: 16, fontWeight: 700, color: "#1A1A1A" }}>Extra AI credits per signup</p>
               <p style={{ margin: "16px 0 0", fontSize: 40 }}>👋</p>
             </button>
             <button
@@ -144,7 +144,7 @@ export function ReferEarnModal({ onClose }: Props) {
               <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#1A1A1A", borderBottom: "2px solid #1A1A1A", paddingBottom: 8, display: "inline-block" }}>
                 Share About Us →
               </p>
-              <p style={{ margin: "12px 0 0", fontSize: 16, fontWeight: 700, color: "#1A1A1A" }}>Get {LINKEDIN_SHARE_PRO_DAYS} Days of Pro</p>
+              <p style={{ margin: "12px 0 0", fontSize: 16, fontWeight: 700, color: "#1A1A1A" }}>{LINKEDIN_SHARE_PRO_DAYS} days of Pro</p>
               <p style={{ margin: "16px 0 0", fontSize: 32 }}>in ↗</p>
             </button>
           </div>
@@ -156,7 +156,7 @@ export function ReferEarnModal({ onClose }: Props) {
               {[
                 { step: "1", title: "Share your link", icon: "🔗" },
                 { step: "2", title: "Your friend completes sign-up & finishes onboarding", icon: "👥" },
-                { step: "3", title: "Both you and your friend earn extra credits", icon: "🎁" },
+                { step: "3", title: "You and your friend each get +5 credits", icon: "🎁" },
               ].map((s) => (
                 <div key={s.step} style={{ background: "#F7F5F2", borderRadius: 12, padding: 16 }}>
                   <span style={{ fontSize: 20 }}>{s.icon}</span>
@@ -210,7 +210,7 @@ export function ReferEarnModal({ onClose }: Props) {
               ))}
             </div>
             <p style={{ fontSize: 13, color: "#52493F", marginBottom: 20 }}>
-              ⏱ We&apos;ll activate your Pro within 48 hours. <span style={{ color: "#8A7F72" }}>*Limit: one reward per user</span>
+              We&apos;ll activate your Pro within 48 hours. <span style={{ color: "#8A7F72" }}>One reward per account.</span>
             </p>
 
             <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px" }}>Submit your LinkedIn post URL</p>

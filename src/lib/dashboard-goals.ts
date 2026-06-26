@@ -42,7 +42,7 @@ export const DASHBOARD_GOAL_OPTIONS: DashboardGoalOption[] = [
   { value: "land_new_role", label: "Land a new role in my target field", category: "job_search" },
   {
     value: "step_up",
-    label: "Get promoted / step up in level",
+    label: "Step up in level (promotion or bigger scope)",
     category: "job_search",
     profileSync: {
       field: "careerMotivation",
@@ -52,7 +52,7 @@ export const DASHBOARD_GOAL_OPTIONS: DashboardGoalOption[] = [
   },
   {
     value: "career_pivot",
-    label: "Make a career pivot",
+    label: "Pivot to a different field or function",
     category: "job_search",
     profileSync: {
       field: "careerMotivation",
@@ -60,20 +60,20 @@ export const DASHBOARD_GOAL_OPTIONS: DashboardGoalOption[] = [
       prompt: "Add “A career pivot” to your profile motivation?",
     },
   },
-  { value: "interview_performance", label: "Improve interview performance", category: "job_search" },
+  { value: "interview_performance", label: "Get better at interviews", category: "job_search" },
   { value: "negotiate_offer", label: "Negotiate an offer", category: "job_search" },
   {
     value: "positioning",
-    label: "Clarify my story & positioning",
+    label: "Sharpen my story and positioning",
     category: "coaching",
   },
-  { value: "resume_linkedin", label: "Resume & LinkedIn overhaul", category: "coaching" },
-  { value: "interview_coaching", label: "Interview prep & coaching", category: "coaching" },
-  { value: "salary_negotiation", label: "Salary & offer negotiation", category: "coaching" },
-  { value: "executive_transition", label: "Executive / leadership transition", category: "coaching" },
-  { value: "career_strategy", label: "Build a career strategy", category: "career" },
-  { value: "explore_paths", label: "Explore career paths", category: "career" },
-  { value: "skill_growth", label: "Grow skills for my next role", category: "career" },
+  { value: "resume_linkedin", label: "Fix my resume and LinkedIn", category: "coaching" },
+  { value: "interview_coaching", label: "Interview prep with a coach", category: "coaching" },
+  { value: "salary_negotiation", label: "Salary and offer negotiation", category: "coaching" },
+  { value: "executive_transition", label: "Executive or leadership transition", category: "coaching" },
+  { value: "career_strategy", label: "Build a career plan", category: "career" },
+  { value: "explore_paths", label: "Explore what's next", category: "career" },
+  { value: "skill_growth", label: "Build skills for my next role", category: "career" },
 ];
 
 const CATEGORY_LABELS: Record<DashboardGoalCategory, string> = {
@@ -120,9 +120,9 @@ export function recommendationPathForGoals(goals: DashboardGoal[]): string {
 }
 
 export function recommendationLabelForGoals(goals: DashboardGoal[]): string {
-  if (goals.some((g) => g.category === "coaching")) return "Find a matched coach";
+  if (goals.some((g) => g.category === "coaching")) return "Browse coaches";
   if (goals.some((g) => g.category === "career")) return "Open career strategy";
-  return "View job matches";
+  return "Find roles that fit";
 }
 
 export function hasCoachingGoal(goals: DashboardGoal[]): boolean {

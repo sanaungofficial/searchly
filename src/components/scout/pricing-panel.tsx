@@ -83,10 +83,10 @@ export function PricingPanel({ compact = false }: Props) {
             letterSpacing: "-0.5px",
           }}
         >
-          Get 3x More Interviews with Kimchi Pro
+          Kimchi Pro — unlimited AI for your search
         </h2>
         <p style={{ margin: 0, fontSize: compact ? 14 : 16, color: "#52493F" }}>
-          Stronger resumes + faster applications + live coach support — all less than $1 a day
+          Match analysis, tailoring, cover letters, and Scout with no credit limits. Coaching access included.
         </p>
       </div>
 
@@ -235,7 +235,7 @@ export function PricingPanel({ compact = false }: Props) {
                   fontSize: 12,
                 }}
               >
-                {loading ? "Redirecting…" : "Upgrade Now"}
+                {loading ? "Redirecting…" : "Upgrade to Pro"}
               </button>
             )}
           </div>
@@ -314,7 +314,7 @@ export function PricingPanel({ compact = false }: Props) {
           padding: compact ? "16px 20px" : "24px 28px",
         }}
       >
-        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#1C3A2F" }}>Accessible to All Plans</p>
+        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "#1C3A2F" }}>Included on every plan</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
           {FREE_FOR_ALL_FEATURES.map((f) => (
             <p key={f} style={{ margin: 0, fontSize: 13, color: "#52493F", display: "flex", gap: 8, alignItems: "center" }}>

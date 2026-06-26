@@ -545,7 +545,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
           In-Network Roles
         </ScoutDisplayTitle>
         <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, maxWidth: 560, lineHeight: 1.6, margin: 0 }}>
-          Shared privately through Top Echelon Big Biller — not public job boards. Each role is scored against your profile, same as Open Roles.
+          Shared through Top Echelon Big Biller — not on public job boards. Same profile-based scoring as Open Roles.
         </p>
       </div>
 
@@ -555,8 +555,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
             <ScoutLabel>In-Network Roles</ScoutLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
               {internalView
-                ? "Full internal view — fee, guarantee, status, and agency filters available. Sorted by profile match."
-                : "Curated roles shared with you — sorted by how well they match your profile."}
+                ? "Internal view — fee, guarantee, status, and agency filters. Sorted by profile match."
+                : "Roles shared with you — sorted by how well they match your profile."}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -594,7 +594,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
         {showFilters && profileSuggestedLabels.length > 0 && activeFilterCount === 0 && (
           <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
             <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: "0 0 8px" }}>
-              Suggested from this profile (click Apply filters to use)
+              From your profile — hit Apply filters to use
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {profileSuggestedLabels.map((label) => (
@@ -642,7 +642,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId }: P
       ) : visibleJobs.length === 0 ? (
         <ScoutBox style={{ padding: 48, textAlign: "center" }}>
           <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>
-            No roles match these filters — try broadening your search or clearing filters.
+            No roles match these filters — broaden your search or clear filters.
           </p>
         </ScoutBox>
       ) : (

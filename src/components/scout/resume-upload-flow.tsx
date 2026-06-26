@@ -166,7 +166,7 @@ export function ResumeAnalyzingModal({
           margin: "0 0 28px",
         }}
       >
-        Tip: We&apos;ll notify you as soon as analysis is complete. Feel free to continue browsing Kimchi in the meantime.
+        Tip: We&apos;ll notify you when analysis finishes. You can keep browsing in the meantime.
       </p>
       <ScoutPrimaryBtn
         onClick={onContinueBrowsing}
@@ -227,7 +227,7 @@ export function ResumeUploadSuccessModal({
         </div>
       </div>
       <ScoutDisplayTitle size={22} style={{ margin: "0 0 8px", textAlign: "center" }}>
-        <span id="resume-upload-modal-title">Upload success</span>
+        <span id="resume-upload-modal-title">Resume parsed</span>
       </ScoutDisplayTitle>
       <p
         style={{
@@ -239,7 +239,7 @@ export function ResumeUploadSuccessModal({
           lineHeight: 1.6,
         }}
       >
-        Let&apos;s confirm a few details for future reference.
+        Name your file and add a target title if you want — both optional except the name.
       </p>
       <label style={fieldLabel}>
         Resume name <span style={{ color: "#C4574A" }}>*</span>
@@ -253,7 +253,7 @@ export function ResumeUploadSuccessModal({
       <input
         value={targetJobTitle}
         onChange={(e) => setTargetJobTitle(e.target.value)}
-        placeholder="Enter the job title you're aiming for (e.g., Product Manager)"
+        placeholder="Target role you're aiming for (e.g. Product Manager)"
         style={{ ...fieldInput, marginBottom: 24 }}
       />
       <ScoutPrimaryBtn
@@ -338,7 +338,7 @@ export function useResumeUploadFlow(options: {
         optionsRef.current.onComplete();
       } else if (data.parseStatus === "failed") {
         clearJob();
-        optionsRef.current.onFailed(data.parseError || "Resume analysis failed.");
+        optionsRef.current.onFailed(data.parseError || "Resume analysis failed — try uploading again.");
       }
     } catch {
       /* ignore transient poll errors */
