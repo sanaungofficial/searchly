@@ -1,7 +1,78 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
 import { loadJobDescriptionForUser } from "@/lib/job-description-server";
+import { prisma } from "@/lib/prisma";
+import { normalizeParsedResumeData, parseJsonFromModel, parsedResumeToText } from "@/lib/resume-parse";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+
+const TAILOR_MAX_TOKENS = 8192;
+
+type TailorResult = {
+  tailoredText: string;
+  changes: string[];
+  newScore: number;
+  tweaks: { id: string; label: string }[];
+  injectedKeywords: string[];
+};
+
+function normalizeTailorResult(raw: unknown): TailorResult | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const tailoredText = typeof obj.tailoredText === "string" ? obj.tailoredText.trim() : "";
+  if (!tailoredText) return null;
+
+  const changes = Array.isArray(obj.changes)
+    ? obj.changes.filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+    : [];
+  const newScore =
+    typeof obj.newScore === "number" && Number.isFinite(obj.newScore)
+      ? obj.newScore
+      : typeof obj.newScore === "string"
+        ? Number.parseFloat(obj.newScore)
+        : 0;
+  const tweaks = Array.isArray(obj.tweaks)
+    ? obj.tweaks
+        .map((t, i) => {
+          if (!t || typeof t !== "object") return null;
+          const row = t as Record<string, unknown>;
+          const label = typeof row.label === "string" ? row.label.trim() : "";
+          if (!label) return null;
+          const id = typeof row.id === "string" && row.id.trim() ? row.id.trim() : `tweak_${i}`;
+          return { id, label };
+        })
+        .filter((t): t is { id: string; label: string } => t !== null)
+    : [];
+  const injectedKeywords = Array.isArray(obj.injectedKeywords)
+    ? obj.injectedKeywords.filter((k): k is string => typeof k === "string" && k.trim().length > 0)
+    : [];
+
+  return {
+    tailoredText,
+    changes,
+    newScore: Number.isFinite(newScore) ? newScore : 0,
+    tweaks,
+    injectedKeywords,
+  };
+}
+
+function parseTailorResponse(text: string, stopReason: string | null): TailorResult | { error: string } {
+  const parsed = parseJsonFromModel(text);
+  const result = normalizeTailorResult(parsed);
+  if (result) return result;
+
+  if (stopReason === "max_tokens") {
+    return {
+      error:
+        "Resume generation was cut off before finishing. Try selecting fewer sections or use Quick edit mode, then try again.",
+    };
+  }
+
+  console.error("[tailor-resume] parse failed", {
+    stopReason,
+    preview: text.slice(0, 400),
+  });
+  return { error: "Failed to parse response. Please try again." };
+}
 
 let _a: Anthropic | null = null;
 function getAnthropic() {
@@ -21,17 +92,13 @@ export async function POST(req: NextRequest) {
   const quotaError = await requireAiQuota(dbUser, "TAILOR");
   if (quotaError) return quotaError;
 
-  const resumeText = dbUser.profile?.resumeText;
-  if (!resumeText) {
-    return NextResponse.json({ error: "No resume found" }, { status: 404 });
-  }
-
   const body = await req.json();
   const {
     jobTitle,
     company,
     description,
     jobId,
+    assetId,
     selectedSections,
     missingKeywords,
     workEditMode,
@@ -42,12 +109,28 @@ export async function POST(req: NextRequest) {
     company?: string;
     description?: string;
     jobId?: string;
+    assetId?: string;
     selectedSections?: string[];
     missingKeywords?: string[];
     workEditMode?: "quick" | "full";
     applyTweak?: string;
     baseTailoredText?: string;
   };
+
+  let resumeText = dbUser.profile?.resumeText?.trim() ?? "";
+  if (assetId?.trim()) {
+    const asset = await prisma.userAsset.findFirst({
+      where: { id: assetId.trim(), userId: dbUser.id, type: "RESUME" },
+    });
+    if (!asset) {
+      return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+    }
+    const parsed = normalizeParsedResumeData(asset.parsedData);
+    resumeText = asset.resumeText?.trim() || (parsed ? parsedResumeToText(parsed) : "");
+  }
+  if (!resumeText) {
+    return NextResponse.json({ error: "No resume found" }, { status: 404 });
+  }
 
   if (applyTweak?.trim() && baseTailoredText?.trim()) {
     const tweakPrompt = `You are an expert resume writer. Apply ONE optional improvement to this tailored resume.
@@ -71,21 +154,25 @@ Return ONLY valid JSON:
   "injectedKeywords": []
 }`;
 
-    const message = await getAnthropic().messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: tweakPrompt }],
-    });
-    const content = message.content[0];
-    if (content.type !== "text") {
-      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-    }
     try {
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON");
-      return NextResponse.json(JSON.parse(jsonMatch[0]));
-    } catch {
-      return NextResponse.json({ error: "Failed to parse tweak response" }, { status: 500 });
+      const message = await getAnthropic().messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: TAILOR_MAX_TOKENS,
+        messages: [{ role: "user", content: tweakPrompt }],
+      });
+      const content = message.content[0];
+      if (content.type !== "text") {
+        return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
+      }
+      const parsed = parseTailorResponse(content.text, message.stop_reason);
+      if ("error" in parsed) {
+        return NextResponse.json({ error: parsed.error }, { status: 500 });
+      }
+      return NextResponse.json(parsed);
+    } catch (err) {
+      console.error("[tailor-resume] tweak API error", err);
+      const message = err instanceof Error ? err.message : "AI request failed";
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   }
 
@@ -149,23 +236,26 @@ Rules:
 - tweaks: 2–3 additional optional improvements the candidate could still make (keep labels concise, under 55 chars)
 - injectedKeywords: list only keywords from the provided missing list that were actually added`;
 
-  const message = await getAnthropic().messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const content = message.content[0];
-  if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
-  }
-
   try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
-    const result = JSON.parse(jsonMatch[0]);
-    return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: "Failed to parse response" }, { status: 500 });
+    const message = await getAnthropic().messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: TAILOR_MAX_TOKENS,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const content = message.content[0];
+    if (content.type !== "text") {
+      return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
+    }
+
+    const parsed = parseTailorResponse(content.text, message.stop_reason);
+    if ("error" in parsed) {
+      return NextResponse.json({ error: parsed.error }, { status: 500 });
+    }
+    return NextResponse.json(parsed);
+  } catch (err) {
+    console.error("[tailor-resume] API error", err);
+    const message = err instanceof Error ? err.message : "AI request failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
