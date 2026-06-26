@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { JobActivityStatus, JobStage } from "@prisma/client";
 import { getActingUser } from "@/lib/acting-user";
 import { prisma } from "@/lib/prisma";
+import { enrichEmailRoleGuess } from "@/lib/inbox-role-enrich";
 import { fetchMessage, markMessageProcessed } from "@/lib/nylas-inbox";
 import { getUserEmailGrant } from "@/lib/user-email-server";
 
@@ -57,11 +58,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const applyStage = body.applyStage === true && Boolean(activity.suggestedStage);
 
     if (!jobId && body.createJob !== false && activity.companyGuess) {
+      const enriched = await enrichEmailRoleGuess(activity.companyGuess, activity.roleGuess ?? "Role from email");
       const created = await prisma.job.create({
         data: {
           userId: dbUser.id,
-          company: activity.companyGuess,
-          role: activity.roleGuess ?? "Role from email",
+          company: enriched?.company ?? activity.companyGuess,
+          role: enriched?.role ?? activity.roleGuess ?? "Role from email",
+          url: enriched?.url ?? null,
+          notes: enriched?.notes ?? null,
           stage: applyStage && activity.suggestedStage ? activity.suggestedStage : JobStage.SAVED,
           ...(applyStage && activity.suggestedStage === JobStage.APPLIED ? { appliedAt: new Date() } : {}),
         },

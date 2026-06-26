@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScoutPrimaryBtn, ScoutSecondaryBtn } from "../scout-box";
 import { color, fontMono, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { InboxInsightRow } from "./inbox-insight-row";
+import { InboxInsightsStrip } from "./inbox-insights-strip";
 import type {
+  ActivitySummary,
   ComposeState,
   Folder,
   InboxStatus,
@@ -12,12 +15,12 @@ import type {
   MessageSummary,
   PipelineJob,
 } from "./inbox-types";
-import { signalLabel } from "./inbox-types";
-import { InboxActivityActions } from "./inbox-activity-actions";
 
 function pickInboxFolder(folders: Folder[]): Folder | null {
   return folders.find((f) => f.id === "INBOX" || f.name.toLowerCase() === "inbox") ?? folders[0] ?? null;
 }
+
+import { signalLabel } from "./inbox-types";
 
 type Props = {
   status: InboxStatus;
@@ -28,6 +31,19 @@ type Props = {
   onComposeChange: (c: ComposeState) => void;
   onSend: () => Promise<void>;
   sending: boolean;
+  onOpenMail: (messageId: string) => void;
+  insightsLoaded: boolean;
+  insightsLoading: boolean;
+  onCheckEmail: () => void;
+  onViewAllInsights: () => void;
+  activities: ActivitySummary[];
+  jobs: PipelineJob[];
+  pendingCount: number;
+  onInsightAction: (
+    activity: ActivitySummary,
+    action: "accept" | "dismiss" | "link",
+    extra?: { jobId?: string; createJob?: boolean; applyStage?: boolean },
+  ) => void | Promise<void>;
 };
 
 export function InboxMailView({
@@ -39,6 +55,15 @@ export function InboxMailView({
   onComposeChange,
   onSend,
   sending,
+  onOpenMail,
+  insightsLoaded,
+  insightsLoading,
+  onCheckEmail,
+  onViewAllInsights,
+  activities,
+  jobs,
+  pendingCount,
+  onInsightAction,
 }: Props) {
   const isMobile = useIsMobile();
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -55,8 +80,7 @@ export function InboxMailView({
   const [showThread, setShowThread] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [drafting, setDrafting] = useState(false);
-  const [jobs, setJobs] = useState<PipelineJob[]>([]);
-  const [linkJobOpen, setLinkJobOpen] = useState(false);
+  const [detailJobs, setDetailJobs] = useState<PipelineJob[]>([]);
 
   const loadFolders = useCallback(async () => {
     const res = await fetch("/api/user/email/folders");
@@ -94,10 +118,17 @@ export function InboxMailView({
         if (inbox) setSelectedFolderId(inbox.id);
       })
       .catch(() => onNotice({ type: "error", text: "Could not load folders." }));
+  }, [status.connected, loadFolders, onNotice]);
+
+  useEffect(() => {
+    if (!detail?.activity || detailJobs.length > 0 || jobs.length > 0) {
+      if (jobs.length > 0) setDetailJobs(jobs);
+      return;
+    }
     fetch("/api/jobs")
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) =>
-        setJobs(
+        setDetailJobs(
           (Array.isArray(rows) ? rows : []).map((j: PipelineJob) => ({
             id: j.id,
             company: j.company,
@@ -107,7 +138,7 @@ export function InboxMailView({
         ),
       )
       .catch(() => {});
-  }, [status.connected, loadFolders, onNotice]);
+  }, [detail?.activity, detailJobs.length, jobs]);
 
   useEffect(() => {
     if (!status.connected) return;
@@ -232,12 +263,11 @@ export function InboxMailView({
       return;
     }
     const labels: Record<string, string> = {
-      accept: extra?.applyStage ? "Pipeline updated." : "Added to pipeline.",
-      link: "Email linked to role.",
-      dismiss: "Dismissed.",
+      accept: extra?.applyStage ? "Status updated." : "Role saved to your list.",
+      link: "Email matched to that role.",
+      dismiss: "Got it — we'll show less like this.",
     };
-    onNotice({ type: "success", text: labels[action] ?? "Updated." });
-    setLinkJobOpen(false);
+    onNotice({ type: "success", text: labels[action] ?? "Saved." });
     setDetail(await loadDetail(selectedId!));
   }
 
@@ -282,8 +312,22 @@ export function InboxMailView({
   const showList = !isMobile || mobilePane === "list";
   const showDetail = !isMobile || mobilePane === "detail";
 
+  const actionJobs = jobs.length > 0 ? jobs : detailJobs;
+
   return (
     <>
+      <InboxInsightsStrip
+        insightsLoaded={insightsLoaded}
+        insightsLoading={insightsLoading}
+        onCheckEmail={onCheckEmail}
+        onViewAll={onViewAllInsights}
+        activities={activities}
+        jobs={jobs}
+        pendingCount={pendingCount}
+        onOpenMail={onOpenMail}
+        onAction={onInsightAction}
+      />
+
       <div style={{ padding: "10px 16px", borderBottom: border.line, background: surface.page }}>
         <input
           type="search"
@@ -459,40 +503,34 @@ export function InboxMailView({
                 {detail.to && <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>To: {detail.to}</p>}
                 <p style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, margin: "0 0 16px" }}>{detail.dateLabel}</p>
 
-                {/* Pipeline link panel */}
+                {/* Email insight panel */}
                 <div style={{ marginBottom: 20, padding: 16, border: "1px solid rgba(42,107,74,0.25)", background: "rgba(42,107,74,0.06)", borderRadius: "var(--scout-radius)" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: detail.activity ? 10 : 0 }}>
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest, flex: 1 }}>
-                      Pipeline link
-                    </p>
-                    <ScoutSecondaryBtn onClick={() => handleAnalyze(Boolean(detail.activity))} disabled={analyzing}>
-                      {analyzing ? "Analyzing…" : detail.activity ? "Re-analyze" : "Analyze email"}
-                    </ScoutSecondaryBtn>
-                  </div>
-                  {!detail.activity && (
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5 }}>
-                      Analyze this email to detect companies, roles, and suggested pipeline updates.
-                    </p>
-                  )}
-                  {detail.activity && (
-                    <>
-                      <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink }}>
-                        {detail.activity.title ?? signalLabel(detail.activity.signal)}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start", marginBottom: detail.activity ? 0 : 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.forest }}>
+                        From this email
                       </p>
-                      {detail.activity.snippet && (
-                        <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: T.caption, color: color.stone, lineHeight: 1.5 }}>
-                          {detail.activity.snippet}
+                      {!detail.activity && (
+                        <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5 }}>
+                          Check whether this message mentions a role, interview, or application update.
                         </p>
                       )}
-                      <InboxActivityActions
-                        activity={{ ...detail.activity, id: detail.activity.id }}
-                        jobs={jobs}
-                        linkOpen={linkJobOpen}
-                        onToggleLink={() => setLinkJobOpen((v) => !v)}
-                        onAction={handleAgentAction}
-                        compact
-                      />
-                    </>
+                    </div>
+                    <ScoutSecondaryBtn onClick={() => handleAnalyze(Boolean(detail.activity))} disabled={analyzing}>
+                      {analyzing ? "Checking…" : detail.activity ? "Check again" : "Check this email"}
+                    </ScoutSecondaryBtn>
+                  </div>
+                  {detail.activity && (
+                    <InboxInsightRow
+                      activity={{
+                        ...detail.activity,
+                        id: detail.activity.id,
+                        nylasMessageId: detail.id,
+                      }}
+                      jobs={actionJobs}
+                      onAction={handleAgentAction}
+                      compact
+                    />
                   )}
                 </div>
 

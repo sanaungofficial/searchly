@@ -45,7 +45,7 @@ export function JobAgentActivityBanner() {
             {a.suggestedStage && a.status === "PENDING_REVIEW" ? (
               <>
                 {" "}
-                <Link href={`${INBOX_PATH}?mode=agent`} style={{ color: color.forest, fontWeight: 600 }}>
+                <Link href={INBOX_PATH} style={{ color: color.forest, fontWeight: 600 }}>
                   Review in Inbox →
                 </Link>
               </>
