@@ -10,23 +10,23 @@ const COPY: Record<
 > = {
   limit_hit: {
     title: "You're out of credits this month",
-    body: "Free includes 15 AI credits per month — match analysis, tailoring, cover letters, and Scout chat. Pro unlocks unlimited everything.",
-    primary: "Upgrade to Pro — $29/mo",
+    body: "Free includes 15 AI credits per month — match, tailor, cover letter, and Scout. Pro removes the cap.",
+    primary: "View Pro plans",
   },
   low_match: {
-    title: "This match needs more than tweaks",
-    body: "Scores under 6.0 often get filtered before a human reads them. Pro helps you tailor fast — or talk to a coach who can reposition your story.",
+    title: "Low match on this role",
+    body: "A score under 6 usually means your resume isn't lining up with the listing yet. Pro lets you tailor without using another credit — or talk to a coach about repositioning.",
     primary: "Upgrade to Pro",
     secondary: "Find a coach",
   },
   usage_warning: {
     title: "Running low on credits",
-    body: "You have a few AI credits left this month. Upgrade to Pro for unlimited match analysis, cover letters, and Scout chat.",
+    body: "A few credits left this month. Pro removes the monthly cap on match, tailor, cover letters, and Scout.",
     primary: "Upgrade to Pro",
   },
   coaching: {
     title: "Coaching is a Pro feature",
-    body: "Subscribe to book 1:1 sessions, see coach rates, and get personalized guidance on your search.",
+    body: "Pro unlocks 1:1 sessions with career coaches — book time, see rates, and get help on your search.",
     primary: "View plans",
   },
 };
@@ -226,7 +226,7 @@ export function GrowthMatchOffer({
       }}
     >
       <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#52493F", margin: "0 0 12px", lineHeight: 1.55 }}>
-        Pro tailors your resume for this role without using another credit. Or talk to someone who&apos;s placed candidates like you.
+        Pro tailors your resume for this role without using another credit. Or talk to a coach about repositioning.
       </p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button

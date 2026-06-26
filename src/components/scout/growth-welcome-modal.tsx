@@ -54,7 +54,7 @@ export function GrowthWelcomeModal({ onClose }: Props) {
             marginBottom: 28,
           }}
         >
-          Unlimited AI tools, fit analysis, and cover letters — no more counting runs. Open any job and try a full tailor pass.
+          Unlimited match analysis, tailoring, cover letters, and Scout — no credit counter. Pick a job and run a full tailor pass.
         </p>
         <button
           onClick={onClose}
