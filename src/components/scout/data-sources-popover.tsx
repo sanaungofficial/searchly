@@ -72,7 +72,7 @@ function AggregatorBadge({ name }: { name: string }) {
         padding: "6px 12px",
         background: "#F9FAFB",
         border: "1px solid #E5E7EB",
-        borderRadius: "var(--scout-radius)"99,
+        borderRadius: 999,
         whiteSpace: "nowrap",
       }}
     >
