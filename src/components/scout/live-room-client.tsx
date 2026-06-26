@@ -110,6 +110,35 @@ function LiveConference({
   const videoOn = useHMSStore(selectIsLocalVideoEnabled);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(true);
+  const [removingPeerId, setRemovingPeerId] = useState<string | null>(null);
+
+  const sessionRouteId =
+    sessionMeta.legacyNumericId != null
+      ? String(sessionMeta.legacyNumericId)
+      : sessionMeta.id;
+
+  const removePeer = async (peerId: string, peerName: string) => {
+    if (!window.confirm(`Remove ${peerName} from the room?`)) return;
+    setRemovingPeerId(peerId);
+    try {
+      const res = await fetch("/api/live/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: sessionRouteId,
+          action: "remove-peer",
+          peerId,
+          reason: "Removed by host",
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not remove participant");
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Could not remove participant");
+    } finally {
+      setRemovingPeerId(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -221,7 +250,31 @@ function LiveConference({
         }}
       >
         {peers.map((peer) => (
-          <PeerTile key={peer.id} peer={peer} />
+          <div key={peer.id} style={{ position: "relative" }}>
+            <PeerTile peer={peer} />
+            {isHost && !peer.isLocal && (
+              <button
+                type="button"
+                onClick={() => void removePeer(peer.id, peer.name ?? "Guest")}
+                disabled={removingPeerId === peer.id}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  padding: "4px 8px",
+                  background: "rgba(196,87,74,0.9)",
+                  color: "#fff",
+                  border: "none",
+                  fontFamily: fontSans,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {removingPeerId === peer.id ? "…" : "Remove"}
+              </button>
+            )}
+          </div>
         ))}
       </div>
 

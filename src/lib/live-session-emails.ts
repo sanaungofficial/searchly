@@ -1,5 +1,7 @@
 import { resend } from "@/lib/email";
+import { prisma } from "@/lib/prisma";
 import { formatSessionDateRange } from "@/lib/live-session-display";
+import { googleCalendarUrl } from "@/lib/live-calendar";
 
 function escapeHtml(value: string) {
   return value
@@ -79,7 +81,11 @@ export async function sendLiveSessionRegistrationEmail(params: {
       <p style="margin:16px 0 0;font-size:14px;color:#52493F;line-height:1.7;">
         We'll email you before it starts. When we're live, use the same link to join in one click.
       </p>
-      ${ctaButton(joinUrl, "View session →")}`
+      ${ctaButton(joinUrl, "View session →")}
+      ${ctaButton(
+        googleCalendarUrl(params.session),
+        "Add to Google Calendar →",
+      )}`
     ),
   });
 }
@@ -144,4 +150,107 @@ export async function sendLiveSessionLiveNowEmail(params: {
       ${ctaButton(joinUrl, "Join now →")}`
     ),
   });
+}
+
+export async function sendLiveSessionPostSessionEmail(params: {
+  email: string;
+  name?: string | null;
+  session: {
+    title: string;
+    host: string;
+    legacyNumericId: number | null;
+    id: string;
+    coachProfileId: string | null;
+    coachSlug: string | null;
+  };
+  replayUrl?: string | null;
+}) {
+  if (!process.env.RESEND_API_KEY) return;
+
+  const firstName = params.name?.split(" ")[0] ?? "there";
+  const routeId =
+    params.session.legacyNumericId != null
+      ? String(params.session.legacyNumericId)
+      : params.session.id;
+  const replayHref =
+    params.replayUrl ??
+    `${appBase().replace(/\/$/, "")}/live/${routeId}/replay`;
+  const bookHref = params.session.coachSlug
+    ? `${appBase().replace(/\/$/, "")}/coaching?coach=${params.session.coachSlug}`
+    : `${appBase().replace(/\/$/, "")}/coaching`;
+
+  await resend.emails.send({
+    from: "Kimchi <hello@kimchi.so>",
+    to: params.email,
+    subject: `Thanks for joining — ${params.session.title}`,
+    html: emailShell(
+      `Thanks for being there, ${firstName}.`,
+      `<p style="margin:0 0 12px;font-size:15px;color:#52493F;line-height:1.7;">
+        We wrapped <strong>${escapeHtml(params.session.title)}</strong> with ${escapeHtml(params.session.host)}.
+      </p>
+      ${params.replayUrl ? ctaButton(replayHref, "Watch replay →") : ""}
+      ${ctaButton(bookHref, "Book time with the coach →")}`
+    ),
+  });
+}
+
+/** Notify coach followers when a session goes live (once per session). */
+export async function notifyCoachFollowersLive(sessionId: string): Promise<number> {
+  const session = await prisma.liveSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      coachProfile: {
+        include: {
+          follows: {
+            include: { user: { select: { email: true, name: true } } },
+          },
+        },
+      },
+    },
+  });
+
+  if (!session?.coachProfile || session.followNotifySentAt) return 0;
+
+  let sent = 0;
+  for (const follow of session.coachProfile.follows) {
+    if (!follow.user.email) continue;
+    try {
+      await resend.emails.send({
+        from: "Kimchi <hello@kimchi.so>",
+        to: follow.user.email,
+        subject: `${session.coachProfile.displayName} is live — ${session.title}`,
+        html: emailShell(
+          `${session.coachProfile.displayName} just went live.`,
+          `<p style="margin:0 0 12px;font-size:15px;color:#52493F;line-height:1.7;">
+            <strong>${escapeHtml(session.title)}</strong> is happening now.
+          </p>
+          ${ctaButton(
+            liveSessionPath({
+              legacyNumericId: session.legacyNumericId,
+              id: session.id,
+            }),
+            "Join now →",
+          )}`
+        ),
+      });
+      sent += 1;
+    } catch (err) {
+      console.error("[live/follower email]", follow.userId, err);
+    }
+  }
+
+  if (sent > 0) {
+    await prisma.liveSession.update({
+      where: { id: sessionId },
+      data: { followNotifySentAt: new Date() },
+    });
+    const { logLiveSessionEvent } = await import("@/lib/live-session-events");
+    await logLiveSessionEvent({
+      liveSessionId: sessionId,
+      type: "FOLLOWER_NOTIFIED",
+      metadata: { count: sent },
+    });
+  }
+
+  return sent;
 }

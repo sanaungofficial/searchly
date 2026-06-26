@@ -33,6 +33,27 @@ type AdminLiveResponse = {
   hostRoles: { host: string; guest: string };
 };
 
+type SessionAnalytics = {
+  peakViewers: number;
+  totalUniqueJoins: number;
+  registered: number;
+  joined: number;
+  conversionPct: number;
+  recordingUrl: string | null;
+  hlsPlaybackUrl: string | null;
+  eventCounts: Record<string, number>;
+};
+
+type EditForm = {
+  title: string;
+  description: string;
+  category: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  isFeaturedWeekly: boolean;
+  status: string;
+};
+
 type RegistrationRow = {
   id: string;
   name: string | null;
@@ -65,6 +86,11 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
 export function LiveSessionsAdminPanel() {
   const router = useRouter();
   const [data, setData] = useState<AdminLiveResponse | null>(null);
+  const [platformAnalytics, setPlatformAnalytics] = useState<{
+    sessionsLast30Days: number;
+    avgPeakViewers: number;
+    eventTotals: Record<string, number>;
+  } | null>(null);
   const [coaches, setCoaches] = useState<CoachOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +98,9 @@ export function LiveSessionsAdminPanel() {
   const [showCreate, setShowCreate] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
+  const [analytics, setAnalytics] = useState<SessionAnalytics | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [creating, setCreating] = useState(false);
 
   const [form, setForm] = useState({
@@ -99,19 +128,31 @@ export function LiveSessionsAdminPanel() {
 
   useEffect(() => {
     void load();
+    fetch("/api/admin/live/sessions/platform/analytics")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPlatformAnalytics(d))
+      .catch(() => {});
     fetch("/api/admin/live/sessions")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setCoaches(d?.coaches ?? []))
       .catch(() => {});
-    const interval = window.setInterval(() => void load(), 30000);
+    const intervalMs = data?.overview?.liveNowCount ? 5000 : 30000;
+    const interval = window.setInterval(() => void load(), intervalMs);
     return () => window.clearInterval(interval);
-  }, [load]);
+  }, [load, data?.overview?.liveNowCount]);
 
-  const loadRegistrations = async (sessionId: string) => {
+  const loadSessionDetail = async (sessionId: string) => {
     const res = await fetch(`/api/admin/live?sessionId=${encodeURIComponent(sessionId)}`);
     if (!res.ok) return;
     const d = (await res.json()) as { registrations: RegistrationRow[] };
     setRegistrations(d.registrations ?? []);
+
+    const analyticsRes = await fetch(
+      `/api/admin/live/sessions/${encodeURIComponent(sessionId)}/analytics`,
+    );
+    if (analyticsRes.ok) {
+      setAnalytics((await analyticsRes.json()) as SessionAnalytics);
+    }
   };
 
   const runAction = async (sessionId: string, action: "go-live" | "end" | "enable-room" | "disable-room") => {
@@ -126,7 +167,7 @@ export function LiveSessionsAdminPanel() {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(body.error ?? "Action failed");
       await load();
-      if (expandedId === sessionId) await loadRegistrations(sessionId);
+      if (expandedId === sessionId) await loadSessionDetail(sessionId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action failed");
     } finally {
@@ -179,10 +220,49 @@ export function LiveSessionsAdminPanel() {
     if (expandedId === sessionId) {
       setExpandedId(null);
       setRegistrations([]);
+      setAnalytics(null);
+      setEditingId(null);
+      setEditForm(null);
       return;
     }
     setExpandedId(sessionId);
-    void loadRegistrations(sessionId);
+    void loadSessionDetail(sessionId);
+  };
+
+  const startEdit = (session: AdminLiveSession) => {
+    setEditingId(session.id);
+    setEditForm({
+      title: session.title,
+      description: session.description,
+      category: session.category,
+      scheduledStart: session.scheduledStart.slice(0, 16),
+      scheduledEnd: session.scheduledEnd.slice(0, 16),
+      isFeaturedWeekly: session.isFeaturedWeekly,
+      status: session.status,
+    });
+  };
+
+  const saveEdit = async (sessionId: string) => {
+    if (!editForm) return;
+    setBusyId(sessionId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/live/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Could not update session");
+      setEditingId(null);
+      setEditForm(null);
+      await load();
+      if (expandedId === sessionId) await loadSessionDetail(sessionId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update session");
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const renderSession = (session: AdminLiveSession) => (
@@ -272,9 +352,88 @@ export function LiveSessionsAdminPanel() {
             Preview as guest →
           </ScoutSecondaryBtn>
           <ScoutSecondaryBtn onClick={() => toggleExpand(session.id)} style={{ minHeight: 40 }}>
-            {expandedId === session.id ? "Hide attendees" : "View attendees"}
+            {expandedId === session.id ? "Hide details" : "Details & analytics"}
           </ScoutSecondaryBtn>
+          <ScoutSecondaryBtn
+            onClick={() => {
+              if (editingId === session.id) {
+                setEditingId(null);
+                setEditForm(null);
+              } else {
+                startEdit(session);
+                if (expandedId !== session.id) toggleExpand(session.id);
+              }
+            }}
+            style={{ minHeight: 40 }}
+          >
+            {editingId === session.id ? "Cancel edit" : "Edit session"}
+          </ScoutSecondaryBtn>
+          <ScoutSecondaryBtn
+            onClick={() => {
+              window.open(
+                `/api/admin/live/sessions/${session.legacyNumericId ?? session.id}/export`,
+                "_blank",
+              );
+            }}
+            style={{ minHeight: 40 }}
+          >
+            Export RSVPs (CSV)
+          </ScoutSecondaryBtn>
+          {(session.recordingUrl || session.hlsPlaybackUrl) && (
+            <ScoutSecondaryBtn
+              onClick={() =>
+                router.push(`/live/${session.legacyNumericId ?? session.id}/replay`)
+              }
+              style={{ minHeight: 40 }}
+            >
+              View replay →
+            </ScoutSecondaryBtn>
+          )}
         </div>
+
+        {editingId === session.id && editForm && (
+          <div style={{ borderTop: border.line, paddingTop: 12, display: "grid", gap: 10 }}>
+            <label style={{ display: "grid", gap: 4 }}>
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Title</span>
+              <input style={inputStyle} value={editForm.title} onChange={(e) => setEditForm((f) => f && ({ ...f, title: e.target.value }))} />
+            </label>
+            <label style={{ display: "grid", gap: 4 }}>
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Description</span>
+              <textarea style={{ ...inputStyle, minHeight: 60 }} value={editForm.description} onChange={(e) => setEditForm((f) => f && ({ ...f, description: e.target.value }))} />
+            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Starts</span>
+                <input type="datetime-local" style={inputStyle} value={editForm.scheduledStart} onChange={(e) => setEditForm((f) => f && ({ ...f, scheduledStart: e.target.value }))} />
+              </label>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600 }}>Ends</span>
+                <input type="datetime-local" style={inputStyle} value={editForm.scheduledEnd} onChange={(e) => setEditForm((f) => f && ({ ...f, scheduledEnd: e.target.value }))} />
+              </label>
+            </div>
+            <ScoutPrimaryBtn disabled={busyId === session.id} onClick={() => void saveEdit(session.id)} style={{ width: "fit-content", minHeight: 40 }}>
+              Save changes
+            </ScoutPrimaryBtn>
+          </div>
+        )}
+
+        {expandedId === session.id && analytics && (
+          <div style={{ borderTop: border.line, paddingTop: 12 }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, margin: "0 0 10px" }}>
+              Session analytics
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 8, marginBottom: 12 }}>
+              <StatCard label="Peak viewers" value={analytics.peakViewers} />
+              <StatCard label="Unique joins" value={analytics.totalUniqueJoins} />
+              <StatCard label="RSVP → join" value={`${analytics.conversionPct}%`} />
+            </div>
+            {analytics.hlsPlaybackUrl && (
+              <p style={{ fontFamily: fontMono, fontSize: 10, color: color.muted, margin: "0 0 8px", wordBreak: "break-all" }}>
+                HLS: {analytics.hlsPlaybackUrl}
+              </p>
+            )}
+          </div>
+        )}
 
         {expandedId === session.id && (
           <div style={{ borderTop: border.line, paddingTop: 12 }}>
@@ -304,9 +463,16 @@ export function LiveSessionsAdminPanel() {
   return (
     <div>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 20px", lineHeight: 1.6 }}>
-        Create sessions, go live, and see who&apos;s in each room. Attendees use the same <code>/live/…</code> link — one tap to join.
-        Email reminders coming later.
+        Create sessions, go live, monitor analytics, and join any room as host or guest. RSVP emails, reminders, follower alerts, and post-session follow-ups are automated.
       </p>
+
+      {platformAnalytics && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
+          <StatCard label="Sessions (30d)" value={platformAnalytics.sessionsLast30Days} />
+          <StatCard label="Avg peak viewers" value={platformAnalytics.avgPeakViewers} />
+          <StatCard label="Total joins" value={platformAnalytics.eventTotals.JOINED ?? 0} />
+        </div>
+      )}
 
       {data?.overview && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>

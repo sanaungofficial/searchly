@@ -19,6 +19,7 @@ import {
   markLiveSessionJoined,
   toLiveSessionView,
 } from "@/lib/live-session-db";
+import { markUserJoinedLive } from "@/lib/live-session-actions";
 
 export async function POST(request: Request) {
   if (!hmsConfigured()) {
@@ -113,6 +114,7 @@ export async function POST(request: Request) {
     const authToken = typeof auth === "string" ? auth : auth.token;
 
     await markLiveSessionJoined(row.id, dbUser.id);
+    await markUserJoinedLive(row.id, dbUser.id);
 
     return NextResponse.json({
       authToken,

@@ -46,6 +46,7 @@ model User {
   coachReviews         CoachReview[]
   coachFollows         CoachFollow[]
   liveSessionRegistrations LiveSessionRegistration[]
+  liveSessionEvents      LiveSessionEvent[]
 
   @@index([referredByUserId])
 }
@@ -332,8 +333,19 @@ model LiveSession {
   wentLiveAt       DateTime?
   endedAt          DateTime?
   liveNowEmailSentAt DateTime?
+  postSessionEmailSentAt DateTime?
+  followNotifySentAt DateTime?
+
+  peakViewers        Int               @default(0)
+  totalUniqueJoins   Int               @default(0)
+  recordingUrl       String?
+  recordingReadyAt   DateTime?
+  hmsRecordingId     String?
+  hmsLiveStreamId    String?
+  hlsPlaybackUrl     String?
 
   registrations    LiveSessionRegistration[]
+  events           LiveSessionEvent[]
 
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -341,6 +353,36 @@ model LiveSession {
   @@index([status])
   @@index([scheduledStart])
   @@index([coachProfileId])
+}
+
+enum LiveSessionEventType {
+  REGISTERED
+  REMINDER_SENT
+  LIVE_NOW_SENT
+  FOLLOWER_NOTIFIED
+  JOINED
+  LEFT
+  RECORDING_STARTED
+  RECORDING_READY
+  POST_SESSION_SENT
+  SESSION_STARTED
+  SESSION_ENDED
+  PEER_REMOVED
+}
+
+model LiveSessionEvent {
+  id            String               @id @default(cuid())
+  liveSessionId String
+  liveSession   LiveSession          @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type          LiveSessionEventType
+  metadata      Json?
+  createdAt     DateTime             @default(now())
+
+  @@index([liveSessionId, type])
+  @@index([liveSessionId, createdAt])
+  @@index([userId])
 }
 
 model LiveSessionRegistration {

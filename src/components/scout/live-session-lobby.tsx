@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LiveSessionView } from "@/lib/live-session-types";
@@ -8,6 +9,33 @@ import { ScoutPrimaryBtn } from "./scout-box";
 import { color, fontSans, border as B } from "@/lib/typography";
 
 type LiveSessionRow = LiveSessionView & { canHost?: boolean };
+
+function calendarLinks(session: LiveSessionView) {
+  const routeId =
+    session.legacyNumericId != null ? String(session.legacyNumericId) : session.id;
+  return {
+    ics: `/api/live/sessions/${routeId}/calendar`,
+    google: buildGoogleCalendarUrl(session),
+  };
+}
+
+function buildGoogleCalendarUrl(session: LiveSessionView): string {
+  const start = new Date(session.scheduledStart);
+  const end = new Date(session.scheduledEnd);
+  const format = (d: Date) =>
+    d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const routeId =
+    session.legacyNumericId != null ? String(session.legacyNumericId) : session.id;
+  const url = `${typeof window !== "undefined" ? window.location.origin : ""}/live/${routeId}`;
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: session.title,
+    dates: `${format(start)}/${format(end)}`,
+    details: `${session.description}\n\nWith ${session.host}\n${url}`,
+    location: "Kimchi Live",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
 
 export function LiveSessionLobby({
   session,
@@ -93,6 +121,10 @@ export function LiveSessionLobby({
 
   const s = row ?? session;
   const canHost = Boolean(s.canHost) && !joinAsGuest;
+  const isEnded = s.status === "ENDED" || s.status === "CANCELLED";
+  const hasReplay = Boolean(s.recordingUrl || s.hlsPlaybackUrl);
+  const cal = calendarLinks(s);
+  const bookHref = s.coachSlug ? `/coaching?coach=${s.coachSlug}` : "/coaching";
 
   if (loading) {
     return (
@@ -172,67 +204,146 @@ export function LiveSessionLobby({
         <p style={{ fontFamily: fontSans, color: color.forest, marginBottom: 16 }}>{message}</p>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {canHost && !s.isLive && (
-          <ScoutPrimaryBtn
-            onClick={() => void startSession()}
-            disabled={busy}
-            style={{ minHeight: 48, background: color.forest, color: color.gold }}
-          >
-            {busy ? "Starting…" : "Start session →"}
-          </ScoutPrimaryBtn>
-        )}
+      {isEnded && (
+        <div
+          style={{
+            padding: "16px 18px",
+            background: "rgba(26,58,47,0.06)",
+            border: B.line,
+            marginBottom: 20,
+            fontFamily: fontSans,
+            fontSize: 14,
+            color: color.stone,
+            lineHeight: 1.6,
+          }}
+        >
+          <strong style={{ color: color.forest }}>This session has ended.</strong>
+          {hasReplay ? (
+            <>
+              {" "}
+              <Link href={`/live/${routeId}/replay`} style={{ color: color.forest }}>
+                Watch the replay →
+              </Link>
+            </>
+          ) : (
+            " Thanks for joining — we'll email you when a replay is ready."
+          )}
+        </div>
+      )}
 
-        {(s.isLive || canHost) && (
-          <ScoutPrimaryBtn
-            onClick={onEnterRoom}
-            disabled={busy}
+      {!isEnded && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {canHost && !s.isLive && (
+            <ScoutPrimaryBtn
+              onClick={() => void startSession()}
+              disabled={busy}
+              style={{ minHeight: 48, background: color.forest, color: color.gold }}
+            >
+              {busy ? "Starting…" : "Start session →"}
+            </ScoutPrimaryBtn>
+          )}
+
+          {(s.isLive || canHost) && (
+            <ScoutPrimaryBtn
+              onClick={onEnterRoom}
+              disabled={busy}
+              style={{
+                minHeight: 48,
+                background: s.isLive ? "#C4574A" : color.forest,
+                color: s.isLive ? "#fff" : color.gold,
+                borderColor: s.isLive ? "#C4574A" : undefined,
+              }}
+            >
+              {canHost ? "Join as host →" : "Join now →"}
+            </ScoutPrimaryBtn>
+          )}
+
+          {!s.isLive && !canHost && (
+            <>
+              {s.isRegistered ? (
+                <div
+                  style={{
+                    padding: "16px 18px",
+                    background: "rgba(26,58,47,0.06)",
+                    border: B.line,
+                    fontFamily: fontSans,
+                    fontSize: 14,
+                    color: color.stone,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <strong style={{ color: color.forest }}>You&apos;re registered.</strong> Come back when
+                  we&apos;re live — use this same link to join in one click.
+                </div>
+              ) : (
+                <ScoutPrimaryBtn
+                  onClick={() => void reserveSeat()}
+                  disabled={busy}
+                  style={{ minHeight: 48, background: color.forest, color: color.gold }}
+                >
+                  {busy ? "Saving…" : "Register for this session →"}
+                </ScoutPrimaryBtn>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {!isEnded && (s.isRegistered || canHost) && !s.isLive && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
+          <a
+            href={cal.ics}
             style={{
-              minHeight: 48,
-              background: s.isLive ? "#C4574A" : color.forest,
-              color: s.isLive ? "#fff" : color.gold,
-              borderColor: s.isLive ? "#C4574A" : undefined,
+              fontFamily: fontSans,
+              fontSize: 13,
+              color: color.forest,
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
             }}
           >
-            {canHost ? "Join as host →" : "Join now →"}
-          </ScoutPrimaryBtn>
-        )}
+            Add to calendar (.ics)
+          </a>
+          <a
+            href={cal.google}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontFamily: fontSans,
+              fontSize: 13,
+              color: color.forest,
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Google Calendar
+          </a>
+        </div>
+      )}
 
-        {!s.isLive && !canHost && (
-          <>
-            {s.isRegistered ? (
-              <div
-                style={{
-                  padding: "16px 18px",
-                  background: "rgba(26,58,47,0.06)",
-                  border: B.line,
-                  fontFamily: fontSans,
-                  fontSize: 14,
-                  color: color.stone,
-                  lineHeight: 1.6,
-                }}
-              >
-                <strong style={{ color: color.forest }}>You&apos;re registered.</strong> Come back when
-                we&apos;re live — use this same link to join in one click.
-              </div>
-            ) : (
-              <ScoutPrimaryBtn
-                onClick={() => void reserveSeat()}
-                disabled={busy}
-                style={{ minHeight: 48, background: color.forest, color: color.gold }}
-              >
-                {busy ? "Saving…" : "Register for this session →"}
-              </ScoutPrimaryBtn>
-            )}
-          </>
-        )}
-      </div>
+      {!isEnded && s.isRegistered && !s.isLive && !canHost && (
+        <div style={{ marginTop: 20 }}>
+          <Link
+            href={bookHref}
+            style={{
+              fontFamily: fontSans,
+              fontSize: 14,
+              color: color.forest,
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Book 1:1 time with {s.host} →
+          </Link>
+        </div>
+      )}
 
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, marginTop: 20 }}>
-        {s.isLive
-          ? `${s.registered} watching`
-          : `${s.registered} registered`}
-        {!s.isLive && !canHost ? " · video opens when the host goes live" : ""}
+        {isEnded
+          ? "Session ended"
+          : s.isLive
+            ? `${s.registered} watching`
+            : `${s.registered} registered`}
+        {!isEnded && !s.isLive && !canHost ? " · video opens when the host goes live" : ""}
       </p>
 
       <button

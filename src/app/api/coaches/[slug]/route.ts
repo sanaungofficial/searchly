@@ -4,6 +4,7 @@ import { CoachStatus } from "@prisma/client";
 import { getAuthenticatedDbUser } from "@/lib/coach-api";
 import { computeReviewAggregates } from "@/lib/coach-directory";
 import { isNylasConfigured } from "@/lib/nylas";
+import { listCoachLiveSessions, toLiveSessionView } from "@/lib/live-session-db";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -80,6 +81,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const avgRating = aggregates?.avgRating ?? null;
   const reviewCount = aggregates?.reviewCount ?? 0;
 
+  const upcomingLiveRows = await listCoachLiveSessions(coach.id);
+  const upcomingLiveSessions = upcomingLiveRows.map((row) =>
+    toLiveSessionView(row, { registrationCount: row._count.registrations }),
+  );
+
   return NextResponse.json({
     id: coach.id,
     slug: coach.slug,
@@ -117,5 +123,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       ...r,
       createdAt: r.createdAt.toISOString(),
     })),
+    upcomingLiveSessions,
   });
 }

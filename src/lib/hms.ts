@@ -26,6 +26,14 @@ export function hmsGuestRole(): string {
   return process.env.HMS_ROLE_GUEST?.trim() || "guest";
 }
 
+export function hmsViewerRole(): string {
+  return process.env.HMS_ROLE_VIEWER?.trim() || "viewer";
+}
+
+export function hmsModeratorRole(): string {
+  return process.env.HMS_ROLE_MODERATOR?.trim() || hmsHostRole();
+}
+
 export type LiveRoomStatus = {
   roomId: string | null;
   roomEnabled: boolean;
@@ -157,4 +165,99 @@ export async function endLiveRoom(
   if (lock) {
     await hms.rooms.enableOrDisable(roomId, false);
   }
+}
+
+/** Start composite room recording (requires template recording enabled). */
+export async function startLiveRecording(
+  session: Pick<LiveSessionRecord, "id" | "legacyNumericId">
+): Promise<string | null> {
+  if (!hmsConfigured()) return null;
+  const roomId = await getLiveRoomId(session);
+  if (!roomId) return null;
+
+  const hms = getHmsSdk();
+  try {
+    const recording = await hms.recordings.start(roomId, {});
+    return recording.id ?? null;
+  } catch (err) {
+    console.error("[hms/recording start]", err);
+    return null;
+  }
+}
+
+/** Stop all recordings in room. */
+export async function stopLiveRecording(
+  session: Pick<LiveSessionRecord, "id" | "legacyNumericId">
+): Promise<void> {
+  if (!hmsConfigured()) return;
+  const roomId = await getLiveRoomId(session);
+  if (!roomId) return;
+
+  const hms = getHmsSdk();
+  try {
+    await hms.recordings.stopAll(roomId);
+  } catch {
+    // No active recording
+  }
+}
+
+/** Start HLS live stream for large audiences (viewer role in template). */
+export async function startHlsLiveStream(
+  session: Pick<LiveSessionRecord, "id" | "legacyNumericId" | "title">
+): Promise<{ streamId: string | null; playbackUrl: string | null }> {
+  if (!hmsConfigured()) return { streamId: null, playbackUrl: null };
+  const roomId = await ensureLiveRoom(session);
+  const hms = getHmsSdk();
+  try {
+    const stream = await hms.liveStreams.start(roomId, {
+      recording: { hls_vod: true },
+    });
+    const playbackUrl =
+      (stream as { url?: string }).url ??
+      (stream as { playback?: { url?: string } }).playback?.url ??
+      null;
+    return { streamId: stream.id ?? null, playbackUrl };
+  } catch (err) {
+    console.error("[hms/hls start]", err);
+    return { streamId: null, playbackUrl: null };
+  }
+}
+
+export async function stopHlsLiveStream(roomId: string): Promise<void> {
+  if (!hmsConfigured()) return;
+  const hms = getHmsSdk();
+  try {
+    await hms.liveStreams.stopAll(roomId);
+  } catch {
+    // No active stream
+  }
+}
+
+/** Remove a peer from active room (moderator action). */
+export async function removeLivePeer(
+  session: Pick<LiveSessionRecord, "id" | "legacyNumericId">,
+  peerId: string,
+  reason = "Removed by host"
+): Promise<void> {
+  const roomId = await getLiveRoomId(session);
+  if (!roomId) return;
+  const hms = getHmsSdk();
+  await hms.activeRooms.removePeer(roomId, { peer_id: peerId, reason });
+}
+
+/** Update peak viewer count from active room. */
+export async function snapshotLiveRoomMetrics(
+  session: Pick<LiveSessionRecord, "id" | "legacyNumericId">
+): Promise<{ activePeerCount: number; peakViewers: number }> {
+  const room = await getLiveRoomStatus(session);
+  const { prisma } = await import("@/lib/prisma");
+  const row = await prisma.liveSession.findUnique({ where: { id: session.id } });
+  const peak = Math.max(room.activePeerCount, row?.peakViewers ?? 0);
+  if (peak > (row?.peakViewers ?? 0)) {
+    await prisma.liveSession.update({
+      where: { id: session.id },
+      data: { peakViewers: peak },
+    });
+  }
+  return { activePeerCount: room.activePeerCount, peakViewers: peak };
 }

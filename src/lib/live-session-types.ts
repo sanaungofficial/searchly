@@ -30,6 +30,11 @@ export type LiveSessionView = {
   isRegistered?: boolean;
   activePeerCount?: number;
   roomEnabled?: boolean;
+  peakViewers?: number;
+  totalUniqueJoins?: number;
+  recordingUrl?: string | null;
+  hlsPlaybackUrl?: string | null;
+  coachSlug?: string | null;
 };
 
 export type LiveSessionRoomKey = {

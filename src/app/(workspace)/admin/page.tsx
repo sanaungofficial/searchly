@@ -5,6 +5,7 @@ import { UsersTable } from "./users-table";
 import { TopEchelonSyncPanel } from "./top-echelon-sync-panel";
 import { AirtableCoachesSyncPanel } from "./airtable-coaches-sync-panel";
 import { AdminUsagePanel } from "@/components/admin/admin-usage-panel";
+import { AdminLiveOverviewWidget } from "@/components/admin/admin-live-overview-widget";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel } from "@/components/scout/scout-box";
 import { color, displayTitleStyle, fontMono, type as T } from "@/lib/typography";
 import { adminSectionLabel } from "./admin-styles";
@@ -123,6 +124,8 @@ export default async function AdminPage() {
         <ScoutDisplayTitle size={36} style={{ marginBottom: 8 }}>Admin Dashboard</ScoutDisplayTitle>
         <p style={{ fontSize: T.bodySm, color: color.muted, margin: 0 }}>Live data · {data.totalUsers} registered users</p>
       </div>
+
+      <AdminLiveOverviewWidget />
 
       <section>
         <h2 className={adminSectionLabel}>Growth</h2>
