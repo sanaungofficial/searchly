@@ -26,6 +26,8 @@ import { LINKEDIN_EMPLOYMENT_TYPES, newLinkedInEntryId, type LinkedInProfileDraf
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { LinkedInOrgPicker } from "./linkedin-org-picker";
 import { CompanyLogo } from "./company-logo";
+import { LinkedInChecklistProgressBar } from "./linkedin-checklist-progress-bar";
+import type { ChecklistProgressItem } from "@/lib/linkedin-checklist-progress";
 
 const LI = {
   bg: "#f3f2ef",
@@ -39,6 +41,8 @@ const LI = {
 
 type Props = {
   isMobile?: boolean;
+  /** Coach or admin viewing a client profile — show section notes. */
+  coachView?: boolean;
 };
 
 type PhotoType = "profile" | "cover";
@@ -258,7 +262,7 @@ function PhotoEditOverlay({
   );
 }
 
-export function ProfileLinkedInEditor({ isMobile = false }: Props) {
+export function ProfileLinkedInEditor({ isMobile = false, coachView = false }: Props) {
   const compact = useCompactLayout();
   const stackLayout = isMobile || compact;
 
@@ -287,6 +291,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
   const [showImportInput, setShowImportInput] = useState(false);
+  const [aboutSyncStale, setAboutSyncStale] = useState(false);
+  const [lastLinkedInImportAt, setLastLinkedInImportAt] = useState<string | null>(null);
   const [newSkill, setNewSkill] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
@@ -342,6 +348,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       setAvatarUrl(typeof data.avatarUrl === "string" ? data.avatarUrl : null);
       setLinkedinUrl(typeof data.linkedinUrl === "string" ? data.linkedinUrl : null);
       setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : null);
+      setAboutSyncStale(Boolean(data.aboutSyncStale));
+      setLastLinkedInImportAt(typeof data.lastLinkedInImportAt === "string" ? data.lastLinkedInImportAt : null);
       if (loaded) void loadAnalysis();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -396,6 +404,54 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
     if (draftRef.current) void saveDraft(draftRef.current);
   };
 
+  const scrollToChecklistItem = (item: ChecklistProgressItem) => {
+    const id =
+      item.jumpSection === "experience" && item.jumpEntryId
+        ? `li-section-exp-${item.jumpEntryId}`
+        : item.jumpSection
+          ? `li-section-${item.jumpSection}`
+          : null;
+    if (!id) return;
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (item.jumpSection && item.jumpSection !== "featured") {
+      openImprove(item.jumpSection as LinkedInSectionId, {
+        entryId: item.jumpEntryId,
+        entryLabel: item.label,
+      });
+    }
+  };
+
+  const patchCoachNote = (key: string, note: string) => {
+    patchDraft((d) => ({
+      ...d,
+      coachNotes: { ...(d.coachNotes ?? {}), [key]: note.trim() || undefined },
+    }));
+  };
+
+  const saveCoachNote = () => {
+    if (draftRef.current) void saveDraft(draftRef.current, false);
+  };
+
+  function CoachNote({ noteKey, label }: { noteKey: string; label: string }) {
+    if (!coachView || !draft) return null;
+    const value = draft.coachNotes?.[noteKey] ?? "";
+    return (
+      <div style={{ marginTop: 10, padding: 10, border: `1px dashed ${LI.border}`, borderRadius: 4, background: "#fffef8" }}>
+        <p style={{ fontFamily: fontSans, fontSize: 11, fontWeight: 600, color: color.muted, margin: "0 0 6px" }}>
+          Coach note · {label}
+        </p>
+        <textarea
+          value={value}
+          onChange={(e) => patchCoachNote(noteKey, e.target.value)}
+          onBlur={saveCoachNote}
+          placeholder="Feedback for your client on this section…"
+          rows={2}
+          style={{ ...liField, fontSize: 13, width: "100%", border: `1px solid ${LI.border}`, background: "#fff", resize: "vertical" }}
+        />
+      </div>
+    );
+  }
+
   const generate = async () => {
     setGenerating(true);
     setError(null);
@@ -415,6 +471,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       setDraft(next);
       draftRef.current = next;
       setUpdatedAt(typeof data.updatedAt === "string" ? data.updatedAt : new Date().toISOString());
+      setAboutSyncStale(false);
       setSaveHint(null);
       await loadAnalysis(true);
     } catch (e) {
@@ -498,6 +555,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       setUpdatedAt(new Date().toISOString());
       setShowImportInput(false);
       setImportUrl("");
+      setLastLinkedInImportAt(new Date().toISOString());
+      setAboutSyncStale(false);
       if (data.sparse) {
         setImportNotice(typeof data.sparseMessage === "string" ? data.sparseMessage : LINKEDIN_SPARSE_MESSAGE);
       }
@@ -676,6 +735,15 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
   });
   const experienceScores = draft ? linkedInExperienceEntryScores(draft) : [];
   const scoreByEntryId = new Map(experienceScores.map((s) => [s.entryId, s]));
+  const baselineScore = analysis?.baselineScore ?? analysis?.score;
+  const scoreDelta =
+    analysis?.score != null && baselineScore != null && analysis.score > baselineScore
+      ? analysis.score - baselineScore
+      : null;
+  const importStale =
+    linkedinUrl?.trim() &&
+    (!lastLinkedInImportAt ||
+      Date.now() - new Date(lastLinkedInImportAt).getTime() > 30 * 24 * 60 * 60 * 1000);
 
   const fixIssues: SectionFixIssue[] = fixSuggestIssues;
 
@@ -719,6 +787,16 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 gradeLabel={analysisReport.gradeLabel}
                 onViewReport={() => setReportOpen(true)}
               />
+              {scoreDelta != null && scoreDelta > 0 && (
+                <span style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, color: color.forest }}>
+                  +{scoreDelta} since first review
+                </span>
+              )}
+              {baselineScore != null && analysisReport.score != null && baselineScore !== analysisReport.score && (
+                <span style={{ fontFamily: fontSans, fontSize: 11, color: color.muted }}>
+                  Was {baselineScore}%
+                </span>
+              )}
               <ScoreExplainerPopover variant="linkedin-quality" />
             </>
           )}
@@ -749,6 +827,29 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
           {importNotice}
         </p>
       )}
+
+      {aboutSyncStale && draft && (
+        <div style={{ fontFamily: fontSans, fontSize: 14, color: color.ink, background: "#FFF8E8", border: "1px solid #E8D5A3", padding: "12px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ lineHeight: 1.5 }}>
+            Your About profile changed since this LinkedIn draft was last synced.
+          </span>
+          <ScoutPrimaryBtn type="button" onClick={() => void generate()} disabled={generating} style={{ padding: "8px 14px" }}>
+            Update from About
+          </ScoutPrimaryBtn>
+        </div>
+      )}
+
+      {importStale && draft && !showImportInput && (
+        <div style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, background: surface.inset, border: border.line, padding: "10px 14px", marginBottom: 16, lineHeight: 1.5 }}>
+          LinkedIn URL is on file{lastLinkedInImportAt ? ` · last imported ${new Date(lastLinkedInImportAt).toLocaleDateString()}` : ""}.
+          {" "}
+          <button type="button" onClick={() => setShowImportInput(true)} style={{ background: "none", border: "none", padding: 0, color: color.forest, textDecoration: "underline", cursor: "pointer", font: "inherit" }}>
+            Re-import from LinkedIn
+          </button>
+          {" "}to check your live profile matches this draft.
+        </div>
+      )}
+
       {error && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C05050", marginBottom: 16, lineHeight: 1.55 }}>{error}</p>}
 
       {showImportInput && (
@@ -792,6 +893,8 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
       )}
 
       {draft && (
+        <>
+          <LinkedInChecklistProgressBar draft={draft} onJump={scrollToChecklistItem} />
         <div
           style={{
             display: "grid",
@@ -824,6 +927,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 <LiSectionHeader title="Headline" onImprove={() => openImprove("headline")} />
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: LI.muted, margin: "0 0 6px" }}>{draft.headline.length}/120</p>
                 <textarea
+                  id="li-section-headline"
                   value={draft.headline}
                   onChange={(e) => patchDraft((d) => ({ ...d, headline: e.target.value.slice(0, 120) }))}
                   onFocus={() => setFocusedField("headline")}
@@ -831,6 +935,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                   rows={2}
                   style={fieldStyle("headline", { fontSize: 14, lineHeight: 1.45, resize: "vertical" })}
                 />
+                <CoachNote noteKey="headline" label="Headline" />
                 <input
                   value={draft.location ?? ""}
                   onChange={(e) => patchDraft((d) => ({ ...d, location: e.target.value }))}
@@ -842,7 +947,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               </div>
             </div>
 
-            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div id="li-section-about" style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader title="About" onImprove={() => openImprove("about")} />
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: LI.muted, margin: "0 0 8px" }}>{draft.about.length}/2600</p>
               <textarea
@@ -853,9 +958,10 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 rows={8}
                 style={fieldStyle("about", { fontSize: 14, lineHeight: 1.55, resize: "vertical" })}
               />
+              <CoachNote noteKey="about" label="About" />
             </div>
 
-            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div id="li-section-experience" style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader
                 title="Experience"
                 addLabel="+ Add role"
@@ -872,6 +978,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                 return (
                 <div
                   key={exp.id}
+                  id={`li-section-exp-${exp.id}`}
                   style={{
                     marginBottom: idx < draft.experience.length - 1 ? 24 : 0,
                     paddingBottom: idx < draft.experience.length - 1 ? 24 : 0,
@@ -1063,6 +1170,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                       >
                         Improve this role
                       </button>
+                      <CoachNote noteKey={`exp-${exp.id}`} label={exp.title || exp.company || "Experience"} />
                     </div>
                   </div>
                 </div>
@@ -1070,7 +1178,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
               })}
             </div>
 
-            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div id="li-section-education" style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader
                 title="Education"
                 addLabel="+ Add school"
@@ -1184,11 +1292,13 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                       </div>
                     </div>
                   </div>
+                  <CoachNote noteKey={`edu-${edu.id}`} label={edu.school || "Education"} />
                 </div>
               ))}
+              <CoachNote noteKey="education" label="Education" />
             </div>
 
-            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div id="li-section-skills" style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <LiSectionHeader title="Skills" onImprove={() => openImprove("skills")} />
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 {draft.skills.map((skill) => (
@@ -1240,9 +1350,10 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
                   Add
                 </ScoutSecondaryBtn>
               </div>
+              <CoachNote noteKey="skills" label="Skills" />
             </div>
 
-            <div style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
+            <div id="li-section-featured" style={{ background: LI.card, borderRadius: "var(--scout-radius)", marginTop: 8, padding: stackLayout ? 16 : 24, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                 <h4 style={{ fontFamily: "system-ui", fontSize: 18, fontWeight: 600, margin: 0, color: LI.text }}>Featured</h4>
                 <button
@@ -1361,6 +1472,7 @@ export function ProfileLinkedInEditor({ isMobile = false }: Props) {
             </div>
           </ScoutBox>
         </div>
+        </>
       )}
 
       <ResumeAnalysisReportDrawer

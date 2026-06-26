@@ -13,6 +13,8 @@ export type ProfileSidebarTab =
   | "assets"
   | "preferences";
 
+import type { ProfileTabGap } from "@/lib/profile-readiness";
+
 type TabItem = { id: ProfileSidebarTab; label: string };
 
 type ProfileSidebarProps = {
@@ -26,6 +28,8 @@ type ProfileSidebarProps = {
   avatarUrl?: string | null;
   completenessPct: number;
   onCompletenessClick?: () => void;
+  weakestTab?: ProfileTabGap | null;
+  onWeakestTabClick?: () => void;
   loading?: boolean;
 };
 
@@ -64,6 +68,8 @@ export function ProfileLayoutSidebar({
   avatarUrl,
   completenessPct,
   onCompletenessClick,
+  weakestTab,
+  onWeakestTabClick,
   loading,
 }: ProfileSidebarProps) {
   const pctColor = completenessPct >= 80 ? color.forest : "#C4A86A";
@@ -202,6 +208,30 @@ export function ProfileLayoutSidebar({
               />
             </div>
           </button>
+          {weakestTab && onWeakestTabClick && completenessPct < 100 && (
+            <button
+              type="button"
+              onClick={onWeakestTabClick}
+              style={{
+                display: "block",
+                width: "100%",
+                marginTop: 10,
+                padding: "8px 10px",
+                border: border.line,
+                borderRadius: "calc(var(--scout-radius) - 2px)",
+                background: surface.inset,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, display: "block" }}>
+                Improve {weakestTab.label} →
+              </span>
+              <span style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, lineHeight: 1.4 }}>
+                {weakestTab.topAction} (+{weakestTab.missingPoints}%)
+              </span>
+            </button>
+          )}
         </div>
       </div>
 

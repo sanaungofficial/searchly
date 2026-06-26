@@ -8,6 +8,8 @@ export type LinkedInSectionId = "headline" | "about" | "experience" | "education
 
 export interface LinkedInAnalysisData {
   score?: number;
+  /** Score when user first ran analysis — for before/after. */
+  baselineScore?: number;
   headline?: string;
   strengths?: string[];
   improvements?: { priority: string; title: string; detail: string }[];
@@ -62,8 +64,11 @@ export function normalizeLinkedInAnalysis(raw: unknown): LinkedInAnalysisData | 
   if (!raw || typeof raw !== "object") return null;
   const obj = raw as Record<string, unknown>;
   const score = typeof obj.score === "number" ? normalizeQualityScore(obj.score) : undefined;
+  const baselineScore =
+    typeof obj.baselineScore === "number" ? normalizeQualityScore(obj.baselineScore) : undefined;
   return {
     score,
+    baselineScore,
     headline: typeof obj.headline === "string" ? obj.headline : undefined,
     strengths: Array.isArray(obj.strengths) ? obj.strengths.filter((s): s is string => typeof s === "string") : undefined,
     improvements: Array.isArray(obj.improvements)

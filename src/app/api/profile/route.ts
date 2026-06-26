@@ -6,6 +6,7 @@ import { normalizeTargetRoleSettings } from "@/lib/target-role-settings";
 import { upsertProfileFields } from "@/lib/profile-write";
 import { refreshLinkedInDraftFromAbout } from "@/lib/profile-linkedin-persist";
 import { invalidateRecommendedSnapshotForUser } from "@/lib/recommended-jobs-snapshot";
+import { findResumeAssetForUser } from "@/lib/resume-artifact";
 import { NextResponse } from "next/server";
 import { getActingUser, canAccessAdminClientTools } from "@/lib/acting-user";
 import { normalizeDashboardGoals } from "@/lib/dashboard-goals";
@@ -20,11 +21,18 @@ export async function GET() {
     const includeIntakeNotes = canAccessAdminClientTools(acting);
 
     const profile = await prisma.profile.findUnique({ where: { userId: dbUser.id } });
+    const primaryResume = await findResumeAssetForUser(dbUser.id);
 
     const parsedData = mergeParsedWithReadback(
       normalizeParsedResumeData(profile?.parsedData ?? null),
       profile?.readbackData,
     );
+
+    const analysisRaw = profile?.linkedInDraftAnalysis;
+    const linkedInAnalysisScore =
+      analysisRaw && typeof analysisRaw === "object" && typeof (analysisRaw as { score?: number }).score === "number"
+        ? (analysisRaw as { score: number }).score
+        : null;
 
     return NextResponse.json({
       userId: dbUser.id,
@@ -63,6 +71,8 @@ export async function GET() {
       dashboardGoals: normalizeDashboardGoals(profile?.dashboardGoals),
       readbackData: profile?.readbackData ?? null,
       readbackUpdatedAt: profile?.readbackUpdatedAt?.toISOString() ?? null,
+      primaryResumeUpdatedAt: primaryResume?.updatedAt?.toISOString() ?? null,
+      linkedInAnalysisScore,
       impersonating: isImpersonating
         ? { active: true, userId: dbUser.id, name: dbUser.name, email: dbUser.email }
         : undefined,

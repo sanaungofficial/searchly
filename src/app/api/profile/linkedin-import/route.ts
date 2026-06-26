@@ -97,6 +97,15 @@ export async function POST(request: Request) {
     }
 
     const refreshedDraft = await refreshLinkedInDraftFromAbout(dbUser.id);
+    const importAt = new Date().toISOString();
+    let finalDraft = refreshedDraft ?? normalizeLinkedInDraft(linkedInDraft);
+    if (finalDraft) {
+      finalDraft = { ...finalDraft, lastLinkedInImportAt: importAt };
+      await prisma.profile.update({
+        where: { userId: dbUser.id },
+        data: { linkedInDraft: finalDraft as unknown as Prisma.InputJsonValue },
+      });
+    }
     const sparse = isSparseProfileData(mergedParsed);
 
     return NextResponse.json({
@@ -109,7 +118,7 @@ export async function POST(request: Request) {
       experienceCount: mergedParsed.workExperience.length,
       educationCount: mergedParsed.education.length,
       skillsCount: mergedParsed.skills.length,
-      draft: refreshedDraft ?? normalizeLinkedInDraft(linkedInDraft),
+      draft: finalDraft,
     });
   } catch (err) {
     console.error("[linkedin-import]", err);
