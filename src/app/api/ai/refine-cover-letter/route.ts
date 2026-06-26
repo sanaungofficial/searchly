@@ -1,4 +1,5 @@
 import { getAuthedUserForAi, requireAiQuota } from "@/lib/ai-guard";
+import { KIMCHI_VOICE } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -33,7 +34,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const systemPrompt = `You are an expert cover letter editor. You will be given a cover letter and a specific instruction to improve it. Rewrite the cover letter according to the instruction. Return only the updated cover letter text — no explanation, no preamble, no markdown. Keep the same general structure and length unless the instruction says otherwise. The letter should start with the salutation (e.g. "Dear Hiring Manager,").`;
+  const systemPrompt = `${KIMCHI_VOICE}
+
+You will be given a cover letter and a specific instruction to improve it. Rewrite the cover letter according to the instruction. Return only the updated cover letter text — no explanation, no preamble, no markdown. Keep the same general structure and length unless the instruction says otherwise. The letter should start with the salutation (e.g. "Dear Hiring Manager,").`;
 
   const userMessage = [
     `Job: ${jobTitle || "Unknown"} at ${company || "Unknown"}`,

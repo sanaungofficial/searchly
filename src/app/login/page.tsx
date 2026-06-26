@@ -54,7 +54,7 @@ function LoginContent() {
           Welcome back.
         </h2>
         <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 32, lineHeight: 1.5 }}>
-          Sign in to your Kimchi workspace.
+          Sign in to pick up where you left off.
         </p>
 
         <AuthCredentialsForm mode="login" />

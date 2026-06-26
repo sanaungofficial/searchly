@@ -13,7 +13,7 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
   await resend.emails.send({
     from: "Kimchi <hello@kimchi.so>",
     to: email,
-    subject: "You're in. Let's get you hired.",
+    subject: "Welcome to Kimchi",
     html: `
       <!DOCTYPE html>
       <html>
@@ -40,16 +40,16 @@ export async function sendWelcomeEmail(email: string, name: string | null) {
                         Welcome, ${firstName}.
                       </p>
                       <p style="margin:0 0 16px;font-size:15px;color:#52493F;line-height:1.7;">
-                        Your Kimchi workspace is ready. Upload your resume, paste in a few job URLs, and we'll get to work — tailored applications, cover letters, and fit analysis, all in one place.
+                        Your account is ready. Upload your resume, add a job to your pipeline, and we'll help you tailor applications from there — cover letters, fit scores, and edits when you need them.
                       </p>
                       <p style="margin:0 0 32px;font-size:15px;color:#52493F;line-height:1.7;">
-                        Most people see their first tailored application ready within minutes of onboarding.
+                        Scout's in the sidebar if you want a second read on a role or a draft.
                       </p>
                       <table cellpadding="0" cellspacing="0">
                         <tr>
                           <td style="background:#1C3A2F;border-radius:10px;">
                             <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.secondladder.com"}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:600;color:#F2EDE3;text-decoration:none;">
-                              Open your workspace →
+                              Go to Kimchi →
                             </a>
                           </td>
                         </tr>

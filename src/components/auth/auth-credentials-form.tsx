@@ -127,7 +127,6 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
   if (confirmSent) {
     return (
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 32, marginBottom: 16 }}>✉️</div>
         <h2
           style={{
             fontFamily: "var(--font-display)",
@@ -137,10 +136,10 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
             marginBottom: 12,
           }}
         >
-          Confirm your email
+          Check your inbox.
         </h2>
         <p style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.6 }}>
-          We sent a confirmation link to <strong>{email.trim()}</strong>. Open it to activate your account, then sign in with your password.
+          We sent a link to <strong>{email.trim()}</strong>. Click it to finish setup, then sign in.
         </p>
       </div>
     );
@@ -204,7 +203,7 @@ export function AuthCredentialsForm({ mode }: { mode: AuthMode }) {
         />
         <input
           type="password"
-          placeholder={isSignup ? "Create a password (8+ characters)" : "Password"}
+          placeholder={isSignup ? "Password (8+ characters)" : "Password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
