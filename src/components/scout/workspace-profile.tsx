@@ -23,7 +23,6 @@ import {
   prospectPathId,
 } from "@/lib/workspace-urls";
 import { withClientUserId } from "@/lib/workspace-urls";
-import { AdminClientProfileBanner } from "@/components/admin/admin-client-profile-banner";
 import type { CachedJob } from "@/lib/cached-job";
 import { writeProspectJobCache } from "@/lib/prospect-jobs-cache";
 import { WorkspaceCompanies } from "./workspace-companies";
@@ -2804,10 +2803,11 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { adminReviewClientId, withClientScope, isAdminReviewing, openPricing, user, showAdminUi } = useWorkspace();
   const profileLoc = parseProfileLocation(pathname);
-  const clientId = adminClientUserId ?? profileLoc.clientId;
-  const profileBase = profileBasePath(clientId);
-  const api = (path: string) => withClientUserId(path, clientId);
+  const clientId = adminClientUserId ?? profileLoc.clientId ?? adminReviewClientId ?? undefined;
+  const profileBase = profileBasePath(clientId, { sessionScoped: isAdminReviewing });
+  const api = withClientScope;
   const page = profileLoc.page;
   const setPage = (tab: PageTab) => {
     router.push(profileTabPath(profileBase, tab));
@@ -2838,7 +2838,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
   const [readbackNudge, setReadbackNudge] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const { openPricing, user, showAdminUi } = useWorkspace();
   const [editorAssetId, setEditorAssetId] = useState<string | null>(null);
   const [onboardingFinish, setOnboardingFinish] = useState<OnboardingFinishPayload | null>(null);
   const openResumeEditor = (assetId: string) => {
@@ -3394,13 +3393,6 @@ export function WorkspaceProfile({ adminClientUserId }: WorkspaceProfileProps = 
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", background: surface.page, animation: "fadeIn 0.3s ease both" }}>
-      {clientId && (
-        <AdminClientProfileBanner
-          name={profile?.name}
-          email={profile?.email}
-          onBack={() => router.push("/dashboard/clients")}
-        />
-      )}
       <WorkspaceScroll ref={scrollRef}>
         <WorkspaceContent style={{ maxWidth: WORKSPACE_MAX_WIDTH }}>
         {upskillPrompt && page !== "learning" && page !== "dreamrole" && (

@@ -2,6 +2,45 @@ import { clearCoachMatchCache } from "@/lib/coach-match-cache";
 import { clearRecommendedCache } from "@/lib/recommended-jobs-cache";
 
 const ACTING_USER_KEY = "kimchi_acting_user_id";
+const ADMIN_REVIEW_CLIENT_KEY = "kimchi_admin_review_client_id";
+const ADMIN_REVIEW_META_KEY = "kimchi_admin_review_meta";
+
+export type AdminReviewMeta = {
+  name?: string | null;
+  email?: string | null;
+};
+
+/** Persist admin profile-review target (not impersonation) across workspace pages. */
+export function setAdminReviewClient(userId: string, meta?: AdminReviewMeta): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(ADMIN_REVIEW_CLIENT_KEY, userId);
+  if (meta) {
+    sessionStorage.setItem(ADMIN_REVIEW_META_KEY, JSON.stringify(meta));
+  }
+}
+
+export function getAdminReviewClientId(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(ADMIN_REVIEW_CLIENT_KEY);
+}
+
+export function getAdminReviewMeta(): AdminReviewMeta | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(ADMIN_REVIEW_META_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as AdminReviewMeta;
+  } catch {
+    return null;
+  }
+}
+
+export function clearAdminReviewClient(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(ADMIN_REVIEW_CLIENT_KEY);
+  sessionStorage.removeItem(ADMIN_REVIEW_META_KEY);
+}
+
 const SEMANTIC_QUERY_PREFIX = "kimchi_pipeline_semantic_query";
 const NETWORK_SEARCH_PREFIX = "kimchi_network_search";
 

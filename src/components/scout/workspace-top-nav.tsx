@@ -9,6 +9,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { canAccessBetaFeature } from "@/lib/beta-features";
 import { isStaffPortalRole, STAFF_DASHBOARD_NAV, matchStaffDashboardNavPath, isExpertPortalPath } from "@/lib/staff-portal";
+import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
@@ -33,7 +34,9 @@ function buildNavLinks(isAdmin: boolean): NavLink[] {
     label: "Dashboard",
     path: "/dashboard",
     match: (p) =>
-      (p === "/dashboard" || p.startsWith("/dashboard/")) && !isExpertPortalPath(p),
+      (p === "/dashboard" || p.startsWith("/dashboard/")) &&
+      !isExpertPortalPath(p) &&
+      !isAdminClientReviewPath(p),
   });
   links.push({
     id: "opportunities",
@@ -336,6 +339,8 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     staffDashboardView,
     setStaffDashboardView,
     isImpersonating,
+    isAdminReviewing,
+    withClientScope,
   } = useWorkspace();
 
   const isStaffPortal = isStaffPortalRole(userRole);
@@ -347,6 +352,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   const expertPortalActive =
     isStaffPortal &&
     !isImpersonating &&
+    !isAdminReviewing &&
     (isExpertPortalPath(pathname) ||
       (pathname === "/dashboard" && staffDashboardView === "expert"));
   const showExpertModeChip =
@@ -402,8 +408,8 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   };
 
   useEffect(() => {
-    if (!authChecked) return;
-    fetch("/api/profile")
+    if (!authChecked || isAdminReviewing) return;
+    fetch(withClientScope("/api/profile"))
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data && !data.error) {
@@ -411,7 +417,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
         }
       })
       .catch(() => {});
-  }, [authChecked]);
+  }, [authChecked, isAdminReviewing, withClientScope]);
 
   useEffect(() => {
     setNavDropdownOpen(null);
@@ -431,9 +437,9 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
   useEffect(() => () => clearNavDropdownCloseTimer(), []);
 
   useEffect(() => {
-    if (!isStaffPortal || isImpersonating) return;
+    if (!isStaffPortal || isImpersonating || isAdminReviewing) return;
     if (isExpertPortalPath(pathname)) setStaffDashboardView("expert");
-  }, [pathname, isStaffPortal, isImpersonating, setStaffDashboardView]);
+  }, [pathname, isStaffPortal, isImpersonating, isAdminReviewing, setStaffDashboardView]);
 
   const onToggleNotif = () => setNotifOpen((p) => !p);
 

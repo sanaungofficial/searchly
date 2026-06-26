@@ -67,3 +67,12 @@ export async function resolveProfileApiSubject(request: Request): Promise<
   return { acting, authUser: acting.authUser, dbUser, clientUserId };
 }
 
+/** Resolve dbUser for any workspace API (self, impersonation, or admin client review). */
+export async function resolveScopedDbUser(
+  request: Request,
+): Promise<{ dbUser: User | null; error?: NextResponse }> {
+  const resolved = await resolveProfileApiSubject(request);
+  if ("error" in resolved) return { dbUser: null, error: resolved.error };
+  return { dbUser: resolved.dbUser };
+}
+

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AdminClientsPanel } from "@/components/admin/admin-clients-panel";
 import { WorkspaceSubpageShell } from "@/components/scout/workspace-content";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { clearClientSessionCaches, setActingUserScope } from "@/lib/client-session";
+import { clearClientSessionCaches, setActingUserScope, clearAdminReviewClient } from "@/lib/client-session";
 import { navigateToAdminClientProfile } from "@/lib/admin-client-navigation";
 
 function DashboardClientsInner() {
@@ -32,6 +32,7 @@ function DashboardClientsInner() {
       });
       if (!res.ok) throw new Error("Failed to start impersonation");
       const body = (await res.json().catch(() => ({}))) as { user?: { id?: string } };
+      clearAdminReviewClient();
       clearClientSessionCaches();
       if (body.user?.id) setActingUserScope(body.user.id);
       window.location.href = "/profile";

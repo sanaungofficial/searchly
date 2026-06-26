@@ -35,6 +35,7 @@ import {
 import { POSTED_WITHIN_OPTIONS, postedWithinDaysFormValue } from "@/lib/job-posted-filter";
 import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
 import type { KanbanCard } from "./workspace-data";
+import { useWorkspace } from "@/contexts/workspace-context";
 import {
   filtersCacheKey,
   readRecommendedCache,
@@ -764,6 +765,7 @@ export function PipelineRecommendedSection({
   actingUserId?: string | null;
 }) {
   const isMobile = useIsMobile();
+  const { withClientScope } = useWorkspace();
   const [form, setForm] = useState(() => ({
     ...filtersToForm(DEFAULT_VECTOR_SEARCH_FILTERS),
     semanticQuery: loadScopedSemanticQuery(),
@@ -821,7 +823,7 @@ export function PipelineRecommendedSection({
       saveScopedSemanticQuery(semanticQuery);
 
       try {
-        const res = await fetch("/api/jobs/recommended", {
+        const res = await fetch(withClientScope("/api/jobs/recommended"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: forceRefresh ? "no-store" : "default",
@@ -899,11 +901,11 @@ export function PipelineRecommendedSection({
         }
       }
     },
-    []
+    [withClientScope],
   );
 
   useEffect(() => {
-    void fetch("/api/jobs/recommended/defaults")
+    void fetch(withClientScope("/api/jobs/recommended/defaults"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { filters?: VectorSearchFilters; labels?: string[] } | null) => {
         if (data?.filters) {
