@@ -14,17 +14,17 @@ export function KimchiAssistantChipRow({
   chips,
   label,
   onActivate,
-  layout = "stack",
+  layout = "inline",
 }: {
   chips: AssistantChip[];
   label?: string;
   onActivate: (chip: AssistantChip) => void;
-  /** stack = full-width rows (starters); inline = compact wrapped pills (keep going) */
+  /** inline = compact pills in a row (default); stack = deprecated full-width rows */
   layout?: "stack" | "inline";
 }) {
   if (chips.length === 0) return null;
 
-  const inline = layout === "inline";
+  const inline = layout !== "stack";
 
   return (
     <div className={`kimchi-chips${inline ? " kimchi-chips--inline" : ""}`}>
@@ -35,22 +35,61 @@ export function KimchiAssistantChipRow({
             key={chip.id}
             type="button"
             className={`kimchi-chips__chip kimchi-chips__chip--${chip.variant}`}
+            title={chip.hint ?? chip.label}
             onClick={() => onActivate(chip)}
           >
             {!inline && chip.variant === "action" && (
               <span className="kimchi-chips__arrow" aria-hidden="true">→</span>
             )}
-            <span className="kimchi-chips__chip-text">
-              <span className="kimchi-chips__chip-label">{chip.label}</span>
-              {!inline && chip.hint && chip.variant === "action" && (
-                <span className="kimchi-chips__chip-hint">{chip.hint}</span>
-              )}
-            </span>
+            {inline && chip.variant === "action" && (
+              <span className="kimchi-chips__pill-dot" aria-hidden="true" />
+            )}
+            <span className="kimchi-chips__chip-label">{chip.label}</span>
           </button>
         ))}
       </div>
       <KimchiChipStyles />
     </div>
+  );
+}
+
+/** iMessage-style typing indicator while Kimchi is composing */
+export function KimchiTypingIndicator() {
+  return (
+    <span className="kimchi-typing" aria-live="polite" aria-label="Kimchi is typing">
+      <span className="kimchi-typing__dot" />
+      <span className="kimchi-typing__dot" />
+      <span className="kimchi-typing__dot" />
+      <KimchiTypingStyles />
+    </span>
+  );
+}
+
+function KimchiTypingStyles() {
+  return (
+    <style>{`
+      .kimchi-typing {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 36px;
+        min-height: 12px;
+      }
+      .kimchi-typing__dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(26, 58, 47, 0.38);
+        animation: kimchi-typing-bounce 1.2s ease-in-out infinite;
+      }
+      .kimchi-typing__dot:nth-child(1) { animation-delay: 0s; }
+      .kimchi-typing__dot:nth-child(2) { animation-delay: 0.15s; }
+      .kimchi-typing__dot:nth-child(3) { animation-delay: 0.3s; }
+      @keyframes kimchi-typing-bounce {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+        30% { transform: translateY(-5px); opacity: 1; }
+      }
+    `}</style>
   );
 }
 
@@ -91,8 +130,8 @@ export function KimchiStarterSection({
 }) {
   return (
     <div className="kimchi-starter">
-      <KimchiAssistantChipRow label="Do this" chips={actions} onActivate={onActivate} />
-      <KimchiAssistantChipRow label="Or ask about" chips={chatChips} onActivate={onActivate} />
+      <KimchiAssistantChipRow label="Do this" chips={actions} layout="inline" onActivate={onActivate} />
+      <KimchiAssistantChipRow label="Or ask" chips={chatChips} layout="inline" onActivate={onActivate} />
       <KimchiStarterStyles />
     </div>
   );
@@ -104,7 +143,8 @@ function KimchiStarterStyles() {
       .kimchi-starter {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
+        margin-bottom: 8px;
       }
     `}</style>
   );
@@ -114,16 +154,16 @@ function KimchiChipStyles() {
   return (
     <style>{`
       .kimchi-chips {
-        margin: 0 0 16px;
+        margin: 0 0 8px;
       }
       .kimchi-chips__label {
-        margin: 0 0 8px;
+        margin: 0 0 4px;
         font-family: ${sans};
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.05em;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: rgba(26, 58, 47, 0.5);
+        color: rgba(26, 58, 47, 0.42);
       }
       .kimchi-chips__row {
         display: flex;
@@ -140,7 +180,7 @@ function KimchiChipStyles() {
         font-family: ${sans};
         cursor: pointer;
         text-align: left;
-        transition: background 0.15s ease, border-color 0.15s ease;
+        transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
       }
       .kimchi-chips__chip--chat {
         background: #fff;
@@ -167,80 +207,85 @@ function KimchiChipStyles() {
         font-weight: 700;
         color: #1A3A2F;
       }
-      .kimchi-chips__chip-text {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-      }
       .kimchi-chips__chip-label {
         font-size: 15px;
         font-weight: 600;
         line-height: 1.35;
       }
-      .kimchi-chips__chip-hint {
-        font-size: 13px;
-        font-weight: 400;
-        line-height: 1.4;
-        color: var(--scout-muted);
+      .kimchi-chips--inline {
+        margin-bottom: 6px;
       }
       .kimchi-chips--inline .kimchi-chips__label {
-        margin-bottom: 6px;
+        margin-bottom: 3px;
       }
       .kimchi-chips--inline .kimchi-chips__row {
         flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
+        flex-wrap: nowrap;
+        gap: 5px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .kimchi-chips--inline .kimchi-chips__row::-webkit-scrollbar {
+        display: none;
       }
       .kimchi-chips--inline .kimchi-chips__chip {
+        flex-shrink: 0;
         width: auto;
-        max-width: 100%;
+        max-width: 168px;
         padding: 5px 10px;
         align-items: center;
+        gap: 5px;
         border-radius: 999px;
+        border-width: 1px;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip:active {
+        transform: scale(0.97);
       }
       .kimchi-chips--inline .kimchi-chips__chip-label {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
-        line-height: 1.25;
+        line-height: 1.2;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .kimchi-chips--inline .kimchi-chips__chip--chat {
+        background: #fff;
+        border-color: rgba(26, 58, 47, 0.16);
       }
       .kimchi-chips--inline .kimchi-chips__chip--action {
-        background: rgba(26, 58, 47, 0.08);
+        background: rgba(26, 58, 47, 0.07);
+        border-color: rgba(26, 58, 47, 0.14);
+      }
+      .kimchi-chips__pill-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #1A3A2F;
+        flex-shrink: 0;
+        opacity: 0.55;
       }
     `}</style>
   );
 }
 
-type Props = {
+type DoNextProps = {
   suggestions: AssistantSuggestion[];
-  collapsed: boolean;
-  onExpand: () => void;
   onSelect: (s: AssistantSuggestion) => void;
 };
 
-export function KimchiDoNextStrip({ suggestions, collapsed, onExpand, onSelect }: Props) {
+export function KimchiDoNextStrip({ suggestions, onSelect }: DoNextProps) {
   if (suggestions.length === 0) return null;
 
-  const items = suggestions.slice(0, 5);
-
-  if (collapsed) {
-    const preview = items.map((s) => s.title).join(" · ");
-    const trimmed = preview.length > 72 ? `${preview.slice(0, 69)}…` : preview;
-    return (
-      <button type="button" className="kimchi-do-next-collapsed" onClick={onExpand}>
-        <span className="kimchi-do-next-collapsed__text">
-          <span className="kimchi-do-next-collapsed__label">Suggested next</span>
-          <span className="kimchi-do-next-collapsed__preview">{trimmed}</span>
-        </span>
-        <span className="kimchi-do-next-collapsed__chev">Show</span>
-      </button>
-    );
-  }
+  const items = suggestions.slice(0, 6);
 
   return (
     <div className="kimchi-do-next">
-      <p className="kimchi-do-next__label">Suggested next</p>
+      <div className="kimchi-do-next__head">
+        <span className="kimchi-do-next__label">Suggested</span>
+      </div>
       <div className="kimchi-do-next__row">
         {items.map((s) => (
           <button
@@ -259,107 +304,62 @@ export function KimchiDoNextStrip({ suggestions, collapsed, onExpand, onSelect }
   );
 }
 
-export function KimchiDoNextCollapsedStyles() {
-  return (
-    <style>{`
-      .kimchi-do-next-collapsed {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        width: 100%;
-        margin: 0;
-        padding: 7px 14px;
-        border: none;
-        border-bottom: 1px solid rgba(26, 58, 47, 0.08);
-        background: rgba(26, 58, 47, 0.03);
-        font-family: ${sans};
-        font-size: 12px;
-        color: rgba(26, 58, 47, 0.72);
-        cursor: pointer;
-        min-height: 0;
-      }
-      .kimchi-do-next-collapsed__text {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        min-width: 0;
-        flex: 1;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-      }
-      .kimchi-do-next-collapsed__label {
-        flex-shrink: 0;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        font-size: 10px;
-        color: rgba(26, 58, 47, 0.45);
-      }
-      .kimchi-do-next-collapsed__preview {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-weight: 500;
-        color: rgba(26, 58, 47, 0.78);
-      }
-      .kimchi-do-next-collapsed__chev {
-        color: rgba(26, 58, 47, 0.5);
-        font-weight: 500;
-      }
-    `}</style>
-  );
-}
-
 function KimchiDoNextStyles() {
   return (
     <style>{`
       .kimchi-do-next {
         flex-shrink: 0;
-        padding: 8px 14px 6px;
-        border-bottom: 1px solid rgba(26, 58, 47, 0.08);
+        padding: 6px 14px 5px;
+        border-bottom: 1px solid rgba(26, 58, 47, 0.07);
         background: rgba(26, 58, 47, 0.02);
       }
+      .kimchi-do-next__head {
+        margin-bottom: 4px;
+      }
       .kimchi-do-next__label {
-        margin: 0 0 6px;
+        margin: 0;
         font-family: ${sans};
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: var(--scout-muted);
+        color: rgba(26, 58, 47, 0.42);
       }
       .kimchi-do-next__row {
         display: flex;
         flex-wrap: nowrap;
-        gap: 6px;
+        gap: 5px;
         overflow-x: auto;
-        padding-bottom: 2px;
+        padding-bottom: 1px;
         scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
       }
       .kimchi-do-next__row::-webkit-scrollbar {
         display: none;
       }
       .kimchi-do-next__pill {
         flex-shrink: 0;
-        max-width: 220px;
-        padding: 5px 10px;
+        max-width: 160px;
+        padding: 4px 9px;
         background: #fff;
         border: 1px solid rgba(26, 58, 47, 0.14);
         border-radius: 999px;
         cursor: pointer;
         font-family: ${sans};
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         color: #1A3A2F;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        transition: background 0.12s ease, transform 0.1s ease;
       }
       .kimchi-do-next__pill:hover {
         background: rgba(26, 58, 47, 0.05);
         border-color: rgba(26, 58, 47, 0.22);
+      }
+      .kimchi-do-next__pill:active {
+        transform: scale(0.97);
       }
     `}</style>
   );

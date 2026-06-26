@@ -40,9 +40,9 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS } from "./workspace-data";
 import {
   KimchiDoNextStrip,
-  KimchiDoNextCollapsedStyles,
   KimchiAssistantChipRow,
   KimchiStarterSection,
+  KimchiTypingIndicator,
   KimchiEmailInsightDrawer,
   KimchiSaveIntakeModal,
   KimchiStrategyGenerateModal,
@@ -86,8 +86,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [streaming, setStreaming] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [assistantCtx, setAssistantCtx] = useState<AssistantContextPayload | null>(null);
-  const [doNextCollapsed, setDoNextCollapsed] = useState(true);
-  const [doNextForceOpen, setDoNextForceOpen] = useState(false);
   const [presetMenuOpen, setPresetMenuOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<VoicePresetId>("general");
   const [transcriptModal, setTranscriptModal] = useState<{ title: string; body: string } | null>(null);
@@ -235,16 +233,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streaming]);
-
-  useEffect(() => {
-    if (input.trim().length > 0) setDoNextCollapsed(true);
-  }, [input]);
+  }, [messages, streaming, followUpChips]);
 
   const suggestions = assistantCtx?.suggestions ?? [];
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
-  const showDoNext = !welcomeOnly && suggestions.length > 0 && (!doNextCollapsed || doNextForceOpen);
-  const showDoNextCollapsed = !welcomeOnly && suggestions.length > 0 && doNextCollapsed && !doNextForceOpen;
+  const showDoNext = !welcomeOnly && suggestions.length > 0;
   const starterActions = buildStarterActions(assistantCtx);
   const starterChatChips = buildStarterChatChips(assistantCtx);
 
@@ -362,7 +355,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
 
     setInput("");
     setStreaming(true);
-    setDoNextCollapsed(true);
 
     let accumulated = "";
     try {
@@ -502,32 +494,13 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     activePresetRef.current = presetId;
     setSelectedPreset(presetId);
     setPresetMenuOpen(false);
-    setDoNextCollapsed(true);
     setPendingVoiceStart(true);
   };
 
   return (
     <div className="kimchi-chat-panel">
       {showDoNext ? (
-        <KimchiDoNextStrip
-          suggestions={suggestions}
-          collapsed={false}
-          onExpand={() => setDoNextForceOpen(true)}
-          onSelect={handleDoNextSelect}
-        />
-      ) : showDoNextCollapsed ? (
-        <>
-          <KimchiDoNextStrip
-            suggestions={suggestions}
-            collapsed
-            onExpand={() => {
-              setDoNextCollapsed(false);
-              setDoNextForceOpen(true);
-            }}
-            onSelect={handleDoNextSelect}
-          />
-          <KimchiDoNextCollapsedStyles />
-        </>
+        <KimchiDoNextStrip suggestions={suggestions} onSelect={handleDoNextSelect} />
       ) : null}
 
       <div className="kimchi-chat-panel__thread">
@@ -554,16 +527,19 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                   </ul>
                 )}
                 {!vm.debriefLoading && vm.actions.length > 0 && (
-                  <div className="kimchi-voice-block__actions">
-                    {vm.actions.map((a) => (
-                      <button key={a.id} type="button" onClick={() => void handleDebriefAction(vm, a)}>
-                        <span className="kimchi-voice-block__action-label">{a.label}</span>
-                        {"hint" in a && a.hint && (
-                          <span className="kimchi-voice-block__action-hint">{a.hint}</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  <KimchiAssistantChipRow
+                    chips={vm.actions.map((a) => ({
+                      id: a.id,
+                      label: a.label,
+                      hint: "hint" in a ? a.hint : undefined,
+                      variant: "action" as const,
+                      action: { type: "chat" as const, prompt: a.label },
+                    }))}
+                    onActivate={(chip) => {
+                      const action = vm.actions.find((x) => x.id === chip.id);
+                      if (action) void handleDebriefAction(vm, action);
+                    }}
+                  />
                 )}
                 <button
                   type="button"
@@ -586,10 +562,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                 msg.content
               ) : welcomeOnly && i === messages.length - 1 ? (
                 WELCOME_MESSAGE
+              ) : streaming && i === messages.length - 1 && !msg.content?.trim() ? (
+                <KimchiTypingIndicator />
               ) : (
-                <ReactMarkdown>
-                  {msg.content || (streaming && i === messages.length - 1 ? "…" : "")}
-                </ReactMarkdown>
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
               )}
             </div>
           );
@@ -604,12 +580,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         )}
 
         {!streaming && !welcomeOnly && followUpChips.length > 0 && (
-          <KimchiAssistantChipRow
-            label="Keep going"
-            chips={followUpChips.slice(0, 5)}
-            layout="inline"
-            onActivate={handleChipActivate}
-          />
+          <div className="kimchi-message-actions">
+            <KimchiAssistantChipRow
+              chips={followUpChips.slice(0, 5)}
+              onActivate={handleChipActivate}
+            />
+          </div>
         )}
 
         <div ref={messagesEndRef} />
@@ -684,7 +660,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={() => setDoNextCollapsed(true)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -797,6 +772,10 @@ function KimchiChatPanelStyles() {
       .kimchi-chat-bubble--assistant {
         background: rgba(26, 58, 47, 0.06);
         color: #1A1A1A;
+      }
+      .kimchi-message-actions {
+        max-width: 92%;
+        margin: -4px 0 10px;
       }
       .kimchi-chat-bubble--assistant p { margin: 0 0 6px; }
       .kimchi-voice-block {
