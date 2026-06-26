@@ -136,7 +136,7 @@ export function CoachFitAssessment({
           textTransform: "uppercase",
         }}
       >
-        Fit assessment
+        Alignment check
       </p>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px", lineHeight: 1.45 }}>
         {coachFitAssessmentSummary(job.matchScore, job.matchLabel)}
@@ -210,7 +210,7 @@ export function MatchFitCallout({ job }: { job: MatchScoreDisplayJob }) {
           textTransform: "uppercase",
         }}
       >
-        Fit assessment
+        Alignment check
       </p>
       <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         <span style={{ fontWeight: 600, color: score.accent }}>{job.matchLabel}</span>
@@ -288,7 +288,7 @@ export function CoachMatchSection({ job }: { job: MatchScoreDisplayJob }) {
           textTransform: "uppercase",
         }}
       >
-        <ScoreExplainerLabel variant="coach-match">Fit assessment</ScoreExplainerLabel>
+        <ScoreExplainerLabel variant="coach-match">Alignment check</ScoreExplainerLabel>
       </p>
       <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
         {tierLine}

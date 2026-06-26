@@ -21,6 +21,9 @@ export const RECOMMENDED_SNAPSHOT_MAX_JOBS = 40;
 /** Minimum distinct company+title roles before we supplement with broad Hirebase results. */
 export const RECOMMENDED_MIN_DISPLAY_ROLES = 12;
 
+/** Supplement with broad Hirebase results when the feed has fewer than this many employers. */
+export const RECOMMENDED_MIN_DISTINCT_COMPANIES = 3;
+
 /** Cooldown between manual live refreshes — 0 disables rate limiting. */
 export const RECOMMENDED_MANUAL_REFRESH_COOLDOWN_MS = 0;
 
