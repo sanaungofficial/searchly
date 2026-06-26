@@ -1,19 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
-import { BookingsList } from "@/components/scout/bookings-list";
+import { ExpertInboxClientPanel } from "@/components/scout/expert-inbox-client-panel";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { useWorkspace } from "@/contexts/workspace-context";
 import type { CoachClientSummary, HubBooking, HubCommunication } from "@/lib/coach-hub";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { navigateToAdminClientProfile } from "@/lib/admin-client-navigation";
+import { border, color, fontMono, fontSans, radius, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 type HubPayload = {
   clients: CoachClientSummary[];
   communications: HubCommunication[];
   upcomingBookings: HubBooking[];
+  pastBookings?: HubBooking[];
 };
 
 type InboxFilter = "all" | "requests";
@@ -55,10 +59,124 @@ function commMatchesClient(c: HubCommunication, client: CoachClientSummary) {
   return c.clientEmail?.toLowerCase() === email;
 }
 
+function bookingMatchesClient(b: HubBooking, client: CoachClientSummary) {
+  const email = client.email.toLowerCase();
+  return b.guestEmail?.toLowerCase() === email;
+}
+
+function formatDayDivider(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+}
+
+function groupCommsByDay(comms: HubCommunication[]) {
+  const groups: { day: string; items: HubCommunication[] }[] = [];
+  for (const c of comms) {
+    const day = formatDayDivider(c.createdAt);
+    const last = groups[groups.length - 1];
+    if (last?.day === day) last.items.push(c);
+    else groups.push({ day, items: [c] });
+  }
+  return groups;
+}
+
+function ActionsMenu({
+  vouchUrl,
+  clientEmail,
+  onViewOps,
+}: {
+  vouchUrl: string | null;
+  clientEmail: string;
+  onViewOps: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  async function copyVouchLink() {
+    if (!vouchUrl) return;
+    try {
+      await navigator.clipboard.writeText(vouchUrl);
+    } catch {
+      /* ignore */
+    }
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <ScoutSecondaryBtn type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        Actions ▾
+      </ScoutSecondaryBtn>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: 0,
+            minWidth: 220,
+            background: surface.card,
+            border: border.line,
+            borderRadius: radius.box,
+            boxShadow: "var(--scout-shadow-card-strong)",
+            zIndex: 20,
+            overflow: "hidden",
+          }}
+        >
+          {vouchUrl && (
+            <button
+              type="button"
+              onClick={() => void copyVouchLink()}
+              style={actionItemStyle}
+            >
+              ★ Request a review
+            </button>
+          )}
+          <Link href={`/inbox?mode=expert`} style={{ ...actionItemStyle, display: "block", textDecoration: "none" }} onClick={() => setOpen(false)}>
+            ✉ Email client
+          </Link>
+          <button type="button" onClick={() => { onViewOps(); setOpen(false); }} style={actionItemStyle}>
+            ⊞ Open in Ops Tools
+          </button>
+          <p style={{ margin: 0, padding: "8px 14px 10px", fontFamily: fontSans, fontSize: 11, color: color.muted, borderTop: border.line }}>
+            {clientEmail}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const actionItemStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  textAlign: "left",
+  padding: "11px 14px",
+  border: "none",
+  background: "transparent",
+  fontFamily: fontSans,
+  fontSize: 13,
+  fontWeight: 500,
+  color: color.ink,
+  cursor: "pointer",
+};
+
 export function ExpertInboxView() {
   const isMobile = useIsMobile();
   const router = useRouter();
+  const { showAdminUi } = useWorkspace();
   const [data, setData] = useState<HubPayload | null>(null);
+  const [clientProfiles, setClientProfiles] = useState<AdminClient[]>([]);
+  const [vouchUrl, setVouchUrl] = useState<string | null>(null);
+  const [clientPastBookings, setClientPastBookings] = useState<HubBooking[]>([]);
+  const [loadingPast, setLoadingPast] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<InboxFilter>("all");
@@ -80,15 +198,21 @@ export function ExpertInboxView() {
 
   useEffect(() => {
     load();
+    fetch("/api/coach/clients")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => setClientProfiles(Array.isArray(rows) ? rows : []))
+      .catch(() => setClientProfiles([]));
+    fetch("/api/coach/vouches")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setVouchUrl(d?.vouchUrl ?? null))
+      .catch(() => setVouchUrl(null));
   }, [load]);
 
   const threadRows = useMemo(() => {
     const clients = data?.clients ?? [];
     const rows = clients.map((client) => {
       const comms = (data?.communications ?? []).filter((c) => commMatchesClient(c, client));
-      const upcoming = (data?.upcomingBookings ?? []).filter(
-        (b) => b.guestEmail?.toLowerCase() === client.email.toLowerCase(),
-      );
+      const upcoming = (data?.upcomingBookings ?? []).filter((b) => bookingMatchesClient(b, client));
       const pending = upcoming.filter((b) => b.status === "PENDING");
       const lastActivity = comms[0]?.createdAt ?? client.nextSessionAt ?? client.lastSessionAt ?? "";
       const preview = comms[0]?.subject ?? (pending.length ? "Session request pending" : "No recent activity");
@@ -100,15 +224,55 @@ export function ExpertInboxView() {
     return rows;
   }, [data, filter]);
 
+  useEffect(() => {
+    if (threadRows.length > 0 && !selectedKey) {
+      setSelectedKey(clientKey(threadRows[0].client));
+    }
+  }, [threadRows, selectedKey]);
+
   const selected = threadRows.find((r) => clientKey(r.client) === selectedKey) ?? null;
+
+  const selectedProfile = useMemo(() => {
+    if (!selected) return null;
+    return (
+      clientProfiles.find((c) => c.id === selected.client.userId) ??
+      clientProfiles.find((c) => c.email.toLowerCase() === selected.client.email.toLowerCase()) ??
+      null
+    );
+  }, [clientProfiles, selected]);
+
+  useEffect(() => {
+    if (!selected) {
+      setClientPastBookings([]);
+      return;
+    }
+    const params = new URLSearchParams();
+    if (selected.client.userId) params.set("clientUserId", selected.client.userId);
+    else params.set("clientEmail", selected.client.email);
+    setLoadingPast(true);
+    fetch(`/api/coach/hub?${params}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((payload: HubPayload | null) => setClientPastBookings(payload?.pastBookings ?? []))
+      .catch(() => setClientPastBookings([]))
+      .finally(() => setLoadingPast(false));
+  }, [selected]);
 
   const requestFeed = useMemo(() => {
     return (data?.communications ?? []).filter(isRequestComm).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [data?.communications]);
 
+  const commGroups = useMemo(
+    () => groupCommsByDay(selected?.comms ?? []),
+    [selected?.comms],
+  );
+
   function selectClient(key: string) {
     setSelectedKey(key);
     if (isMobile) setMobilePane("detail");
+  }
+
+  function openOps() {
+    router.push("/dashboard/ops?section=clients");
   }
 
   if (loading && !data) {
@@ -133,9 +297,6 @@ export function ExpertInboxView() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
             <h1 style={{ margin: 0, fontFamily: fontSans, fontSize: isMobile ? 20 : 22, fontWeight: 600, color: color.forest }}>Inbox</h1>
-            <p style={{ margin: "4px 0 0", fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
-              Client requests, session updates, and messages that need your attention.
-            </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <label style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, display: "flex", alignItems: "center", gap: 6 }}>
@@ -143,7 +304,7 @@ export function ExpertInboxView() {
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as InboxFilter)}
-                style={{ fontFamily: fontSans, fontSize: T.caption, padding: "6px 10px", border: border.line, background: "#fff" }}
+                style={{ fontFamily: fontSans, fontSize: T.caption, padding: "6px 10px", border: border.line, borderRadius: radius.box, background: "#fff" }}
               >
                 <option value="all">All clients</option>
                 <option value="requests">Requests only</option>
@@ -181,6 +342,7 @@ export function ExpertInboxView() {
                       borderBottom: border.line,
                       background: active ? surface.card : "transparent",
                       cursor: "pointer",
+                      borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
                     }}
                   >
                     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -200,7 +362,7 @@ export function ExpertInboxView() {
                           {preview}
                         </p>
                         {(hasRequest || pending.length > 0) && (
-                          <span style={{ display: "inline-block", marginTop: 6, fontFamily: fontSans, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: color.forest, background: "rgba(42,107,74,0.1)", padding: "2px 6px" }}>
+                          <span style={{ display: "inline-block", marginTop: 6, fontFamily: fontMono, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: color.forest, background: "rgba(42,107,74,0.1)", padding: "2px 6px", borderRadius: radius.box }}>
                             {pending.length ? "Request" : "Update"}
                           </span>
                         )}
@@ -214,7 +376,7 @@ export function ExpertInboxView() {
         )}
 
         {showDetail && (
-          <main style={{ flex: 1, minWidth: 0, overflowY: "auto", background: surface.page }}>
+          <main style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", background: surface.page }}>
             {isMobile && (
               <button type="button" onClick={() => setMobilePane("list")} style={{ margin: "12px 16px 0", background: "none", border: "none", padding: 0, fontFamily: fontSans, fontSize: 13, color: color.forest, cursor: "pointer" }}>
                 ← All clients
@@ -222,12 +384,12 @@ export function ExpertInboxView() {
             )}
 
             {!selected ? (
-              <div style={{ padding: isMobile ? 16 : 24 }}>
+              <div style={{ padding: isMobile ? 16 : 24, overflowY: "auto" }}>
                 <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, color: color.ink, margin: "0 0 12px" }}>Recent requests</p>
                 {requestFeed.length === 0 ? (
                   <ScoutBox padding={20}>
                     <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55 }}>
-                      Select a client on the left, or wait for new session requests. Booking confirmations and reschedules will show up here.
+                      Select a client on the left, or wait for new session requests.
                     </p>
                   </ScoutBox>
                 ) : (
@@ -245,112 +407,150 @@ export function ExpertInboxView() {
                 )}
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100%" }}>
-                <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 16 : 24, borderRight: isMobile ? "none" : border.line }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                    <CoachAvatar name={selected.client.name ?? selected.client.email} photoUrl={null} size={48} />
-                    <div>
-                      <p style={{ margin: 0, fontFamily: fontSans, fontSize: 18, fontWeight: 600 }}>{selected.client.name ?? selected.client.email}</p>
-                      <p style={{ margin: "2px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>{selected.client.email}</p>
+              <div style={{ display: "flex", flex: 1, minHeight: 0, flexDirection: isMobile ? "column" : "row" }}>
+                {/* Center thread */}
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", borderRight: isMobile ? "none" : border.line }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: isMobile ? "14px 16px" : "16px 20px",
+                      borderBottom: border.line,
+                      background: surface.card,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                      <CoachAvatar name={selected.client.name ?? selected.client.email} photoUrl={null} size={40} />
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontFamily: fontSans, fontSize: 16, fontWeight: 600, color: color.ink }}>
+                          {selected.client.name ?? selected.client.email.split("@")[0]}
+                        </p>
+                        <p style={{ margin: "2px 0 0", fontFamily: fontSans, fontSize: 12, color: color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {selected.client.email}
+                        </p>
+                      </div>
                     </div>
+                    <ActionsMenu vouchUrl={vouchUrl} clientEmail={selected.client.email} onViewOps={openOps} />
                   </div>
 
-                  <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted, margin: "0 0 10px" }}>Activity</p>
-                  {selected.comms.length === 0 ? (
-                    <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>No messages yet for this client.</p>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      {selected.comms.map((c) => (
-                        <div key={c.id} style={{ borderLeft: `3px solid ${color.forest}`, paddingLeft: 12 }}>
-                          <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 14, fontWeight: 600 }}>{c.subject}</p>
-                          <p style={{ margin: "0 0 6px", fontFamily: fontSans, fontSize: 12, color: color.muted }}>
-                            {commLabel(c.type)} · {new Date(c.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "16px" : "20px 24px" }}>
+                    {selected.comms.length === 0 ? (
+                      <ScoutBox padding={20}>
+                        <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55 }}>
+                          No activity yet. Session requests and booking updates will appear here.
+                        </p>
+                      </ScoutBox>
+                    ) : (
+                      commGroups.map(({ day, items }) => (
+                        <div key={day} style={{ marginBottom: 24 }}>
+                          <p
+                            style={{
+                              margin: "0 0 14px",
+                              textAlign: "center",
+                              fontFamily: fontMono,
+                              fontSize: 11,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.06em",
+                              color: color.muted,
+                            }}
+                          >
+                            {day}
                           </p>
-                          {c.bodyPreview && <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.stone, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{c.bodyPreview}</p>}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                            {items.map((c) => (
+                              <ScoutBox key={c.id} padding={16}>
+                                <p style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: color.ink }}>{c.subject}</p>
+                                <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+                                  {commLabel(c.type)} · {new Date(c.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                                </p>
+                                {c.bodyPreview && (
+                                  <p style={{ margin: 0, fontFamily: fontSans, fontSize: 13, color: color.stone, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+                                    {c.bodyPreview}
+                                  </p>
+                                )}
+                              </ScoutBox>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      ))
+                    )}
+                  </div>
 
-                  <div style={{ marginTop: 24, padding: 16, border: border.line, background: surface.card }}>
-                    <p style={{ margin: "0 0 8px", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
-                      Reply by email from Expert mail or your connected calendar — in-app messaging comes later.
-                    </p>
-                    <Link href="/inbox?mode=expert" style={{ textDecoration: "none" }}>
-                      <ScoutPrimaryBtn type="button">Open expert mail</ScoutPrimaryBtn>
-                    </Link>
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      padding: isMobile ? "12px 16px 16px" : "14px 20px 18px",
+                      borderTop: border.line,
+                      background: surface.card,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "12px 14px",
+                        border: border.line,
+                        borderRadius: radius.box,
+                        background: surface.inset,
+                      }}
+                    >
+                      <input
+                        type="text"
+                        readOnly
+                        placeholder="Reply by email — in-app messaging coming later"
+                        style={{
+                          flex: 1,
+                          border: "none",
+                          background: "transparent",
+                          fontFamily: fontSans,
+                          fontSize: 13,
+                          color: color.muted,
+                          outline: "none",
+                        }}
+                      />
+                      <Link href="/inbox?mode=expert" style={{ textDecoration: "none", flexShrink: 0 }}>
+                        <ScoutPrimaryBtn type="button" style={{ minHeight: 36, padding: "0 14px" }}>
+                          Open mail
+                        </ScoutPrimaryBtn>
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
-                {!isMobile && (
-                  <aside style={{ width: 280, flexShrink: 0, padding: 24, background: surface.card }}>
-                    <ClientContextPanel
+                {/* Right context rail */}
+                <aside
+                  style={{
+                    width: isMobile ? "100%" : 320,
+                    flexShrink: 0,
+                    overflowY: "auto",
+                    padding: isMobile ? "16px" : "20px 16px 24px",
+                    background: isMobile ? surface.page : surface.inset,
+                    borderTop: isMobile ? border.line : "none",
+                  }}
+                >
+                  {loadingPast && clientPastBookings.length === 0 ? (
+                    <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>Loading client details…</p>
+                  ) : (
+                    <ExpertInboxClientPanel
                       client={selected.client}
+                      clientProfile={selectedProfile}
                       upcoming={selected.upcoming}
-                      onViewClient={() => router.push("/dashboard/ops?section=clients")}
+                      past={clientPastBookings}
+                      vouchUrl={vouchUrl}
+                      onViewOps={openOps}
+                      onViewClientProfile={showAdminUi ? (userId) => void navigateToAdminClientProfile(userId) : undefined}
                     />
-                  </aside>
-                )}
+                  )}
+                </aside>
               </div>
             )}
           </main>
         )}
       </div>
-    </div>
-  );
-}
-
-function ClientContextPanel({
-  client,
-  upcoming,
-  onViewClient,
-}: {
-  client: CoachClientSummary;
-  upcoming: HubBooking[];
-  onViewClient: () => void;
-}) {
-  return (
-    <div>
-      <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted, margin: "0 0 14px" }}>Client info</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20, fontFamily: fontSans, fontSize: 13, color: color.stone }}>
-        <p style={{ margin: 0 }}>{client.sessionCount} session{client.sessionCount === 1 ? "" : "s"} total</p>
-        {client.upcomingCount > 0 && <p style={{ margin: 0 }}>{client.upcomingCount} upcoming</p>}
-        {client.nextSessionAt && (
-          <p style={{ margin: 0, color: color.muted }}>
-            Next: {new Date(client.nextSessionAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          </p>
-        )}
-      </div>
-
-      {upcoming.length > 0 && (
-        <>
-          <p style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted, margin: "0 0 10px" }}>Upcoming</p>
-          <BookingsList
-            bookings={upcoming.map((b) => ({
-              id: b.id,
-              coachName: b.coachName,
-              coachSlug: b.coachSlug,
-              guestName: b.guestName,
-              guestEmail: b.guestEmail,
-              title: b.title,
-              location: b.location,
-              startAt: b.startAt,
-              endAt: b.endAt,
-              status: b.status,
-              nylasBookingRef: b.nylasBookingRef,
-            }))}
-            emptyMessage=""
-            showGuest={false}
-            showCoach={false}
-          />
-        </>
-      )}
-
-      {client.userId && (
-        <div style={{ marginTop: 20 }}>
-          <ScoutSecondaryBtn type="button" onClick={onViewClient}>View in Ops Tools</ScoutSecondaryBtn>
-        </div>
-      )}
     </div>
   );
 }
