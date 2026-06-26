@@ -22,7 +22,7 @@ import {
   pipelineProspectUrl,
   prospectPathId,
 } from "@/lib/workspace-urls";
-import { withClientUserId } from "@/lib/admin-client-subject";
+import { withClientUserId } from "@/lib/workspace-urls";
 import { AdminClientProfileBanner } from "@/components/admin/admin-client-profile-banner";
 import type { CachedJob } from "@/lib/cached-job";
 import { writeProspectJobCache } from "@/lib/prospect-jobs-cache";

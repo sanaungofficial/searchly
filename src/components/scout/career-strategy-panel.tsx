@@ -12,7 +12,7 @@ import {
 } from "@/lib/career-strategy";
 import { mergeIntakeTrackedCompanies } from "@/lib/intake-tracked-companies";
 import { profileAboutSectionUrl, profileTargetCompaniesUrl } from "@/lib/workspace-urls";
-import { withClientUserId } from "@/lib/admin-client-subject";
+import { withClientUserId } from "@/lib/workspace-urls";
 import { CareerPreferencesPanel } from "./career-preferences-panel";
 import { openStrategyPdf } from "@/lib/career-strategy-pdf";
 import { notifyCreditsChanged } from "@/lib/credits";

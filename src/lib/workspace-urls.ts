@@ -253,6 +253,13 @@ export function profileBasePath(clientId?: string): string {
   return clientId ? adminClientProfileBase(clientId) : "/profile";
 }
 
+/** Append clientUserId for admin profile-review API calls (no impersonation). */
+export function withClientUserId(path: string, clientUserId?: string | null): string {
+  if (!clientUserId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}clientUserId=${encodeURIComponent(clientUserId)}`;
+}
+
 export function profileTabPath(
   base: string,
   tab: ProfileLocation["page"],

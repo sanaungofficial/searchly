@@ -40,8 +40,3 @@ export async function resolveAdminClientSubject(
   return { subject: client };
 }
 
-export function withClientUserId(path: string, clientUserId?: string | null): string {
-  if (!clientUserId) return path;
-  const sep = path.includes("?") ? "&" : "?";
-  return `${path}${sep}clientUserId=${encodeURIComponent(clientUserId)}`;
-}
