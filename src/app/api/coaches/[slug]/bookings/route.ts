@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientCoachingUser, findCoachBySlugOrId } from "@/lib/coach-api";
+import { createCoachBookingRecord } from "@/lib/coach-booking-nylas";
 import {
-  createCoachBookingRecord,
-  INTRO_SESSION_MINUTES,
-} from "@/lib/coach-booking-nylas";
+  introDurationForCoach,
+  resolveSchedulerConfigId,
+  sessionDurationForCoach,
+} from "@/lib/coach-scheduler-config";
 import { isNylasConfigured } from "@/lib/nylas";
 
 type BookBody = {
@@ -24,8 +26,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   const { slug } = await params;
   const coach = await findCoachBySlugOrId(slug, me.id);
-  if (!coach?.nylasSchedulerConfigId) {
+  if (!coach?.nylasGrantId) {
     return NextResponse.json({ error: "Coach scheduling not configured" }, { status: 404 });
+  }
+
+  if (coach.nylasGrantStatus === "expired") {
+    return NextResponse.json({ error: "Coach calendar connection expired" }, { status: 503 });
   }
 
   let body: BookBody;
@@ -41,15 +47,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     return NextResponse.json({ error: "Invalid start or end time" }, { status: 400 });
   }
 
-  const sessionMinutes = coach.schedulerDurationMinutes ?? 60;
+  const sessionMinutes = sessionDurationForCoach(coach);
+  const introMinutes = introDurationForCoach(coach);
   const expectedDuration =
-    body.sessionType === "intro" ? INTRO_SESSION_MINUTES : sessionMinutes;
+    body.sessionType === "intro" ? introMinutes : sessionMinutes;
   const actualDuration = Math.round((endTime - startTime) / 60);
   if (actualDuration !== expectedDuration) {
     return NextResponse.json(
       { error: `Slot duration must be ${expectedDuration} minutes` },
       { status: 400 },
     );
+  }
+
+  const configId = resolveSchedulerConfigId(coach, { sessionType: body.sessionType });
+  if (!configId) {
+    return NextResponse.json({ error: "Coach scheduling not configured" }, { status: 404 });
   }
 
   const guestName = (body.guestName?.trim() || me.name || me.email.split("@")[0]).slice(0, 120);
@@ -62,13 +74,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   try {
     const booking = await createCoachBookingRecord({
       coachProfileId: coach.id,
-      configurationId: coach.nylasSchedulerConfigId,
+      configurationId: configId,
       startTime,
       endTime,
       guestName,
       guestEmail,
       title,
       timezone: body.timezone,
+      sendEmails: true,
     });
 
     return NextResponse.json({

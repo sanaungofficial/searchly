@@ -27,7 +27,13 @@ type ProfilePayload = {
   email: string | null;
   status: CoachStatus;
   nylasGrantId?: string | null;
+  nylasGrantStatus?: string | null;
+  nylasGrantEmail?: string | null;
+  nylasEmailSyncEnabled?: boolean;
   nylasSchedulerConfigId?: string | null;
+  nylasIntroSchedulerConfigId?: string | null;
+  nylasSchedulerCalendarIds?: unknown;
+  nylasConferenceProvider?: string | null;
   schedulerTimezone?: string | null;
   schedulerDurationMinutes?: number | null;
   schedulerWeeklyHours?: unknown;
@@ -138,7 +144,8 @@ function Toggle({
   );
 }
 
-function ConnectCalendarCard({ returnPath }: { returnPath: string }) {
+function ConnectCalendarCard({ returnPath, emailSync }: { returnPath: string; emailSync?: boolean }) {
+  const syncParam = emailSync ? "&emailSync=true" : "";
   return (
     <div
       style={{
@@ -156,7 +163,7 @@ function ConnectCalendarCard({ returnPath }: { returnPath: string }) {
       </p>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <a
-          href={`/api/nylas/connect?provider=google&returnPath=${encodeURIComponent(returnPath)}`}
+          href={`/api/nylas/connect?provider=google&returnPath=${encodeURIComponent(returnPath)}${syncParam}`}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -175,7 +182,7 @@ function ConnectCalendarCard({ returnPath }: { returnPath: string }) {
           Connect Google Calendar
         </a>
         <a
-          href={`/api/nylas/connect?provider=microsoft&returnPath=${encodeURIComponent(returnPath)}`}
+          href={`/api/nylas/connect?provider=microsoft&returnPath=${encodeURIComponent(returnPath)}${syncParam}`}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -217,6 +224,10 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
   const [availabilityNotes, setAvailabilityNotes] = useState("");
   const [blackoutDates, setBlackoutDates] = useState<string[]>([]);
   const [newBlackoutDate, setNewBlackoutDate] = useState("");
+  const [calendars, setCalendars] = useState<Array<{ id: string; name: string; isPrimary: boolean }>>([]);
+  const [selectedCalendarIds, setSelectedCalendarIds] = useState<string[]>([]);
+  const [conferenceProvider, setConferenceProvider] = useState<string>("");
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const returnPath =
     mode === "admin" && coachId
@@ -265,8 +276,58 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
   }
 
   useEffect(() => {
+    if (!profile?.nylasGrantId || profile.nylasGrantStatus === "expired") return;
+    const url =
+      mode === "admin" && coachId
+        ? `/api/admin/coaches/${coachId}/nylas/calendars`
+        : "/api/nylas/calendars";
+    fetch(url)
+      .then(async (r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setCalendars(data.calendars ?? []);
+        setSelectedCalendarIds(data.selectedCalendarIds ?? []);
+      })
+      .catch(() => {});
+  }, [profile?.nylasGrantId, profile?.nylasGrantStatus, mode, coachId]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const ids = Array.isArray(profile.nylasSchedulerCalendarIds)
+      ? (profile.nylasSchedulerCalendarIds as string[])
+      : [];
+    if (ids.length) setSelectedCalendarIds(ids);
+    setConferenceProvider(profile.nylasConferenceProvider ?? "");
+  }, [profile]);
+
+  useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  async function disconnectCalendar() {
+    if (!confirm("Disconnect calendar? Clients will not be able to book until you reconnect.")) return;
+    setDisconnecting(true);
+    try {
+      const url =
+        mode === "admin" && coachId
+          ? `/api/admin/coaches/${coachId}/nylas/disconnect`
+          : "/api/nylas/disconnect";
+      const res = await fetch(url, { method: "POST" });
+      if (!res.ok) throw new Error("Disconnect failed");
+      await loadProfile();
+      setNotice({ type: "success", message: "Calendar disconnected." });
+    } catch (err) {
+      setNotice({ type: "error", message: err instanceof Error ? err.message : "Disconnect failed" });
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
+  function toggleCalendarId(id: string) {
+    setSelectedCalendarIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   useEffect(() => {
     const nylas = searchParams.get("nylas");
@@ -283,7 +344,8 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
   const needsMoreHours = weeklyHoursTotal < MIN_WEEKLY_AVAILABILITY_HOURS;
 
   const calendarConnected = Boolean(profile?.nylasGrantId);
-  const schedulerReady = Boolean(profile?.nylasGrantId && profile?.nylasSchedulerConfigId);
+  const grantExpired = profile?.nylasGrantStatus === "expired";
+  const schedulerReady = Boolean(profile?.nylasGrantId && profile?.nylasSchedulerConfigId && !grantExpired);
 
   async function retryScheduler() {
     setRetryingScheduler(true);
@@ -319,6 +381,8 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
         schedulerCapacityHoursPerWeek: capacityHours === "" ? null : capacityHours,
         schedulerAvailabilityNotes: availabilityNotes,
         schedulerBlackoutDates: blackoutDates,
+        nylasSchedulerCalendarIds: selectedCalendarIds.length ? selectedCalendarIds : null,
+        nylasConferenceProvider: conferenceProvider || null,
       };
       const url =
         mode === "admin" && coachId ? `/api/admin/coaches/${coachId}` : "/api/coach/profile";
@@ -400,6 +464,23 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
         </div>
       )}
 
+      {grantExpired && (
+        <div
+          style={{
+            padding: "12px 16px",
+            background: "rgba(220,38,38,0.08)",
+            border: "1px solid rgba(220,38,38,0.2)",
+          }}
+        >
+          <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, color: "#dc2626", fontWeight: 600 }}>
+            Calendar connection expired
+          </p>
+          <p style={{ margin: "6px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+            Reconnect Google or Outlook so clients can book again.
+          </p>
+        </div>
+      )}
+
       <ScoutBox padding={0} style={{ overflow: "hidden" }}>
         <div style={cardStyle}>
           {!calendarConnected ? (
@@ -477,7 +558,7 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
                   {retryingScheduler ? "Setting up…" : "Retry scheduler setup"}
                 </button>
               )}
-              <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 {mode === "admin" && coachId ? (
                   <>
                     <a
@@ -491,6 +572,12 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
                       style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
                     >
                       Reconnect Outlook
+                    </a>
+                    <a
+                      href={`/api/admin/coaches/${coachId}/nylas/connect?provider=google&emailSync=true`}
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                    >
+                      Reconnect with email sync
                     </a>
                   </>
                 ) : (
@@ -507,13 +594,77 @@ export function CoachEditAvailabilityView({ mode, coachId, backHref = "/dashboar
                     >
                       Reconnect Outlook
                     </a>
+                    <a
+                      href={`/api/nylas/connect?provider=google&returnPath=${encodeURIComponent(returnPath)}&emailSync=true`}
+                      style={{ fontFamily: fontSans, fontSize: 13, color: color.forest }}
+                    >
+                      Reconnect with email sync
+                    </a>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={disconnectCalendar}
+                  disabled={disconnecting}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontFamily: fontSans,
+                    fontSize: 13,
+                    color: "#dc2626",
+                    cursor: disconnecting ? "wait" : "pointer",
+                    padding: 0,
+                  }}
+                >
+                  {disconnecting ? "Disconnecting…" : "Disconnect calendar"}
+                </button>
               </div>
+              {profile?.nylasEmailSyncEnabled && (
+                <p style={{ margin: "12px 0 0", fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+                  Email sync enabled{profile.nylasGrantEmail ? ` (${profile.nylasGrantEmail})` : ""}.
+                </p>
+              )}
             </div>
           )}
         </div>
       </ScoutBox>
+
+      {calendarConnected && calendars.length > 0 && (
+        <ScoutBox padding={0}>
+          <div style={cardStyle}>
+            <p style={sectionTitle}>Calendars for busy blocking</p>
+            <p style={sectionDesc}>Kimchi checks these calendars when showing open slots.</p>
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+              {calendars.map((cal) => (
+                <label
+                  key={cal.id}
+                  style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: fontSans, fontSize: 14, color: color.stone, cursor: "pointer" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCalendarIds.includes(cal.id)}
+                    onChange={() => toggleCalendarId(cal.id)}
+                  />
+                  {cal.name}
+                  {cal.isPrimary ? " (primary)" : ""}
+                </label>
+              ))}
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <label style={labelStyle}>Video conferencing</label>
+              <select
+                value={conferenceProvider}
+                onChange={(e) => setConferenceProvider(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">None — no auto-generated meeting link</option>
+                <option value="google_meet">Google Meet</option>
+                <option value="microsoft_teams">Microsoft Teams</option>
+              </select>
+            </div>
+          </div>
+        </ScoutBox>
+      )}
 
       <ScoutBox padding={0}>
         <div style={cardStyle}>

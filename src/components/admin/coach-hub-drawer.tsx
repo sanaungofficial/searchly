@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CoachHubPanel } from "@/components/admin/coach-hub-panel";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { CoachEditAvailabilityView } from "@/components/scout/coach-edit-availability-view";
+import { CoachInboxPanel } from "@/components/admin/coach-inbox-panel";
 import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
 import { CoachProfileTab } from "@/components/scout/coach-profile-tab";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -19,13 +20,14 @@ export type CoachHubPreview = {
   headline: string | null;
 };
 
-type TabId = "overview" | "profile" | "pricing" | "availability";
+type TabId = "overview" | "profile" | "pricing" | "availability" | "inbox";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "profile", label: "Profile" },
   { id: "pricing", label: "Pricing" },
   { id: "availability", label: "Availability" },
+  { id: "inbox", label: "Inbox" },
 ];
 
 type Props = {
@@ -191,6 +193,9 @@ function CoachHubDrawerInner({ coachId, coachPreview, onClose }: Props) {
           )}
           {tab === "availability" && (
             <CoachEditAvailabilityView mode="admin" coachId={coachId} embedded />
+          )}
+          {tab === "inbox" && (
+            <CoachInboxPanel coachId={coachId} embedded />
           )}
         </div>
       </div>

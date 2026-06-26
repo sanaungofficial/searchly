@@ -21,8 +21,15 @@ export async function GET() {
     where: { OR: [{ userId: dbUser.id }, { email: user.email }] },
     select: {
       nylasGrantId: true,
+      nylasGrantStatus: true,
+      nylasGrantEmail: true,
       nylasSchedulerConfigId: true,
+      nylasIntroSchedulerConfigId: true,
       nylasSchedulerSlug: true,
+      nylasIntroSchedulerSlug: true,
+      nylasEmailSyncEnabled: true,
+      nylasSchedulerCalendarIds: true,
+      nylasConferenceProvider: true,
     },
   });
 
@@ -30,7 +37,14 @@ export async function GET() {
     configured: isNylasConfigured(),
     connected: Boolean(profile?.nylasGrantId && profile?.nylasSchedulerConfigId),
     grantId: profile?.nylasGrantId ?? null,
+    grantStatus: profile?.nylasGrantStatus ?? null,
+    grantEmail: profile?.nylasGrantEmail ?? null,
     configurationId: profile?.nylasSchedulerConfigId ?? null,
+    introConfigurationId: profile?.nylasIntroSchedulerConfigId ?? null,
     schedulerSlug: profile?.nylasSchedulerSlug ?? null,
+    introSchedulerSlug: profile?.nylasIntroSchedulerSlug ?? null,
+    emailSyncEnabled: Boolean(profile?.nylasEmailSyncEnabled),
+    calendarIds: profile?.nylasSchedulerCalendarIds ?? null,
+    conferenceProvider: profile?.nylasConferenceProvider ?? null,
   });
 }

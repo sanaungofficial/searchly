@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findCoachBySlugOrId, getClientCoachingUser } from "@/lib/coach-api";
+import { filterSlotsByWeeklyCapacity } from "@/lib/coach-booking-capacity";
 import {
   fetchCoachAvailabilitySlots,
   findNextCoachSlot,
-  INTRO_SESSION_MINUTES,
 } from "@/lib/coach-booking-nylas";
-import { prepareCoachSchedulerForAvailability } from "@/lib/coach-scheduler-sync";
+import {
+  introDurationForCoach,
+  resolveSchedulerConfigId,
+  sessionDurationForCoach,
+} from "@/lib/coach-scheduler-config";
 import { isNylasConfigured } from "@/lib/nylas";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -16,13 +20,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   const me = await getClientCoachingUser(req);
   const coach = await findCoachBySlugOrId(slug, me?.id);
-  if (!coach?.nylasSchedulerConfigId || !coach.nylasGrantId) {
+  if (!coach?.nylasGrantId) {
     return NextResponse.json({ error: "Coach scheduling not configured" }, { status: 404 });
   }
 
-  const configId = coach.nylasSchedulerConfigId;
-  const sessionMinutes = coach.schedulerDurationMinutes ?? 60;
+  if (coach.nylasGrantStatus === "expired") {
+    return NextResponse.json({ error: "Coach calendar connection expired" }, { status: 503 });
+  }
+
+  const sessionMinutes = sessionDurationForCoach(coach);
+  const introMinutes = introDurationForCoach(coach);
   const durationMinutes = Number(req.nextUrl.searchParams.get("durationMinutes")) || sessionMinutes;
+  const configId = resolveSchedulerConfigId(coach, { durationMinutes });
+
+  if (!configId) {
+    return NextResponse.json({ error: "Coach scheduling not configured" }, { status: 404 });
+  }
+
   const nextOnly = req.nextUrl.searchParams.get("nextOnly") === "true";
 
   const now = Math.floor(Date.now() / 1000);
@@ -31,30 +45,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const endTime = Number(req.nextUrl.searchParams.get("endTime")) || defaultEnd;
 
   try {
-    await prepareCoachSchedulerForAvailability(coach, durationMinutes);
-
     if (nextOnly) {
-      const nextSlot = await findNextCoachSlot({
-        configurationId: configId,
-      });
+      const nextSlot = await findNextCoachSlot({ configurationId: configId });
       return NextResponse.json({
         nextSlot,
         sessionDurationMinutes: sessionMinutes,
-        introDurationMinutes: INTRO_SESSION_MINUTES,
+        introDurationMinutes: introMinutes,
         timezone: coach.schedulerTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     }
 
-    const slots = await fetchCoachAvailabilitySlots({
+    let slots = await fetchCoachAvailabilitySlots({
       configurationId: configId,
       startTime,
       endTime,
     });
 
+    slots = await filterSlotsByWeeklyCapacity({
+      coachProfileId: coach.id,
+      slots,
+      capacityHoursPerWeek: coach.schedulerCapacityHoursPerWeek,
+      timezone: coach.schedulerTimezone,
+    });
+
     return NextResponse.json({
       slots,
       sessionDurationMinutes: sessionMinutes,
-      introDurationMinutes: INTRO_SESSION_MINUTES,
+      introDurationMinutes: introMinutes,
       timezone: coach.schedulerTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   } catch (err) {

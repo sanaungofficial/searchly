@@ -211,6 +211,8 @@ export function buildNylasAuthUrl(params: {
   loginHint?: string;
   /** When set, request inbox + calendar read scopes for job-search agent. */
   inboxAccess?: boolean;
+  /** When set, request mail read/send scopes for coach email sync. */
+  emailSync?: boolean;
 }): string {
   const cfg = getNylasConfig();
   if (!cfg) throw new Error("Nylas is not configured");
@@ -228,17 +230,25 @@ export function buildNylasAuthUrl(params: {
   const loginHint = loginHintForNylasProvider(params.loginHint, params.provider);
   if (loginHint) query.set("login_hint", loginHint);
 
-  if (params.inboxAccess) {
+  if (params.inboxAccess || params.emailSync) {
     const scope =
       params.provider === "microsoft"
-        ? "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read"
+        ? "https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Calendars.ReadWrite"
         : [
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send",
             "https://www.googleapis.com/auth/gmail.compose",
             "https://www.googleapis.com/auth/calendar.readonly",
+            "https://www.googleapis.com/auth/calendar.events",
           ].join(" ");
     query.set("scope", scope);
+  } else if (params.provider === "microsoft") {
+    query.set("scope", "https://graph.microsoft.com/Calendars.ReadWrite");
+  } else {
+    query.set("scope", [
+      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/calendar.events",
+    ].join(" "));
   }
 
   return `${cfg.apiUri}/v3/connect/auth?${query.toString()}`;
@@ -308,6 +318,24 @@ export type NylasSchedulerConfig = {
   slug?: string;
 };
 
+export type NylasCalendar = {
+  id: string;
+  name?: string;
+  is_primary?: boolean;
+  read_only?: boolean;
+};
+
+export async function listCalendars(grantId: string): Promise<NylasCalendar[]> {
+  const res = await nylasFetch<{ data?: NylasCalendar[] }>(`/v3/grants/${grantId}/calendars?limit=100`, {
+    grantId,
+  });
+  return res.data ?? [];
+}
+
+export async function revokeNylasGrant(grantId: string): Promise<void> {
+  await nylasFetch(`/v3/grants/${grantId}`, { method: "DELETE", grantId });
+}
+
 export type CoachSchedulerParams = {
   grantId: string;
   coachName: string;
@@ -323,12 +351,18 @@ export type CoachSchedulerParams = {
   minBookingNoticeMinutes?: number;
   availabilityNotes?: string | null;
   blackoutDates?: string[];
+  calendarIds?: string[];
+  bookingCalendarId?: string;
+  conferenceProvider?: "google_meet" | "microsoft_teams" | null;
+  sessionLabel?: "intro" | "session";
 };
 
 function schedulerConfigBody(params: CoachSchedulerParams) {
   const appBase = nylasOAuthAppUrl();
   const duration = params.durationMinutes ?? 30;
   const timezone = params.timezone ?? "America/New_York";
+  const calendarIds = params.calendarIds?.length ? params.calendarIds : ["primary"];
+  const bookingCalendarId = params.bookingCalendarId ?? calendarIds[0] ?? "primary";
   const weekly =
     params.weeklyHours ??
     (params.openDays
@@ -342,8 +376,21 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
   const blackoutDates = params.blackoutDates ?? [];
   const openHoursBlocks = buildNylasOpenHoursBlocks(weekly, timezone, blackoutDates);
   const bufferMinutes = params.bufferMinutes ?? 0;
-  const descriptionParts = ["Book a 1:1 coaching session via Kimchi."];
+  const sessionKind = params.sessionLabel === "intro" ? "intro call" : "coaching session";
+  const descriptionParts = [`Book a 1:1 ${sessionKind} via Kimchi.`];
   if (params.availabilityNotes) descriptionParts.push(params.availabilityNotes);
+
+  const eventTitle =
+    params.sessionLabel === "intro"
+      ? `Intro call with ${params.coachName}`
+      : `Coaching session with ${params.coachName}`;
+
+  const conferencing =
+    params.conferenceProvider === "google_meet"
+      ? { autocreate: { provider: "Google Meet" } }
+      : params.conferenceProvider === "microsoft_teams"
+        ? { autocreate: { provider: "Microsoft Teams" } }
+        : undefined;
 
   return {
     requires_session_auth: false,
@@ -355,8 +402,8 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
         grant_id: params.grantId,
         is_organizer: true,
         timezone,
-        availability: { calendar_ids: ["primary"] },
-        booking: { calendar_id: "primary" },
+        availability: { calendar_ids: calendarIds },
+        booking: { calendar_id: bookingCalendarId },
       },
     ],
     availability: {
@@ -369,9 +416,10 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
       },
     },
     event_booking: {
-      title: `Coaching session with ${params.coachName}`,
+      title: eventTitle,
       description: descriptionParts.join("\n\n"),
       timezone,
+      ...(conferencing ? { conferencing } : {}),
     },
     scheduler: {
       rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
@@ -431,6 +479,10 @@ export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & 
       minBookingNoticeMinutes: params.minBookingNoticeMinutes,
       availabilityNotes: params.availabilityNotes,
       blackoutDates: params.blackoutDates,
+      calendarIds: params.calendarIds,
+      bookingCalendarId: params.bookingCalendarId,
+      conferenceProvider: params.conferenceProvider,
+      sessionLabel: params.sessionLabel,
     });
     return { configId: params.configId, created: false };
   }
@@ -450,12 +502,16 @@ export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & 
     minBookingNoticeMinutes: params.minBookingNoticeMinutes,
     availabilityNotes: params.availabilityNotes,
     blackoutDates: params.blackoutDates,
+    calendarIds: params.calendarIds,
+    bookingCalendarId: params.bookingCalendarId,
+    conferenceProvider: params.conferenceProvider,
+    sessionLabel: params.sessionLabel,
   });
   return { ...created, created: true };
 }
 
 export type NylasOAuthStatePayload =
-  | { kind: "coach"; coachProfileId: string; ts: number; returnAppUrl?: string; returnPath?: string }
+  | { kind: "coach"; coachProfileId: string; ts: number; returnAppUrl?: string; returnPath?: string; emailSync?: boolean }
   | { kind: "user"; userId: string; ts: number; returnAppUrl?: string; returnPath?: string };
 
 export type NylasOAuthState = { coachProfileId: string; ts: number; returnAppUrl?: string };
@@ -490,6 +546,7 @@ export function verifyNylasOAuthState(state: string): NylasOAuthStatePayload | n
       ts?: number;
       returnAppUrl?: string;
       returnPath?: string;
+      emailSync?: boolean;
     };
     if (!parsed.ts || Date.now() - parsed.ts > 1000 * 60 * 60) return null;
 
@@ -509,6 +566,7 @@ export function verifyNylasOAuthState(state: string): NylasOAuthStatePayload | n
         ts: parsed.ts,
         ...(parsed.returnAppUrl ? { returnAppUrl: parsed.returnAppUrl } : {}),
         ...(parsed.returnPath ? { returnPath: parsed.returnPath } : {}),
+        ...(parsed.emailSync ? { emailSync: true } : {}),
       };
     }
 
@@ -744,4 +802,34 @@ export async function createSchedulerBooking(params: {
     eventId: data.event_id,
     title: data.title,
   };
+}
+
+/** Cancel a scheduler booking via Nylas API. */
+export async function cancelSchedulerBooking(params: {
+  bookingId: string;
+  configurationId: string;
+  cancellationReason?: string;
+}): Promise<void> {
+  const query = new URLSearchParams({ configuration_id: params.configurationId });
+  await nylasFetch(`/v3/scheduling/bookings/${params.bookingId}?${query.toString()}`, {
+    method: "DELETE",
+    body: params.cancellationReason ? { cancellation_reason: params.cancellationReason } : undefined,
+  });
+}
+
+/** Reschedule a scheduler booking via Nylas API. */
+export async function rescheduleSchedulerBooking(params: {
+  bookingId: string;
+  configurationId: string;
+  startTime: number;
+  endTime: number;
+}): Promise<void> {
+  const query = new URLSearchParams({ configuration_id: params.configurationId });
+  await nylasFetch(`/v3/scheduling/bookings/${params.bookingId}?${query.toString()}`, {
+    method: "PATCH",
+    body: {
+      start_time: params.startTime,
+      end_time: params.endTime,
+    },
+  });
 }
