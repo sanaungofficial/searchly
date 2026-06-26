@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type VoiceOrbState = "idle" | "recording" | "processing" | "done" | "error";
+export type VoiceOrbState =
+  | "idle"
+  | "connecting"
+  | "live"
+  | "listening"
+  | "speaking"
+  | "thinking"
+  | "done"
+  | "error";
 
 interface VoiceOrbProps {
   state: VoiceOrbState;
@@ -21,19 +29,24 @@ export function VoiceOrb({
   label,
   sublabel,
 }: VoiceOrbProps) {
-  const isActive = state === "recording";
-  const isProcessing = state === "processing";
+  const isListening = state === "listening" || state === "live";
+  const isSpeaking = state === "speaking";
+  const isThinking = state === "thinking" || state === "connecting";
   const isDone = state === "done";
   const pulse = 1 + Math.min(audioLevel, 1) * 0.22;
   const glow = 0.35 + Math.min(audioLevel, 1) * 0.45;
 
   const defaultLabel =
-    state === "recording"
+    state === "listening"
       ? "Listening…"
-      : state === "processing"
-        ? "Working…"
+      : state === "live"
+        ? "Your turn"
+      : state === "speaking"
+        ? "Kimchi"
+      : state === "thinking" || state === "connecting"
+        ? "One sec…"
         : state === "done"
-          ? "Got it"
+          ? "All set"
           : "Tap to talk";
 
   return (
@@ -43,14 +56,15 @@ export function VoiceOrb({
         <div
           className={[
             "voice-orb-rings",
-            isActive ? "voice-orb-rings--active" : "",
-            isProcessing ? "voice-orb-rings--processing" : "",
+            isListening ? "voice-orb-rings--active" : "",
+            isSpeaking ? "voice-orb-rings--speaking" : "",
+            isThinking ? "voice-orb-rings--processing" : "",
             isDone ? "voice-orb-rings--done" : "",
           ]
             .filter(Boolean)
             .join(" ")}
           style={
-            isActive
+            isListening || isSpeaking
               ? ({
                   ["--orb-pulse" as string]: String(pulse),
                   ["--orb-glow" as string]: String(glow),
@@ -66,32 +80,31 @@ export function VoiceOrb({
             type="button"
             className={[
               "voice-orb-core",
-              isActive ? "voice-orb-core--active" : "",
-              isProcessing ? "voice-orb-core--processing" : "",
+              isListening ? "voice-orb-core--active" : "",
+              isSpeaking ? "voice-orb-core--speaking" : "",
+              isThinking ? "voice-orb-core--processing" : "",
               isDone ? "voice-orb-core--done" : "",
             ]
               .filter(Boolean)
               .join(" ")}
             onClick={onClick}
-            disabled={disabled || isProcessing}
+            disabled={disabled || isThinking}
             aria-label={
-              state === "recording"
-                ? "Stop recording"
-                : state === "processing"
-                  ? "Processing voice"
-                  : "Start voice recording"
+              state === "live" || state === "listening" || state === "speaking"
+                ? "End voice conversation"
+                : state === "connecting" || state === "thinking"
+                  ? "Connecting voice agent"
+                  : "Start voice conversation"
             }
           >
             <span className="voice-orb-core__inner">
-              {isProcessing ? (
+              {isThinking ? (
                 <span className="voice-orb-spinner" aria-hidden="true" />
               ) : isDone ? (
                 <span className="voice-orb-check" aria-hidden="true">
                   ✓
                 </span>
-              ) : isActive ? (
-                <span className="voice-orb-stop" aria-hidden="true" />
-              ) : (
+              ) : state === "idle" ? (
                 <span className="voice-orb-mic" aria-hidden="true">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                     <path
@@ -103,6 +116,10 @@ export function VoiceOrb({
                       fill="currentColor"
                     />
                   </svg>
+                </span>
+              ) : (
+                <span className="voice-orb-wave" aria-hidden="true">
+                  <span /><span /><span />
                 </span>
               )}
             </span>
@@ -242,6 +259,18 @@ function VoiceOrbStyles() {
         transition: transform 0.08s ease-out, opacity 0.08s ease-out;
       }
 
+      .voice-orb-rings--speaking .voice-orb-ring--1 {
+        background: conic-gradient(from 180deg, #5BC4B8, #E8D5A3, #3DAA9C, #C4A86A, #5BC4B8);
+        opacity: calc(0.55 + var(--orb-glow, 0.35));
+        transform: scale(var(--orb-pulse, 1));
+        animation: voice-orb-gradient 4s linear infinite;
+      }
+
+      .voice-orb-rings--speaking .voice-orb-ring--2,
+      .voice-orb-rings--speaking .voice-orb-ring--3 {
+        animation: voice-orb-ring-pulse 1.2s ease-in-out infinite;
+      }
+
       .voice-orb-rings--active .voice-orb-ring--2,
       .voice-orb-rings--active .voice-orb-ring--3 {
         animation: voice-orb-ring-expand 1.8s ease-out infinite;
@@ -292,10 +321,18 @@ function VoiceOrbStyles() {
 
       .voice-orb-core--active {
         box-shadow:
-          inset 0 0 24px rgba(196, 87, 74, 0.15),
-          0 0 0 2px rgba(196, 87, 74, 0.35),
+          inset 0 0 24px rgba(61, 170, 156, 0.12),
+          0 0 0 2px rgba(61, 170, 156, 0.35),
           0 16px 48px rgba(26, 58, 47, 0.4),
           0 0 40px rgba(61, 170, 156, calc(var(--orb-glow, 0.35)));
+      }
+
+      .voice-orb-core--speaking {
+        box-shadow:
+          inset 0 0 28px rgba(232, 213, 163, 0.12),
+          0 0 0 2px rgba(196, 168, 106, 0.4),
+          0 16px 48px rgba(26, 58, 47, 0.4),
+          0 0 48px rgba(91, 196, 184, calc(var(--orb-glow, 0.35)));
       }
 
       .voice-orb-core__inner {
@@ -322,12 +359,29 @@ function VoiceOrbStyles() {
       }
 
       .voice-orb-mic { display: flex; opacity: 0.95; }
-      .voice-orb-stop {
-        width: 22px;
-        height: 22px;
-        border-radius: 4px;
+
+      .voice-orb-wave {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 24px;
+      }
+
+      .voice-orb-wave span {
+        display: block;
+        width: 4px;
+        height: 8px;
         background: #E8D5A3;
-        box-shadow: 0 0 16px rgba(232, 213, 163, 0.45);
+        border-radius: 2px;
+        animation: voice-orb-wave 0.9s ease-in-out infinite;
+      }
+
+      .voice-orb-wave span:nth-child(2) { animation-delay: 0.15s; }
+      .voice-orb-wave span:nth-child(3) { animation-delay: 0.3s; }
+
+      @keyframes voice-orb-wave {
+        0%, 100% { height: 8px; opacity: 0.5; }
+        50% { height: 22px; opacity: 1; }
       }
 
       .voice-orb-check {
