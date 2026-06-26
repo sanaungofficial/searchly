@@ -110,13 +110,13 @@ export function PipelineStageJobsList({
             {stageCards.length} role{stageCards.length === 1 ? "" : "s"} in your pipeline
           </p>
         </div>
-        <ScoutSecondaryBtn onClick={onBackToRecommendations}>← Back to recommendations</ScoutSecondaryBtn>
+        <ScoutSecondaryBtn onClick={onBackToRecommendations}>← Back to Find roles</ScoutSecondaryBtn>
       </div>
 
       {!stageCards.length ? (
         <ScoutBox style={{ padding: 40, textAlign: "center" }}>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.mutedLight, margin: 0 }}>
-            No roles in {STAGE_LABELS[stage].toLowerCase()} yet — save a recommendation to get started.
+            No roles in {STAGE_LABELS[stage].toLowerCase()} yet — save one from Find roles or paste a job URL.
           </p>
         </ScoutBox>
       ) : (

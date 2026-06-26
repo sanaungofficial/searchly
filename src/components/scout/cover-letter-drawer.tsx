@@ -84,7 +84,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
           notifyCreditsChanged();
           setShowUpgrade(true);
         }
-        setError(d.error ?? "Something went wrong");
+        setError(d.error ?? "Couldn't generate a cover letter — try again.");
         setLoading(false);
         return;
       }
@@ -98,7 +98,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
       setStreaming(false);
       notifyCreditsChanged();
     } catch (e: unknown) {
-      if (e instanceof Error && e.name !== "AbortError") setError("Something went wrong");
+      if (e instanceof Error && e.name !== "AbortError") setError("Something went wrong — try again.");
     } finally {
       setLoading(false);
       setStreaming(false);
@@ -333,11 +333,11 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                   <p style={{ fontFamily: fontSans, fontSize: 14, color: "#6B7280", lineHeight: 1.6, marginBottom: 20 }}>
                     {error
                       ? error === "No resume found"
-                        ? "Upload a resume in your profile first."
+                        ? "Upload a resume under Profile first."
                         : error === "No job description provided"
-                          ? "No description available for this job."
-                          : "Could not generate a cover letter."
-                      : "Generate a tailored cover letter for this role when you're ready."}
+                          ? "No job description on file — paste it in the panel on the right."
+                          : "Couldn't generate a cover letter — try again."
+                      : "Hit the button when you want a draft — we won't run it automatically."}
                   </p>
                   {error !== "No resume found" && (
                     <button
@@ -467,16 +467,16 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                       lineHeight: 1.5,
                     }}>
                       {loading
-                        ? "Generating your cover letter…"
-                        : streaming && !refining
                         ? "Writing your cover letter…"
+                        : streaming && !refining
+                        ? "Still writing…"
                         : refining
-                        ? "Rewriting based on your feedback…"
+                        ? "Rewriting from your note…"
                         : error
-                        ? "Couldn't generate a cover letter. Try again below."
+                        ? "Generation failed — try again below."
                         : !letter
-                        ? "Generate a cover letter when you're ready — it won't run automatically."
-                        : "Your cover letter is ready. Use the suggestions below or type your own instruction."}
+                        ? "Generate when you're ready — it won't run on its own."
+                        : "Draft's ready. Use a suggestion below or type your own edit."}
                     </div>
 
                     {/* No description error - paste input */}
@@ -580,7 +580,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
                       }}
-                      placeholder="Tell me how you'd like to tweak it…"
+                      placeholder="Tell me what to change…"
                       rows={2}
                       disabled={!letter || streaming}
                       style={{
@@ -608,7 +608,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                         transition: "all 0.15s",
                       }}
                     >
-                      Edit With AI
+                      Edit with AI
                     </button>
                   </div>
                 </div>
@@ -624,7 +624,7 @@ export function CoverLetterDrawer({ jobTitle, company, description, jobId, initi
                     flexShrink: 0,
                   }}>
                     <span style={{ fontFamily: fontSans, fontSize: 14, fontWeight: 600, color: "#6B7280", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                      Cover Letter Text
+                      Cover letter text
                     </span>
                     <button
                       onClick={handleCopy}

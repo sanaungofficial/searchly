@@ -157,8 +157,8 @@ function UpskillNextStepCard({
   const primarySkill = skill ?? skillList[0] ?? "";
   const title =
     variant === "prompt"
-      ? "Great — let's get you upskilled"
-      : "Obtain these skills through learning";
+      ? "Skill queued for Upskill"
+      : "Close these gaps with learning";
   const body =
     variant === "prompt" ? (
       <>
@@ -169,11 +169,11 @@ function UpskillNextStepCard({
             for <strong style={{ color: color.ink }}>{role}</strong>
           </>
         ) : null}
-        . Explore courses and certifications to close the gap — no rush, go when you&apos;re ready.
+        . Pick a course when you&apos;re ready — no deadline.
       </>
     ) : (
       <>
-        Courses and certifications in Upskill are matched to your role gaps. Pick a skill to explore learning paths
+        Upskill matches courses to your role gaps. Pick a skill to see paths
         {role ? (
           <>
             {" "}
@@ -643,7 +643,7 @@ function EducationTab({ entries, onSave }: { entries: EducationEntry[]; onSave: 
     <div>
       <SectionHeader title="Education" onEdit={() => setEditing(true)} />
       {entries.length === 0 ? (
-        <EmptyState message="No education history" sub="Resume upload auto-fills this. Kimchi uses it to verify your credentials when scoring job fit." />
+        <EmptyState message="No education yet" sub="Upload a resume and we&apos;ll pull this in. We use it when scoring job fit." />
       ) : (
         <div className="space-y-4">
           {entries.map((entry) => (
@@ -727,7 +727,7 @@ function ExperienceTab({ entries, onSave }: { entries: WorkEntry[]; onSave: (ent
     <div>
       <SectionHeader title="Work Experience" onEdit={() => setEditing(true)} />
       {entries.length === 0 ? (
-        <EmptyState message="No work experience" sub="Resume upload auto-fills this. Kimchi scores job fit based on your background and years of experience." />
+        <EmptyState message="No work experience yet" sub="Upload a resume and we&apos;ll fill this in. Fit scores use your background and years of experience." />
       ) : (
         <div className="space-y-5">
           {entries.map((entry) => (
@@ -792,7 +792,7 @@ function SkillsTab({ skills, onSave, skillGoals, onGraduate }: {
     <div>
       <SectionHeader title="Skills" onEdit={() => setEditing(!editing)} />
       {!editing && skills.length === 0 && skillGoals.length === 0 && (
-        <EmptyState message="No skills listed yet" sub="Kimchi uses your skills to calculate fit scores for each target role. Resume upload extracts them automatically." />
+        <EmptyState message="No skills yet" sub="Add them here or upload a resume — we use skills to score fit on target roles." />
       )}
       {editing ? (
         <div className="space-y-3">
@@ -1090,7 +1090,7 @@ function DreamRoleTab({
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
-        Add up to 3 roles you&apos;re targeting. Pick a resume per role — each resume keeps its own saved fit score. Tap a role to run analysis; use Refresh for an updated score.
+        Add up to 3 target roles. Pick a resume per role — each keeps its own fit score. Expand a role to run analysis; hit Refresh for an updated score.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
@@ -1123,15 +1123,15 @@ function DreamRoleTab({
                       {loaded._stale ? " · resume or skills changed" : ""}
                     </p>
                   ) : !hasResume ? (
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload a resume to see your fit score</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload a resume to get a fit score</p>
                   ) : result === "loading" ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Analyzing…</p>
                   ) : result === "error" ? (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>
-                      {analysisErrors[role] ?? "Analysis unavailable — tap to retry"}
+                      {analysisErrors[role] ?? "Analysis failed — expand to retry"}
                     </p>
                   ) : (
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Tap to view fit details</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Expand to see fit details</p>
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1183,11 +1183,11 @@ function DreamRoleTab({
                   )}
                   {result === "error" && !loaded && (
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C4A86A" }}>
-                      {analysisErrors[role] ?? "Could not run analysis. Make sure your resume is uploaded and try again."}
+                      {analysisErrors[role] ?? "Couldn't run analysis — upload a resume and try again."}
                     </p>
                   )}
                   {!hasResume && (
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload your resume in the About tab to unlock gap analysis for this role.</p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Upload a resume under Resumes to unlock gap analysis.</p>
                   )}
                   {loaded && (
                     <>
@@ -1643,7 +1643,7 @@ function LearningTab({
           <div>
             <UpskillSectionLabel variant="upskill-recommendations">Skills to obtain</UpskillSectionLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "6px 0 0", lineHeight: 1.5 }}>
-              Grouped by the role they support. Add your own or queue from Target Roles.
+              Grouped by target role. Add your own here, or queue from Target Roles.
             </p>
           </div>
           {!showAddSkillForm && (
@@ -1715,7 +1715,7 @@ function LearningTab({
         {skillGoals.length === 0 ? (
           <ScoutBox padding={16}>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.6 }}>
-              No skills queued yet. Add one above, or on Target Roles choose &ldquo;Obtain this skill&rdquo; on a gap.
+              No skills queued. Add one above, or on Target Roles hit &ldquo;Obtain this skill&rdquo; on a gap.
             </p>
           </ScoutBox>
         ) : (
@@ -1863,7 +1863,7 @@ function LearningTab({
 
         {customItems.length === 0 && !showAddForm ? (
           <div style={{ padding: "24px 0", textAlign: "center" }}>
-            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C0B8B0" }}>No custom items yet. Add courses, certifications, or tools you&apos;re learning on your own.</p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#C0B8B0" }}>No custom items yet. Add courses, certs, or tools you&apos;re tracking on your own.</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1961,7 +1961,7 @@ function UploadResumeModal({ onClose, onUpload, uploading, inputRef }: {
 
         <ScoutLabel>Resume upload</ScoutLabel>
         <ScoutDisplayTitle size={22} style={{ margin: "10px 0 28px", textAlign: "center" }}>
-          Upload resume to get started
+          Upload a resume
         </ScoutDisplayTitle>
 
         {/* Drop zone */}
@@ -2118,7 +2118,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
         <ScoutBox padding={0} style={{ overflow: "hidden" }}>
           {resumes.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center" }}>
-              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No resume uploaded yet.</p>
+              <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No resume yet — upload one to unlock fit scores and tailoring.</p>
               <ScoutPrimaryBtn
                 onClick={() => setShowUploadModal(true)}
                 disabled={uploading}
@@ -2204,7 +2204,7 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
 
         {resumes.length === 0 ? (
           <div style={{ padding: "48px 20px", textAlign: "center" }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No resume uploaded yet.</p>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>No resume yet — upload one to unlock fit scores and tailoring.</p>
             <ScoutPrimaryBtn
               onClick={() => setShowUploadModal(true)}
               disabled={uploading}
@@ -2570,13 +2570,13 @@ function CareerPreferencesPanel({ profile, onSave }: {
       ) : !hasAnyData ? (
         <div style={{ paddingTop: 4 }}>
           <p style={{ fontSize: 14, color: "var(--scout-muted)", fontFamily: "var(--font-ui)", marginBottom: 6 }}>
-            No preferences set yet.{" "}
+            No preferences yet.{" "}
             <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", color: "#C4A86A", fontSize: 14, cursor: "pointer", fontFamily: "var(--font-ui)", padding: 0 }}>
               Add them →
             </button>
           </p>
           <p style={{ fontSize: 14, color: "#C0B8B0", fontFamily: "var(--font-ui)" }}>
-            Kimchi uses these to filter and rank matched roles by what matters to you.
+            We use these to filter and rank matched roles.
           </p>
         </div>
       ) : (
@@ -3078,7 +3078,7 @@ export function WorkspaceProfile() {
       const res = await fetch("/api/resume", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) {
-        setResumeUploadError(data.error || "Upload failed. Please try again.");
+        setResumeUploadError(data.error || "Upload failed — try again.");
         return;
       }
       if (res.status === 202 && data.asset?.id) {
@@ -3091,7 +3091,7 @@ export function WorkspaceProfile() {
         if (data.asset?.id) openResumeEditor(data.asset.id);
       }
     } catch {
-      setResumeUploadError("Upload failed. Please try again.");
+      setResumeUploadError("Upload failed — try again.");
     } finally {
       setResumeUploading(false);
     }
@@ -3165,7 +3165,7 @@ export function WorkspaceProfile() {
             </div>
           )}
           <ScoutDisplayTitle size={isMobile ? 28 : 36} style={{ marginBottom: 8 }}>
-            {loading ? "Loading…" : profile?.name || "Your story, through Kimchi"}
+            {loading ? "Loading…" : profile?.name || "Your profile"}
           </ScoutDisplayTitle>
           {profile?.headline && (
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
@@ -3174,7 +3174,7 @@ export function WorkspaceProfile() {
           )}
           {!profile?.headline && !loading && (
             <p style={{ fontFamily: fontSans, fontSize: T.body, color: color.muted, margin: "0 0 12px", lineHeight: 1.6, maxWidth: 520 }}>
-              Resume, preferences, and target roles — white boxes on cream, same as Opportunities.
+              Resume, preferences, and target roles — fill these in so we can score fit accurately.
             </p>
           )}
           {profile && (() => {
@@ -3210,7 +3210,7 @@ export function WorkspaceProfile() {
                   </div>
                   {missing.length > 0 && (
                     <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "8px 0 0" }}>
-                      {missing.length} item{missing.length !== 1 ? "s" : ""} to complete
+                      {missing.length} item{missing.length !== 1 ? "s" : ""} left — tap to fix
                     </p>
                   )}
                 </button>
@@ -3250,7 +3250,7 @@ export function WorkspaceProfile() {
           <ScoutBox style={{ marginBottom: 16, borderColor: "rgba(74,139,106,0.35)" }} padding={14}>
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 12 }}>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.forest, margin: 0, lineHeight: 1.5 }}>
-                ✓ Resume uploaded — Kimchi extracted your experience, education, and skills. Review them in the About tab.
+                ✓ Resume uploaded — we pulled your experience, education, and skills. Review them under About.
               </p>
               <button onClick={() => setReadbackNudge(false)} style={{ background: "none", border: "none", color: color.forest, cursor: "pointer", fontSize: 16, padding: isMobile ? "8px 4px" : "0 4px", opacity: 0.6, flexShrink: 0, alignSelf: isMobile ? "flex-end" : undefined, minHeight: isMobile ? 44 : undefined }}>✕</button>
             </div>
@@ -3350,7 +3350,7 @@ export function WorkspaceProfile() {
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Loading…</p>
         )}
         {page === "about" && !loading && !profile && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
         )}
         {page === "about" && profile && (
           <div style={{ paddingBottom: 40 }}>
@@ -3416,7 +3416,7 @@ export function WorkspaceProfile() {
         )}
 
         {page === "preferences" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
         )}
         {page === "preferences" && profile && (
           <div style={{ paddingBottom: 40, paddingTop: 8 }}>
@@ -3425,7 +3425,7 @@ export function WorkspaceProfile() {
         )}
 
         {page === "strategy" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
         )}
         {page === "strategy" && profile && (
           <div style={{ paddingBottom: 40, paddingTop: 8 }}>
@@ -3454,7 +3454,7 @@ export function WorkspaceProfile() {
         )}
 
         {page === "assets" && !profile && !loading && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Could not load profile. Please refresh.</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)" }}>Couldn't load profile — refresh the page.</p>
         )}
         {page === "assets" && profile && (
           <AssetsTab assets={assets} uploading={resumeUploading} onUpload={handleResumeUpload} onDelete={handleAssetDelete} onOpenResume={openResumeEditor} inputRef={resumeInputRef} suggestions={profileSuggestions} suggestionsLoading={suggestionsLoading} onOpenPricing={openPricing} />

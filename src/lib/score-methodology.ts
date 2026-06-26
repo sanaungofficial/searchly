@@ -23,7 +23,7 @@ export type ScoreExplainerContent = {
 export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerContent> = {
   "job-match": {
     title: "Resume–job match score",
-    subtitle: "How well your resume fits a specific job posting.",
+    subtitle: "Here's how we calculate fit for a specific posting.",
     bullets: [
       {
         title: "What we compare",
@@ -31,7 +31,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "How it's calculated",
-        body: "AI reads both sides and scores alignment on job title, years of experience, industry background, and keyword overlap in the description.",
+        body: "We read both sides and score alignment on job title, years of experience, industry background, and keyword overlap in the description.",
       },
       {
         title: "Score scale",
@@ -46,7 +46,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
   },
   "vector-match": {
     title: "Recommended role match",
-    subtitle: "How roles from your tracked companies rank against your profile.",
+    subtitle: "Here's how we rank roles from your watchlist against your profile.",
     bullets: [
       {
         title: "Where roles come from",
@@ -54,22 +54,22 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "How the score is calculated",
-        body: "Instant profile-based scoring (no Claude on this list): list rank among matches, keyword overlap with the posting, and skills found in your resume.",
+        body: "Instant profile-based scoring (no full AI on this list): list rank among matches, keyword overlap with the posting, and skills found in your resume.",
       },
       {
         title: "Why you're a good fit",
-        body: "Bullets highlight aligned skills, seniority, and keyword overlap — not AI-written prose unless you open full match analysis elsewhere.",
+        body: "Bullets highlight aligned skills, seniority, and keyword overlap — not long AI prose unless you open full match analysis elsewhere.",
       },
       {
         title: "Not resume embed",
-        body: "This view does not call Hirebase resume embed. For deep AI fit analysis on a saved job, use Analyze fit in the job drawer.",
+        body: "This view does not call Hirebase resume embed. For deep fit analysis on a saved job, use Analyze fit in the job drawer.",
       },
     ],
     scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",
   },
   "coach-match": {
     title: "Coach profile match",
-    subtitle: "How well a coach aligns with your dashboard goals and Kimchi profile — not a job posting.",
+    subtitle: "Here's how we score coach fit against your goals and profile — not a job posting.",
     bullets: [
       {
         title: "What we compare",
@@ -85,18 +85,18 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "Deeper prep",
-        body: "Open Prepare for session in the coach drawer for AI help with questions, session goals, and coach background — uses your full profile plus this coach's profile.",
+        body: "Open Prepare for session in the coach drawer for help with questions, session goals, and coach background — uses your full profile plus this coach's profile.",
       },
     ],
     scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",
   },
   "network-match": {
     title: "Network role match",
-    subtitle: "How recruiter-network roles rank against your profile.",
+    subtitle: "Here's how we rank in-network roles against your profile.",
     bullets: [
       {
         title: "Where roles come from",
-        body: "Shared privately through Top Echelon Big Biller — curated recruiter-network openings, not public job boards.",
+        body: "Shared through Top Echelon Big Biller — recruiter-network openings, not public job boards.",
       },
       {
         title: "How the score is calculated",
@@ -108,14 +108,14 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "Deeper analysis",
-        body: "Open a role and use Analyze fit in the job drawer for full AI resume–job match on that posting.",
+        body: "Open a role and use Analyze fit in the job drawer for full resume–job match on that posting.",
       },
     ],
     scaleNote: "Excellent ≥ 90 · Strong ≥ 75 · Good ≥ 60 · Fair ≥ 50 · Stretch below 50",
   },
   "resume-quality": {
     title: "Resume quality score",
-    subtitle: "Overall strength of your resume as a standalone document.",
+    subtitle: "Here's how we score your resume as a standalone document.",
     bullets: [
       {
         title: "What we analyze",
@@ -123,7 +123,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "How it's calculated",
-        body: "AI scores your resume 0–100 and maps to a letter grade (A–F). If AI is unavailable, we fall back to section completeness.",
+        body: "We score your resume 0–100 and map to a letter grade (A–F). If AI is unavailable, we fall back to section completeness.",
       },
       {
         title: "Not job-specific",
@@ -134,11 +134,11 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
   },
   "keyword-match": {
     title: "Keyword match",
-    subtitle: "How many job-description keywords appear in your tailored resume.",
+    subtitle: "Here's how we count job-description keywords in your tailored resume.",
     bullets: [
       {
         title: "Keyword extraction",
-        body: "AI pulls 12–15 important terms from the job description — skills, tools, and role-specific phrases.",
+        body: "We pull 12–15 important terms from the job description — skills, tools, and role-specific phrases.",
       },
       {
         title: "Match ratio",
@@ -152,7 +152,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
   },
   "role-gap": {
     title: "Target role fit score",
-    subtitle: "How ready your profile is for a dream role you're targeting.",
+    subtitle: "Here's how we measure readiness for a role you're targeting.",
     bullets: [
       {
         title: "What we compare",
@@ -160,7 +160,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "How it's calculated",
-        body: "AI returns a 0–100 fit score, skills you already have, gaps to close, and suggested next steps.",
+        body: "We return a 0–100 fit score, skills you already have, gaps to close, and suggested next steps.",
       },
       {
         title: "When to refresh",
@@ -171,7 +171,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
   },
   "profile-completeness": {
     title: "Profile completeness",
-    subtitle: "How much of your Kimchi profile is filled in.",
+    subtitle: "Here's how we measure how much of your profile is filled in.",
     bullets: [
       {
         title: "Checklist-based",
@@ -179,25 +179,25 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "Not a fit score",
-        body: "This measures profile setup — not how well you match any job. Complete it so Kimchi can tailor and recommend accurately.",
+        body: "This measures profile setup — not how well you match any job. Fill it in so we can score and recommend accurately.",
       },
       {
         title: "Goal",
-        body: "80%+ unlocks the best experience for match analysis and recommendations.",
+        body: "80%+ gets you the most accurate match analysis and role recommendations.",
       },
     ],
   },
   "upskill-recommendations": {
     title: "Upskill program recommendations",
-    subtitle: "How Kimchi picks courses and certifications for your skill gaps.",
+    subtitle: "Here's how we pick courses and certifications for your skill gaps.",
     bullets: [
       {
         title: "Where gaps come from",
-        body: "AI role-gap analysis on Target Roles compares your resume and declared skills to each role. Choose Obtain this skill on a gap to queue it here.",
+        body: "Role-gap analysis on Target Roles compares your resume and declared skills to each role. Choose Obtain this skill on a gap to queue it here.",
       },
       {
         title: "Catalog matching",
-        body: "Each gap is matched against our curated catalog: closesGap tags, course titles, and descriptions. We use fuzzy skill matching (e.g. “SQL” ↔ “Data Analysis”).",
+        body: "Each gap is matched against our catalog: closesGap tags, course titles, and descriptions. We use fuzzy skill matching (e.g. “SQL” ↔ “Data Analysis”).",
       },
       {
         title: "Search fallbacks",
@@ -215,7 +215,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
   },
   "upskill-progress": {
     title: "Learning progress",
-    subtitle: "How your completion percentage is calculated.",
+    subtitle: "Here's how we calculate your completion percentage.",
     bullets: [
       {
         title: "What counts",
@@ -227,7 +227,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "Self-tracked",
-        body: "Progress is what you record — Kimchi does not verify enrollment or credentials with third-party platforms.",
+        body: "Progress is what you record — we do not verify enrollment or credentials with third-party platforms.",
       },
       {
         title: "Separate from fit score",
@@ -237,7 +237,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
   },
   "linkedin-quality": {
     title: "LinkedIn profile score",
-    subtitle: "How recruiter-ready your Kimchi LinkedIn draft is.",
+    subtitle: "Here's how we score recruiter-readiness of your Kimchi LinkedIn draft.",
     bullets: [
       {
         title: "What we analyze",
@@ -249,7 +249,7 @@ export const SCORE_EXPLAINERS: Record<ScoreExplainerVariant, ScoreExplainerConte
       },
       {
         title: "Fix & Impact",
-        body: "Use Fix on any section for AI suggestions — same flow as resume review in Resumes. Edit inline, then copy into LinkedIn.",
+        body: "Use Fix on any section for suggestions — same flow as resume review in Resumes. Edit inline, then copy into LinkedIn.",
       },
       {
         title: "When to refresh",

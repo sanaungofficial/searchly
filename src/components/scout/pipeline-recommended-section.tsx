@@ -350,7 +350,7 @@ function JobFiltersGrid({
     <div style={{ marginTop: 16, padding: 16, background: surface.inset, border: border.line }}>
       <FilterSectionHeader
         title="Where & how you want to work"
-        hint="Your home base plus work arrangement. Saved to your profile when you search."
+        hint="Your location and work setup. Saved to your profile when you search."
       />
       <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
         <FilterField label="City">
@@ -409,7 +409,7 @@ function JobFiltersGrid({
       <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
         <FilterSectionHeader
           title="Role criteria"
-          hint="Keywords and titles for a live Hirebase search."
+          hint="Titles and keywords for a live Hirebase search — comma-separate multiples."
         />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
@@ -782,7 +782,7 @@ export function PipelineRecommendedSection({
         if (gen !== fetchGenRef.current) return;
 
         if (!res.ok) {
-          const rawMsg = formatApiErrorMessage(data.error, "Could not load recommended jobs.");
+          const rawMsg = formatApiErrorMessage(data.error, "Couldn't load recommended roles.");
           const isEmbedNoise =
             /embed|artifact|hirebase|permission|forbidden|403|vector/i.test(rawMsg);
           const msg = isEmbedNoise ? null : data.hint ? `${rawMsg} ${data.hint}` : rawMsg;
@@ -836,7 +836,7 @@ export function PipelineRecommendedSection({
         setHasLoadedOnce(true);
       } catch (err) {
         if (gen !== fetchGenRef.current) return;
-        setError(formatApiErrorMessage(err, "Could not load recommended jobs — try Refresh."));
+        setError(formatApiErrorMessage(err, "Couldn't load recommended roles — hit Refresh."));
         if (!background) setJobs([]);
         setHasLoadedOnce(true);
       } finally {
@@ -1061,12 +1061,12 @@ export function PipelineRecommendedSection({
   );
 
   const emptyMessage = error
-    ? "Fix the issue above, then refresh."
+    ? "Fix the issue above, then hit Refresh."
     : hasActiveSearch
-      ? "No roles matched your search — try different keywords or broaden filters."
+      ? "Nothing matched — try different keywords or loosen your filters."
       : recommendedListings.length === 0 && jobs.length > 0
-        ? "You have saved all current recommendations — check back after the daily refresh."
-        : "No recommendations right now — add target roles or a resume under Profile, then refresh.";
+        ? "You've saved everything in today's list — check back after the daily refresh."
+        : "No matches right now — add target roles or upload a resume under Profile, then refresh.";
 
   return (
     <div>
@@ -1077,7 +1077,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Fresh roles matched to your profile from Hirebase — remote and local to your area. Match scores are free estimates until you analyze a role in the drawer. Save any role to track it in your pipeline.
+              Roles from Hirebase matched to your profile — local and remote. Match scores here are estimates; open a role and run Analyze fit for a full resume check. Save any role to track it in your pipeline.
             </p>
             {snapshotMeta?.generatedAt && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
@@ -1126,7 +1126,7 @@ export function PipelineRecommendedSection({
               </ScoutSecondaryBtn>
             </div>
             <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "0 0 8px", lineHeight: 1.45 }}>
-              Optional — edit salary and dates below before you search. Clear &quot;Posted after&quot; to see all indexed roles.
+              Optional — tweak salary and dates before you search. Clear &quot;Posted after&quot; to see all indexed roles.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {profileSuggestedLabels.map((label) => (
@@ -1182,8 +1182,8 @@ export function PipelineRecommendedSection({
         {(loading || revalidating) && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
             {jobs.length > 0
-              ? "Still loading — you can switch tabs; results update here when ready."
-              : "Loading recommendations — feel free to leave and come back. Results save automatically for this session."}
+              ? "Still loading — switch tabs if you want; results update here when ready."
+              : "Loading roles — you can leave and come back. Results stick around for this session."}
           </p>
         )}
       </ScoutBox>
