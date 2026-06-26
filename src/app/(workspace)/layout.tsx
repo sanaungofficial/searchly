@@ -6,6 +6,7 @@ import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { WorkspaceTopNav } from "@/components/scout/workspace-top-nav";
 import { KimchiAssistant } from "@/components/scout/kimchi-assistant";
 import { PricingModal } from "@/components/scout/pricing-modal";
+import { surface } from "@/lib/typography";
 
 function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const {
@@ -37,7 +38,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!authChecked) {
-    return <div style={{ height: "100vh", background: "#F7F5F2" }} />;
+    return <div style={{ height: "100vh", background: surface.page }} />;
   }
 
   return (
@@ -47,7 +48,7 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
         flexDirection: "column",
         height: "100vh",
         overflow: "hidden",
-        background: "#F7F5F2",
+        background: surface.page,
       }}
     >
       <WorkspaceTopNav isMobile={isMobile} user={user ?? undefined} isAdmin={isAdmin} />

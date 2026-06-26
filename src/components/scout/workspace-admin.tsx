@@ -935,7 +935,7 @@ export function WorkspaceAdmin() {
   const viewUser = viewUserId ? data.users.find((u) => u.id === viewUserId) ?? null : null;
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "#F7F5F2" }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "32px 40px", background: "var(--scout-page)" }}>
       <h1 style={{ fontFamily: "var(--font-playfair)", fontSize: 22, fontWeight: 600, color: "#1a1a1a", marginBottom: 16 }}>Admin</h1>
 
       {/* Top tabs */}

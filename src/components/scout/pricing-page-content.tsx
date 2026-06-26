@@ -19,7 +19,7 @@ export function PricingPageContent() {
   }, []);
 
   return (
-    <div style={{ background: "#F7F5F2", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
+    <div style={{ background: "var(--scout-page)", minHeight: "100vh", fontFamily: "var(--font-ui), sans-serif" }}>
       <nav
         style={{
           display: "flex",

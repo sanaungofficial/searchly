@@ -61,7 +61,7 @@ export default function RootLayout({
     >
       <body
         className={`${sourceSans.variable} ${dmMono.variable} antialiased`}
-        style={{ background: "#F7F5F2", fontFamily: "var(--font-ui)" }}
+        style={{ background: "var(--scout-page)", fontFamily: "var(--font-ui)" }}
       >
         {children}
         <PartneroScript />
