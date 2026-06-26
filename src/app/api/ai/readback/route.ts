@@ -1,9 +1,10 @@
-import { prisma } from "@/lib/prisma";
+import { formatReadbackForDisplay, readbackFirstName, type ReadbackPayload } from "@/lib/readback-display";
 import { requireAiQuota } from "@/lib/ai-guard";
 import { logAiUsage } from "@/lib/ai-cost";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { getPrompt, interpolate } from "@/lib/prompts";
 import { getActingUser } from "@/lib/acting-user";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -24,10 +25,11 @@ export async function GET(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   if (!force && dbUser.profile) {
-    const cached = dbUser.profile.readbackData as Record<string, unknown> | null;
+    const cached = dbUser.profile.readbackData as ReadbackPayload | null;
     const cachedAt = dbUser.profile.readbackUpdatedAt;
     if (cached && cachedAt) {
-      return NextResponse.json({ ...cached, _cachedAt: cachedAt.toISOString() });
+      const formatted = formatReadbackForDisplay(cached, dbUser.name);
+      return NextResponse.json({ ...formatted, _cachedAt: cachedAt.toISOString() });
     }
   }
 
@@ -57,7 +59,11 @@ export async function GET(request: Request) {
   if (quotaError) return quotaError;
 
   const template = await getPrompt("READBACK");
-  const prompt = interpolate(template, { resumeSlice: resumeText.slice(0, 6000) });
+  const candidateName = readbackFirstName(dbUser.name);
+  const prompt = interpolate(template, {
+    resumeSlice: resumeText.slice(0, 6000),
+    candidateName,
+  });
 
   const { text, usage, modelId } = await kimchiGenerateText({
     tier: "analyze",
@@ -78,18 +84,19 @@ export async function GET(request: Request) {
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found");
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]) as ReadbackPayload;
+    const formatted = formatReadbackForDisplay(parsed, dbUser.name);
 
     if (dbUser?.profile) {
       const now = new Date();
       await prisma.profile.update({
         where: { id: dbUser.profile.id },
-        data: { readbackData: parsed, readbackUpdatedAt: now },
+        data: { readbackData: formatted, readbackUpdatedAt: now },
       }).catch(() => {});
-      return NextResponse.json({ ...parsed, _cachedAt: now.toISOString() });
+      return NextResponse.json({ ...formatted, _cachedAt: now.toISOString() });
     }
 
-    return NextResponse.json(parsed);
+    return NextResponse.json(formatted);
   } catch {
     return NextResponse.json({ error: "Failed to parse response" }, { status: 500 });
   }

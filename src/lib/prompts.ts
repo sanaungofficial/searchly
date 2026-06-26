@@ -88,7 +88,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     label: "Profile Readback",
     description: "Generates an honest profile summary: picture, strengths, target roles, honest note.",
     category: "Profile",
-    variables: ["resumeSlice"],
+    variables: ["resumeSlice", "candidateName"],
   },
   CAREER_STRATEGY: {
     label: "Career Strategy Document",
@@ -481,31 +481,31 @@ Rules:
 
   READBACK: `${KIMCHI_VOICE}
 
-Analyze this resume and generate a brief, honest profile summary.
+Analyze this resume and generate a brief, honest profile summary for {{candidateName}}.
 
 RESUME:
 {{resumeSlice}}
 
 Generate a profile read-back with these exact fields:
 
-1. "picture" — A 1-2 sentence summary of who this person is professionally. Use second-person ("You're a..."). Be specific to what's actually in their resume — mention their actual function, years of experience if evident, and 1-2 distinctive traits. Keep it under 40 words. Be direct, not flattering.
+1. "picture" — A 1-2 sentence summary of who this person is professionally. Write in third person using their first name (e.g. "{{candidateName}} is a…"). Be specific to what's actually in their resume — mention their actual function, years of experience if evident, and 1-2 distinctive traits. Keep it under 40 words. Be direct, not flattering. Never use "you" or "your".
 
 2. "strengths" — Exactly 3-4 skill/strength tags extracted from their actual experience. Short noun phrases (2-4 words each). These should be skills a recruiter would notice from this specific resume.
 
 3. "targetRoles" — Exactly 3 realistic roles this person could plausibly land based on their background. Be specific (e.g. "Director of Strategy" not just "Manager"). For each role include a fit level: "Strong match", "Good fit", or "Worth exploring".
 
-4. "honestNote" — 1-2 sentences about a genuine gap or weakness in their profile that they should address. Be honest, not harsh. Focus on something actionable.
+4. "honestNote" — 1-2 sentences about a genuine gap or weakness in their profile that they should address. Write in third person using their first name and possessive (e.g. "{{candidateName}}'s resume…"). Be honest, not harsh. Focus on something actionable. Never use "you" or "your".
 
 Respond in this exact JSON format:
 {
-  "picture": "You're a...",
+  "picture": "{{candidateName}} is a…",
   "strengths": ["Skill One", "Skill Two", "Skill Three"],
   "targetRoles": [
     { "role": "Role Title", "fit": "Strong match" },
     { "role": "Role Title", "fit": "Good fit" },
     { "role": "Role Title", "fit": "Worth exploring" }
   ],
-  "honestNote": "..."
+  "honestNote": "{{candidateName}}'s resume…"
 }`,
 
   CAREER_STRATEGY: `${KIMCHI_VOICE}

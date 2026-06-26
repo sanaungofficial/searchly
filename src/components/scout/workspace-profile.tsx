@@ -69,6 +69,7 @@ import { CompanyLogo } from "./company-logo";
 import type { LinkedInOrgRef } from "@/lib/linkedin-profile";
 import { GrowthUpgradeModal } from "./growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
+import { formatReadbackForDisplay } from "@/lib/readback-display";
 import { useCredits } from "@/hooks/useCredits";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
@@ -2405,10 +2406,25 @@ function AssetsTab({ assets, uploading, onUpload, onDelete, onOpenResume, inputR
 
 // ─── AI Readback Card ─────────────────────────────────────────────────────────
 
-function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: ReadbackData | null; loading: boolean; onRefresh: () => void; embedded?: boolean; stack?: boolean }) {
+function ReadbackCard({
+  data,
+  loading,
+  onRefresh,
+  embedded,
+  stack,
+  candidateName,
+}: {
+  data: ReadbackData | null;
+  loading: boolean;
+  onRefresh: () => void;
+  embedded?: boolean;
+  stack?: boolean;
+  candidateName?: string | null;
+}) {
   const isMobile = useIsMobile();
   const { showCredits } = useCredits();
-  if (!loading && !data) return null;
+  const displayData = data && candidateName ? formatReadbackForDisplay(data, candidateName) : data;
+  if (!loading && !displayData) return null;
   return (
     <ScoutBox
       stack={stack}
@@ -2416,12 +2432,12 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
       style={{
         marginBottom: embedded ? 0 : (isMobile ? 16 : 20),
         height: embedded && !isMobile ? "100%" : undefined,
-        ...(embedded ? { borderColor: "rgba(74,139,106,0.35)", background: "rgba(74,139,106,0.06)" } : {}),
+        ...(embedded ? { borderColor: border.lineStrong, background: "#FFFFFF" } : {}),
       }}
     >
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 10, gap: isMobile ? 10 : 0 }}>
-        <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.gold, textTransform: "uppercase" as const, letterSpacing: "0.08em", margin: 0, display: "inline-flex", alignItems: "center", gap: 4, background: color.forest, padding: "4px 10px", border: border.lineStrong }}>
-          <SparkleIcon /> Kimchi&apos;s read on you
+        <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 600, color: color.forest, textTransform: "uppercase" as const, letterSpacing: "0.08em", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <SparkleIcon /> Quick snapshot
         </p>
         <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "flex-start" : "flex-end", gap: 4 }}>
           <ScoutSecondaryBtn onClick={onRefresh} disabled={loading} style={{ padding: isMobile ? "10px 14px" : "4px 10px", minHeight: isMobile ? 44 : undefined, opacity: loading ? 0.5 : 1 }}>
@@ -2434,16 +2450,16 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
       </div>
       {loading ? (
         <KimchiProcessLoader preset="profileAnalysis" variant="inline" />
-      ) : data ? (
+      ) : displayData ? (
         <>
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{data.picture}</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#1C3A2F", lineHeight: 1.65, marginBottom: 12 }}>{displayData.picture}</p>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
-            {data.strengths.map((s) => (
+            {displayData.strengths.map((s) => (
               <span key={s} style={{ padding: "4px 10px", border: border.line, fontFamily: fontSans, fontSize: T.caption, color: color.forest }}>{s}</span>
             ))}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
-            {data.targetRoles.map((r) => {
+            {displayData.targetRoles.map((r) => {
               const c = r.fit === "Strong match" ? "#1A3A2F" : r.fit === "Good fit" ? "#C4A86A" : "var(--scout-muted)";
               const bg = r.fit === "Strong match" ? "rgba(74,139,106,0.08)" : r.fit === "Good fit" ? "rgba(196,168,106,0.1)" : "rgba(0,0,0,0.04)";
               return (
@@ -2451,7 +2467,7 @@ function ReadbackCard({ data, loading, onRefresh, embedded, stack }: { data: Rea
               );
             })}
           </div>
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", fontStyle: "italic" }}>{data.honestNote}</p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--scout-muted)", fontStyle: "italic" }}>{displayData.honestNote}</p>
         </>
       ) : null}
     </ScoutBox>
@@ -3294,7 +3310,7 @@ export function WorkspaceProfile() {
               <div style={{ paddingBottom: 40 }}>
                 {showReadback && (
                   <div style={{ marginBottom: isMobile ? 16 : 20 }}>
-                    <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded />
+                    <ReadbackCard data={readback} loading={readbackLoading} onRefresh={refreshReadback} stack embedded candidateName={profile.name} />
                   </div>
                 )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
