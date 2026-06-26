@@ -8,14 +8,23 @@ import { UserSettingsModal } from "./user-settings-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { canAccessBetaFeature } from "@/lib/beta-features";
+import { isStaffPortalRole, STAFF_DASHBOARD_NAV } from "@/lib/staff-portal";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
 
 export const TOP_NAV_HEIGHT = 64;
 export const TOP_NAV_HEIGHT_MOBILE = 56;
 
-type NavLink = { id: string; label: string; path: string; match: (pathname: string) => boolean };
+type NavChild = { label: string; path: string; match: (pathname: string) => boolean };
 
-function buildNavLinks(isAdmin: boolean): NavLink[] {
+type NavLink = {
+  id: string;
+  label: string;
+  path: string;
+  match: (pathname: string) => boolean;
+  children?: NavChild[];
+};
+
+function buildNavLinks(isAdmin: boolean, isStaffPortal: boolean): NavLink[] {
   const links: NavLink[] = [];
   if (isAdmin) {
     links.push({
@@ -25,20 +34,25 @@ function buildNavLinks(isAdmin: boolean): NavLink[] {
       match: (p) => p.startsWith("/admin"),
     });
   }
-  links.push(
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      path: "/dashboard",
-      match: (p) => p === "/dashboard" || p.startsWith("/dashboard/"),
-    },
-    {
-      id: "opportunities",
-      label: "Opportunities",
-      path: "/opportunities",
-      match: (p) => p.startsWith("/opportunities"),
-    },
-  );
+  links.push({
+    id: "dashboard",
+    label: "Dashboard",
+    path: "/dashboard",
+    match: (p) => p === "/dashboard" || p.startsWith("/dashboard/"),
+    children: isStaffPortal
+      ? STAFF_DASHBOARD_NAV.map(({ label, path }) => ({
+          label,
+          path,
+          match: (p) => (path === "/dashboard" ? p === "/dashboard" : p.startsWith(path)),
+        }))
+      : undefined,
+  });
+  links.push({
+    id: "opportunities",
+    label: "Opportunities",
+    path: "/opportunities",
+    match: (p) => p.startsWith("/opportunities"),
+  });
   if (canAccessBetaFeature("coaching", isAdmin)) {
     links.push({
       id: "coaching",
@@ -93,11 +107,14 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     handleSignOut,
     updateAvatarUrl,
     authChecked,
+    userRole,
   } = useWorkspace();
 
+  const isStaffPortal = isStaffPortalRole(userRole);
   const navHeight = isMobile ? TOP_NAV_HEIGHT_MOBILE : TOP_NAV_HEIGHT;
-  const navLinks = buildNavLinks(isAdmin);
+  const navLinks = buildNavLinks(isAdmin, isStaffPortal);
   const horizontalPad = isMobile ? 16 : 28;
+  const [navDropdownOpen, setNavDropdownOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authChecked) return;
@@ -110,6 +127,21 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
       })
       .catch(() => {});
   }, [authChecked]);
+
+  useEffect(() => {
+    setNavDropdownOpen(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!navDropdownOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setNavDropdownOpen(null);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [navDropdownOpen]);
 
   const onToggleNotif = () => setNotifOpen((p) => !p);
 
@@ -194,8 +226,110 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
               scrollbarWidth: "none",
             }}
           >
-            {navLinks.map(({ id, label, path, match }) => {
+            {navLinks.map(({ id, label, path, match, children }) => {
               const active = match(pathname);
+              const hasChildren = Boolean(children?.length);
+              const dropdownOpen = navDropdownOpen === id;
+
+              if (hasChildren) {
+                return (
+                  <div key={id} style={{ position: "relative", flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setNavDropdownOpen((prev) => (prev === id ? null : id))}
+                      aria-expanded={dropdownOpen}
+                      aria-haspopup="menu"
+                      style={{
+                        background: dropdownOpen ? "rgba(26,58,47,0.04)" : "none",
+                        border: "none",
+                        borderBottom: active ? `2px solid ${color.forest}` : "2px solid transparent",
+                        padding: isMobile ? "0 10px" : "0 14px",
+                        height: navHeight,
+                        cursor: "pointer",
+                        fontFamily: fontSans,
+                        fontSize: isMobile ? T.caption : T.bodySm,
+                        fontWeight: active ? 600 : 500,
+                        color: active ? color.forest : color.muted,
+                        whiteSpace: "nowrap",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        transition: "color 0.15s, background 0.15s",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {label}
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{
+                          transform: dropdownOpen ? "rotate(180deg)" : "none",
+                          transition: "transform 0.15s",
+                          opacity: 0.7,
+                        }}
+                        aria-hidden
+                      >
+                        <path d="M2 4l4 4 4-4" />
+                      </svg>
+                    </button>
+                    {dropdownOpen && (
+                      <div
+                        role="menu"
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: 0,
+                          minWidth: 200,
+                          background: surface.card,
+                          border: border.lineStrong,
+                          boxShadow: "0 8px 32px rgba(17,17,17,0.1)",
+                          zIndex: 130,
+                          animation: "fadeIn 0.15s ease both",
+                        }}
+                      >
+                        {children!.map(({ label: childLabel, path: childPath, match: childMatch }, idx) => {
+                          const childActive = childMatch(pathname);
+                          const isLast = idx === children!.length - 1;
+                          return (
+                            <button
+                              key={childPath}
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                router.push(childPath);
+                                setNavDropdownOpen(null);
+                              }}
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                textAlign: "left",
+                                padding: "11px 16px",
+                                border: "none",
+                                borderBottom: isLast ? "none" : border.line,
+                                background: childActive ? "rgba(26,58,47,0.05)" : "transparent",
+                                color: childActive ? color.forest : color.stone,
+                                fontFamily: fontSans,
+                                fontSize: T.bodySm,
+                                fontWeight: childActive ? 600 : 500,
+                                cursor: "pointer",
+                              }}
+                            >
+                              {childLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={id}

@@ -161,7 +161,7 @@ export default function CoachOnboardingPage() {
   }
 
   return (
-    <div style={{ background: "#F7F5F2" }}>
+    <div style={{ background: "var(--scout-page)" }}>
       <div className="onboarding-shell">
         <CoachOnboardingHeader screen={screen} />
         <div className="onboarding-content">

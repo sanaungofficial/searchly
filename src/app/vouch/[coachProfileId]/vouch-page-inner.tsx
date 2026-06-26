@@ -29,7 +29,7 @@ const fieldStyle: React.CSSProperties = {
   fontFamily: "var(--font-ui)",
   fontSize: 15,
   border: "1.5px solid rgba(26,58,47,0.2)",
-  background: "#F7F5F2",
+  background: "var(--scout-inset)",
   boxSizing: "border-box",
 };
 
@@ -193,7 +193,7 @@ function ProfileCard({
         {coach.photoUrl ? (
           <img src={coach.photoUrl} alt="" style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", marginBottom: 14 }} />
         ) : (
-          <div style={{ width: 96, height: 96, borderRadius: "50%", background: "#F7F5F2", marginBottom: 14 }} />
+          <div style={{ width: 96, height: 96, borderRadius: "50%", background: "var(--scout-inset)", marginBottom: 14 }} />
         )}
         <p style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 18, margin: "0 0 6px", color: "#1A1A1A" }}>{coach.displayName}</p>
         {coach.headline && (
@@ -271,7 +271,7 @@ export default function PublicVouchPageInner() {
 
   if (error || !coach) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ minHeight: "100vh", background: "var(--scout-page)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <p style={{ fontFamily: "var(--font-ui)", color: "#78716c" }}>{error ?? "Coach not found"}</p>
       </div>
     );
@@ -282,7 +282,7 @@ export default function PublicVouchPageInner() {
 
   if (submitted) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ minHeight: "100vh", background: "var(--scout-page)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ maxWidth: 440, background: "#fff", border: "1px solid rgba(26,58,47,0.14)", padding: 32, textAlign: "center" }}>
           <p style={{ fontSize: 40, margin: "0 0 16px" }}>✓</p>
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, margin: "0 0 12px" }}>Thank you!</h1>
@@ -295,7 +295,7 @@ export default function PublicVouchPageInner() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F7F5F2", paddingBottom: 80 }}>
+    <div style={{ minHeight: "100vh", background: "var(--scout-page)", paddingBottom: 80 }}>
       <header style={{ background: "#fff", borderBottom: "1px solid rgba(26,58,47,0.1)", padding: "16px clamp(20px, 5vw, 48px)" }}>
         <p style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, margin: 0, color: "#1A1A1A" }}>Kimchi</p>
       </header>
@@ -316,7 +316,7 @@ export default function PublicVouchPageInner() {
                 </h2>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {coach.specialties.map((s) => (
-                    <span key={s} style={{ padding: "6px 12px", background: "#F7F5F2", border: "1px solid rgba(26,58,47,0.12)", fontFamily: "var(--font-ui)", fontSize: 13, color: "#1A1A1A" }}>
+                    <span key={s} style={{ padding: "6px 12px", background: "var(--scout-inset)", border: "1px solid rgba(26,58,47,0.12)", fontFamily: "var(--font-ui)", fontSize: 13, color: "#1A1A1A" }}>
                       {s}
                     </span>
                   ))}
@@ -335,7 +335,7 @@ export default function PublicVouchPageInner() {
               <section style={{ background: "#fff", border: "1px solid rgba(26,58,47,0.12)", padding: "24px 28px" }}>
                 <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, margin: "0 0 16px", color: "#1A1A1A" }}>Experience</h2>
                 <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <div style={{ width: 40, height: 40, background: "#F7F5F2", border: "1px solid rgba(26,58,47,0.1)", flexShrink: 0 }} />
+                  <div style={{ width: 40, height: 40, background: "var(--scout-inset)", border: "1px solid rgba(26,58,47,0.1)", flexShrink: 0 }} />
                   <div>
                     {coach.currentRole && <p style={{ fontFamily: "var(--font-ui)", fontWeight: 600, fontSize: 15, margin: "0 0 4px" }}>{coach.currentRole}</p>}
                     {coach.currentCompany && <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "#78716c", margin: 0 }}>{coach.currentCompany}</p>}
@@ -350,7 +350,7 @@ export default function PublicVouchPageInner() {
                 <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600, margin: "0 0 16px", color: "#1A1A1A" }}>Education</h2>
                 {coach.schools.map((school) => (
                   <div key={school} style={{ display: "flex", gap: 14, marginBottom: 12 }}>
-                    <div style={{ width: 40, height: 40, background: "#F7F5F2", border: "1px solid rgba(26,58,47,0.1)", flexShrink: 0 }} />
+                    <div style={{ width: 40, height: 40, background: "var(--scout-inset)", border: "1px solid rgba(26,58,47,0.1)", flexShrink: 0 }} />
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 500, margin: 0, alignSelf: "center" }}>{school}</p>
                   </div>
                 ))}
