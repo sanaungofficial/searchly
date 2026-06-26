@@ -40,6 +40,7 @@ export function finalizeRecommendedJobs(
   jobs: VectorMatchedJob[],
   isTrackedFn: (job: VectorMatchedJob) => boolean,
   maxJobs: number,
+  options?: { filterStale?: boolean },
 ): VectorMatchedJob[] {
   const enriched = jobs.map((job) => {
     const tracked = isTrackedFn(job);
@@ -50,7 +51,10 @@ export function finalizeRecommendedJobs(
     };
   });
 
-  const freshnessFiltered = enriched.filter((job) => isRecommendedFreshnessVisible(job.datePosted));
+  const filterStale = options?.filterStale !== false;
+  const freshnessFiltered = filterStale
+    ? enriched.filter((job) => isRecommendedFreshnessVisible(job.datePosted))
+    : enriched;
   const floored = applyRecommendedScoreFloor(freshnessFiltered);
   return sortRecommendedJobs(floored).slice(0, maxJobs);
 }

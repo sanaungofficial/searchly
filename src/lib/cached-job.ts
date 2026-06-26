@@ -16,6 +16,8 @@ export type CachedJob = {
   jobSummary?: string | null;
   companySummary?: string | null;
   jobType?: string | null;
+  /** Hirebase location_type — Remote, Hybrid, In-Person, etc. */
+  locationType?: string | null;
   remote?: boolean | null;
   seniority?: string | null;
   experienceLevel?: string | null;
@@ -138,6 +140,7 @@ export function cachedJobToMeta(job: CachedJob): JobMeta {
     location: job.location,
     salary: job.salary ?? null,
     jobType: job.jobType ?? null,
+    locationType: job.locationType ?? null,
     remote: job.remote ?? null,
     seniority: job.seniority ?? null,
     experienceLevel: job.experienceLevel ?? null,

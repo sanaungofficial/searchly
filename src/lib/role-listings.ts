@@ -47,6 +47,7 @@ export function kanbanCardToCachedJob(card: KanbanCard): CachedJob {
     jobSummary: meta?.jobSummary ?? null,
     companySummary: meta?.companySummary ?? null,
     jobType: meta?.jobType ?? null,
+    locationType: meta?.locationType ?? null,
     remote: meta?.remote ?? null,
     seniority: meta?.seniority ?? null,
     experienceLevel: meta?.experienceLevel ?? null,

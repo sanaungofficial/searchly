@@ -270,6 +270,7 @@ export function mapHirebaseJob(job: HirebaseJob): CachedJob {
     industries: job.company_data?.industries?.length ? job.company_data.industries : undefined,
     subindustries: job.company_data?.subindustries?.length ? job.company_data.subindustries : undefined,
     jobType: job.job_type ?? null,
+    locationType: job.location_type ?? null,
     remote: remoteFromLocationType(job.location_type),
     seniority: job.experience_level ?? null,
     experienceLevel: formatYoeRange(job.yoe_range),

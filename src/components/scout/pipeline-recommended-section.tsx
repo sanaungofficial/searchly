@@ -14,11 +14,11 @@ import {
 } from "@/lib/vector-matched-job";
 import { cachedJobToMeta, companyLogoFromJobData, normalizeJobUrl } from "@/lib/cached-job";
 import {
-  filterRoleListings,
   roleListingToVectorMatchedJob,
   vectorJobToRoleListing,
   type RoleListing,
 } from "@/lib/role-listings";
+import { isDefaultRecommendedFilters } from "@/lib/profile-preference-filters";
 import type { RecommendationPreferencesState } from "@/lib/recommendation-preferences";
 import {
   mergeRecommendationPriorities,
@@ -52,7 +52,7 @@ import { formatApiErrorMessage } from "@/lib/api-error-message";
 import { KimchiProcessLoader } from "@/components/scout/kimchi-process-loader";
 import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
 import { matchScoreStyle } from "@/lib/match-score";
-import { compareJobFreshness, daysSincePosted, isRecommendedFreshnessVisible } from "@/lib/job-posted-freshness";
+import { compareJobFreshness, daysSincePosted } from "@/lib/job-posted-freshness";
 import { JobFreshnessIndicator, JobFreshnessLegend } from "./job-freshness-indicator";
 
 type JobsApiResponse = {
@@ -226,10 +226,10 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     subindustries: splitInputList(form.subindustries),
     jobCategories: splitInputList(form.jobCategories),
     jobBoard: form.jobBoard.trim() || undefined,
-    locationTypes: [...form.locationTypes],
-    jobTypes: [...form.jobTypes],
-    experienceLevels: [...form.experienceLevels],
-    companySizeBuckets: [...form.companySizeBuckets],
+    locationTypes: form.locationTypes.size ? [...form.locationTypes] : undefined,
+    jobTypes: form.jobTypes.size ? [...form.jobTypes] : undefined,
+    experienceLevels: form.experienceLevels.size ? [...form.experienceLevels] : undefined,
+    companySizeBuckets: form.companySizeBuckets.size ? [...form.companySizeBuckets] : undefined,
     visaSponsored: form.visaSponsored || undefined,
     datePostedFrom: form.datePostedFrom.trim() || undefined,
     salaryFrom: form.salaryFrom.trim() ? Number(form.salaryFrom) : undefined,
@@ -752,7 +752,12 @@ export function PipelineRecommendedSection({
   const defaultFormRef = useRef<FilterForm | null>(null);
 
   const hasActiveSearch = Boolean(appliedForm.semanticQuery.trim());
-  const hasSearchFilters = activeFilterLabels.length > 0;
+  const appliedFilters = useMemo(() => formToFilters(appliedForm, 1), [appliedForm]);
+  const isDefaultAppliedFeed = useMemo(
+    () => isDefaultRecommendedFilters(appliedFilters) && !appliedForm.semanticQuery.trim(),
+    [appliedFilters, appliedForm.semanticQuery],
+  );
+  const hasSearchFilters = !isDefaultAppliedFeed;
 
   const fetchRecommended = useCallback(
     async (filtersForm: FilterForm, options?: { forceRefresh?: boolean; preferCache?: boolean; background?: boolean }) => {
@@ -876,17 +881,6 @@ export function PipelineRecommendedSection({
           location: fields.display,
           priorities: [...priorities],
         });
-        setForm((f) =>
-          mergeProfilePrioritiesIntoForm(
-            {
-              ...f,
-              locationCity: fields.city || f.locationCity,
-              locationRegion: fields.region || f.locationRegion,
-              locationCountry: fields.country || f.locationCountry || "United States",
-            },
-            priorities,
-          ),
-        );
       })
       .catch(() => {});
   }, [actingUserId]);
@@ -976,22 +970,18 @@ export function PipelineRecommendedSection({
   const applyProfileSuggestions = () => {
     const suggested = defaultFormRef.current;
     if (!suggested) return;
-    setForm((f) =>
-      mergeProfilePrioritiesIntoForm(
-        {
-          ...suggested,
-          semanticQuery: f.semanticQuery,
-          relocationPriorities: suggested.relocationPriorities ?? [],
-        },
-        profilePrioritiesFromForm(suggested),
-      ),
-    );
+    setForm({
+      ...suggested,
+      semanticQuery: form.semanticQuery,
+    });
     setShowFilters(true);
+    setShowAdvanced(true);
   };
 
   const applyFilters = async (filtersForm = form) => {
     await saveProfileFromForm(filtersForm);
     setAppliedForm(filtersForm);
+    setActiveFilterLabels(describeActiveFilters(formToFilters(filtersForm, 1)));
     const cacheKey = filtersCacheKey(formToFilters(filtersForm, 1));
     const isDefaultFeed =
       cacheKey === defaultFeedCacheKey() && !filtersForm.semanticQuery.trim();
@@ -1036,11 +1026,12 @@ export function PipelineRecommendedSection({
   }, [pipelineCards]);
 
   const clearSearchFilters = () => {
-    const reset: FilterForm = defaultFormRef.current ?? defaultFeedForm();
+    const reset = defaultFeedForm();
     setForm({ ...reset, semanticQuery: "" });
     setAppliedForm(reset);
     saveScopedSemanticQuery("");
     setShowFilters(true);
+    setActiveFilterLabels([]);
     const cached = readRecommendedCache(defaultFeedCacheKey());
     if (cached) {
       setJobs(cached.jobs);
@@ -1060,12 +1051,13 @@ export function PipelineRecommendedSection({
     [jobs, savedKeys],
   );
 
-  const filteredListings = useMemo(() => {
-    const filtered = filterRoleListings(recommendedListings, formToFilters(appliedForm, 1), "all");
-    return [...filtered]
-      .filter((row) => isRecommendedFreshnessVisible(row.cached.datePosted))
-      .sort((a, b) => compareJobFreshness(a.cached.datePosted, b.cached.datePosted));
-  }, [recommendedListings, appliedForm]);
+  const filteredListings = useMemo(
+    () =>
+      [...recommendedListings].sort((a, b) =>
+        compareJobFreshness(a.cached.datePosted, b.cached.datePosted),
+      ),
+    [recommendedListings],
+  );
 
   const emptyMessage = error
     ? "Fix the issue above, then hit Refresh."
@@ -1125,7 +1117,7 @@ export function PipelineRecommendedSection({
           />
         </FilterField>
 
-        {showFilters && profileSuggestedLabels.length > 0 && !hasSearchFilters && (
+        {showFilters && profileSuggestedLabels.length > 0 && isDefaultAppliedFeed && (
           <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
               <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: 0 }}>
@@ -1136,7 +1128,7 @@ export function PipelineRecommendedSection({
               </ScoutSecondaryBtn>
             </div>
             <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "0 0 8px", lineHeight: 1.45 }}>
-              Optional — tweak salary and dates before you search. Clear &quot;Posted after&quot; to see all indexed roles.
+              Not applied automatically — click Apply suggestions to copy these into the editable filters below, then adjust salary, dates, or work arrangement before you search.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {profileSuggestedLabels.map((label) => (
