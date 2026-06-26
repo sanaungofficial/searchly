@@ -14,7 +14,7 @@ import { heuristicRoleGapAnalysis } from "@/lib/role-gap-heuristic";
 import { ensureAssetResumeParsed } from "@/lib/ensure-asset-resume";
 import { upsertProfileFields } from "@/lib/profile-write";
 import { getActingUser } from "@/lib/acting-user";
-import { normalizeParsedResumeData, parseJsonFromModel } from "@/lib/resume-parse";
+import { allMatchableSkills } from "@/lib/skills-tools";
 import { fallbackJobMatch, type JobMatchResult } from "@/lib/resume-match";
 import { isKimchiAiConfigured, kimchiGenerateText } from "@/lib/llm";
 import { NextResponse } from "next/server";
@@ -50,7 +50,7 @@ async function resolveResumeSource(
         source: {
           resumeText: asset.resumeText,
           resumeUrl: asset.url,
-          skills: parsed?.skills ?? [],
+          skills: parsed ? allMatchableSkills(parsed) : [],
           resumeAssetId: asset.id,
         },
         parseError: null as string | null,
@@ -65,7 +65,7 @@ async function resolveResumeSource(
       source: {
         resumeText: profile.resumeText,
         resumeUrl: profile.resumeUrl,
-        skills: parsed?.skills ?? [],
+        skills: parsed ? allMatchableSkills(parsed) : [],
         resumeAssetId: null as string | null,
       },
       parseError: null as string | null,
@@ -213,7 +213,7 @@ export async function GET(request: Request) {
         ? await prisma.userAsset.findFirst({ where: { id: assetId, userId: dbUser.id, type: "RESUME" } })
         : null;
       const parsed = normalizeParsedResumeData(asset?.parsedData ?? profile?.parsedData ?? null);
-      const skills = parsed?.skills ?? [];
+      const skills = parsed ? allMatchableSkills(parsed) : [];
       const heuristic = heuristicRoleGapAnalysis(role, skills);
       const fingerprint = buildResumeFingerprint(assetId, asset?.url ?? profile?.resumeUrl ?? null, skills);
       const stored: StoredRoleAnalysis = {

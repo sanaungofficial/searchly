@@ -45,6 +45,9 @@ export async function GET(request: Request) {
   const skills = Array.isArray(parsedData?.skills)
     ? (parsedData.skills as string[]).join(", ")
     : "";
+  const tools = Array.isArray(parsedData?.tools)
+    ? (parsedData.tools as string[]).join(", ")
+    : "";
   const linkedinUrl = profile?.linkedinUrl || "";
   const headline = profile?.headline || "";
   const targetRoles = Array.isArray(profile?.targetRoles)
@@ -57,6 +60,7 @@ export async function GET(request: Request) {
     linkedinUrl: linkedinUrl || "Not provided",
     headline: headline || "Not provided",
     skills: skills || "None listed",
+    tools: tools || "None listed",
     targetRoles: targetRoles || "Not specified",
   });
 

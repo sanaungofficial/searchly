@@ -14,6 +14,7 @@ export type ProfileCompletenessInput = {
     education?: unknown[];
     workExperience?: unknown[];
     skills?: unknown[];
+    tools?: unknown[];
   } | null;
 };
 
@@ -27,7 +28,7 @@ export function profileCompletenessPct(p: ProfileCompletenessInput): number {
   if (p.resumeUrl) score += 2;
   if ((p.parsedData?.education || []).length > 0) score++;
   if ((p.parsedData?.workExperience || []).length > 0) score++;
-  if ((p.parsedData?.skills || []).length > 0) score++;
+  if ((p.parsedData?.skills || []).length > 0 || (p.parsedData?.tools || []).length > 0) score++;
   if (p.jobTimeline) score++;
   if (p.targetSalary) score++;
   if ((p.priorities || []).length > 0) score++;

@@ -1,4 +1,5 @@
 import { normalizeOrgRef, type LinkedInOrgRef } from "@/lib/linkedin-profile";
+import { reconcileSkillsToolsFields } from "@/lib/skills-tools";
 
 export interface ParsedEducationEntry {
   id: string;
@@ -56,6 +57,7 @@ export interface ParsedResumeData {
   education: ParsedEducationEntry[];
   workExperience: ParsedWorkEntry[];
   skills: string[];
+  tools: string[];
   skillGroups: ParsedSkillGroup[];
   certifications: ParsedCertificationEntry[];
   sectionOrder?: ResumeSectionId[];
@@ -171,6 +173,7 @@ export function emptyParsedResumeData(): ParsedResumeData {
     education: [],
     workExperience: [],
     skills: [],
+    tools: [],
     skillGroups: [],
     certifications: [],
     sectionOrder: [...DEFAULT_SECTION_ORDER],
@@ -346,15 +349,13 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
   const workExperience = normalizeWorkExperience(
     obj.workExperience ?? obj.work_experience ?? obj.experience ?? obj.experiences,
   );
-  const skills = mergeSkills(
-    obj.skills,
-    obj.technicalSkills,
-    obj.coreSkills,
-    obj.keySkills,
-  );
-  const skillGroups = normalizeSkillGroups(obj.skillGroups ?? obj.skill_groups, skills);
+  const skills = mergeSkills(obj.skills, obj.coreSkills, obj.keySkills);
+  const tools = mergeSkills(obj.tools, obj.technologies, obj.techStack, obj.technicalSkills);
+  const skillGroups = normalizeSkillGroups(obj.skillGroups ?? obj.skill_groups, mergeSkills(skills, tools));
   const certifications = normalizeCertifications(obj.certifications);
   const sectionOrder = normalizeSectionOrder(obj.sectionOrder);
+
+  const reconciled = reconcileSkillsToolsFields({ skills, tools, skillGroups });
 
   const normalized: ParsedResumeData = {
     name: asStringOrNull(obj.name),
@@ -366,8 +367,9 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
     summary: asStringOrNull(obj.summary),
     education,
     workExperience,
-    skills,
-    skillGroups,
+    skills: reconciled.skills,
+    tools: reconciled.tools,
+    skillGroups: reconciled.skillGroups,
     certifications,
     sectionOrder,
     hirebaseArtifactId: asStringOrNull(obj.hirebaseArtifactId ?? obj.hirebase_artifact_id),
@@ -383,11 +385,17 @@ export function normalizeParsedResumeData(raw: unknown): ParsedResumeData | null
     !!normalized.summary ||
     education.length > 0 ||
     workExperience.length > 0 ||
-    skills.length > 0 ||
-    skillGroups.length > 0 ||
+    normalized.skills.length > 0 ||
+    normalized.tools.length > 0 ||
+    normalized.skillGroups.length > 0 ||
     certifications.length > 0;
 
   return hasContent ? normalized : null;
+}
+
+export function reconcileParsedSkillsTools(data: ParsedResumeData): ParsedResumeData {
+  const reconciled = reconcileSkillsToolsFields(data);
+  return { ...data, ...reconciled };
 }
 
 export function hasParsedResumeSections(data: ParsedResumeData | null | undefined): boolean {
@@ -414,6 +422,7 @@ export function hasResumeBodyContent(data: ParsedResumeData | null | undefined):
     data.workExperience.length > 0 ||
     data.education.length > 0 ||
     data.skills.length > 0 ||
+    data.tools.length > 0 ||
     data.skillGroups.some((g) => g.skills.length > 0) ||
     data.certifications.length > 0
   );
@@ -427,7 +436,7 @@ export function resumeCompleteness(data: ParsedResumeData): { pct: number; missi
     { label: "Summary", ok: !!data.summary?.trim() },
     { label: "Experience", ok: data.workExperience.length > 0 },
     { label: "Education", ok: data.education.length > 0 },
-    { label: "Skills", ok: data.skills.length > 0 || data.skillGroups.some((g) => g.skills.length > 0) },
+    { label: "Skills", ok: data.skills.length > 0 || data.tools.length > 0 || data.skillGroups.some((g) => g.skills.length > 0) },
   ];
   const done = checks.filter((c) => c.ok).length;
   return {
@@ -451,8 +460,8 @@ export function mergeParsedWithReadback(
     if (!readbackSkills.length) return null;
     return { ...emptyParsedResumeData(), skills: readbackSkills, skillGroups: [{ id: "sg_0", label: "Skills", skills: readbackSkills }] };
   }
-  if (parsed.skills.length || !readbackSkills.length) return parsed;
-  return { ...parsed, skills: readbackSkills };
+  if (parsed.skills.length || parsed.tools.length || !readbackSkills.length) return parsed;
+  return { ...parsed, skills: readbackSkills, skillGroups: [{ id: "sg_0", label: "Skills", skills: readbackSkills }] };
 }
 
 export function shouldReplaceNameWithResumeName(
@@ -470,7 +479,8 @@ export function shouldReplaceNameWithResumeName(
 
 const SECTION_MARKERS: { id: ResumeSectionId; re: RegExp }[] = [
   { id: "summary", re: /^(?:professional\s+)?summary(?:\s+of\s+qualifications)?\s*$/i },
-  { id: "skills", re: /^(?:areas\s+of\s+)?(?:emphasis|skills|core\s+competencies|technical\s+skills)\s*$/i },
+  { id: "skills", re: /^(?:areas\s+of\s+)?(?:emphasis|skills|core\s+competencies)\s*$/i },
+  { id: "skills", re: /^(?:technical\s+skills|tools?(?:\s*&\s*technologies)?|tech\s+stack)\s*$/i },
   { id: "experience", re: /^(?:professional\s+)?(?:work\s+)?experience\s*$/i },
   { id: "education", re: /^education(?:\s*(?:&|and)\s*training)?\s*$/i },
   { id: "certifications", re: /^certifications?\s*$/i },
