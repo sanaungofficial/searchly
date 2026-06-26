@@ -106,6 +106,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [nextStepsVisible, setNextStepsVisible] = useState(false);
   const [inboxScanning, setInboxScanning] = useState(false);
+  const [forYouChips, setForYouChips] = useState<AssistantChip[]>([]);
+  const [forYouOpener, setForYouOpener] = useState<string | null>(null);
+  const [forYouLoading, setForYouLoading] = useState(false);
+  const forYouRequestedRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -269,6 +273,35 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     }
   }, [loadContext]);
 
+  const loadForYou = useCallback(async () => {
+    if (forYouLoading) return;
+    setForYouLoading(true);
+    try {
+      const res = await fetch(withClientScope("/api/assistant/for-you"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageHint }),
+      });
+      if (res.status === 402) {
+        notifyCreditsChanged();
+        return;
+      }
+      const data = res.ok ? await res.json() : null;
+      if (Array.isArray(data?.chips) && data.chips.length > 0) {
+        setForYouChips(data.chips as AssistantChip[]);
+        setSuggestionsVisible(true);
+      }
+      if (typeof data?.opener === "string" && data.opener.trim()) {
+        setForYouOpener(data.opener.trim());
+      }
+      if (data?.source === "ai") notifyCreditsChanged();
+    } catch {
+      /* rule-based fallback handled server-side */
+    } finally {
+      setForYouLoading(false);
+    }
+  }, [forYouLoading, pageHint, withClientScope]);
+
   useEffect(() => {
     loadContext();
   }, [loadContext]);
@@ -278,17 +311,36 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setCanAskAiSuggestions(false);
     setNextStepsVisible(false);
     setSuggestionsVisible(false);
+    setForYouChips([]);
+    setForYouOpener(null);
+    forYouRequestedRef.current = false;
   }, [activeThreadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, followUpChips]);
 
-  const contextSuggestionChips = buildContextSuggestionChips(assistantCtx);
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
   const starterActions = buildStarterActions(assistantCtx);
   const starterChatChips = buildStarterChatChips(assistantCtx);
   const knowsYouPreview = buildKnowsYouPreview(assistantCtx);
+  const welcomeKnowsYou =
+    knowsYouPreview && forYouOpener
+      ? { ...knowsYouPreview, headline: forYouOpener }
+      : knowsYouPreview;
+
+  useEffect(() => {
+    if (!assistantCtx || forYouRequestedRef.current) return;
+    const autoForYou = (assistantCtx as AssistantContextPayload & { autoForYouOnOpen?: boolean })
+      .autoForYouOnOpen;
+    if (autoForYou && welcomeOnly) {
+      forYouRequestedRef.current = true;
+      void loadForYou();
+    }
+  }, [assistantCtx, welcomeOnly, loadForYou]);
+
+  const contextSuggestionChips =
+    forYouChips.length > 0 ? forYouChips : buildContextSuggestionChips(assistantCtx);
   const hasUserMessages = messages.some((m) => (m.kind === "text" || !m.kind) && m.role === "user");
   const lastTextMessages = messages.filter(
     (m): m is StoredThreadMessage & { kind: "text" } => m.kind === "text",
@@ -761,11 +813,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           );
         })}
 
-        {welcomeOnly && (starterActions.length > 0 || starterChatChips.length > 0) && (
+        {welcomeOnly && (starterActions.length > 0 || starterChatChips.length > 0 || forYouLoading || forYouChips.length > 0) && (
           <KimchiStarterSection
-            actions={starterActions}
-            chatChips={starterChatChips}
-            knowsYou={knowsYouPreview}
+            actions={forYouChips.length > 0 ? forYouChips : starterActions}
+            chatChips={forYouChips.length > 0 ? [] : starterChatChips}
+            knowsYou={welcomeKnowsYou}
+            loading={forYouLoading}
             onActivate={handleChipActivate}
           />
         )}
@@ -782,9 +835,17 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
             <button
               type="button"
               className="kimchi-suggest-trigger"
-              onClick={() => setSuggestionsVisible(true)}
+              disabled={forYouLoading}
+              onClick={() => {
+                if (forYouChips.length === 0) void loadForYou();
+                setSuggestionsVisible(true);
+              }}
             >
-              {hasUserMessages ? "✦ Show suggestions again" : "✦ Show suggestions"}
+              {forYouLoading
+                ? "Personalizing for you…"
+                : hasUserMessages
+                  ? "✦ What to focus on"
+                  : "✦ What to focus on"}
             </button>
           )}
           {suggestionsVisible && contextSuggestionChips.length > 0 && (
@@ -802,7 +863,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               disabled={inboxScanning}
               onClick={() => void scanInboxWithAi()}
             >
-              {inboxScanning ? "Scanning inbox…" : "✦ Scan inbox for updates (uses credits)"}
+              {inboxScanning ? "Checking email…" : "✦ Check email for job updates"}
             </button>
           )}
           {canGenerateNextSteps && !nextStepsVisible && (
@@ -811,7 +872,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               className="kimchi-suggest-trigger"
               onClick={() => generateNextSteps()}
             >
-              ✦ Suggest next steps
+              ✦ Next from this chat
             </button>
           )}
           {nextStepsVisible && followUpChips.length > 0 && (
@@ -829,7 +890,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
                   disabled={followUpAiLoading}
                   onClick={() => void loadAiFollowUpChips()}
                 >
-                  {followUpAiLoading ? "Suggesting…" : "✦ Smarter suggestions (uses credits)"}
+                  {followUpAiLoading ? "Personalizing…" : "✦ Personalized follow-ups"}
                 </button>
               )}
             </>

@@ -35,7 +35,11 @@ export async function GET(request: Request) {
   const aiSettings = await getKimchiAiSettings();
 
   return NextResponse.json(
-    { ...context, autoInboxTriageOnOpen: aiSettings.autoInboxTriageOnOpen },
+    {
+      ...context,
+      autoInboxTriageOnOpen: aiSettings.autoInboxTriageOnOpen,
+      autoForYouOnOpen: aiSettings.autoForYouOnOpen,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

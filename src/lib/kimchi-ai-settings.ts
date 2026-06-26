@@ -10,6 +10,8 @@ export type KimchiAiSettings = {
   parseModel: string;
   /** When true, opening Kimchi chat may run inbox AI triage (costly). Default off. */
   autoInboxTriageOnOpen: boolean;
+  /** When true, generate personalized "for you" chips on welcome using one AI call. */
+  autoForYouOnOpen: boolean;
 };
 
 export const KIMCHI_AI_SETTINGS_KEY = "KIMCHI_AI_SETTINGS";
@@ -20,6 +22,7 @@ export const DEFAULT_KIMCHI_AI_SETTINGS: KimchiAiSettings = {
   createModel: KIMCHI_GATEWAY_MODELS.create,
   parseModel: KIMCHI_GATEWAY_MODELS.parse,
   autoInboxTriageOnOpen: false,
+  autoForYouOnOpen: true,
 };
 
 export const KIMCHI_AI_SETTINGS_SIDEBAR = {
@@ -55,6 +58,7 @@ function parseSettings(content: string | undefined | null): KimchiAiSettings {
       createModel: sanitizeModelId(parsed.createModel, DEFAULT_KIMCHI_AI_SETTINGS.createModel),
       parseModel: sanitizeModelId(parsed.parseModel, DEFAULT_KIMCHI_AI_SETTINGS.parseModel),
       autoInboxTriageOnOpen: parsed.autoInboxTriageOnOpen ?? DEFAULT_KIMCHI_AI_SETTINGS.autoInboxTriageOnOpen,
+      autoForYouOnOpen: parsed.autoForYouOnOpen ?? DEFAULT_KIMCHI_AI_SETTINGS.autoForYouOnOpen,
     };
   } catch {
     return { ...DEFAULT_KIMCHI_AI_SETTINGS };
@@ -128,6 +132,8 @@ export async function patchKimchiAiSettings(
       typeof patch.autoInboxTriageOnOpen === "boolean"
         ? patch.autoInboxTriageOnOpen
         : current.autoInboxTriageOnOpen,
+    autoForYouOnOpen:
+      typeof patch.autoForYouOnOpen === "boolean" ? patch.autoForYouOnOpen : current.autoForYouOnOpen,
   };
 
   await prisma.promptConfig.update({

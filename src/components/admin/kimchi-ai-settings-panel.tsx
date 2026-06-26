@@ -144,6 +144,21 @@ export function KimchiAiSettingsPanel({ onSaved }: { onSaved?: () => void }) {
         <h3 style={{ margin: "0 0 8px", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600 }}>
           Cost controls
         </h3>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 14 }}>
+          <input
+            type="checkbox"
+            checked={settings.autoForYouOnOpen}
+            onChange={(e) => updateField("autoForYouOnOpen", e.target.checked)}
+            style={{ marginTop: 3 }}
+          />
+          <span>
+            <span style={{ ...labelStyle, marginBottom: 2 }}>Personalized &quot;For you&quot; chips when Kimchi opens</span>
+            <p style={{ ...hintStyle, margin: 0 }}>
+              One lightweight AI call on welcome threads — cites their pipeline, strategy, and profile so it feels personal.
+              Falls back to rule-based chips if AI is unavailable or credits are out.
+            </p>
+          </span>
+        </label>
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
           <input
             type="checkbox"
