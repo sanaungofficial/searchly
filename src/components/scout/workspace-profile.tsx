@@ -1134,11 +1134,60 @@ function DreamRoleTab({
 
   return (
     <div style={{ width: "100%", paddingBottom: 40 }}>
-      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 24, lineHeight: 1.7 }}>
-        Add target roles you want prioritized in Open and In-network opportunities. Pick a resume per role for fit analysis. Roles you deprioritize still appear — they sort lower in both feeds.
+      <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, marginBottom: 28, lineHeight: 1.7 }}>
+        Control how Open and In-network jobs are ordered. Target roles rise in the list; deprioritized patterns sort lower — nothing is hidden.
       </p>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+      <div style={{ marginBottom: 32 }}>
+        <ScoutLabel>Target roles</ScoutLabel>
+        <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
+          Roles you want at the top of Recommended and In-network. Add as many as you need; pick a resume per role for fit analysis.
+        </p>
+        {!showSearch ? (
+          <button
+            type="button"
+            onClick={() => setShowSearch(true)}
+            style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, cursor: "pointer", marginBottom: 16 }}
+          >
+            + Add target role
+          </button>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            <input
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search roles…"
+              style={{ width: "100%", padding: "12px 12px", borderRadius: "var(--scout-radius)", border: "1.5px solid #1A3A2F", fontFamily: fontSans, fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => addRole(searchQuery.trim())}
+                  style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
+                >
+                  + Add &ldquo;{searchQuery.trim()}&rdquo;
+                </button>
+              )}
+              {filteredRoles.slice(0, 20).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => addRole(r)}
+                  style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
+                >
+                  {r}
+                </button>
+              ))}
+              <button type="button" onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: fontSans, fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {dreamList.map((role) => {
           const isOpen = expandedRole === role;
           const result = analysis[role];
@@ -1409,11 +1458,12 @@ function DreamRoleTab({
           );
         })}
       </div>
+      </div>
 
-      <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${border.line}` }}>
-        <ScoutLabel>Deprioritize in job lists</ScoutLabel>
+      <div style={{ marginTop: 8, paddingTop: 28, borderTop: `1px solid ${border.line}` }}>
+        <ScoutLabel>Deprioritized roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Title patterns here sort lower in Recommended and In-network — not hidden. Use for sales, PM, or other paths you are not pursuing.
+          Title patterns that should sort lower — sales AE, product manager, etc. Jobs still show up; they rank below your target roles.
         </p>
         {deprioritizedList.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
@@ -1452,7 +1502,7 @@ function DreamRoleTab({
             onClick={() => setShowDeprioritizedSearch(true)}
             style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, cursor: "pointer" }}
           >
-            + Add deprioritized pattern
+            + Add deprioritized role
           </button>
         ) : (
           <div>
@@ -1490,41 +1540,6 @@ function DreamRoleTab({
               <button type="button" onClick={() => { setShowDeprioritizedSearch(false); setDeprioritizedQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: fontSans, fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>
                 Cancel
               </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: 24 }}>
-        {!showSearch ? (
-          <button
-            onClick={() => setShowSearch(true)}
-            style={{ padding: "10px 18px", background: "transparent", color: "#1A3A2F", border: "1px solid rgba(26,58,47,0.2)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, cursor: "pointer" }}
-          >+ Add a target role</button>
-        ) : (
-          <div>
-            <input
-              autoFocus
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search roles…"
-              style={{ width: "100%", padding: "12px 12px", borderRadius: "var(--scout-radius)", border: "1.5px solid #1A3A2F", fontFamily: fontSans, fontSize: isMobile ? 16 : 13, color: "#1A1A1A", background: "#FFFFFF", outline: "none", marginBottom: 10, boxSizing: "border-box" }}
-            />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {searchQuery.trim() && !AVAILABLE_ROLES.map(r => r.toLowerCase()).includes(searchQuery.trim().toLowerCase()) && (
-                <button
-                  onClick={() => addRole(searchQuery.trim())}
-                  style={{ padding: "6px 14px", background: "#1A3A2F", border: "none", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#E8D5A3", cursor: "pointer" }}
-                >+ Add &ldquo;{searchQuery.trim()}&rdquo;</button>
-              )}
-              {filteredRoles.slice(0, 20).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => addRole(r)}
-                  style={{ padding: "6px 14px", background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "var(--scout-radius)", fontFamily: fontSans, fontSize: 14, color: "#1A1A1A", cursor: "pointer" }}
-                >{r}</button>
-              ))}
-              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} style={{ padding: "6px 12px", background: "transparent", border: "none", fontFamily: fontSans, fontSize: 14, color: "var(--scout-muted)", cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
         )}
@@ -3110,7 +3125,7 @@ export function WorkspaceProfile() {
   const PAGE_TABS: { id: PageTab; label: string }[] = [
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
-    { id: "dreamrole", label: isMobile ? "Roles" : "Target Roles" },
+    { id: "dreamrole", label: isMobile ? "Roles" : "Target & deprioritized roles" },
     { id: "targetcompanies", label: isMobile ? "Cos." : "Target Companies" },
     { id: "strategy", label: isMobile ? "Strategy" : "Career Strategy" },
     { id: "coach", label: "Coach" },
@@ -3133,7 +3148,7 @@ export function WorkspaceProfile() {
   const SIDEBAR_TABS: { id: ProfileSidebarTab; label: string }[] = [
     { id: "about", label: "About" },
     { id: "linkedin", label: "LinkedIn" },
-    { id: "dreamrole", label: "Target Roles" },
+    { id: "dreamrole", label: "Target & deprioritized" },
     { id: "targetcompanies", label: "Target Companies" },
     { id: "strategy", label: "Career Strategy" },
     { id: "coach", label: "Coach" },
