@@ -1,3 +1,5 @@
+export type InboxLens = "job_search" | "work";
+
 export type InboxStatus = {
   configured: boolean;
   connected: boolean;
@@ -5,6 +7,18 @@ export type InboxStatus = {
   provider: string | null;
   agentEnabled: boolean;
   autoApplyUpdates: boolean;
+  isStaff?: boolean;
+  workInbox?: {
+    available: boolean;
+    connected: boolean;
+    email: string | null;
+  };
+  workConnectPath?: string;
+  jobInbox?: {
+    connected: boolean;
+    email: string | null;
+    provider: string | null;
+  };
 };
 
 export type InboxMode = "mail" | "agent";

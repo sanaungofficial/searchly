@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActingUser } from "@/lib/acting-user";
+import { parseInboxLens, resolveInboxGrant } from "@/lib/inbox-lens";
 import { isNylasConfigured } from "@/lib/nylas";
 import {
+  fetchFolders,
   fetchMessage,
   listThreadMessages,
   messageFromLine,
@@ -11,8 +13,13 @@ import {
   serializeMessageSummary,
   updateMessage,
 } from "@/lib/nylas-inbox";
-import { getUserEmailGrant } from "@/lib/user-email-server";
 import { prisma } from "@/lib/prisma";
+
+async function loadGrant(dbUser: { id: string; role: string; email: string }, req: NextRequest) {
+  const lens = parseInboxLens(req.nextUrl.searchParams.get("lens"));
+  const resolved = await resolveInboxGrant(dbUser.id, dbUser.role, dbUser.email, lens);
+  return { lens, grant: resolved };
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { dbUser } = await getActingUser();
@@ -22,8 +29,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
 
-  const grant = await getUserEmailGrant(dbUser.id);
-  if (!grant) return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
+  const { lens, grant } = await loadGrant(dbUser, req);
+  if (!grant) {
+    return NextResponse.json(
+      { error: lens === "work" ? "Work inbox not connected" : "Inbox not connected" },
+      { status: 404 },
+    );
+  }
 
   const { id } = await params;
   const includeThread = req.nextUrl.searchParams.get("thread") === "1";
@@ -32,10 +44,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const message = await fetchMessage(grant.nylasGrantId, id);
     if (!message) return NextResponse.json({ error: "Message not found" }, { status: 404 });
 
-    const activity = await prisma.jobActivityLog.findFirst({
-      where: { userId: dbUser.id, nylasMessageId: id },
-      include: { job: { select: { id: true, company: true, role: true, stage: true } } },
-    });
+    const activity =
+      lens === "job_search"
+        ? await prisma.jobActivityLog.findFirst({
+            where: { userId: dbUser.id, nylasMessageId: id },
+            include: { job: { select: { id: true, company: true, role: true, stage: true } } },
+          })
+        : null;
 
     const bodyHtml = message.body?.includes("<") ? message.body : null;
     const bodyText = messagePlainText(message);
@@ -87,7 +102,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Nylas is not configured" }, { status: 503 });
   }
 
-  const grant = await getUserEmailGrant(dbUser.id);
+  const { grant } = await loadGrant(dbUser, req);
   if (!grant) return NextResponse.json({ error: "Inbox not connected" }, { status: 404 });
 
   const { id } = await params;
@@ -101,7 +116,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     let folders: string[] | undefined;
     if (body.archive) {
       const message = await fetchMessage(grant.nylasGrantId, id);
-      const allFolders = await import("@/lib/nylas-inbox").then((m) => m.fetchFolders(grant.nylasGrantId));
+      const allFolders = await fetchFolders(grant.nylasGrantId);
       const archiveFolder =
         allFolders.find((f) => f.attributes?.includes("\\Archive")) ??
         allFolders.find((f) => f.name?.toLowerCase().includes("archive"));
