@@ -1,6 +1,8 @@
 import {
   ExecThreadAuthError,
+  ExecThreadRedeemError,
   ExecThreadSessionExpiredError,
+  isExecThreadBenignRedeemError,
   parseExecThreadAuthError,
 } from "@/lib/execthread/errors";
 import type {
@@ -15,7 +17,6 @@ import type {
   ExecThreadSessionData,
 } from "@/lib/execthread/types";
 import {
-  execThreadJobNeedsRedeem,
   isSparseExecThreadListingDetail,
   mergeExecThreadJobExport,
 } from "@/lib/execthread/job-export";
@@ -102,14 +103,18 @@ export class ExecThreadClient {
     return this.request<ExecThreadMemberJobResponse>("GET", `/members/jobs/${encodeURIComponent(id)}`);
   }
 
-  /** Reveal confidential recruiter contacts / apply link (costs ET points on their platform). */
+  /** Reveal confidential recruiter contacts / apply link (premium ET = unlimited redemptions). */
   async redeemListing(id: string, options: ExecThreadRedeemOptions = {}): Promise<ExecThreadRedeemResponse> {
-    return this.request<ExecThreadRedeemResponse>("POST", "/members/redeem", {
+    const response = await this.request<ExecThreadRedeemResponse>("POST", "/members/redeem", {
       id,
       recruitersOrHiringManager: options.recruitersOrHiringManager ?? true,
       expressedInterest: options.expressedInterest ?? false,
       companyContact: options.companyContact ?? true,
     });
+    if (response.error && !isExecThreadBenignRedeemError(response.error)) {
+      throw new ExecThreadRedeemError(String(response.error));
+    }
+    return response;
   }
 
   async fetchListingFullExport(searchRow: ExecThreadListingRaw): Promise<ExecThreadListingRaw> {
@@ -144,17 +149,23 @@ export class ExecThreadClient {
       // optional when session missing
     }
 
-    const mergedSoFar = mergeExecThreadJobExport(bundle);
-    if (execThreadJobNeedsRedeem(mergedSoFar)) {
-      try {
-        bundle.redeem = await this.redeemListing(searchRow._id, {
-          recruitersOrHiringManager: true,
-          companyContact: true,
-        });
-        bundle.memberJob = await this.getMemberJob(searchRow._id);
-      } catch {
-        // redeem can fail when out of points — keep public/search data
+    // Always redeem when syncing with an authenticated session — no point budgeting in Kimchi.
+    // Premium ExecThread accounts have unlimited redemptions; "already redeemed" is OK.
+    try {
+      bundle.redeem = await this.redeemListing(searchRow._id, {
+        recruitersOrHiringManager: true,
+        companyContact: true,
+      });
+    } catch (err) {
+      if (!isExecThreadBenignRedeemError(err)) {
+        console.warn(`[execthread] redeem skipped for ${searchRow._id}:`, err);
       }
+    }
+
+    try {
+      bundle.memberJob = await this.getMemberJob(searchRow._id);
+    } catch {
+      // optional
     }
 
     return mergeExecThreadJobExport(bundle);

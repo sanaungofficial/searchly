@@ -126,7 +126,7 @@ export function ExecThreadSyncPanel() {
     <ScoutBox padding={24}>
       <ScoutLabel>ExecThread network jobs</ScoutLabel>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
-        Pull executive listings from ExecThread into Kimchi In-Network Roles — same flow as Top Echelon. Start with 5 jobs to verify, then increase the limit.
+        Pull executive listings from ExecThread into Kimchi In-Network Roles — full descriptions, recruiter contacts, and apply links. Sync always reveals confidential info (premium/unlimited ET account; no point budgeting in Kimchi).
       </p>
 
       {forbidden && (

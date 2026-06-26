@@ -14,6 +14,32 @@ export class ExecThreadSessionExpiredError extends Error {
   }
 }
 
+/** Redeem failures we can ignore — listing was already unlocked or sync can continue. */
+export function isExecThreadBenignRedeemError(error: unknown): boolean {
+  const message =
+    typeof error === "string"
+      ? error
+      : error instanceof Error
+        ? error.message
+        : typeof error === "object" && error && "error" in error
+          ? String((error as { error?: unknown }).error ?? "")
+          : "";
+
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("redeem-error-exists") ||
+    normalized.includes("already redeemed") ||
+    normalized.includes("already redeemed this job")
+  );
+}
+
+export class ExecThreadRedeemError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ExecThreadRedeemError";
+  }
+}
+
 export function parseExecThreadAuthError(body: string, status: number): ExecThreadAuthError {
   let message = body;
   try {
