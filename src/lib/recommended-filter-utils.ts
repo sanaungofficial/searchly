@@ -1,3 +1,5 @@
+import { postedWithinDaysLabel } from "@/lib/job-posted-filter";
+import { locationRadiusLabel } from "@/lib/job-location-radius";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { parseProfileLocationString, type ParsedProfileLocation } from "@/lib/profile-location";
 import { profilePreferencesToFilters } from "@/lib/profile-preference-filters";
@@ -74,9 +76,12 @@ export function profileDerivedSearchFilters(input: {
         ]
       : undefined;
 
+  const locationRadiusMiles = fields.city ? 50 : undefined;
+
   return {
     ...prefs,
     locations,
+    locationRadiusMiles,
   };
 }
 
@@ -101,7 +106,14 @@ export function describeActiveFilters(filters: VectorSearchFilters): string[] {
   if (filters.industries?.length) labels.push(`Industry: ${filters.industries.join(", ")}`);
   if (filters.visaSponsored) labels.push("Visa sponsorship");
   if (filters.salaryFrom != null) labels.push(`Salary from $${filters.salaryFrom.toLocaleString()}`);
-  if (filters.datePostedFrom?.trim()) labels.push(`Posted after ${filters.datePostedFrom}`);
+  if (filters.datePostedWithinDays != null && filters.datePostedWithinDays > 0) {
+    labels.push(`Posted ${postedWithinDaysLabel(filters.datePostedWithinDays).toLowerCase()}`);
+  } else if (filters.datePostedFrom?.trim()) {
+    labels.push(`Posted since ${filters.datePostedFrom.trim()}`);
+  }
+  if (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0) {
+    labels.push(locationRadiusLabel(filters.locationRadiusMiles));
+  }
   return labels;
 }
 

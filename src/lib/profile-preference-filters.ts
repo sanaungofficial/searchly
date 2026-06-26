@@ -45,13 +45,9 @@ export function profilePreferencesToFilters(profile: {
 
   const timeline = (profile.jobTimeline ?? "").toLowerCase();
   if (timeline.includes("asap") || timeline.includes("immediately") || timeline.includes("now")) {
-    const d = new Date();
-    d.setDate(d.getDate() - 14);
-    out.datePostedFrom = d.toISOString().slice(0, 10);
+    out.datePostedWithinDays = 14;
   } else if (timeline.includes("month")) {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    out.datePostedFrom = d.toISOString().slice(0, 10);
+    out.datePostedWithinDays = 30;
   }
 
   const employment = (profile.employmentStatus ?? "").toLowerCase();
@@ -80,6 +76,8 @@ export function mergeProfileAndRequestFilters(
     salaryFrom: requestFilters.salaryFrom ?? profilePrefs.salaryFrom,
     salaryTo: requestFilters.salaryTo ?? profilePrefs.salaryTo,
     datePostedFrom: requestFilters.datePostedFrom ?? profilePrefs.datePostedFrom,
+    datePostedWithinDays: requestFilters.datePostedWithinDays ?? profilePrefs.datePostedWithinDays,
+    locationRadiusMiles: requestFilters.locationRadiusMiles ?? profilePrefs.locationRadiusMiles,
     locations: requestFilters.locations?.length ? requestFilters.locations : profilePrefs.locations,
     jobTitles: requestFilters.jobTitles?.length
       ? requestFilters.jobTitles
@@ -94,8 +92,10 @@ export function relaxRestrictiveFilters(filters: VectorSearchFilters): VectorSea
     salaryFrom: _sf,
     salaryTo: _st,
     datePostedFrom: _dp,
+    datePostedWithinDays: _dwd,
     locations: _loc,
     locationTypes: _lt,
+    locationRadiusMiles: _lr,
     ...rest
   } = filters;
   return rest;
@@ -106,8 +106,10 @@ export function hasRestrictiveListingFilters(filters: VectorSearchFilters): bool
     filters.salaryFrom != null ||
     filters.salaryTo != null ||
     Boolean(filters.datePostedFrom?.trim()) ||
+    (filters.datePostedWithinDays != null && filters.datePostedWithinDays > 0) ||
     Boolean(filters.locations?.length) ||
-    Boolean(filters.locationTypes?.length)
+    Boolean(filters.locationTypes?.length) ||
+    (filters.locationRadiusMiles != null && filters.locationRadiusMiles > 0)
   );
 }
 
@@ -128,6 +130,8 @@ export function isDefaultRecommendedFilters(filters: VectorSearchFilters): boole
     "locationTypes",
     "locations",
     "datePostedFrom",
+    "datePostedWithinDays",
+    "locationRadiusMiles",
     "visaSponsored",
     "salaryFrom",
     "salaryTo",

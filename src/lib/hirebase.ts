@@ -5,7 +5,7 @@ import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { VECTOR_SEARCH_RESULTS_MAX } from "@/lib/vector-matched-job";
 import { roleSearchKeywords, isJobMatch } from "@/lib/job-match";
 import { formatHirebaseErrorBody } from "@/lib/api-error-message";
-import { trimVSearchQuery } from "@/lib/profile-vsearch-query";
+import { resolveDatePostedFrom } from "@/lib/job-posted-filter";
 import { parseJobDescriptionSections, hasParsedJobSections } from "@/lib/job-description-parse";
 import { logHirebaseApiCall } from "@/lib/external-api-usage";
 
@@ -632,7 +632,7 @@ function assignJobSearchFilters(body: Record<string, unknown>, input: VectorSear
       }))
       .filter((loc) => loc.city || loc.region || loc.country);
   }
-  assignIfPresent(body, "date_posted", input.datePostedFrom?.trim());
+  assignIfPresent(body, "date_posted", resolveDatePostedFrom(input)?.trim());
   if (input.visaSponsored === true) body.visa_sponsored = true;
   if (input.salaryFrom != null) body.salary_from = input.salaryFrom;
   if (input.salaryTo != null) body.salary_to = input.salaryTo;
@@ -918,7 +918,7 @@ export async function fetchHirebaseVectorJobs(
       }))
       .filter((loc) => loc.city || loc.region || loc.country);
   }
-  assignIfPresent(body, "date_posted", input.datePostedFrom?.trim());
+  assignIfPresent(body, "date_posted", resolveDatePostedFrom(input)?.trim());
   if (input.visaSponsored === true) body.visa_sponsored = true;
   if (input.salaryFrom != null) body.salary_from = input.salaryFrom;
   if (input.salaryTo != null) body.salary_to = input.salaryTo;

@@ -28,7 +28,11 @@ export type VectorSearchFilters = {
   companySizeBuckets?: string[];
   locationTypes?: string[];
   locations?: HirebaseLocationFilter[];
+  /** Relative window — converted to datePostedFrom before Hirebase calls. */
+  datePostedWithinDays?: number;
   datePostedFrom?: string;
+  /** Max distance from anchor city (profile or filter city). Remote roles always pass. */
+  locationRadiusMiles?: number;
   visaSponsored?: boolean;
   salaryFrom?: number;
   salaryTo?: number;

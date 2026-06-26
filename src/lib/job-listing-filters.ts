@@ -1,4 +1,5 @@
 import type { CachedJob } from "@/lib/cached-job";
+import { resolveDatePostedFrom } from "@/lib/job-posted-filter";
 import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 
 function haystackForJob(cached: CachedJob, companyName: string): string {
@@ -102,10 +103,13 @@ export function jobMatchesListingFilters(
 
   if (filters.visaSponsored === true && cached.visaSponsored !== true) return false;
 
-  if (filters.datePostedFrom?.trim() && cached.datePosted) {
-    const posted = new Date(cached.datePosted);
-    const from = new Date(filters.datePostedFrom);
-    if (!Number.isNaN(posted.getTime()) && !Number.isNaN(from.getTime()) && posted < from) return false;
+  if (filters.datePostedFrom?.trim() || filters.datePostedWithinDays) {
+    const fromIso = resolveDatePostedFrom(filters);
+    if (fromIso && cached.datePosted) {
+      const posted = new Date(cached.datePosted);
+      const from = new Date(fromIso);
+      if (!Number.isNaN(posted.getTime()) && !Number.isNaN(from.getTime()) && posted < from) return false;
+    }
   }
 
   if (filters.jobBoard?.trim()) {
@@ -153,6 +157,7 @@ export function applyListingFiltersToSources<T extends { cached: CachedJob; comp
     filters.experienceLevels?.length ||
     filters.visaSponsored ||
     filters.datePostedFrom ||
+    filters.datePostedWithinDays ||
     filters.jobBoard ||
     filters.industries?.length ||
     filters.jobCategories?.length;

@@ -47,6 +47,8 @@ export function parseVectorSearchFilters(body: Record<string, unknown>): VectorS
       ? (body.locations as Array<{ city?: string; region?: string; country?: string }>)
       : undefined,
     datePostedFrom: typeof body.datePostedFrom === "string" ? body.datePostedFrom : undefined,
+    datePostedWithinDays: num(body.datePostedWithinDays),
+    locationRadiusMiles: num(body.locationRadiusMiles),
     visaSponsored: body.visaSponsored === true,
     salaryFrom: num(body.salaryFrom),
     salaryTo: num(body.salaryTo),

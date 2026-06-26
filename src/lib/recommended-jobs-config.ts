@@ -18,8 +18,8 @@ export const RECOMMENDED_FETCH_POOL = 60;
 /** Max jobs stored per user snapshot / API response. */
 export const RECOMMENDED_SNAPSHOT_MAX_JOBS = 20;
 
-/** Cooldown between manual live refreshes (rate limit Hirebase credits). */
-export const RECOMMENDED_MANUAL_REFRESH_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+/** Cooldown between manual live refreshes — 0 disables rate limiting. */
+export const RECOMMENDED_MANUAL_REFRESH_COOLDOWN_MS = 0;
 
 /** Users processed per cron run — set RECOMMENDED_CRON_USER_LIMIT=5 to test on a few accounts. */
 export function recommendedCronUserLimit(): number {

@@ -212,12 +212,8 @@ export async function runRecommendedJobsSnapshotCron(): Promise<RecommendedSnaps
   return summary;
 }
 
-export async function canManualRefresh(userId: string): Promise<{ allowed: boolean; retryAfterMs?: number }> {
-  const settings = await prisma.userDigestSettings.findUnique({ where: { userId } });
-  if (!settings?.lastManualRefreshAt) return { allowed: true };
-  const elapsed = Date.now() - settings.lastManualRefreshAt.getTime();
-  if (elapsed >= 4 * 60 * 60 * 1000) return { allowed: true };
-  return { allowed: false, retryAfterMs: 4 * 60 * 60 * 1000 - elapsed };
+export async function canManualRefresh(_userId: string): Promise<{ allowed: boolean; retryAfterMs?: number }> {
+  return { allowed: true };
 }
 
 export async function recordManualRefresh(userId: string): Promise<void> {

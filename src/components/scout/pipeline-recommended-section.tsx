@@ -32,6 +32,8 @@ import {
   HIREBASE_FILTER_US_STATES,
   locationFieldsFromProfileString,
 } from "@/lib/recommended-filter-utils";
+import { POSTED_WITHIN_OPTIONS, postedWithinDaysFormValue } from "@/lib/job-posted-filter";
+import { LOCATION_RADIUS_OPTIONS } from "@/lib/job-location-radius";
 import type { KanbanCard } from "./workspace-data";
 import {
   filtersCacheKey,
@@ -145,6 +147,9 @@ function filtersToForm(f: VectorSearchFilters) {
     locationCity: f.locations?.[0]?.city ?? "",
     locationRegion: f.locations?.[0]?.region ?? "",
     locationCountry: f.locations?.[0]?.country ?? "",
+    locationRadiusMiles:
+      f.locationRadiusMiles != null && f.locationRadiusMiles > 0 ? String(f.locationRadiusMiles) : "",
+    datePostedWithinDays: postedWithinDaysFormValue(f),
     datePostedFrom: f.datePostedFrom ?? "",
     salaryFrom: f.salaryFrom != null ? String(f.salaryFrom) : "",
     salaryTo: f.salaryTo != null ? String(f.salaryTo) : "",
@@ -231,7 +236,13 @@ function formToFilters(form: FilterForm, page: number): VectorSearchFilters {
     experienceLevels: form.experienceLevels.size ? [...form.experienceLevels] : undefined,
     companySizeBuckets: form.companySizeBuckets.size ? [...form.companySizeBuckets] : undefined,
     visaSponsored: form.visaSponsored || undefined,
-    datePostedFrom: form.datePostedFrom.trim() || undefined,
+    datePostedWithinDays: form.datePostedWithinDays.trim()
+      ? Number(form.datePostedWithinDays)
+      : undefined,
+    datePostedFrom: undefined,
+    locationRadiusMiles: form.locationRadiusMiles.trim()
+      ? Number(form.locationRadiusMiles)
+      : undefined,
     salaryFrom: form.salaryFrom.trim() ? Number(form.salaryFrom) : undefined,
     salaryTo: form.salaryTo.trim() ? Number(form.salaryTo) : undefined,
     yearsFrom: form.yearsFrom.trim() ? Number(form.yearsFrom) : undefined,
@@ -352,7 +363,7 @@ function JobFiltersGrid({
     <div style={{ marginTop: 16, padding: 16, background: surface.inset, border: border.line }}>
       <FilterSectionHeader
         title="Where & how you want to work"
-        hint="City, state, or country text match — not a mile radius. Remote roles always show. Saved to your profile when you search."
+        hint="Set your anchor city, then choose a mile radius. Remote roles always show. Saved to your profile when you search."
       />
       <div style={{ display: "grid", gridTemplateColumns: locationGrid, gap: 12, marginBottom: 14 }}>
         <FilterField label="City">
@@ -377,6 +388,20 @@ function JobFiltersGrid({
           />
         </FilterField>
       </div>
+
+      <FilterField label="Within radius">
+        <select
+          style={inputStyle}
+          value={form.locationRadiusMiles}
+          onChange={(e) => setForm((f) => ({ ...f, locationRadiusMiles: e.target.value }))}
+        >
+          {LOCATION_RADIUS_OPTIONS.map((opt) => (
+            <option key={opt.miles} value={opt.miles > 0 ? String(opt.miles) : ""}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </FilterField>
 
       <FilterField label="Work arrangement">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -454,10 +479,21 @@ function JobFiltersGrid({
 
       {showAdvanced && (
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginTop: 14, paddingTop: 14, borderTop: border.line }}>
-          <FilterField label="Posted after">
-            <input type="date" style={inputStyle} value={form.datePostedFrom} onChange={(e) => setForm((f) => ({ ...f, datePostedFrom: e.target.value }))} />
+          <FilterField label="Posted within">
+            <select
+              style={inputStyle}
+              value={form.datePostedWithinDays}
+              onChange={(e) => setForm((f) => ({ ...f, datePostedWithinDays: e.target.value }))}
+            >
+              <option value="">Any time</option>
+              {POSTED_WITHIN_OPTIONS.map((opt) => (
+                <option key={opt.days} value={String(opt.days)}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
             <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "4px 0 0", lineHeight: 1.4 }}>
-              Leave empty for all indexed posts.
+              Leave as “Any time” to include older indexed posts.
             </p>
           </FilterField>
           <FilterField label="Salary from ($)">
@@ -1091,7 +1127,7 @@ export function PipelineRecommendedSection({
               <ScoutLabel>Recommended roles</ScoutLabel>
             </ScoreExplainerLabel>
             <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles from Hirebase matched to your profile — sorted by freshness first. Apply within 48 hours for the best response rate; we hide roles older than 3 days from this feed.
+              Roles from Hirebase matched to your profile — sorted by freshness first. Apply within 48 hours for the best response rate.
             </p>
             <div style={{ marginTop: 10 }}>
               <JobFreshnessLegend compact />
@@ -1143,7 +1179,7 @@ export function PipelineRecommendedSection({
               </ScoutSecondaryBtn>
             </div>
             <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "0 0 8px", lineHeight: 1.45 }}>
-              Not applied automatically — click Apply suggestions to copy these into the editable filters below, then adjust salary, dates, or work arrangement before you search.
+              Not applied automatically — click Apply suggestions to copy these into the editable filters below, then adjust salary, posted date, radius, or work arrangement before you search.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {profileSuggestedLabels.map((label) => (

@@ -10,6 +10,9 @@ import {
 import {
   filterSourcesByLocationPreference,
 } from "@/lib/profile-location";
+import { filterSourcesByRadiusMiles } from "@/lib/job-location-radius";
+import { normalizePostedDateFilters } from "@/lib/job-posted-filter";
+import { formatProfileLocation } from "@/lib/recommended-filter-utils";
 import {
   buildProfileVSearchQuery,
   profileTextForMatchReasons,
@@ -266,10 +269,10 @@ export async function generateRecommendedJobsForUser(
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   /** Default feed uses profile location post-filter only. Custom searches use explicit UI filters — no silent profile merge. */
-  const mergedFilters = {
+  const mergedFilters = normalizePostedDateFilters({
     ...requestFilters,
     semanticQuery: semanticQuery || undefined,
-  };
+  });
 
   const artifact = await ensureHirebaseArtifactForUser(input.userId);
   const preferCache = input.preferCache !== false;
@@ -345,26 +348,43 @@ export async function generateRecommendedJobsForUser(
       sources = sourcesBeforeLocation;
       notice = appendNotice(
         notice,
-        "No roles matched your location preferences — showing broader geography. Location matches city, state, or country text (not a mile radius).",
+        "No roles matched your location preferences — showing broader geography.",
+      );
+    }
+  }
+
+  const radiusMiles = mergedFilters.locationRadiusMiles;
+  const anchorLocation = defaultFeed
+    ? profileLocation
+    : mergedFilters.locations?.length
+      ? formatProfileLocation({
+          city: mergedFilters.locations[0]?.city,
+          region: mergedFilters.locations[0]?.region,
+          country: mergedFilters.locations[0]?.country,
+        })
+      : profileLocation;
+
+  if (radiusMiles != null && radiusMiles > 0 && anchorLocation?.trim()) {
+    const beforeRadius = sources;
+    const radiusFiltered = await filterSourcesByRadiusMiles(sources, {
+      anchorLocation,
+      radiusMiles,
+      priorities,
+    });
+    if (radiusFiltered.length) {
+      sources = radiusFiltered;
+    } else if (beforeRadius.length) {
+      sources = beforeRadius;
+      notice = appendNotice(
+        notice,
+        `No roles within ${radiusMiles} miles — showing broader results. Increase radius or enable relocation in filters.`,
       );
     }
   }
 
   let jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, {
-    filterStale: defaultFeed,
+    filterStale: false,
   });
-
-  if (!jobs.length && sources.length) {
-    jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, {
-      filterStale: false,
-    });
-    if (jobs.length) {
-      notice = appendNotice(
-        notice,
-        "Including roles older than 3 days so you still have options to review.",
-      );
-    }
-  }
 
   if (!jobs.length) {
     const broad = await fetchRecommendedBroadFallback({

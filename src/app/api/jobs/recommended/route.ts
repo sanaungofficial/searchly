@@ -10,7 +10,6 @@ import {
   utcSnapshotDate,
 } from "@/lib/recommended-jobs-config";
 import {
-  canManualRefresh,
   persistRecommendedSnapshot,
   readRecommendedSnapshot,
   recordManualRefresh,
@@ -115,40 +114,6 @@ async function handleRecommended(request: Request) {
       }
     } catch (err) {
       console.warn("[recommended] snapshot read failed:", err);
-    }
-
-    if (preferCache) {
-      return NextResponse.json({
-        jobs: [],
-        totalCount: 0,
-        page: 1,
-        limit: VECTOR_SEARCH_RESULTS_MAX,
-        totalPages: 0,
-        filtersApplied: searchFilters,
-        effectiveFilters: searchFilters,
-        fromSnapshot: false,
-        scoreFloor: RECOMMENDED_MATCH_SCORE_FLOOR,
-        hint: "Click Refresh to pull live recommendations from Hirebase.",
-        needsRefresh: true,
-      });
-    }
-  }
-
-  if (forceRefresh && defaultFeed) {
-    try {
-      const gate = await canManualRefresh(dbUser.id);
-      if (!gate.allowed) {
-        const minutes = Math.ceil((gate.retryAfterMs ?? 0) / 60_000);
-        return NextResponse.json(
-          {
-            error: `Manual refresh is rate-limited — try again in about ${minutes} minutes, or wait for the daily refresh.`,
-            retryAfterMs: gate.retryAfterMs,
-          },
-          { status: 429 },
-        );
-      }
-    } catch (err) {
-      console.warn("[recommended] manual refresh gate failed:", err);
     }
   }
 
