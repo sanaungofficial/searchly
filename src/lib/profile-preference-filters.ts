@@ -88,6 +88,29 @@ export function mergeProfileAndRequestFilters(
   };
 }
 
+/** Filters that often zero out Hirebase results when combined with role/resume search. */
+export function relaxRestrictiveFilters(filters: VectorSearchFilters): VectorSearchFilters {
+  const {
+    salaryFrom: _sf,
+    salaryTo: _st,
+    datePostedFrom: _dp,
+    locations: _loc,
+    locationTypes: _lt,
+    ...rest
+  } = filters;
+  return rest;
+}
+
+export function hasRestrictiveListingFilters(filters: VectorSearchFilters): boolean {
+  return (
+    filters.salaryFrom != null ||
+    filters.salaryTo != null ||
+    Boolean(filters.datePostedFrom?.trim()) ||
+    Boolean(filters.locations?.length) ||
+    Boolean(filters.locationTypes?.length)
+  );
+}
+
 /** True when the client is asking for the default daily feed (no custom filters). */
 export function isDefaultRecommendedFilters(filters: VectorSearchFilters): boolean {
   const keys: (keyof VectorSearchFilters)[] = [

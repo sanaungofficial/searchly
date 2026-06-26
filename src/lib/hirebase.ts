@@ -714,6 +714,48 @@ export async function fetchHirebaseRoleMatchingJobs(input: {
   };
 }
 
+/** Recent indexed jobs with minimal filters — last-resort when personalized search returns nothing. */
+export async function fetchHirebaseRecentJobs(input: {
+  keywords?: string[];
+  maxJobs?: number;
+}): Promise<{
+  jobs: CachedJob[];
+  rawJobs: HirebaseJob[];
+  companyNames: string[];
+  totalCount: number;
+}> {
+  const limit = Math.max(1, Math.min(input.maxJobs ?? 20, 20));
+  const keywords = (input.keywords ?? [])
+    .map((k) => k.trim().toLowerCase())
+    .filter((k) => k.length >= 3)
+    .slice(0, 12);
+
+  const body: Record<string, unknown> = {
+    keywords,
+    page: 1,
+    limit,
+    sort_by: "date_posted",
+    sort_order: "desc",
+  };
+
+  const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/search", {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  const rawJobs = dedupeHirebaseJobs(data.jobs ?? []).slice(0, limit);
+  const jobs = rawJobs.map(mapHirebaseJob);
+  const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
+
+  return {
+    jobs,
+    rawJobs,
+    companyNames,
+    totalCount: data.total_count ?? jobs.length,
+  };
+}
+
 /** Natural-language job search (summary mode) — no resume artifact. */
 export async function fetchHirebaseSummarySearch(input: {
   query: string;

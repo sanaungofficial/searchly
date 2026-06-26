@@ -33,7 +33,12 @@ export function utcSnapshotDate(d = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
-export type RecommendedMatchMode = "resume" | "profile_summary" | "tracked" | "profile_roles";
+export type RecommendedMatchMode =
+  | "resume"
+  | "profile_summary"
+  | "tracked"
+  | "profile_roles"
+  | "broad";
 
 export type RecommendedJobSnapshotPayload = {
   jobs: import("@/lib/vector-matched-job").VectorMatchedJob[];

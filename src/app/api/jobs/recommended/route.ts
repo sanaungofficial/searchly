@@ -162,11 +162,13 @@ async function handleRecommended(request: Request) {
     if (!result?.jobs.length) {
       return NextResponse.json(
         {
-          error: "No matching roles found — add target roles, upload a resume, or track companies, then refresh.",
+          error: "Could not load roles from Hirebase right now — try Refresh in a moment.",
           needsProfile: targetRoles.length === 0,
-          hint: "Try Refresh for a live Hirebase pull, or open Filters to broaden location and other criteria.",
+          hint: "If this keeps happening, check target roles under Profile or broaden filters.",
           matchMode: result?.matchMode,
           effectiveFilters: result?.effectiveFilters,
+          jobs: [],
+          totalCount: 0,
         },
         { status: 404 },
       );

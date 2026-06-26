@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { HirebaseJob } from "@/lib/hirebase";
 import {
   fetchHirebaseMatchingJobs,
+  fetchHirebaseRecentJobs,
   fetchHirebaseRoleMatchingJobs,
   fetchHirebaseSummarySearch,
   fetchHirebaseVectorJobs,
@@ -498,4 +499,68 @@ export async function fetchRecommendedViaProfileSummary(input: {
     companyCount: tracked.length,
     trackedWithMatches,
   };
+}
+
+function broadSearchKeywords(profileTargetRoles: string[], semanticQuery?: string): string[] {
+  const fromRoles = profileTargetRoles
+    .flatMap((role) => role.split(/\s+/))
+    .map((w) => w.replace(/[^a-z0-9+#]/gi, "").toLowerCase())
+    .filter((w) => w.length >= 4);
+  const fromQuery = (semanticQuery ?? "")
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9+#]/gi, "").toLowerCase())
+    .filter((w) => w.length >= 4);
+  const merged = [...new Set([...fromRoles, ...fromQuery])];
+  if (merged.length) return merged.slice(0, 8);
+  return ["manager", "director", "analyst"];
+}
+
+/**
+ * Last-resort feed: recent Hirebase roles with no salary/date/location filters.
+ * Ensures Find roles never stays empty when the index has data.
+ */
+export async function fetchRecommendedBroadFallback(input: {
+  profileTargetRoles?: string[];
+  semanticQuery?: string;
+  maxJobs?: number;
+}): Promise<{ sources: RecommendedJobSource[] }> {
+  const maxJobs = Math.min(input.maxJobs ?? RECOMMENDED_FETCH_POOL, RECOMMENDED_FETCH_POOL);
+  const keywords = broadSearchKeywords(input.profileTargetRoles ?? [], input.semanticQuery);
+
+  try {
+    const recent = await fetchHirebaseRecentJobs({ keywords, maxJobs });
+    if (recent.rawJobs.length) {
+      const sources: RecommendedJobSource[] = [];
+      for (let i = 0; i < recent.rawJobs.length; i++) {
+        sources.push({
+          cached: recent.jobs[i] ?? mapHirebaseJob(recent.rawJobs[i]!),
+          companyName: recent.companyNames[i] ?? "Unknown company",
+          raw: recent.rawJobs[i]!,
+        });
+        if (sources.length >= maxJobs) break;
+      }
+      return { sources };
+    }
+  } catch {
+    /* try summary search */
+  }
+
+  const query =
+    input.semanticQuery?.trim() ||
+    (input.profileTargetRoles?.length ? input.profileTargetRoles.slice(0, 3).join(", ") : "recent job openings");
+
+  try {
+    const summary = await fetchHirebaseSummarySearch({
+      query,
+      filters: { limit: maxJobs, page: 1 },
+    });
+    const sources: RecommendedJobSource[] = summary.rawJobs.map((raw, i) => ({
+      cached: summary.jobs[i] ?? mapHirebaseJob(raw),
+      companyName: summary.companyNames[i] ?? raw.company_name?.trim() ?? "Unknown company",
+      raw,
+    }));
+    return { sources: sources.slice(0, maxJobs) };
+  } catch {
+    return { sources: [] };
+  }
 }
