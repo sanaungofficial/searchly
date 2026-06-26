@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
 import { CoachMatchSection, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
-import { NylasSchedulerEmbed } from "@/components/scout/nylas-scheduler-embed";
+import {
+  CoachBookingModal,
+  formatCoachNextAvailable,
+  type CoachBookingSessionType,
+} from "@/components/scout/coach-booking-modal";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -183,13 +187,16 @@ function ReviewCard({ review }: { review: CoachReviewItem }) {
 
 export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange }: Props) {
   const isMobile = useIsMobile();
-  const { openCoachPrepChat } = useWorkspace();
+  const { openCoachPrepChat, user, authChecked } = useWorkspace();
   const [visible, setVisible] = useState(false);
   const [coach, setCoach] = useState<CoachProfileDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReview, setShowReview] = useState(false);
   const [aboutExpanded, setAboutExpanded] = useState(false);
-  const [showBooking, setShowBooking] = useState(false);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [bookingModalType, setBookingModalType] = useState<CoachBookingSessionType>("intro");
+  const [nextSlotStart, setNextSlotStart] = useState<number | null>(null);
+  const [nextSlotLoading, setNextSlotLoading] = useState(false);
 
   useLayoutEffect(() => {
     requestAnimationFrame(() => setVisible(true));
@@ -209,6 +216,40 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   useEffect(() => {
     load();
   }, [load]);
+
+  const sessionDurationMinutes = coach?.schedulerDurationMinutes ?? 60;
+  const canBookInApp = Boolean(coach?.hasNylasBooking);
+
+  useEffect(() => {
+    if (!coach?.hasNylasBooking || !slug) return;
+    let cancelled = false;
+    setNextSlotLoading(true);
+    fetch(
+      `/api/coaches/${encodeURIComponent(slug)}/availability?nextOnly=true&durationMinutes=30`,
+    )
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setNextSlotStart(d.nextSlot?.startTime ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setNextSlotStart(null);
+      })
+      .finally(() => {
+        if (!cancelled) setNextSlotLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coach?.hasNylasBooking, slug]);
+
+  const openBooking = (type: CoachBookingSessionType) => {
+    if (!authChecked || !user) {
+      window.location.href = "/login";
+      return;
+    }
+    setBookingModalType(type);
+    setBookingModalOpen(true);
+  };
 
   const close = () => {
     setVisible(false);
@@ -232,8 +273,6 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   const displayName = coach?.displayName ?? preview?.displayName ?? "Coach";
   const aboutText = coach?.aboutMe || coach?.bio || "";
   const bookUrl = coach?.calLink;
-  const nylasConfigId = coach?.nylasSchedulerConfigId;
-  const canBookInApp = Boolean(isPro && nylasConfigId && coach?.hasNylasBooking);
 
   const openPrepChat = () => {
     if (!coach) return;
@@ -333,23 +372,40 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                   )}
 
                 <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-                  <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>Hourly coaching</h3>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 16, border: border.line, background: surface.inset }}>
-                    <div>
-                      <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>1:1 Coaching — Hourly</p>
-                      <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>Flexible sessions tailored to your goals</p>
-                    </div>
-                    {coach.hourlyRate && (
-                      <p style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest, margin: 0 }}>
-                        {isPro ? `$${coach.hourlyRate}/hr` : "—"}
-                      </p>
-                    )}
-                  </div>
-                  {showBooking && canBookInApp && nylasConfigId && (
-                    <div style={{ marginTop: 16, border: border.line, padding: 12, background: "#fff" }}>
-                      <NylasSchedulerEmbed configurationId={nylasConfigId} minHeight={480} />
-                    </div>
+                  <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>
+                    {coach.displayName.split(" ")[0]}&apos;s offerings
+                  </h3>
+                  <OfferingRow
+                    title="Free intro call"
+                    subtitle="30 minutes · Get to know your coach"
+                    priceLabel="Free"
+                    onBook={canBookInApp ? () => openBooking("intro") : undefined}
+                    bookLabel="Book intro"
+                  />
+                  <OfferingRow
+                    title="1:1 coaching session"
+                    subtitle={`${sessionDurationMinutes} minutes · Tailored to your goals`}
+                    priceLabel="Free"
+                    secondaryPrice={coach.hourlyRate ? `$${coach.hourlyRate}/hr later` : undefined}
+                    onBook={canBookInApp ? () => openBooking("session") : undefined}
+                    bookLabel="Book session"
+                    style={{ marginTop: 10 }}
+                  />
+                </ScoutBox>
+
+                <ScoutBox padding={20} style={{ marginBottom: 16 }}>
+                  <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>
+                    {coach.displayName.split(" ")[0]}&apos;s qualifications
+                  </h3>
+                  <QualCheck label={coach.isProfessionalCoach ? "Professional coach" : "Coaches independently"} />
+                  {coach.experienceLevel && <QualCheck label={`Experience level: ${coach.experienceLevel}`} />}
+                  {coach.industryYears != null && (
+                    <QualCheck label={`${coach.industryYears}+ years in industry`} />
                   )}
+                  {coach.reviewCount > 0 && (
+                    <QualCheck label={`${coach.reviewCount} client review${coach.reviewCount !== 1 ? "s" : ""}`} />
+                  )}
+                  {coach.firms.length > 0 && <QualCheck label={`Background: ${coach.firms.slice(0, 2).join(", ")}`} />}
                 </ScoutBox>
 
                 {coach.specialties.length > 0 && (
@@ -429,37 +485,81 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                     <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
                     {coach.hourlyRate && (
                       <p style={{ fontFamily: fontSans, fontSize: 18, fontWeight: 600, color: color.forest, margin: "12px 0 0" }}>
-                        {isPro ? `$${coach.hourlyRate}/hr` : (
-                          <span onClick={onSubscribe} style={{ cursor: "pointer", filter: "blur(6px)" }}>${coach.hourlyRate}/hr</span>
-                        )}
+                        ${coach.hourlyRate}/hr
                       </p>
                     )}
                   </div>
+                  {canBookInApp && (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        padding: "12px 14px",
+                        border: line,
+                        background: "rgba(26,58,47,0.04)",
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          border: "2px solid #1A3A2F",
+                          flexShrink: 0,
+                          marginTop: 2,
+                          background: "#1A3A2F",
+                          boxShadow: "inset 0 0 0 3px #fff",
+                        }}
+                      />
+                      <p style={{ fontFamily: fontSans, fontSize: 13, margin: 0, lineHeight: 1.45, color: color.stone }}>
+                        {nextSlotLoading
+                          ? "Checking availability…"
+                          : nextSlotStart
+                            ? formatCoachNextAvailable(nextSlotStart)
+                            : "No upcoming slots in the next two weeks"}
+                      </p>
+                    </div>
+                  )}
                   {canBookInApp ? (
                     <>
-                      <ScoutPrimaryBtn
-                        onClick={() => setShowBooking((v) => !v)}
+                      <GoldBookBtn onClick={() => openBooking("intro")} style={{ marginBottom: 8 }}>
+                        Schedule a free intro call
+                      </GoldBookBtn>
+                      <ScoutSecondaryBtn
+                        onClick={() => openBooking("session")}
                         style={{ width: "100%", minHeight: 44, marginBottom: 8 }}
                       >
-                        {showBooking ? "Hide calendar" : "Book a session"}
-                      </ScoutPrimaryBtn>
+                        Book a session
+                      </ScoutSecondaryBtn>
                       {bookUrl && (
                         <a href={bookUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
-                          <ScoutSecondaryBtn style={{ width: "100%", minHeight: 44 }}>External booking link</ScoutSecondaryBtn>
+                          <ScoutSecondaryBtn style={{ width: "100%", minHeight: 40, fontSize: 12 }}>External calendar link</ScoutSecondaryBtn>
                         </a>
                       )}
+                      <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, textAlign: "center", margin: "0 0 8px" }}>
+                        Protected by the Kimchi coaching experience
+                      </p>
                     </>
-                  ) : bookUrl && isPro ? (
+                  ) : bookUrl ? (
                     <>
-                      <a href={bookUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
-                        <ScoutPrimaryBtn style={{ width: "100%", minHeight: 44 }}>Schedule free intro call</ScoutPrimaryBtn>
+                      <a
+                        href={bookUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ textDecoration: "none", display: "block", marginBottom: 8 }}
+                      >
+                        <div style={goldBookBtnStyle}>Schedule a free intro call</div>
                       </a>
                       <a href={bookUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
                         <ScoutSecondaryBtn style={{ width: "100%", minHeight: 44 }}>Book a session</ScoutSecondaryBtn>
                       </a>
                     </>
                   ) : (
-                    <ScoutSecondaryBtn onClick={onSubscribe} style={{ width: "100%", minHeight: 44, marginBottom: 8 }}>Subscribe to book</ScoutSecondaryBtn>
+                    <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, marginBottom: 8, textAlign: "center" }}>
+                      This coach hasn&apos;t connected their calendar yet.
+                    </p>
                   )}
                   <ScoutSecondaryBtn onClick={toggleFollow} style={{ width: "100%", minHeight: 40, marginBottom: 8 }}>
                     {coach.isFollowing ? "Following ✓" : "+ Follow"}
@@ -490,7 +590,125 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
       {showReview && coach && (
         <ReviewFormModal coach={coach} slug={slug} onClose={() => setShowReview(false)} onSubmitted={load} />
       )}
+
+      {coach && (
+        <CoachBookingModal
+          open={bookingModalOpen}
+          onClose={() => setBookingModalOpen(false)}
+          slug={slug}
+          coachDisplayName={coach.displayName}
+          coachPhotoUrl={coach.photoUrl}
+          hourlyRate={coach.hourlyRate}
+          sessionDurationMinutes={sessionDurationMinutes}
+          initialSessionType={bookingModalType}
+          guestName={user?.name ?? undefined}
+          onBooked={load}
+        />
+      )}
     </>
+  );
+}
+
+function GoldBookBtn({
+  children,
+  onClick,
+  style,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <button type="button" onClick={onClick} style={{ ...goldBookBtnStyle, ...style }}>
+      {children}
+    </button>
+  );
+}
+
+const goldBookBtnStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: 44,
+  padding: "12px 16px",
+  background: "#E8D5A3",
+  color: "#1A1A1A",
+  border: "2px solid #1A1A1A",
+  fontFamily: fontSans,
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+  boxSizing: "border-box",
+  textAlign: "center",
+};
+
+function OfferingRow({
+  title,
+  subtitle,
+  priceLabel,
+  secondaryPrice,
+  onBook,
+  bookLabel,
+  style,
+}: {
+  title: string;
+  subtitle: string;
+  priceLabel: string;
+  secondaryPrice?: string;
+  onBook?: () => void;
+  bookLabel?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: 16,
+        border: border.line,
+        background: surface.inset,
+        ...style,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>{title}</p>
+        <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: 0 }}>{subtitle}</p>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: color.forest, margin: 0 }}>{priceLabel}</p>
+        {secondaryPrice && (
+          <p style={{ fontFamily: fontSans, fontSize: 11, color: color.muted, margin: "4px 0 0" }}>{secondaryPrice}</p>
+        )}
+        {onBook && bookLabel && (
+          <button
+            type="button"
+            onClick={onBook}
+            style={{
+              marginTop: 8,
+              background: "none",
+              border: "none",
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 600,
+              color: color.forest,
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            {bookLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QualCheck({ label }: { label: string }) {
+  return (
+    <p style={{ fontFamily: fontSans, fontSize: 14, color: color.stone, margin: "0 0 8px", display: "flex", gap: 8 }}>
+      <span style={{ color: color.forest }}>✓</span>
+      {label}
+    </p>
   );
 }
 
