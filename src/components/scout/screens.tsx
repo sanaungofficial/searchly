@@ -304,8 +304,8 @@ export function ScreenWelcome({
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <OnboardingHeroIntro
-        title="Hey — let's get you set up."
-        body="Drop your resume and we'll start the magic in the background. While Kimchi reads, answer a few quick questions — then we'll show you who we see."
+        title="Let's get you set up."
+        body="Upload your resume and we'll start reading it. Answer a few questions while we work — then we'll show you what we see."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
@@ -417,7 +417,7 @@ export function ScreenWelcome({
         />
         {resumeError && (
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#C0392B", marginTop: 12, marginBottom: 0, fontWeight: 500 }}>
-            Hmm, that upload didn&apos;t work — try again, or add your LinkedIn below.
+            That upload didn&apos;t work. Try again, or add your LinkedIn below.
           </p>
         )}
       </div>
@@ -484,7 +484,7 @@ export function ScreenWelcome({
           />
         </div>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 400, color: ONBOARDING_TEXT_SECONDARY, marginTop: 12, marginBottom: 0, lineHeight: 1.55 }}>
-          Optional, but nice — we&apos;ll pull in your public LinkedIn when you finish setup.
+          Optional — we&apos;ll import your public profile after setup.
         </p>
       </div>
 
@@ -498,7 +498,7 @@ export function ScreenWelcome({
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              Let&apos;s go →
+              Continue →
             </button>
           )}
           {canSaveLinkedInOnly && (
@@ -517,7 +517,7 @@ export function ScreenWelcome({
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(26,58,47,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = ONBOARDING_FIELD_BG; }}
             >
-              Save LinkedIn &amp; skip the resume
+              Save LinkedIn only
             </button>
           )}
         </OnboardingActions>
@@ -611,7 +611,7 @@ export function ScreenLinkedIn({
           textWrap: "pretty",
         }}
       >
-        I&apos;ll use it to round out the picture — especially the stuff that might not be on your resume.
+        I&apos;ll use it to fill in gaps — especially what might not be on your resume.
       </p>
 
       {/* Input */}
@@ -795,7 +795,7 @@ export function OnboardingProcessingBanner({
       }}
     >
       <span style={{ fontSize: 22, lineHeight: 1 }} aria-hidden="true">
-        ✨
+        📄
       </span>
       <p
         style={{
@@ -807,8 +807,8 @@ export function OnboardingProcessingBanner({
           lineHeight: 1.55,
         }}
       >
-        Hey! Kimchi&apos;s doing a little magic in the background
-        {parts.length ? ` (${parts.join(" + ")})` : ""}. Keep answering the questions below — we&apos;ve got you.
+        Still working in the background
+        {parts.length ? ` (${parts.join(" + ")})` : ""}. Keep going with the questions below.
       </p>
     </div>
   );
@@ -828,9 +828,9 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <OnboardingEyebrowIntro
-        eyebrow="Kimchi's take"
-        title="Okay — this is who you are."
-        body="Here's what jumped out from your resume. Sound right?"
+        eyebrow="Your read"
+        title="Here's what stood out."
+        body="From your resume — does this sound right?"
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s", minHeight: loading || pending ? 280 : undefined }}>
@@ -841,14 +841,14 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
               <KimchiProcessLoader
                 preset="onboardingReadback"
                 variant="inline"
-                hint="Your resume is saved — we'll finish your read on your profile. Feel free to keep going."
+                hint="Your resume is saved. We'll finish your read on your profile — keep going for now."
               />
               <button
                 type="button"
                 onClick={onSkip}
                 style={{ ...PRIMARY_CTA, width: "100%", marginTop: 16 }}
               >
-                Sounds good — continue →
+                Continue →
               </button>
             </>
           )}
@@ -856,7 +856,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
           {!loading && skipped && !data && (
             <>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.6, marginBottom: 16, marginTop: 0 }}>
-                No worries — upload a resume anytime from Profile → Resumes for Kimchi&apos;s full read. For now, let&apos;s pick your target roles.
+                Upload a resume anytime from Profile → Resumes for a full read. For now, pick your target roles.
               </p>
               <button
                 type="button"
@@ -952,7 +952,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
                     marginTop: 0,
                   }}
                 >
-                  You&apos;d be great as
+                  Roles that fit
                 </p>
                 <div className="flex flex-col gap-[11px]">
                   {data.targetRoles.map((r) => (
@@ -1043,7 +1043,7 @@ export function ScreenReadBack({ data, status, onConfirm, onRefine, onSkip }: Re
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              Yep, that&apos;s me →
+              That&apos;s right →
             </button>
             <button
               className="onboarding-cta"
@@ -1735,8 +1735,8 @@ export function ScreenTargetRoles({
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
-        title="What roles are you chasing?"
-        body="Pick up to 3 titles — we'll use these to hunt matches and score how well you fit."
+        title="What roles are you targeting?"
+        body="Pick up to 3 titles. We use these to find matches and score how well you fit."
       />
 
       <div
@@ -2113,19 +2113,19 @@ export function ScreenTargetCompanies({
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
-        title="Any dream companies?"
-        body={`Add up to ${ONBOARDING_MAX_TARGET_COMPANIES} employers you're excited about. We'll watch their boards so you don't have to refresh every day.`}
+        title="Any companies on your list?"
+        body={`Add up to ${ONBOARDING_MAX_TARGET_COMPANIES} employers you want to watch. We'll scan their boards for roles that match your titles.`}
       />
 
       {targetRoles.length > 0 && (
         <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.15s", padding: "16px 18px" }}>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: ONBOARDING_TEXT_SECONDARY, lineHeight: 1.55, margin: 0 }}>
-            When we spot a match for{" "}
+            When we find a match for{" "}
             <span style={{ fontWeight: 600, color: ONBOARDING_TEXT }}>
               {rolesPreview}
               {targetRoles.length > 2 ? ` +${targetRoles.length - 2} more` : ""}
             </span>
-            , you&apos;ll see it here — no daily job-board refresh required.
+            , you&apos;ll see it here — no daily job-board checks needed.
           </p>
         </div>
       )}
@@ -2272,7 +2272,7 @@ function AboutYouActions({ onContinue, onSkip, nudge }: { onContinue: () => void
         Continue →
       </button>
       <button type="button" onClick={onSkip} style={{ ...ABOUT_YOU_SKIP_LINK, color: ONBOARDING_TEXT_SECONDARY }}>
-        Skip for now — you can fill this in on your profile later
+        Skip for now — fill this in on your profile later
       </button>
     </div>
   );
@@ -2298,8 +2298,8 @@ export function ScreenAboutYouSearch({
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
-        title="Tell us a little about your search."
-        body="Two quick taps while Kimchi finishes up in the background — helps us skip the bad fits."
+        title="A few questions about your search."
+        body="Two quick picks while we finish reading your resume — helps us skip poor fits."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
@@ -2312,7 +2312,7 @@ export function ScreenAboutYouSearch({
       </div>
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
-        {aboutYouSectionLabel("When do you want to make a move?", "Helps us prioritize urgent openings over long-shots.")}
+        {aboutYouSectionLabel("When do you want to make a move?", "Helps us prioritize roles with real timelines.")}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {JOB_TIMELINES.map(({ value, label }) => {
             const selected = jobTimeline === value;
@@ -2402,8 +2402,8 @@ export function ScreenAboutYouPreferences({
   return (
     <div className="flex flex-col gap-5 onboarding-screen-gap">
       <AboutYouIntro
-        title="A few preferences (all optional)."
-        body="Totally optional — just helps us filter out roles that aren't your vibe."
+        title="Preferences (all optional)"
+        body="Salary, priorities, timeline — helps us filter roles that won't work for you."
       />
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
@@ -2426,7 +2426,7 @@ export function ScreenAboutYouPreferences({
       </div>
 
       <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
-        {aboutYouSectionLabel("What matters most to you?", "We'll steer away from listings that clash with how you want to work.", true)}
+        {aboutYouSectionLabel("What matters most to you?", "We filter out listings that clash with how you want to work.", true)}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {PRIORITIES.map((p) => aboutYouChipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
         </div>
@@ -2448,7 +2448,7 @@ export function ScreenAboutYouPreferences({
       <AboutYouActions
         onContinue={onContinue}
         onSkip={onSkip}
-        nudge={showFilterNudge ? "Timeline + target salary help us filter out bad-fit roles — totally optional, but a quick pick goes a long way." : undefined}
+        nudge={showFilterNudge ? "Timeline and target salary help us filter out bad-fit roles. Optional, but a quick pick goes a long way." : undefined}
       />
     </div>
   );
@@ -2612,12 +2612,12 @@ export function ScreenTransition({
           You&apos;re set up
         </p>
         <h2 style={{ ...DISPLAY_H2, lineHeight: 1.02, marginBottom: 12 }}>
-          Let&apos;s get you
+          Try your first
           <br />
-          interviews.
+          job match.
         </h2>
         <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(1rem, 2.5vw, 1.125rem)", maxWidth: 440, margin: 0, color: ONBOARDING_TEXT_SECONDARY }}>
-          Paste one job listing URL. Kimchi reads the posting and scores how well your resume fits.
+          Paste a job listing URL. We&apos;ll read the posting and score how well your resume fits.
         </p>
       </div>
 
@@ -2751,7 +2751,7 @@ export function ScreenTransition({
           >
             {loadingPhase === "match"
               ? "Scoring your fit against this role…"
-              : "Kimchi is reading the listing…"}
+              : "Reading the listing…"}
           </p>
         )}
 
@@ -3000,10 +3000,10 @@ export function ScreenSetup({ steps }: { steps: SetupStep[] }) {
   return (
     <div className="anim-fade-up onboarding-screen-gap" style={ONBOARDING_CARD}>
       <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 12, marginTop: 0 }}>
-        Almost there…
+        Setting up your workspace
       </h2>
       <p style={{ ...ONBOARDING_BODY, margin: "0 0 24px", color: ONBOARDING_TEXT_SECONDARY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)" }}>
-        Hang tight for a sec — Kimchi&apos;s getting your workspace ready. Don&apos;t close this tab just yet.
+        This usually takes a minute. Keep this tab open.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {steps.map((step) => {

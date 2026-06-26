@@ -85,10 +85,10 @@ function saveTargetRoles(roles: string[]): Promise<void> {
 
 const INITIAL_SETUP_STEPS: SetupStep[] = [
   { id: "profile", label: "Saving your answers", status: "pending" },
-  { id: "linkedin", label: "Pulling in your LinkedIn", status: "pending" },
-  { id: "resume", label: "Building your resume profile", status: "pending" },
-  { id: "analysis", label: "Running a quick resume review", status: "pending" },
-  { id: "companies", label: "Scanning your dream companies", status: "pending" },
+  { id: "linkedin", label: "Importing your LinkedIn", status: "pending" },
+  { id: "resume", label: "Setting up your resume", status: "pending" },
+  { id: "analysis", label: "Reviewing your resume", status: "pending" },
+  { id: "companies", label: "Scanning your target companies", status: "pending" },
 ];
 
 export default function OnboardingPage() {
