@@ -1463,7 +1463,7 @@ function DreamRoleTab({
       <div style={{ marginTop: 8, paddingTop: 28, borderTop: `1px solid ${border.line}` }}>
         <ScoutLabel>Deprioritized roles</ScoutLabel>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 16px", lineHeight: 1.7 }}>
-          Title patterns that should sort lower — sales AE, product manager, etc. Jobs still show up; they rank below your target roles.
+          Title patterns that should sort lower — sales AE, product manager/management, etc. Matching includes related wording (e.g. &ldquo;Product Manager&rdquo; also deprioritizes &ldquo;Product Management&rdquo;).
         </p>
         {deprioritizedList.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>

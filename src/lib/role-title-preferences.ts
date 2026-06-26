@@ -17,7 +17,37 @@ export type RoleTitlePreferenceAdjustment = {
 export const TARGET_ROLE_TITLE_BOOST = 15;
 
 /** Penalty when job title matches a deprioritized pattern — sorts lower, still visible. */
-export const DEPRIORITIZED_ROLE_TITLE_PENALTY = 22;
+export const DEPRIORITIZED_ROLE_TITLE_PENALTY = 28;
+
+const TITLE_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "for",
+  "in",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "with",
+]);
+
+/** Related title words — e.g. Product Manager deprioritizes Product Management. */
+const TOKEN_EQUIVALENTS: Record<string, string[]> = {
+  manager: ["manager", "management", "mgr"],
+  management: ["manager", "management", "mgr"],
+  executive: ["executive", "exec"],
+  representative: ["representative", "rep"],
+  developer: ["developer", "development", "dev"],
+  development: ["developer", "development", "dev"],
+  owner: ["owner", "ownership"],
+  ownership: ["owner", "ownership"],
+  engineer: ["engineer", "engineering"],
+  engineering: ["engineer", "engineering"],
+  sales: ["sales", "selling"],
+};
 
 function normalizeToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -27,7 +57,39 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Match job titles against user-entered role/pattern strings (substring or word boundary for short tokens). */
+function splitTitleTokens(value: string): string[] {
+  return normalizeToken(value)
+    .replace(/[^a-z0-9+#\s-]/g, " ")
+    .split(/\s+/)
+    .map((t) => t.replace(/^-+|-+$/g, ""))
+    .filter((t) => t.length >= 2 && !TITLE_STOP_WORDS.has(t));
+}
+
+function expandToken(token: string): string[] {
+  const lower = token.toLowerCase();
+  const group = TOKEN_EQUIVALENTS[lower];
+  if (group) return [...new Set([lower, ...group])];
+  return [lower];
+}
+
+function titleTokenSet(jobTitle: string): Set<string> {
+  const expanded = splitTitleTokens(jobTitle).flatMap(expandToken);
+  return new Set(expanded);
+}
+
+/** All significant pattern tokens must appear in the title (with word-family equivalents). */
+function patternTokensMatchTitle(pattern: string, jobTitle: string): boolean {
+  const patternParts = splitTitleTokens(pattern);
+  if (!patternParts.length) return false;
+
+  const titleTokens = titleTokenSet(jobTitle);
+  return patternParts.every((part) => expandToken(part).some((variant) => titleTokens.has(variant)));
+}
+
+/**
+ * Match job titles against user-entered role/pattern strings.
+ * Uses substring first, then token families (manager ↔ management, etc.).
+ */
 export function jobTitleMatchesRolePattern(jobTitle: string, pattern: string): boolean {
   const haystack = normalizeToken(jobTitle);
   const needle = normalizeToken(pattern);
@@ -36,10 +98,16 @@ export function jobTitleMatchesRolePattern(jobTitle: string, pattern: string): b
   if (haystack.includes(needle)) return true;
 
   if (needle.length <= 4) {
-    return new RegExp(`\\b${escapeRegExp(needle)}\\b`, "i").test(jobTitle);
+    if (new RegExp(`\\b${escapeRegExp(needle)}\\b`, "i").test(jobTitle)) return true;
   }
 
-  return false;
+  if (splitTitleTokens(pattern).length >= 2) {
+    return patternTokensMatchTitle(pattern, jobTitle);
+  }
+
+  const single = splitTitleTokens(pattern)[0];
+  if (!single) return false;
+  return expandToken(single).some((variant) => titleTokenSet(jobTitle).has(variant));
 }
 
 export function adjustMatchScoreForRoleTitlePreferences(
@@ -97,7 +165,7 @@ export function roleTitlePreferenceReasons(adjustment: RoleTitlePreferenceAdjust
   }
   if (adjustment.deprioritizedMatch) {
     reasons.push(
-      `Sorted lower — matches a role you asked to deprioritize (${adjustment.deprioritizedMatch}).`,
+      `Sorted lower — title relates to your deprioritized pattern (${adjustment.deprioritizedMatch}).`,
     );
   }
   return reasons;
@@ -108,6 +176,7 @@ export const DEPRIORITIZED_ROLE_SUGGESTIONS: string[] = [
   "Account Executive",
   "Sales Development Representative",
   "Product Manager",
+  "Product Management",
   "Product Owner",
   "Partnerships Manager",
   "Business Development Representative",
