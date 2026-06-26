@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { BellIcon } from "./workspace-icons";
 import { NOTIFICATIONS } from "./workspace-data";
@@ -96,6 +96,81 @@ function initials(name: string | null, email: string) {
       : parts[0].slice(0, 2).toUpperCase();
   }
   return email.slice(0, 2).toUpperCase();
+}
+
+function NavDropdownMenuItem({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const highlighted = active || hover;
+
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        padding: "10px 12px",
+        border: "none",
+        borderRadius: "var(--scout-radius)",
+        background: highlighted ? "rgba(26,58,47,0.07)" : "transparent",
+        color: highlighted ? color.forest : color.stone,
+        fontFamily: fontSans,
+        fontSize: T.bodySm,
+        fontWeight: active ? 600 : hover ? 600 : 500,
+        cursor: "pointer",
+        transition: "background 0.12s ease, color 0.12s ease",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function NotificationMenuItem({
+  unread,
+  onClick,
+  children,
+}: {
+  unread: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: "100%",
+        textAlign: "left",
+        padding: "12px 14px",
+        background: hover ? "rgba(26,58,47,0.06)" : unread ? "rgba(26,58,47,0.03)" : "transparent",
+        border: "none",
+        borderRadius: "var(--scout-radius)",
+        cursor: "pointer",
+        display: "flex",
+        gap: 10,
+        transition: "background 0.12s ease",
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 type Props = {
@@ -338,47 +413,39 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                     {dropdownOpen && (
                       <div
                         role="menu"
+                        onMouseEnter={() => {
+                          if (!isMobile) openNavDropdown(id);
+                        }}
+                        onMouseLeave={() => {
+                          if (!isMobile) scheduleCloseNavDropdown();
+                        }}
                         style={{
                           position: "absolute",
                           top: "100%",
                           left: 0,
                           minWidth: 200,
+                          marginTop: 4,
+                          padding: 4,
                           background: surface.card,
                           border: border.lineStrong,
-                          boxShadow: "0 8px 32px rgba(17,17,17,0.1)",
+                          borderRadius: "var(--scout-radius)",
+                          boxShadow: "var(--scout-shadow-card-strong)",
                           zIndex: 130,
                           animation: "fadeIn 0.15s ease both",
                         }}
                       >
-                        {children!.map(({ label: childLabel, path: childPath, match: childMatch }, idx) => {
+                        {children!.map(({ label: childLabel, path: childPath, match: childMatch }) => {
                           const childActive = childMatch(pathname);
-                          const isLast = idx === children!.length - 1;
                           return (
-                            <button
+                            <NavDropdownMenuItem
                               key={childPath}
-                              type="button"
-                              role="menuitem"
+                              label={childLabel}
+                              active={childActive}
                               onClick={() => {
                                 router.push(childPath);
                                 setNavDropdownOpen(null);
                               }}
-                              style={{
-                                display: "block",
-                                width: "100%",
-                                textAlign: "left",
-                                padding: "11px 16px",
-                                border: "none",
-                                borderBottom: isLast ? "none" : border.line,
-                                background: childActive ? "rgba(26,58,47,0.05)" : "transparent",
-                                color: childActive ? color.forest : color.stone,
-                                fontFamily: fontSans,
-                                fontSize: T.bodySm,
-                                fontWeight: childActive ? 600 : 500,
-                                cursor: "pointer",
-                              }}
-                            >
-                              {childLabel}
-                            </button>
+                            />
                           );
                         })}
                       </div>
@@ -636,7 +703,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                 </button>
               )}
             </div>
-            <div style={{ maxHeight: 360, overflowY: "auto" }}>
+            <div style={{ maxHeight: 360, overflowY: "auto", padding: "6px 8px 8px" }}>
               {NOTIFICATIONS.length === 0 ? (
                 <div style={{ padding: "36px 18px", textAlign: "center" }}>
                   <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5, margin: 0 }}>
@@ -648,21 +715,10 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                   const dotColor =
                     n.type === "role" ? "#4A8B6A" : n.type === "deadline" ? "#C4574A" : "#C4A86A";
                   return (
-                    <button
+                    <NotificationMenuItem
                       key={n.id}
-                      type="button"
+                      unread={n.unread}
                       onClick={() => onNavigateNotif(n.section)}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        padding: "12px 18px",
-                        background: n.unread ? "rgba(26,58,47,0.03)" : "transparent",
-                        border: "none",
-                        borderBottom: border.line,
-                        cursor: "pointer",
-                        display: "flex",
-                        gap: 10,
-                      }}
                     >
                       <div
                         style={{
@@ -699,7 +755,7 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
                           {n.time}
                         </span>
                       </div>
-                    </button>
+                    </NotificationMenuItem>
                   );
                 })
               )}
