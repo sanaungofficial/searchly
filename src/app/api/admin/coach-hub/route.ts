@@ -66,6 +66,12 @@ export async function GET(req: NextRequest) {
       schedulerOpenHourStart: true,
       schedulerOpenHourEnd: true,
       schedulerOpenDays: true,
+      schedulerWeeklyHours: true,
+      schedulerBufferMinutes: true,
+      schedulerMinBookingNoticeMinutes: true,
+      schedulerCapacityHoursPerWeek: true,
+      schedulerAvailabilityNotes: true,
+      schedulerBlackoutDates: true,
     },
   });
 

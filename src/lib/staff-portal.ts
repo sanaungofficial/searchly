@@ -7,6 +7,7 @@ export function isStaffPortalRole(role: string | null | undefined): boolean {
 export const STAFF_DASHBOARD_NAV = [
   { id: "home", label: "Overview", path: "/dashboard" },
   { id: "expert-profile", label: "Expert Profile", path: "/dashboard/expert-profile" },
+  { id: "availability", label: "Availability", path: "/dashboard/availability" },
   { id: "hub", label: "Hub", path: "/dashboard/hub" },
   { id: "clients", label: "Clients", path: "/dashboard/clients" },
   { id: "bookings", label: "Bookings", path: "/dashboard/bookings" },

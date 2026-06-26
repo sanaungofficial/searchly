@@ -9,11 +9,6 @@ import { ScoutBox } from "@/components/scout/scout-box";
 import type { HubBooking, HubCommunication, CoachClientSummary, CoachHubStats } from "@/lib/coach-hub";
 import { bookingStatusColor, formatBookingWhen } from "@/lib/booking-display";
 import { emailDomainLooksMicrosoft } from "@/lib/nylas";
-import {
-  CoachSchedulerSettingsForm,
-  defaultCoachSchedulerSettings,
-  type CoachSchedulerSettingsValues,
-} from "@/components/scout/coach-scheduler-settings-form";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
 type CoachInfo = {
@@ -306,46 +301,22 @@ export function CoachHubPanel({ apiPath, mode, coachId, backHref, showAdminLinks
                   </button>
                 )}
                 {coach.calendarConnected && coach.schedulerReady && coachId && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: border.line }}>
-                    <p style={{ margin: "0 0 10px", fontFamily: fontMono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: color.muted }}>
-                      Booking availability
-                    </p>
-                    <CoachSchedulerSettingsForm
-                      key={`${coachId}-${coach.schedulerTimezone ?? ""}-${coach.schedulerOpenHourStart ?? ""}`}
-                      compact
-                      values={defaultCoachSchedulerSettings({
-                        schedulerTimezone: coach.schedulerTimezone,
-                        schedulerOpenHourStart: coach.schedulerOpenHourStart,
-                        schedulerOpenHourEnd: coach.schedulerOpenHourEnd,
-                        schedulerOpenDays: coach.schedulerOpenDays,
-                        schedulerDurationMinutes: coach.schedulerDurationMinutes,
-                      })}
-                      onSave={async (values: CoachSchedulerSettingsValues) => {
-                        const res = await fetch(`/api/admin/coaches/${coachId}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify(values),
-                        });
-                        const payload = await res.json();
-                        if (!res.ok) throw new Error(payload.error ?? "Could not save");
-                        setData((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                coach: {
-                                  ...prev.coach,
-                                  schedulerTimezone: payload.schedulerTimezone,
-                                  schedulerOpenHourStart: payload.schedulerOpenHourStart,
-                                  schedulerOpenHourEnd: payload.schedulerOpenHourEnd,
-                                  schedulerOpenDays: payload.schedulerOpenDays,
-                                  schedulerDurationMinutes: payload.schedulerDurationMinutes,
-                                },
-                              }
-                            : prev,
-                        );
-                      }}
-                    />
-                  </div>
+                  <Link
+                    href={`/admin/coaches/${coachId}/availability`}
+                    style={{
+                      display: "block",
+                      marginTop: 12,
+                      paddingTop: 12,
+                      borderTop: border.line,
+                      fontFamily: fontSans,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: color.forest,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Edit availability →
+                  </Link>
                 )}
               </div>
             </div>

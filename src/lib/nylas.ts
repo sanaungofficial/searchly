@@ -1,4 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import type { SchedulerDayHours } from "@/lib/coach-scheduler-settings";
+import { buildNylasOpenHoursBlocks } from "@/lib/coach-scheduler-settings";
 import type { NextRequest, NextResponse } from "next/server";
 import { isStaffPortalRole } from "@/lib/staff-portal";
 
@@ -295,15 +297,33 @@ export type CoachSchedulerParams = {
   openHourStart?: string;
   openHourEnd?: string;
   openDays?: number[];
+  weeklyHours?: SchedulerDayHours[];
+  bufferMinutes?: number;
+  minBookingNoticeMinutes?: number;
+  availabilityNotes?: string | null;
+  blackoutDates?: string[];
 };
 
 function schedulerConfigBody(params: CoachSchedulerParams) {
   const appBase = nylasOAuthAppUrl();
   const duration = params.durationMinutes ?? 30;
   const timezone = params.timezone ?? "America/New_York";
-  const openStart = params.openHourStart ?? "09:00";
-  const openEnd = params.openHourEnd ?? "17:00";
-  const openDays = params.openDays ?? [1, 2, 3, 4, 5];
+  const weekly =
+    params.weeklyHours ??
+    (params.openDays
+      ? [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+          day,
+          enabled: (params.openDays ?? []).includes(day),
+          start: params.openHourStart ?? "09:00",
+          end: params.openHourEnd ?? "17:00",
+        }))
+      : []);
+  const blackoutDates = params.blackoutDates ?? [];
+  const openHoursBlocks = buildNylasOpenHoursBlocks(weekly, timezone, blackoutDates);
+  const bufferMinutes = params.bufferMinutes ?? 0;
+  const descriptionParts = ["Book a 1:1 coaching session via Kimchi."];
+  if (params.availabilityNotes) descriptionParts.push(params.availabilityNotes);
+
   return {
     requires_session_auth: false,
     slug: params.slug,
@@ -320,24 +340,22 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
     availability: {
       duration_minutes: duration,
       availability_rules: {
-        default_open_hours: [
-          {
-            days: openDays,
-            start: openStart,
-            end: openEnd,
-            timezone,
-          },
-        ],
+        default_open_hours: openHoursBlocks,
+        ...(bufferMinutes > 0
+          ? { buffer: { before: 0, after: bufferMinutes } }
+          : {}),
       },
     },
     event_booking: {
       title: `Coaching session with ${params.coachName}`,
-      description: "Book a 1:1 coaching session via Kimchi.",
+      description: descriptionParts.join("\n\n"),
       timezone,
     },
     scheduler: {
       rescheduling_url: `${appBase}/coaching/reschedule/:booking_ref`,
       cancellation_url: `${appBase}/coaching/cancel/:booking_ref`,
+      min_booking_notice: params.minBookingNoticeMinutes ?? 1440,
+      available_days_in_future: 60,
     },
   };
 }
@@ -386,6 +404,11 @@ export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & 
       openHourStart: params.openHourStart,
       openHourEnd: params.openHourEnd,
       openDays: params.openDays,
+      weeklyHours: params.weeklyHours,
+      bufferMinutes: params.bufferMinutes,
+      minBookingNoticeMinutes: params.minBookingNoticeMinutes,
+      availabilityNotes: params.availabilityNotes,
+      blackoutDates: params.blackoutDates,
     });
     return { configId: params.configId, created: false };
   }
@@ -400,6 +423,11 @@ export async function ensureCoachSchedulerConfig(params: CoachSchedulerParams & 
     openHourStart: params.openHourStart,
     openHourEnd: params.openHourEnd,
     openDays: params.openDays,
+    weeklyHours: params.weeklyHours,
+    bufferMinutes: params.bufferMinutes,
+    minBookingNoticeMinutes: params.minBookingNoticeMinutes,
+    availabilityNotes: params.availabilityNotes,
+    blackoutDates: params.blackoutDates,
   });
   return { ...created, created: true };
 }

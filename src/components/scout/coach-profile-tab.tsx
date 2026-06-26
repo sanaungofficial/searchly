@@ -1,13 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
-import {
-  CoachSchedulerSettingsForm,
-  defaultCoachSchedulerSettings,
-  type CoachSchedulerSettingsValues,
-} from "@/components/scout/coach-scheduler-settings-form";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
 type CoachProfile = {
@@ -492,26 +488,21 @@ export function CoachProfileTab({
             <p style={{ fontFamily: fontSans, fontSize: 14, color: "#2d7a50", margin: "0 0 12px" }}>
               Calendar connected — in-app booking is enabled.
             </p>
-            <CoachSchedulerSettingsForm
-              values={defaultCoachSchedulerSettings({
-                schedulerTimezone: form.schedulerTimezone,
-                schedulerOpenHourStart: form.schedulerOpenHourStart,
-                schedulerOpenHourEnd: form.schedulerOpenHourEnd,
-                schedulerOpenDays: form.schedulerOpenDays,
-                schedulerDurationMinutes: form.schedulerDurationMinutes,
-              })}
-              onSave={async (values: CoachSchedulerSettingsValues) => {
-                const r = await fetch("/api/coach/profile", {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(values),
-                });
-                const updated = await r.json();
-                if (!r.ok) throw new Error(updated.error ?? "Could not save availability");
-                setProfile(updated);
-                setForm(updated);
+            <Link
+              href="/dashboard/availability"
+              style={{
+                display: "inline-block",
+                padding: "10px 18px",
+                background: color.forest,
+                color: color.gold,
+                fontFamily: fontSans,
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: "none",
               }}
-            />
+            >
+              Edit availability
+            </Link>
           </div>
         ) : calendarConnected ? (
           <div style={{ marginBottom: 12 }}>
@@ -543,7 +534,7 @@ export function CoachProfileTab({
         ) : (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <a
-              href="/api/nylas/connect?provider=google"
+              href="/api/nylas/connect?provider=google&returnPath=%2Fdashboard%2Favailability"
               style={{
                 padding: "10px 18px",
                 background: color.forest,
@@ -557,7 +548,7 @@ export function CoachProfileTab({
               Connect Google Calendar
             </a>
             <a
-              href="/api/nylas/connect?provider=microsoft"
+              href="/api/nylas/connect?provider=microsoft&returnPath=%2Fdashboard%2Favailability"
               style={{
                 padding: "10px 18px",
                 border: "1px solid rgba(26,58,47,0.2)",

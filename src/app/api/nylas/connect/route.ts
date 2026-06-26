@@ -69,7 +69,14 @@ export async function GET(req: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const provider = req.nextUrl.searchParams.get("provider") === "microsoft" ? "microsoft" : "google";
-  const oauthPayload = { kind: "coach" as const, coachProfileId: ctx.profile.id, ts: Date.now(), returnAppUrl: appUrl };
+  const returnPath = req.nextUrl.searchParams.get("returnPath")?.trim();
+  const oauthPayload = {
+    kind: "coach" as const,
+    coachProfileId: ctx.profile.id,
+    ts: Date.now(),
+    returnAppUrl: appUrl,
+    ...(returnPath?.startsWith("/") ? { returnPath } : {}),
+  };
   const state = signNylasOAuthState(oauthPayload);
 
   try {

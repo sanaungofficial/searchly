@@ -255,6 +255,12 @@ model CoachProfile {
   schedulerOpenHourStart   String? @default("09:00")
   schedulerOpenHourEnd     String? @default("17:00")
   schedulerOpenDays        Int[]   @default([1, 2, 3, 4, 5])
+  schedulerWeeklyHours       Json?
+  schedulerBufferMinutes     Int     @default(0)
+  schedulerMinBookingNoticeMinutes Int @default(1440)
+  schedulerCapacityHoursPerWeek Int?
+  schedulerAvailabilityNotes String?
+  schedulerBlackoutDates     Json?
   clientSpecializations String[] @default([])
   experienceLevel       String?
   clientTier            String?

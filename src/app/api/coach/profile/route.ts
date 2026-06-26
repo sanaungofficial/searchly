@@ -69,6 +69,12 @@ function profilePatchData(body: Record<string, unknown>) {
   if (body.hourlyRate !== undefined) d.hourlyRate = body.hourlyRate ? Number(body.hourlyRate) : null;
   if (body.category !== undefined) d.category = (body.category as string) || null;
   if (body.calLink !== undefined) d.calLink = (body.calLink as string) || null;
+  if (body.status !== undefined) {
+    const s = body.status as CoachStatus;
+    if (s === CoachStatus.ACTIVE || s === CoachStatus.INACTIVE || s === CoachStatus.PENDING) {
+      d.status = s;
+    }
+  }
   Object.assign(d, parseSchedulerAvailabilityPatch(body));
   if (body.clientSpecializations !== undefined) d.clientSpecializations = body.clientSpecializations;
   if (body.experienceLevel !== undefined) d.experienceLevel = (body.experienceLevel as string) || null;

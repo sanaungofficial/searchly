@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { coachProfileSlug } from "@/lib/coach-slug";
-import {
-  schedulerAvailabilityFromProfile,
-  type CoachSchedulerAvailabilitySettings,
-} from "@/lib/coach-scheduler-settings";
+import { schedulerAvailabilityFromProfile } from "@/lib/coach-scheduler-settings";
 import {
   ensureCoachSchedulerConfig,
   isNylasConfigured,
@@ -11,6 +8,27 @@ import {
   updateCoachSchedulerConfig,
   type CoachSchedulerParams,
 } from "@/lib/nylas";
+
+const schedulerProfileSelect = {
+  id: true,
+  displayName: true,
+  email: true,
+  slug: true,
+  nylasGrantId: true,
+  nylasSchedulerConfigId: true,
+  nylasSchedulerSlug: true,
+  schedulerDurationMinutes: true,
+  schedulerTimezone: true,
+  schedulerOpenHourStart: true,
+  schedulerOpenHourEnd: true,
+  schedulerOpenDays: true,
+  schedulerWeeklyHours: true,
+  schedulerBufferMinutes: true,
+  schedulerMinBookingNoticeMinutes: true,
+  schedulerCapacityHoursPerWeek: true,
+  schedulerAvailabilityNotes: true,
+  schedulerBlackoutDates: true,
+} as const;
 
 type CoachSchedulerProfile = {
   id: string;
@@ -25,12 +43,18 @@ type CoachSchedulerProfile = {
   schedulerOpenHourEnd?: string | null;
   schedulerOpenDays?: number[] | null;
   schedulerDurationMinutes?: number | null;
+  schedulerWeeklyHours?: unknown;
+  schedulerBufferMinutes?: number | null;
+  schedulerMinBookingNoticeMinutes?: number | null;
+  schedulerCapacityHoursPerWeek?: number | null;
+  schedulerAvailabilityNotes?: string | null;
+  schedulerBlackoutDates?: unknown;
 };
 
-function schedulerParamsFromProfile(
+function schedulerParamsFromSettings(
   profile: CoachSchedulerProfile,
-  settings: CoachSchedulerAvailabilitySettings,
   schedulerSlug: string,
+  settings: ReturnType<typeof schedulerAvailabilityFromProfile>,
 ): CoachSchedulerParams {
   return {
     grantId: profile.nylasGrantId!,
@@ -42,6 +66,11 @@ function schedulerParamsFromProfile(
     openHourStart: settings.openHourStart,
     openHourEnd: settings.openHourEnd,
     openDays: settings.openDays,
+    weeklyHours: settings.weeklyHours,
+    bufferMinutes: settings.bufferMinutes,
+    minBookingNoticeMinutes: settings.minBookingNoticeMinutes,
+    availabilityNotes: settings.availabilityNotes,
+    blackoutDates: settings.blackoutDates,
   };
 }
 
@@ -50,20 +79,7 @@ export async function syncCoachSchedulerFromProfile(profileId: string) {
 
   const profile = await prisma.coachProfile.findUnique({
     where: { id: profileId },
-    select: {
-      id: true,
-      displayName: true,
-      email: true,
-      slug: true,
-      nylasGrantId: true,
-      nylasSchedulerConfigId: true,
-      nylasSchedulerSlug: true,
-      schedulerDurationMinutes: true,
-      schedulerTimezone: true,
-      schedulerOpenHourStart: true,
-      schedulerOpenHourEnd: true,
-      schedulerOpenDays: true,
-    },
+    select: schedulerProfileSelect,
   });
 
   if (!profile?.nylasGrantId) return null;
@@ -73,16 +89,8 @@ export async function syncCoachSchedulerFromProfile(profileId: string) {
   const settings = schedulerAvailabilityFromProfile(profile);
 
   const result = await ensureCoachSchedulerConfig({
-    grantId: profile.nylasGrantId,
     configId: profile.nylasSchedulerConfigId,
-    coachName: profile.displayName,
-    coachEmail: profile.email ?? "",
-    slug: schedulerSlug,
-    durationMinutes: settings.durationMinutes,
-    timezone: settings.timezone,
-    openHourStart: settings.openHourStart,
-    openHourEnd: settings.openHourEnd,
-    openDays: settings.openDays,
+    ...schedulerParamsFromSettings(profile, schedulerSlug, settings),
   });
 
   if (result.created || result.configId !== profile.nylasSchedulerConfigId) {
@@ -110,7 +118,7 @@ export async function prepareCoachSchedulerForAvailability(
   const settings = schedulerAvailabilityFromProfile(profile, { durationMinutes });
 
   await updateCoachSchedulerConfig({
-    ...schedulerParamsFromProfile(profile, settings, schedulerSlug),
+    ...schedulerParamsFromSettings(profile, schedulerSlug, settings),
     configId: profile.nylasSchedulerConfigId,
   });
 }
