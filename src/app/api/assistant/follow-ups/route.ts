@@ -37,6 +37,8 @@ export async function POST(request: Request) {
     profileGaps?: AssistantProfileGaps;
     strategySnippet?: string;
     pipelineSnippet?: string;
+    /** When true, run AI to suggest chips. Default is rule-based only (no credits). */
+    useAi?: boolean;
   };
 
   const userMessage = body.userMessage?.trim() ?? "";
@@ -73,6 +75,10 @@ export async function POST(request: Request) {
     threadContext,
     profileGaps,
   });
+
+  if (!body.useAi) {
+    return NextResponse.json({ chips: fallback });
+  }
 
   if (
     isFailedAssistantReply(assistantMessage) ||

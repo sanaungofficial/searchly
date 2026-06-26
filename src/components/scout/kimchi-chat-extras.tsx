@@ -69,6 +69,97 @@ export function KimchiTypingIndicator() {
   );
 }
 
+export function KimchiCopyButton({
+  text,
+  label = "Copy",
+  className,
+}: {
+  text: string;
+  label?: string;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const onCopy = async () => {
+    if (!text.trim()) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className={`kimchi-copy-btn${className ? ` ${className}` : ""}`}
+      onClick={() => void onCopy()}
+      aria-label={copied ? "Copied" : label}
+      title={copied ? "Copied!" : label}
+    >
+      {copied ? (
+        <span className="kimchi-copy-btn__check" aria-hidden="true">
+          ✓
+        </span>
+      ) : (
+        <svg
+          className="kimchi-copy-btn__icon"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.75" />
+          <path
+            d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          />
+        </svg>
+      )}
+      <KimchiCopyButtonStyles />
+    </button>
+  );
+}
+
+function KimchiCopyButtonStyles() {
+  return (
+    <style>{`
+      .kimchi-copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid rgba(26, 58, 47, 0.12);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        color: rgba(26, 58, 47, 0.55);
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+      }
+      .kimchi-copy-btn:hover {
+        color: #1A3A2F;
+        border-color: rgba(26, 58, 47, 0.22);
+        background: #fff;
+      }
+      .kimchi-copy-btn__check {
+        font-size: 13px;
+        font-weight: 700;
+        color: #2d9a6a;
+      }
+      .kimchi-copy-btn__icon {
+        display: block;
+      }
+    `}</style>
+  );
+}
+
 function KimchiTypingStyles() {
   return (
     <style>{`

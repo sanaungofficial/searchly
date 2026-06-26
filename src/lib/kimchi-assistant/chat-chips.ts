@@ -376,6 +376,18 @@ export function formatThreadForFollowUps(
     .join("\n\n");
 }
 
+export function formatThreadForCopy(
+  messages: Array<{ kind?: string; role?: string; content?: string }>,
+): string {
+  return messages
+    .filter((m) => (!m.kind || m.kind === "text") && m.content?.trim() && !isFailedAssistantReply(m.content))
+    .map((m) => {
+      const speaker = m.role === "user" ? "You" : "Kimchi";
+      return `${speaker}: ${m.content!.trim()}`;
+    })
+    .join("\n\n");
+}
+
 const ALLOWED_NAV_ROUTES = [
   "/profile/assets",
   "/profile/career-strategy",
