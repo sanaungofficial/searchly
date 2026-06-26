@@ -5,9 +5,12 @@ import {
 } from "@/lib/recommended-jobs-engine";
 import {
   recommendedCronUserLimit,
+  RECOMMENDED_DIGEST_EMAIL_MAX_JOBS,
+  recommendedDigestMinScore,
   utcSnapshotDate,
   type RecommendedJobSnapshotPayload,
 } from "@/lib/recommended-jobs-config";
+import { digestUnsubscribeUrl } from "@/lib/digest-unsubscribe";
 import { sendRecommendedJobsDigestEmail } from "@/lib/recommended-jobs-email";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 import { Prisma } from "@prisma/client";
@@ -20,6 +23,29 @@ export type RecommendedSnapshotCronSummary = {
   emailsSent: number;
   errors: string[];
 };
+
+function jobStableId(job: VectorMatchedJob): string {
+  return job.hirebaseId ?? job.url ?? `${job.companyName}:${job.title}`;
+}
+
+function sortDigestJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[] {
+  return [...jobs].sort((a, b) => {
+    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+    const tierA = a.rankTier ?? 3;
+    const tierB = b.rankTier ?? 3;
+    if (tierA !== tierB) return tierA - tierB;
+    if (Boolean(b.isTrackedCompany) !== Boolean(a.isTrackedCompany)) {
+      return b.isTrackedCompany ? 1 : -1;
+    }
+    return a.vectorRank - b.vectorRank;
+  });
+}
+
+function selectDigestJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[] {
+  const minScore = recommendedDigestMinScore();
+  const eligible = sortDigestJobs(jobs).filter((j) => j.matchScore >= minScore);
+  return eligible.slice(0, RECOMMENDED_DIGEST_EMAIL_MAX_JOBS);
+}
 
 function parseSnapshotJobs(raw: unknown): VectorMatchedJob[] {
   if (!Array.isArray(raw)) return [];
@@ -140,26 +166,32 @@ export async function runRecommendedJobsSnapshotCron(): Promise<RecommendedSnaps
 
       if (!settings.dailyEmailEnabled) continue;
 
+      const alreadySentToday =
+        settings.lastDigestSentAt?.toISOString().slice(0, 10) === snapshotDate;
+      if (alreadySentToday) continue;
+
       const previousIds = new Set(settings.lastDigestJobIds ?? []);
       const newJobs = result.jobs.filter((j) => {
-        const id = j.hirebaseId ?? j.url ?? `${j.companyName}:${j.title}`;
+        const id = jobStableId(j);
         return id && !previousIds.has(id);
       });
 
       if (!newJobs.length) continue;
 
+      const digestJobs = selectDigestJobs(newJobs);
+      if (!digestJobs.length) continue;
+
       const sent = await sendRecommendedJobsDigestEmail({
         email: user.email,
         name: user.name,
-        jobs: newJobs.slice(0, 5),
+        jobs: digestJobs,
         totalNew: newJobs.length,
+        unsubscribeUrl: digestUnsubscribeUrl(user.id),
       });
 
       if (sent) {
         summary.emailsSent += 1;
-        const allIds = result.jobs
-          .map((j) => j.hirebaseId ?? j.url ?? `${j.companyName}:${j.title}`)
-          .filter(Boolean) as string[];
+        const allIds = result.jobs.map((j) => jobStableId(j)).filter(Boolean) as string[];
         await prisma.userDigestSettings.update({
           where: { userId: user.id },
           data: {

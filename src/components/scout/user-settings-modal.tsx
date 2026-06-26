@@ -38,6 +38,9 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [referEarnOpen, setReferEarnOpen] = useState(false);
+  const [dailyEmailEnabled, setDailyEmailEnabled] = useState(true);
+  const [digestLoading, setDigestLoading] = useState(true);
+  const [digestSaving, setDigestSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isPro, isAdmin, status, currentPeriodEnd, credits, loading, startCheckout, openPortal } = useSubscription();
   const { showCredits, unlimitedAi } = useCredits();
@@ -45,6 +48,36 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/user/digest-settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && typeof data.dailyEmailEnabled === "boolean") {
+          setDailyEmailEnabled(data.dailyEmailEnabled);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setDigestLoading(false));
+  }, []);
+
+  async function toggleDailyEmail() {
+    const next = !dailyEmailEnabled;
+    setDigestSaving(true);
+    try {
+      const res = await fetch("/api/user/digest-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dailyEmailEnabled: next }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDailyEmailEnabled(Boolean(data.dailyEmailEnabled));
+      }
+    } finally {
+      setDigestSaving(false);
+    }
+  }
 
   const navItems: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     {
@@ -421,6 +454,58 @@ export function UserSettingsModal({ user, onClose, onSignOut, onAvatarChange }: 
             {tab === "security" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <Field label="Email" value={user.email} />
+                <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>
+                    Daily job match emails
+                  </p>
+                  <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px", lineHeight: 1.5 }}>
+                    Up to 3 matched roles per day with fit scores and why each role fits your profile.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={toggleDailyEmail}
+                    disabled={digestLoading || digestSaving}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 14px",
+                      border: "1px solid #EEE9E2",
+                      borderRadius: 0,
+                      background: dailyEmailEnabled ? "rgba(26,58,47,0.06)" : "transparent",
+                      cursor: digestLoading || digestSaving ? "not-allowed" : "pointer",
+                      opacity: digestLoading || digestSaving ? 0.6 : 1,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 36,
+                        height: 20,
+                        borderRadius: 10,
+                        background: dailyEmailEnabled ? "#1A3A2F" : "#D4CCC0",
+                        position: "relative",
+                        transition: "background 0.15s",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 2,
+                          left: dailyEmailEnabled ? 18 : 2,
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          background: "#FFFDF9",
+                          transition: "left 0.15s",
+                        }}
+                      />
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "#52493F" }}>
+                      {digestLoading ? "Loading…" : dailyEmailEnabled ? "On — send daily matches" : "Off"}
+                    </span>
+                  </button>
+                </div>
                 <div style={{ borderTop: "1px solid #EEE9E2", paddingTop: 20 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A", margin: "0 0 4px" }}>Password</p>
                   <p style={{ fontSize: 14, color: "#8A7F72", margin: "0 0 12px" }}>
