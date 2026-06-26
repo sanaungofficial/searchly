@@ -107,12 +107,12 @@ export async function POST(request: Request) {
   };
 
   if (useTools) {
-    return kimchiStreamTextWithTools({
+    return await kimchiStreamTextWithTools({
       ...streamParams,
       tools: buildKimchiMailTools(dbUser.id),
       maxSteps: 6,
     });
   }
 
-  return kimchiStreamText(streamParams);
+  return await kimchiStreamText(streamParams);
 }

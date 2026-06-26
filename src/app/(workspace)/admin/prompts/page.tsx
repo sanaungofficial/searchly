@@ -3,7 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { CompanyScanSettingsPanel } from "@/components/admin/company-scan-settings-panel";
+import { KimchiAiSettingsPanel } from "@/components/admin/kimchi-ai-settings-panel";
 import { COMPANY_SCAN_SETTINGS_KEY, COMPANY_SCAN_SETTINGS_SIDEBAR } from "@/lib/company-scan-config";
+import { KIMCHI_AI_SETTINGS_KEY, KIMCHI_AI_SETTINGS_SIDEBAR } from "@/lib/kimchi-ai-settings";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 
@@ -20,7 +22,7 @@ type PromptItem = {
 
 type SidebarItem =
   | { kind: "prompt"; key: string; label: string; category: string }
-  | { kind: "settings"; key: typeof COMPANY_SCAN_SETTINGS_KEY; label: string; category: string };
+  | { kind: "settings"; key: typeof COMPANY_SCAN_SETTINGS_KEY | typeof KIMCHI_AI_SETTINGS_KEY; label: string; category: string };
 
 function buildSidebarItems(prompts: PromptItem[]): SidebarItem[] {
   const items: SidebarItem[] = [];
@@ -35,6 +37,14 @@ function buildSidebarItems(prompts: PromptItem[]): SidebarItem[] {
           kind: "settings",
           key: COMPANY_SCAN_SETTINGS_KEY,
           label: COMPANY_SCAN_SETTINGS_SIDEBAR.label,
+          category: cat,
+        });
+      }
+      if (p.key === "CHAT_SYSTEM") {
+        items.push({
+          kind: "settings",
+          key: KIMCHI_AI_SETTINGS_KEY,
+          label: KIMCHI_AI_SETTINGS_SIDEBAR.label,
           category: cat,
         });
       }
@@ -53,7 +63,9 @@ export default function PromptsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
 
   const sidebarItems = useMemo(() => buildSidebarItems(prompts), [prompts]);
-  const isSettingsView = selected === COMPANY_SCAN_SETTINGS_KEY;
+  const isSettingsView =
+    selected === COMPANY_SCAN_SETTINGS_KEY || selected === KIMCHI_AI_SETTINGS_KEY;
+  const isKimchiAiSettingsView = selected === KIMCHI_AI_SETTINGS_KEY;
   const current = prompts.find((p) => p.key === selected) ?? null;
 
   useEffect(() => {
@@ -73,7 +85,7 @@ export default function PromptsPage() {
   }, []);
 
   function selectItem(key: string) {
-    if (key === COMPANY_SCAN_SETTINGS_KEY) {
+    if (key === COMPANY_SCAN_SETTINGS_KEY || key === KIMCHI_AI_SETTINGS_KEY) {
       setSelected(key);
       setSaveStatus("idle");
       return;
@@ -146,7 +158,7 @@ export default function PromptsPage() {
         </div>
         <ScoutDisplayTitle size={36} style={{ marginBottom: 8 }}>AI Prompts</ScoutDisplayTitle>
         <p style={{ fontSize: T.bodySm, color: color.muted, margin: 0 }}>
-          Edit AI prompts and company scan automation. Changes take effect immediately (60-second cache).
+          Edit AI prompts, model routing, and automation settings. Changes take effect within ~60 seconds.
         </p>
       </div>
 
@@ -188,21 +200,33 @@ export default function PromptsPage() {
 
         <ScoutBox style={{ flex: 1 }}>
           {isSettingsView ? (
-            <>
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 4 }}>
-                  {COMPANY_SCAN_SETTINGS_SIDEBAR.label}
+            isKimchiAiSettingsView ? (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 4 }}>
+                    {KIMCHI_AI_SETTINGS_SIDEBAR.label}
+                  </div>
+                  <div style={{ fontSize: T.caption, color: color.muted }}>{KIMCHI_AI_SETTINGS_SIDEBAR.description}</div>
                 </div>
-                <div style={{ fontSize: T.caption, color: color.muted }}>{COMPANY_SCAN_SETTINGS_SIDEBAR.description}</div>
-              </div>
-              <CompanyScanSettingsPanel />
-              <p style={{ marginTop: 20, fontSize: T.label, color: color.muted }}>
-                <Link href="/admin/company-scans" style={{ color: color.forest }}>
-                  View full scan dashboard →
-                </Link>{" "}
-                (intel catalog, stale status, manual run history)
-              </p>
-            </>
+                <KimchiAiSettingsPanel />
+              </>
+            ) : (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontFamily: fontSans, fontSize: T.body, fontWeight: 600, color: color.ink, marginBottom: 4 }}>
+                    {COMPANY_SCAN_SETTINGS_SIDEBAR.label}
+                  </div>
+                  <div style={{ fontSize: T.caption, color: color.muted }}>{COMPANY_SCAN_SETTINGS_SIDEBAR.description}</div>
+                </div>
+                <CompanyScanSettingsPanel />
+                <p style={{ marginTop: 20, fontSize: T.label, color: color.muted }}>
+                  <Link href="/admin/company-scans" style={{ color: color.forest }}>
+                    View full scan dashboard →
+                  </Link>{" "}
+                  (intel catalog, stale status, manual run history)
+                </p>
+              </>
+            )
           ) : current ? (
             <>
               <div style={{ marginBottom: 12 }}>
@@ -210,6 +234,15 @@ export default function PromptsPage() {
                   {current.label}
                 </div>
                 <div style={{ fontSize: T.caption, color: color.muted }}>{current.description}</div>
+                {current.key === "CHAT_SYSTEM" && (
+                  <button
+                    type="button"
+                    onClick={() => selectItem(KIMCHI_AI_SETTINGS_KEY)}
+                    style={{ marginTop: 10, padding: 0, border: "none", background: "none", fontFamily: fontSans, fontSize: T.caption, color: color.forest, cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Edit AI models & cost controls →
+                  </button>
+                )}
                 {current.key === "COMPANY_JOBS_SCAN" && (
                   <button
                     type="button"

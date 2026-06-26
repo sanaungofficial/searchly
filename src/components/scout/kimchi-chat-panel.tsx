@@ -105,6 +105,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [canAskAiSuggestions, setCanAskAiSuggestions] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [nextStepsVisible, setNextStepsVisible] = useState(false);
+  const [inboxScanning, setInboxScanning] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -226,17 +227,47 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   }, [pendingVoiceStart, agentSettings, sessionActive, toggleSession]);
 
   const loadContext = useCallback(() => {
-    void fetch("/api/assistant/mail/sync-on-open", { method: "POST" })
-      .catch(() => {})
-      .finally(() => {
-        void fetch(withClientScope(`/api/assistant/context${contextQuery(pageHint)}`), { cache: "no-store" })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data) setAssistantCtx(data as AssistantContextPayload);
-          })
-          .catch(() => {});
-      });
+    void (async () => {
+      try {
+        const r = await fetch(withClientScope(`/api/assistant/context${contextQuery(pageHint)}`), {
+          cache: "no-store",
+        });
+        if (!r.ok) return;
+        const data = (await r.json()) as AssistantContextPayload & { autoInboxTriageOnOpen?: boolean };
+        setAssistantCtx(data);
+        if (data.autoInboxTriageOnOpen) {
+          await fetch("/api/assistant/mail/sync-on-open", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          }).catch(() => {});
+          const refresh = await fetch(withClientScope(`/api/assistant/context${contextQuery(pageHint)}`), {
+            cache: "no-store",
+          });
+          if (refresh.ok) setAssistantCtx((await refresh.json()) as AssistantContextPayload);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
   }, [pageHint, withClientScope]);
+
+  const scanInboxWithAi = useCallback(async () => {
+    setInboxScanning(true);
+    try {
+      await fetch("/api/assistant/mail/sync-on-open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ triage: true }),
+      });
+      loadContext();
+      setSuggestionsVisible(true);
+    } catch {
+      /* ignore */
+    } finally {
+      setInboxScanning(false);
+    }
+  }, [loadContext]);
 
   useEffect(() => {
     loadContext();
@@ -742,7 +773,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         <div ref={messagesEndRef} />
       </div>
 
-      {!welcomeOnly && (contextSuggestionChips.length > 0 || canGenerateNextSteps) && (
+      {!welcomeOnly &&
+        (contextSuggestionChips.length > 0 ||
+          canGenerateNextSteps ||
+          assistantCtx?.inbox?.emailConnected) && (
         <div className="kimchi-suggestions-bar">
           {!suggestionsVisible && contextSuggestionChips.length > 0 && (
             <button
@@ -750,7 +784,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               className="kimchi-suggest-trigger"
               onClick={() => setSuggestionsVisible(true)}
             >
-              ✦ Show suggestions
+              {hasUserMessages ? "✦ Show suggestions again" : "✦ Show suggestions"}
             </button>
           )}
           {suggestionsVisible && contextSuggestionChips.length > 0 && (
@@ -760,6 +794,16 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
               layout="inline"
               emphasis="cta"
             />
+          )}
+          {assistantCtx?.inbox?.emailConnected && (
+            <button
+              type="button"
+              className="kimchi-suggest-trigger"
+              disabled={inboxScanning}
+              onClick={() => void scanInboxWithAi()}
+            >
+              {inboxScanning ? "Scanning inbox…" : "✦ Scan inbox for updates (uses credits)"}
+            </button>
           )}
           {canGenerateNextSteps && !nextStepsVisible && (
             <button

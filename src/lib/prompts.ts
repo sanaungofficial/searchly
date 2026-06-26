@@ -79,8 +79,9 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     variables: ["presetTitle", "allowedActionTypes", "allowedActionsJson", "transcript"],
   },
   KIMCHI_CHAT_FOLLOW_UPS: {
-    label: "Kimchi Keep Going Chips",
-    description: "Generates 3–5 follow-up chips (chat + navigate actions) after each chat reply.",
+    label: "Kimchi Smarter Suggestions",
+    description:
+      "Only used when the user clicks “Smarter suggestions (uses credits)” after a chat reply. Default chips are rule-based.",
     category: "Kimchi Assistant",
     variables: [
       "userMessage",
@@ -90,6 +91,13 @@ export const PROMPT_META: Record<string, PromptMeta> = {
       "strategySnippet",
       "pipelineSnippet",
     ],
+  },
+  KIMCHI_INBOX_TRIAGE: {
+    label: "Inbox email triage",
+    description:
+      "Classifies job-search emails when the user clicks Scan inbox or when auto-triage on chat open is enabled in AI settings.",
+    category: "Kimchi Assistant",
+    variables: ["pipeline", "from", "subject", "snippet"],
   },
   COVER_LETTER_FULL: {
     label: "Cover Letter (Full)",
@@ -466,6 +474,28 @@ Earlier in this thread:
 Latest exchange:
 User: {{userMessage}}
 Kimchi: {{assistantMessage}}`,
+
+  KIMCHI_INBOX_TRIAGE: `Triage this job-search email. Return ONLY valid JSON:
+{
+  "signal": "APPLICATION_RECEIVED" | "INTERVIEW_INVITE" | "REJECTION" | "OFFER" | "RECRUITER_OUTREACH" | "FOLLOW_UP" | "OTHER",
+  "suggestedStage": "SAVED" | "APPLYING" | "APPLIED" | "SCREENING" | "INTERVIEWING" | "OFFER" | "REJECTED" | "WITHDRAWN" | null,
+  "confidence": 0.0-1.0,
+  "company": string | null,
+  "role": string | null,
+  "title": string,
+  "snippet": string (max 200 chars),
+  "interviewAt": ISO8601 string | null,
+  "createJob": boolean
+}
+
+Newsletters/marketing → OTHER, low confidence.
+
+Pipeline:
+{{pipeline}}
+
+From: {{from}}
+Subject: {{subject}}
+Snippet: {{snippet}}`,
 
   COVER_LETTER_FULL: `${KIMCHI_VOICE}
 

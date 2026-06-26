@@ -92,7 +92,7 @@ export async function runResumeAssetParse(assetId: string, userId: string): Prom
     }
 
     if (tokensIn > 0) {
-      logAiUsage(userId, "RESUME_PARSE", kimchiModelId("parse"), tokensIn, tokensOut);
+      logAiUsage(userId, "RESUME_PARSE", await kimchiModelId("parse"), tokensIn, tokensOut);
     }
 
     const dbUser = await prisma.user.findUnique({ where: { id: userId } });

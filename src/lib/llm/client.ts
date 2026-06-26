@@ -1,10 +1,7 @@
 import { generateText, stepCountIs, streamText, type ModelMessage, type ToolSet } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import {
-  KIMCHI_DIRECT_MODELS,
-  KIMCHI_GATEWAY_MODELS,
-  type KimchiModelTier,
-} from "@/lib/llm/models";
+import { getKimchiAiSettings, getKimchiModelIdFromSettings } from "@/lib/kimchi-ai-settings";
+import { KIMCHI_DIRECT_MODELS, type KimchiModelTier } from "@/lib/llm/models";
 
 export function usesAiGateway(): boolean {
   return !!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
@@ -15,13 +12,16 @@ export function isKimchiAiConfigured(): boolean {
   return usesAiGateway() || !!process.env.ANTHROPIC_API_KEY;
 }
 
-export function kimchiModelId(tier: KimchiModelTier): string {
-  return usesAiGateway() ? KIMCHI_GATEWAY_MODELS[tier] : KIMCHI_DIRECT_MODELS[tier];
+export async function kimchiModelId(tier: KimchiModelTier): Promise<string> {
+  const settings = await getKimchiAiSettings();
+  return getKimchiModelIdFromSettings(settings, tier);
 }
 
-function resolveModel(tier: KimchiModelTier) {
+async function resolveModel(tier: KimchiModelTier) {
+  const settings = await getKimchiAiSettings();
+  const modelId = getKimchiModelIdFromSettings(settings, tier);
   if (usesAiGateway()) {
-    return KIMCHI_GATEWAY_MODELS[tier];
+    return modelId;
   }
   if (process.env.ANTHROPIC_API_KEY) {
     return anthropic(KIMCHI_DIRECT_MODELS[tier]);
@@ -52,9 +52,9 @@ export async function kimchiGenerateText(params: {
   usage: { inputTokens: number; outputTokens: number };
   modelId: string;
 }> {
-  const modelId = kimchiModelId(params.tier);
+  const modelId = await kimchiModelId(params.tier);
   const result = await generateText({
-    model: resolveModel(params.tier),
+    model: await resolveModel(params.tier),
     system: params.system,
     ...(params.messages
       ? { messages: params.messages }
@@ -73,7 +73,7 @@ export async function kimchiGenerateText(params: {
   };
 }
 
-export function kimchiStreamText(params: {
+export async function kimchiStreamText(params: {
   tier: KimchiModelTier;
   system?: string;
   messages: ModelMessage[];
@@ -81,10 +81,10 @@ export function kimchiStreamText(params: {
   userId?: string;
   tags?: string[];
   onUsage?: (usage: { inputTokens: number; outputTokens: number }, modelId: string) => void;
-}): Response {
-  const modelId = kimchiModelId(params.tier);
+}): Promise<Response> {
+  const modelId = await kimchiModelId(params.tier);
   const result = streamText({
-    model: resolveModel(params.tier),
+    model: await resolveModel(params.tier),
     system: params.system,
     messages: params.messages,
     maxOutputTokens: params.maxOutputTokens ?? 1024,
@@ -103,7 +103,7 @@ export function kimchiStreamText(params: {
   return result.toTextStreamResponse();
 }
 
-export function kimchiStreamTextWithTools(params: {
+export async function kimchiStreamTextWithTools(params: {
   tier: KimchiModelTier;
   system?: string;
   messages: ModelMessage[];
@@ -113,10 +113,10 @@ export function kimchiStreamTextWithTools(params: {
   userId?: string;
   tags?: string[];
   onUsage?: (usage: { inputTokens: number; outputTokens: number }, modelId: string) => void;
-}): Response {
-  const modelId = kimchiModelId(params.tier);
+}): Promise<Response> {
+  const modelId = await kimchiModelId(params.tier);
   const result = streamText({
-    model: resolveModel(params.tier),
+    model: await resolveModel(params.tier),
     system: params.system,
     messages: params.messages,
     tools: params.tools,

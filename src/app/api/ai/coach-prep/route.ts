@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     matchSummary,
   });
 
-  return kimchiStreamText({
+  return await kimchiStreamText({
     tier: "talk",
     system: systemPrompt,
     messages,

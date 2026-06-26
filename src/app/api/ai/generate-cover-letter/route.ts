@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     candidateName,
   });
 
-  return kimchiStreamText({
+  return await kimchiStreamText({
     tier: "create",
     messages: [{ role: "user", content: prompt }],
     maxOutputTokens: 800,

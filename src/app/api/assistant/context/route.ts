@@ -1,4 +1,5 @@
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
+import { getKimchiAiSettings } from "@/lib/kimchi-ai-settings";
 import { buildAssistantContext } from "@/lib/kimchi-assistant/context";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +32,10 @@ export async function GET(request: Request) {
   const pageHint = parsePageHint(searchParams);
 
   const context = await buildAssistantContext({ user, pageHint });
+  const aiSettings = await getKimchiAiSettings();
 
-  return NextResponse.json(context, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(
+    { ...context, autoInboxTriageOnOpen: aiSettings.autoInboxTriageOnOpen },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
