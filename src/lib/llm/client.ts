@@ -1,4 +1,4 @@
-import { generateText, streamText, type ModelMessage } from "ai";
+import { generateText, stepCountIs, streamText, type ModelMessage, type ToolSet } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import {
   KIMCHI_DIRECT_MODELS,
@@ -101,4 +101,72 @@ export function kimchiStreamText(params: {
   });
 
   return result.toTextStreamResponse();
+}
+
+export function kimchiStreamTextWithTools(params: {
+  tier: KimchiModelTier;
+  system?: string;
+  messages: ModelMessage[];
+  tools: ToolSet;
+  maxSteps?: number;
+  maxOutputTokens?: number;
+  userId?: string;
+  tags?: string[];
+  onUsage?: (usage: { inputTokens: number; outputTokens: number }, modelId: string) => void;
+}): Response {
+  const modelId = kimchiModelId(params.tier);
+  const result = streamText({
+    model: resolveModel(params.tier),
+    system: params.system,
+    messages: params.messages,
+    tools: params.tools,
+    stopWhen: stepCountIs(params.maxSteps ?? 8),
+    maxOutputTokens: params.maxOutputTokens ?? 1536,
+    providerOptions: gatewayProviderOptions(params.userId, params.tags),
+    onFinish: ({ usage }) => {
+      params.onUsage?.(
+        {
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+        },
+        modelId,
+      );
+    },
+  });
+
+  const base = result.toTextStreamResponse();
+  const body = base.body;
+  if (!body) return base;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = body.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) controller.enqueue(value);
+        }
+        const steps = await result.steps;
+        let navigateRoute: string | null = null;
+        for (const step of steps) {
+          for (const tr of step.toolResults ?? []) {
+            if (tr.toolName !== "open_app_page") continue;
+            const payload = tr.output as { navigateTo?: string } | undefined;
+            if (payload?.navigateTo) navigateRoute = payload.navigateTo;
+          }
+        }
+        if (navigateRoute) {
+          controller.enqueue(new TextEncoder().encode(`\n<!--kimchi-nav:${navigateRoute}-->`));
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: base.status,
+    headers: base.headers,
+  });
 }

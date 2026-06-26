@@ -28,6 +28,14 @@ import { CreditsInlineHint } from "@/components/scout/credits-display";
 import { GrowthUpgradeModal } from "@/components/scout/growth-upgrade-modal";
 import { notifyCreditsChanged } from "@/lib/credits";
 import { fontSans } from "@/lib/typography";
+
+const KIMCHI_NAV_MARKER = /<!--kimchi-nav:([^>]+)-->/;
+
+function stripKimchiNavMarker(text: string): { text: string; route: string | null } {
+  const match = text.match(KIMCHI_NAV_MARKER);
+  if (!match) return { text, route: null };
+  return { text: text.replace(KIMCHI_NAV_MARKER, "").trimEnd(), route: match[1] ?? null };
+}
 import { useWorkspace } from "@/contexts/workspace-context";
 import { STAGE_LABELS } from "./workspace-data";
 import {
@@ -191,6 +199,10 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     pageHint,
     disabled: voiceUnavailable,
     onComplete: onVoiceComplete,
+    onNavigate: (route) => {
+      if (onNavigate) onNavigate(route);
+      else router.push(route);
+    },
   });
 
   useEffect(() => {
@@ -201,12 +213,16 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   }, [pendingVoiceStart, agentSettings, sessionActive, toggleSession]);
 
   const loadContext = useCallback(() => {
-    void fetch(`/api/assistant/context${contextQuery(pageHint)}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) setAssistantCtx(data as AssistantContextPayload);
-      })
-      .catch(() => {});
+    void fetch("/api/assistant/mail/sync-on-open", { method: "POST" })
+      .catch(() => {})
+      .finally(() => {
+        void fetch(`/api/assistant/context${contextQuery(pageHint)}`, { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data) setAssistantCtx(data as AssistantContextPayload);
+          })
+          .catch(() => {});
+      });
   }, [pageHint]);
 
   useEffect(() => {
@@ -381,6 +397,12 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
         if (done) break;
         accumulated += decoder.decode(value, { stream: true });
         updateLastAssistant(accumulated);
+      }
+      const { text: finalText, route: navRoute } = stripKimchiNavMarker(accumulated);
+      accumulated = finalText;
+      if (navRoute) {
+        updateLastAssistant(accumulated);
+        goTo(navRoute);
       }
       notifyCreditsChanged();
       if (threadId && accumulated.trim()) {

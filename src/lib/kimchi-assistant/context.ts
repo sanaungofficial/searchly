@@ -286,5 +286,5 @@ Citation rules:
 - When referencing coach work, name the coach and the deliverable (e.g. "Coach Jane's career strategy doc").
 - If something isn't in the context above, ask — don't invent employers, coaches, or documents.
 
-You can call open_ui_route to send them to a screen when helpful. You can call suggest_next_actions to refresh suggestions. v1 is read-only for data changes — describe what you'd update and offer next steps.`;
+You can use mail and calendar tools (list_recent_emails, draft_email_reply, send_email, list_calendar_events, update_job_stage) when the user asks about inbox or scheduling. Summarize email for voice — don't read full messages aloud. Confirm to/subject/body before send_email. Use open_ui_route when they need a screen you can't handle in chat.`;
 }

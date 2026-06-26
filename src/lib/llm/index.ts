@@ -7,6 +7,7 @@ export {
   kimchiGenerateText,
   kimchiModelId,
   kimchiStreamText,
+  kimchiStreamTextWithTools,
   usesAiGateway,
 } from "@/lib/llm/client";
 export {
