@@ -102,8 +102,17 @@ export function mergeExecThreadJobExport(bundle: ExecThreadJobExportBundle): Exe
   if (redeemListing) layers.push(redeemListing);
 
   for (const layer of layers) {
-    Object.assign(merged, layer, { _id: merged._id });
     mergeTextFields(merged, layer);
+    const preservedText = {
+      jobDescription: merged.jobDescription,
+      jobDescriptionSafeHTML: merged.jobDescriptionSafeHTML,
+      companyDescription: merged.companyDescription,
+      companyDescriptionSafeHTML: merged.companyDescriptionSafeHTML,
+      longCompanyDescription: merged.longCompanyDescription,
+      summary: merged.summary,
+    };
+    Object.assign(merged, layer, { _id: merged._id });
+    Object.assign(merged, preservedText);
 
     merged.funcs = merged.funcs ?? layer.funcs;
     merged.functions = mergeArrayField(

@@ -32,17 +32,6 @@ export function isGenericNetworkCompanyLabel(name: string | null | undefined): b
   return GENERIC_COMPANY_LABELS.has(normalized) || COMPANY_TYPE_LABELS.has(normalized);
 }
 
-function firstSentence(text: string): string {
-  const trimmed = text.trim();
-  const match = trimmed.match(/^(.+?[.!?])(?:\s|$)/);
-  return (match?.[1] ?? trimmed).trim();
-}
-
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return `${text.slice(0, maxLen - 1).trim()}…`;
-}
-
 /** Hiring employer label for ExecThread listings (never Hirebase-guess). */
 export function networkExecThreadEmployerLabel(job: {
   companyName?: string | null;
@@ -51,15 +40,6 @@ export function networkExecThreadEmployerLabel(job: {
 }): string {
   const named = job.companyName?.trim();
   if (named && !isGenericNetworkCompanyLabel(named)) return named;
-
-  const summary = job.companySummary?.trim();
-  if (summary) return truncate(firstSentence(summary), 96);
-
-  const industry = job.industries?.find((tag) => {
-    const lower = tag.trim().toLowerCase();
-    return lower && !COMPANY_TYPE_LABELS.has(lower) && !lower.endsWith(" employees");
-  });
-  if (industry) return industry.trim();
 
   return "Confidential employer";
 }

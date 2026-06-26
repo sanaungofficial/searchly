@@ -307,7 +307,7 @@ export function interpretExecThreadJob(raw: ExecThreadListingRaw): NetworkJobLis
     sharedAt: sharedAtIso,
     sharedAtLabel: shared.dateLabel,
     sharedAtRelative: shared.relativeLabel,
-    description: mapped.description,
+    description: mapped._display.descriptionText ?? mapped.description,
     companySummary: mapped._display.companySummary,
     recruiterNotes: null,
     topEchelonUrl: null,
@@ -362,7 +362,10 @@ export function buildNetworkProspectCard(
         .filter(Boolean)
         .join("\n\n")
     : job.description?.trim() || "";
-  const parsed = parseJobDescriptionSections(aiDescription);
+  const skipParsedSections = job.source === "EXECTHREAD";
+  const parsed = skipParsedSections
+    ? { summary: "", responsibilities: [], requiredQualifications: [], preferredQualifications: [], benefits: [] }
+    : parseJobDescriptionSections(aiDescription);
   const company = networkCardEmployerLabel(job);
   const recruitingFirm =
     job.source === "EXECTHREAD" ? networkExecThreadRecruitingFirmLabel(job) : job.agencyName;
