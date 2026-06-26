@@ -24,13 +24,13 @@ export function LandingPage() {
       {/* Hero */}
       <section style={{ maxWidth: 720, margin: "0 auto", padding: "96px 48px 80px", textAlign: "center" }}>
         <div style={{ display: "inline-block", background: "#1C3A2F18", border: "1px solid #1C3A2F30", borderRadius: 20, padding: "6px 16px", marginBottom: 28 }}>
-          <span style={{ fontSize: 12, color: "#1C3A2F", fontWeight: 500, letterSpacing: "0.4px" }}>AI-powered job search workspace</span>
+          <span style={{ fontSize: 12, color: "#1C3A2F", fontWeight: 500, letterSpacing: "0.4px" }}>Job search workspace for senior roles</span>
         </div>
         <h1 style={{ margin: "0 0 20px", fontSize: 56, fontWeight: 600, color: "#1C3A2F", letterSpacing: "-1.5px", lineHeight: 1.1, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-          Land your next role faster.
+          Run your search like someone who&apos;s done it before.
         </h1>
         <p style={{ margin: "0 0 40px", fontSize: 19, color: "#52493F", lineHeight: 1.65, maxWidth: 540, marginLeft: "auto", marginRight: "auto" }}>
-          Kimchi reads your resume, tracks your pipeline, and generates tailored applications — cover letters, bullet points, and fit analysis — for every job you pursue.
+          Upload your resume, track every role in one pipeline, and tailor cover letters and bullets from your real experience — not a generic template.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link href="/signup" style={{ fontSize: 15, fontWeight: 600, color: "#F2EDE3", background: "#1C3A2F", borderRadius: 12, padding: "14px 32px", textDecoration: "none", display: "inline-block" }}>
