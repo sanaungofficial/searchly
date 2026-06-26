@@ -7,7 +7,8 @@ import { INITIAL_KANBAN_CARDS, NOTIFICATIONS } from "@/components/scout/workspac
 import { useJobs } from "@/hooks/useJobs";
 import type { KanbanCard, KanbanStage } from "@/components/scout/workspace-data";
 import { ImpersonationBanner, type ImpersonationState } from "@/components/admin/impersonation-banner";
-import { setActingUserScope, getActingUserScope } from "@/lib/client-session";
+import { isStaffPortalRole } from "@/lib/staff-portal";
+import { setActingUserScope, getActingUserScope, loadStaffDashboardView, saveStaffDashboardView, type StaffDashboardView } from "@/lib/client-session";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -76,6 +77,12 @@ interface WorkspaceContextValue {
   isImpersonating: boolean;
   /** Admin UI (nav, settings badge, client intake) — false while impersonating a client. */
   showAdminUi: boolean;
+  staffDashboardView: StaffDashboardView;
+  setStaffDashboardView: (view: StaffDashboardView) => void;
+  /** True when dashboard should show job-seeker home (incl. staff who toggled seeker view). */
+  showSeekerDashboard: boolean;
+  /** True when staff is in expert workspace mode on dashboard. */
+  showExpertDashboard: boolean;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -111,6 +118,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const scope = getActingUserScope();
     return scope !== "self" ? scope : null;
   });
+  const [staffDashboardView, setStaffDashboardViewState] = useState<StaffDashboardView>("seeker");
+  const [staffUserId, setStaffUserId] = useState<string | null>(null);
+
+  const setStaffDashboardView = useCallback((view: StaffDashboardView) => {
+    setStaffDashboardViewState(view);
+    saveStaffDashboardView(staffUserId, view);
+  }, [staffUserId]);
 
   const openPricing = useCallback(() => setPricingOpen(true), []);
   const closePricing = useCallback(() => setPricingOpen(false), []);
@@ -145,6 +159,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     useJobs(INITIAL_KANBAN_CARDS, actingUserId ?? undefined);
 
   const notifUnreadCount = NOTIFICATIONS.filter((n) => !notifRead[n.id] && n.unread).length;
+
+  useEffect(() => {
+    if (staffUserId && !impersonation.active) {
+      setStaffDashboardViewState(loadStaffDashboardView(staffUserId));
+    }
+  }, [staffUserId, impersonation.active]);
+
+  const isStaffPortal = isStaffPortalRole(userRole);
+  const showSeekerDashboard =
+    !isStaffPortal || impersonation.active || staffDashboardView === "seeker";
+  const showExpertDashboard =
+    isStaffPortal && !impersonation.active && staffDashboardView === "expert";
 
   useEffect(() => {
     const supabase = createClient();
@@ -215,6 +241,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           setUserRole(data.role ?? "USER");
+          if (data.userId) setStaffUserId(data.userId);
         }
       } catch {}
       setUser({
@@ -281,6 +308,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         actingUserId,
         isImpersonating: impersonation.active,
         showAdminUi: isAdmin && !impersonation.active,
+        staffDashboardView,
+        setStaffDashboardView,
+        showSeekerDashboard,
+        showExpertDashboard,
       }}
     >
       <div

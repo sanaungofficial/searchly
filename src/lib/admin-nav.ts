@@ -1,7 +1,7 @@
 /** Admin sub-routes — shown in top nav dropdown for admins. */
 export const ADMIN_NAV = [
   { id: "dashboard", label: "Dashboard", path: "/admin" },
-  { id: "coaches", label: "Coaches", path: "/admin/coaches" },
+  { id: "coaches", label: "Experts", path: "/admin/coaches" },
   { id: "bookings", label: "Bookings", path: "/admin/bookings" },
   { id: "purchases", label: "Purchases", path: "/admin/purchases" },
   { id: "clients", label: "Clients", path: "/admin/clients" },

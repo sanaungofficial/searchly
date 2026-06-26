@@ -6,6 +6,7 @@ import { CoachAvatar } from "@/components/scout/coach-avatar";
 import { CoachDrawer } from "@/components/scout/coach-drawer";
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { ClientCoachSharedDocuments } from "@/components/scout/client-coach-shared-documents";
+import { ClientCoachSessionNotes } from "@/components/scout/client-coach-session-notes";
 import { MyCoachesPanel } from "@/components/scout/my-coaches-panel";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -24,7 +25,7 @@ type AssignedCoach = {
   notes: string | null;
 };
 
-export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) {
+export function ProfileCoachPanel({ isMobile = false, embedded = false }: { isMobile?: boolean; embedded?: boolean }) {
   const router = useRouter();
   const { openPricing, userRole, isImpersonating } = useWorkspace();
   const canSelfAssignCoach = userRole === "USER" || isImpersonating;
@@ -95,13 +96,15 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
 
   return (
     <>
-      <div style={{ paddingBottom: 40, paddingTop: 8 }}>
-        <div style={{ marginBottom: isMobile ? 20 : 28 }}>
-          <h2 style={{ ...displayTitleStyle(isMobile ? 22 : 26), margin: "0 0 8px" }}>Coach</h2>
-          <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.55, maxWidth: 560 }}>
-            Your matched Kimchi coaches. Book intro calls, review sessions, and shared activity here.
-          </p>
-        </div>
+      <div style={{ paddingBottom: 40, paddingTop: embedded ? 0 : 8 }}>
+        {!embedded && (
+          <div style={{ marginBottom: isMobile ? 20 : 28 }}>
+            <h2 style={{ ...displayTitleStyle(isMobile ? 22 : 26), margin: "0 0 8px" }}>Coach</h2>
+            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: 0, lineHeight: 1.55, maxWidth: 560 }}>
+              Your matched Kimchi coaches. Book intro calls, review sessions, and shared activity here.
+            </p>
+          </div>
+        )}
 
         {loading && (
           <p style={{ fontFamily: fontSans, fontSize: 14, color: color.muted }}>Loading your coaches…</p>
@@ -116,7 +119,7 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
               When your Kimchi team assigns a coach, they&apos;ll appear here with booking and session details.
             </p>
             <ScoutSecondaryBtn onClick={() => router.push("/coaching")} style={{ minHeight: 40 }}>
-              Browse coaching directory
+              Browse coaches
             </ScoutSecondaryBtn>
           </ScoutBox>
         )}
@@ -157,6 +160,11 @@ export function ProfileCoachPanel({ isMobile = false }: { isMobile?: boolean }) 
                       </p>
                     )}
                     <ClientCoachSharedDocuments
+                      coachProfileId={coach.coachProfileId}
+                      coachName={coach.displayName}
+                      compact
+                    />
+                    <ClientCoachSessionNotes
                       coachProfileId={coach.coachProfileId}
                       coachName={coach.displayName}
                       compact

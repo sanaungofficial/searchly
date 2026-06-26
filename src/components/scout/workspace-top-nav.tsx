@@ -128,6 +128,9 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     authChecked,
     userRole,
     showAdminUi,
+    staffDashboardView,
+    setStaffDashboardView,
+    isImpersonating,
   } = useWorkspace();
 
   const isStaffPortal = isStaffPortalRole(userRole);
@@ -414,6 +417,53 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
 
           {/* Right actions */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            {isStaffPortal && !isImpersonating && (
+              <div
+                role="group"
+                aria-label="Dashboard view"
+                style={{
+                  display: "flex",
+                  border: border.line,
+                  borderRadius: 999,
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {(
+                  [
+                    { id: "seeker" as const, label: isMobile ? "Seeker" : "Job seeker" },
+                    { id: "expert" as const, label: "Expert" },
+                  ] as const
+                ).map(({ id, label }) => {
+                  const active = staffDashboardView === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setStaffDashboardView(id);
+                        if (pathname !== "/dashboard") router.push("/dashboard");
+                      }}
+                      aria-pressed={active}
+                      style={{
+                        border: "none",
+                        background: active ? color.forest : "transparent",
+                        color: active ? "#fff" : color.muted,
+                        fontFamily: fontSans,
+                        fontSize: isMobile ? 11 : 12,
+                        fontWeight: 600,
+                        padding: isMobile ? "6px 10px" : "7px 12px",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <button
               type="button"
               onClick={onToggleNotif}

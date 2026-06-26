@@ -153,7 +153,7 @@ export function GuestHubDrawer({ guest, onClose, onOpenCoachHub }: Props) {
                               onClick={() => onOpenCoachHub(c.coachProfileId)}
                               style={{ background: "none", border: border.line, padding: "8px 12px", fontFamily: fontSans, fontSize: 13, cursor: "pointer", color: color.forest }}
                             >
-                              Coach hub
+                              Expert hub
                             </button>
                           )}
                         </div>

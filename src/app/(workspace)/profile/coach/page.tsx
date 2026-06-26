@@ -1,5 +1,5 @@
-import { WorkspaceProfile } from "@/components/scout/workspace-profile";
+import { redirect } from "next/navigation";
 
 export default function ProfileCoachPage() {
-  return <WorkspaceProfile />;
+  redirect("/coaching/my-coaches");
 }

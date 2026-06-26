@@ -65,6 +65,29 @@ export function saveScopedNetworkSearch(query: string): void {
   }
 }
 
+const DASHBOARD_VIEW_PREFIX = "kimchi_dashboard_view";
+
+export type StaffDashboardView = "seeker" | "expert";
+
+export function loadStaffDashboardView(userId: string | null): StaffDashboardView {
+  if (typeof window === "undefined" || !userId) return "seeker";
+  try {
+    const v = localStorage.getItem(`${DASHBOARD_VIEW_PREFIX}:${userId}`);
+    return v === "expert" ? "expert" : "seeker";
+  } catch {
+    return "seeker";
+  }
+}
+
+export function saveStaffDashboardView(userId: string | null, view: StaffDashboardView) {
+  if (typeof window === "undefined" || !userId) return;
+  try {
+    localStorage.setItem(`${DASHBOARD_VIEW_PREFIX}:${userId}`, view);
+  } catch {
+    /* quota or private mode */
+  }
+}
+
 export function clearClientSessionCaches(): void {
   clearRecommendedCache();
   clearCoachMatchCache();

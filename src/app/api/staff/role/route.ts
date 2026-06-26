@@ -9,8 +9,11 @@ export async function GET() {
 
   const dbUser = await prisma.user.findUnique({
     where: { email: user.email! },
-    select: { role: true },
+    select: { id: true, role: true },
   });
 
-  return NextResponse.json({ role: dbUser?.role ?? "USER" });
+  return NextResponse.json({
+    role: dbUser?.role ?? "USER",
+    userId: dbUser?.id ?? null,
+  });
 }

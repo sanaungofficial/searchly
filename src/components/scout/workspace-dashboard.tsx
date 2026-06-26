@@ -154,8 +154,9 @@ function ActivityFeedItem({
 export function WorkspaceDashboard() {
   const router = useRouter();
   const isMobile = useIsMobile();
-  const { kanbanCards, addJob, userRole } = useWorkspace();
+  const { kanbanCards, addJob, userRole, showSeekerDashboard, isImpersonating } = useWorkspace();
   const isStaffPortal = isStaffPortalRole(userRole);
+  const showJobSeekerPipeline = showSeekerDashboard;
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
@@ -282,7 +283,7 @@ export function WorkspaceDashboard() {
     >
       <WorkspaceScroll>
         <WorkspaceContent>
-          {!isStaffPortal && (
+          {(!isStaffPortal || showJobSeekerPipeline) && (
             <div
               style={{
                 display: "flex",
@@ -302,7 +303,7 @@ export function WorkspaceDashboard() {
             </div>
           )}
 
-          {!isStaffPortal && showAddPanel && (
+          {showJobSeekerPipeline && showAddPanel && (
             <div
               style={{
                 padding: panelPad,
