@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -541,20 +541,509 @@ export function ChatWidget({
   const sendGeneralMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
-    if (chatView !== "chat") {
-      setChatView("chat");
-      if (currentJob) {
-        resetFitChat(currentJob);
-      } else if (messages.length === 0) {
-        setMessages([
-          {
-            role: "assistant",
-            content: "Ask about your search, your pipeline, or pick a job under Tools for role-specific help.",
-          },
-        ]);
-      }
+    if (messages.length === 0) {
+      setMessages([
+        {
+          role: "assistant",
+          content: "Ask about your search, your pipeline, or pick a job for role-specific help.",
+        },
+      ]);
     }
     await sendMessage(trimmed);
+  };
+
+  const unifiedColumnHeaderStyle: CSSProperties = {
+    padding: "8px 12px",
+    borderBottom: "1px solid rgba(0,0,0,0.06)",
+    background: "#FAFAF8",
+    flexShrink: 0,
+    fontFamily: sans,
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    color: "var(--scout-muted)",
+  };
+
+  const renderToolsPanelContent = () => (
+    <>
+      <CreditsStatusBar onUpgrade={openPricing} />
+      <p
+        style={{
+          fontFamily: sans,
+          fontSize: 14,
+          fontWeight: 600,
+          color: "var(--scout-muted)",
+          textTransform: "uppercase",
+          letterSpacing: "1px",
+          marginBottom: 6,
+          marginTop: 4,
+        }}
+      >
+        For this job
+      </p>
+      {currentJob ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 10px",
+            background: "rgba(26,58,47,0.04)",
+            borderRadius: "var(--scout-radius)",
+            marginBottom: 12,
+          }}
+        >
+          <div
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: "var(--scout-radius)",
+              background: "#1A3A2F",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#E8D5A3" }}>
+              {currentJob.initials}
+            </span>
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p
+              style={{
+                fontFamily: sans,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#1A1A1A",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                margin: 0,
+              }}
+            >
+              {currentJob.role}
+            </p>
+            <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
+              {currentJob.company}
+            </p>
+          </div>
+        </div>
+      ) : needsJobPicker ? (
+        <select
+          value={selectedJobId ?? ""}
+          onChange={(e) => setSelectedJobId(e.target.value ? Number(e.target.value) : null)}
+          style={{
+            width: "100%",
+            padding: "8px 10px",
+            border: "1px solid rgba(0,0,0,0.12)",
+            borderRadius: "var(--scout-radius)",
+            background: "#FFFFFF",
+            fontFamily: sans,
+            fontSize: 14,
+            color: "#1A1A1A",
+            marginBottom: 12,
+            cursor: "pointer",
+          }}
+        >
+          <option value="">Pick a job…</option>
+          {kanbanCards.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.role} · {c.company}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <p
+          style={{
+            fontFamily: sans,
+            fontSize: 14,
+            fontWeight: 400,
+            color: "var(--scout-muted)",
+            marginBottom: 12,
+            lineHeight: 1.5,
+          }}
+        >
+          Add a job to your pipeline first.
+        </p>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <ToolButton
+          icon="✦"
+          title="Tailor resume"
+          subtitle="Align your resume to this role"
+          disabled={!currentJob}
+          onClick={() => handleToolClick("resume")}
+        />
+        <ToolButton
+          icon="✉"
+          title="Write cover letter"
+          subtitle="Draft something specific to this job"
+          disabled={!currentJob}
+          onClick={() => handleToolClick("cover")}
+        />
+        <ToolButton
+          icon="👍"
+          title="Check my fit"
+          subtitle="Honest take on strengths and gaps"
+          disabled={!currentJob}
+          onClick={() => handleToolClick("fit")}
+        />
+        <ToolButton
+          icon="📋"
+          title="Profile coach"
+          subtitle="Parse intake and shape profile fields"
+          disabled={false}
+          onClick={() => openProfileCoach()}
+        />
+      </div>
+
+      {hasJobs && (
+        <p
+          style={{
+            fontFamily: sans,
+            fontSize: 13,
+            fontWeight: 400,
+            color: "var(--scout-muted)",
+            marginTop: 12,
+            textAlign: "center",
+            lineHeight: 1.4,
+          }}
+        >
+          Resume and cover letter open in the job drawer.
+        </p>
+      )}
+    </>
+  );
+
+  const renderFitRightPanelContent = () => (
+    <>
+      {currentJob && (
+        <div
+          style={{
+            padding: "8px 10px",
+            background: "rgba(26,58,47,0.04)",
+            borderRadius: "var(--scout-radius)",
+            marginBottom: 12,
+          }}
+        >
+          <p style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#1A1A1A", margin: 0 }}>
+            {currentJob.role}
+          </p>
+          <p
+            style={{
+              fontFamily: sans,
+              fontSize: 13,
+              color: "var(--scout-muted)",
+              margin: "2px 0 0",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>
+              {currentJob.company}
+              {currentJob.fit > 0 ? ` · ${currentJob.fit}% match` : ""}
+            </span>
+            {currentJob.fit > 0 && <ScoreExplainerPopover variant="job-match" />}
+          </p>
+        </div>
+      )}
+
+      {showFitStarters && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+          {fitSuggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => sendMessage(s)}
+              style={{
+                padding: "8px 10px",
+                background: "#FFF",
+                border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: "var(--scout-radius)",
+                fontFamily: sans,
+                fontSize: 13,
+                color: "#1A3A2F",
+                cursor: "pointer",
+                textAlign: "left",
+                lineHeight: 1.35,
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showFitFollowups && (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+            {FIT_FOLLOWUP_QUESTIONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => sendMessage(s)}
+                style={{
+                  padding: "8px 10px",
+                  background: "#FFF",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: sans,
+                  fontSize: 12,
+                  color: "#1A3A2F",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  lineHeight: 1.35,
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {(hasResume === false
+              ? [
+                  { id: "create-resume" as const, label: "Create my resume →" },
+                  { id: "profile" as const, label: "Build my profile →" },
+                ]
+              : [
+                  { id: "resume" as const, label: "Improve my resume for this role →" },
+                  { id: "cover" as const, label: "Write a cover letter →" },
+                  { id: "profile" as const, label: "Update my profile →" },
+                ]
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => handleFitAction(id)}
+                style={{
+                  padding: "8px 12px",
+                  background: "rgba(26,58,47,0.08)",
+                  border: "1px solid rgba(26,58,47,0.15)",
+                  borderRadius: "var(--scout-radius)",
+                  fontFamily: sans,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: color.forest,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  lineHeight: 1.35,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!currentJob && (
+        <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", lineHeight: 1.5, margin: 0 }}>
+          Pick a job under Actions to get role-specific fit help.
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setChatView("tools")}
+        style={{
+          marginTop: 14,
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          fontFamily: sans,
+          fontSize: 12,
+          fontWeight: 600,
+          color: "rgba(26,58,47,0.65)",
+          cursor: "pointer",
+          textDecoration: "underline",
+        }}
+      >
+        ← Back to actions
+      </button>
+    </>
+  );
+
+  const renderUnifiedTwoColumnShell = ({
+    conversation,
+    isStreaming,
+    emptyHint,
+    rightTitle,
+    rightContent,
+    composerPlaceholder,
+    onSend,
+    sendDisabled,
+  }: {
+    conversation: ChatMessage[];
+    isStreaming?: boolean;
+    emptyHint: string;
+    rightTitle: string;
+    rightContent: ReactNode;
+    composerPlaceholder: string;
+    onSend: () => void;
+    sendDisabled?: boolean;
+  }) => (
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+        }}
+      >
+        <div
+          style={{
+            flex: isMobile ? "0 1 auto" : "1 1 50%",
+            minWidth: 0,
+            minHeight: isMobile ? 140 : 0,
+            maxHeight: isMobile ? "42%" : undefined,
+            display: "flex",
+            flexDirection: "column",
+            borderRight: isMobile ? undefined : "1px solid rgba(0,0,0,0.06)",
+            borderBottom: isMobile ? "1px solid rgba(0,0,0,0.06)" : undefined,
+          }}
+        >
+          <div style={unifiedColumnHeaderStyle}>Conversation</div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px 8px", minHeight: 0 }}>
+            {conversation.length === 0 ? (
+              <p
+                style={{
+                  fontFamily: sans,
+                  fontSize: 13,
+                  color: "var(--scout-muted)",
+                  lineHeight: 1.5,
+                  margin: 0,
+                }}
+              >
+                {emptyHint}
+              </p>
+            ) : (
+              renderMessageBubbles(conversation, isStreaming)
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            flex: "1 1 50%",
+            minWidth: 0,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div style={{ ...unifiedColumnHeaderStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <span>{rightTitle}</span>
+            {(chatView === "chat" || chatView === "coach" || chatView === "coach-prep") && <CreditCostBadge />}
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", minHeight: 0 }}>{rightContent}</div>
+        </div>
+      </div>
+      {renderUnifiedComposer(composerPlaceholder, onSend, sendDisabled)}
+    </div>
+  );
+
+  const renderUnifiedPanel = () => {
+    if (chatView === "coach-prep") {
+      return renderUnifiedTwoColumnShell({
+        conversation: coachPrepMessages,
+        isStreaming: coachPrepStreaming,
+        emptyHint: coachPrepCoach
+          ? `Prep questions for ${coachPrepCoach.displayName} show up here.`
+          : "Open a coach profile to prep.",
+        rightTitle: "Suggestions",
+        rightContent: coachPrepCoach ? (
+          <>
+            {coachPrepCoach.headline && (
+              <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: "0 0 10px", lineHeight: 1.45 }}>
+                {coachPrepCoach.headline}
+                {coachPrepCoach.matchScore && coachPrepCoach.matchScore > 0
+                  ? ` · ${coachPrepCoach.matchLabel ?? "Match"} ${coachPrepCoach.matchScore}/100`
+                  : ""}
+              </p>
+            )}
+            {coachPrepMessages.length <= 1 && !coachPrepStreaming && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {COACH_PREP_SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => sendCoachPrepMessage(s)}
+                    style={{
+                      padding: "8px 10px",
+                      background: "#FFF",
+                      border: "1px solid rgba(0,0,0,0.1)",
+                      borderRadius: "var(--scout-radius)",
+                      fontFamily: sans,
+                      fontSize: 13,
+                      color: "#1A3A2F",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", margin: 0 }}>
+            Open a coach profile to prep.
+          </p>
+        ),
+        composerPlaceholder: coachPrepCoach ? "Ask about prep, questions, or fit…" : "Open a coach profile to prep…",
+        onSend: () => sendCoachPrepMessage(input),
+        sendDisabled: coachPrepStreaming || !coachPrepCoach,
+      });
+    }
+
+    if (chatView === "coach") {
+      return renderUnifiedTwoColumnShell({
+        conversation: coachMessages,
+        isStreaming: coachStreaming,
+        emptyHint: "Paste intake notes or ask how to shape this client's profile.",
+        rightTitle: "Profile coach",
+        rightContent: (
+          <p style={{ fontFamily: sans, fontSize: 13, color: "var(--scout-muted)", lineHeight: 1.5, margin: 0 }}>
+            Changes stay in chat until you approve them in Career Strategy.
+          </p>
+        ),
+        composerPlaceholder: "Paste intake notes or ask about profile fields…",
+        onSend: () => sendCoachMessage(input),
+        sendDisabled: coachStreaming,
+      });
+    }
+
+    if (chatView === "chat") {
+      return renderUnifiedTwoColumnShell({
+        conversation: messages,
+        isStreaming: streaming,
+        emptyHint: "Talk or type to Kimchi — fit chat for this role shows here.",
+        rightTitle: "Fit chat",
+        rightContent: renderFitRightPanelContent(),
+        composerPlaceholder: currentJob ? "Ask about fit, gaps, or tactics…" : "Ask Kimchi anything…",
+        onSend: () => sendMessage(input),
+        sendDisabled: streaming,
+      });
+    }
+
+    return renderUnifiedTwoColumnShell({
+      conversation: messages,
+      isStreaming: streaming,
+      emptyHint: "Tap the orb to talk, or type below. Your conversation stays here.",
+      rightTitle: "Actions",
+      rightContent: renderToolsPanelContent(),
+      composerPlaceholder: "Ask Kimchi anything…",
+      onSend: () => sendGeneralMessage(input),
+      sendDisabled: streaming,
+    });
   };
 
   const renderUnifiedComposer = (
@@ -714,76 +1203,9 @@ export function ChatWidget({
             </div>
       )}
 
-      {unified && (
-        <div
-          style={{
-            padding: "8px 14px",
-            borderBottom: "1px solid rgba(26,58,47,0.08)",
-            background: "#FAFAF8",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: "#1A3A2F" }}>
-            {chatView === "chat"
-              ? "Chat"
-              : chatView === "coach"
-                ? "Profile coach"
-                : chatView === "coach-prep"
-                  ? "Session prep"
-                  : "Tools"}
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {(chatView === "chat" || chatView === "coach" || chatView === "coach-prep") && (
-              <button
-                type="button"
-                onClick={() => setChatView("tools")}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: sans,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "rgba(26,58,47,0.65)",
-                  padding: "2px 0",
-                }}
-              >
-                Tools
-              </button>
-            )}
-            {chatView === "tools" && hasJobs && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentJob) {
-                    resetFitChat(currentJob);
-                    setChatView("chat");
-                  }
-                }}
-                disabled={!currentJob}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: currentJob ? "pointer" : "default",
-                  fontFamily: sans,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: currentJob ? "#1A3A2F" : "rgba(26,58,47,0.35)",
-                  padding: "2px 0",
-                }}
-              >
-                Chat
-              </button>
-            )}
-            {(chatView === "chat" || chatView === "coach" || chatView === "coach-prep") && <CreditCostBadge />}
-          </div>
-        </div>
-      )}
-
-            {chatView === "coach-prep" ? (
+            {unified && voice ? (
+              renderUnifiedPanel()
+            ) : chatView === "coach-prep" ? (
               <>
                 {coachPrepCoach && (
                   <div
@@ -1206,178 +1628,6 @@ export function ChatWidget({
                 </div>
                 )}
               </>
-            ) : unified && voice ? (
-              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                {messages.length > 0 && (
-                  <div
-                    style={{
-                      flex: "0 1 auto",
-                      maxHeight: "42%",
-                      minHeight: 96,
-                      overflowY: "auto",
-                      padding: "12px 14px 8px",
-                      borderBottom: "1px solid rgba(0,0,0,0.06)",
-                      background: "#FAFAF8",
-                    }}
-                  >
-                    {renderMessageBubbles(messages, streaming)}
-                  </div>
-                )}
-                <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 12px", minHeight: 0 }}>
-                  <CreditsStatusBar onUpgrade={openPricing} />
-                  <p
-                    style={{
-                      fontFamily: sans,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "var(--scout-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "1px",
-                      marginBottom: 6,
-                    }}
-                  >
-                    For this job
-                  </p>
-                  {currentJob ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "8px 10px",
-                        background: "rgba(26,58,47,0.04)",
-                        borderRadius: 0,
-                        marginBottom: 12,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 0,
-                          background: "#1A3A2F",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <span style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: "#E8D5A3" }}>
-                          {currentJob.initials}
-                        </span>
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <p
-                          style={{
-                            fontFamily: sans,
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: "#1A1A1A",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            margin: 0,
-                          }}
-                        >
-                          {currentJob.role}
-                        </p>
-                        <p style={{ fontFamily: sans, fontSize: 14, color: "var(--scout-muted)", margin: 0 }}>
-                          {currentJob.company}
-                        </p>
-                      </div>
-                    </div>
-                  ) : needsJobPicker ? (
-                    <select
-                      value={selectedJobId ?? ""}
-                      onChange={(e) => setSelectedJobId(e.target.value ? Number(e.target.value) : null)}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        border: "1px solid rgba(0,0,0,0.12)",
-                        borderRadius: 0,
-                        background: "#FFFFFF",
-                        fontFamily: sans,
-                        fontSize: 14,
-                        color: "#1A1A1A",
-                        marginBottom: 12,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <option value="">Pick a job…</option>
-                      {kanbanCards.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.role} · {c.company}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p
-                      style={{
-                        fontFamily: sans,
-                        fontSize: 14,
-                        fontWeight: 400,
-                        color: "var(--scout-muted)",
-                        marginBottom: 12,
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      Add a job to your pipeline first.
-                    </p>
-                  )}
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <ToolButton
-                      icon="✦"
-                      title="Tailor resume"
-                      subtitle="Align your resume to this role"
-                      disabled={!currentJob}
-                      onClick={() => handleToolClick("resume")}
-                    />
-                    <ToolButton
-                      icon="✉"
-                      title="Write cover letter"
-                      subtitle="Draft something specific to this job"
-                      disabled={!currentJob}
-                      onClick={() => handleToolClick("cover")}
-                    />
-                    <ToolButton
-                      icon="👍"
-                      title="Check my fit"
-                      subtitle="Honest take on strengths and gaps"
-                      disabled={!currentJob}
-                      onClick={() => handleToolClick("fit")}
-                    />
-                    <ToolButton
-                      icon="📋"
-                      title="Profile coach"
-                      subtitle="Parse intake and shape profile fields"
-                      disabled={false}
-                      onClick={() => openProfileCoach()}
-                    />
-                  </div>
-
-                  {hasJobs && (
-                    <p
-                      style={{
-                        fontFamily: sans,
-                        fontSize: 14,
-                        fontWeight: 400,
-                        color: "var(--scout-muted)",
-                        marginTop: 12,
-                        textAlign: "center",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      Resume and cover letter open in the job drawer.
-                    </p>
-                  )}
-                </div>
-                {renderUnifiedComposer(
-                  "Ask Kimchi anything…",
-                  () => sendGeneralMessage(input),
-                  streaming,
-                )}
-              </div>
             ) : (
               <div style={{ padding: "14px 16px 16px", overflowY: "auto" }}>
                 <CreditsStatusBar onUpgrade={openPricing} />

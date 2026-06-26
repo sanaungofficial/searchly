@@ -136,8 +136,8 @@ function KimchiAssistantStyles() {
       .kimchi-assistant-panel {
         position: fixed;
         z-index: 95;
-        width: min(420px, calc(100vw - 32px));
-        height: min(640px, calc(100vh - 160px));
+        width: min(720px, calc(100vw - 32px));
+        height: min(680px, calc(100vh - 120px));
         overflow: hidden;
         background: #FFFFFF;
         border: 1.5px solid rgba(26, 58, 47, 0.12);

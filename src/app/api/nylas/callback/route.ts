@@ -160,6 +160,7 @@ export async function GET(req: NextRequest) {
       where: { id: profile.id },
       data: {
         nylasGrantId: grantId,
+        nylasGrantEmail: email ?? null,
         nylasSchedulerConfigId: configId,
         nylasSchedulerSlug: hostedSlug ?? schedulerSlug,
         ...(returnRole === "ADMIN" ? { status: CoachStatus.ACTIVE } : {}),

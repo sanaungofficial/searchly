@@ -281,6 +281,22 @@ export async function exchangeNylasCode(code: string, _appUrl?: string): Promise
   return { grantId, email: res.email ?? res.data?.email };
 }
 
+type NylasGrantResponse = {
+  data?: { email?: string; grant_id?: string };
+  email?: string;
+};
+
+/** Email on the connected calendar grant — must match scheduler participant email. */
+export async function getNylasGrantEmail(grantId: string): Promise<string | null> {
+  try {
+    const res = await nylasFetch<NylasGrantResponse>(`/v3/grants/${grantId}`);
+    return res.data?.email?.trim() || res.email?.trim() || null;
+  } catch (err) {
+    console.error("[nylas] get grant email", err);
+    return null;
+  }
+}
+
 export type NylasSchedulerConfig = {
   id?: string;
   ID?: string;
@@ -331,6 +347,7 @@ function schedulerConfigBody(params: CoachSchedulerParams) {
       {
         name: params.coachName,
         email: params.coachEmail,
+        grant_id: params.grantId,
         is_organizer: true,
         timezone,
         availability: { calendar_ids: ["primary"] },
