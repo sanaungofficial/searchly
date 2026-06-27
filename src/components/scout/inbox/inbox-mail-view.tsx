@@ -6,7 +6,7 @@ import { ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
-import { InboxContactsPanel } from "./inbox-contacts-panel";
+import { InboxLeadsPanel } from "./inbox-leads-panel";
 import { InboxContactDrawer } from "./inbox-contact-drawer";
 import { InboxExpandedMessage } from "./inbox-expanded-message";
 import { InboxMeetingsPanel } from "./inbox-meetings-panel";
@@ -433,8 +433,17 @@ export function InboxMailView({
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {activeTab === "contacts" ? (
-          <InboxContactsPanel
+          <InboxLeadsPanel
             scopePath={withClientScope}
+            mailConnected={connected}
+            onComposeTo={(email) =>
+              onComposeChange({
+                open: true,
+                to: email,
+                subject: "",
+                body: "",
+              })
+            }
             onSelectContact={(id) => setSelectedContactId(id)}
           />
         ) : (

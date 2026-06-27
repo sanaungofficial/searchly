@@ -14,6 +14,7 @@ import { categorizeInboxMail } from "@/lib/inbox-crm/categorize";
 import { messageDirection } from "@/lib/inbox-crm/direction";
 import { upsertContactFromMessage } from "@/lib/inbox-crm/contacts";
 import { matchJobForContact } from "@/lib/inbox-crm/match-job";
+import { touchContactLastActivity } from "@/lib/inbox-crm/touch-contact-activity";
 
 function snippetFor(message: NylasMessage): string {
   const text = (message.snippet ?? messagePlainText(message)).trim();
@@ -77,7 +78,7 @@ export async function logInboxMessage(params: {
     rawPayload: full as object,
   };
 
-  return prisma.inboxActivity.upsert({
+  const activity = await prisma.inboxActivity.upsert({
     where: { userId_nylasMessageId: { userId: params.userId, nylasMessageId: messageId } },
     create: data,
     update: {
@@ -92,4 +93,7 @@ export async function logInboxMessage(params: {
       rawPayload: data.rawPayload,
     },
   });
+
+  await touchContactLastActivity(activity.contactId, occurredAt);
+  return activity;
 }

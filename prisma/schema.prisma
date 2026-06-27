@@ -1232,11 +1232,15 @@ model InboxContact {
   name           String?
   company        String?
   title          String?
+  phone          String?
   linkedinUrl    String?
   notes          String?            @db.Text
   contacted      Boolean?
   nylasContactId String?
   source         InboxContactSource @default(EMAIL)
+  status         String?
+  statusUpdatedAt DateTime?
+  lastActivityAt DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -1245,6 +1249,8 @@ model InboxContact {
 
   @@unique([userId, email])
   @@index([userId])
+  @@index([userId, status])
+  @@index([userId, lastActivityAt])
 }
 
 /// Optional link between a CRM contact and a pipeline job.

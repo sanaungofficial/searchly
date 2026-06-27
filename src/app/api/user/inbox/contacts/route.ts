@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { resolveScopedDbUser } from "@/lib/admin-client-subject";
-import { prisma } from "@/lib/prisma";
+import {
+  listInboxContacts,
+  parseContactListFilters,
+  parseContactSortField,
+} from "@/lib/inbox-crm/list-contacts";
 
 export async function GET(request: Request) {
   const { dbUser, error } = await resolveScopedDbUser(request);
@@ -8,48 +12,22 @@ export async function GET(request: Request) {
   if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sp = new URL(request.url).searchParams;
-  const q = sp.get("q")?.trim().toLowerCase();
+  const page = Number(sp.get("page") ?? "1");
+  const pageSize = Number(sp.get("pageSize") ?? "25");
+  const sort = parseContactSortField(sp.get("sort"));
+  const sortDir = sp.get("sortDir") === "asc" ? "asc" : "desc";
+  const q = sp.get("q")?.trim() || undefined;
+  const filters = parseContactListFilters(sp.get("filters"));
 
-  const contacts = await prisma.inboxContact.findMany({
-    where: {
-      userId: dbUser.id,
-      ...(q
-        ? {
-            OR: [
-              { email: { contains: q, mode: "insensitive" } },
-              { name: { contains: q, mode: "insensitive" } },
-              { company: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 80,
-    include: {
-      jobLinks: {
-        include: { job: { select: { id: true, company: true, role: true, stage: true } } },
-        take: 3,
-      },
-      activities: {
-        orderBy: { occurredAt: "desc" },
-        take: 1,
-        select: { id: true, subject: true, occurredAt: true, direction: true },
-      },
-      _count: { select: { activities: true } },
-    },
+  const result = await listInboxContacts({
+    userId: dbUser.id,
+    q,
+    page: Number.isFinite(page) ? page : 1,
+    pageSize: Number.isFinite(pageSize) ? pageSize : 25,
+    sort,
+    sortDir,
+    filters,
   });
 
-  return NextResponse.json({
-    contacts: contacts.map((c) => ({
-      id: c.id,
-      email: c.email,
-      name: c.name,
-      company: c.company,
-      title: c.title,
-      savedToNylas: Boolean(c.nylasContactId),
-      activityCount: c._count.activities,
-      lastActivity: c.activities[0] ?? null,
-      linkedJobs: c.jobLinks.map((l) => l.job),
-    })),
-  });
+  return NextResponse.json(result);
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { NylasEvent, NylasMessage, NylasParticipant } from "@/lib/nylas-inbox";
 import { InboxActivityDirection } from "@prisma/client";
 import { messageDirection } from "@/lib/inbox-crm/direction";
+import { DEFAULT_CONTACT_STATUS } from "@/lib/inbox-crm/contact-status";
 
 function normalizeEmail(email: string | null | undefined): string | null {
   return email?.trim().toLowerCase() ?? null;
@@ -67,6 +68,7 @@ export async function upsertContactFromParticipant(
       name,
       company,
       source: InboxContactSource.EMAIL,
+      status: DEFAULT_CONTACT_STATUS,
     },
     update: {
       ...(name ? { name } : {}),

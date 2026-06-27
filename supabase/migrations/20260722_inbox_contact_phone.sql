@@ -1,0 +1,1 @@
+ALTER TABLE "InboxContact" ADD COLUMN IF NOT EXISTS "phone" TEXT;
