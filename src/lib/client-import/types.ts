@@ -75,9 +75,10 @@ export type ClientImportApplyPayload = {
 
 export type ClientImportApplyResult = {
   profileUpdated: boolean;
-  jobs: { added: number; updated: number; skipped: number };
+  jobs: { added: number; updated: number; skipped: number; descriptionsEnriched: number };
   companies: { added: number; updated: number; skipped: number };
   contacts: { added: number; updated: number; skipped: number };
+  roles: { targetSelected: number; deprioritizedSelected: number };
   referenceDocumentsStored: number;
   errors: string[];
 };

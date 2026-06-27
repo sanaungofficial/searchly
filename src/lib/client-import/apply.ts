@@ -5,6 +5,11 @@ import { upsertManualInboxContact } from "@/lib/inbox-crm/manual-contact";
 import { ensureProfileRow } from "@/lib/profile-write";
 import { fetchResumeBytes, extractRawResumeText, parseResumeText, fileExtFromUrl } from "@/lib/resume-extract";
 import { enrichImportCompanies } from "@/lib/client-import/enrich-companies";
+import {
+  clearImportJobPostingCache,
+  enrichImportJobPosting,
+  jobNotesNeedDescription,
+} from "@/lib/client-import/enrich-jobs";
 import { importJobDedupeKey, normalizeImportJobUrl } from "@/lib/client-import/job-url";
 import type {
   ClientImportApplyPayload,
@@ -36,6 +41,38 @@ function hirebaseLinkNote(apiLinked: boolean): string | null {
   return apiLinked ? "Company linked via Hirebase" : null;
 }
 
+async function resolveImportJobNotes(input: {
+  company: string;
+  role: string;
+  url: string | null;
+  hirebaseSlug?: string | null;
+  sheetNotes: string | null;
+  existingNotes: string | null;
+}): Promise<{ notes: string | null; userNotes: string | null; enriched: boolean }> {
+  const userNotes = input.sheetNotes?.trim() || null;
+
+  if (!jobNotesNeedDescription(input.existingNotes)) {
+    return { notes: input.existingNotes, userNotes, enriched: false };
+  }
+
+  const posting = await enrichImportJobPosting({
+    company: input.company,
+    role: input.role,
+    url: input.url,
+    hirebaseSlug: input.hirebaseSlug,
+  });
+
+  if (posting.notes) {
+    return { notes: posting.notes, userNotes, enriched: true };
+  }
+
+  if (input.existingNotes && !jobNotesNeedDescription(input.existingNotes)) {
+    return { notes: input.existingNotes, userNotes, enriched: false };
+  }
+
+  return { notes: null, userNotes, enriched: false };
+}
+
 function mergeNotes(...parts: Array<string | null | undefined>): string | null {
   const merged = parts.filter(Boolean).join(" · ");
   return merged || null;
@@ -48,6 +85,7 @@ type ExistingJobRow = {
   url: string | null;
   stage: JobStage;
   notes: string | null;
+  userNotes: string | null;
   appliedAt: Date | null;
 };
 
@@ -82,12 +120,15 @@ export async function applyClientImport(
   const { preview } = payload;
   const result: ClientImportApplyResult = {
     profileUpdated: false,
-    jobs: { added: 0, updated: 0, skipped: 0 },
+    jobs: { added: 0, updated: 0, skipped: 0, descriptionsEnriched: 0 },
     companies: { added: 0, updated: 0, skipped: 0 },
     contacts: { added: 0, updated: 0, skipped: 0 },
+    roles: { targetSelected: 0, deprioritizedSelected: 0 },
     referenceDocumentsStored: preview.referenceDocuments.length,
     errors: [],
   };
+
+  clearImportJobPostingCache();
 
   await ensureProfileRow(userId);
 
@@ -124,6 +165,9 @@ export async function applyClientImport(
   }
 
   if (payload.profile) {
+    result.roles.targetSelected = payload.profile.targetRoles?.length ?? 0;
+    result.roles.deprioritizedSelected = payload.profile.deprioritizedRoles?.length ?? 0;
+
     const profilePatch: Record<string, unknown> = {};
     const existing = await prisma.profile.findUnique({ where: { userId } });
 
@@ -201,7 +245,16 @@ export async function applyClientImport(
   const jobIdByDedupeKey = new Map<string, string>();
   const existingUserJobs = await prisma.job.findMany({
     where: { userId },
-    select: { id: true, company: true, role: true, url: true, stage: true, notes: true, appliedAt: true },
+    select: {
+      id: true,
+      company: true,
+      role: true,
+      url: true,
+      stage: true,
+      notes: true,
+      userNotes: true,
+      appliedAt: true,
+    },
   });
   const jobLookups = buildExistingJobLookups(existingUserJobs);
 
@@ -213,19 +266,32 @@ export async function applyClientImport(
     try {
       const existing = findExistingImportJob(jobLookups, { url, company: companyName, role });
 
+      const resolvedNotes = await resolveImportJobNotes({
+        company: companyName,
+        role,
+        url,
+        hirebaseSlug: enriched?.hirebaseSlug,
+        sheetNotes: notes,
+        existingNotes: existing?.notes ?? null,
+      });
+      if (resolvedNotes.enriched) result.jobs.descriptionsEnriched++;
+
       if (existing) {
         const patch: {
           stage?: JobStage;
           url?: string | null;
           notes?: string | null;
+          userNotes?: string | null;
           appliedAt?: Date | null;
           company?: string;
           role?: string;
         } = {};
         if (stage && stage !== existing.stage) patch.stage = stage;
         if (url && url !== existing.url) patch.url = url;
-        const mergedNotes = mergeNotes(notes, hirebaseLinkNote(Boolean(enriched?.apiLinked)));
-        if (mergedNotes && mergedNotes !== existing.notes) patch.notes = mergedNotes;
+        if (resolvedNotes.notes && resolvedNotes.notes !== existing.notes) patch.notes = resolvedNotes.notes;
+        if (resolvedNotes.userNotes && resolvedNotes.userNotes !== existing.userNotes) {
+          patch.userNotes = resolvedNotes.userNotes;
+        }
         if (companyName !== existing.company) patch.company = companyName;
         if (role !== existing.role) patch.role = role;
         const parsedApplied = parseAppliedAt(appliedAt);
@@ -249,7 +315,8 @@ export async function applyClientImport(
           role,
           url,
           stage,
-          notes: mergeNotes(notes, hirebaseLinkNote(Boolean(enriched?.apiLinked))),
+          notes: resolvedNotes.notes,
+          userNotes: resolvedNotes.userNotes,
           appliedAt: parseAppliedAt(appliedAt) ?? (stage === "APPLIED" ? new Date() : null),
         },
       });
@@ -260,6 +327,7 @@ export async function applyClientImport(
         url: created.url,
         stage: created.stage,
         notes: created.notes,
+        userNotes: created.userNotes,
         appliedAt: created.appliedAt,
       };
       const urlKey = normalizeImportJobUrl(created.url);

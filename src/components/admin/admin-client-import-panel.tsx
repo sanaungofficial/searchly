@@ -524,8 +524,14 @@ export function AdminClientImportPanel({ clientUserId }: { clientUserId: string 
 
       const parts = [
         data.profileUpdated ? "profile updated" : null,
+        data.roles?.targetSelected || data.roles?.deprioritizedSelected
+          ? `roles ${data.roles.targetSelected} target, ${data.roles.deprioritizedSelected} deprioritized`
+          : null,
         data.jobs.added || data.jobs.updated
           ? `jobs ${data.jobs.added} added, ${data.jobs.updated} updated`
+          : null,
+        data.jobs.descriptionsEnriched
+          ? `${data.jobs.descriptionsEnriched} job descriptions filled from posting links`
           : null,
         data.companies.added || data.companies.updated
           ? `companies ${data.companies.added} added, ${data.companies.updated} updated`
