@@ -1,10 +1,10 @@
 "use client";
 
-import { ScoutBox } from "./scout-box";
+import { ScoutBox, ScoutInsetBox } from "./scout-box";
 import { WorkspacePageShell } from "./workspace-page-shell";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { BETA_FEATURES, type BetaFeatureId } from "@/lib/beta-features";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { border, color, fontSans, radius, surface, type as T } from "@/lib/typography";
 
 export function BetaComingSoon({ feature }: { feature: BetaFeatureId }) {
   const isMobile = useIsMobile();
@@ -22,6 +22,7 @@ export function BetaComingSoon({ feature }: { feature: BetaFeatureId }) {
             padding: "6px 10px",
             background: "rgba(26,58,47,0.06)",
             border: border.line,
+            borderRadius: radius.box,
           }}
         >
           <span
@@ -61,19 +62,9 @@ export function BetaComingSoon({ feature }: { feature: BetaFeatureId }) {
           We will email you when this is ready. For now, Dashboard, Opportunities, and Profile are fully available.
         </p>
       </ScoutBox>
-      <div
-        style={{
-          padding: "14px 16px",
-          background: surface.inset,
-          border: border.line,
-          fontFamily: fontSans,
-          fontSize: T.caption,
-          color: color.muted,
-          lineHeight: 1.5,
-        }}
-      >
+      <ScoutInsetBox padding="14px 16px" style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.5 }}>
         Questions? Reply to any Kimchi email or reach out through your Second Ladder contact.
-      </div>
+      </ScoutInsetBox>
     </WorkspacePageShell>
   );
 }

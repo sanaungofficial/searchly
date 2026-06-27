@@ -7,7 +7,7 @@ import {
   type LibraryDocumentType,
 } from "@/lib/asset-types";
 import { ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { border, color, fontSans, radius, shadow, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 type Props = {
@@ -82,12 +82,13 @@ export function LibraryDocumentUploadModal({ open, onClose, onUpload, uploading 
         style={{
           background: surface.card,
           border: border.lineStrong,
+          borderRadius: radius.box,
           padding: isMobile ? "28px 20px 24px" : "36px 32px 28px",
           width: 560,
           maxWidth: "92vw",
           maxHeight: "90vh",
           overflowY: "auto",
-          boxShadow: "4px 4px 0 rgba(17,17,17,0.06)",
+          boxShadow: shadow.cardStrong,
         }}
       >
         <ScoutLabel>File library</ScoutLabel>
@@ -109,6 +110,7 @@ export function LibraryDocumentUploadModal({ open, onClose, onUpload, uploading 
           onClick={pickFile}
           style={{
             border: `2px dashed ${dragging ? color.forest : "rgba(26,58,47,0.25)"}`,
+            borderRadius: radius.box,
             background: dragging ? "rgba(26,58,47,0.06)" : surface.inset,
             padding: "20px 16px",
             display: "flex",

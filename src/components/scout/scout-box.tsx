@@ -40,6 +40,53 @@ export function ScoutBox({
   );
 }
 
+/** Standard bordered form control — matches ScoutBox radius */
+export const scoutFieldStyle: CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  border: border.line,
+  borderRadius: radius.box,
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  color: color.ink,
+  background: surface.card,
+  boxSizing: "border-box",
+};
+
+/** Small category / status chip on inset background */
+export const scoutInsetChipStyle: CSSProperties = {
+  fontFamily: "var(--font-ui)",
+  fontSize: 12,
+  color: color.muted,
+  background: surface.inset,
+  padding: "4px 8px",
+  border: border.line,
+  borderRadius: radius.box,
+};
+
+/** Inset callout panel inside a ScoutBox */
+export const scoutInsetPanelStyle: CSSProperties = {
+  background: surface.inset,
+  border: border.line,
+  borderRadius: radius.box,
+};
+
+export function ScoutInsetBox({
+  children,
+  padding = "10px 12px",
+  style,
+}: {
+  children: ReactNode;
+  padding?: number | string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div style={{ ...scoutInsetPanelStyle, padding, ...style }}>
+      {children}
+    </div>
+  );
+}
+
 export function ScoutLabel({ children }: { children: ReactNode }) {
   return (
     <span
