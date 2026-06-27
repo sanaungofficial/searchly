@@ -25,6 +25,8 @@ export function InboxMessageRow({
   onToggle,
   onHover,
 }: Props) {
+  if (expanded) return null;
+
   const name = msg.fromName ?? msg.from;
   const avatar = msg.avatar ?? { primary: null, fallback: null, initials: name.slice(0, 2).toUpperCase() };
   const rowStyle = inboxRowStyle({ expanded, hovered, isLastOpened, isFocusUnread, unread: msg.unread });
