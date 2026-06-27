@@ -18,6 +18,8 @@ import { border, color, displayTitleStyle, fontSans, surface, type as T } from "
 
 const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
 const SIDEBAR_WIDTH = 340;
+const DRAWER_BACKDROP_Z = 200;
+const DRAWER_Z = 201;
 const line = border.line;
 const lineStrong = border.lineStrong;
 const cardBg = surface.card;
@@ -278,6 +280,12 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
     setTimeout(onClose, 220);
   };
 
+  const closeFromBackdrop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    close();
+  };
+
   const toggleFollow = async () => {
     if (!coach) return;
     const res = await fetch(`/api/coaches/${slug}/follow`, { method: coach.isFollowing ? "DELETE" : "POST" });
@@ -337,7 +345,11 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
 
   return (
     <>
-      <div onClick={close} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: 60 }} />
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={closeFromBackdrop}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", zIndex: DRAWER_BACKDROP_Z }}
+      />
       <div
         style={{
           position: "fixed",
@@ -349,7 +361,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
           maxWidth: isMobile ? "100vw" : "calc(100vw - 16px)",
           background: surface.page,
           overflow: "hidden",
-          zIndex: 70,
+          zIndex: DRAWER_Z,
           boxShadow: isMobile ? "none" : "3px 3px 0 rgba(17,17,17,0.08)",
           transform: visible ? "translateX(0)" : "translateX(calc(100% + 16px))",
           transition: "transform 0.25s ease",

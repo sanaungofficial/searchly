@@ -24,12 +24,25 @@ function CategoryInner({
   const [drawerCoach, setDrawerCoach] = useState<CoachListItem | null>(null);
   const { openPricing } = useWorkspace();
 
+  const coachParam = searchParams.get("coach");
+
   useEffect(() => {
     fetch("/api/subscription")
       .then((r) => r.json())
       .then((d) => { if (d.isPro) setIsPro(true); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!coachParam) {
+      setDrawerCoach(null);
+      return;
+    }
+    setDrawerCoach((prev) => {
+      if (prev?.slug === coachParam || prev?.id === coachParam) return prev;
+      return { id: coachParam, slug: coachParam, displayName: "Coach" } as CoachListItem;
+    });
+  }, [coachParam]);
 
   const openCoach = useCallback((coach: CoachListItem) => {
     setDrawerCoach(coach);

@@ -44,10 +44,15 @@ function CoachingContent() {
 
   useEffect(() => {
     if (coachingTab !== "directory") return;
-    if (!coachParam) return;
-    if (drawerCoach?.slug === coachParam || drawerCoach?.id === coachParam) return;
-    setDrawerCoach({ id: coachParam, slug: coachParam, displayName: "Coach" } as CoachListItem);
-  }, [coachParam, drawerCoach?.slug, drawerCoach?.id, coachingTab]);
+    if (!coachParam) {
+      setDrawerCoach(null);
+      return;
+    }
+    setDrawerCoach((prev) => {
+      if (prev?.slug === coachParam || prev?.id === coachParam) return prev;
+      return { id: coachParam, slug: coachParam, displayName: "Coach" } as CoachListItem;
+    });
+  }, [coachParam, coachingTab]);
 
   const selectTab = useCallback(
     (tab: CoachingTab) => {
