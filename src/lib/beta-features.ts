@@ -41,11 +41,12 @@ export function isProductionEnv(): boolean {
 }
 
 /** Page-level access for Live / Coaching / Network routes. */
-export function canAccessBetaFeature(feature: BetaFeatureId, isAdmin: boolean): boolean {
-  if (feature === "network") return isAdmin;
-  if (!isProductionEnv()) return isAdmin;
+export function canAccessBetaFeature(feature: BetaFeatureId, _isAdmin: boolean): boolean {
+  if (feature === "live") return true;
+  if (feature === "network") return _isAdmin;
+  if (!isProductionEnv()) return _isAdmin;
   if (feature === "coaching") return true;
-  return isAdmin;
+  return _isAdmin;
 }
 
 /** Community nav (Live, Coaching, Network) — admins only in the sidebar. */

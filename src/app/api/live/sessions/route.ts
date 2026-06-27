@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       const canHost = await canHostLiveSession({
         operator,
         authEmail: authUser.email,
-        session: view,
+        session: { id: view.id, coachProfileId: view.coachProfileId, host: view.host },
         isImpersonating,
       });
       return { ...view, canHost };

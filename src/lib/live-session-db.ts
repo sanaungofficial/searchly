@@ -1,7 +1,8 @@
-import type { LiveSessionStatus, Prisma } from "@prisma/client";
+import type { LiveSessionFormat, LiveSessionStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { mapLiveSessionToView } from "@/lib/live-session-display";
 import type { AdminLiveOverview, LiveSessionRoomKey, LiveSessionView } from "@/lib/live-session-types";
+import type { CoHostInput } from "@/lib/coach-live-auth";
 
 export type LiveSessionRecord = Prisma.LiveSessionGetPayload<{
   include: { _count: { select: { registrations: true } } };
@@ -10,6 +11,16 @@ export type LiveSessionRecord = Prisma.LiveSessionGetPayload<{
 const sessionInclude = {
   _count: { select: { registrations: true } },
 } as const;
+
+const coHostInclude = {
+  coHosts: {
+    orderBy: { sortOrder: "asc" as const },
+    include: { coachProfile: { select: { slug: true } } },
+  },
+  _count: { select: { registrations: true } },
+} as const;
+
+export type LiveSessionWithCoHosts = Prisma.LiveSessionGetPayload<{ include: typeof coHostInclude }>;
 
 export async function findLiveSessionByRouteId(routeId: string) {
   const numeric = Number.parseInt(routeId, 10);
@@ -33,6 +44,45 @@ export async function listPublicLiveSessions(): Promise<LiveSessionRecord[]> {
     },
     include: sessionInclude,
     orderBy: [{ status: "asc" }, { scheduledStart: "asc" }],
+  });
+}
+
+/** Public catalog including ended sessions with replay enabled. */
+export async function listPublicCatalogSessions(): Promise<LiveSessionRecord[]> {
+  return prisma.liveSession.findMany({
+    where: {
+      OR: [
+        { status: { in: ["SCHEDULED", "LIVE"] } },
+        { status: "ENDED", replayEnabled: true, recordingUrl: { not: null } },
+      ],
+    },
+    include: sessionInclude,
+    orderBy: [{ scheduledStart: "desc" }],
+  });
+}
+
+export async function listCoachOwnedSessions(coachProfileId: string): Promise<LiveSessionRecord[]> {
+  return prisma.liveSession.findMany({
+    where: { coachProfileId },
+    include: sessionInclude,
+    orderBy: [{ scheduledStart: "desc" }],
+  });
+}
+
+export async function listPendingApprovalSessions(): Promise<LiveSessionRecord[]> {
+  return prisma.liveSession.findMany({
+    where: { status: "PENDING_APPROVAL" },
+    include: sessionInclude,
+    orderBy: { submittedForApprovalAt: "asc" },
+  });
+}
+
+export async function findLiveSessionWithCoHosts(routeId: string): Promise<LiveSessionWithCoHosts | null> {
+  const row = await findLiveSessionByRouteId(routeId);
+  if (!row) return null;
+  return prisma.liveSession.findUnique({
+    where: { id: row.id },
+    include: coHostInclude,
   });
 }
 
@@ -74,11 +124,29 @@ export type CreateLiveSessionInput = {
   hostRole?: string;
   scheduledStart: Date;
   scheduledEnd: Date;
+  timezone?: string;
+  format?: LiveSessionFormat;
+  coverImageUrl?: string | null;
   isFeaturedWeekly?: boolean;
   bgColor?: string;
   accentColor?: string;
   status?: LiveSessionStatus;
+  coHosts?: CoHostInput[];
 };
+
+export async function replaceLiveSessionCoHosts(liveSessionId: string, coHosts: CoHostInput[]) {
+  await prisma.liveSessionCoHost.deleteMany({ where: { liveSessionId } });
+  if (coHosts.length === 0) return;
+  await prisma.liveSessionCoHost.createMany({
+    data: coHosts.map((h, i) => ({
+      liveSessionId,
+      coachProfileId: h.coachProfileId ?? null,
+      displayName: h.displayName,
+      email: h.email ?? null,
+      sortOrder: i,
+    })),
+  });
+}
 
 export async function createLiveSession(input: CreateLiveSessionInput) {
   let hostName = input.hostName?.trim() ?? "";
@@ -117,6 +185,9 @@ export async function createLiveSession(input: CreateLiveSessionInput) {
       hostReviewCount,
       scheduledStart: input.scheduledStart,
       scheduledEnd: input.scheduledEnd,
+      timezone: input.timezone?.trim() || "America/New_York",
+      format: input.format ?? "INTERACTIVE",
+      coverImageUrl: input.coverImageUrl?.trim() || null,
       isFeaturedWeekly: input.isFeaturedWeekly ?? false,
       bgColor: input.bgColor ?? "#1A3A2F",
       accentColor: input.accentColor ?? "#E8D5A3",
@@ -126,7 +197,22 @@ export async function createLiveSession(input: CreateLiveSessionInput) {
   });
 }
 
-export type UpdateLiveSessionInput = Partial<CreateLiveSessionInput>;
+export async function createCoachLiveSession(
+  input: CreateLiveSessionInput & { coachProfileId: string },
+): Promise<LiveSessionRecord> {
+  const row = await createLiveSession({ ...input, status: input.status ?? "DRAFT" });
+  if (input.coHosts?.length) {
+    await replaceLiveSessionCoHosts(row.id, input.coHosts);
+  }
+  return row;
+}
+
+export type UpdateLiveSessionInput = Partial<CreateLiveSessionInput> & {
+  replayEnabled?: boolean;
+  rejectionReason?: string | null;
+  submittedForApprovalAt?: Date | null;
+  approvedAt?: Date | null;
+};
 
 export async function updateLiveSession(id: string, input: UpdateLiveSessionInput) {
   const data: Prisma.LiveSessionUpdateInput = {};
@@ -136,6 +222,13 @@ export async function updateLiveSession(id: string, input: UpdateLiveSessionInpu
   if (input.category != null) data.category = input.category.trim();
   if (input.scheduledStart != null) data.scheduledStart = input.scheduledStart;
   if (input.scheduledEnd != null) data.scheduledEnd = input.scheduledEnd;
+  if (input.timezone != null) data.timezone = input.timezone.trim();
+  if (input.format != null) data.format = input.format;
+  if (input.coverImageUrl !== undefined) data.coverImageUrl = input.coverImageUrl?.trim() || null;
+  if (input.replayEnabled != null) data.replayEnabled = input.replayEnabled;
+  if (input.rejectionReason !== undefined) data.rejectionReason = input.rejectionReason;
+  if (input.submittedForApprovalAt !== undefined) data.submittedForApprovalAt = input.submittedForApprovalAt;
+  if (input.approvedAt !== undefined) data.approvedAt = input.approvedAt;
   if (input.isFeaturedWeekly != null) data.isFeaturedWeekly = input.isFeaturedWeekly;
   if (input.bgColor != null) data.bgColor = input.bgColor;
   if (input.accentColor != null) data.accentColor = input.accentColor;
@@ -163,11 +256,17 @@ export async function updateLiveSession(id: string, input: UpdateLiveSessionInpu
   if (input.hostInitials != null) data.hostInitials = input.hostInitials;
   if (input.hostRole != null) data.hostRole = input.hostRole;
 
-  return prisma.liveSession.update({
+  const row = await prisma.liveSession.update({
     where: { id },
     data,
     include: sessionInclude,
   });
+
+  if (input.coHosts) {
+    await replaceLiveSessionCoHosts(id, input.coHosts);
+  }
+
+  return row;
 }
 
 export async function setLiveSessionStatus(
