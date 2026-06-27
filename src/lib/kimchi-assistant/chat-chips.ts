@@ -416,6 +416,90 @@ function suggestionToChatChip(s: AssistantSuggestion, ctx?: AssistantContextPayl
   };
 }
 
+const WELCOME_PROFILE_ACTION_IDS = new Set([
+  "create-strategy",
+  "upload-resume",
+  "add-jobs",
+  "connect-email",
+  "finish-readback",
+]);
+
+function welcomeToneForSuggestion(s: AssistantSuggestion): ChipTone {
+  if (s.id === "interview-prep") return "violet";
+  if (s.id === "follow-up" || s.kind === "follow_up") return "sky";
+  if (s.id.startsWith("apply-")) return "amber";
+  if (s.kind === "inbox_email") return "rose";
+  if (s.id === "current-job-fit") return "mint";
+  if (s.id === "create-strategy") return "violet";
+  if (s.id === "upload-resume") return "sky";
+  if (s.id === "connect-email") return "sky";
+  if (s.id === "add-jobs") return "mint";
+  return "mint";
+}
+
+/** Short colorful welcome chips for new threads — stable rule-based labels, no AI refresh. */
+function suggestionToWelcomeChip(
+  s: AssistantSuggestion,
+  ctx: AssistantContextPayload | null,
+): AssistantChip | null {
+  if (WELCOME_PROFILE_ACTION_IDS.has(s.id)) {
+    return suggestionToActionChip(s);
+  }
+
+  if (
+    s.id === "interview-prep" ||
+    s.id === "follow-up" ||
+    s.id.startsWith("apply-") ||
+    s.id === "current-job-fit" ||
+    s.kind === "inbox_email" ||
+    s.kind === "follow_up"
+  ) {
+    const { prompt } = questionFromSuggestion(s, ctx?.inbox ?? null);
+    return {
+      id: `welcome-${s.id}`,
+      label: s.title,
+      hint: s.detail,
+      variant: "action",
+      tone: welcomeToneForSuggestion(s),
+      action: { type: "chat", prompt },
+    };
+  }
+
+  return suggestionToActionChip(s);
+}
+
+export function buildWelcomeChips(ctx: AssistantContextPayload | null): AssistantChip[] {
+  if (!ctx?.suggestions?.length) {
+    return GENERIC_CHAT_STARTERS.map((chip) => ({
+      ...chip,
+      variant: "action" as const,
+    })).slice(0, 4);
+  }
+
+  const filtered = filterSuggestionsForWelcome(ctx.suggestions, ctx.inbox);
+  const chips: AssistantChip[] = [];
+  const seen = new Set<string>();
+
+  for (const s of filtered) {
+    const chip = suggestionToWelcomeChip(s, ctx);
+    if (!chip || seen.has(chip.label)) continue;
+    if (shouldSkipChipForContext(chip, ctx)) continue;
+    seen.add(chip.label);
+    chips.push(chip);
+  }
+
+  if (chips.length < 3) {
+    for (const chip of GENERIC_CHAT_STARTERS) {
+      const welcomeChip: AssistantChip = { ...chip, variant: "action", id: `welcome-${chip.id}` };
+      if (seen.has(welcomeChip.label)) continue;
+      seen.add(welcomeChip.label);
+      chips.push(welcomeChip);
+    }
+  }
+
+  return chips.slice(0, 5);
+}
+
 /** Profile-aware suggestion chips (same source as the old "Suggested" strip). */
 export function buildContextSuggestionChips(ctx: AssistantContextPayload | null): AssistantChip[] {
   if (!ctx?.suggestions?.length) return [];
