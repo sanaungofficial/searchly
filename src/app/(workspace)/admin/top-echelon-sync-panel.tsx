@@ -351,6 +351,11 @@ export function TopEchelonSyncPanel() {
       {error && (
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#C4574A", margin: "16px 0 0", lineHeight: 1.5 }}>{error}</p>
       )}
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "16px 0 0", lineHeight: 1.55 }}>
+        <a href="/admin/network-jobs?source=TOPECHELON" style={{ color: color.forest, fontWeight: 600 }}>
+          Browse scraped Top Echelon catalog →
+        </a>
+      </p>
     </ScoutBox>
   );
 }

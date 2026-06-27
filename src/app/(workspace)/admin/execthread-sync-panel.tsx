@@ -150,6 +150,15 @@ export function ExecThreadSyncPanel() {
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
         Import new listings from ExecThread search, or <strong>refresh existing</strong> jobs already in Kimchi to backfill full descriptions, recruiter contacts, and apply links. Sync always reveals confidential info (premium/unlimited ET account; no point budgeting in Kimchi).
       </p>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
+        For large catalogs (~5,806 US/Canada listings), set{" "}
+        <code style={{ fontFamily: fontMono, fontSize: T.label }}>EXECTHREAD_SEARCH_JSON</code> in Vercel with your ET filter (including{" "}
+        <code style={{ fontFamily: fontMono, fontSize: T.label }}>locations</code>), then use{" "}
+        <a href="/admin/network-jobs" style={{ color: color.forest, fontWeight: 600 }}>
+          Network catalog →
+        </a>{" "}
+        to import 100 summaries per click and browse scraped jobs.
+      </p>
 
       {forbidden && (
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#C4574A", margin: "0 0 16px" }}>

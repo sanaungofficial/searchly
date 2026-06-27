@@ -3,6 +3,7 @@ import {
   ExecThreadClient,
   execthreadConfigured,
   getExecThreadCredentials,
+  parseExecThreadTotalHits,
 } from "@/lib/execthread/client";
 import { ExecThreadSessionExpiredError } from "@/lib/execthread/errors";
 import { toExecThreadNetworkJobDbRecord } from "@/lib/execthread/map-network-job";
@@ -19,6 +20,14 @@ import type { ExecThreadListingRaw, ExecThreadSyncSummary } from "@/lib/execthre
 
 export type RunExecThreadSyncOptions = {
   limit?: number;
+  forceLogin?: boolean;
+};
+
+export type RunExecThreadCatalogImportOptions = {
+  from?: number;
+  size?: number;
+  /** When true (default), upsert search summaries without full redeem/export. */
+  listOnly?: boolean;
   forceLogin?: boolean;
 };
 
@@ -162,19 +171,8 @@ export async function runExecThreadSync(
 
   const { client, authenticated } = await getAuthenticatedExecThreadClient(options.forceLogin === true);
 
-  const searchPreview = await client.searchListings({
-    q: "all",
-    sort: "most relevant",
-    size: limit,
-    from: 0,
-  });
-  const totalHitsRaw = searchPreview.metadata?.totalHits;
-  const totalHits =
-    typeof totalHitsRaw === "number"
-      ? totalHitsRaw
-      : typeof totalHitsRaw === "object" && totalHitsRaw?.value != null
-        ? totalHitsRaw.value
-        : null;
+  const searchPreview = await client.fetchSearchPage(limit, 0);
+  const totalHits = parseExecThreadTotalHits(searchPreview.metadata);
 
   const jobs = await client.fetchListingsWithDetails(limit);
 
@@ -202,6 +200,78 @@ export async function runExecThreadSync(
     authenticated,
     previewHits,
     redeemHits,
+  };
+}
+
+/** Preview ET catalog size using configured search filters (e.g. US + Canada). */
+export async function previewExecThreadCatalogTotal(
+  options: Pick<RunExecThreadSyncOptions, "forceLogin"> = {},
+): Promise<{ totalHits: number | null; authenticated: boolean }> {
+  if (!execthreadConfigured()) {
+    throw new Error("EXECTHREAD_EMAIL and EXECTHREAD_PASSWORD are not configured.");
+  }
+
+  const { client, authenticated } = await getAuthenticatedExecThreadClient(options.forceLogin === true);
+  const search = await client.fetchSearchPage(1, 0);
+  await saveExecThreadSession(client.getSession());
+  return {
+    totalHits: parseExecThreadTotalHits(search.metadata),
+    authenticated,
+  };
+}
+
+/** Import one paginated page from ET search (list-only by default — fast for large catalogs). */
+export async function runExecThreadImportSearchPage(
+  options: RunExecThreadCatalogImportOptions = {},
+): Promise<ExecThreadSyncSummary> {
+  const started = Date.now();
+  const from = Math.max(0, options.from ?? 0);
+  const size = options.size && options.size > 0 ? Math.min(options.size, 100) : 100;
+  const listOnly = options.listOnly !== false;
+
+  if (!execthreadConfigured()) {
+    throw new Error("EXECTHREAD_EMAIL and EXECTHREAD_PASSWORD are not configured.");
+  }
+
+  const { client, authenticated } = await getAuthenticatedExecThreadClient(options.forceLogin === true);
+  const search = await client.fetchSearchPage(size, from);
+  const totalHits = parseExecThreadTotalHits(search.metadata);
+  const summaries = search.results ?? [];
+
+  let upserted = 0;
+  let previewHits = 0;
+  let redeemHits = 0;
+
+  for (const row of summaries) {
+    try {
+      const job = listOnly ? row : await client.fetchListingFullExport(row);
+      const hits = exportHitCounts(job);
+      previewHits += hits.previewHits;
+      redeemHits += hits.redeemHits;
+      await persistExecThreadListing(job);
+      upserted += 1;
+    } catch (err) {
+      console.warn(`[execthread] catalog import failed for ${row._id}:`, err);
+    }
+  }
+
+  await saveExecThreadSession(client.getSession());
+  await recordExecThreadSyncResult(true);
+
+  const nextFrom = summaries.length >= size ? from + summaries.length : null;
+
+  return {
+    mode: "catalog-import",
+    fetched: summaries.length,
+    upserted,
+    totalHits,
+    durationMs: Date.now() - started,
+    authenticated,
+    previewHits,
+    redeemHits,
+    from,
+    nextFrom,
+    listOnly,
   };
 }
 

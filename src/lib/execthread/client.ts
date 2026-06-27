@@ -198,7 +198,7 @@ export class ExecThreadClient {
   }
 
   async fetchListingsWithDetails(limit: number): Promise<ExecThreadListingRaw[]> {
-    const searchBody = getDefaultSearchBody(limit);
+    const searchBody = buildExecThreadSearchBody(limit, 0);
     const search = await this.searchListings(searchBody);
     const summaries = (search.results ?? []).slice(0, limit);
 
@@ -211,6 +211,11 @@ export class ExecThreadClient {
       }
     }
     return merged;
+  }
+
+  /** Paginated search summaries only (no full export). */
+  async fetchSearchPage(size: number, from: number): Promise<ExecThreadSearchResponse> {
+    return this.searchListings(buildExecThreadSearchBody(size, from));
   }
 
   private async request<T>(
@@ -274,12 +279,12 @@ export function execthreadConfigured(): boolean {
   return Boolean(getExecThreadCredentials());
 }
 
-function getDefaultSearchBody(limit: number): Record<string, unknown> {
+function getDefaultSearchBody(limit: number, from = 0): Record<string, unknown> {
   const raw = process.env.EXECTHREAD_SEARCH_JSON?.trim();
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return { ...parsed, size: limit, from: 0 };
+      return { ...parsed, size: limit, from };
     } catch {
       // fall through
     }
@@ -288,10 +293,24 @@ function getDefaultSearchBody(limit: number): Record<string, unknown> {
     q: "all",
     sort: "most relevant",
     size: limit,
-    from: 0,
+    from,
   };
 }
 
+/** Build search body for ET listings API (respects EXECTHREAD_SEARCH_JSON filters). */
+export function buildExecThreadSearchBody(size: number, from = 0): Record<string, unknown> {
+  return getDefaultSearchBody(size, from);
+}
+
+export function parseExecThreadTotalHits(metadata: ExecThreadSearchResponse["metadata"]): number | null {
+  const totalHitsRaw = metadata?.totalHits;
+  if (typeof totalHitsRaw === "number") return totalHitsRaw;
+  if (typeof totalHitsRaw === "object" && totalHitsRaw?.value != null) {
+    return typeof totalHitsRaw.value === "number" ? totalHitsRaw.value : null;
+  }
+  return null;
+}
+
 export function getDefaultSearchBodyForExport(limit: number): Record<string, unknown> {
-  return getDefaultSearchBody(limit);
+  return getDefaultSearchBody(limit, 0);
 }

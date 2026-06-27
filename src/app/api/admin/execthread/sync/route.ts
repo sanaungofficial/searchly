@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { execthreadConfigured } from "@/lib/execthread/client";
-import { runExecThreadSync, runExecThreadRefreshExisting, runExecThreadRefreshByExternalIds, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
+import { runExecThreadSync, runExecThreadRefreshExisting, runExecThreadRefreshByExternalIds, runExecThreadImportSearchPage, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
 import { recordExecThreadSyncResult } from "@/lib/execthread/session-store";
 
 export const maxDuration = 300;
@@ -13,6 +13,12 @@ type SyncBody = {
   refreshExisting?: boolean;
   /** Re-fetch specific stored ExecThread jobs by externalId. */
   refreshExternalIds?: string[];
+  /** Paginated catalog import — upserts search summaries (list-only by default). */
+  importCatalogPage?: {
+    from?: number;
+    size?: number;
+    listOnly?: boolean;
+  };
 };
 
 export async function POST(request: Request) {
@@ -47,6 +53,13 @@ export async function POST(request: Request) {
 
     const summary = refreshExternalIds.length
       ? await runExecThreadRefreshByExternalIds(refreshExternalIds, { forceLogin: body.forceLogin === true })
+      : body.importCatalogPage
+        ? await runExecThreadImportSearchPage({
+            from: body.importCatalogPage.from,
+            size: body.importCatalogPage.size,
+            listOnly: body.importCatalogPage.listOnly,
+            forceLogin: body.forceLogin === true,
+          })
       : body.refreshExisting
         ? await runExecThreadRefreshExisting({ forceLogin: body.forceLogin === true })
         : await runExecThreadSync({
