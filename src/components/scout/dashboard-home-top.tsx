@@ -21,7 +21,6 @@ import { isStaffPortalRole } from "@/lib/staff-portal";
 import type { LiveSessionView } from "@/lib/live-session-types";
 import { liveSessionRouteId } from "@/lib/live-sessions";
 import { CoachAvatar } from "@/components/scout/coach-avatar";
-import { MyCoachesPanel } from "@/components/scout/my-coaches-panel";
 import { ExpertDashboardOverview } from "@/components/scout/expert-dashboard-overview";
 import { EventInterestModal } from "@/components/scout/event-interest-modal";
 import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal";
@@ -684,13 +683,13 @@ export function DashboardHomeTop({ isMobile }: Props) {
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0, flex: 1 }}>
             You don&apos;t have a coach yet. When your team assigns one, they&apos;ll show up here and under Coaching → My coaches.
           </p>
-          <ScoutSecondaryBtn onClick={() => router.push("/coaching/my-coaches")} style={{ minHeight: 40, flexShrink: 0 }}>
+          <ScoutSecondaryBtn onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))} style={{ minHeight: 40, flexShrink: 0 }}>
             My coaches
           </ScoutSecondaryBtn>
         </ScoutBox>
       )}
 
-      {showClientCoachUi && !bookingLoading && !bookedCoach && assignedCoaches.length > 0 && (
+      {showClientCoachUi && !bookingLoading && assignedCoaches.length > 0 && (
         <ScoutBox padding={isMobile ? "16px 18px" : "18px 22px"} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -698,7 +697,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
             </p>
             <button
               type="button"
-              onClick={() => router.push("/coaching/my-coaches")}
+              onClick={() => router.push(withClientReviewPath("/coaching/my-coaches"))}
               style={{
                 background: "none",
                 border: "none",
@@ -761,7 +760,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
             <CoachAvatar name={bookedCoach.coach.displayName} photoUrl={bookedCoach.coach.photoUrl} size={48} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 4px" }}>
-                Your coach
+                {new Date(bookedCoach.startAt) >= new Date() ? "Upcoming session" : "Recent session"}
               </p>
               <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 600, color: color.ink, margin: "0 0 4px" }}>
                 {bookedCoach.coach.displayName}
