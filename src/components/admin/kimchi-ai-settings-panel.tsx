@@ -152,10 +152,11 @@ export function KimchiAiSettingsPanel({ onSaved }: { onSaved?: () => void }) {
             style={{ marginTop: 3 }}
           />
           <span>
-            <span style={{ ...labelStyle, marginBottom: 2 }}>Personalized &quot;For you&quot; chips when Kimchi opens</span>
+            <span style={{ ...labelStyle, marginBottom: 2 }}>AI &quot;For you&quot; chips on What to focus on</span>
             <p style={{ ...hintStyle, margin: 0 }}>
-              One lightweight AI call on welcome threads — cites their pipeline, strategy, and profile so it feels personal.
-              Falls back to rule-based chips if AI is unavailable or credits are out.
+              When the user clicks What to focus on, one lightweight AI call can personalize chips from their pipeline,
+              strategy, and profile. Off by default — welcome chips stay stable rule-based suggestions. Falls back if AI
+              is unavailable or credits are out.
             </p>
           </span>
         </label>

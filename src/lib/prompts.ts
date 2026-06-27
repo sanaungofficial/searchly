@@ -100,9 +100,9 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     variables: ["pipeline", "from", "subject", "snippet"],
   },
   KIMCHI_FOR_YOU: {
-    label: "Kimchi For You (welcome chips)",
+    label: "Kimchi For You (focus chips)",
     description:
-      "Generates 3–4 welcome question chips when Kimchi opens — natural questions with role/company context from pipeline and inbox.",
+      "Generates personalized chips when the user clicks What to focus on — not on new thread open.",
     category: "Kimchi Assistant",
     variables: ["contextBlock", "profileGaps", "summary"],
   },

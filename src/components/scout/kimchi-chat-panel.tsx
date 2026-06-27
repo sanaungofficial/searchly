@@ -15,7 +15,7 @@ import { VOICE_PRESETS, getVoicePreset, type VoicePresetId } from "@/lib/kimchi-
 import {
   buildFollowUpChips,
   buildContextSuggestionChips,
-  buildStarterChatChips,
+  buildWelcomeChips,
   formatThreadForFollowUps,
   formatThreadForCopy,
   isFailedAssistantReply,
@@ -106,7 +106,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [inboxScanning, setInboxScanning] = useState(false);
   const [forYouChips, setForYouChips] = useState<AssistantChip[]>([]);
   const [forYouLoading, setForYouLoading] = useState(false);
-  const forYouRequestedRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -307,7 +306,6 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     setNextStepsVisible(false);
     setSuggestionsVisible(false);
     setForYouChips([]);
-    forYouRequestedRef.current = false;
   }, [activeThreadId]);
 
   useEffect(() => {
@@ -315,18 +313,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   }, [messages, streaming, followUpChips]);
 
   const welcomeOnly = isWelcomeOnlyThread(messages, activeThreadTitle);
-  const welcomeChips =
-    forYouChips.length > 0 ? forYouChips : buildStarterChatChips(assistantCtx);
-
-  useEffect(() => {
-    if (!assistantCtx || forYouRequestedRef.current) return;
-    const autoForYou = (assistantCtx as AssistantContextPayload & { autoForYouOnOpen?: boolean })
-      .autoForYouOnOpen;
-    if (autoForYou && welcomeOnly) {
-      forYouRequestedRef.current = true;
-      void loadForYou();
-    }
-  }, [assistantCtx, welcomeOnly, loadForYou]);
+  const welcomeChips = buildWelcomeChips(assistantCtx);
 
   const contextSuggestionChips =
     forYouChips.length > 0 ? forYouChips : buildContextSuggestionChips(assistantCtx);
@@ -802,11 +789,11 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
           );
         })}
 
-        {welcomeOnly && (welcomeChips.length > 0 || forYouLoading) && (
+        {welcomeOnly && welcomeChips.length > 0 && (
           <KimchiStarterSection
-            actions={[]}
-            chatChips={welcomeChips}
-            loading={forYouLoading}
+            actions={welcomeChips}
+            chatChips={[]}
+            loading={false}
             onActivate={handleChipActivate}
           />
         )}

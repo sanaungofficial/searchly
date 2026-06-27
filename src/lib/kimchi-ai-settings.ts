@@ -22,7 +22,7 @@ export const DEFAULT_KIMCHI_AI_SETTINGS: KimchiAiSettings = {
   createModel: KIMCHI_GATEWAY_MODELS.create,
   parseModel: KIMCHI_GATEWAY_MODELS.parse,
   autoInboxTriageOnOpen: false,
-  autoForYouOnOpen: true,
+  autoForYouOnOpen: false,
 };
 
 export const KIMCHI_AI_SETTINGS_SIDEBAR = {
