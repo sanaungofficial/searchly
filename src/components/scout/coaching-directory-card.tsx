@@ -235,11 +235,11 @@ export function CoachingDirectoryCard({
               <p
                 style={{
                   fontFamily: fontSans,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: color.ink,
-                  lineHeight: 1.35,
-                  margin: "3px 0 0",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: color.stone,
+                  lineHeight: 1.45,
+                  margin: "4px 0 0",
                 }}
               >
                 {primaryLine}
