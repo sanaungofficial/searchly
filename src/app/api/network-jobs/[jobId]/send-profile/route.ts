@@ -3,12 +3,12 @@ import {
   canViewNetworkJobInternalFromSession,
   sanitizeNetworkJobListing,
 } from "@/lib/network-job-access";
-import { networkJobHasRecruiter } from "@/lib/network-job-client-actions";
+import { networkJobShowSendProfile } from "@/lib/network-job-client-actions";
 import { createNetworkJobRequest } from "@/lib/network-job-request";
 import { loadNetworkJobListingById } from "@/lib/network-jobs-load";
 import { NextResponse } from "next/server";
 
-type IntroRequestBody = {
+type SendProfileBody = {
   notes?: string;
 };
 
@@ -36,10 +36,7 @@ export async function POST(
     acting.isImpersonating,
   );
   if (internalView) {
-    return NextResponse.json(
-      { error: "Intro requests are for clients — use partner links in staff view." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Send profile is for clients only." }, { status: 400 });
   }
 
   const listing = await loadNetworkJobListingById(externalId);
@@ -48,25 +45,25 @@ export async function POST(
   }
 
   const job = sanitizeNetworkJobListing(listing, false);
-  if (!networkJobHasRecruiter(job)) {
+  if (!networkJobShowSendProfile(job, false)) {
     return NextResponse.json(
-      { error: "This role has no recruiter attached — save the job or apply directly if available." },
+      { error: "This role uses a direct application link instead of profile send." },
       { status: 400 },
     );
   }
 
-  const body = (await request.json().catch(() => ({}))) as IntroRequestBody;
+  const body = (await request.json().catch(() => ({}))) as SendProfileBody;
 
   try {
     const { request: row, duplicate } = await createNetworkJobRequest({
       userId: dbUser.id,
       job,
-      requestType: "INTRO",
+      requestType: "SEND_PROFILE",
       clientNotes: body.notes,
     });
     return NextResponse.json({ ok: true, id: row.id, duplicate });
   } catch (e) {
-    console.error("[network-intro-request]", e);
-    return NextResponse.json({ error: "Could not queue intro request. Try again shortly." }, { status: 500 });
+    console.error("[network-send-profile]", e);
+    return NextResponse.json({ error: "Could not queue profile send. Try again shortly." }, { status: 500 });
   }
 }

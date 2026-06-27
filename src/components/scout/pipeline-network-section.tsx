@@ -18,6 +18,7 @@ import {
   networkJobClientApplyUrl,
   networkJobHasRecruiter,
   networkJobPartnerListingUrl,
+  networkJobShowSendProfile,
 } from "@/lib/network-job-client-actions";
 import {
   createEmptyNetworkJobFilterForm,
@@ -36,7 +37,7 @@ import { CompanyLogo } from "./company-logo";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
-import { NetworkIntroRequestModal } from "./network-intro-request-modal";
+import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
 import { NetworkFiltersDrawer, NetworkQuickFiltersBar } from "./pipeline-network-filters";
 import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
@@ -67,14 +68,14 @@ function NetworkJobCard({
   internalView,
   onOpen,
   onSave,
-  onRequestIntro,
+  onRequestAction,
   saving,
 }: {
   job: NetworkMatchedJob;
   internalView: boolean;
   onOpen: () => void;
   onSave?: () => void;
-  onRequestIntro?: () => void;
+  onRequestAction?: (kind: NetworkJobRequestModalKind) => void;
   saving?: boolean;
 }) {
   const company = networkAgencyDisplayName(job);
@@ -89,6 +90,7 @@ function NetworkJobCard({
   const clientApplyUrl = networkJobClientApplyUrl(job, internalView);
   const partnerListingUrl = networkJobPartnerListingUrl(job, internalView);
   const showIntro = !internalView && networkJobHasRecruiter(job);
+  const showSendProfile = networkJobShowSendProfile(job, internalView);
 
   return (
     <ScoutBox padding={18}>
@@ -159,8 +161,11 @@ function NetworkJobCard({
             {saving ? "Saving…" : "Save job"}
           </ScoutPrimaryBtn>
         )}
-        {showIntro && onRequestIntro && (
-          <ScoutSecondaryBtn onClick={() => onRequestIntro()}>Request introduction</ScoutSecondaryBtn>
+        {showIntro && onRequestAction && (
+          <ScoutSecondaryBtn onClick={() => onRequestAction("intro")}>Request introduction</ScoutSecondaryBtn>
+        )}
+        {showSendProfile && onRequestAction && (
+          <ScoutSecondaryBtn onClick={() => onRequestAction("send-profile")}>Send your profile</ScoutSecondaryBtn>
         )}
         {clientApplyUrl && (
           <a href={clientApplyUrl} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "center", fontFamily: fontSans, fontSize: T.caption, color: color.muted, textDecoration: "underline" }}>
@@ -192,7 +197,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const [needsProfile, setNeedsProfile] = useState(false);
   const [profileHint, setProfileHint] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [introJob, setIntroJob] = useState<NetworkMatchedJob | null>(null);
+  const [requestModal, setRequestModal] = useState<{ job: NetworkMatchedJob; kind: NetworkJobRequestModalKind } | null>(null);
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [form, setForm] = useState<NetworkJobFilterForm>(() => ({
     ...createEmptyNetworkJobFilterForm(),
@@ -495,7 +500,11 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
                       }
                     : undefined
                 }
-                onRequestIntro={!internalView && networkJobHasRecruiter(job) ? () => setIntroJob(job) : undefined}
+                onRequestAction={
+                  !internalView && (networkJobHasRecruiter(job) || networkJobShowSendProfile(job, internalView))
+                    ? (kind) => setRequestModal({ job, kind })
+                    : undefined
+                }
                 saving={savingId === job.id}
               />
             ))}
@@ -510,14 +519,17 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         </>
       )}
 
-      <NetworkIntroRequestModal
-        jobId={introJob.id}
-        jobTitle={introJob.positionTitle}
-        companyLabel={networkAgencyDisplayName(introJob)}
-        recruiterName={introJob.recruiter?.name ?? introJob.recruiters?.[0]?.name}
-        open={Boolean(introJob)}
-        onClose={() => setIntroJob(null)}
-      />
+      {requestModal && (
+        <NetworkJobRequestModal
+          kind={requestModal.kind}
+          jobId={requestModal.job.id}
+          jobTitle={requestModal.job.positionTitle}
+          companyLabel={networkAgencyDisplayName(requestModal.job)}
+          recruiterName={requestModal.job.recruiter?.name ?? requestModal.job.recruiters?.[0]?.name}
+          open
+          onClose={() => setRequestModal(null)}
+        />
+      )}
     </div>
   );
 }

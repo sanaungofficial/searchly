@@ -39,8 +39,9 @@ import {
   networkJobClientApplyUrl,
   networkJobHasRecruiter,
   networkJobPartnerListingUrl,
+  networkJobShowSendProfile,
 } from "@/lib/network-job-client-actions";
-import { NetworkIntroRequestModal } from "./network-intro-request-modal";
+import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -775,7 +776,7 @@ export function JobDrawer({
   const { openFitChat, withClientScope } = useWorkspace();
   const isMobile = useIsMobile();
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
-  const [introModalOpen, setIntroModalOpen] = useState(false);
+  const [requestModal, setRequestModal] = useState<NetworkJobRequestModalKind | null>(null);
   const dbId = (card as KanbanCard & { _dbId?: string })._dbId ?? null;
   const cardUrl = (card as KanbanCard & { _url?: string })._url ?? null;
   const cardExt = card as KanbanCard & { _meta?: JobMeta; _coverLetter?: string; _fitAnalysis?: string };
@@ -950,6 +951,7 @@ export function JobDrawer({
   const clientApplyUrl = networkJob ? networkJobClientApplyUrl(networkJob, networkJob.internalView === true) : null;
   const partnerListingUrl = networkJob ? networkJobPartnerListingUrl(networkJob, networkJob.internalView === true) : null;
   const showClientIntro = Boolean(networkJob && !networkJob.internalView && networkJobHasRecruiter(networkJob));
+  const showSendProfile = Boolean(networkJob && networkJobShowSendProfile(networkJob, networkJob.internalView === true));
   const networkJobId = (card as KanbanCard & { _networkJobId?: string })._networkJobId ?? networkJob?.externalId ?? null;
   const { data: hirebaseCompany, loading: hirebaseLoading } = useHirebaseCompanyProfile({
     companyName: card.company,
@@ -1432,8 +1434,13 @@ export function JobDrawer({
                           Apply now ↗
                         </a>
                       )}
+                      {showSendProfile && networkJobId && (
+                        <button type="button" onClick={() => setRequestModal("send-profile")} style={{ width: "100%", padding: "11px 16px", marginBottom: 10, background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, cursor: "pointer" }}>
+                          Send your profile
+                        </button>
+                      )}
                       {showClientIntro && networkJobId && (
-                        <button type="button" onClick={() => setIntroModalOpen(true)} style={{ width: "100%", padding: "11px 16px", background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, cursor: "pointer" }}>
+                        <button type="button" onClick={() => setRequestModal("intro")} style={{ width: "100%", padding: "11px 16px", background: surface.card, border: line, borderRadius: "var(--scout-radius)", fontFamily: sans, fontSize: 14, fontWeight: 600, color: color.forest, cursor: "pointer" }}>
                           Request introduction
                         </button>
                       )}
@@ -1702,14 +1709,15 @@ export function JobDrawer({
         />
       )}
 
-      {networkJob && networkJobId && (
-        <NetworkIntroRequestModal
+      {networkJob && networkJobId && requestModal && (
+        <NetworkJobRequestModal
+          kind={requestModal}
           jobId={networkJobId}
           jobTitle={card.role}
           companyLabel={card.company}
           recruiterName={networkJob.recruiter?.name ?? networkJob.recruiters?.[0]?.name}
-          open={introModalOpen}
-          onClose={() => setIntroModalOpen(false)}
+          open
+          onClose={() => setRequestModal(null)}
         />
       )}
     </>

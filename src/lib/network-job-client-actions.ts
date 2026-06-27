@@ -13,7 +13,7 @@ export function networkJobHasRecruiter(job: NetworkJobRef | NetworkMetaRef): boo
   return Boolean(job.recruiter?.name?.trim());
 }
 
-/** Client-safe apply link — ExecThread application page only (never TE/ET partner listings). */
+/** Client-safe external apply link (ExecThread application page when present). */
 export function networkJobClientApplyUrl(
   job: NetworkJobRef | NetworkMetaRef,
   internalView: boolean,
@@ -21,6 +21,18 @@ export function networkJobClientApplyUrl(
   if (internalView) return null;
   const apply = job.applyUrl?.trim();
   return apply || null;
+}
+
+/**
+ * Top Echelon roles have no client apply URL — Kimchi emails the client's profile to the recruiter.
+ */
+export function networkJobShowSendProfile(
+  job: NetworkJobRef | NetworkMetaRef,
+  internalView: boolean,
+): boolean {
+  if (internalView) return false;
+  if (job.source !== "TOPECHELON") return false;
+  return !networkJobClientApplyUrl(job, internalView);
 }
 
 /** Admin-only partner listing URL (Top Echelon / ExecThread source pages). */
