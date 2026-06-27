@@ -1,22 +1,51 @@
 import { CoachStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { normalizeCompanySlug } from "@/lib/company-catalog";
+import { getCatalogCompany, normalizeCompanySlug } from "@/lib/company-catalog";
 import { collectCoachCompanyRecords, type CoachCompanyRecord } from "@/lib/coach-companies";
-import { hirebaseToSuggestItem, type CompanySuggestItem } from "@/lib/company-intel";
+import { catalogToSuggestItem, hirebaseToSuggestItem, type CompanySuggestItem } from "@/lib/company-intel";
+import type { CompanyEnrichmentCache } from "@/lib/hirebase-company-sync";
 import { isHirebaseConfigured, searchHirebaseCompanies } from "@/lib/hirebase";
 import { prisma } from "@/lib/prisma";
 
-function recordToSuggestItem(record: CoachCompanyRecord): CompanySuggestItem {
-  return {
-    id: null,
-    catalogSlug: record.slug,
-    name: record.name,
-    website: null,
-    careersUrl: null,
-    logoUrl: null,
-    type: null,
-    source: "intel",
-  };
+function logoFromIntelEnrichment(enrichment: unknown): string | null {
+  const cache = enrichment as CompanyEnrichmentCache | null | undefined;
+  const logo = cache?.hirebase?.logo?.trim();
+  return logo || null;
+}
+
+async function recordsToSuggestItems(records: CoachCompanyRecord[]): Promise<CompanySuggestItem[]> {
+  if (!records.length) return [];
+
+  const slugs = records.map((r) => r.slug);
+  const intelRows = await prisma.companyIntel.findMany({ where: { slug: { in: slugs } } });
+  const intelBySlug = new Map(intelRows.map((row) => [row.slug, row]));
+
+  return records.map((record) => {
+    const catalog = getCatalogCompany(record.slug);
+    const intel = intelBySlug.get(record.slug);
+    const logoUrl = logoFromIntelEnrichment(intel?.enrichmentCache);
+
+    if (catalog) {
+      const item = catalogToSuggestItem(catalog, intel?.id);
+      return { ...item, logoUrl: logoUrl ?? item.logoUrl };
+    }
+
+    return {
+      id: intel?.id ?? null,
+      catalogSlug: record.slug,
+      name: record.name,
+      website: intel?.website ?? null,
+      careersUrl: intel?.careersUrl ?? null,
+      logoUrl,
+      type: null,
+      source: intel ? "intel" : "intel",
+    };
+  });
+}
+
+async function recordToSuggestItem(record: CoachCompanyRecord): Promise<CompanySuggestItem> {
+  const [item] = await recordsToSuggestItems([record]);
+  return item;
 }
 
 function hirebaseMatchesCoachCompany(item: CompanySuggestItem, coachCompanies: CoachCompanyRecord[]): boolean {
@@ -44,7 +73,8 @@ export async function GET(request: Request) {
   if (!coachCompanies.length) return NextResponse.json([]);
 
   if (!q) {
-    return NextResponse.json(coachCompanies.slice(0, limit).map(recordToSuggestItem));
+    const items = await recordsToSuggestItems(coachCompanies.slice(0, limit));
+    return NextResponse.json(items);
   }
 
   const qLower = q.toLowerCase();
@@ -64,7 +94,7 @@ export async function GET(request: Request) {
   };
 
   for (const record of localMatches) {
-    push(recordToSuggestItem(record));
+    push(await recordToSuggestItem(record));
   }
 
   if (q.length >= 2 && isHirebaseConfigured()) {

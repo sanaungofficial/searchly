@@ -2,19 +2,111 @@
 
 import { InternalCoachBadge } from "@/components/scout/internal-coach-badge";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { CoachFitAssessment, CoachMatchScoreCluster } from "@/components/scout/match-score-ui";
+import { CompanyLogo } from "@/components/scout/company-logo";
+import { CoachFitAssessment } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { bioSnippet } from "@/lib/coach-directory";
+import { normalizeCompanySlug } from "@/lib/company-catalog";
 import { matchScoreTier } from "@/lib/match-score";
 import type { CoachListItem } from "@/lib/coach-types";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
-function CoachMetaPill({
-  icon,
+export type CoachCompanyLookupItem = {
+  logoUrl: string | null;
+  website: string | null;
+  name: string;
+};
+
+function cleanCompanyName(raw: string): string {
+  return raw.replace(/^ex[-\s]+/i, "").trim();
+}
+
+function companyWorksLabel(raw: string, kind: "current" | "past"): string {
+  const name = cleanCompanyName(raw);
+  return kind === "current" ? `Works at ${name}` : `Worked at ${name}`;
+}
+
+type CompanyPill = {
+  key: string;
+  rawName: string;
+  label: string;
+};
+
+function buildCompanyPills(coach: CoachListItem): CompanyPill[] {
+  const pills: CompanyPill[] = [];
+  const seen = new Set<string>();
+
+  if (coach.currentCompany?.trim()) {
+    const cleaned = cleanCompanyName(coach.currentCompany);
+    const slug = normalizeCompanySlug(cleaned);
+    if (slug && !seen.has(slug)) {
+      seen.add(slug);
+      pills.push({
+        key: slug,
+        rawName: coach.currentCompany,
+        label: companyWorksLabel(coach.currentCompany, "current"),
+      });
+    }
+  }
+
+  for (const firm of coach.firms ?? []) {
+    const cleaned = cleanCompanyName(firm);
+    const slug = normalizeCompanySlug(cleaned);
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
+    pills.push({
+      key: slug,
+      rawName: firm,
+      label: companyWorksLabel(firm, "past"),
+    });
+  }
+
+  return pills.slice(0, 3);
+}
+
+function CoachCompanyPill({
+  rawName,
+  label,
+  lookup,
+}: {
+  rawName: string;
+  label: string;
+  lookup?: CoachCompanyLookupItem;
+}) {
+  const displayName = cleanCompanyName(rawName);
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "4px 10px 4px 5px",
+        background: surface.inset,
+        border: `1px solid ${border.line}`,
+        borderRadius: 999,
+        fontFamily: fontSans,
+        fontSize: 12,
+        fontWeight: 600,
+        color: color.stone,
+        lineHeight: 1.3,
+      }}
+    >
+      <CompanyLogo
+        name={lookup?.name ?? displayName}
+        logoUrl={lookup?.logoUrl}
+        website={lookup?.website}
+        size={22}
+        borderRadius={11}
+      />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function CoachBadgePill({
   label,
   tone = "neutral",
 }: {
-  icon: string;
   label: string;
   tone?: "neutral" | "forest" | "gold" | "mint";
 }) {
@@ -30,10 +122,10 @@ function CoachMetaPill({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
         padding: "5px 10px",
         background: t.bg,
         border: `1px solid ${t.border}`,
+        borderRadius: 999,
         fontFamily: fontSans,
         fontSize: 12,
         fontWeight: 600,
@@ -41,13 +133,54 @@ function CoachMetaPill({
         lineHeight: 1.3,
       }}
     >
-      <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
-      <span>{label}</span>
+      {label}
     </span>
   );
 }
 
-function RateDisplay({ rate, isPro, onSubscribe }: { rate: number; isPro: boolean; onSubscribe: () => void }) {
+function cardPrimaryLine(coach: CoachListItem): string | null {
+  const headline = coach.headline?.trim();
+  if (headline) return headline;
+  return coach.currentRole?.trim() || null;
+}
+
+/** One muted line under the headline — skip when bio repeats the headline or role. */
+function cardSecondaryLine(coach: CoachListItem, primary: string | null): string | null {
+  const raw = coach.bio?.trim();
+  if (!raw) return null;
+  const snippet = bioSnippet(raw, 96);
+  if (!snippet) return null;
+  if (!primary) return snippet;
+
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const p = norm(primary);
+  const b = norm(snippet);
+  if (b.startsWith(p) || p.startsWith(b.slice(0, Math.min(b.length, 48))) return null;
+  return snippet;
+}
+
+function FavoriteBadge() {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "2px 8px",
+        borderRadius: 999,
+        background: "rgba(74,139,106,0.14)",
+        border: "1px solid rgba(74,139,106,0.28)",
+        fontFamily: fontSans,
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#2A5A45",
+        lineHeight: 1.3,
+      }}
+    >
+      Highly rated
+    </span>
+  );
+}
   if (isPro) {
     return (
       <span style={{ fontFamily: fontSans, fontSize: 15, fontWeight: 700, color: color.ink }}>
@@ -74,6 +207,7 @@ export function CoachingDirectoryCard({
   isMyCoach = false,
   canSelfAssignCoach = false,
   onToggleMyCoach,
+  companyLookup = {},
 }: {
   coach: CoachListItem;
   isMobile: boolean;
@@ -85,18 +219,16 @@ export function CoachingDirectoryCard({
   isMyCoach?: boolean;
   canSelfAssignCoach?: boolean;
   onToggleMyCoach?: (coach: CoachListItem) => void;
+  companyLookup?: Record<string, CoachCompanyLookupItem>;
 }) {
   const matchScore = coach.matchScore ?? 0;
   const tier = matchScore > 0 ? matchScoreTier(matchScore) : null;
   const showTopBorder = tier === "excellent" || tier === "strong" || tier === "good";
 
-  const companyLabel = coach.currentCompany
-    ? `Works at ${coach.currentCompany}`
-    : coach.firms[0]
-      ? `Experience at ${coach.firms[0]}`
-      : null;
-
+  const companyPills = buildCompanyPills(coach);
   const isFavorite = (coach.avgRating ?? 0) >= 4.7 && (coach.reviewCount ?? 0) >= 8;
+  const primaryLine = cardPrimaryLine(coach);
+  const secondaryLine = cardSecondaryLine(coach, primaryLine);
 
   return (
     <div
@@ -112,75 +244,81 @@ export function CoachingDirectoryCard({
       style={{ cursor: "pointer" }}
     >
       <ScoutBox
-        padding={isMobile ? "16px 18px" : "18px 22px"}
+        padding={isMobile ? "14px 16px" : "16px 20px"}
         style={{
           border: coach.featured ? border.lineStrong : border.line,
           borderTop: showTopBorder ? `2px solid ${color.forest}` : undefined,
+          transition: "box-shadow 0.15s ease",
         }}
       >
-        <div style={{ display: "flex", gap: isMobile ? 14 : 18, alignItems: "flex-start" }}>
-          <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 52 : 56} rounded />
+        <div style={{ display: "flex", gap: isMobile ? 12 : 16, alignItems: "flex-start" }}>
+          <CoachAvatar name={coach.displayName} photoUrl={coach.photoUrl} size={isMobile ? 56 : 64} rounded />
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: color.ink, margin: 0, lineHeight: 1.3, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  {coach.displayName}
-                  {coach.isInternal && <InternalCoachBadge compact />}
-                </p>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-                  <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
-                  {coach.currentRole && (
-                    <span style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>
-                      {coach.currentRole}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {matchScore > 0 && (
-                <CoachMatchScoreCluster score={matchScore} label={coach.matchLabel ?? ""} align="right" />
-              )}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 8,
+                lineHeight: 1.2,
+                minWidth: 0,
+              }}
+            >
+              <span style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 700, color: color.ink }}>
+                {coach.displayName}
+              </span>
+              {coach.isInternal && <InternalCoachBadge compact />}
+              <CoachStarRating rating={coach.avgRating} count={coach.reviewCount} />
+              {isFavorite && <FavoriteBadge />}
+              {coach.featured && <CoachBadgePill label="Featured" tone="gold" />}
+              {coach.isProfessionalCoach && <CoachBadgePill label="Top expert" tone="gold" />}
             </div>
 
-            {coach.headline && (
+            {primaryLine && (
               <p
                 style={{
                   fontFamily: fontSans,
-                  fontSize: 14,
-                  fontWeight: 600,
+                  fontSize: 15,
+                  fontWeight: 700,
                   color: color.ink,
-                  lineHeight: 1.45,
-                  margin: "10px 0 0",
+                  lineHeight: 1.35,
+                  margin: "3px 0 0",
                 }}
               >
-                {coach.headline}
+                {primaryLine}
               </p>
             )}
 
-            {coach.bio && (
+            {secondaryLine && (
               <p
                 style={{
                   fontFamily: fontSans,
                   fontSize: 13,
                   color: color.stone,
-                  lineHeight: 1.55,
-                  margin: "6px 0 0",
+                  lineHeight: 1.45,
+                  margin: "2px 0 0",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
                 }}
               >
-                {bioSnippet(coach.bio, 140)}
+                {secondaryLine}
               </p>
             )}
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-              {companyLabel && <CoachMetaPill icon="🏢" label={companyLabel} tone="forest" />}
-              {coach.isProfessionalCoach && <CoachMetaPill icon="🏆" label="Top expert" tone="gold" />}
-              {isFavorite && <CoachMetaPill icon="✦" label="Highly rated" tone="mint" />}
-              {coach.featured && <CoachMetaPill icon="★" label="Featured" tone="gold" />}
-              {coach.firms?.slice(1, 3).map((f) => (
-                <CoachMetaPill key={f} icon="◆" label={f} tone="neutral" />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: primaryLine || secondaryLine ? 8 : 6 }}>
+              {companyPills.map((pill) => (
+                <CoachCompanyPill
+                  key={pill.key}
+                  rawName={pill.rawName}
+                  label={pill.label}
+                  lookup={companyLookup[pill.key]}
+                />
               ))}
               {(coach.specialties ?? []).slice(0, 2).map((s) => (
-                <CoachMetaPill key={s} icon="◎" label={s} tone="neutral" />
+                <CoachBadgePill key={s} label={s} tone="neutral" />
               ))}
             </div>
 
@@ -188,6 +326,7 @@ export function CoachingDirectoryCard({
               <div onClick={(e) => e.stopPropagation()}>
                 <CoachFitAssessment
                   compact
+                  showScore
                   job={{
                     matchScore,
                     matchLabel: coach.matchLabel ?? "",
@@ -204,15 +343,19 @@ export function CoachingDirectoryCard({
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 12,
-                marginTop: 14,
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: border.line,
                 flexWrap: "wrap",
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                {coach.hourlyRate ? <RateDisplay rate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} /> : null}
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                {coach.hourlyRate ? (
+                  <RateDisplay rate={coach.hourlyRate} isPro={isPro} onSubscribe={onSubscribe} />
+                ) : null}
                 {coach.location && (
-                  <span style={{ fontFamily: fontSans, fontSize: 13, color: color.muted }}>{coach.location}</span>
+                  <span style={{ fontFamily: fontSans, fontSize: 12, color: color.muted }}>{coach.location}</span>
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

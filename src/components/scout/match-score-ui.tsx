@@ -65,6 +65,34 @@ export function ScoreSourceHint({ usesAi = false }: { usesAi?: boolean }) {
   );
 }
 
+/** Compact score for fit / alignment panels (directory cards). */
+export function CompactMatchScore({ score, label }: { score: number; label: string }) {
+  const style = matchScoreStyle(score);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      <div
+        style={{
+          minWidth: 40,
+          height: 40,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: style.bg,
+          border: `1.5px solid ${style.accent}`,
+          borderRadius: 8,
+        }}
+      >
+        <span style={{ fontFamily: fontMono, fontSize: 16, fontWeight: 700, color: style.accent, lineHeight: 1 }}>
+          {score}
+        </span>
+      </div>
+      <span style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 700, color: style.accent, lineHeight: 1.2 }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /** Score badge + hover explainer — matches Opportunities recommended rows. */
 export function CoachMatchScoreCluster({
   score,
@@ -85,8 +113,13 @@ export function CoachMatchScoreCluster({
   );
 }
 
-function coachFitAssessmentSummary(score: number, label: string): string {
+function coachFitAssessmentSummary(score: number, label: string, omitScore = false): string {
   const tier = matchScoreTier(score);
+  if (omitScore) {
+    if (tier === "poor") return "Explore whether this coach still aligns with your goals";
+    if (tier === "fair") return "Partial overlap with your goals and profile";
+    return "Based on your goals and profile";
+  }
   if (tier === "poor") {
     return `${label} · ${score}/100 — explore whether this coach still aligns with your goals`;
   }
@@ -100,9 +133,12 @@ function coachFitAssessmentSummary(score: number, label: string): string {
 export function CoachFitAssessment({
   job,
   compact = false,
+  showScore = false,
 }: {
   job: MatchScoreDisplayJob;
   compact?: boolean;
+  /** When true, score badge sits in the panel header (directory cards). */
+  showScore?: boolean;
 }) {
   const reasons = job.matchReasons.filter((r) => r && !isLowQualityMatchReason(r)).slice(0, 3);
   if (!reasons.length || job.matchScore <= 0) return null;
@@ -112,42 +148,54 @@ export function CoachFitAssessment({
   const score = matchScoreStyle(job.matchScore);
   const matchedSkills = job.matchedSkills?.slice(0, 5) ?? [];
 
-  const bg = isStretch ? "rgba(17,17,17,0.04)" : score.bgSubtle;
+  const bg = isStretch ? "rgba(17,17,17,0.03)" : score.bgSubtle;
   const accent = isStretch ? color.muted : score.accent;
-  const borderColor = isStretch ? border.line : score.accent;
+  const borderColor = isStretch ? border.line : `${score.accent}40`;
 
   return (
     <div
       style={{
-        marginTop: compact ? 10 : 12,
-        padding: compact ? "10px 12px" : "12px 14px",
+        marginTop: compact ? 8 : 12,
+        padding: compact ? "10px 12px" : "14px 16px",
         background: bg,
-        borderLeft: `3px solid ${borderColor}`,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 10,
       }}
     >
-      <p
+      <div
         style={{
-          fontFamily: fontSans,
-          fontSize: T.label,
-          fontWeight: 700,
-          color: accent,
-          margin: "0 0 4px",
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: showScore ? 8 : 4,
         }}
       >
-        Alignment check
+        <p
+          style={{
+            fontFamily: fontSans,
+            fontSize: T.label,
+            fontWeight: 700,
+            color: accent,
+            margin: 0,
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
+          }}
+        >
+          <ScoreExplainerLabel variant="coach-match">Alignment check</ScoreExplainerLabel>
+        </p>
+        {showScore && <CompactMatchScore score={job.matchScore} label={job.matchLabel} />}
+      </div>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 10px", lineHeight: 1.45 }}>
+        {coachFitAssessmentSummary(job.matchScore, job.matchLabel, showScore)}
       </p>
-      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px", lineHeight: 1.45 }}>
-        {coachFitAssessmentSummary(job.matchScore, job.matchLabel)}
-      </p>
-      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
         {reasons.map((reason) => (
           <li
             key={reason}
             style={{
               display: "flex",
-              gap: 6,
+              gap: 8,
               alignItems: "flex-start",
               fontFamily: fontSans,
               fontSize: T.caption,
@@ -155,22 +203,23 @@ export function CoachFitAssessment({
               lineHeight: 1.45,
             }}
           >
-            <span aria-hidden style={{ flexShrink: 0, color: accent, fontWeight: 700 }}>·</span>
+            <span aria-hidden style={{ flexShrink: 0, color: accent, fontWeight: 700, marginTop: 1 }}>→</span>
             <span>{reason}</span>
           </li>
         ))}
       </ul>
       {matchedSkills.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
           {matchedSkills.map((skill) => (
             <span
               key={skill}
               style={{
-                padding: "2px 8px",
+                padding: "3px 9px",
                 background: isStretch ? surface.inset : score.bg,
+                borderRadius: 999,
                 fontFamily: fontSans,
                 fontSize: T.label,
-                fontWeight: 500,
+                fontWeight: 600,
                 color: accent,
               }}
             >

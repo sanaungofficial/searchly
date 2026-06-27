@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CoachAvatar, CoachStarRating } from "@/components/scout/coach-avatar";
-import { CoachingDirectoryCard } from "@/components/scout/coaching-directory-card";
+import { CoachingDirectoryCard, type CoachCompanyLookupItem } from "@/components/scout/coaching-directory-card";
 import { CoachingDirectorySidebar } from "@/components/scout/coaching-directory-sidebar";
 import { COACH_MATCH_NEEDS_SIGNAL_HINT } from "@/lib/coach-goal-signals";
 import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
@@ -155,6 +155,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const [searchInput, setSearchInput] = useState(searchParams.get("q") ?? "");
   const debouncedSearch = useDebouncedValue(searchInput);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [companyLookup, setCompanyLookup] = useState<Record<string, CoachCompanyLookupItem>>({});
 
   const urlFilters = useMemo(() => parseCoachDirectoryFilters(searchParams), [searchParams]);
   const activeFilterCount = countActiveFilters(searchParams);
@@ -231,6 +232,30 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   useEffect(() => {
     loadCoaches();
   }, [loadCoaches]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/coaches/companies/suggest?limit=50")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((items: Array<{ catalogSlug: string; name: string; logoUrl?: string | null; website?: string | null }>) => {
+        if (cancelled || !Array.isArray(items)) return;
+        const map: Record<string, CoachCompanyLookupItem> = {};
+        for (const item of items) {
+          const slug = item.catalogSlug?.toLowerCase();
+          if (!slug) continue;
+          map[slug] = {
+            name: item.name,
+            logoUrl: item.logoUrl ?? null,
+            website: item.website ?? null,
+          };
+        }
+        setCompanyLookup(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const activeFilters = useMemo(() => {
     const f = { ...urlFilters, q: debouncedSearch.trim() || undefined };
@@ -445,6 +470,7 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
                   isMyCoach={myCoachIds.has(c.id)}
                   canSelfAssignCoach={canSelfAssignCoach}
                   onToggleMyCoach={toggleMyCoach}
+                  companyLookup={companyLookup}
                 />
               ))}
             </div>
