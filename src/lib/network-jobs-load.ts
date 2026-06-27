@@ -8,6 +8,9 @@ import {
 import type { ExecThreadListingRaw } from "@/lib/execthread/types";
 import type { TopEchelonNetworkJobRaw } from "@/lib/topechelon/types";
 import type { NetworkJobSource } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import type { NetworkJobFilterForm } from "@/lib/network-job-filters";
+import { networkJobFilterPrismaWhere } from "@/lib/network-job-filters";
 
 function rowToListing(row: {
   source: NetworkJobSource;
@@ -51,6 +54,8 @@ function rowToListing(row: {
   return listing;
 }
 
+export const NETWORK_JOBS_PAGE_SIZE = 25;
+
 export async function loadNetworkJobListings(): Promise<{
   jobs: NetworkJobListing[];
   source: "database" | "seed";
@@ -73,6 +78,76 @@ export async function loadNetworkJobListings(): Promise<{
 
   return {
     jobs: SEED_NETWORK_JOBS,
+    source: "seed",
+  };
+}
+
+export type LoadNetworkJobListingsPaginatedOptions = {
+  page?: number;
+  pageSize?: number;
+  where?: Prisma.NetworkJobWhereInput;
+  filterForm?: NetworkJobFilterForm;
+  internalView?: boolean;
+};
+
+export async function loadNetworkJobListingsPaginated(
+  options: LoadNetworkJobListingsPaginatedOptions = {},
+): Promise<{
+  jobs: NetworkJobListing[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasMore: boolean;
+  source: "database" | "seed";
+}> {
+  const page = Math.max(1, options.page ?? 1);
+  const pageSize = Math.min(50, Math.max(1, options.pageSize ?? NETWORK_JOBS_PAGE_SIZE));
+
+  const filterWhere =
+    options.where ??
+    (options.filterForm
+      ? networkJobFilterPrismaWhere(options.filterForm, { internalView: options.internalView })
+      : {});
+
+  try {
+    const where = filterWhere;
+    const [total, rows] = await Promise.all([
+      prisma.networkJob.count({ where }),
+      prisma.networkJob.findMany({
+        where,
+        include: { recruiterRecord: true },
+        orderBy: [{ syncedAt: "desc" }, { sharedAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    if (total > 0 || rows.length > 0) {
+      return {
+        jobs: rows.map(rowToListing),
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        hasMore: page * pageSize < total,
+        source: "database",
+      };
+    }
+  } catch (err) {
+    console.warn("[network-jobs] paginated DB read failed:", err);
+  }
+
+  const seed = SEED_NETWORK_JOBS;
+  const start = (page - 1) * pageSize;
+  const slice = seed.slice(start, start + pageSize);
+  return {
+    jobs: slice,
+    total: seed.length,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(seed.length / pageSize)),
+    hasMore: start + slice.length < seed.length,
     source: "seed",
   };
 }

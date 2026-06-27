@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import type { NetworkJobListing } from "@/lib/network-job-display";
 import { networkSourceChannelCode } from "@/lib/network-source-labels";
 
@@ -266,4 +267,172 @@ export function countActiveNetworkFilterFields(form: NetworkJobFilterForm, inter
   }
 
   return n;
+}
+
+/** Server-side Prisma filter for paginated network job queries. */
+export function networkJobFilterPrismaWhere(
+  form: NetworkJobFilterForm,
+  options?: { internalView?: boolean },
+): Prisma.NetworkJobWhereInput {
+  const internalView = options?.internalView ?? false;
+  const AND: Prisma.NetworkJobWhereInput[] = [];
+
+  if (form.search.trim()) {
+    const terms = form.search
+      .toLowerCase()
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 2);
+    for (const term of terms) {
+      AND.push({
+        OR: [
+          { positionTitle: { contains: term, mode: "insensitive" } },
+          { companyName: { contains: term, mode: "insensitive" } },
+          { location: { contains: term, mode: "insensitive" } },
+          { description: { contains: term, mode: "insensitive" } },
+          { recruiterName: { contains: term, mode: "insensitive" } },
+        ],
+      });
+    }
+  }
+
+  const titles = splitInputList(form.jobTitles);
+  if (titles.length) {
+    AND.push({
+      OR: titles.map((t) => ({
+        positionTitle: { contains: t, mode: "insensitive" as const },
+      })),
+    });
+  }
+
+  const keywords = splitInputList(form.keywords);
+  if (keywords.length) {
+    AND.push({
+      OR: keywords.map((k) => ({
+        description: { contains: k, mode: "insensitive" as const },
+      })),
+    });
+  }
+
+  if (form.companyName.trim()) {
+    const q = form.companyName.trim();
+    AND.push({
+      OR: [
+        { companyName: { contains: q, mode: "insensitive" } },
+        { recruiterName: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (form.agencyName.trim()) {
+    const q = form.agencyName.trim();
+    AND.push({
+      OR: [
+        { recruiterRecord: { agencyName: { contains: q, mode: "insensitive" } } },
+        { description: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  const industryTerms = splitInputList(form.industries);
+  if (industryTerms.length) {
+    AND.push({
+      OR: industryTerms.map((t) => ({
+        description: { contains: t, mode: "insensitive" as const },
+      })),
+    });
+  }
+
+  if (form.locationCity.trim()) {
+    const q = form.locationCity.trim();
+    AND.push({
+      OR: [
+        { city: { contains: q, mode: "insensitive" } },
+        { location: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (form.locationState.trim()) {
+    const q = form.locationState.trim();
+    AND.push({
+      OR: [
+        { state: { contains: q, mode: "insensitive" } },
+        { location: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (form.sharedAfter.trim()) {
+    const from = new Date(form.sharedAfter);
+    if (!Number.isNaN(from.getTime())) {
+      AND.push({ sharedAt: { gte: from } });
+    }
+  }
+
+  const salaryFrom = parseNumberInput(form.salaryFrom);
+  const salaryTo = parseNumberInput(form.salaryTo);
+  if (salaryFrom != null) {
+    AND.push({
+      OR: [
+        { maximumCompensation: { gte: salaryFrom } },
+        { minimumCompensation: { gte: salaryFrom } },
+      ],
+    });
+  }
+  if (salaryTo != null) {
+    AND.push({
+      OR: [
+        { minimumCompensation: { lte: salaryTo } },
+        { maximumCompensation: { lte: salaryTo } },
+      ],
+    });
+  }
+
+  if (form.jobType.trim()) {
+    AND.push({ jobType: { contains: form.jobType.trim(), mode: "insensitive" } });
+  }
+  if (form.remoteOption.trim()) {
+    AND.push({ remoteOption: { contains: form.remoteOption.trim(), mode: "insensitive" } });
+  }
+
+  if (form.channel.trim()) {
+    const want = form.channel.trim().toUpperCase();
+    if (want === "ET") AND.push({ source: "EXECTHREAD" });
+    if (want === "TE") AND.push({ source: "TOPECHELON" });
+  }
+
+  if (internalView) {
+    if (form.networkStatus.trim()) {
+      AND.push({ networkStatus: { contains: form.networkStatus.trim(), mode: "insensitive" } });
+    }
+    if (form.feeType.trim()) {
+      AND.push({ feeType: { contains: form.feeType.trim(), mode: "insensitive" } });
+    }
+    if (form.feeQuery.trim()) {
+      AND.push({ fee: { contains: form.feeQuery.trim(), mode: "insensitive" } });
+    }
+    if (form.guaranteeQuery.trim()) {
+      AND.push({ description: { contains: form.guaranteeQuery.trim(), mode: "insensitive" } });
+    }
+  }
+
+  return AND.length ? { AND } : {};
+}
+
+export function networkJobFilterSearchParams(
+  form: NetworkJobFilterForm,
+  page: number,
+  pageSize: number,
+): URLSearchParams {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  const keys = Object.keys(createEmptyNetworkJobFilterForm()) as (keyof NetworkJobFilterForm)[];
+  for (const key of keys) {
+    const value = form[key].trim();
+    if (value) params.set(key, value);
+  }
+  return params;
 }

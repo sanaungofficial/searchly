@@ -1,10 +1,17 @@
 import { resolveProfileApiSubject } from "@/lib/admin-client-subject";
-import { enrichNetworkJobsWithMatch } from "@/lib/network-job-match";
+import { enrichNetworkJobsWithMatch, sortNetworkMatchedJobs } from "@/lib/network-job-match";
 import {
   canViewNetworkJobInternalFromSession,
   sanitizeNetworkJobListing,
 } from "@/lib/network-job-access";
-import { loadNetworkJobListings } from "@/lib/network-jobs-load";
+import {
+  createEmptyNetworkJobFilterForm,
+  type NetworkJobFilterForm,
+} from "@/lib/network-job-filters";
+import {
+  loadNetworkJobListingsPaginated,
+  NETWORK_JOBS_PAGE_SIZE,
+} from "@/lib/network-jobs-load";
 import { hasProfileSignals } from "@/lib/recommended-jobs-engine";
 import { buildProfileVSearchQuery, profileTextForMatchReasons } from "@/lib/profile-vsearch-query";
 import { findResumeAssetForUser } from "@/lib/resume-artifact";
@@ -35,8 +42,25 @@ function buildNetworkMatchProfileText(input: {
   return parts.join("\n").trim();
 }
 
+function parseFilterFormFromSearchParams(searchParams: URLSearchParams): NetworkJobFilterForm {
+  const empty = createEmptyNetworkJobFilterForm();
+  const keys = Object.keys(empty) as (keyof NetworkJobFilterForm)[];
+  const form = { ...empty };
+  for (const key of keys) {
+    const value = searchParams.get(key);
+    if (value?.trim()) form[key] = value.trim();
+  }
+  return form;
+}
+
 export async function GET(request: Request) {
-  const { jobs, source } = await loadNetworkJobListings();
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const pageSize = Math.min(
+    50,
+    Math.max(1, Number(searchParams.get("pageSize") ?? String(NETWORK_JOBS_PAGE_SIZE)) || NETWORK_JOBS_PAGE_SIZE),
+  );
+
   const resolved = await resolveProfileApiSubject(request);
   if ("error" in resolved) return resolved.error;
   const { dbUser, acting } = resolved;
@@ -45,13 +69,29 @@ export async function GET(request: Request) {
     acting.realDbUser?.role === "ADMIN",
     acting.isImpersonating,
   );
-  const visibleJobs = internalView ? jobs : jobs.map((job) => sanitizeNetworkJobListing(job, false));
+
+  const filterForm = parseFilterFormFromSearchParams(searchParams);
+  const paginated = await loadNetworkJobListingsPaginated({
+    page,
+    pageSize,
+    filterForm,
+    internalView,
+  });
+
+  const visibleJobs = internalView
+    ? paginated.jobs
+    : paginated.jobs.map((job) => sanitizeNetworkJobListing(job, false));
 
   if (!dbUser) {
     return NextResponse.json({
       jobs: visibleJobs,
-      source,
+      source: paginated.source,
       count: visibleJobs.length,
+      total: paginated.total,
+      page: paginated.page,
+      pageSize: paginated.pageSize,
+      totalPages: paginated.totalPages,
+      hasMore: paginated.hasMore,
       scored: false,
     });
   }
@@ -98,12 +138,19 @@ export async function GET(request: Request) {
     parsedData,
   });
 
-  const matchedJobs = enrichNetworkJobsWithMatch(visibleJobs, resumeText, roleTitlePreferences);
+  const matchedJobs = sortNetworkMatchedJobs(
+    enrichNetworkJobsWithMatch(visibleJobs, resumeText, roleTitlePreferences),
+  );
 
   return NextResponse.json({
     jobs: matchedJobs,
-    source,
+    source: paginated.source,
     count: matchedJobs.length,
+    total: paginated.total,
+    page: paginated.page,
+    pageSize: paginated.pageSize,
+    totalPages: paginated.totalPages,
+    hasMore: paginated.hasMore,
     scored: true,
     needsProfile,
     hint: needsProfile
