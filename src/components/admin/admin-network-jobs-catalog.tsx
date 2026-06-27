@@ -171,9 +171,7 @@ export function AdminNetworkJobsCatalog() {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [etCatalogTotal, setEtCatalogTotal] = useState<number | null>(null);
   const [etPreviewLoading, setEtPreviewLoading] = useState(false);
-  const [catalogImportFrom, setCatalogImportFrom] = useState(0);
-  const [importingCatalog, setImportingCatalog] = useState(false);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [catalogProgress, setCatalogProgress] = useState<{ from: number; totalHits: number | null; complete: boolean } | null>(null);
   const [selectedJob, setSelectedJob] = useState<NetworkJobListing | null>(null);
   const [prospectCard, setProspectCard] = useState<ReturnType<typeof buildNetworkProspectCard> | null>(null);
 
@@ -216,8 +214,22 @@ export function AdminNetworkJobsCatalog() {
   useEffect(() => {
     if (source === "EXECTHREAD" || source === "ALL") {
       void loadEtPreview();
+      void fetch("/api/admin/execthread")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { catalogImportFrom?: number; catalogImportTotalHits?: number | null; catalogImportComplete?: boolean } | null) => {
+          if (data) {
+            setCatalogProgress({
+              from: data.catalogImportFrom ?? 0,
+              totalHits: data.catalogImportTotalHits ?? null,
+              complete: data.catalogImportComplete ?? false,
+            });
+          }
+        })
+        .catch(() => {});
     }
   }, [loadEtPreview, source]);
+
+  const catalogComplete = catalogProgress?.complete ?? false;
 
   const stats = catalog?.stats;
   const jobs = catalog?.jobs ?? [];
@@ -238,44 +250,6 @@ export function AdminNetworkJobsCatalog() {
   const closeDrawer = () => {
     setSelectedJob(null);
     setProspectCard(null);
-  };
-
-  const runCatalogImport = async () => {
-    setImportingCatalog(true);
-    setImportMessage(null);
-    try {
-      const res = await fetch("/api/admin/execthread/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          importCatalogPage: { from: catalogImportFrom, size: 100, listOnly: true },
-        }),
-      });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        summary?: { upserted?: number; totalHits?: number | null; nextFrom?: number | null; from?: number };
-        error?: string;
-      };
-      if (!res.ok || !data.ok) {
-        setImportMessage(data.error ?? "Import failed");
-        return;
-      }
-      const summary = data.summary;
-      if (summary?.nextFrom != null) {
-        setCatalogImportFrom(summary.nextFrom);
-      }
-      setImportMessage(
-        `Imported ${summary?.upserted ?? 0} listing summaries (search offset ${summary?.from ?? catalogImportFrom})` +
-          (summary?.totalHits != null ? ` · ${(stats?.execthread ?? 0).toLocaleString()} stored of ${summary.totalHits.toLocaleString()} on ExecThread` : "") +
-          (summary?.nextFrom != null ? ` · next offset ${summary.nextFrom.toLocaleString()}` : " · reached end of catalog."),
-      );
-      await loadCatalog();
-      await loadEtPreview();
-    } catch {
-      setImportMessage("Network error — try again.");
-    } finally {
-      setImportingCatalog(false);
-    }
   };
 
   return (
@@ -315,24 +289,20 @@ export function AdminNetworkJobsCatalog() {
         </div>
       )}
 
-      {(source === "EXECTHREAD" || source === "ALL") && etCatalogTotal != null && stats && stats.execthread < etCatalogTotal && (
+      {(source === "EXECTHREAD" || source === "ALL") && etCatalogTotal != null && stats && !catalogComplete && (
         <ScoutBox padding={20}>
           <p style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, margin: "0 0 8px" }}>
-            ExecThread catalog import
+            ExecThread catalog import — automated
           </p>
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", lineHeight: 1.55, maxWidth: 640 }}>
-            {stats.execthread.toLocaleString()} of {etCatalogTotal.toLocaleString()} listings imported.
-            Catalog pages import search summaries quickly (100 per click). Use{" "}
-            <strong>Refresh existing</strong> on the admin dashboard afterward to backfill full descriptions and contacts.
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 8px", lineHeight: 1.55, maxWidth: 640 }}>
+            Cron imports ~3,000 summaries every 15 minutes until all {etCatalogTotal.toLocaleString()} listings are stored
+            ({stats.execthread.toLocaleString()} so far
+            {catalogProgress != null ? ` · offset ${catalogProgress.from.toLocaleString()}` : ""}).
+            Full descriptions and contacts backfill automatically after the catalog pass completes.
           </p>
-          <ScoutPrimaryBtn disabled={importingCatalog} onClick={() => void runCatalogImport()} style={{ minHeight: 40 }}>
-            {importingCatalog ? "Importing…" : `Import next 100 ET summaries (offset ${catalogImportFrom.toLocaleString()})`}
-          </ScoutPrimaryBtn>
-          {importMessage && (
-            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, margin: "12px 0 0" }}>
-              {importMessage}
-            </p>
-          )}
+          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.55 }}>
+            Kick it now from Admin → ExecThread → <strong>Run catalog batch now</strong>.
+          </p>
         </ScoutBox>
       )}
 

@@ -871,11 +871,14 @@ model PromptConfig {
 
 /// Persisted ExecThread session cookies after email/password login.
 model ExecThreadSession {
-  id            String    @id @default("default")
-  cookies       Json
-  lastSyncAt    DateTime?
-  lastSyncError String?
-  updatedAt     DateTime  @updatedAt
+  id                     String    @id @default("default")
+  cookies                Json
+  lastSyncAt             DateTime?
+  lastSyncError          String?
+  catalogImportFrom      Int       @default(0)
+  catalogImportTotalHits Int?
+  catalogImportComplete  Boolean   @default(false)
+  updatedAt              DateTime  @updatedAt
 }
 
 /// Persisted Big Biller session (cookies + token) after a successful MFA login.

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { execthreadConfigured } from "@/lib/execthread/client";
-import { runExecThreadSync, runExecThreadRefreshExisting, runExecThreadRefreshByExternalIds, runExecThreadImportSearchPage, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
+import { runExecThreadSync, runExecThreadRefreshExisting, runExecThreadRefreshByExternalIds, runExecThreadImportSearchPage, runExecThreadCatalogImportBatch, runExecThreadCronSync, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
 import { recordExecThreadSyncResult } from "@/lib/execthread/session-store";
 
 export const maxDuration = 300;
@@ -19,6 +19,9 @@ type SyncBody = {
     size?: number;
     listOnly?: boolean;
   };
+  /** Cron-style batch: up to 30 pages (~3k listings) per request. */
+  importCatalogBatch?: boolean;
+  resetCatalogCheckpoint?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -53,6 +56,11 @@ export async function POST(request: Request) {
 
     const summary = refreshExternalIds.length
       ? await runExecThreadRefreshByExternalIds(refreshExternalIds, { forceLogin: body.forceLogin === true })
+      : body.importCatalogBatch
+        ? await runExecThreadCatalogImportBatch({
+            forceLogin: body.forceLogin === true,
+            resetCheckpoint: body.resetCatalogCheckpoint === true,
+          })
       : body.importCatalogPage
         ? await runExecThreadImportSearchPage({
             from: body.importCatalogPage.from,
