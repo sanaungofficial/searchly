@@ -120,7 +120,7 @@ function humanizeApiError(message: string | undefined, status: number): string {
 
 function ErrorBanner({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
   return (
-    <div style={{ background: surface.card, border: "1px solid rgba(196,87,74,0.35)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+    <div style={{ background: surface.card, border: "1px solid rgba(196,87,74,0.35)", borderRadius: "var(--scout-radius)", padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
       <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#991b1b", lineHeight: 1.45 }}>{message}</div>
       {onDismiss && (
         <button type="button" onClick={onDismiss} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#991b1b", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>

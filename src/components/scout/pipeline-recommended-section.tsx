@@ -43,7 +43,7 @@ import {
   saveScopedSemanticQuery,
 } from "@/lib/client-session";
 import { CompanyLogo } from "./company-logo";
-import { ScoutBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn } from "./scout-box";
+import { ScoutBox, ScoutInsetBox, ScoutLabel, ScoutPrimaryBtn, ScoutSecondaryBtn, scoutInsetChipStyle } from "./scout-box";
 import { ScoreExplainerLabel, ScoreExplainerPopover } from "./score-explainer-popover";
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -91,7 +91,7 @@ function ActiveFiltersBar({
 }) {
   if (!labels.length) return null;
   return (
-    <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
+    <ScoutInsetBox style={{ marginTop: 12 }}>
       <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.forest, margin: "0 0 8px", letterSpacing: "0.04em" }}>
         Active search filters
       </p>
@@ -100,9 +100,8 @@ function ActiveFiltersBar({
           <span
             key={label}
             style={{
+              ...scoutInsetChipStyle,
               padding: "3px 8px",
-              border: border.line,
-              fontFamily: fontSans,
               fontSize: T.label,
               color: color.ink,
               background: surface.card,
@@ -130,7 +129,7 @@ function ActiveFiltersBar({
           Clear search filters
         </button>
       )}
-    </div>
+    </ScoutInsetBox>
   );
 }
 
@@ -370,10 +369,9 @@ function RecommendedResultsList({
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <span
                         style={{
+                          ...scoutInsetChipStyle,
                           display: "inline-block",
                           padding: "2px 8px",
-                          border: border.line,
-                          fontFamily: fontSans,
                           fontSize: T.label,
                           fontWeight: 600,
                           letterSpacing: "0.06em",
@@ -387,16 +385,16 @@ function RecommendedResultsList({
                       {row.isTrackedCompany && (
                         <span
                           style={{
+                            ...scoutInsetChipStyle,
                             display: "inline-block",
                             padding: "2px 8px",
-                            border: border.lineStrong,
-                            fontFamily: fontSans,
                             fontSize: T.label,
                             fontWeight: 600,
                             letterSpacing: "0.06em",
                             textTransform: "uppercase",
                             color: color.forest,
                             background: "rgba(26,58,47,0.08)",
+                            border: border.lineStrong,
                           }}
                         >
                           Watchlist
@@ -933,9 +931,9 @@ export function PipelineRecommendedSection({
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: "#C4574A", marginTop: 12, lineHeight: 1.45 }}>{error}</p>
         )}
         {notice && (
-          <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>
+          <ScoutInsetBox style={{ marginTop: 12, fontFamily: fontSans, fontSize: T.caption, color: color.muted, lineHeight: 1.45 }}>
             {notice}
-          </p>
+          </ScoutInsetBox>
         )}
         {hasActiveSearch && !error && hasLoadedOnce && !showInitialLoader && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>

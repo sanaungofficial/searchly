@@ -3,7 +3,7 @@
 import React, { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn } from "./scout-box";
-import { border, color, fontSans, surface, type as T } from "@/lib/typography";
+import { border, color, fontSans, radius, shadow, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 type Props = {
@@ -115,6 +115,7 @@ export function UploadDocumentModal({
         style={{
           background: surface.card,
           border: border.lineStrong,
+          borderRadius: radius.box,
           padding: isMobile ? "36px 24px 28px" : "44px 40px 36px",
           width: 540,
           maxWidth: "90vw",
@@ -122,7 +123,7 @@ export function UploadDocumentModal({
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          boxShadow: "4px 4px 0 rgba(17,17,17,0.06)",
+          boxShadow: shadow.cardStrong,
         }}
       >
         <button
@@ -137,6 +138,7 @@ export function UploadDocumentModal({
             height: 32,
             background: color.forest,
             border: border.line,
+            borderRadius: radius.box,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -171,6 +173,7 @@ export function UploadDocumentModal({
             padding: "24px 20px",
             marginBottom: 20,
             border: `2px dashed ${dropBorder}`,
+            borderRadius: radius.box,
             background: dropBg,
             cursor: uploading ? "not-allowed" : "pointer",
             transition: "border-color 0.2s, background 0.2s",

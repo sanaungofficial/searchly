@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { DISCOVERY_BLOCKERS, type DiscoveryBlocker } from "@/lib/discovery-lead";
+import { ScoutInsetBox, scoutFieldStyle } from "@/components/scout/scout-box";
+import { ScoutModal } from "@/components/scout/scout-modal";
 
 export type GrowthDiscoveryTrigger =
   | "sidebar_help"
@@ -27,17 +28,7 @@ type Props = {
   onClose: () => void;
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  border: "1px solid #E5DDD0",
-  borderRadius: "var(--scout-radius)",
-  fontFamily: "var(--font-ui)",
-  fontSize: 14,
-  color: "#1A1A1A",
-  background: "#FFFDF9",
-  boxSizing: "border-box",
-};
+const inputStyle = scoutFieldStyle;
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -132,37 +123,15 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
 
   if (!mounted) return null;
 
-  return createPortal(
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1100,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
+  return (
+    <ScoutModal
+      open
+      onClose={onClose}
+      ariaLabelledBy="growth-discovery-title"
+      maxWidth={480}
+      padding="32px 28px"
+      panelStyle={{ maxHeight: "min(90vh, 720px)", overflowY: "auto" }}
     >
-      <div
-        onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }}
-      />
-      <div
-        role="dialog"
-        aria-labelledby="growth-discovery-title"
-        style={{
-          position: "relative",
-          background: "#fff",
-          borderRadius: "var(--scout-radius)",
-          padding: "32px 28px",
-          maxWidth: 480,
-          width: "100%",
-          maxHeight: "min(90vh, 720px)",
-          overflowY: "auto",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-        }}
-      >
         {success ? (
           <>
             <p
@@ -238,19 +207,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
             </p>
 
             {!loadingProfile && profile && (
-              <div
-                style={{
-                  padding: "12px 14px",
-                  background: "var(--scout-inset)",
-                  borderRadius: "var(--scout-radius)",
-                  border: "1px solid #E5DDD0",
-                  marginBottom: 20,
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 13,
-                  color: "#52493F",
-                  lineHeight: 1.55,
-                }}
-              >
+              <ScoutInsetBox padding="12px 14px" style={{ marginBottom: 20, fontFamily: "var(--font-ui)", fontSize: 13, color: "#52493F", lineHeight: 1.55 }}>
                 <strong style={{ color: "#1C3A2F" }}>{profile.name}</strong> · {profile.email}
                 {targetRoleLabel && (
                   <>
@@ -266,7 +223,7 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
                       .join(" · ")}
                   </>
                 )}
-              </div>
+              </ScoutInsetBox>
             )}
 
             <form onSubmit={handleSubmit}>
@@ -389,8 +346,6 @@ export function GrowthDiscoveryModal({ trigger, onClose }: Props) {
             </form>
           </>
         )}
-      </div>
-    </div>,
-    document.body,
+    </ScoutModal>
   );
 }
