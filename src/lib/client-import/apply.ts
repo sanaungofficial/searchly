@@ -188,7 +188,10 @@ export async function applyClientImport(
   }
 
   if (companiesToApply.length) {
-    const companyResult = await applyIntakeTrackedCompanies(userId, companiesToApply, { max: 150 });
+    const companyResult = await applyIntakeTrackedCompanies(userId, companiesToApply, {
+      max: 150,
+      skipHydrate: true,
+    });
     result.companies.added = companyResult.added;
     result.companies.updated = companyResult.updated;
     result.companies.skipped = companyResult.skipped;

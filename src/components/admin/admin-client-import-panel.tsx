@@ -524,7 +524,9 @@ export function AdminClientImportPanel({ clientUserId }: { clientUserId: string 
 
       const parts = [
         data.profileUpdated ? "profile updated" : null,
-        data.jobs.added || data.jobs.updated ? `jobs ${data.jobs.added} added, ${data.jobs.updated} updated` : null,
+        data.jobs.added || data.jobs.updated
+          ? `jobs ${data.jobs.added} added, ${data.jobs.updated} updated`
+          : null,
         data.companies.added || data.companies.updated
           ? `companies ${data.companies.added} added, ${data.companies.updated} updated`
           : null,
@@ -534,7 +536,12 @@ export function AdminClientImportPanel({ clientUserId }: { clientUserId: string 
         data.referenceDocumentsStored ? `${data.referenceDocumentsStored} reference docs stored` : null,
       ].filter(Boolean);
 
-      setSuccess(parts.length ? `Import complete: ${parts.join("; ")}.` : "Import complete.");
+      const errNote =
+        data.errors?.length > 0
+          ? ` Some rows failed (${data.errors.slice(0, 3).join("; ")}${data.errors.length > 3 ? "…" : ""}).`
+          : "";
+
+      setSuccess(parts.length ? `Import complete: ${parts.join("; ")}.${errNote}` : `Import complete.${errNote}`);
       setShowReview(false);
       setPreview(null);
       setFiles([]);
