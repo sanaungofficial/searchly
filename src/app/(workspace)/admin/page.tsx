@@ -197,6 +197,19 @@ export default async function AdminPage() {
       <AdminUsagePanel />
 
       <section>
+        <h2 className={adminSectionLabel}>In-network requests</h2>
+        <ScoutBox padding={20} style={{ marginBottom: 24 }}>
+          <ScoutLabel>Intro & profile queue</ScoutLabel>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
+            Client requests from In-Network Roles — warm introductions and Top Echelon profile sends.
+          </p>
+          <a href="/admin/network-requests" style={{ fontFamily: "var(--font-sans)", fontSize: T.caption, fontWeight: 600, color: color.forest }}>
+            Open request queue →
+          </a>
+        </ScoutBox>
+      </section>
+
+      <section>
         <h2 className={adminSectionLabel}>Network catalog</h2>
         <ScoutBox padding={20} style={{ marginBottom: 24 }}>
           <ScoutLabel>Scraped listings browser</ScoutLabel>

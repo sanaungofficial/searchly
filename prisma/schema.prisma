@@ -62,6 +62,7 @@ model User {
   inboxContacts        InboxContact[]
   inboxActivities      InboxActivity[]
   assistantThreads     AssistantThread[]
+  networkJobRequests   NetworkJobRequest[]
 
   @@index([referredByUserId])
 }
@@ -951,6 +952,43 @@ model NetworkJob {
   @@index([sharedAt])
   @@index([networkStatus])
   @@index([recruiterRecordId])
+}
+
+enum NetworkJobRequestType {
+  INTRO
+  SEND_PROFILE
+}
+
+enum NetworkJobRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// Client requests for in-network roles — intro coordination or profile send (admin queue).
+model NetworkJobRequest {
+  id                   String                  @id @default(cuid())
+  userId               String
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobSource            NetworkJobSource
+  jobExternalId        String
+  requestType          NetworkJobRequestType
+  status               NetworkJobRequestStatus @default(PENDING)
+  jobTitle             String
+  companyName          String?
+  channelCode          String?
+  recruiterName        String?
+  clientNotes          String?                 @db.Text
+  adminNotes           String?                 @db.Text
+  handledByUserId      String?
+  handledAt            DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, jobExternalId, requestType])
+  @@index([jobSource, jobExternalId])
 }
 
 enum PlanCreditFeature {
