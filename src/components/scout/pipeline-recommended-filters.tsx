@@ -195,6 +195,13 @@ function CheckboxOption({
   );
 }
 
+function locationQuickLabel(form: RecommendedFilterForm): string {
+  const parts = [form.locationCity, form.locationRegion, form.locationCountry].filter(Boolean);
+  if (!parts.length) return "Location";
+  if (parts.length === 1) return parts[0]!;
+  return parts.slice(0, 2).join(", ");
+}
+
 function quickFilterLabel(form: RecommendedFilterForm) {
   const dateLabel = form.datePostedWithinDays
     ? POSTED_WITHIN_OPTIONS.find((o) => String(o.days) === form.datePostedWithinDays)?.label ?? "Date posted"
@@ -645,12 +652,69 @@ export function RecommendedQuickFiltersBar({
     <div
       style={{
         display: "flex",
-        flexWrap: "wrap",
+        flexWrap: "nowrap",
         alignItems: "center",
         gap: 8,
-        marginTop: 12,
+        overflowX: "auto",
+        paddingBottom: 2,
+        WebkitOverflowScrolling: "touch",
       }}
     >
+      <FilterPill
+        label={locationQuickLabel(form)}
+        active={Boolean(form.locationCity.trim() || form.locationRegion.trim() || form.locationCountry.trim())}
+        open={openKey === "location"}
+        onOpenChange={(o) => setOpenKey(o ? "location" : null)}
+      >
+        <PopoverSection title="Location">
+          <FilterField label="City">
+            <input
+              style={pipelineInputStyle}
+              value={form.locationCity}
+              onChange={(e) => setForm((f) => ({ ...f, locationCity: e.target.value }))}
+              placeholder="Albany"
+            />
+          </FilterField>
+          <FilterField label="State / region">
+            <DatalistInput
+              value={form.locationRegion}
+              onChange={(locationRegion) => setForm((f) => ({ ...f, locationRegion }))}
+              listId="quick-location-region"
+              options={[...HIREBASE_FILTER_US_STATES]}
+              placeholder="New York"
+            />
+          </FilterField>
+          <FilterField label="Country">
+            <DatalistInput
+              value={form.locationCountry}
+              onChange={(locationCountry) => setForm((f) => ({ ...f, locationCountry }))}
+              listId="quick-location-country"
+              options={[...HIREBASE_FILTER_COUNTRIES]}
+              placeholder="United States"
+            />
+          </FilterField>
+          <button
+            type="button"
+            onClick={() => applyAndClose(form, "location")}
+            style={{
+              marginTop: 4,
+              width: "100%",
+              padding: "8px 12px",
+              border: border.lineStrong,
+              borderRadius: 999,
+              background: color.forest,
+              color: color.gold,
+              fontFamily: fontSans,
+              fontSize: T.label,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Apply
+          </button>
+        </PopoverSection>
+      </FilterPill>
+
       <FilterPill
         label={labels.dateLabel}
         active={Boolean(form.datePostedWithinDays)}

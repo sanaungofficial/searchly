@@ -58,7 +58,7 @@ import {
   RecommendedQuickFiltersBar,
   type RecommendedFilterForm,
 } from "./pipeline-recommended-filters";
-import { FilterField, ProfileSuggestionsBanner } from "./pipeline-filters-ui";
+import { ProfileSuggestionsBanner } from "./pipeline-filters-ui";
 
 type JobsApiResponse = {
   jobs?: VectorMatchedJob[];
@@ -267,9 +267,9 @@ const inputStyle: React.CSSProperties = {
   background: surface.card,
 };
 
-function RecommendedLoadingSkeleton() {
+function RecommendedResultsLoader() {
   return (
-    <ScoutBox padding={24} style={{ marginBottom: 12 }}>
+    <ScoutBox padding={28} style={{ marginBottom: 12 }}>
       <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth />
     </ScoutBox>
   );
@@ -755,8 +755,6 @@ export function PipelineRecommendedSection({
     });
   };
 
-  const showInitialSkeleton = loading && !hasLoadedOnce && !jobs.length;
-
   const savedKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const card of pipelineCards) {
@@ -822,45 +820,45 @@ export function PipelineRecommendedSection({
           ? "You've saved everything in today's list — check back after the daily refresh."
           : "No matches right now — add target roles or upload a resume under Profile, then refresh.";
 
+  const showInitialLoader = (loading || revalidating) && !hasLoadedOnce;
+  const showRefreshLoader = (loading || revalidating) && hasLoadedOnce && jobs.length > 0;
+
   return (
     <div>
       <ScoutBox padding={20} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "flex-start", flexDirection: isMobile ? "column" : "row", gap: 12, marginBottom: 12 }}>
-          <div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: isMobile ? "stretch" : "flex-start",
+            flexDirection: isMobile ? "column" : "row",
+            gap: 12,
+            marginBottom: 14,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
             <ScoreExplainerLabel variant="vector-match">
-              <ScoutLabel>Recommended roles</ScoutLabel>
+              <ScoutLabel>Open roles</ScoutLabel>
             </ScoreExplainerLabel>
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "8px 0 0", lineHeight: 1.55, maxWidth: 560 }}>
-              Roles matched to your profile — sorted by fit (best first). Apply within 48 hours for the best response rate.
-            </p>
-            <div style={{ marginTop: 10 }}>
-              <JobFreshnessLegend compact />
-            </div>
-            {snapshotMeta?.generatedAt && (
+            {hasLoadedOnce && !showInitialLoader && (
               <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "6px 0 0" }}>
-                {snapshotMeta.fromSnapshot ? "Daily snapshot" : "Live results"} · updated{" "}
-                {new Date(snapshotMeta.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
-              </p>
-            )}
-            {hasLoadedOnce && !loading && (
-              <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: "4px 0 0" }}>
-                Showing {filteredListings.length} role{filteredListings.length === 1 ? "" : "s"}
+                {snapshotMeta?.fromSnapshot ? "Daily snapshot" : "Live results"}
+                {snapshotMeta?.generatedAt
+                  ? ` · updated ${new Date(snapshotMeta.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`
+                  : ""}
+                {" · "}
+                {filteredListings.length} role{filteredListings.length === 1 ? "" : "s"}
               </p>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating}>
-              {loading || revalidating ? "Loading…" : "Refresh"}
-            </ScoutSecondaryBtn>
-            <ScoutPrimaryBtn onClick={() => applyFilters()} disabled={loading || revalidating}>
-              {loading || revalidating ? "Loading…" : hasActiveSearch ? "Search" : "Search"}
-            </ScoutPrimaryBtn>
-          </div>
+          <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating} style={{ alignSelf: isMobile ? "flex-start" : "flex-end" }}>
+            {loading || revalidating ? "Loading…" : "Refresh"}
+          </ScoutSecondaryBtn>
         </div>
 
-        <FilterField label="Search">
+        <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexDirection: isMobile ? "column" : "row" }}>
           <input
-            style={inputStyle}
+            style={{ ...inputStyle, flex: 1, margin: 0 }}
             value={form.semanticQuery}
             onChange={(e) => setForm((f) => ({ ...f, semanticQuery: e.target.value }))}
             onKeyDown={(e) => {
@@ -869,20 +867,40 @@ export function PipelineRecommendedSection({
                 applyFilters();
               }
             }}
-            placeholder="e.g. remote corporate strategy, B2B SaaS, healthcare"
+            placeholder="Title, skill, or company"
+            aria-label="Search roles"
             maxLength={400}
           />
-        </FilterField>
+          <ScoutPrimaryBtn
+            onClick={() => applyFilters()}
+            disabled={loading || revalidating}
+            style={{ flexShrink: 0, minWidth: isMobile ? undefined : 96 }}
+          >
+            {loading || revalidating ? "Loading…" : "Search"}
+          </ScoutPrimaryBtn>
+        </div>
 
-        <RecommendedQuickFiltersBar
-          form={form}
-          setForm={setForm}
-          toggleSet={toggleSet}
-          trackedCompanyNames={trackedCompanyNames}
-          onQuickApply={(nextForm) => void applyFilters(nextForm)}
-          onOpenAllFilters={() => setFiltersDrawerOpen(true)}
-          activeFilterCount={activeFilterLabels.length}
-        />
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 14,
+            borderTop: border.line,
+          }}
+        >
+          <RecommendedQuickFiltersBar
+            form={form}
+            setForm={setForm}
+            toggleSet={toggleSet}
+            trackedCompanyNames={trackedCompanyNames}
+            onQuickApply={(nextForm) => void applyFilters(nextForm)}
+            onOpenAllFilters={() => setFiltersDrawerOpen(true)}
+            activeFilterCount={activeFilterLabels.length}
+          />
+        </div>
+
+        <div style={{ marginTop: 10 }}>
+          <JobFreshnessLegend compact />
+        </div>
 
         {profileSuggestedLabels.length > 0 && isDefaultAppliedFeed && (
           <ProfileSuggestionsBanner
@@ -919,36 +937,36 @@ export function PipelineRecommendedSection({
             {notice}
           </p>
         )}
-        {hasActiveSearch && !error && hasLoadedOnce && (
+        {hasActiveSearch && !error && hasLoadedOnce && !showInitialLoader && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45 }}>
             Custom filters run a live search — results may differ from your daily snapshot.
           </p>
         )}
-        {(revalidating || (loading && hasLoadedOnce)) && (
-          <div style={{ marginTop: 12 }}>
-            <KimchiProcessLoader
-              preset="recommendations"
-              variant="inline"
-              fullWidth
-              title={revalidating ? "Updating your matches…" : undefined}
-            />
-          </div>
-        )}
       </ScoutBox>
 
-      {showInitialSkeleton && (
-        <RecommendedLoadingSkeleton />
-      )}
-
-      {!showInitialSkeleton && (
-        <RecommendedResultsList
-          listings={filteredListings}
-          savingKey={savingKey}
-          onOpenRecommended={onOpenJob}
-          onSaveJob={onSaveJob}
-          setSavingKey={setSavingKey}
-          emptyMessage={emptyMessage}
-        />
+      {showInitialLoader ? (
+        <RecommendedResultsLoader />
+      ) : (
+        <>
+          {showRefreshLoader && (
+            <div style={{ marginBottom: 12 }}>
+              <KimchiProcessLoader
+                preset="recommendations"
+                variant="inline"
+                fullWidth
+                title="Updating your matches…"
+              />
+            </div>
+          )}
+          <RecommendedResultsList
+            listings={filteredListings}
+            savingKey={savingKey}
+            onOpenRecommended={onOpenJob}
+            onSaveJob={onSaveJob}
+            setSavingKey={setSavingKey}
+            emptyMessage={emptyMessage}
+          />
+        </>
       )}
     </div>
   );
