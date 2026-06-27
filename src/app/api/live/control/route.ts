@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   const operator = realDbUser ?? dbUser;
-  const sessionView = { coachProfileId: row.coachProfileId, host: row.hostName };
+  const sessionView = { id: row.id, coachProfileId: row.coachProfileId, host: row.hostName };
   const canHost = await canHostLiveSession({
     operator,
     authEmail: authUser.email,

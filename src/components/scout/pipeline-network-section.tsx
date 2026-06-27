@@ -29,10 +29,14 @@ import {
 } from "@/lib/network-job-filters";
 import { NETWORK_JOBS_PAGE_SIZE } from "@/lib/network-jobs-load";
 import { describeNetworkActiveFilters, networkFormFromProfileDefaults } from "@/lib/network-profile-defaults";
-import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { locationFieldsFromProfileString } from "@/lib/recommended-filter-utils";
 import { loadScopedNetworkSearch, saveScopedNetworkSearch } from "@/lib/client-session";
-import { writeNetworkJobsCache } from "@/lib/network-jobs-cache";
+import {
+  clearNetworkJobsCache,
+  defaultNetworkCacheEntry,
+  readNetworkJobsCache,
+  writeNetworkJobsCache,
+} from "@/lib/network-jobs-cache";
 import { CompanyLogo } from "./company-logo";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { MatchFitCallout, MatchScoreBadge, ScoreSourceHint } from "./match-score-ui";
@@ -191,7 +195,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [needsProfile, setNeedsProfile] = useState(false);
@@ -206,6 +210,8 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const [appliedForm, setAppliedForm] = useState<NetworkJobFilterForm>(() => createEmptyNetworkJobFilterForm());
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const profileFormRef = useRef<NetworkJobFilterForm | null>(null);
+  const mountedRef = useRef(false);
+  const prevActingUserIdRef = useRef<string | null | undefined>(undefined);
 
   const emptyFilterForm = useCallback(
     (): NetworkJobFilterForm => ({
@@ -215,8 +221,45 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     [],
   );
 
+  type FetchPageResult = {
+    jobs: NetworkMatchedJob[];
+    total: number;
+    hasMore: boolean;
+    page: number;
+    needsProfile: boolean;
+    hint: string | null;
+  };
+
+  const persistNetworkCache = useCallback(
+    (
+      result: FetchPageResult,
+      filters: NetworkJobFilterForm,
+      extras?: { profileSuggestedLabels?: string[]; profileForm?: NetworkJobFilterForm | null },
+    ) => {
+      writeNetworkJobsCache(
+        defaultNetworkCacheEntry({
+          jobs: result.jobs,
+          appliedForm: filters,
+          total: result.total,
+          hasMore: result.hasMore,
+          page: result.page,
+          needsProfile: result.needsProfile,
+          hint: result.hint,
+          profileSuggestedLabels: extras?.profileSuggestedLabels ?? profileSuggestedLabels,
+          profileForm: extras?.profileForm ?? profileFormRef.current ?? undefined,
+        }),
+      );
+    },
+    [profileSuggestedLabels],
+  );
+
   const fetchPage = useCallback(
-    async (pageNum: number, filters: NetworkJobFilterForm, append: boolean) => {
+    async (
+      pageNum: number,
+      filters: NetworkJobFilterForm,
+      append: boolean,
+      existingJobs: NetworkMatchedJob[] = [],
+    ): Promise<FetchPageResult | null> => {
       const params = networkJobFilterSearchParams(filters, pageNum, NETWORK_JOBS_PAGE_SIZE);
       const res = await fetch(withClientScope(`/api/network-jobs/match?${params.toString()}`));
       const data = (await res.json()) as {
@@ -227,29 +270,86 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         hasMore?: boolean;
       };
       if (res.ok && Array.isArray(data.jobs)) {
-        setJobs((prev) => (append ? sortNetworkMatchedJobs([...prev, ...data.jobs!]) : data.jobs!));
-        setTotal(data.total ?? data.jobs.length);
-        setHasMore(Boolean(data.hasMore));
+        const nextJobs = append ? sortNetworkMatchedJobs([...existingJobs, ...data.jobs]) : data.jobs;
+        const nextTotal = data.total ?? data.jobs.length;
+        const nextHasMore = Boolean(data.hasMore);
+        const nextNeedsProfile = Boolean(data.needsProfile);
+        const nextHint = data.hint ?? null;
+        setJobs(nextJobs);
+        setTotal(nextTotal);
+        setHasMore(nextHasMore);
         setPage(pageNum);
-        setNeedsProfile(Boolean(data.needsProfile));
-        setProfileHint(data.hint ?? null);
-        if (pageNum === 1) {
-          writeNetworkJobsCache({ fetchedAt: Date.now(), needsProfile: data.needsProfile, hint: data.hint ?? null });
-        }
-      } else if (!append) {
+        setNeedsProfile(nextNeedsProfile);
+        setProfileHint(nextHint);
+        return {
+          jobs: nextJobs,
+          total: nextTotal,
+          hasMore: nextHasMore,
+          page: pageNum,
+          needsProfile: nextNeedsProfile,
+          hint: nextHint,
+        };
+      }
+      if (!append) {
         setJobs([]);
         setTotal(0);
         setHasMore(false);
       }
+      return null;
     },
     [withClientScope],
   );
+
+  const loadProfileSuggestions = useCallback(async () => {
+    try {
+      const [defaultsData, profileData] = await Promise.all([
+        fetch(withClientScope("/api/jobs/recommended/defaults")).then((res) => (res.ok ? res.json() : null)),
+        fetch(withClientScope("/api/profile")).then((res) => (res.ok ? res.json() : null)),
+      ] as const);
+
+      const targetRoles = [
+        ...(Array.isArray(profileData?.prioritizedRoles) ? profileData.prioritizedRoles : []),
+        ...(Array.isArray(profileData?.targetRoles) ? profileData.targetRoles : []),
+      ]
+        .map((r) => r.trim())
+        .filter(Boolean)
+        .filter((role, index, all) => all.findIndex((r) => r.toLowerCase() === role.toLowerCase()) === index);
+
+      let profileForm: NetworkJobFilterForm;
+      if (defaultsData?.filters) {
+        profileForm = networkFormFromProfileDefaults(defaultsData.filters, targetRoles);
+      } else {
+        const fields = locationFieldsFromProfileString(profileData?.parsedData?.location);
+        profileForm = {
+          ...createEmptyNetworkJobFilterForm(),
+          jobTitles: targetRoles.join(", "),
+          locationCity: fields.city,
+          locationState: fields.region,
+        };
+      }
+      profileForm.search = loadScopedNetworkSearch();
+      profileFormRef.current = profileForm;
+      const labels = defaultsData?.labels?.length ? defaultsData.labels : describeNetworkActiveFilters(profileForm);
+      setProfileSuggestedLabels(labels);
+      return { labels, profileForm };
+    } catch {
+      profileFormRef.current = null;
+      setProfileSuggestedLabels([]);
+      return { labels: [] as string[], profileForm: null as NetworkJobFilterForm | null };
+    }
+  }, [withClientScope]);
 
   const loadJobs = useCallback(
     async (filters: NetworkJobFilterForm = createEmptyNetworkJobFilterForm()) => {
       setLoading(true);
       try {
-        await fetchPage(1, filters, false);
+        const [result, profile] = await Promise.all([fetchPage(1, filters, false), loadProfileSuggestions()]);
+        if (result) {
+          persistNetworkCache(result, filters, {
+            profileSuggestedLabels: profile.labels,
+            profileForm: profile.profileForm,
+          });
+        }
       } catch {
         setJobs(seedAsMatched(SEED_NETWORK_JOBS));
         setTotal(SEED_NETWORK_JOBS.length);
@@ -261,20 +361,29 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         setHasLoadedOnce(true);
       }
     },
-    [fetchPage],
+    [fetchPage, loadProfileSuggestions, persistNetworkCache],
   );
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     try {
-      await fetchPage(page + 1, appliedForm, true);
+      const result = await fetchPage(page + 1, appliedForm, true, jobs);
+      if (result) {
+        persistNetworkCache(result, appliedForm);
+      }
     } finally {
       setLoadingMore(false);
     }
-  }, [appliedForm, fetchPage, hasMore, loadingMore, page]);
+  }, [appliedForm, fetchPage, hasMore, jobs, loadingMore, page, persistNetworkCache]);
 
   useEffect(() => {
+    const prev = prevActingUserIdRef.current;
+    prevActingUserIdRef.current = actingUserId ?? null;
+    if (prev === undefined) return;
+
+    mountedRef.current = false;
+    clearNetworkJobsCache();
     setAppliedForm(createEmptyNetworkJobFilterForm());
     setProfileSuggestedLabels([]);
     profileFormRef.current = null;
@@ -284,45 +393,31 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     setPage(1);
     setHasMore(false);
     setHasLoadedOnce(false);
-    void loadJobs(createEmptyNetworkJobFilterForm());
+    setLoading(false);
+    setNeedsProfile(false);
+    setProfileHint(null);
+  }, [actingUserId, emptyFilterForm]);
 
-    void Promise.all([
-      fetch(withClientScope("/api/jobs/recommended/defaults")).then((res) => (res.ok ? res.json() : null)),
-      fetch(withClientScope("/api/profile")).then((res) => (res.ok ? res.json() : null)),
-    ])
-      .then(([defaultsData, profileData]: [
-        { filters?: VectorSearchFilters; labels?: string[] } | null,
-        { targetRoles?: string[]; prioritizedRoles?: string[]; parsedData?: { location?: string | null } } | null,
-      ]) => {
-        const targetRoles = [
-          ...(Array.isArray(profileData?.prioritizedRoles) ? profileData.prioritizedRoles : []),
-          ...(Array.isArray(profileData?.targetRoles) ? profileData.targetRoles : []),
-        ]
-          .map((r) => r.trim())
-          .filter(Boolean)
-          .filter((role, index, all) => all.findIndex((r) => r.toLowerCase() === role.toLowerCase()) === index);
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
 
-        let profileForm: NetworkJobFilterForm;
-        if (defaultsData?.filters) {
-          profileForm = networkFormFromProfileDefaults(defaultsData.filters, targetRoles);
-        } else {
-          const fields = locationFieldsFromProfileString(profileData?.parsedData?.location);
-          profileForm = {
-            ...createEmptyNetworkJobFilterForm(),
-            jobTitles: targetRoles.join(", "),
-            locationCity: fields.city,
-            locationState: fields.region,
-          };
-        }
-        profileForm.search = loadScopedNetworkSearch();
-        profileFormRef.current = profileForm;
-        setProfileSuggestedLabels(defaultsData?.labels?.length ? defaultsData.labels : describeNetworkActiveFilters(profileForm));
-      })
-      .catch(() => {
-        profileFormRef.current = null;
-        setProfileSuggestedLabels([]);
-      });
-  }, [actingUserId, emptyFilterForm, loadJobs, withClientScope]);
+    const cached = readNetworkJobsCache();
+    if (!cached) return;
+
+    setJobs(cached.jobs);
+    setAppliedForm(cached.appliedForm);
+    setForm({ ...cached.appliedForm, search: loadScopedNetworkSearch() });
+    setTotal(cached.total);
+    setHasMore(cached.hasMore);
+    setPage(cached.page);
+    setNeedsProfile(Boolean(cached.needsProfile));
+    setProfileHint(cached.hint ?? null);
+    setProfileSuggestedLabels(cached.profileSuggestedLabels ?? []);
+    profileFormRef.current = cached.profileForm ?? null;
+    setHasLoadedOnce(true);
+    setLoading(false);
+  }, [actingUserId]);
 
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
   const activeFilterCount = countActiveNetworkFilterFields(appliedForm, internalView);
@@ -337,10 +432,14 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     saveScopedNetworkSearch(nextForm.search);
     setAppliedForm({ ...nextForm });
     setLoading(true);
-    void fetchPage(1, nextForm, false).finally(() => {
-      setLoading(false);
-      setHasLoadedOnce(true);
-    });
+    void fetchPage(1, nextForm, false)
+      .then((result) => {
+        if (result) persistNetworkCache(result, nextForm);
+      })
+      .finally(() => {
+        setLoading(false);
+        setHasLoadedOnce(true);
+      });
   };
 
   const applyProfileSuggestions = () => {
@@ -357,10 +456,14 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     setForm(reset);
     setAppliedForm(createEmptyNetworkJobFilterForm());
     setLoading(true);
-    void fetchPage(1, createEmptyNetworkJobFilterForm(), false).finally(() => {
-      setLoading(false);
-      setHasLoadedOnce(true);
-    });
+    void fetchPage(1, createEmptyNetworkJobFilterForm(), false)
+      .then((result) => {
+        if (result) persistNetworkCache(result, createEmptyNetworkJobFilterForm());
+      })
+      .finally(() => {
+        setLoading(false);
+        setHasLoadedOnce(true);
+      });
   };
 
   const inputStyle = { ...pipelineInputStyle, margin: 0 };
@@ -472,6 +575,12 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
 
       {showInitialLoader ? (
         <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth title="Loading in-network roles…" />
+      ) : !hasLoadedOnce ? (
+        <ScoutBox style={{ padding: 48, textAlign: "center" }}>
+          <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0, lineHeight: 1.55 }}>
+            Click Refresh to load in-network roles from the recruiter network.
+          </p>
+        </ScoutBox>
       ) : jobs.length === 0 ? (
         <ScoutBox style={{ padding: 48, textAlign: "center" }}>
           <p style={{ color: color.muted, fontFamily: fontSans, fontSize: T.bodySm, margin: 0 }}>

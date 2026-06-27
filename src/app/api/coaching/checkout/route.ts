@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     ],
     success_url: `${baseUrl}/dashboard?purchase=success&coach=${encodeURIComponent(coachSlug ?? "")}`,
     cancel_url: coachSlug
-      ? `${baseUrl}/coaching/coach/${coachSlug}?purchase=canceled`
+      ? `${baseUrl}/coach/${coachSlug}?purchase=canceled`
       : `${baseUrl}/coaching?purchase=canceled`,
     metadata: {
       kind: "coach_purchase",

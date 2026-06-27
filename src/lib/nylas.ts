@@ -88,9 +88,14 @@ export function nylasProfileReturnUrl(
 
 /** Where job seekers land after connecting a dedicated job-search inbox. */
 export function nylasUserInboxReturnUrl(appUrl: string, params?: Record<string, string>, returnPath = "/profile/preferences"): string {
-  const base = `${appUrl.replace(/\/$/, "")}${returnPath.startsWith("/") ? returnPath : `/${returnPath}`}`;
-  if (!params || Object.keys(params).length === 0) return base;
-  return `${base}?${new URLSearchParams(params).toString()}`;
+  const pathPart = returnPath.startsWith("/") ? returnPath : `/${returnPath}`;
+  const [pathname, existingQuery = ""] = pathPart.split("?");
+  const merged = new URLSearchParams(existingQuery);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) merged.set(key, value);
+  }
+  const qs = merged.toString();
+  return `${appUrl.replace(/\/$/, "")}${pathname}${qs ? `?${qs}` : ""}`;
 }
 
 export function isNylasConfigured(): boolean {

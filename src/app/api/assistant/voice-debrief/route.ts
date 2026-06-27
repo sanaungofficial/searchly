@@ -1,7 +1,7 @@
-import { getAuthedUserForAi } from "@/lib/ai-guard";
-import { runVoiceDebrief } from "@/lib/kimchi-assistant/debrief";
-import { isVoicePresetId, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import { NextResponse } from "next/server";
+import { getAuthedUserForAi } from "@/lib/ai-guard";
+import { runVoiceDebrief, type DebriefContextHint } from "@/lib/kimchi-assistant/debrief";
+import { isVoicePresetId, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,11 @@ export async function POST(request: Request) {
   }
   const { dbUser } = auth;
 
-  let body: { presetId?: string; transcript?: string };
+  let body: {
+    presetId?: string;
+    transcript?: string;
+    contextHint?: DebriefContextHint;
+  };
   try {
     body = await request.json();
   } catch {
@@ -31,6 +35,7 @@ export async function POST(request: Request) {
     userId: dbUser.id,
     presetId,
     transcript,
+    contextHint: body.contextHint,
   });
 
   return NextResponse.json({

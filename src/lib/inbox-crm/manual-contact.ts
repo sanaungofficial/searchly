@@ -1,5 +1,6 @@
 import { InboxContactSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_CONTACT_STATUS } from "@/lib/inbox-crm/contact-status";
 
 export type ManualInboxContactInput = {
   email: string;
@@ -54,6 +55,7 @@ export async function upsertManualInboxContact(userId: string, input: ManualInbo
       email,
       ...payload,
       source: InboxContactSource.MANUAL,
+      status: DEFAULT_CONTACT_STATUS,
     },
   });
 }

@@ -34,6 +34,7 @@ export function formatStartsIn(start: Date, status: LiveSessionStatus, now = new
   if (status === "ENDED") return "Ended";
   if (status === "CANCELLED") return "Cancelled";
   if (status === "DRAFT") return "Draft";
+  if (status === "PENDING_APPROVAL") return "Pending approval";
 
   const ms = start.getTime() - now.getTime();
   if (ms <= 0) return "Starting soon";
@@ -73,6 +74,7 @@ type MapSessionArgs = {
   activePeerCount?: number;
   roomEnabled?: boolean;
   coachSlug?: string | null;
+  coHosts?: LiveSessionView["coHosts"];
 };
 
 export function mapLiveSessionToView(
@@ -87,6 +89,11 @@ export function mapLiveSessionToView(
     description: row.description,
     category: row.category,
     status: row.status,
+    format: row.format,
+    timezone: row.timezone,
+    coverImageUrl: row.coverImageUrl,
+    replayEnabled: row.replayEnabled,
+    rejectionReason: row.rejectionReason,
     isLive: sessionIsLive(row.status),
     isFeaturedWeekly: row.isFeaturedWeekly,
     startsIn: formatStartsIn(row.scheduledStart, row.status),
@@ -114,5 +121,6 @@ export function mapLiveSessionToView(
     recordingUrl: row.recordingUrl,
     hlsPlaybackUrl: row.hlsPlaybackUrl,
     coachSlug: args.coachSlug ?? null,
+    coHosts: args.coHosts,
   };
 }

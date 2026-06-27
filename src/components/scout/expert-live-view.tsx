@@ -1,7 +1,7 @@
 "use client";
 
 import { useIsMobile } from "@/hooks/use-mobile";
-import { WorkspaceLive } from "@/components/scout/workspace-live";
+import { ExpertWebinarsView } from "@/components/scout/expert-webinars-view";
 import { color, fontSans, type as T } from "@/lib/typography";
 
 export function ExpertLiveView() {
@@ -15,10 +15,10 @@ export function ExpertLiveView() {
             Live Webinar
           </h1>
           <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, maxWidth: 560 }}>
-            Schedule and run live group sessions — set up rooms, share links, and manage registrations.
+            Create webinars, manage registrations, and go live when you&apos;re ready.
           </p>
         </header>
-        <WorkspaceLive embedded />
+        <ExpertWebinarsView />
       </div>
     </div>
   );

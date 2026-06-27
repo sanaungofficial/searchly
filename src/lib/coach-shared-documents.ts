@@ -1,4 +1,4 @@
-import type { AssetType, CoachSharedDocument } from "@prisma/client";
+import type { AssetType, CoachSharedDocument, Prisma } from "@prisma/client";
 import { createClient } from "@/utils/supabase/server";
 import { isCoachAssignedToUser } from "@/lib/coach-client-assignment";
 import { assetTypeLabel } from "@/lib/asset-types";
@@ -13,7 +13,8 @@ export type CoachSharedDocumentView = {
   coachName: string;
   coachPhotoUrl: string | null;
   coachSlug: string | null;
-  clientUserId: string;
+  clientUserId: string | null;
+  clientName: string | null;
   uploadedByUserId: string;
   uploadedByName: string | null;
   type: AssetType;
@@ -22,7 +23,14 @@ export type CoachSharedDocumentView = {
   url: string;
   mimeType: string | null;
   notes: string | null;
+  isPublic: boolean;
   createdAt: string;
+};
+
+type DocRow = CoachSharedDocument & {
+  coachProfile: { displayName: string; photoUrl: string | null; slug: string | null };
+  uploadedBy: { name: string | null };
+  clientUser?: { name: string | null; email: string } | null;
 };
 
 export async function canCoachShareWithClient(coachProfileId: string, clientUserId: string): Promise<boolean> {
@@ -54,12 +62,7 @@ export async function signCoachDocumentPath(storagePath: string): Promise<string
   return data.signedUrl;
 }
 
-export async function mapCoachSharedDocument(
-  row: CoachSharedDocument & {
-    coachProfile: { displayName: string; photoUrl: string | null; slug: string | null };
-    uploadedBy: { name: string | null };
-  },
-): Promise<CoachSharedDocumentView | null> {
+export async function mapCoachSharedDocument(row: DocRow): Promise<CoachSharedDocumentView | null> {
   const url = await signCoachDocumentPath(row.storagePath);
   if (!url) return null;
 
@@ -70,6 +73,7 @@ export async function mapCoachSharedDocument(
     coachPhotoUrl: row.coachProfile.photoUrl,
     coachSlug: row.coachProfile.slug,
     clientUserId: row.clientUserId,
+    clientName: row.clientUser?.name ?? row.clientUser?.email?.split("@")[0] ?? null,
     uploadedByUserId: row.uploadedByUserId,
     uploadedByName: row.uploadedBy.name,
     type: row.type,
@@ -78,9 +82,16 @@ export async function mapCoachSharedDocument(
     url,
     mimeType: row.mimeType,
     notes: row.notes,
+    isPublic: row.isPublic,
     createdAt: row.createdAt.toISOString(),
   };
 }
+
+const docInclude = {
+  coachProfile: { select: { displayName: true, photoUrl: true, slug: true } },
+  uploadedBy: { select: { name: true } },
+  clientUser: { select: { name: true, email: true } },
+} satisfies Prisma.CoachSharedDocumentInclude;
 
 export async function listCoachSharedDocumentsForClient(params: {
   clientUserId: string;
@@ -89,15 +100,33 @@ export async function listCoachSharedDocumentsForClient(params: {
   const rows = await prisma.coachSharedDocument.findMany({
     where: {
       clientUserId: params.clientUserId,
+      isPublic: false,
       ...(params.coachProfileId ? { coachProfileId: params.coachProfileId } : {}),
     },
     orderBy: { createdAt: "desc" },
-    include: {
-      coachProfile: { select: { displayName: true, photoUrl: true, slug: true } },
-      uploadedBy: { select: { name: true } },
-    },
+    include: docInclude,
   });
 
+  const mapped = await Promise.all(rows.map((row) => mapCoachSharedDocument(row)));
+  return mapped.filter((d): d is CoachSharedDocumentView => d !== null);
+}
+
+export async function listPublicCoachResources(coachProfileId: string): Promise<CoachSharedDocumentView[]> {
+  const rows = await prisma.coachSharedDocument.findMany({
+    where: { coachProfileId, isPublic: true },
+    orderBy: { createdAt: "desc" },
+    include: docInclude,
+  });
+  const mapped = await Promise.all(rows.map((row) => mapCoachSharedDocument(row)));
+  return mapped.filter((d): d is CoachSharedDocumentView => d !== null);
+}
+
+export async function listAllCoachResources(coachProfileId: string): Promise<CoachSharedDocumentView[]> {
+  const rows = await prisma.coachSharedDocument.findMany({
+    where: { coachProfileId },
+    orderBy: { createdAt: "desc" },
+    include: docInclude,
+  });
   const mapped = await Promise.all(rows.map((row) => mapCoachSharedDocument(row)));
   return mapped.filter((d): d is CoachSharedDocumentView => d !== null);
 }
@@ -109,11 +138,12 @@ export async function deleteCoachSharedDocumentStorage(storagePath: string) {
 
 export function coachShareStoragePath(
   coachProfileId: string,
-  clientUserId: string,
+  clientUserId: string | null,
   fileName: string,
 ): string {
   const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return `coach-shares/${coachProfileId}/${clientUserId}/${Date.now()}-${safe}`;
+  const scope = clientUserId ?? "public";
+  return `coach-shares/${coachProfileId}/${scope}/${Date.now()}-${safe}`;
 }
 
 export const COACH_SHARE_UPLOAD_TYPES: AssetType[] = [

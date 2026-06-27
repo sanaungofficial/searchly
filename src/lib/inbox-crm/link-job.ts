@@ -45,6 +45,48 @@ export async function linkActivityToJob(params: {
   return updated;
 }
 
+export async function linkContactToJob(params: {
+  userId: string;
+  contactId: string;
+  jobId: string | null;
+  contactRole?: string | null;
+  unlinkJobId?: string | null;
+}): Promise<void> {
+  const contact = await prisma.inboxContact.findFirst({
+    where: { id: params.contactId, userId: params.userId },
+  });
+  if (!contact) throw new Error("CONTACT_NOT_FOUND");
+
+  if (params.jobId) {
+    const job = await prisma.job.findFirst({ where: { id: params.jobId, userId: params.userId } });
+    if (!job) throw new Error("JOB_NOT_FOUND");
+
+    await prisma.jobInboxContact.upsert({
+      where: { jobId_contactId: { jobId: params.jobId, contactId: params.contactId } },
+      create: {
+        userId: params.userId,
+        jobId: params.jobId,
+        contactId: params.contactId,
+        role: params.contactRole ?? null,
+      },
+      update: {
+        ...(params.contactRole ? { role: params.contactRole } : {}),
+      },
+    });
+    return;
+  }
+
+  if (params.unlinkJobId) {
+    await prisma.jobInboxContact.deleteMany({
+      where: {
+        userId: params.userId,
+        contactId: params.contactId,
+        jobId: params.unlinkJobId,
+      },
+    });
+  }
+}
+
 type LoadContactCardOptions = {
   excludeMessageId?: string | null;
   timelineLimit?: number;
@@ -94,6 +136,16 @@ export async function loadContactCard(userId: string, contactId: string, options
       name: contact.name,
       company: contact.company,
       title: contact.title,
+      phone: contact.phone,
+      linkedinUrl: contact.linkedinUrl,
+      notes: contact.notes,
+      contacted: contact.contacted,
+      source: contact.source,
+      status: contact.status,
+      statusUpdatedAt: contact.statusUpdatedAt?.toISOString() ?? null,
+      lastActivityAt: contact.lastActivityAt?.toISOString() ?? null,
+      createdAt: contact.createdAt.toISOString(),
+      updatedAt: contact.updatedAt.toISOString(),
       savedToNylas: Boolean(contact.nylasContactId),
     },
     linkedJobs: contact.jobLinks.map((link) => ({

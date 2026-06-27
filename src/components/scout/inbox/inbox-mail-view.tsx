@@ -6,7 +6,7 @@ import { ScoutSecondaryBtn } from "../scout-box";
 import { color, fontSans, border, surface, type as T } from "@/lib/typography";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
-import { InboxContactsPanel } from "./inbox-contacts-panel";
+import { InboxLeadsPanel } from "./inbox-leads-panel";
 import { InboxContactDrawer } from "./inbox-contact-drawer";
 import { InboxExpandedMessage } from "./inbox-expanded-message";
 import { InboxMeetingsPanel } from "./inbox-meetings-panel";
@@ -75,7 +75,7 @@ export function InboxMailView({
   const isMobile = useIsMobile();
   const { withClientScope } = useWorkspace();
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [activeTab, setActiveTab] = useState<InboxTab | string>("primary");
+  const [activeTab, setActiveTab] = useState<InboxTab | string>("contacts");
   const [messages, setMessages] = useState<MessageSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -143,7 +143,6 @@ export function InboxMailView({
     if (!connected) return;
     setFoldersReady(false);
     setFolders([]);
-    setActiveTab("primary");
     setMessages([]);
     setExpandedId(null);
     setDetail(null);
@@ -374,6 +373,7 @@ export function InboxMailView({
       <InboxTopTabs
         active={activeTab}
         primaryCount={activeTab === "primary" ? primaryUnread : undefined}
+        mailConnected={connected}
         onSelect={(tab) => {
           setActiveTab(tab);
           setExpandedId(null);
@@ -433,8 +433,17 @@ export function InboxMailView({
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {activeTab === "contacts" ? (
-          <InboxContactsPanel
+          <InboxLeadsPanel
             scopePath={withClientScope}
+            mailConnected={connected}
+            onComposeTo={(email) =>
+              onComposeChange({
+                open: true,
+                to: email,
+                subject: "",
+                body: "",
+              })
+            }
             onSelectContact={(id) => setSelectedContactId(id)}
           />
         ) : (
@@ -517,6 +526,7 @@ export function InboxMailView({
         <InboxContactDrawer
           contactId={selectedContactId}
           scopePath={withClientScope}
+          mailConnected={connected}
           onClose={() => setSelectedContactId(null)}
           onOpenMessage={(messageId) => {
             setActiveTab("primary");

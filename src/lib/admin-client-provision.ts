@@ -15,6 +15,10 @@ import { parseResumeFile } from "@/lib/resume-extract";
 import { normalizeParsedResumeData, shouldReplaceNameWithResumeName } from "@/lib/resume-parse";
 import { syncPrimaryResumeToProfile } from "@/lib/sync-primary-resume";
 import { findSupabaseAuthUserIdByEmail, getSupabaseAdmin } from "@/lib/supabase-admin";
+import {
+  inviteClientAuthUser,
+  setClientAuthPassword,
+} from "@/lib/admin-client-auth";
 import { Prisma, UserRole, type User } from "@prisma/client";
 
 export type ProvisionClientInput = {
@@ -24,6 +28,8 @@ export type ProvisionClientInput = {
   linkedinUrl?: string | null;
   /** Send Supabase magic-link invite email (default false) */
   sendInvite?: boolean;
+  /** Create/update Supabase auth with this password (no email sent) */
+  initialPassword?: string | null;
   /** When true, mark onboarding complete after resume/LinkedIn setup */
   markOnboardingComplete?: boolean;
 };
@@ -35,28 +41,6 @@ export type ProvisionClientResult = {
   linkedinImported: boolean;
   warnings: string[];
 };
-
-async function inviteAuthUser(email: string, name: string | null): Promise<{ authUserId: string; invited: boolean }> {
-  const admin = getSupabaseAdmin();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: name ?? "" },
-  });
-
-  if (data?.user?.id) {
-    return { authUserId: data.user.id, invited: true };
-  }
-
-  if (error && !error.message.includes("already been registered")) {
-    throw new Error(error.message);
-  }
-
-  const authUserId = await findSupabaseAuthUserIdByEmail(email);
-  if (!authUserId) {
-    throw new Error("Could not find or create auth account for this email.");
-  }
-
-  return { authUserId, invited: false };
-}
 
 async function upsertClientUser(email: string, name: string | null): Promise<User> {
   return prisma.user.upsert({
@@ -220,14 +204,19 @@ export async function provisionClient(input: ProvisionClientInput): Promise<Prov
   let invited = false;
   let authUserId: string | null = null;
 
-  if (input.sendInvite) {
-    const authResult = await inviteAuthUser(email, name);
-    authUserId = authResult.authUserId;
+  const initialPassword = input.initialPassword?.trim();
+  if (initialPassword) {
+    await setClientAuthPassword({ email, password: initialPassword, name });
+    authUserId = await findSupabaseAuthUserIdByEmail(email);
+    warnings.push("Sign-in account created with the password you set.");
+  } else if (input.sendInvite) {
+    const authResult = await inviteClientAuthUser(email, name);
     invited = authResult.invited;
-    if (invited) {
-      warnings.push(`Sign-in invite sent to ${email}.`);
+    authUserId = await findSupabaseAuthUserIdByEmail(email);
+    if (authResult.invited) {
+      warnings.push(authResult.message);
     } else {
-      warnings.push("Auth account already existed — no new invite sent.");
+      warnings.push(authResult.message);
     }
   } else {
     authUserId = await findSupabaseAuthUserIdByEmail(email);

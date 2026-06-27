@@ -37,6 +37,9 @@ export type CoachListItem = {
   isInternal?: boolean;
 };
 
+import type { CoachSharedDocumentView } from "@/lib/coach-shared-documents";
+import type { LiveSessionView } from "@/lib/live-session-types";
+
 export type CoachSpotlightBadge = "featured" | "new" | "top-rated" | "rising";
 
 export type CoachMatchFields = {
@@ -92,6 +95,10 @@ export type CoachProfileDetail = CoachListItem & {
     hoursGranted?: number;
     hours: number;
   }>;
+  upcomingLiveSessions?: LiveSessionView[];
+  pastRecordings?: LiveSessionView[];
+  publicResources?: CoachSharedDocumentView[];
+  clientWins?: string[];
 };
 
 export type CoachDirectoryFilters = {

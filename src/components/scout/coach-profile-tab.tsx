@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LinkedInOrgPicker } from "@/components/scout/linkedin-org-picker";
 import { CoachPricingDrawer } from "@/components/scout/coach-pricing-drawer";
+import { CoachResourcesLibrary } from "@/components/scout/coach-resources-library";
+import { coachPublicProfilePath } from "@/lib/coach-slug";
 import { ScoutBox, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { color, fontMono, fontSans } from "@/lib/typography";
 
@@ -38,6 +40,7 @@ type CoachProfile = {
   isProfessionalCoach?: boolean;
   whyCoach?: string | null;
   aboutMe?: string | null;
+  clientWins?: string[];
   nylasGrantId?: string | null;
   nylasSchedulerConfigId?: string | null;
   nylasSchedulerSlug?: string | null;
@@ -540,6 +543,73 @@ export function CoachProfileTab({
         </div>
       </ScoutBox>
 
+      {!isAdminEdit && profile.slug && (
+        <ScoutBox padding="20px 24px">
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--scout-muted)",
+              textTransform: "uppercase",
+              letterSpacing: "0.8px",
+              fontFamily: fontMono,
+              marginBottom: 8,
+            }}
+          >
+            Public profile URL
+          </p>
+          <p style={{ fontFamily: fontSans, fontSize: 13, color: color.muted, margin: "0 0 10px", lineHeight: 1.55 }}>
+            Share this link so clients can view your profile, book sessions, and download public resources.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <code
+              style={{
+                flex: 1,
+                minWidth: 200,
+                padding: "10px 12px",
+                background: "rgba(26,58,47,0.04)",
+                border: "1px solid rgba(26,58,47,0.12)",
+                fontFamily: fontMono,
+                fontSize: 13,
+                wordBreak: "break-all",
+              }}
+            >
+              {typeof window !== "undefined"
+                ? `${window.location.origin}${coachPublicProfilePath(profile.slug)}`
+                : coachPublicProfilePath(profile.slug)}
+            </code>
+            <Link
+              href={coachPublicProfilePath(profile.slug)}
+              target="_blank"
+              style={{
+                padding: "10px 18px",
+                border: "1px solid rgba(26,58,47,0.2)",
+                color: color.forest,
+                textDecoration: "none",
+                fontFamily: fontSans,
+                fontSize: 14,
+                fontWeight: 600,
+                background: "#fff",
+              }}
+            >
+              View profile
+            </Link>
+            <ScoutSecondaryBtn
+              type="button"
+              onClick={() => {
+                const url =
+                  typeof window !== "undefined"
+                    ? `${window.location.origin}${coachPublicProfilePath(profile.slug)}`
+                    : coachPublicProfilePath(profile.slug);
+                void navigator.clipboard.writeText(url);
+              }}
+              style={{ minHeight: 40 }}
+            >
+              Copy link
+            </ScoutSecondaryBtn>
+          </div>
+        </ScoutBox>
+      )}
+
       <ScoutBox padding="20px 24px">
         <p
           style={{
@@ -573,8 +643,21 @@ export function CoachProfileTab({
               style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
             />
           </div>
+          <div>
+            <label style={labelStyle}>Client results</label>
+            <p style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, margin: "0 0 8px", lineHeight: 1.5 }}>
+              Outcomes you&apos;ve helped clients achieve — shown on your public profile.
+            </p>
+            <TagInput
+              value={form.clientWins ?? []}
+              onChange={(v) => setForm((f) => ({ ...f, clientWins: v }))}
+              placeholder="e.g. Landed PM role at Google"
+            />
+          </div>
         </div>
       </ScoutBox>
+
+      {!isAdminEdit && <CoachResourcesLibrary />}
 
       {!isAdminEdit && (
       <ScoutBox padding="20px 24px">
@@ -810,6 +893,14 @@ export function CoachProfileTab({
                   onChange={field("aboutMe")}
                   rows={4}
                   style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Client results</label>
+                <TagInput
+                  value={form.clientWins ?? []}
+                  onChange={(v) => setForm((f) => ({ ...f, clientWins: v }))}
+                  placeholder="e.g. Landed PM role at Google"
                 />
               </div>
             </>

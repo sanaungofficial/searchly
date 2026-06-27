@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { pushCoachProfileToAirtable } from "@/lib/airtable/push-coach";
-import { coachProfileSlug } from "@/lib/coach-slug";
+import { ensureUniqueCoachSlug } from "@/lib/coach-slug";
 import { parseSchedulerAvailabilityPatch, schedulerAvailabilityChanged } from "@/lib/coach-scheduler-settings";
 import { syncCoachSchedulerFromProfile } from "@/lib/coach-scheduler-sync";
 import { prisma } from "@/lib/prisma";
@@ -36,17 +36,20 @@ function coachData(body: Record<string, unknown>) {
   if (body.isProfessionalCoach !== undefined) d.isProfessionalCoach = Boolean(body.isProfessionalCoach);
   if (body.whyCoach !== undefined) d.whyCoach = (body.whyCoach as string) || null;
   if (body.aboutMe !== undefined) d.aboutMe = (body.aboutMe as string) || null;
+  if (body.clientWins !== undefined && Array.isArray(body.clientWins)) {
+    d.clientWins = (body.clientWins as string[]).map((w) => String(w).trim()).filter(Boolean);
+  }
   Object.assign(d, parseSchedulerAvailabilityPatch(body));
   return d;
 }
 
-function ensureSlug(
+async function ensureSlug(
   profile: { id: string; displayName: string; slug: string | null },
   patch: Record<string, unknown>,
 ) {
   const name = (patch.displayName as string) ?? profile.displayName;
   if (!profile.slug || patch.displayName !== undefined) {
-    patch.slug = coachProfileSlug(name, profile.id);
+    patch.slug = await ensureUniqueCoachSlug(name, profile.id);
   }
 }
 
@@ -68,7 +71,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json();
   const d = coachData(body);
-  ensureSlug(existing, d);
+  await ensureSlug(existing, d);
 
   const coach = await prisma.coachProfile.update({ where: { id }, data: d });
 

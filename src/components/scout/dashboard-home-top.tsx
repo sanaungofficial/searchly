@@ -435,7 +435,7 @@ export function DashboardHomeTop({ isMobile }: Props) {
   };
 
   const openCoachProfile = (slug: string | null, coachId: string) => {
-    if (slug) router.push(`/coaching/coach/${slug}`);
+    if (slug) router.push(`/coach/${slug}`);
     else router.push("/coaching");
   };
 

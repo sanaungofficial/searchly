@@ -21,6 +21,11 @@ export async function POST(req: Request) {
     sendInviteRaw === "true" ||
     sendInviteRaw === "1" ||
     sendInviteRaw === "on";
+  const initialPasswordRaw = formData.get("initialPassword");
+  const initialPassword =
+    typeof initialPasswordRaw === "string" && initialPasswordRaw.trim()
+      ? initialPasswordRaw.trim()
+      : null;
 
   if (!email) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -32,7 +37,8 @@ export async function POST(req: Request) {
       name,
       resumeFile: file,
       linkedinUrl,
-      sendInvite,
+      sendInvite: initialPassword ? false : sendInvite,
+      initialPassword,
     });
 
     const client = await fetchAdminClientById(result.user.id);

@@ -1,19 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { InboxUserTag } from "@/lib/email-sender-display";
 import { pipelineJobUrl } from "@/lib/workspace-urls";
 import { border, color, displayTitleStyle, fontMono, fontSans, surface, type as T } from "@/lib/typography";
 import { InboxLinkOpportunityModal } from "./inbox-link-opportunity-modal";
-import { InboxStatusDropdown, InboxStatusPills } from "./inbox-status-pill";
+import { InboxContactStatusPicker } from "./inbox-contact-status-badge";
+import type { InboxContactStatus } from "@/lib/inbox-crm/contact-status";
+import { InboxStatusPills } from "./inbox-status-pill";
 import { SenderAvatar } from "./sender-avatar";
 import { buildSenderAvatarUrls } from "@/lib/email-sender-display";
 import type { ContactCardData, ContactTimelineItem } from "./inbox-types";
 
-const DRAWER_WIDTH = "80vw";
-const SIDEBAR_WIDTH = 300;
+const DRAWER_WIDTH = "88vw";
+const SIDEBAR_WIDTH = 320;
 const line = border.line;
 
 type ActivityFilter = "all" | "email" | "meeting";
@@ -47,14 +49,23 @@ function CollapsibleSection({
   title,
   count,
   defaultOpen = true,
+  open: controlledOpen,
+  onOpenChange,
   children,
 }: {
   title: string;
   count?: number;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    onOpenChange?.(next);
+    if (controlledOpen === undefined) setInternalOpen(next);
+  };
   return (
     <div style={{ borderBottom: line }}>
       <button
@@ -70,9 +81,9 @@ function CollapsibleSection({
           background: "transparent",
           cursor: "pointer",
           fontFamily: fontSans,
-          fontSize: 11,
+          fontSize: T.label,
           fontWeight: 700,
-          letterSpacing: "0.06em",
+          letterSpacing: "0.05em",
           color: color.muted,
           textTransform: "uppercase",
         }}
@@ -136,15 +147,15 @@ function TimelineRow({
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: fontSans, fontSize: 13, fontWeight: 700, color: color.ink, flex: 1, minWidth: 0 }}>
+            <span style={{ fontFamily: fontSans, fontSize: T.bodySm, fontWeight: 700, color: color.ink, flex: 1, minWidth: 0 }}>
               {title}
             </span>
-            <span style={{ fontFamily: fontMono, fontSize: 10, color: color.muted, flexShrink: 0 }}>
+            <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, flexShrink: 0 }}>
               {formatRelative(item.occurredAt)}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: fontSans, fontSize: 10, color: color.muted, textTransform: "capitalize" }}>
+            <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, textTransform: "capitalize" }}>
               {item.direction.toLowerCase()}
             </span>
             <InboxStatusPills userTag={item.userTag as InboxUserTag | null} category={item.category} compact />
@@ -154,7 +165,7 @@ function TimelineRow({
               style={{
                 margin: 0,
                 fontFamily: fontSans,
-                fontSize: 12,
+                fontSize: T.bodySm,
                 color: color.muted,
                 lineHeight: 1.45,
                 overflow: "hidden",
@@ -167,7 +178,7 @@ function TimelineRow({
             </p>
           )}
           {clickable && (
-            <span style={{ fontFamily: fontSans, fontSize: 11, color: color.forest, marginTop: 6, display: "inline-block" }}>
+            <span style={{ fontFamily: fontSans, fontSize: T.caption, color: color.forest, marginTop: 6, display: "inline-block" }}>
               Open email →
             </span>
           )}
@@ -184,6 +195,7 @@ type Props = {
   onOpenMessage?: (messageId: string) => void;
   onComposeTo?: (email: string, name: string | null) => void;
   onNotice?: (n: { type: "success" | "error"; text: string }) => void;
+  mailConnected?: boolean;
 };
 
 export function InboxContactDrawer({
@@ -193,6 +205,7 @@ export function InboxContactDrawer({
   onOpenMessage,
   onComposeTo,
   onNotice,
+  mailConnected = true,
 }: Props) {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
@@ -200,10 +213,14 @@ export function InboxContactDrawer({
   const [card, setCard] = useState<ContactCardData | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [search, setSearch] = useState("");
-  const [tagSaving, setTagSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
   const [saveSaving, setSaveSaving] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [jobLinkSaving, setJobLinkSaving] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -267,27 +284,20 @@ export function InboxContactDrawer({
 
   const grouped = useMemo(() => groupTimelineByDay(filteredTimeline), [filteredTimeline]);
 
-  async function updateTag(tag: InboxUserTag | null) {
-    if (!latestEmailActivity?.nylasMessageId) {
-      onNotice?.({ type: "error", text: "No email activity to tag yet." });
-      return;
-    }
-    setTagSaving(true);
+  async function updateContactStatus(status: InboxContactStatus) {
+    setStatusSaving(true);
     try {
-      const res = await fetch(
-        scopePath(`/api/user/email/messages/${encodeURIComponent(latestEmailActivity.nylasMessageId)}/tag`),
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tag: tag ?? "none" }),
-        },
-      );
+      const res = await fetch(scopePath(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
       if (!res.ok) throw new Error("Could not save status");
       await load();
     } catch (e) {
       onNotice?.({ type: "error", text: e instanceof Error ? e.message : "Could not save status." });
     } finally {
-      setTagSaving(false);
+      setStatusSaving(false);
     }
   }
 
@@ -311,9 +321,57 @@ export function InboxContactDrawer({
     }
   }
 
+  async function linkJobViaContact(jobId: string | null) {
+    setJobLinkSaving(true);
+    try {
+      const res = await fetch(
+        scopePath(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}/job`),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            jobId
+              ? { jobId }
+              : { jobId: null, unlinkJobId: card?.linkedJobs[0]?.id ?? null },
+          ),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not link opportunity");
+      onNotice?.({ type: "success", text: jobId ? "Linked to opportunity." : "Link removed." });
+      await load();
+    } catch (e) {
+      onNotice?.({ type: "error", text: e instanceof Error ? e.message : "Could not link opportunity." });
+    } finally {
+      setJobLinkSaving(false);
+    }
+  }
+
+  async function createAndLinkJobViaContact(company: string, role: string) {
+    setJobLinkSaving(true);
+    try {
+      const res = await fetch(
+        scopePath(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}/job`),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ create: { company, role } }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not create opportunity");
+      onNotice?.({ type: "success", text: "Opportunity created and linked." });
+      await load();
+    } catch (e) {
+      onNotice?.({ type: "error", text: e instanceof Error ? e.message : "Could not create opportunity." });
+    } finally {
+      setJobLinkSaving(false);
+    }
+  }
+
   async function linkJob(jobId: string | null) {
     if (!latestEmailActivity?.nylasMessageId) {
-      onNotice?.({ type: "error", text: "Open an email thread first to link an opportunity." });
+      await linkJobViaContact(jobId);
       return;
     }
     setJobLinkSaving(true);
@@ -339,7 +397,7 @@ export function InboxContactDrawer({
 
   async function createAndLinkJob(company: string, role: string) {
     if (!latestEmailActivity?.nylasMessageId) {
-      onNotice?.({ type: "error", text: "No email activity to link yet." });
+      await createAndLinkJobViaContact(company, role);
       return;
     }
     setJobLinkSaving(true);
@@ -363,13 +421,44 @@ export function InboxContactDrawer({
     }
   }
 
+  useEffect(() => {
+    setNotesDraft(card?.contact.notes ?? "");
+  }, [card?.contact.notes]);
+
+  async function saveNotes() {
+    if (!card) return;
+    setNotesSaving(true);
+    try {
+      const res = await fetch(scopePath(`/api/user/inbox/contacts/${encodeURIComponent(contactId)}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: notesDraft }),
+      });
+      if (!res.ok) throw new Error("Could not save note");
+      onNotice?.({ type: "success", text: "Note saved." });
+      await load();
+    } catch (e) {
+      onNotice?.({ type: "error", text: e instanceof Error ? e.message : "Could not save note." });
+    } finally {
+      setNotesSaving(false);
+    }
+  }
+
+  function openNotes() {
+    setNotesOpen(true);
+    window.setTimeout(() => notesRef.current?.focus(), 50);
+  }
+
   const headerBtn = {
-    padding: "6px 12px",
+    display: "inline-flex" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    padding: "8px 14px",
     borderRadius: 8,
     border: line,
     background: "#fff",
     fontFamily: fontSans,
-    fontSize: 12,
+    fontSize: T.bodySm,
     fontWeight: 600,
     color: color.ink,
     cursor: "pointer" as const,
@@ -398,56 +487,88 @@ export function InboxContactDrawer({
           flexDirection: "column",
         }}
       >
-        {/* Header */}
+        {/* Header — Close-style: identity + status left, CTAs right */}
         <div
           style={{
-            padding: isMobile ? "12px 14px" : "14px 20px",
+            padding: isMobile ? "14px 16px" : "18px 24px",
             background: surface.card,
             borderBottom: line,
             flexShrink: 0,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={close}
               aria-label="Close"
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: color.muted, padding: 0 }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: color.muted, padding: 0, marginTop: 4 }}
             >
               ×
             </button>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...displayTitleStyle(20), margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {loading ? "Loading…" : displayName}
-              </p>
-            </div>
-            {!loading && card && (
-              <InboxStatusDropdown
-                value={(latestEmailActivity?.userTag as InboxUserTag | null) ?? null}
-                disabled={tagSaving || !latestEmailActivity}
-                onChange={(tag) => void updateTag(tag)}
+
+            {!loading && avatar && (
+              <SenderAvatar
+                primary={avatar.primary}
+                fallback={avatar.fallback}
+                initials={avatar.initials}
+                displayName={avatar.displayName}
+                size={48}
               />
             )}
-          </div>
-          {!loading && card && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingLeft: 32 }}>
-              <button
-                type="button"
-                style={headerBtn}
-                onClick={() => onComposeTo?.(card.contact.email, card.contact.name)}
+
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <p
+                style={{
+                  ...displayTitleStyle(T.displaySm),
+                  margin: "0 0 10px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
               >
-                Email
-              </button>
-              {!card.contact.savedToNylas && (
-                <button type="button" style={headerBtn} disabled={saveSaving} onClick={() => void saveContact()}>
-                  {saveSaving ? "Saving…" : "Save contact"}
-                </button>
+                {loading ? "Loading…" : displayName}
+              </p>
+              {!loading && card && (
+                <InboxContactStatusPicker
+                  value={card.contact.status}
+                  disabled={statusSaving}
+                  onChange={(status) => void updateContactStatus(status)}
+                />
               )}
-              <button type="button" style={headerBtn} disabled={jobLinkSaving} onClick={() => setLinkOpen(true)}>
-                Link opportunity
-              </button>
             </div>
-          )}
+
+            {!loading && card && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginLeft: "auto" }}>
+                <button type="button" style={headerBtn} onClick={openNotes}>
+                  <span aria-hidden>📝</span> Note
+                </button>
+                <button
+                  type="button"
+                  style={{ ...headerBtn, opacity: mailConnected ? 1 : 0.5 }}
+                  disabled={!mailConnected}
+                  title={mailConnected ? undefined : "Connect inbox to send email"}
+                  onClick={() => mailConnected && onComposeTo?.(card.contact.email, card.contact.name)}
+                >
+                  <span aria-hidden>✉</span> Email
+                </button>
+                {card.contact.phone ? (
+                  <a
+                    href={`tel:${card.contact.phone.replace(/\s/g, "")}`}
+                    style={{ ...headerBtn, textDecoration: "none" }}
+                  >
+                    <span aria-hidden>📞</span> Call
+                  </a>
+                ) : (
+                  <button type="button" style={{ ...headerBtn, opacity: 0.45, cursor: "not-allowed" }} disabled title="No phone number">
+                    <span aria-hidden>📞</span> Call
+                  </button>
+                )}
+                <button type="button" style={headerBtn} disabled={jobLinkSaving} onClick={() => setLinkOpen(true)}>
+                  <span aria-hidden>🏆</span> Opportunity
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Body */}
@@ -474,31 +595,13 @@ export function InboxContactDrawer({
             {loading && (
               <p style={{ padding: 16, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading…</p>
             )}
-            {!loading && card && avatar && (
+            {!loading && card && (
               <>
-                <div style={{ padding: "16px", borderBottom: line, display: "flex", gap: 12, alignItems: "center" }}>
-                  <SenderAvatar
-                    primary={avatar.primary}
-                    fallback={avatar.fallback}
-                    initials={avatar.initials}
-                    displayName={avatar.displayName}
-                    size={44}
-                  />
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 14, fontWeight: 700, color: color.ink }}>
-                      {displayName}
-                    </p>
-                    <p style={{ margin: "2px 0 0", fontFamily: fontSans, fontSize: 11, color: color.muted }}>
-                      {card.contact.email}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ padding: "10px 16px", borderBottom: line }}>
+                <div style={{ padding: "12px 16px", borderBottom: line, display: "flex", gap: 16 }}>
                   <span
                     style={{
                       fontFamily: fontSans,
-                      fontSize: 12,
+                      fontSize: T.bodySm,
                       fontWeight: 700,
                       color: color.forest,
                       borderBottom: `2px solid ${color.forest}`,
@@ -510,7 +613,7 @@ export function InboxContactDrawer({
                 </div>
 
                 <CollapsibleSection title="About" defaultOpen>
-                  <div style={{ fontFamily: fontSans, fontSize: 12, color: color.stone, lineHeight: 1.6 }}>
+                  <div style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.stone, lineHeight: 1.65 }}>
                     <p style={{ margin: "0 0 8px" }}>
                       <span style={{ color: color.muted }}>Email · </span>
                       {card.contact.email}
@@ -522,33 +625,122 @@ export function InboxContactDrawer({
                       </p>
                     )}
                     {card.contact.title && (
-                      <p style={{ margin: 0 }}>
+                      <p style={{ margin: "0 0 8px" }}>
                         <span style={{ color: color.muted }}>Title · </span>
                         {card.contact.title}
                       </p>
                     )}
+                    {card.contact.phone && (
+                      <p style={{ margin: "0 0 8px" }}>
+                        <span style={{ color: color.muted }}>Phone · </span>
+                        <a href={`tel:${card.contact.phone.replace(/\s/g, "")}`} style={{ color: "#2563EB" }}>
+                          {card.contact.phone}
+                        </a>
+                      </p>
+                    )}
+                    {card.contact.linkedinUrl && (
+                      <p style={{ margin: "0 0 8px" }}>
+                        <span style={{ color: color.muted }}>LinkedIn · </span>
+                        <a href={card.contact.linkedinUrl} target="_blank" rel="noreferrer" style={{ color: "#2563EB" }}>
+                          Profile
+                        </a>
+                      </p>
+                    )}
+                    {card.contact.contacted != null && (
+                      <p style={{ margin: "0 0 8px" }}>
+                        <span style={{ color: color.muted }}>Contacted · </span>
+                        {card.contact.contacted ? "Yes" : "No"}
+                      </p>
+                    )}
+                    {card.contact.notes && !notesOpen && (
+                      <p style={{ margin: 0 }}>
+                        <span style={{ color: color.muted }}>Notes · </span>
+                        {card.contact.notes}
+                      </p>
+                    )}
                     {card.contact.savedToNylas && (
-                      <p style={{ margin: "10px 0 0", fontSize: 11, color: color.forest, fontWeight: 600 }}>
+                      <p style={{ margin: "10px 0 0", fontSize: T.caption, color: color.forest, fontWeight: 600 }}>
                         Saved to address book
                       </p>
+                    )}
+                    {!card.contact.savedToNylas && (
+                      <button
+                        type="button"
+                        disabled={saveSaving}
+                        onClick={() => void saveContact()}
+                        style={{
+                          marginTop: 12,
+                          padding: 0,
+                          border: "none",
+                          background: "none",
+                          fontFamily: fontSans,
+                          fontSize: T.caption,
+                          fontWeight: 600,
+                          color: color.forest,
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        {saveSaving ? "Saving…" : "Save to address book"}
+                      </button>
                     )}
                   </div>
                 </CollapsibleSection>
 
+                <CollapsibleSection title="Notes" count={notesDraft.trim() ? 1 : 0} open={notesOpen} onOpenChange={setNotesOpen}>
+                  <textarea
+                    ref={notesRef}
+                    value={notesDraft}
+                    onChange={(e) => setNotesDraft(e.target.value)}
+                    rows={4}
+                    placeholder="Add a note about this contact…"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: line,
+                      borderRadius: 8,
+                      fontFamily: fontSans,
+                      fontSize: T.bodySm,
+                      lineHeight: 1.5,
+                      resize: "vertical",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={notesSaving || notesDraft === (card.contact.notes ?? "")}
+                    onClick={() => void saveNotes()}
+                    style={{
+                      marginTop: 8,
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: color.forest,
+                      color: "#fff",
+                      fontFamily: fontSans,
+                      fontSize: T.caption,
+                      fontWeight: 600,
+                      cursor: notesSaving ? "wait" : "pointer",
+                      opacity: notesDraft === (card.contact.notes ?? "") ? 0.5 : 1,
+                    }}
+                  >
+                    {notesSaving ? "Saving…" : "Save note"}
+                  </button>
+                </CollapsibleSection>
+
                 <CollapsibleSection title="Opportunities" count={card.linkedJobs.length}>
                   {card.linkedJobs.length === 0 ? (
-                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+                    <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                       No linked opportunities yet.
                     </p>
                   ) : (
                     <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
                       {card.linkedJobs.map((job) => (
-                        <li key={job.id} style={{ marginBottom: 8 }}>
+                        <li key={job.id} style={{ marginBottom: 10 }}>
                           <Link
                             href={pipelineJobUrl(job.id)}
                             style={{
                               fontFamily: fontSans,
-                              fontSize: 12,
+                              fontSize: T.bodySm,
                               fontWeight: 600,
                               color: color.forest,
                               textDecoration: "none",
@@ -556,7 +748,7 @@ export function InboxContactDrawer({
                           >
                             {job.role} @ {job.company}
                           </Link>
-                          <span style={{ fontFamily: fontMono, fontSize: 10, color: color.muted, marginLeft: 6 }}>
+                          <span style={{ fontFamily: fontMono, fontSize: T.label, color: color.muted, marginLeft: 8 }}>
                             {job.stage.toLowerCase()}
                           </span>
                         </li>
@@ -566,7 +758,7 @@ export function InboxContactDrawer({
                 </CollapsibleSection>
 
                 <CollapsibleSection title="Activity" count={card.activityCount ?? card.timeline.length} defaultOpen={false}>
-                  <p style={{ margin: 0, fontFamily: fontSans, fontSize: 12, color: color.muted }}>
+                  <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                     {card.activityCount ?? card.timeline.length} logged interaction
                     {(card.activityCount ?? card.timeline.length) === 1 ? "" : "s"} with this contact.
                   </p>
@@ -585,13 +777,16 @@ export function InboxContactDrawer({
               background: surface.page,
             }}
           >
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ margin: "0 0 12px", fontFamily: fontSans, fontSize: T.heading, fontWeight: 700, color: color.ink }}>
+              Activity
+            </p>
             <div
               style={{
                 display: "flex",
                 flexWrap: "wrap",
                 alignItems: "center",
                 gap: 8,
-                marginBottom: 14,
               }}
             >
               {(["all", "email", "meeting"] as ActivityFilter[]).map((f) => (
@@ -600,12 +795,12 @@ export function InboxContactDrawer({
                   type="button"
                   onClick={() => setFilter(f)}
                   style={{
-                    padding: "6px 12px",
+                    padding: "8px 14px",
                     borderRadius: 999,
                     border: filter === f ? `1px solid ${color.forest}` : line,
                     background: filter === f ? "rgba(42,107,74,0.08)" : "#fff",
                     fontFamily: fontSans,
-                    fontSize: 12,
+                    fontSize: T.bodySm,
                     fontWeight: filter === f ? 700 : 500,
                     color: filter === f ? color.forest : color.muted,
                     cursor: "pointer",
@@ -624,15 +819,16 @@ export function InboxContactDrawer({
                   flex: 1,
                   minWidth: 160,
                   marginLeft: "auto",
-                  padding: "7px 12px",
+                  padding: "9px 12px",
                   border: line,
                   borderRadius: 8,
                   fontFamily: fontSans,
-                  fontSize: 12,
+                  fontSize: T.bodySm,
                   background: "#fff",
                 }}
               />
             </div>
+          </div>
 
             {loading && (
               <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>Loading activity…</p>
@@ -649,7 +845,7 @@ export function InboxContactDrawer({
                   style={{
                     margin: "0 0 10px",
                     fontFamily: fontSans,
-                    fontSize: 11,
+                    fontSize: T.label,
                     fontWeight: 700,
                     letterSpacing: "0.04em",
                     color: color.muted,

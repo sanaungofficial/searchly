@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { coachProfileSlug } from "@/lib/coach-slug";
+import { ensureUniqueCoachSlug } from "@/lib/coach-slug";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       status: (body.status as CoachStatus) ?? CoachStatus.ACTIVE,
     },
   });
-  const slug = coachProfileSlug(coach.displayName, coach.id);
+  const slug = await ensureUniqueCoachSlug(coach.displayName, coach.id);
   const updated = await prisma.coachProfile.update({ where: { id: coach.id }, data: { slug } });
   return NextResponse.json(updated);
 }

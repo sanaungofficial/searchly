@@ -314,6 +314,7 @@ model CoachProfile {
   isProfessionalCoach   Boolean  @default(false)
   whyCoach              String?
   aboutMe               String?
+  clientWins            String[] @default([])
 
   vouches        CoachVouch[]
   reviews        CoachReview[]
@@ -324,6 +325,7 @@ model CoachProfile {
   bookings       CoachBooking[]
   communications CoachBookingCommunication[]
   liveSessions   LiveSession[]
+  liveSessionCoHosts LiveSessionCoHost[]
   pricingPackages CoachPricingPackage[]
   bulkDiscounts   CoachBulkDiscount[]
   purchases       CoachPurchase[]
@@ -511,8 +513,14 @@ model CoachBookingCommunication {
   @@index([bookingId])
 }
 
+enum LiveSessionFormat {
+  INTERACTIVE
+  BROADCAST
+}
+
 enum LiveSessionStatus {
   DRAFT
+  PENDING_APPROVAL
   SCHEDULED
   LIVE
   ENDED
@@ -538,7 +546,15 @@ model LiveSession {
 
   scheduledStart   DateTime
   scheduledEnd     DateTime
-  status           LiveSessionStatus @default(SCHEDULED)
+  timezone         String            @default("America/New_York")
+  status           LiveSessionStatus @default(DRAFT)
+  format           LiveSessionFormat @default(INTERACTIVE)
+
+  coverImageUrl    String?
+  replayEnabled    Boolean           @default(false)
+  rejectionReason  String?
+  submittedForApprovalAt DateTime?
+  approvedAt       DateTime?
 
   isFeaturedWeekly Boolean           @default(false)
   bgColor          String            @default("#1A3A2F")
@@ -563,12 +579,28 @@ model LiveSession {
 
   registrations    LiveSessionRegistration[]
   events           LiveSessionEvent[]
+  coHosts          LiveSessionCoHost[]
 
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   @@index([status])
   @@index([scheduledStart])
+  @@index([coachProfileId])
+}
+
+model LiveSessionCoHost {
+  id             String        @id @default(cuid())
+  liveSessionId  String
+  liveSession    LiveSession   @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  coachProfileId String?
+  coachProfile   CoachProfile? @relation(fields: [coachProfileId], references: [id], onDelete: SetNull)
+  displayName    String
+  email          String?
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+
+  @@index([liveSessionId])
   @@index([coachProfileId])
 }
 
@@ -689,13 +721,13 @@ model CoachClientAssignment {
   @@index([coachProfileId])
 }
 
-/// Coach-shared file for a client (career strategy, resources, etc.).
+/// Coach-shared file for a client (career strategy, resources, etc.) or public profile resource.
 model CoachSharedDocument {
   id               String       @id @default(cuid())
   coachProfileId   String
   coachProfile     CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
-  clientUserId     String
-  clientUser       User         @relation("CoachSharedDocsClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  clientUserId     String?
+  clientUser       User?        @relation("CoachSharedDocsClient", fields: [clientUserId], references: [id], onDelete: Cascade)
   uploadedByUserId String
   uploadedBy       User         @relation("CoachSharedDocsUploader", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
 
@@ -704,12 +736,14 @@ model CoachSharedDocument {
   storagePath String
   mimeType    String?
   notes       String?
+  isPublic    Boolean      @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clientUserId])
   @@index([coachProfileId, clientUserId])
+  @@index([coachProfileId, isPublic])
 }
 
 /// Text-only session notes and homework from expert to client (no file required).
@@ -1232,11 +1266,15 @@ model InboxContact {
   name           String?
   company        String?
   title          String?
+  phone          String?
   linkedinUrl    String?
   notes          String?            @db.Text
   contacted      Boolean?
   nylasContactId String?
   source         InboxContactSource @default(EMAIL)
+  status         String?
+  statusUpdatedAt DateTime?
+  lastActivityAt DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -1245,6 +1283,8 @@ model InboxContact {
 
   @@unique([userId, email])
   @@index([userId])
+  @@index([userId, status])
+  @@index([userId, lastActivityAt])
 }
 
 /// Optional link between a CRM contact and a pipeline job.

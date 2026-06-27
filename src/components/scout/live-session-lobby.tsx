@@ -124,7 +124,7 @@ export function LiveSessionLobby({
   const isEnded = s.status === "ENDED" || s.status === "CANCELLED";
   const hasReplay = Boolean(s.recordingUrl || s.hlsPlaybackUrl);
   const cal = calendarLinks(s);
-  const bookHref = s.coachSlug ? `/coaching?coach=${s.coachSlug}` : "/coaching";
+  const bookHref = s.coachSlug ? `/coach/${s.coachSlug}` : "/coaching";
 
   if (loading) {
     return (
