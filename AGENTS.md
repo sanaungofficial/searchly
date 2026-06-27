@@ -171,3 +171,23 @@ src/app/
 
 - Add **both** prod and dev URLs to Auth → Redirect URLs (`/auth/callback`)
 - Dev and prod often share one database — accounts and uploads appear in both
+
+---
+
+## Cursor Cloud specific instructions
+
+Single Next.js app. Required services for local dev: **Postgres** (Prisma) and **Supabase** (auth/storage). All other integrations (Anthropic, Hirebase, Stripe, Nylas, Resend, Plivo, 100ms, Airtable, …) are optional and feature-gated by env checks.
+
+**Startup (the update script already ran `npm install` + `npx prisma generate`):**
+- Start the local Postgres that the setup provisioned: `sudo pg_ctlcluster 16 main start` (needed once per VM boot; the dev DB role/name are `kimchi`/`kimchi`).
+- Run the dev server with `npm run dev` (serves `http://localhost:3000`). Use `npm`, not `bun` — `bun` is not installed here and `dev` is plain `next dev`. The `build`/`start` scripts use `bun` but are production-only.
+
+**Env vars (`.env.local`, gitignored, created during setup):** points Prisma at the local Postgres and sets placeholder Supabase values so the app boots. Real hosted values injected as Cursor Secrets / shell env vars override `.env.local` (Next.js does not override already-set `process.env`). To run **real auth** (login → onboarding → dashboard) and storage, set real `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (and typically the shared `POSTGRES_PRISMA_URL` / `POSTGRES_URL_NON_POOLING`). With placeholder Supabase, public pages (`/login`, `/signup`, `/pricing`) render but sign-in cannot complete.
+
+**Prisma gotchas:**
+- The datasource uses `POSTGRES_PRISMA_URL` + `POSTGRES_URL_NON_POOLING` (not `DATABASE_URL`).
+- The Prisma CLI only auto-loads `.env` (not `.env.local`), and the committed `.env` has a stale SQLite `DATABASE_URL`. So for `prisma db push` / `migrate`, export the two `POSTGRES_*` vars inline first, e.g.:
+  `export POSTGRES_PRISMA_URL=postgresql://kimchi:kimchi@127.0.0.1:5432/kimchi`; `export POSTGRES_URL_NON_POOLING=$POSTGRES_PRISMA_URL`; `npx prisma db push`.
+- After installing/changing deps, re-run `npx prisma generate` if the client seems stale.
+
+**Lint:** `npm run lint` works but the codebase currently has many pre-existing ESLint errors; a non-zero exit is expected and is not an environment problem (`next.config.ts` sets `typescript.ignoreBuildErrors: true`).
