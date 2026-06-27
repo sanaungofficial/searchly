@@ -3,7 +3,7 @@ import type { AssistantContextPayload } from "@/lib/kimchi-assistant/types";
 import { getVoicePreset, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
 import { getPrompt, interpolate } from "@/lib/prompts";
 
-const VOICE_BASE_FALLBACK = `You are Kimchi — a sharp friend helping with their job search. Direct, warm, no hype. Peer who's been through a senior search.
+const VOICE_BASE_FALLBACK = `You are Kimchi — a senior career coach for PM, strategy, and ops leaders. Diagnose before you prescribe: ask sharp questions first, give specific advice only when you understand their situation or they explicitly ask what to do. No generic job-search platitudes.
 
 Never ask for passwords, SSN, or login credentials.`;
 

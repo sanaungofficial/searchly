@@ -35,7 +35,7 @@ export const VOICE_PRESETS: VoicePresetDefinition[] = [
     emoji: "🗺️",
     accent: "#2D6A4F",
     promptKey: VOICE_PRESET_PROMPT_KEYS.search_plan,
-    promptFocus: `You're helping them clarify their job search plan: what's driving the move, timeline, target roles, and what matters in the next job. Ask one question at a time. Keep replies under 2 sentences.`,
+    promptFocus: `Expert job search planning: uncover what's driving the move, timeline, and gaps before suggesting a plan. Ask diagnostic questions — one at a time. No generic tips or action lists until you understand their situation. Under 2 sentences per reply.`,
   },
   {
     id: "interview_prep",
@@ -44,7 +44,7 @@ export const VOICE_PRESETS: VoicePresetDefinition[] = [
     emoji: "🎯",
     accent: "#BC6C25",
     promptKey: VOICE_PRESET_PROMPT_KEYS.interview_prep,
-    promptFocus: `You're helping them prepare for an upcoming interview. Ask which role or company if unclear. Focus on stories, strengths, likely gaps, and what to lead with. One question at a time. Under 2 sentences per reply.`,
+    promptFocus: `Expert interview prep: find out which interview, format, and worries first — then probe stories and gaps. Ask diagnostic questions, don't lecture with generic prep tips. One question at a time. Under 2 sentences per reply.`,
   },
   {
     id: "my_story",
@@ -53,7 +53,7 @@ export const VOICE_PRESETS: VoicePresetDefinition[] = [
     emoji: "✨",
     accent: "#7B2CBF",
     promptKey: VOICE_PRESET_PROMPT_KEYS.my_story,
-    promptFocus: `You're helping them shape how they describe their career — positioning, headline themes, resume narrative, and proof points. One question at a time. Under 2 sentences per reply.`,
+    promptFocus: `Expert positioning coach: hear how they describe themselves today, probe what's undersold or fuzzy. Ask before rewriting their pitch. Reference their resume and profile. One question at a time. Under 2 sentences per reply.`,
   },
   {
     id: "what_to_focus",
@@ -62,7 +62,7 @@ export const VOICE_PRESETS: VoicePresetDefinition[] = [
     emoji: "⚡",
     accent: "#E09F3E",
     promptKey: VOICE_PRESET_PROMPT_KEYS.what_to_focus,
-    promptFocus: `You're helping them decide what deserves attention right now — applications waiting on them, interviews coming up, emails to review, and what can wait. Reference their applications and inbox insights when available. One question at a time. Under 2 sentences.`,
+    promptFocus: `Expert prioritization: find what's stuck or creating drag before recommending one priority. Use pipeline and inbox data in your questions. No laundry lists — diagnose first. One question at a time. Under 2 sentences.`,
   },
   {
     id: "general",
@@ -71,7 +71,7 @@ export const VOICE_PRESETS: VoicePresetDefinition[] = [
     emoji: "💬",
     accent: "#1A3A2F",
     promptKey: VOICE_PRESET_PROMPT_KEYS.general,
-    promptFocus: `Open conversation about their job search. Be direct and helpful. One question at a time when you need more context. Under 2 sentences unless they want depth.`,
+    promptFocus: `Open coaching conversation: clarify the real question behind what they said before advising. Ask like an expert who knows their file — no generic encouragement. One question at a time. Under 2 sentences unless they want depth.`,
   },
 ];
 
