@@ -9,6 +9,8 @@ import {
   applyRoleTitlePreferenceToScore,
   roleTitlePreferenceReasons,
 } from "@/lib/role-title-preferences";
+import type { RecommendedFetchLane } from "@/lib/recommended-jobs-fallback";
+import { computeJobSkillsOverlap } from "@/lib/job-fit-ranking";
 import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 function labelForScore(score: number): string {
@@ -39,17 +41,26 @@ function heuristicMatch(
   rank: number,
   total: number,
   roleTitlePreferences?: RoleTitlePreferences,
+  profileSkills: string[] = [],
 ): Pick<VectorMatchedJob, "matchScore" | "matchLabel" | "matchReasons" | "matchedSkills" | "gapSkills" | "baseMatchScore"> {
   const description = jobDescriptionForMatch(job, cached);
   const fallback = fallbackJobMatch(description, resumeText);
   const jobSkills = [...(job.skills ?? []), ...(job.technologies ?? [])].map((s) => s.trim()).filter(Boolean);
+  const overlap = computeJobSkillsOverlap(jobSkills, profileSkills);
   const resumeLower = resumeText.toLowerCase();
-  const matchedSkills = jobSkills.filter((skill) => resumeLower.includes(skill.toLowerCase())).slice(0, 8);
-  const gapSkills = jobSkills.filter((skill) => !resumeLower.includes(skill.toLowerCase())).slice(0, 4);
+  const matchedSkills =
+    overlap.matchedSkills.length > 0
+      ? overlap.matchedSkills.slice(0, 8)
+      : jobSkills.filter((skill) => resumeLower.includes(skill.toLowerCase())).slice(0, 8);
+  const gapSkills = jobSkills.filter((skill) => !matchedSkills.includes(skill)).slice(0, 4);
 
   const rankScore = vectorRankScore(rank, total);
   const keywordScore = Math.round(fallback.score * 10);
-  const baseScore = Math.round(rankScore * 0.55 + keywordScore * 0.45);
+  const skillsBonus = Math.min(
+    20,
+    Math.round(overlap.overlapRatio * 14 + overlap.overlapCount * 2),
+  );
+  const baseScore = Math.round(rankScore * 0.45 + keywordScore * 0.35 + skillsBonus);
   const jobTitle = job.job_title ?? cached.title ?? "";
   const jobCategories = [...(cached.tags ?? []), ...(job.job_categories ?? [])];
   const { matchScore, adjustment } = applyRoleTitlePreferenceToScore(
@@ -159,8 +170,19 @@ export async function enrichVectorJobsWithMatchReasons(input: {
   /** Skip Claude batch — heuristic scores only (faster for recommended list). */
   heuristicOnly?: boolean;
   roleTitlePreferences?: RoleTitlePreferences;
+  profileSkills?: string[];
+  fetchLanes?: Array<RecommendedFetchLane | undefined>;
 }): Promise<VectorMatchedJob[]> {
-  const { rawJobs, cachedJobs, companyNames, resumeText, heuristicOnly, roleTitlePreferences } = input;
+  const {
+    rawJobs,
+    cachedJobs,
+    companyNames,
+    resumeText,
+    heuristicOnly,
+    roleTitlePreferences,
+    profileSkills = [],
+    fetchLanes = [],
+  } = input;
   const pairs = rawJobs.map((job, index) => ({
     job,
     cached: cachedJobs[index] ?? mapHirebaseJob(job),
@@ -179,7 +201,15 @@ export async function enrichVectorJobsWithMatchReasons(input: {
     const jobId = job._id ?? `rank-${rank}`;
     const companyName = job.company_name?.trim() || companyNames[rank - 1] || "Unknown company";
     const ai = claudeRows.get(jobId);
-    const heuristic = heuristicMatch(job, cached, resumeText, rank, pairs.length, roleTitlePreferences);
+    const heuristic = heuristicMatch(
+      job,
+      cached,
+      resumeText,
+      rank,
+      pairs.length,
+      roleTitlePreferences,
+      profileSkills,
+    );
 
     const matchScore = ai?.matchScore != null ? Math.min(100, Math.max(0, Math.round(ai.matchScore))) : heuristic.matchScore;
     const matchLabel = ai?.matchLabel?.trim() || labelForScore(matchScore);
@@ -194,6 +224,7 @@ export async function enrichVectorJobsWithMatchReasons(input: {
       matchedSkills: ai?.matchedSkills?.length ? ai.matchedSkills : heuristic.matchedSkills,
       gapSkills: ai?.gapSkills?.length ? ai.gapSkills : heuristic.gapSkills,
       baseMatchScore: heuristic.baseMatchScore,
+      fetchLane: fetchLanes[rank - 1],
     };
   });
 

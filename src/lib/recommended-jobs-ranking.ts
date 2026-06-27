@@ -1,7 +1,19 @@
-import { RECOMMENDED_MATCH_SCORE_FLOOR } from "@/lib/recommended-jobs-config";
+import {
+  RECOMMENDED_DISPLAY_COUNT,
+  RECOMMENDED_MATCH_SCORE_FLOOR,
+  RECOMMENDED_PREFERRED_MIN_SCORE,
+} from "@/lib/recommended-jobs-config";
 import { jobListingDedupeKey } from "@/lib/cached-job";
 import { compareJobFreshness, isRecommendedFreshnessVisible } from "@/lib/job-posted-freshness";
+import {
+  enrichJobsWithFitTiers,
+  selectDisplayJobs,
+  sortRecommendedJobsByFit,
+  compareRecommendedByFit,
+  extractProfileSkills,
+} from "@/lib/job-fit-ranking";
 import { matchScoreLabelFor } from "@/lib/match-score";
+import type { RecommendedFetchLane } from "@/lib/recommended-jobs-fallback";
 import {
   applyRoleTitlePreferenceToScore,
   hasRoleTitlePreferenceSignals,
@@ -12,13 +24,6 @@ import type { VectorMatchedJob } from "@/lib/vector-matched-job";
 
 export type RecommendedRankTier = 1 | 2 | 3;
 
-/** Tier 1: watchlist employer · Tier 2: top semantic fit · Tier 3: related / aspirational */
-export function assignRankTier(job: VectorMatchedJob, isTrackedCompany: boolean): RecommendedRankTier {
-  if (isTrackedCompany) return 1;
-  if ((job.vectorRank ?? 99) <= 8) return 2;
-  return 3;
-}
-
 export function applyRecommendedScoreFloor(
   jobs: VectorMatchedJob[],
   floor = RECOMMENDED_MATCH_SCORE_FLOOR,
@@ -28,20 +33,11 @@ export function applyRecommendedScoreFloor(
 }
 
 export function compareRecommendedMatchScore(a: VectorMatchedJob, b: VectorMatchedJob): number {
-  if (a.matchScore !== b.matchScore) return b.matchScore - a.matchScore;
-  const tierA = a.rankTier ?? 3;
-  const tierB = b.rankTier ?? 3;
-  if (tierA !== tierB) return tierA - tierB;
-  if (a.isTrackedCompany !== b.isTrackedCompany) {
-    return (b.isTrackedCompany ? 1 : 0) - (a.isTrackedCompany ? 1 : 0);
-  }
-  const freshnessCmp = compareJobFreshness(a.datePosted, b.datePosted);
-  if (freshnessCmp !== 0) return freshnessCmp;
-  return (a.vectorRank ?? 99) - (b.vectorRank ?? 99);
+  return compareRecommendedByFit(a, b);
 }
 
 export function sortRecommendedJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[] {
-  return [...jobs].sort(compareRecommendedMatchScore);
+  return sortRecommendedJobsByFit(jobs);
 }
 
 export function dedupeVectorMatchedJobs(jobs: VectorMatchedJob[]): VectorMatchedJob[] {
@@ -73,23 +69,33 @@ export function finalizeRecommendedJobs(
   jobs: VectorMatchedJob[],
   isTrackedFn: (job: VectorMatchedJob) => boolean,
   maxJobs: number,
-  options?: { filterStale?: boolean },
+  options?: {
+    filterStale?: boolean;
+    roleTitlePreferences?: RoleTitlePreferences;
+    profileSkills?: string[];
+    fetchLaneByKey?: Map<string, RecommendedFetchLane>;
+    preferredMinScore?: number;
+  },
 ): VectorMatchedJob[] {
-  const enriched = jobs.map((job) => {
-    const tracked = isTrackedFn(job);
-    return {
-      ...job,
-      isTrackedCompany: tracked,
-      rankTier: assignRankTier(job, tracked),
-    };
-  });
-
   const filterStale = options?.filterStale !== false;
   const freshnessFiltered = filterStale
-    ? enriched.filter((job) => isRecommendedFreshnessVisible(job.datePosted))
-    : enriched;
+    ? jobs.filter((job) => isRecommendedFreshnessVisible(job.datePosted))
+    : jobs;
   const floored = applyRecommendedScoreFloor(freshnessFiltered);
-  return sortRecommendedJobs(dedupeVectorMatchedJobs(floored)).slice(0, maxJobs);
+  const deduped = dedupeVectorMatchedJobs(floored);
+
+  const tiered = enrichJobsWithFitTiers(deduped, {
+    isTrackedFn,
+    roleTitlePreferences: options?.roleTitlePreferences ?? {},
+    profileSkills: options?.profileSkills ?? [],
+    fetchLaneByKey: options?.fetchLaneByKey,
+  });
+
+  const displayCount = Math.min(maxJobs, RECOMMENDED_DISPLAY_COUNT);
+  return selectDisplayJobs(tiered, {
+    displayCount,
+    preferredMinScore: options?.preferredMinScore ?? RECOMMENDED_PREFERRED_MIN_SCORE,
+  });
 }
 
 function isStaleRolePreferenceReason(reason: string): boolean {

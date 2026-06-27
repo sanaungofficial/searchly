@@ -35,15 +35,19 @@ import {
 } from "@/lib/recommended-jobs-config";
 import {
   companyNameMatchesTracked,
+  buildFetchLaneMap,
   dedupeRecommendedSources,
   fetchRecommendedBroadFallback,
+  fetchRecommendedFromExpandedRoles,
   fetchRecommendedFromProfileRoles,
+  fetchRecommendedFromSimilarJobs,
   fetchRecommendedFromTrackedCompanies,
   fetchRecommendedViaProfileSummary,
   fetchRecommendedViaResumeVSearch,
   loadTrackedCompanyIndex,
   type RecommendedJobSource,
 } from "@/lib/recommended-jobs-fallback";
+import { extractProfileSkills } from "@/lib/job-fit-ranking";
 import { finalizeRecommendedJobs, sortRecommendedJobs, dedupeVectorMatchedJobs } from "@/lib/recommended-jobs-ranking";
 import { ensureHirebaseArtifactForUser, findResumeAssetForUser } from "@/lib/resume-artifact";
 import { mergeParsedWithReadback, normalizeParsedResumeData } from "@/lib/resume-parse";
@@ -101,6 +105,7 @@ async function loadUserContext(userId: string) {
     profileLocation,
     priorities,
     roleTitlePreferences,
+    profileSkills: extractProfileSkills(parsedData),
   };
 }
 
@@ -110,7 +115,7 @@ async function enrichAndRank(
   userId: string,
   maxJobs: number,
   roleTitlePreferences: RoleTitlePreferences,
-  options?: { filterStale?: boolean },
+  options?: { filterStale?: boolean; profileSkills?: string[] },
 ): Promise<VectorMatchedJob[]> {
   if (!sources.length) return [];
 
@@ -118,9 +123,12 @@ async function enrichAndRank(
     /* cache is best-effort */
   });
 
+  const fetchLaneByKey = buildFetchLaneMap(sources);
+
   const enriched = await enrichRecommendedSources(sources, resumeText, {
     heuristicOnly: true,
     roleTitlePreferences,
+    profileSkills: options?.profileSkills,
   });
 
   const { index } = await loadTrackedCompanyIndex(userId);
@@ -128,7 +136,12 @@ async function enrichAndRank(
     enriched,
     (job) => companyNameMatchesTracked(job.companyName, index),
     maxJobs,
-    options,
+    {
+      ...options,
+      roleTitlePreferences,
+      profileSkills: options?.profileSkills,
+      fetchLaneByKey,
+    },
   );
 }
 
@@ -217,6 +230,7 @@ async function supplementSparseRecommendedJobs(input: {
   userId: string;
   maxJobs: number;
   roleTitlePreferences: RoleTitlePreferences;
+  profileSkills: string[];
   profileLocation?: string | null;
   priorities?: string[];
   applyLocationFilter?: boolean;
@@ -250,7 +264,7 @@ async function supplementSparseRecommendedJobs(input: {
     input.userId,
     input.maxJobs,
     input.roleTitlePreferences,
-    { filterStale: false },
+    { filterStale: false, profileSkills: input.profileSkills },
   );
   if (!extra.length) return input.jobs;
 
@@ -276,6 +290,7 @@ type PrimaryFetchResult = {
 async function fetchPrimaryRecommendedSources(input: {
   userId: string;
   targetRoles: string[];
+  roleTitlePreferences: RoleTitlePreferences;
   profile: Awaited<ReturnType<typeof loadUserContext>>["profile"];
   parsedData: Awaited<ReturnType<typeof loadUserContext>>["parsedData"];
   artifactId: string | null;
@@ -383,6 +398,33 @@ async function fetchPrimaryRecommendedSources(input: {
   trackedWithMatches = Math.max(trackedWithMatches, tracked.trackedWithMatches);
   companyCount = Math.max(companyCount, tracked.companyCount);
 
+  if (sources.length) {
+    try {
+      const similar = await fetchRecommendedFromSimilarJobs({
+        seedSources: sources,
+        filters: input.filters,
+        maxJobs: Math.min(24, input.maxJobs * 2),
+      });
+      supplemental.push(...similar.sources);
+    } catch {
+      /* similar-job vsearch is best-effort */
+    }
+  }
+
+  if (input.targetRoles.length || hasRoleTitlePreferenceSignals(input.roleTitlePreferences)) {
+    try {
+      const expanded = await fetchRecommendedFromExpandedRoles({
+        userId: input.userId,
+        roleTitlePreferences: input.roleTitlePreferences,
+        filters: input.filters,
+        maxJobs: Math.min(24, input.maxJobs * 2),
+      });
+      supplemental.push(...expanded.sources);
+    } catch {
+      /* expanded role titles are best-effort */
+    }
+  }
+
   if (supplemental.length) {
     const primaryCount = sources.length;
     sources = dedupeRecommendedSources([...sources, ...supplemental], RECOMMENDED_FETCH_POOL);
@@ -437,6 +479,7 @@ export async function generateRecommendedJobsForUser(
     profileLocation,
     priorities,
     roleTitlePreferences,
+    profileSkills,
   } = await loadUserContext(input.userId);
   const defaultFeed = isDefaultRecommendedFilters(requestFilters);
   /** Default feed uses profile location post-filter only. Custom searches use explicit UI filters — no silent profile merge. */
@@ -452,6 +495,7 @@ export async function generateRecommendedJobsForUser(
   let primary = await fetchPrimaryRecommendedSources({
     userId: input.userId,
     targetRoles,
+    roleTitlePreferences,
     profile,
     parsedData,
     artifactId: artifact.artifactId,
@@ -468,6 +512,7 @@ export async function generateRecommendedJobsForUser(
     primary = await fetchPrimaryRecommendedSources({
       userId: input.userId,
       targetRoles,
+      roleTitlePreferences,
       profile,
       parsedData,
       artifactId: artifact.artifactId,
@@ -583,6 +628,7 @@ export async function generateRecommendedJobsForUser(
 
   let jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, roleTitlePreferences, {
     filterStale: false,
+    profileSkills,
   });
 
   if (jobs.length < RECOMMENDED_MIN_DISPLAY_ROLES || countDistinctCompaniesFromJobs(jobs) < RECOMMENDED_MIN_DISTINCT_COMPANIES) {
@@ -595,6 +641,7 @@ export async function generateRecommendedJobsForUser(
       userId: input.userId,
       maxJobs,
       roleTitlePreferences,
+      profileSkills,
       profileLocation,
       priorities,
       applyLocationFilter: defaultFeed,
@@ -625,6 +672,7 @@ export async function generateRecommendedJobsForUser(
       matchMode = "broad";
       jobs = await enrichAndRank(sources, resumeText, input.userId, maxJobs, roleTitlePreferences, {
         filterStale: false,
+        profileSkills,
       });
       notice = appendNotice(
         notice,
