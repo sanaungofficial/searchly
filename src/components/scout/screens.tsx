@@ -30,9 +30,10 @@ import { LocationAutocompleteInput } from "./location-autocomplete-input";
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
-export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 
-const ONBOARDING_STEP_COUNT = 6;
+/** Progress dots in header — welcome through target companies (setup fills all). */
+const ONBOARDING_STEP_COUNT = 11;
 
 export interface Job {
   id: number;
@@ -2383,67 +2384,133 @@ interface AboutYouSearchProps {
   onSkip: () => void;
 }
 
-export function ScreenAboutYouSearch({
+type OnboardingStepProps = {
+  onContinue: () => void;
+  onSkip: () => void;
+  nudge?: string;
+};
+
+function OnboardingQuestionScreen({
+  title,
+  body,
+  children,
+  onContinue,
+  onSkip,
+  nudge,
+}: {
+  title: string;
+  body: string;
+  children: React.ReactNode;
+} & OnboardingStepProps) {
+  return (
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <AboutYouIntro title={title} body={body} />
+      <div
+        className="anim-fade-up"
+        style={{ ...ONBOARDING_CARD, animationDelay: "0.2s", position: "relative", zIndex: 2 }}
+      >
+        {children}
+      </div>
+      <AboutYouActions onContinue={onContinue} onSkip={onSkip} nudge={nudge} />
+    </div>
+  );
+}
+
+function salarySelectStyle(hasValue: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    minHeight: 48,
+    padding: "11px 36px 11px 14px",
+    border: ONBOARDING_FIELD_BORDER,
+    borderRadius: "var(--scout-radius)",
+    background: ONBOARDING_FIELD_BG,
+    fontFamily: "var(--font-ui)",
+    fontSize: 16,
+    fontWeight: 500,
+    color: hasValue ? ONBOARDING_TEXT : ONBOARDING_TEXT_SECONDARY,
+    cursor: "pointer",
+    appearance: "none",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+}
+
+export function ScreenCareerMotivation({
   careerMotivation,
-  jobTimeline,
   onCareerMotivationChange,
+  onContinue,
+  onSkip,
+}: Pick<AboutYouSearchProps, "careerMotivation" | "onCareerMotivationChange" | "onContinue" | "onSkip">) {
+  return (
+    <OnboardingQuestionScreen
+      title="What's driving your move?"
+      body="So we surface roles that match why you're looking — not just your title."
+      onContinue={onContinue}
+      onSkip={onSkip}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {CAREER_MOTIVATIONS.map((m) =>
+          aboutYouChipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m),
+        )}
+      </div>
+    </OnboardingQuestionScreen>
+  );
+}
+
+export function ScreenJobTimeline({
+  jobTimeline,
   onJobTimelineChange,
   onContinue,
   onSkip,
-}: AboutYouSearchProps) {
+}: Pick<AboutYouSearchProps, "jobTimeline" | "onJobTimelineChange" | "onContinue" | "onSkip">) {
   return (
-    <div className="flex flex-col gap-5 onboarding-screen-gap">
-      <AboutYouIntro
-        title="A few questions about your search."
-        body="Pick the options below — quick and easy."
-      />
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
-        {aboutYouSectionLabel("What's driving your move?", "So we surface roles that match why you're looking — not just your title.")}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {CAREER_MOTIVATIONS.map((m) =>
-            aboutYouChipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m)
-          )}
-        </div>
+    <OnboardingQuestionScreen
+      title="When do you want to make a move?"
+      body="Helps us prioritize roles with real timelines."
+      onContinue={onContinue}
+      onSkip={onSkip}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {JOB_TIMELINES.map(({ value, label }) => {
+          const selected = jobTimeline === value;
+          return (
+            <button
+              key={value}
+              className="onboarding-chip"
+              onClick={() => onJobTimelineChange(selected ? "" : value)}
+              style={{
+                padding: "14px 18px",
+                background: selected ? "#1A3A2F" : ONBOARDING_FIELD_BG,
+                color: selected ? "#E8D5A3" : ONBOARDING_TEXT,
+                border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
+                borderRadius: "var(--scout-radius)",
+                fontFamily: "var(--font-ui)",
+                fontSize: 15,
+                fontWeight: selected ? 600 : 500,
+                cursor: "pointer",
+                transition: "all 0.15s",
+                textAlign: "left" as const,
+                width: "100%",
+              }}
+              onMouseEnter={(e) => {
+                if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.45)";
+              }}
+              onMouseLeave={(e) => {
+                if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)";
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
-        {aboutYouSectionLabel("When do you want to make a move?", "Helps us prioritize roles with real timelines.")}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {JOB_TIMELINES.map(({ value, label }) => {
-            const selected = jobTimeline === value;
-            return (
-              <button
-                key={value}
-                className="onboarding-chip"
-                onClick={() => onJobTimelineChange(selected ? "" : value)}
-                style={{
-                  padding: "14px 18px",
-                  background: selected ? "#1A3A2F" : ONBOARDING_FIELD_BG,
-                  color: selected ? "#E8D5A3" : ONBOARDING_TEXT,
-                  border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 15,
-                  fontWeight: selected ? 600 : 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  textAlign: "left" as const,
-                  width: "100%",
-                }}
-                onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.45)"; }}
-                onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)"; }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <AboutYouActions onContinue={onContinue} onSkip={onSkip} />
-    </div>
+    </OnboardingQuestionScreen>
   );
+}
+
+/** @deprecated Use ScreenCareerMotivation + ScreenJobTimeline */
+export function ScreenAboutYouSearch(props: AboutYouSearchProps) {
+  return <ScreenCareerMotivation {...props} />;
 }
 
 interface AboutYouPreferencesProps {
@@ -2463,6 +2530,175 @@ interface AboutYouPreferencesProps {
   onSkip: () => void;
 }
 
+export function ScreenTargetLocation({
+  targetMarket,
+  locationHint,
+  onTargetMarketChange,
+  onContinue,
+  onSkip,
+}: Pick<
+  AboutYouPreferencesProps,
+  "targetMarket" | "locationHint" | "onTargetMarketChange" | "onContinue" | "onSkip"
+>) {
+  return (
+    <OnboardingQuestionScreen
+      title="Where are you based?"
+      body="We prioritize roles in your area — not overseas listings unless you opt into relocation later."
+      onContinue={onContinue}
+      onSkip={onSkip}
+    >
+      <LocationAutocompleteInput
+        value={targetMarket}
+        onChange={onTargetMarketChange}
+        locationHint={locationHint}
+        placeholder="Start typing a city…"
+        fieldBorder={ONBOARDING_FIELD_BORDER}
+        fieldBg={ONBOARDING_FIELD_BG}
+        textColor={ONBOARDING_TEXT}
+        textSecondary={ONBOARDING_TEXT_SECONDARY}
+        labelColor={ONBOARDING_LABEL_COLOR}
+      />
+    </OnboardingQuestionScreen>
+  );
+}
+
+export function ScreenCurrentSalary({
+  currentSalary,
+  onCurrentSalaryChange,
+  onContinue,
+  onSkip,
+}: Pick<AboutYouPreferencesProps, "currentSalary" | "onCurrentSalaryChange" | "onContinue" | "onSkip">) {
+  return (
+    <OnboardingQuestionScreen
+      title="What's your current salary?"
+      body="Optional — helps us filter out roles that aren't in the right range."
+      onContinue={onContinue}
+      onSkip={onSkip}
+    >
+      <div style={{ position: "relative" }}>
+        <select
+          value={currentSalary}
+          onChange={(e) => onCurrentSalaryChange(e.target.value)}
+          style={salarySelectStyle(!!currentSalary)}
+        >
+          <option value="">Select a range</option>
+          {SALARY_RANGES.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <SalarySelectChevron />
+      </div>
+    </OnboardingQuestionScreen>
+  );
+}
+
+export function ScreenTargetSalary({
+  targetSalary,
+  onTargetSalaryChange,
+  onContinue,
+  onSkip,
+}: Pick<AboutYouPreferencesProps, "targetSalary" | "onTargetSalaryChange" | "onContinue" | "onSkip">) {
+  return (
+    <OnboardingQuestionScreen
+      title="What's your target salary?"
+      body="Optional — we'll deprioritize listings far below what you're looking for."
+      onContinue={onContinue}
+      onSkip={onSkip}
+    >
+      <div style={{ position: "relative" }}>
+        <select
+          value={targetSalary}
+          onChange={(e) => onTargetSalaryChange(e.target.value)}
+          style={salarySelectStyle(!!targetSalary)}
+        >
+          <option value="">Select a range</option>
+          {SALARY_RANGES.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <SalarySelectChevron />
+      </div>
+    </OnboardingQuestionScreen>
+  );
+}
+
+function SalarySelectChevron() {
+  return (
+    <svg
+      style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+      width="12"
+      height="7"
+      viewBox="0 0 12 7"
+      fill="none"
+    >
+      <path
+        d="M1 1L6 6L11 1"
+        stroke={ONBOARDING_TEXT_SECONDARY}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function ScreenPriorities({
+  priorities,
+  onTogglePriority,
+  onContinue,
+  onSkip,
+}: Pick<AboutYouPreferencesProps, "priorities" | "onTogglePriority" | "onContinue" | "onSkip">) {
+  return (
+    <OnboardingQuestionScreen
+      title="What matters most to you?"
+      body="Pick any that apply — we filter out listings that clash with how you want to work."
+      onContinue={onContinue}
+      onSkip={onSkip}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {PRIORITIES.map((p) => aboutYouChipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
+      </div>
+    </OnboardingQuestionScreen>
+  );
+}
+
+export function ScreenAttribution({
+  attribution,
+  onAttributionChange,
+  onContinue,
+  onSkip,
+}: Pick<AboutYouPreferencesProps, "attribution" | "onAttributionChange" | "onContinue" | "onSkip">) {
+  return (
+    <OnboardingQuestionScreen
+      title="How did you hear about Kimchi?"
+      body="Optional — helps us know what's working."
+      onContinue={onContinue}
+      onSkip={onSkip}
+    >
+      <div style={{ position: "relative", maxWidth: 360, width: "100%" }}>
+        <select
+          value={attribution}
+          onChange={(e) => onAttributionChange(e.target.value)}
+          style={salarySelectStyle(!!attribution)}
+        >
+          <option value="">Select one</option>
+          {ATTRIBUTION_SOURCES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <SalarySelectChevron />
+      </div>
+    </OnboardingQuestionScreen>
+  );
+}
+
+/** @deprecated Combined screen — use individual Screen* preference steps */
 export function ScreenAboutYouPreferences({
   jobTimeline,
   currentSalary,
@@ -2479,99 +2715,15 @@ export function ScreenAboutYouPreferences({
   onContinue,
   onSkip,
 }: AboutYouPreferencesProps) {
-  const salaryRows = [
-    { label: "Current salary", value: currentSalary, onChange: onCurrentSalaryChange },
-    { label: "Target salary", value: targetSalary, onChange: onTargetSalaryChange },
-  ];
-  const showFilterNudge = !jobTimeline && !targetSalary;
-  const selectStyle = (hasValue: boolean): React.CSSProperties => ({
-    width: "100%",
-    minHeight: 48,
-    padding: "11px 36px 11px 14px",
-    border: ONBOARDING_FIELD_BORDER,
-    borderRadius: "var(--scout-radius)",
-    background: ONBOARDING_FIELD_BG,
-    fontFamily: "var(--font-ui)",
-    fontSize: 16,
-    fontWeight: 500,
-    color: hasValue ? ONBOARDING_TEXT : ONBOARDING_TEXT_SECONDARY,
-    cursor: "pointer",
-    appearance: "none",
-    outline: "none",
-    boxSizing: "border-box",
-  });
-
+  void jobTimeline;
   return (
-    <div className="flex flex-col gap-5 onboarding-screen-gap">
-      <AboutYouIntro
-        title="Preferences (all optional)"
-        body="Location, salary, and priorities — helps us filter roles that won't work for you."
-      />
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.15s" }}>
-        {aboutYouSectionLabel(
-          "Where are you based?",
-          "We use this to prioritize roles in your area — not overseas listings unless you opt into relocation.",
-          true,
-        )}
-        <LocationAutocompleteInput
-          value={targetMarket}
-          onChange={onTargetMarketChange}
-          locationHint={locationHint}
-          placeholder="Start typing a city…"
-          fieldBorder={ONBOARDING_FIELD_BORDER}
-          fieldBg={ONBOARDING_FIELD_BG}
-          textColor={ONBOARDING_TEXT}
-          textSecondary={ONBOARDING_TEXT_SECONDARY}
-          labelColor={ONBOARDING_LABEL_COLOR}
-        />
-      </div>
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          {salaryRows.map(({ label, value, onChange }) => (
-            <div key={label} style={{ flex: "1 1 200px" }}>
-              {aboutYouSectionLabel(label, undefined, true)}
-              <div style={{ position: "relative" }}>
-                <select value={value} onChange={(e) => onChange(e.target.value)} style={selectStyle(!!value)}>
-                  <option value="">Select a range</option>
-                  {SALARY_RANGES.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-                <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
-                  <path d="M1 1L6 6L11 1" stroke={ONBOARDING_TEXT_SECONDARY} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
-        {aboutYouSectionLabel("What matters most to you?", "We filter out listings that clash with how you want to work.", true)}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {PRIORITIES.map((p) => aboutYouChipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
-        </div>
-      </div>
-
-      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.5s" }}>
-        {aboutYouSectionLabel("How did you hear about Kimchi?", undefined, true)}
-        <div style={{ position: "relative", maxWidth: 320, width: "100%" }}>
-          <select value={attribution} onChange={(e) => onAttributionChange(e.target.value)} style={selectStyle(!!attribution)}>
-            <option value="">Select one</option>
-            {ATTRIBUTION_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
-            <path d="M1 1L6 6L11 1" stroke={ONBOARDING_TEXT_SECONDARY} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-      </div>
-
-      <AboutYouActions
-        onContinue={onContinue}
-        onSkip={onSkip}
-        nudge={showFilterNudge ? "Timeline and target salary help us filter out bad-fit roles. Optional, but a quick pick goes a long way." : undefined}
-      />
-    </div>
+    <ScreenTargetLocation
+      targetMarket={targetMarket}
+      locationHint={locationHint}
+      onTargetMarketChange={onTargetMarketChange}
+      onContinue={onContinue}
+      onSkip={onSkip}
+    />
   );
 }
 /* ──────────────────────────────────────────────────────────────
