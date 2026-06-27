@@ -136,6 +136,7 @@ export async function loadContactCard(userId: string, contactId: string, options
       name: contact.name,
       company: contact.company,
       title: contact.title,
+      phone: contact.phone,
       linkedinUrl: contact.linkedinUrl,
       notes: contact.notes,
       contacted: contact.contacted,

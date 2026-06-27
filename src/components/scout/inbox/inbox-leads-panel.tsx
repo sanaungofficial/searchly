@@ -25,6 +25,7 @@ type ContactRow = {
   name: string | null;
   company: string | null;
   title: string | null;
+  phone: string | null;
   linkedinUrl: string | null;
   notes: string | null;
   contacted: boolean | null;
@@ -181,6 +182,18 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
       case "email":
         return (
           <span style={{ fontFamily: fontSans, fontSize: 13, color: color.ink }}>{row.email}</span>
+        );
+      case "phone":
+        return row.phone ? (
+          <a
+            href={`tel:${row.phone.replace(/\s/g, "")}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontFamily: fontSans, fontSize: 13, color: "#2563EB" }}
+          >
+            {row.phone}
+          </a>
+        ) : (
+          <CellText value={null} />
         );
       case "company":
         return <CellText value={row.company} />;
@@ -420,6 +433,19 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
                       >
                         ✉
                       </button>
+                      {row.phone ? (
+                        <a
+                          href={`tel:${row.phone.replace(/\s/g, "")}`}
+                          title={`Call ${row.phone}`}
+                          style={{ ...iconBtn(false), display: "inline-flex", alignItems: "center", justifyContent: "center", textDecoration: "none", color: color.ink }}
+                        >
+                          📞
+                        </a>
+                      ) : (
+                        <button type="button" disabled style={iconBtn(true)} title="No phone number">
+                          📞
+                        </button>
+                      )}
                     </div>
                   </td>
                   {columnDefs.map((col) => (
@@ -466,7 +492,10 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
         open={filterOpen}
         filters={filters}
         onClose={() => setFilterOpen(false)}
-        onApply={(next) => setFilters(next)}
+        onApply={(next) => {
+          setFilters(next);
+          setPage(1);
+        }}
       />
     </div>
   );

@@ -30,6 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     name?: string | null;
     company?: string | null;
     title?: string | null;
+    phone?: string | null;
     notes?: string | null;
     linkedinUrl?: string | null;
     contacted?: boolean | null;
@@ -47,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.name !== undefined) data.name = body.name?.trim() || null;
   if (body.company !== undefined) data.company = body.company?.trim() || null;
   if (body.title !== undefined) data.title = body.title?.trim() || null;
+  if (body.phone !== undefined) data.phone = body.phone?.trim() || null;
   if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
   if (body.linkedinUrl !== undefined) data.linkedinUrl = body.linkedinUrl?.trim() || null;
   if (body.contacted !== undefined) data.contacted = body.contacted;

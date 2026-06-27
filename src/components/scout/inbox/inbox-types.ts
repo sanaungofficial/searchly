@@ -35,6 +35,7 @@ export type ContactCardData = {
     name: string | null;
     company: string | null;
     title: string | null;
+    phone?: string | null;
     linkedinUrl?: string | null;
     notes?: string | null;
     contacted?: boolean | null;

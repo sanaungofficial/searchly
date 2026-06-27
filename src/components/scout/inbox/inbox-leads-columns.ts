@@ -1,6 +1,7 @@
 export type LeadColumnId =
   | "name"
   | "email"
+  | "phone"
   | "company"
   | "title"
   | "status"
@@ -24,6 +25,7 @@ export type LeadColumnDef = {
 export const LEAD_COLUMNS: LeadColumnDef[] = [
   { id: "name", label: "Name", group: "Contacts", defaultVisible: true, minWidth: 200 },
   { id: "email", label: "Email", group: "Contacts", defaultVisible: true, minWidth: 180 },
+  { id: "phone", label: "Phone", group: "Contacts", defaultVisible: false, minWidth: 130 },
   { id: "company", label: "Company", group: "Contacts", defaultVisible: true, minWidth: 140 },
   { id: "title", label: "Title", group: "Contacts", defaultVisible: false, minWidth: 140 },
   { id: "status", label: "Status", group: "Contacts", defaultVisible: true, minWidth: 160 },

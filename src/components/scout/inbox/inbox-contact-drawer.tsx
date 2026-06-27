@@ -574,6 +574,14 @@ export function InboxContactDrawer({
                         {card.contact.title}
                       </p>
                     )}
+                    {card.contact.phone && (
+                      <p style={{ margin: "0 0 8px" }}>
+                        <span style={{ color: color.muted }}>Phone · </span>
+                        <a href={`tel:${card.contact.phone.replace(/\s/g, "")}`} style={{ color: "#2563EB" }}>
+                          {card.contact.phone}
+                        </a>
+                      </p>
+                    )}
                     {card.contact.linkedinUrl && (
                       <p style={{ margin: "0 0 8px" }}>
                         <span style={{ color: color.muted }}>LinkedIn · </span>

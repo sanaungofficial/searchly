@@ -1232,6 +1232,7 @@ model InboxContact {
   name           String?
   company        String?
   title          String?
+  phone          String?
   linkedinUrl    String?
   notes          String?            @db.Text
   contacted      Boolean?

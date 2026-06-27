@@ -36,6 +36,7 @@ export type ContactListRow = {
   name: string | null;
   company: string | null;
   title: string | null;
+  phone: string | null;
   linkedinUrl: string | null;
   notes: string | null;
   contacted: boolean | null;
@@ -228,6 +229,7 @@ export async function listInboxContacts(params: ListContactsParams) {
     name: c.name,
     company: c.company,
     title: c.title,
+    phone: c.phone,
     linkedinUrl: c.linkedinUrl,
     notes: c.notes,
     contacted: c.contacted,
