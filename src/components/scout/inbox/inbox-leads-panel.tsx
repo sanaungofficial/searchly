@@ -165,7 +165,7 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
                 padding: 0,
                 cursor: "pointer",
                 fontFamily: fontSans,
-                fontSize: 13,
+                fontSize: T.body,
                 fontWeight: 600,
                 color: "#2563EB",
                 textAlign: "left",
@@ -181,14 +181,14 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
       }
       case "email":
         return (
-          <span style={{ fontFamily: fontSans, fontSize: 13, color: color.ink }}>{row.email}</span>
+          <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.ink }}>{row.email}</span>
         );
       case "phone":
         return row.phone ? (
           <a
             href={`tel:${row.phone.replace(/\s/g, "")}`}
             onClick={(e) => e.stopPropagation()}
-            style={{ fontFamily: fontSans, fontSize: 13, color: "#2563EB" }}
+            style={{ fontFamily: fontSans, fontSize: T.bodySm, color: "#2563EB" }}
           >
             {row.phone}
           </a>
@@ -200,7 +200,7 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
       case "title":
         return <CellText value={row.title} />;
       case "status":
-        return <InboxContactStatusBadge status={row.status} />;
+        return <InboxContactStatusBadge status={row.status} size="lg" />;
       case "linkedJobs":
         return (
           <CellText
@@ -286,7 +286,7 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
         <button type="button" onClick={() => setFilterOpen(true)} style={toolbarBtn(filters.length > 0)}>
           + Add filter{filters.length > 0 ? ` (${filters.length})` : ""}
         </button>
-        <span style={{ fontFamily: fontSans, fontSize: 12, color: color.muted, whiteSpace: "nowrap" }}>
+        <span style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, whiteSpace: "nowrap" }}>
           {total.toLocaleString()} contact{total === 1 ? "" : "s"}
         </span>
         <div ref={sortRef} style={{ position: "relative" }}>
@@ -383,14 +383,14 @@ export function InboxLeadsPanel({ scopePath, onSelectContact, mailConnected = tr
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={columnDefs.length + 2} style={{ padding: 24, fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+                <td colSpan={columnDefs.length + 2} style={{ padding: 24, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && contacts.length === 0 && (
               <tr>
-                <td colSpan={columnDefs.length + 2} style={{ padding: 24, fontFamily: fontSans, fontSize: 13, color: color.muted }}>
+                <td colSpan={columnDefs.length + 2} style={{ padding: 24, fontFamily: fontSans, fontSize: T.bodySm, color: color.muted }}>
                   No contacts match your filters.
                 </td>
               </tr>
@@ -506,7 +506,7 @@ function CellText({ value, truncate }: { value: string | null | undefined; trunc
     <span
       style={{
         fontFamily: fontSans,
-        fontSize: 13,
+        fontSize: T.bodySm,
         color: value ? color.ink : color.muted,
         overflow: truncate ? "hidden" : undefined,
         textOverflow: truncate ? "ellipsis" : undefined,
@@ -520,13 +520,13 @@ function CellText({ value, truncate }: { value: string | null | undefined; trunc
 }
 
 const thStyle: React.CSSProperties = {
-  padding: "10px 12px",
+  padding: "12px 14px",
   textAlign: "left",
   fontFamily: fontSans,
-  fontSize: 11,
+  fontSize: T.caption,
   fontWeight: 700,
   color: color.muted,
-  letterSpacing: "0.03em",
+  letterSpacing: "0.02em",
   whiteSpace: "nowrap",
   position: "sticky",
   top: 0,
@@ -534,7 +534,7 @@ const thStyle: React.CSSProperties = {
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "10px 12px",
+  padding: "12px 14px",
   verticalAlign: "middle",
   overflow: "hidden",
 };
@@ -559,7 +559,7 @@ function toolbarBtn(active: boolean): React.CSSProperties {
     border: active ? "1px solid #2563EB" : "1px solid rgba(0,0,0,0.12)",
     background: active ? "rgba(59,130,246,0.08)" : "#fff",
     fontFamily: fontSans,
-    fontSize: 12,
+    fontSize: T.bodySm,
     fontWeight: 600,
     color: active ? "#1D4ED8" : color.ink,
     cursor: "pointer",
@@ -591,7 +591,7 @@ function footerBtn(primary: boolean): React.CSSProperties {
     background: primary ? "#2563EB" : "transparent",
     color: primary ? "#fff" : color.muted,
     fontFamily: fontSans,
-    fontSize: 12,
+    fontSize: T.bodySm,
     fontWeight: 600,
     cursor: "pointer",
   };
@@ -604,7 +604,7 @@ function pageBtn(disabled: boolean): React.CSSProperties {
     border: "1px solid rgba(0,0,0,0.12)",
     background: "#fff",
     fontFamily: fontSans,
-    fontSize: 12,
+    fontSize: T.bodySm,
     fontWeight: 600,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.5 : 1,
