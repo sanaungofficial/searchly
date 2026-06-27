@@ -42,6 +42,7 @@ import {
   networkJobShowSendProfile,
 } from "@/lib/network-job-client-actions";
 import { NetworkJobRequestModal, type NetworkJobRequestModalKind } from "./network-job-request-modal";
+import { JobInsiderConnectionSection } from "./job-insider-connection-section";
 
 export type DrawerTool = "resume" | "cover" | "fit" | null;
 
@@ -997,6 +998,10 @@ export function JobDrawer({
   const showParsedSections = hasStructuredSections;
   const showStructuredJobSections =
     showParsedSections && !(networkJob && fullDescriptionText.trim());
+  const showInsiderConnection =
+    !isGenericNetworkCompanyLabel(card.company) &&
+    Boolean(card.company?.trim()) &&
+    Boolean(card.role?.trim());
   const showJobDescriptionPanel =
     !showParsedSections ||
     (detailLoading && !hasFullPosting) ||
@@ -1179,6 +1184,23 @@ export function JobDrawer({
                   value={descValue}
                   onChange={setDescValue}
                   onBlur={() => patchDescription(descValue)}
+                />
+              )}
+
+              {showInsiderConnection && (
+                <JobInsiderConnectionSection
+                  companyName={card.company}
+                  jobTitle={card.role}
+                  companyWebsite={
+                    companyWebsite ??
+                    hirebaseCompany?.profile?.company_link ??
+                    hirebaseCompany?.enrichment?.websiteUrl ??
+                    null
+                  }
+                  linkedinUrl={linkedinForCompany}
+                  jobTeam={meta?.team ?? null}
+                  jobId={dbId}
+                  withClientScope={withClientScope}
                 />
               )}
 
