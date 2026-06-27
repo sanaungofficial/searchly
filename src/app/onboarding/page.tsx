@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -8,18 +8,25 @@ import {
   parseProfileLocationString,
 } from "@/lib/profile-location";
 import {
+  buildOnboardingProfilePatch,
+  type OnboardingMatchingState,
+  type RelocationId,
+  type VisaNeedId,
+  type WorkArrangementId,
+} from "@/lib/onboarding-preferences";
+import {
   ScoutHeader,
   ScreenWelcome,
   ScreenReadBack,
   ScreenTargetRoles,
   ScreenTargetCompanies,
-  ScreenCareerMotivation,
-  ScreenJobTimeline,
-  ScreenTargetLocation,
-  ScreenCurrentSalary,
-  ScreenTargetSalary,
-  ScreenPriorities,
-  ScreenAttribution,
+  ScreenOnboardingLocation,
+  ScreenOnboardingWorkArrangement,
+  ScreenOnboardingRelocation,
+  ScreenOnboardingVisa,
+  ScreenOnboardingSalary,
+  ScreenOnboardingTimeline,
+  ScreenOnboardingAvoidRoles,
   ScreenSetup,
   DemoNextButton,
   OnboardingProcessingBanner,
@@ -61,27 +68,11 @@ async function importLinkedInProfile(handle: string): Promise<SetupStepStatus> {
   }
 }
 
-function saveAboutYou(fields: {
-  careerMotivation: string;
-  jobTimeline: string;
-  currentSalary: string;
-  targetSalary: string;
-  targetMarket: string;
-  priorities: string[];
-  attribution: string;
-}): Promise<void> {
+function saveMatchingPreferences(state: OnboardingMatchingState): Promise<void> {
   return fetch("/api/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      careerMotivation: fields.careerMotivation || null,
-      jobTimeline: fields.jobTimeline || null,
-      currentSalary: fields.currentSalary || null,
-      targetSalary: fields.targetSalary || null,
-      targetMarket: fields.targetMarket || null,
-      priorities: fields.priorities,
-      attribution: fields.attribution || null,
-    }),
+    body: JSON.stringify(buildOnboardingProfilePatch(state)),
   }).then(() => {});
 }
 
@@ -93,21 +84,6 @@ function saveTargetRoles(roles: string[]): Promise<void> {
     body: JSON.stringify({ targetRoles: roles }),
   }).then(() => {});
 }
-
-const ONBOARDING = {
-  WELCOME: 0,
-  MOTIVATION: 1,
-  TIMELINE: 2,
-  LOCATION: 3,
-  CURRENT_SALARY: 4,
-  TARGET_SALARY: 5,
-  PRIORITIES: 6,
-  ATTRIBUTION: 7,
-  READBACK: 8,
-  ROLES: 9,
-  COMPANIES: 10,
-  SETUP: 11,
-} as const satisfies Record<string, Screen>;
 
 const INITIAL_SETUP_STEPS: SetupStep[] = [
   { id: "profile", label: "Saving your answers", status: "pending" },
@@ -145,29 +121,29 @@ export default function OnboardingPage() {
   const [readbackStatus, setReadbackStatus] = useState<ReadBackStatus>("idle");
   const readbackStartedRef = useRef(false);
   const locationHintFetchedRef = useRef(false);
-  const [careerMotivation, setCareerMotivation] = useState("");
-  const [jobTimeline, setJobTimeline] = useState("");
-  const [currentSalary, setCurrentSalary] = useState("");
-  const [targetSalary, setTargetSalary] = useState("");
   const [targetMarket, setTargetMarket] = useState("");
+  const [fullyRemote, setFullyRemote] = useState(false);
+  const [workArrangement, setWorkArrangement] = useState<WorkArrangementId>("");
+  const [relocation, setRelocation] = useState<RelocationId>("");
+  const [visaNeed, setVisaNeed] = useState<VisaNeedId>("");
+  const [targetSalary, setTargetSalary] = useState("");
+  const [jobTimeline, setJobTimeline] = useState("");
+  const [deprioritizedRoles, setDeprioritizedRoles] = useState<string[]>([]);
   const [locationHint, setLocationHint] = useState<string | null>(null);
-  const [priorities, setPriorities] = useState<string[]>([]);
-  const [attribution, setAttribution] = useState("");
   const [resumeError, setResumeError] = useState(false);
   const [setupSteps, setSetupSteps] = useState<SetupStep[]>(INITIAL_SETUP_STEPS);
 
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
   useEffect(() => {
-    if (screen !== ONBOARDING.LOCATION || locationHintFetchedRef.current) return;
+    if (screen !== 3 || locationHintFetchedRef.current) return;
     locationHintFetchedRef.current = true;
     void fetch("/api/profile")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { parsedData?: { location?: string | null } } | null) => {
         const raw = data?.parsedData?.location?.trim();
         if (!raw) return;
-        const compact =
-          formatCompactProfileLocation(parseProfileLocationString(raw)) ?? raw;
+        const compact = formatCompactProfileLocation(parseProfileLocationString(raw)) ?? raw;
         setLocationHint(compact);
       })
       .catch(() => {});
@@ -177,15 +153,28 @@ export default function OnboardingPage() {
     setSetupSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
   }, []);
 
-  const aboutYouFields = {
-    careerMotivation,
-    jobTimeline,
-    currentSalary,
-    targetSalary,
-    targetMarket,
-    priorities,
-    attribution,
-  };
+  const matchingState: OnboardingMatchingState = useMemo(
+    () => ({
+      targetMarket,
+      fullyRemote,
+      workArrangement,
+      relocation,
+      visaNeed,
+      targetSalary,
+      jobTimeline,
+      deprioritizedRoles,
+    }),
+    [
+      targetMarket,
+      fullyRemote,
+      workArrangement,
+      relocation,
+      visaNeed,
+      targetSalary,
+      jobTimeline,
+      deprioritizedRoles,
+    ],
+  );
 
   const applyReadbackRoles = useCallback((data: ReadBackData | null) => {
     if (!data?.targetRoles?.length) return;
@@ -271,20 +260,17 @@ export default function OnboardingPage() {
     setLiInput(value);
   };
 
-  const goToAboutYou = useCallback(() => {
-    if (liInput.trim()) void saveLinkedIn(liInput);
-    goTo(ONBOARDING.MOTIVATION);
-  }, [liInput, goTo]);
-
   const onWelcomeContinue = useCallback(() => {
     if (!resumeFilename || resumeError) return;
-    goToAboutYou();
-  }, [resumeFilename, resumeError, goToAboutYou]);
+    if (liInput.trim()) void saveLinkedIn(liInput);
+    goTo(1);
+  }, [resumeFilename, resumeError, liInput, goTo]);
 
   const onLinkedInOnly = useCallback(() => {
     setReadbackStatus("skipped");
-    goToAboutYou();
-  }, [goToAboutYou]);
+    if (liInput.trim()) void saveLinkedIn(liInput);
+    goTo(2);
+  }, [liInput, goTo]);
 
   const onLIKey = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -297,13 +283,13 @@ export default function OnboardingPage() {
 
   const onSkipProfile = useCallback(() => {
     setReadbackStatus("skipped");
-    goTo(ONBOARDING.MOTIVATION);
+    goTo(2);
   }, [goTo]);
 
   const hasResumeTrack = !!(resumeFilename || resumeUploaded || resumeUploading);
 
   useEffect(() => {
-    if (screen !== ONBOARDING.READBACK) return;
+    if (screen !== 1) return;
     if (!hasResumeTrack) {
       setReadbackStatus((s) => (s === "idle" ? "skipped" : s));
       return;
@@ -314,7 +300,7 @@ export default function OnboardingPage() {
   }, [screen, hasResumeTrack, readbackStatus, startBackgroundReadback]);
 
   useEffect(() => {
-    if (screen !== ONBOARDING.READBACK || readbackStatus !== "pending" || readbackData) return;
+    if (screen !== 1 || readbackStatus !== "pending" || readbackData) return;
 
     const poll = () => {
       void fetch("/api/ai/readback", { cache: "no-store" })
@@ -348,51 +334,113 @@ export default function OnboardingPage() {
   const onReadBackConfirm = useCallback(
     (data: ReadBackData | null) => {
       applyReadbackRoles(data);
-      goTo(ONBOARDING.ROLES);
+      goTo(2);
     },
     [applyReadbackRoles, goTo],
   );
 
-  const onReadBackSkip = useCallback(() => goTo(ONBOARDING.ROLES), [goTo]);
+  const onReadBackSkip = useCallback(() => goTo(2), [goTo]);
 
   const onReadBackRefine = useCallback(() => {
     readbackStartedRef.current = false;
     setReadbackData(null);
     setReadbackStatus("idle");
-    goTo(ONBOARDING.WELCOME);
+    goTo(0);
   }, [goTo]);
-
-  const goToReadbackOrRoles = useCallback(() => {
-    if (hasResumeTrack && readbackStatus !== "skipped") goTo(ONBOARDING.READBACK);
-    else goTo(ONBOARDING.ROLES);
-  }, [hasResumeTrack, readbackStatus, goTo]);
-
-  const finishAboutYou = useCallback(async () => {
-    await saveAboutYou(aboutYouFields);
-    goToReadbackOrRoles();
-  }, [aboutYouFields, goToReadbackOrRoles]);
-
-  const onAboutQuestionContinue = useCallback(
-    (from: Screen) => {
-      if (from < ONBOARDING.ATTRIBUTION) goTo((from + 1) as Screen);
-      else void finishAboutYou();
-    },
-    [goTo, finishAboutYou],
-  );
-
-  const onAboutQuestionSkip = useCallback(() => {
-    void finishAboutYou();
-  }, [finishAboutYou]);
 
   const onRolesContinue = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(ONBOARDING.COMPANIES);
+    goTo(3);
   }, [selectedTitles, goTo]);
 
   const onRolesSkip = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(ONBOARDING.COMPANIES);
+    goTo(3);
   }, [selectedTitles, goTo]);
+
+  const persistMatchingAndGo = useCallback(
+    async (next: Screen) => {
+      await saveMatchingPreferences(matchingState);
+      goTo(next);
+    },
+    [matchingState, goTo],
+  );
+
+  const onLocationContinue = useCallback(async () => {
+    if (fullyRemote) setWorkArrangement("remote_only");
+    await saveMatchingPreferences({
+      ...matchingState,
+      workArrangement: fullyRemote ? "remote_only" : matchingState.workArrangement,
+      fullyRemote,
+    });
+    goTo(fullyRemote ? 5 : 4);
+  }, [fullyRemote, matchingState, goTo]);
+
+  const onLocationSkip = useCallback(async () => {
+    await persistMatchingAndGo(fullyRemote ? 5 : 4);
+  }, [fullyRemote, persistMatchingAndGo]);
+
+  const onWorkArrangementContinue = useCallback(async () => {
+    await persistMatchingAndGo(5);
+  }, [persistMatchingAndGo]);
+
+  const onWorkArrangementSkip = useCallback(async () => {
+    await persistMatchingAndGo(5);
+  }, [persistMatchingAndGo]);
+
+  const onRelocationContinue = useCallback(async () => {
+    await persistMatchingAndGo(6);
+  }, [persistMatchingAndGo]);
+
+  const onRelocationSkip = useCallback(async () => {
+    await persistMatchingAndGo(6);
+  }, [persistMatchingAndGo]);
+
+  const onVisaContinue = useCallback(async () => {
+    await persistMatchingAndGo(7);
+  }, [persistMatchingAndGo]);
+
+  const onVisaSkip = useCallback(async () => {
+    await persistMatchingAndGo(7);
+  }, [persistMatchingAndGo]);
+
+  const onSalaryContinue = useCallback(async () => {
+    await persistMatchingAndGo(8);
+  }, [persistMatchingAndGo]);
+
+  const onSalarySkip = useCallback(async () => {
+    await persistMatchingAndGo(8);
+  }, [persistMatchingAndGo]);
+
+  const onTimelineContinue = useCallback(async () => {
+    await persistMatchingAndGo(9);
+  }, [persistMatchingAndGo]);
+
+  const onTimelineSkip = useCallback(async () => {
+    await persistMatchingAndGo(9);
+  }, [persistMatchingAndGo]);
+
+  const onAvoidContinue = useCallback(async () => {
+    await persistMatchingAndGo(10);
+  }, [persistMatchingAndGo]);
+
+  const onAvoidSkip = useCallback(async () => {
+    await persistMatchingAndGo(10);
+  }, [persistMatchingAndGo]);
+
+  const onFullyRemoteChange = useCallback((next: boolean) => {
+    setFullyRemote(next);
+    if (next) {
+      setTargetMarket("");
+      setWorkArrangement("remote_only");
+    }
+  }, []);
+
+  const onToggleAvoidRole = useCallback((role: string) => {
+    setDeprioritizedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role].slice(0, 10),
+    );
+  }, []);
 
   const onAddTargetCompany = useCallback((company: OnboardingCompanyPick) => {
     setSelectedCompanies((prev) => {
@@ -407,20 +455,16 @@ export default function OnboardingPage() {
     setSelectedCompanies((prev) => prev.filter((c) => c.catalogSlug !== catalogSlug));
   }, []);
 
-  const onTogglePriority = useCallback((p: string) => {
-    setPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
-  }, []);
-
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
-    goTo(ONBOARDING.SETUP);
+    goTo(11);
 
     let primaryAssetId: string | undefined;
     const companiesSnapshot = selectedCompanies;
 
     try {
       setStepStatus("profile", "active");
-      await saveAboutYou(aboutYouFields);
+      await saveMatchingPreferences(matchingState);
       await saveTargetRoles(selectedTitles);
       if (liInput.trim()) await saveLinkedIn(liInput);
       setStepStatus("profile", "done");
@@ -503,7 +547,7 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     }
   }, [
-    aboutYouFields,
+    matchingState,
     goTo,
     liInput,
     selectedTitles,
@@ -513,25 +557,23 @@ export default function OnboardingPage() {
   ]);
 
   const onCompaniesContinue = useCallback(() => {
-    saveAboutYou(aboutYouFields).catch(() => {});
     void runFinishSetup();
-  }, [aboutYouFields, runFinishSetup]);
+  }, [runFinishSetup]);
 
   const onCompaniesSkip = useCallback(() => {
-    saveAboutYou(aboutYouFields).catch(() => {});
     void runFinishSetup();
-  }, [aboutYouFields, runFinishSetup]);
+  }, [runFinishSetup]);
 
   const demoAdvance = () => {
-    if (screen === ONBOARDING.WELCOME) {
+    if (screen === 0) {
       setResumeFilename("Sarah_Chen_Resume.pdf");
       window.setTimeout(() => {
         setResumeUploaded(true);
         startBackgroundReadback();
       }, 1300);
-    } else if (screen < ONBOARDING.COMPANIES) {
+    } else if (screen < 10) {
       goTo((screen + 1) as Screen);
-    } else if (screen === ONBOARDING.COMPANIES) {
+    } else if (screen === 10) {
       void runFinishSetup();
     }
   };
@@ -546,11 +588,10 @@ export default function OnboardingPage() {
     );
   }
 
-  const headerScreen = screen >= ONBOARDING.COMPANIES ? ONBOARDING.COMPANIES : screen;
+  const headerScreen = (screen === 11 ? 10 : screen) as Screen;
   const showProcessingBanner =
-    screen >= ONBOARDING.MOTIVATION &&
-    screen <= ONBOARDING.ATTRIBUTION &&
-    (resumeUploading || readbackStatus === "loading");
+    (screen === 0 && (resumeUploading || readbackStatus === "loading")) ||
+    (screen === 1 && readbackStatus === "loading");
 
   return (
     <div style={{ background: "var(--scout-page)" }}>
@@ -570,7 +611,7 @@ export default function OnboardingPage() {
               readbackLoading={readbackStatus === "loading"}
             />
           )}
-          {screen === ONBOARDING.WELCOME && (
+          {screen === 0 && (
             <ScreenWelcome
               resumeFilename={resumeFilename}
               resumeUploaded={resumeUploaded}
@@ -590,64 +631,7 @@ export default function OnboardingPage() {
               onFileChange={onFileChange}
             />
           )}
-          {screen === ONBOARDING.MOTIVATION && (
-            <ScreenCareerMotivation
-              careerMotivation={careerMotivation}
-              onCareerMotivationChange={setCareerMotivation}
-              onContinue={() => onAboutQuestionContinue(ONBOARDING.MOTIVATION)}
-              onSkip={onAboutQuestionSkip}
-            />
-          )}
-          {screen === ONBOARDING.TIMELINE && (
-            <ScreenJobTimeline
-              jobTimeline={jobTimeline}
-              onJobTimelineChange={setJobTimeline}
-              onContinue={() => onAboutQuestionContinue(ONBOARDING.TIMELINE)}
-              onSkip={onAboutQuestionSkip}
-            />
-          )}
-          {screen === ONBOARDING.LOCATION && (
-            <ScreenTargetLocation
-              targetMarket={targetMarket}
-              locationHint={locationHint}
-              onTargetMarketChange={setTargetMarket}
-              onContinue={() => onAboutQuestionContinue(ONBOARDING.LOCATION)}
-              onSkip={onAboutQuestionSkip}
-            />
-          )}
-          {screen === ONBOARDING.CURRENT_SALARY && (
-            <ScreenCurrentSalary
-              currentSalary={currentSalary}
-              onCurrentSalaryChange={setCurrentSalary}
-              onContinue={() => onAboutQuestionContinue(ONBOARDING.CURRENT_SALARY)}
-              onSkip={onAboutQuestionSkip}
-            />
-          )}
-          {screen === ONBOARDING.TARGET_SALARY && (
-            <ScreenTargetSalary
-              targetSalary={targetSalary}
-              onTargetSalaryChange={setTargetSalary}
-              onContinue={() => onAboutQuestionContinue(ONBOARDING.TARGET_SALARY)}
-              onSkip={onAboutQuestionSkip}
-            />
-          )}
-          {screen === ONBOARDING.PRIORITIES && (
-            <ScreenPriorities
-              priorities={priorities}
-              onTogglePriority={onTogglePriority}
-              onContinue={() => onAboutQuestionContinue(ONBOARDING.PRIORITIES)}
-              onSkip={onAboutQuestionSkip}
-            />
-          )}
-          {screen === ONBOARDING.ATTRIBUTION && (
-            <ScreenAttribution
-              attribution={attribution}
-              onAttributionChange={setAttribution}
-              onContinue={() => onAboutQuestionContinue(ONBOARDING.ATTRIBUTION)}
-              onSkip={onAboutQuestionSkip}
-            />
-          )}
-          {screen === ONBOARDING.READBACK && (
+          {screen === 1 && (
             <ScreenReadBack
               data={readbackData}
               status={readbackStatus}
@@ -656,7 +640,7 @@ export default function OnboardingPage() {
               onSkip={onReadBackSkip}
             />
           )}
-          {screen === ONBOARDING.ROLES && (
+          {screen === 2 && (
             <ScreenTargetRoles
               selectedTitles={selectedTitles}
               suggestedTitles={readbackRoleSuggestions}
@@ -666,7 +650,73 @@ export default function OnboardingPage() {
               onSkip={onRolesSkip}
             />
           )}
-          {screen === ONBOARDING.COMPANIES && (
+          {screen === 3 && (
+            <ScreenOnboardingLocation
+              targetMarket={targetMarket}
+              fullyRemote={fullyRemote}
+              locationHint={locationHint}
+              onTargetMarketChange={setTargetMarket}
+              onFullyRemoteChange={onFullyRemoteChange}
+              onContinue={() => void onLocationContinue()}
+              onSkip={() => void onLocationSkip()}
+              onBack={() => goTo(2)}
+            />
+          )}
+          {screen === 4 && (
+            <ScreenOnboardingWorkArrangement
+              workArrangement={workArrangement}
+              onWorkArrangementChange={setWorkArrangement}
+              onContinue={() => void onWorkArrangementContinue()}
+              onSkip={() => void onWorkArrangementSkip()}
+              onBack={() => goTo(3)}
+            />
+          )}
+          {screen === 5 && (
+            <ScreenOnboardingRelocation
+              relocation={relocation}
+              onRelocationChange={setRelocation}
+              onContinue={() => void onRelocationContinue()}
+              onSkip={() => void onRelocationSkip()}
+              onBack={() => goTo(fullyRemote ? 3 : 4)}
+            />
+          )}
+          {screen === 6 && (
+            <ScreenOnboardingVisa
+              visaNeed={visaNeed}
+              onVisaNeedChange={setVisaNeed}
+              onContinue={() => void onVisaContinue()}
+              onSkip={() => void onVisaSkip()}
+              onBack={() => goTo(5)}
+            />
+          )}
+          {screen === 7 && (
+            <ScreenOnboardingSalary
+              targetSalary={targetSalary}
+              onTargetSalaryChange={setTargetSalary}
+              onContinue={() => void onSalaryContinue()}
+              onSkip={() => void onSalarySkip()}
+              onBack={() => goTo(6)}
+            />
+          )}
+          {screen === 8 && (
+            <ScreenOnboardingTimeline
+              jobTimeline={jobTimeline}
+              onJobTimelineChange={setJobTimeline}
+              onContinue={() => void onTimelineContinue()}
+              onSkip={() => void onTimelineSkip()}
+              onBack={() => goTo(7)}
+            />
+          )}
+          {screen === 9 && (
+            <ScreenOnboardingAvoidRoles
+              deprioritizedRoles={deprioritizedRoles}
+              onToggleAvoidRole={onToggleAvoidRole}
+              onContinue={() => void onAvoidContinue()}
+              onSkip={() => void onAvoidSkip()}
+              onBack={() => goTo(8)}
+            />
+          )}
+          {screen === 10 && (
             <ScreenTargetCompanies
               selectedCompanies={selectedCompanies}
               targetRoles={selectedTitles}
@@ -676,12 +726,10 @@ export default function OnboardingPage() {
               onSkip={onCompaniesSkip}
             />
           )}
-          {screen === ONBOARDING.SETUP && <ScreenSetup steps={setupSteps} />}
+          {screen === 11 && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
-      {process.env.NODE_ENV === "development" && screen !== ONBOARDING.SETUP && (
-        <DemoNextButton onClick={demoAdvance} />
-      )}
+      {process.env.NODE_ENV === "development" && screen !== 11 && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }

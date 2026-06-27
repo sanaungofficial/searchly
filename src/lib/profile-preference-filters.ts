@@ -22,6 +22,7 @@ export function profilePreferencesToFilters(profile: {
   targetSalary?: string | null;
   employmentStatus?: string | null;
   jobTimeline?: string | null;
+  workAuthorization?: string | null;
   profileLocation?: string | null;
 }): VectorSearchFilters {
   const out: VectorSearchFilters = {};
@@ -36,7 +37,12 @@ export function profilePreferencesToFilters(profile: {
   }
   if (locationTypes.length) out.locationTypes = locationTypes;
 
-  if (priorities.some((p) => p.includes("visa"))) {
+  const workAuth = (profile.workAuthorization ?? "").toLowerCase();
+  if (
+    priorities.some((p) => p.includes("visa") || p.includes("sponsorship")) ||
+    workAuth.includes("visa") ||
+    workAuth.includes("sponsorship")
+  ) {
     out.visaSponsored = true;
   }
 
@@ -46,6 +52,8 @@ export function profilePreferencesToFilters(profile: {
   const timeline = (profile.jobTimeline ?? "").toLowerCase();
   if (timeline.includes("asap") || timeline.includes("immediately") || timeline.includes("now")) {
     out.datePostedWithinDays = 14;
+  } else if (timeline === "3-6mo" || timeline.includes("3-6")) {
+    out.datePostedWithinDays = 90;
   } else if (timeline.includes("month")) {
     out.datePostedWithinDays = 30;
   }

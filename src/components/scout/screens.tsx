@@ -26,13 +26,21 @@ import { KimchiBySecondLadder } from "./scout-box";
 import { ScoreExplainerPopover } from "./score-explainer-popover";
 import { KimchiProcessLoader } from "./kimchi-process-loader";
 import { LocationAutocompleteInput } from "./location-autocomplete-input";
+import {
+  ONBOARDING_AVOID_ROLE_SUGGESTIONS,
+  ONBOARDING_RELOCATION_OPTIONS,
+  ONBOARDING_VISA_OPTIONS,
+  ONBOARDING_WORK_ARRANGEMENTS,
+  type RelocationId,
+  type VisaNeedId,
+  type WorkArrangementId,
+} from "@/lib/onboarding-preferences";
 
 /* ──────────────────────────────────────────────────────────────
    Types
    ────────────────────────────────────────────────────────────── */
 export type Screen = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 
-/** Progress dots in header — welcome through target companies (setup fills all). */
 const ONBOARDING_STEP_COUNT = 11;
 
 export interface Job {
@@ -222,7 +230,7 @@ export function ScoutHeader({ screen, onScoutClick }: { screen: Screen; onScoutC
           <div
             key={i}
             style={{
-              width: 30,
+              width: ONBOARDING_STEP_COUNT > 8 ? 22 : 30,
               height: 2,
               borderRadius: 1,
               background: screen >= i ? FULL : EMPTY,
@@ -1465,40 +1473,10 @@ export const SALARY_RANGES = [
   "Prefer not to say",
 ];
 
-const PRIORITIES = [
-  "Remote-first",
-  "Hybrid-friendly",
-  "Work-life balance",
-  "High compensation",
-  "Equity / ownership",
-  "Mission-driven",
-  "Fast growth",
-  "Strong team culture",
-  "Specific location",
-];
-
-const CAREER_MOTIVATIONS = [
-  "Higher compensation",
-  "More interesting work",
-  "Better work-life balance",
-  "Step up in level",
-  "A career pivot",
-];
-
 const JOB_TIMELINES = [
   { value: "asap", label: "As soon as possible" },
   { value: "3-6mo", label: "In the next 3–6 months" },
   { value: "open", label: "Whenever the right role appears" },
-];
-
-const ATTRIBUTION_SOURCES = [
-  "LinkedIn",
-  "Twitter / X",
-  "Google search",
-  "Friend or colleague",
-  "Newsletter",
-  "YouTube",
-  "Other",
 ];
 
 /* ──────────────────────────────────────────────────────────────
@@ -2334,16 +2312,32 @@ function AboutYouIntro({ title, body }: { title: string; body: string }) {
   return (
     <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.1s" }}>
       <h2 style={{ ...DISPLAY_H2, lineHeight: 1.04, marginBottom: 12 }}>{title}</h2>
-      <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, margin: 0, color: ONBOARDING_TEXT_SECONDARY }}>
-        {body}
-      </p>
+      {body ? (
+        <p style={{ ...ONBOARDING_BODY, fontSize: "clamp(0.9375rem, 2.5vw, 1rem)", lineHeight: 1.65, margin: 0, color: ONBOARDING_TEXT_SECONDARY }}>
+          {body}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-function AboutYouActions({ onContinue, onSkip, nudge }: { onContinue: () => void; onSkip: () => void; nudge?: string }) {
+function AboutYouActions({
+  onContinue,
+  onSkip,
+  onBack,
+  nudge,
+  continueDisabled,
+  skipLabel = "Skip for now — fill this in on your profile later",
+}: {
+  onContinue: () => void;
+  onSkip?: () => void;
+  onBack?: () => void;
+  nudge?: string;
+  continueDisabled?: boolean;
+  skipLabel?: string;
+}) {
   return (
-    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.55s" }}>
+    <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.35s" }}>
       {nudge && (
         <p
           style={{
@@ -2359,64 +2353,39 @@ function AboutYouActions({ onContinue, onSkip, nudge }: { onContinue: () => void
           {nudge}
         </p>
       )}
-      <button
-        className="onboarding-cta"
-        onClick={onContinue}
-        style={{ ...PRIMARY_CTA, width: "100%" }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-      >
-        Continue →
-      </button>
-      <button type="button" onClick={onSkip} style={{ ...ABOUT_YOU_SKIP_LINK, color: ONBOARDING_TEXT_SECONDARY }}>
-        Skip for now — fill this in on your profile later
-      </button>
-    </div>
-  );
-}
-
-interface AboutYouSearchProps {
-  careerMotivation: string;
-  jobTimeline: string;
-  onCareerMotivationChange: (v: string) => void;
-  onJobTimelineChange: (v: string) => void;
-  onContinue: () => void;
-  onSkip: () => void;
-}
-
-type OnboardingStepProps = {
-  onContinue: () => void;
-  onSkip: () => void;
-  nudge?: string;
-};
-
-function OnboardingQuestionScreen({
-  title,
-  body,
-  children,
-  onContinue,
-  onSkip,
-  nudge,
-}: {
-  title: string;
-  body: string;
-  children: React.ReactNode;
-} & OnboardingStepProps) {
-  return (
-    <div className="flex flex-col gap-5 onboarding-screen-gap">
-      <AboutYouIntro title={title} body={body} />
-      <div
-        className="anim-fade-up"
-        style={{ ...ONBOARDING_CARD, animationDelay: "0.2s", position: "relative", zIndex: 2 }}
-      >
-        {children}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <button
+          type="button"
+          className="onboarding-cta"
+          onClick={onContinue}
+          disabled={continueDisabled}
+          style={{
+            ...PRIMARY_CTA,
+            width: "100%",
+            opacity: continueDisabled ? 0.45 : 1,
+            cursor: continueDisabled ? "not-allowed" : "pointer",
+          }}
+          onMouseEnter={(e) => { if (!continueDisabled) e.currentTarget.style.opacity = "0.86"; }}
+          onMouseLeave={(e) => { if (!continueDisabled) e.currentTarget.style.opacity = "1"; }}
+        >
+          Continue →
+        </button>
+        {onBack && (
+          <button type="button" onClick={onBack} style={{ ...ABOUT_YOU_SKIP_LINK, marginTop: 0, textAlign: "center" as const }}>
+            ← Back
+          </button>
+        )}
+        {onSkip && (
+          <button type="button" onClick={onSkip} style={{ ...ABOUT_YOU_SKIP_LINK, color: ONBOARDING_TEXT_SECONDARY, marginTop: 0 }}>
+            {skipLabel}
+          </button>
+        )}
       </div>
-      <AboutYouActions onContinue={onContinue} onSkip={onSkip} nudge={nudge} />
     </div>
   );
 }
 
-function salarySelectStyle(hasValue: boolean): React.CSSProperties {
+function onboardingSelectStyle(hasValue: boolean): React.CSSProperties {
   return {
     width: "100%",
     minHeight: 48,
@@ -2435,295 +2404,345 @@ function salarySelectStyle(hasValue: boolean): React.CSSProperties {
   };
 }
 
-export function ScreenCareerMotivation({
-  careerMotivation,
-  onCareerMotivationChange,
-  onContinue,
-  onSkip,
-}: Pick<AboutYouSearchProps, "careerMotivation" | "onCareerMotivationChange" | "onContinue" | "onSkip">) {
+function OnboardingSelectChevron() {
   return (
-    <OnboardingQuestionScreen
-      title="What's driving your move?"
-      body="Helps Kimchi tailor career strategy and coaching — and improves how we rank roles for you. Pick what fits best, or skip."
-      onContinue={onContinue}
-      onSkip={onSkip}
-    >
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {CAREER_MOTIVATIONS.map((m) =>
-          aboutYouChipBtn(careerMotivation === m, () => onCareerMotivationChange(careerMotivation === m ? "" : m), m),
-        )}
-      </div>
-    </OnboardingQuestionScreen>
-  );
-}
-
-export function ScreenJobTimeline({
-  jobTimeline,
-  onJobTimelineChange,
-  onContinue,
-  onSkip,
-}: Pick<AboutYouSearchProps, "jobTimeline" | "onJobTimelineChange" | "onContinue" | "onSkip">) {
-  return (
-    <OnboardingQuestionScreen
-      title="When do you want to make a move?"
-      body="Looking ASAP? We prioritize roles posted in the last 2 weeks. A few months out? We show a wider date range. Optional."
-      onContinue={onContinue}
-      onSkip={onSkip}
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {JOB_TIMELINES.map(({ value, label }) => {
-          const selected = jobTimeline === value;
-          return (
-            <button
-              key={value}
-              className="onboarding-chip"
-              onClick={() => onJobTimelineChange(selected ? "" : value)}
-              style={{
-                padding: "14px 18px",
-                background: selected ? "#1A3A2F" : ONBOARDING_FIELD_BG,
-                color: selected ? "#E8D5A3" : ONBOARDING_TEXT,
-                border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
-                borderRadius: "var(--scout-radius)",
-                fontFamily: "var(--font-ui)",
-                fontSize: 15,
-                fontWeight: selected ? 600 : 500,
-                cursor: "pointer",
-                transition: "all 0.15s",
-                textAlign: "left" as const,
-                width: "100%",
-              }}
-              onMouseEnter={(e) => {
-                if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.45)";
-              }}
-              onMouseLeave={(e) => {
-                if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)";
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-    </OnboardingQuestionScreen>
-  );
-}
-
-/** @deprecated Use ScreenCareerMotivation + ScreenJobTimeline */
-export function ScreenAboutYouSearch(props: AboutYouSearchProps) {
-  return <ScreenCareerMotivation {...props} />;
-}
-
-interface AboutYouPreferencesProps {
-  jobTimeline: string;
-  currentSalary: string;
-  targetSalary: string;
-  targetMarket: string;
-  locationHint?: string | null;
-  priorities: string[];
-  attribution: string;
-  onCurrentSalaryChange: (v: string) => void;
-  onTargetSalaryChange: (v: string) => void;
-  onTargetMarketChange: (v: string) => void;
-  onTogglePriority: (p: string) => void;
-  onAttributionChange: (v: string) => void;
-  onContinue: () => void;
-  onSkip: () => void;
-}
-
-export function ScreenTargetLocation({
-  targetMarket,
-  locationHint,
-  onTargetMarketChange,
-  onContinue,
-  onSkip,
-}: Pick<
-  AboutYouPreferencesProps,
-  "targetMarket" | "locationHint" | "onTargetMarketChange" | "onContinue" | "onSkip"
->) {
-  return (
-    <OnboardingQuestionScreen
-      title="Where are you based?"
-      body="We prioritize roles in your area — not overseas listings unless you opt into relocation later."
-      onContinue={onContinue}
-      onSkip={onSkip}
-    >
-      <LocationAutocompleteInput
-        value={targetMarket}
-        onChange={onTargetMarketChange}
-        locationHint={locationHint}
-        placeholder="Start typing a city…"
-        fieldBorder={ONBOARDING_FIELD_BORDER}
-        fieldBg={ONBOARDING_FIELD_BG}
-        textColor={ONBOARDING_TEXT}
-        textSecondary={ONBOARDING_TEXT_SECONDARY}
-        labelColor={ONBOARDING_LABEL_COLOR}
-      />
-    </OnboardingQuestionScreen>
-  );
-}
-
-export function ScreenCurrentSalary({
-  currentSalary,
-  onCurrentSalaryChange,
-  onContinue,
-  onSkip,
-}: Pick<AboutYouPreferencesProps, "currentSalary" | "onCurrentSalaryChange" | "onContinue" | "onSkip">) {
-  return (
-    <OnboardingQuestionScreen
-      title="What's your current salary?"
-      body="Optional — helps us filter out roles that aren't in the right range."
-      onContinue={onContinue}
-      onSkip={onSkip}
-    >
-      <div style={{ position: "relative" }}>
-        <select
-          value={currentSalary}
-          onChange={(e) => onCurrentSalaryChange(e.target.value)}
-          style={salarySelectStyle(!!currentSalary)}
-        >
-          <option value="">Select a range</option>
-          {SALARY_RANGES.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-        <SalarySelectChevron />
-      </div>
-    </OnboardingQuestionScreen>
-  );
-}
-
-export function ScreenTargetSalary({
-  targetSalary,
-  onTargetSalaryChange,
-  onContinue,
-  onSkip,
-}: Pick<AboutYouPreferencesProps, "targetSalary" | "onTargetSalaryChange" | "onContinue" | "onSkip">) {
-  return (
-    <OnboardingQuestionScreen
-      title="What's your target salary?"
-      body="Optional — we'll deprioritize listings far below what you're looking for."
-      onContinue={onContinue}
-      onSkip={onSkip}
-    >
-      <div style={{ position: "relative" }}>
-        <select
-          value={targetSalary}
-          onChange={(e) => onTargetSalaryChange(e.target.value)}
-          style={salarySelectStyle(!!targetSalary)}
-        >
-          <option value="">Select a range</option>
-          {SALARY_RANGES.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-        <SalarySelectChevron />
-      </div>
-    </OnboardingQuestionScreen>
-  );
-}
-
-function SalarySelectChevron() {
-  return (
-    <svg
-      style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
-      width="12"
-      height="7"
-      viewBox="0 0 12 7"
-      fill="none"
-    >
-      <path
-        d="M1 1L6 6L11 1"
-        stroke={ONBOARDING_TEXT_SECONDARY}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} width="12" height="7" viewBox="0 0 12 7" fill="none">
+      <path d="M1 1L6 6L11 1" stroke={ONBOARDING_TEXT_SECONDARY} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-export function ScreenPriorities({
-  priorities,
-  onTogglePriority,
+export function ScreenOnboardingQuestion({
+  title,
+  body,
+  children,
   onContinue,
   onSkip,
-}: Pick<AboutYouPreferencesProps, "priorities" | "onTogglePriority" | "onContinue" | "onSkip">) {
+  onBack,
+  continueDisabled,
+  skipLabel,
+}: {
+  title: string;
+  body?: string;
+  children: React.ReactNode;
+  onContinue: () => void;
+  onSkip?: () => void;
+  onBack?: () => void;
+  continueDisabled?: boolean;
+  skipLabel?: string;
+}) {
   return (
-    <OnboardingQuestionScreen
-      title="What matters most to you?"
-      body="Pick any that apply — we filter out listings that clash with how you want to work."
-      onContinue={onContinue}
-      onSkip={onSkip}
-    >
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {PRIORITIES.map((p) => aboutYouChipBtn(priorities.includes(p), () => onTogglePriority(p), p))}
-      </div>
-    </OnboardingQuestionScreen>
+    <div className="flex flex-col gap-5 onboarding-screen-gap">
+      <AboutYouIntro title={title} body={body ?? ""} />
+      <div className="anim-fade-up" style={{ ...ONBOARDING_CARD, animationDelay: "0.2s" }}>{children}</div>
+      <AboutYouActions
+        onContinue={onContinue}
+        onSkip={onSkip}
+        onBack={onBack}
+        continueDisabled={continueDisabled}
+        skipLabel={skipLabel}
+      />
+    </div>
   );
 }
 
-export function ScreenAttribution({
-  attribution,
-  onAttributionChange,
+function onboardingListOption(
+  selected: boolean,
+  onClick: () => void,
+  label: string,
+  hint?: string,
+) {
+  return (
+    <button
+      type="button"
+      className="onboarding-chip"
+      onClick={onClick}
+      style={{
+        padding: "14px 18px",
+        background: selected ? "#1A3A2F" : ONBOARDING_FIELD_BG,
+        color: selected ? "#E8D5A3" : ONBOARDING_TEXT,
+        border: selected ? "1.5px solid #1A3A2F" : ONBOARDING_FIELD_BORDER,
+        borderRadius: "var(--scout-radius)",
+        fontFamily: "var(--font-ui)",
+        fontSize: 15,
+        fontWeight: selected ? 600 : 500,
+        cursor: "pointer",
+        transition: "all 0.15s",
+        textAlign: "left" as const,
+        width: "100%",
+      }}
+      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.45)"; }}
+      onMouseLeave={(e) => { if (!selected) e.currentTarget.style.borderColor = "rgba(26,58,47,0.2)"; }}
+    >
+      <span style={{ display: "block" }}>{label}</span>
+      {hint && (
+        <span
+          style={{
+            display: "block",
+            marginTop: 4,
+            fontSize: 13,
+            fontWeight: 400,
+            color: selected ? "rgba(232,213,163,0.85)" : ONBOARDING_TEXT_SECONDARY,
+            lineHeight: 1.45,
+          }}
+        >
+          {hint}
+        </span>
+      )}
+    </button>
+  );
+}
+
+export function ScreenOnboardingLocation({
+  targetMarket,
+  fullyRemote,
+  locationHint,
+  onTargetMarketChange,
+  onFullyRemoteChange,
   onContinue,
   onSkip,
-}: Pick<AboutYouPreferencesProps, "attribution" | "onAttributionChange" | "onContinue" | "onSkip">) {
+  onBack,
+}: {
+  targetMarket: string;
+  fullyRemote: boolean;
+  locationHint?: string | null;
+  onTargetMarketChange: (v: string) => void;
+  onFullyRemoteChange: (v: boolean) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
   return (
-    <OnboardingQuestionScreen
-      title="How did you hear about Kimchi?"
-      body="Optional — helps us know what's working."
+    <ScreenOnboardingQuestion
+      title="Where are you based?"
+      body="We prioritize roles near you unless you opt into relocation later."
       onContinue={onContinue}
       onSkip={onSkip}
+      onBack={onBack}
     >
-      <div style={{ position: "relative", maxWidth: 360, width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {aboutYouChipBtn(fullyRemote, () => onFullyRemoteChange(!fullyRemote), "Fully remote — no fixed city")}
+        {!fullyRemote && (
+          <LocationAutocompleteInput
+            value={targetMarket}
+            onChange={onTargetMarketChange}
+            locationHint={locationHint}
+            placeholder="Start typing a city…"
+            fieldBorder={ONBOARDING_FIELD_BORDER}
+            fieldBg={ONBOARDING_FIELD_BG}
+            textColor={ONBOARDING_TEXT}
+            textSecondary={ONBOARDING_TEXT_SECONDARY}
+            labelColor={ONBOARDING_LABEL_COLOR}
+          />
+        )}
+      </div>
+    </ScreenOnboardingQuestion>
+  );
+}
+
+export function ScreenOnboardingWorkArrangement({
+  workArrangement,
+  onWorkArrangementChange,
+  onContinue,
+  onSkip,
+  onBack,
+}: {
+  workArrangement: WorkArrangementId;
+  onWorkArrangementChange: (v: WorkArrangementId) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <ScreenOnboardingQuestion
+      title="How do you want to work?"
+      body="We filter listings that clash with remote, hybrid, or on-site preferences."
+      onContinue={onContinue}
+      onSkip={onSkip}
+      onBack={onBack}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {ONBOARDING_WORK_ARRANGEMENTS.map(({ value, label, hint }) =>
+          onboardingListOption(
+            workArrangement === value,
+            () => onWorkArrangementChange(workArrangement === value ? "" : value),
+            label,
+            hint,
+          ),
+        )}
+      </div>
+    </ScreenOnboardingQuestion>
+  );
+}
+
+export function ScreenOnboardingRelocation({
+  relocation,
+  onRelocationChange,
+  onContinue,
+  onSkip,
+  onBack,
+}: {
+  relocation: RelocationId;
+  onRelocationChange: (v: RelocationId) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <ScreenOnboardingQuestion
+      title="Would you relocate for the right role?"
+      body="This expands or tightens which geographies we show in your feed."
+      onContinue={onContinue}
+      onSkip={onSkip}
+      onBack={onBack}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {ONBOARDING_RELOCATION_OPTIONS.map(({ value, label }) =>
+          onboardingListOption(
+            relocation === value,
+            () => onRelocationChange(relocation === value ? "" : value),
+            label,
+          ),
+        )}
+      </div>
+    </ScreenOnboardingQuestion>
+  );
+}
+
+export function ScreenOnboardingVisa({
+  visaNeed,
+  onVisaNeedChange,
+  onContinue,
+  onSkip,
+  onBack,
+}: {
+  visaNeed: VisaNeedId;
+  onVisaNeedChange: (v: VisaNeedId) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <ScreenOnboardingQuestion
+      title="Do you need visa sponsorship?"
+      body="When yes, we prioritize employers that sponsor visas."
+      onContinue={onContinue}
+      onSkip={onSkip}
+      onBack={onBack}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {ONBOARDING_VISA_OPTIONS.map(({ value, label }) =>
+          onboardingListOption(
+            visaNeed === value,
+            () => onVisaNeedChange(visaNeed === value ? "" : value),
+            label,
+          ),
+        )}
+      </div>
+    </ScreenOnboardingQuestion>
+  );
+}
+
+export function ScreenOnboardingSalary({
+  targetSalary,
+  onTargetSalaryChange,
+  onContinue,
+  onSkip,
+  onBack,
+}: {
+  targetSalary: string;
+  onTargetSalaryChange: (v: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <ScreenOnboardingQuestion
+      title="What's your target salary floor?"
+      body="We filter out roles below this range when compensation data is available."
+      onContinue={onContinue}
+      onSkip={onSkip}
+      onBack={onBack}
+    >
+      <div style={{ position: "relative", maxWidth: 360 }}>
         <select
-          value={attribution}
-          onChange={(e) => onAttributionChange(e.target.value)}
-          style={salarySelectStyle(!!attribution)}
+          value={targetSalary}
+          onChange={(e) => onTargetSalaryChange(e.target.value)}
+          style={onboardingSelectStyle(!!targetSalary)}
         >
-          <option value="">Select one</option>
-          {ATTRIBUTION_SOURCES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
+          <option value="">Select a range</option>
+          {SALARY_RANGES.map((r) => (
+            <option key={r} value={r}>{r}</option>
           ))}
         </select>
-        <SalarySelectChevron />
+        <OnboardingSelectChevron />
       </div>
-    </OnboardingQuestionScreen>
+    </ScreenOnboardingQuestion>
   );
 }
 
-/** @deprecated Combined screen — use individual Screen* preference steps */
-export function ScreenAboutYouPreferences({
+export function ScreenOnboardingTimeline({
   jobTimeline,
-  currentSalary,
-  targetSalary,
-  targetMarket,
-  locationHint,
-  priorities,
-  attribution,
-  onCurrentSalaryChange,
-  onTargetSalaryChange,
-  onTargetMarketChange,
-  onTogglePriority,
-  onAttributionChange,
+  onJobTimelineChange,
   onContinue,
   onSkip,
-}: AboutYouPreferencesProps) {
-  void jobTimeline;
+  onBack,
+}: {
+  jobTimeline: string;
+  onJobTimelineChange: (v: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
   return (
-    <ScreenTargetLocation
-      targetMarket={targetMarket}
-      locationHint={locationHint}
-      onTargetMarketChange={onTargetMarketChange}
+    <ScreenOnboardingQuestion
+      title="When do you want to land something?"
+      body="Fresh postings rank higher when you're moving fast."
       onContinue={onContinue}
       onSkip={onSkip}
-    />
+      onBack={onBack}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {JOB_TIMELINES.map(({ value, label }) =>
+          onboardingListOption(
+            jobTimeline === value,
+            () => onJobTimelineChange(jobTimeline === value ? "" : value),
+            label,
+          ),
+        )}
+      </div>
+    </ScreenOnboardingQuestion>
+  );
+}
+
+export function ScreenOnboardingAvoidRoles({
+  deprioritizedRoles,
+  onToggleAvoidRole,
+  onContinue,
+  onSkip,
+  onBack,
+}: {
+  deprioritizedRoles: string[];
+  onToggleAvoidRole: (role: string) => void;
+  onContinue: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <ScreenOnboardingQuestion
+      title="Any roles or paths to avoid?"
+      body="We'll still show some matches, but sort these titles lower when they appear."
+      onContinue={onContinue}
+      onSkip={onSkip}
+      onBack={onBack}
+      skipLabel="None — continue"
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {ONBOARDING_AVOID_ROLE_SUGGESTIONS.map((role) =>
+          aboutYouChipBtn(deprioritizedRoles.includes(role), () => onToggleAvoidRole(role), role),
+        )}
+      </div>
+    </ScreenOnboardingQuestion>
   );
 }
 /* ──────────────────────────────────────────────────────────────
