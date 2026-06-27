@@ -18,9 +18,10 @@ type ContactRow = {
 
 type Props = {
   scopePath: (path: string) => string;
+  onSelectContact: (contactId: string) => void;
 };
 
-export function InboxContactsPanel({ scopePath }: Props) {
+export function InboxContactsPanel({ scopePath, onSelectContact }: Props) {
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -82,14 +83,27 @@ export function InboxContactsPanel({ scopePath }: Props) {
       {contacts.map((c) => {
         const avatar = buildSenderAvatarUrls(c.name ?? c.email, c.email);
         return (
-          <div
+          <button
             key={c.id}
+            type="button"
+            onClick={() => onSelectContact(c.id)}
             style={{
               display: "flex",
               gap: 12,
+              width: "100%",
+              textAlign: "left",
               padding: "14px 16px",
+              border: "none",
               borderBottom: border.line,
               alignItems: "flex-start",
+              background: "transparent",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(42,107,74,0.04)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
             }}
           >
             <SenderAvatar
@@ -134,7 +148,7 @@ export function InboxContactsPanel({ scopePath }: Props) {
                 Saved
               </span>
             )}
-          </div>
+          </button>
         );
       })}
     </div>

@@ -39,6 +39,7 @@ export type ContactCardData = {
   };
   linkedJobs: Array<PipelineJobOption & { contactRole: string | null }>;
   timeline: ContactTimelineItem[];
+  activityCount?: number;
 };
 
 export type MessageActivityMeta = {
