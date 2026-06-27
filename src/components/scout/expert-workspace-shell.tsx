@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -8,6 +9,7 @@ import {
   expertWorkspaceNavId,
   type ExpertWorkspaceNavId,
 } from "@/lib/staff-portal";
+import { TOP_NAV_HEIGHT_MOBILE } from "@/components/scout/workspace-top-nav";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
 function NavIcon({ id }: { id: ExpertWorkspaceNavId }) {
@@ -47,11 +49,58 @@ function NavIcon({ id }: { id: ExpertWorkspaceNavId }) {
       </svg>
     );
   }
+  return null;
+}
+
+function BurgerIcon() {
   return (
-    <svg {...common}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" strokeLinecap="round" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function ExpertNavLinks({
+  activeId,
+  variant,
+  onNavigate,
+}: {
+  activeId: ExpertWorkspaceNavId | null;
+  variant: "sidebar" | "drawer";
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav aria-label="Expert workspace" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {EXPERT_WORKSPACE_NAV.map(({ id, label, path }) => {
+        const active = activeId === id;
+        const isDrawer = variant === "drawer";
+        return (
+          <Link
+            key={id}
+            href={path}
+            onClick={onNavigate}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              margin: isDrawer ? "0 12px" : "0 10px",
+              padding: "10px 12px",
+              borderRadius: "var(--scout-radius)",
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              fontWeight: active ? 600 : 500,
+              color: active ? color.forest : color.stone,
+              textDecoration: "none",
+              background: active ? "rgba(26,58,47,0.08)" : "transparent",
+              borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
+            }}
+          >
+            <NavIcon id={id} />
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -63,6 +112,31 @@ export function ExpertWorkspaceShell({ children }: Props) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const activeId = expertWorkspaceNavId(pathname);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const activeLabel = EXPERT_WORKSPACE_NAV.find((item) => item.id === activeId)?.label ?? "Expert";
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen || !isMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen, isMobile]);
 
   if (isMobile) {
     return (
@@ -74,46 +148,162 @@ export function ExpertWorkspaceShell({ children }: Props) {
           flexDirection: "column",
           overflow: "hidden",
           background: surface.page,
+          position: "relative",
         }}
       >
-        <nav
-          aria-label="Expert workspace"
+        <header
           style={{
             display: "flex",
-            gap: 0,
-            overflowX: "auto",
+            alignItems: "center",
+            gap: 12,
+            padding: "10px 16px",
             borderBottom: border.line,
             background: surface.card,
             flexShrink: 0,
-            WebkitOverflowScrolling: "touch",
           }}
         >
-          {EXPERT_WORKSPACE_NAV.map(({ id, label, path }) => {
-            const active = activeId === id;
-            return (
-              <Link
-                key={id}
-                href={path}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open expert navigation menu"
+            aria-expanded={menuOpen}
+            aria-controls="expert-mobile-nav"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              padding: 0,
+              border: border.line,
+              borderRadius: "var(--scout-radius)",
+              background: surface.card,
+              color: color.forest,
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <BurgerIcon />
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: fontSans,
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: color.muted,
+              }}
+            >
+              Expert
+            </p>
+            <p
+              style={{
+                margin: "2px 0 0",
+                fontFamily: fontSans,
+                fontSize: T.bodySm,
+                fontWeight: 600,
+                color: color.forest,
+              }}
+            >
+              {activeLabel}
+            </p>
+          </div>
+        </header>
+
+        {menuOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close expert navigation menu"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                position: "fixed",
+                top: TOP_NAV_HEIGHT_MOBILE,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                border: "none",
+                padding: 0,
+                background: "rgba(15, 24, 20, 0.35)",
+                zIndex: 120,
+                cursor: "pointer",
+              }}
+            />
+            <aside
+              id="expert-mobile-nav"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Expert navigation"
+              style={{
+                position: "fixed",
+                top: TOP_NAV_HEIGHT_MOBILE,
+                left: 0,
+                bottom: 0,
+                width: "min(280px, calc(100vw - 48px))",
+                background: surface.card,
+                borderRight: border.line,
+                boxShadow: "4px 0 24px rgba(0,0,0,0.12)",
+                zIndex: 121,
+                display: "flex",
+                flexDirection: "column",
+                padding: "16px 0 24px",
+                animation: "expertNavSlideIn 0.2s ease both",
+              }}
+            >
+              <div
                 style={{
-                  flexShrink: 0,
-                  display: "inline-flex",
+                  display: "flex",
                   alignItems: "center",
-                  gap: 6,
-                  padding: "12px 14px",
-                  fontFamily: fontSans,
-                  fontSize: T.caption,
-                  fontWeight: active ? 600 : 500,
-                  color: active ? color.forest : color.muted,
-                  textDecoration: "none",
-                  borderBottom: active ? `2px solid ${color.forest}` : "2px solid transparent",
+                  justifyContent: "space-between",
+                  padding: "0 16px 12px",
+                  marginBottom: 8,
+                  borderBottom: border.line,
                 }}
               >
-                <NavIcon id={id} />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
+                <p
+                  style={{
+                    margin: 0,
+                    fontFamily: fontSans,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: color.muted,
+                  }}
+                >
+                  Expert workspace
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Close menu"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: 22,
+                    lineHeight: 1,
+                    color: color.muted,
+                    cursor: "pointer",
+                    padding: 4,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <ExpertNavLinks activeId={activeId} variant="drawer" onNavigate={() => setMenuOpen(false)} />
+            </aside>
+            <style>{`
+              @keyframes expertNavSlideIn {
+                from { transform: translateX(-100%); opacity: 0.6; }
+                to { transform: translateX(0); opacity: 1; }
+              }
+            `}</style>
+          </>
+        )}
+
         <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{children}</div>
       </div>
     );
@@ -154,35 +344,7 @@ export function ExpertWorkspaceShell({ children }: Props) {
         >
           Expert
         </p>
-        <nav aria-label="Expert workspace" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {EXPERT_WORKSPACE_NAV.map(({ id, label, path }) => {
-            const active = activeId === id;
-            return (
-              <Link
-                key={id}
-                href={path}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  margin: "0 10px",
-                  padding: "10px 12px",
-                  borderRadius: "var(--scout-radius)",
-                  fontFamily: fontSans,
-                  fontSize: T.bodySm,
-                  fontWeight: active ? 600 : 500,
-                  color: active ? color.forest : color.stone,
-                  textDecoration: "none",
-                  background: active ? "rgba(26,58,47,0.08)" : "transparent",
-                  borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
-                }}
-              >
-                <NavIcon id={id} />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
+        <ExpertNavLinks activeId={activeId} variant="sidebar" />
       </aside>
       <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {children}
