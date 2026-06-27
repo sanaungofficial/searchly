@@ -6,6 +6,7 @@ import type { NetworkJobListing } from "@/lib/network-job-display";
 import { networkAgencyDisplayName, previewPlainText, SEED_NETWORK_JOBS } from "@/lib/network-job-display";
 import { networkExecThreadRecruitingFirmLabel } from "@/lib/network-employer-labels";
 import type { NetworkMatchedJob } from "@/lib/network-job-match";
+import { sortNetworkMatchedJobs } from "@/lib/network-job-match";
 import { canViewNetworkJobInternal } from "@/lib/network-job-access";
 import {
   NETWORK_JOB_CLIENT_BADGE,
@@ -21,6 +22,9 @@ import {
   type NetworkJobFilterForm,
   type NetworkJobFilterSuggestions,
 } from "@/lib/network-job-filters";
+import { describeNetworkActiveFilters, networkFormFromProfileDefaults } from "@/lib/network-profile-defaults";
+import { HIREBASE_LOCATION_TYPES, HIREBASE_JOB_TYPES } from "@/lib/vector-matched-job";
+import type { VectorSearchFilters } from "@/lib/vector-matched-job";
 import { locationFieldsFromProfileString } from "@/lib/recommended-filter-utils";
 import {
   loadScopedNetworkSearch,
@@ -37,6 +41,16 @@ import { ScoutBox, ScoutDisplayTitle, ScoutLabel, ScoutPrimaryBtn, ScoutSecondar
 import { fontSans, fontMono, color, surface, border, displayTitleStyle, type as T } from "@/lib/typography";
 import { matchScoreStyle } from "@/lib/match-score";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  ActiveFiltersBar,
+  ChipToggle,
+  DatalistInput,
+  FilterField,
+  FilterPanelShell,
+  FilterSectionHeader,
+  pipelineInputStyle,
+  ProfileSuggestionsBanner,
+} from "./pipeline-filters-ui";
 
 const EMPTY_MATCH = {
   matchScore: 0,
@@ -57,73 +71,6 @@ interface PipelineNetworkSectionProps {
   embedded?: boolean;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  border: border.line,
-  borderRadius: "var(--scout-radius)",
-  fontFamily: fontSans,
-  fontSize: T.caption,
-  boxSizing: "border-box",
-  background: surface.card,
-};
-
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: "block", fontFamily: fontSans, fontSize: T.label, fontWeight: 600, color: color.muted, marginBottom: 4 }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function FilterSectionHeader({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div style={{ gridColumn: "1 / -1", marginBottom: 4 }}>
-      <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.forest, margin: "0 0 4px" }}>{title}</p>
-      <p style={{ fontFamily: fontSans, fontSize: T.label, color: color.mutedLight, margin: 0, lineHeight: 1.45 }}>{hint}</p>
-    </div>
-  );
-}
-
-function DatalistInput({
-  value,
-  onChange,
-  listId,
-  options,
-  placeholder,
-  type = "text",
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  listId: string;
-  options: string[];
-  placeholder?: string;
-  type?: React.HTMLInputTypeAttribute;
-}) {
-  return (
-    <>
-      <input
-        type={type}
-        style={inputStyle}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        list={options.length ? listId : undefined}
-      />
-      {options.length > 0 && (
-        <datalist id={listId}>
-          {options.map((opt) => (
-            <option key={opt} value={opt} />
-          ))}
-        </datalist>
-      )}
-    </>
-  );
-}
-
 function NetworkJobFiltersGrid({
   form,
   setForm,
@@ -137,110 +84,144 @@ function NetworkJobFiltersGrid({
 }) {
   const isMobile = useIsMobile();
   return (
-    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: isMobile ? "12px 0" : "0 16px", marginTop: 8, paddingTop: 16, borderTop: border.line }}>
+    <FilterPanelShell>
       <FilterSectionHeader
-        title="Type to filter"
-        hint="Free text — matches title, company, location, industry, and description. Separate multiple job titles or keywords with commas."
+        title="Where & how you want to work"
+        hint="Same location and work-arrangement fields as Open Roles — filters the in-network list on this page."
       />
-      <FilterField label="Job titles">
-        <input style={inputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Key Account Manager, Attorney" />
-      </FilterField>
-      <FilterField label="Keywords">
-        <input style={inputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, SaaS, litigation" />
-      </FilterField>
-      <FilterField label="Company">
-        <DatalistInput
-          value={form.companyName}
-          onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
-          listId="network-company-suggestions"
-          options={suggestions.companies}
-          placeholder="Employer or agency name"
-        />
-      </FilterField>
-      <FilterField label="Industries">
-        <DatalistInput
-          value={form.industries}
-          onChange={(industries) => setForm((f) => ({ ...f, industries }))}
-          listId="network-industry-suggestions"
-          options={suggestions.industries}
-          placeholder="Healthcare, Software"
-        />
-      </FilterField>
-      <FilterField label="City">
-        <DatalistInput
-          value={form.locationCity}
-          onChange={(locationCity) => setForm((f) => ({ ...f, locationCity }))}
-          listId="network-city-suggestions"
-          options={suggestions.cities}
-          placeholder="Sacramento"
-        />
-      </FilterField>
-      <FilterField label="State / region">
-        <DatalistInput
-          value={form.locationState}
-          onChange={(locationState) => setForm((f) => ({ ...f, locationState }))}
-          listId="network-state-suggestions"
-          options={suggestions.states}
-          placeholder="California"
-        />
-      </FilterField>
-      <FilterField label="Shared after">
-        <input type="date" style={inputStyle} value={form.sharedAfter} onChange={(e) => setForm((f) => ({ ...f, sharedAfter: e.target.value }))} />
-      </FilterField>
-      <FilterField label="Compensation from ($)">
-        <input type="number" style={inputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} placeholder="100000" />
-      </FilterField>
-      <FilterField label="Compensation to ($)">
-        <input type="number" style={inputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} placeholder="250000 or 30 for hourly" />
-      </FilterField>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.2fr 1fr", gap: 12, marginBottom: 14 }}>
+        <FilterField label="City">
+          <DatalistInput
+            value={form.locationCity}
+            onChange={(locationCity) => setForm((f) => ({ ...f, locationCity }))}
+            listId="network-city-suggestions"
+            options={suggestions.cities}
+            placeholder="Sacramento"
+          />
+        </FilterField>
+        <FilterField label="State / region">
+          <DatalistInput
+            value={form.locationState}
+            onChange={(locationState) => setForm((f) => ({ ...f, locationState }))}
+            listId="network-state-suggestions"
+            options={suggestions.states}
+            placeholder="California"
+          />
+        </FilterField>
+      </div>
 
-      <FilterSectionHeader
-        title="Narrow further"
-        hint="Type or pick from suggestions — partial matches work. Use compensation from/to for pay range instead of bands."
-      />
-
-      <FilterField label="Job type">
-        <DatalistInput
-          value={form.jobType}
-          onChange={(jobType) => setForm((f) => ({ ...f, jobType }))}
-          listId="network-job-type-suggestions"
-          options={suggestions.jobTypes}
-          placeholder="Full-time, Contract"
-        />
-      </FilterField>
       <FilterField label="Work arrangement">
-        <DatalistInput
-          value={form.remoteOption}
-          onChange={(remoteOption) => setForm((f) => ({ ...f, remoteOption }))}
-          listId="network-remote-suggestions"
-          options={suggestions.remoteOptions}
-          placeholder="Remote, Hybrid, On-site"
-        />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {HIREBASE_LOCATION_TYPES.map((t) => (
+            <ChipToggle
+              key={t}
+              label={t}
+              active={form.remoteOption.toLowerCase() === t.toLowerCase()}
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  remoteOption: f.remoteOption.toLowerCase() === t.toLowerCase() ? "" : t,
+                }))
+              }
+            />
+          ))}
+        </div>
       </FilterField>
 
-      <FilterField label="Channel">
-        <select
-          style={inputStyle}
-          value={form.channel}
-          onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
-        >
-          <option value="">All channels</option>
-          <option value="TE">TE</option>
-          <option value="ET">ET</option>
-        </select>
-      </FilterField>
+      <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
+        <FilterSectionHeader
+          title="Role criteria"
+          hint="Titles and keywords — comma-separate multiples. Matches title, company, industry, and description."
+        />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
+        <FilterField label="Job titles">
+          <input style={pipelineInputStyle} value={form.jobTitles} onChange={(e) => setForm((f) => ({ ...f, jobTitles: e.target.value }))} placeholder="Key Account Manager, Attorney" />
+        </FilterField>
+        <FilterField label="Keywords">
+          <input style={pipelineInputStyle} value={form.keywords} onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))} placeholder="remote, SaaS, litigation" />
+        </FilterField>
+        <FilterField label="Company">
+          <DatalistInput
+            value={form.companyName}
+            onChange={(companyName) => setForm((f) => ({ ...f, companyName }))}
+            listId="network-company-suggestions"
+            options={suggestions.companies}
+            placeholder="Employer or agency name"
+          />
+        </FilterField>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginTop: 12 }}>
+        <FilterField label="Industries">
+          <DatalistInput
+            value={form.industries}
+            onChange={(industries) => setForm((f) => ({ ...f, industries }))}
+            listId="network-industry-suggestions"
+            options={suggestions.industries}
+            placeholder="Healthcare, Software"
+          />
+        </FilterField>
+        <FilterField label="Compensation from ($)">
+          <input type="number" style={pipelineInputStyle} value={form.salaryFrom} onChange={(e) => setForm((f) => ({ ...f, salaryFrom: e.target.value }))} placeholder="100000" />
+        </FilterField>
+        <FilterField label="Compensation to ($)">
+          <input type="number" style={pipelineInputStyle} value={form.salaryTo} onChange={(e) => setForm((f) => ({ ...f, salaryTo: e.target.value }))} placeholder="250000" />
+        </FilterField>
+      </div>
+
+      <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
+        <FilterSectionHeader title="More filters" hint="Employment type, channel, and shared date." />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
+        <FilterField label="Employment type">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {HIREBASE_JOB_TYPES.slice(0, 4).map((t) => (
+              <ChipToggle
+                key={t}
+                label={t}
+                active={form.jobType.toLowerCase() === t.toLowerCase()}
+                onClick={() =>
+                  setForm((f) => ({
+                    ...f,
+                    jobType: f.jobType.toLowerCase() === t.toLowerCase() ? "" : t,
+                  }))
+                }
+              />
+            ))}
+          </div>
+        </FilterField>
+        <FilterField label="Shared after">
+          <input type="date" style={pipelineInputStyle} value={form.sharedAfter} onChange={(e) => setForm((f) => ({ ...f, sharedAfter: e.target.value }))} />
+        </FilterField>
+        <FilterField label="Channel">
+          <select
+            style={pipelineInputStyle}
+            value={form.channel}
+            onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
+          >
+            <option value="">All channels</option>
+            <option value="TE">TE</option>
+            <option value="ET">ET</option>
+          </select>
+        </FilterField>
+      </div>
 
       {internalView && (
         <>
-          <FilterField label="Recruiting agency">
-            <DatalistInput
-              value={form.agencyName}
-              onChange={(agencyName) => setForm((f) => ({ ...f, agencyName }))}
-              listId="network-agency-suggestions"
-              options={suggestions.agencies}
-              placeholder="Start typing an agency name…"
-            />
-          </FilterField>
+          <div style={{ borderTop: border.line, margin: "16px 0", paddingTop: 16 }}>
+            <FilterSectionHeader title="Internal only" hint="Staff filters for fees, guarantees, and agency." />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12 }}>
+            <FilterField label="Recruiting agency">
+              <DatalistInput
+                value={form.agencyName}
+                onChange={(agencyName) => setForm((f) => ({ ...f, agencyName }))}
+                listId="network-agency-suggestions"
+                options={suggestions.agencies}
+                placeholder="Start typing an agency name…"
+              />
+            </FilterField>
           <FilterField label="Network status">
             <DatalistInput
               value={form.networkStatus}
@@ -251,7 +232,7 @@ function NetworkJobFiltersGrid({
             />
           </FilterField>
           <FilterField label="Placement fee">
-            <input style={inputStyle} value={form.feeQuery} onChange={(e) => setForm((f) => ({ ...f, feeQuery: e.target.value }))} placeholder="20%, $20000 flat" />
+            <input style={pipelineInputStyle} value={form.feeQuery} onChange={(e) => setForm((f) => ({ ...f, feeQuery: e.target.value }))} placeholder="20%, $20000 flat" />
           </FilterField>
           <FilterField label="Fee type">
             <DatalistInput
@@ -271,9 +252,10 @@ function NetworkJobFiltersGrid({
               placeholder="90 days"
             />
           </FilterField>
+          </div>
         </>
       )}
-    </div>
+    </FilterPanelShell>
   );
 }
 
@@ -468,6 +450,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const [showFilters, setShowFilters] = useState(false);
   const [profileSuggestedLabels, setProfileSuggestedLabels] = useState<string[]>([]);
   const profileFormRef = useRef<NetworkJobFilterForm | null>(null);
+  const autoAppliedProfileRef = useRef(false);
 
   const loadJobs = useCallback(async (options?: { force?: boolean }) => {
     if (!options?.force) {
@@ -510,6 +493,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   }, [withClientScope]);
 
   useEffect(() => {
+    autoAppliedProfileRef.current = false;
     setAppliedForm(createEmptyNetworkJobFilterForm());
     setProfileSuggestedLabels([]);
     profileFormRef.current = null;
@@ -523,38 +507,46 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
       void loadJobs();
     }
 
-    void fetch(withClientScope("/api/profile"))
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: {
-        targetRoles?: string[];
-        prioritizedRoles?: string[];
-        parsedData?: { location?: string | null };
-      } | null) => {
-        if (!data) {
-          setForm({ ...createEmptyNetworkJobFilterForm(), search: loadScopedNetworkSearch() });
-          return;
-        }
-        const fields = locationFieldsFromProfileString(data.parsedData?.location);
-        const matchRoles = [
-          ...(Array.isArray(data.prioritizedRoles) ? data.prioritizedRoles : []),
-          ...(Array.isArray(data.targetRoles) ? data.targetRoles : []),
+    void Promise.all([
+      fetch(withClientScope("/api/jobs/recommended/defaults")).then((res) => (res.ok ? res.json() : null)),
+      fetch(withClientScope("/api/profile")).then((res) => (res.ok ? res.json() : null)),
+    ])
+      .then(([defaultsData, profileData]: [
+        { filters?: VectorSearchFilters; labels?: string[] } | null,
+        { targetRoles?: string[]; prioritizedRoles?: string[] } | null,
+      ]) => {
+        const targetRoles = [
+          ...(Array.isArray(profileData?.prioritizedRoles) ? profileData.prioritizedRoles : []),
+          ...(Array.isArray(profileData?.targetRoles) ? profileData.targetRoles : []),
         ]
           .map((r) => r.trim())
           .filter(Boolean)
           .filter((role, index, all) => all.findIndex((r) => r.toLowerCase() === role.toLowerCase()) === index);
-        const profileForm: NetworkJobFilterForm = {
-          ...createEmptyNetworkJobFilterForm(),
-          search: loadScopedNetworkSearch(),
-          jobTitles: matchRoles.join(", "),
-          locationCity: fields.city,
-          locationState: fields.region,
-        };
+
+        let profileForm: NetworkJobFilterForm;
+        if (defaultsData?.filters) {
+          profileForm = networkFormFromProfileDefaults(defaultsData.filters, targetRoles);
+        } else {
+          const fields = locationFieldsFromProfileString(
+            (profileData as { parsedData?: { location?: string | null } } | null)?.parsedData?.location,
+          );
+          profileForm = {
+            ...createEmptyNetworkJobFilterForm(),
+            jobTitles: targetRoles.join(", "),
+            locationCity: fields.city,
+            locationState: fields.region,
+          };
+        }
+        profileForm.search = loadScopedNetworkSearch();
         profileFormRef.current = profileForm;
         setForm(profileForm);
-        const labels: string[] = [];
-        if (matchRoles.length) labels.push(`Titles: ${matchRoles.join(", ")}`);
-        if (fields.display) labels.push(`Location: ${fields.display}`);
-        setProfileSuggestedLabels(labels);
+        setProfileSuggestedLabels(
+          defaultsData?.labels?.length ? defaultsData.labels : describeNetworkActiveFilters(profileForm),
+        );
+        if (!autoAppliedProfileRef.current) {
+          autoAppliedProfileRef.current = true;
+          setAppliedForm(profileForm);
+        }
       })
       .catch(() => {
         setForm({ ...createEmptyNetworkJobFilterForm(), search: loadScopedNetworkSearch() });
@@ -564,9 +556,10 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
   const suggestions = useMemo(() => buildNetworkJobFilterSuggestions(jobs), [jobs]);
   const visibleJobs = useMemo(() => {
     const filtered = filterNetworkJobsFromForm(jobs, appliedForm, { internalView });
-    return [...filtered].sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+    return sortNetworkMatchedJobs(filtered);
   }, [jobs, appliedForm, internalView]);
   const activeFilterCount = countActiveNetworkFilterFields(appliedForm, internalView);
+  const activeFilterLabels = useMemo(() => describeNetworkActiveFilters(appliedForm), [appliedForm]);
   const hasActiveSearch = Boolean(appliedForm.search.trim());
 
   const applyFilters = (nextForm = form) => {
@@ -574,11 +567,20 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
     setAppliedForm({ ...nextForm });
   };
 
+  const applyProfileSuggestions = () => {
+    const suggested = profileFormRef.current;
+    if (!suggested) return;
+    const next = { ...suggested, search: form.search };
+    setForm(next);
+    applyFilters(next);
+  };
+
   const clearFilters = () => {
-    const empty = profileFormRef.current ?? createEmptyNetworkJobFilterForm();
+    const baseline = profileFormRef.current ?? createEmptyNetworkJobFilterForm();
     saveScopedNetworkSearch("");
-    setForm({ ...empty, search: "" });
-    setAppliedForm(createEmptyNetworkJobFilterForm());
+    const reset = { ...baseline, search: "" };
+    setForm(reset);
+    setAppliedForm(reset);
   };
 
   return (
@@ -615,10 +617,10 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
               {loading ? "Loading…" : "Refresh"}
             </ScoutSecondaryBtn>
             <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
-              {showFilters ? "Hide filters" : "Filters"}
+              {showFilters ? "Hide filters" : activeFilterCount > 0 ? `Filters (${activeFilterCount})` : "Filters"}
             </ScoutSecondaryBtn>
             {activeFilterCount > 0 && (
-              <ScoutSecondaryBtn onClick={clearFilters}>Clear ({activeFilterCount})</ScoutSecondaryBtn>
+              <ScoutSecondaryBtn onClick={clearFilters}>Reset</ScoutSecondaryBtn>
             )}
             <ScoutPrimaryBtn onClick={() => applyFilters()}>
               {hasActiveSearch ? "Search" : "Apply filters"}
@@ -628,7 +630,7 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
 
         <FilterField label="Search">
           <input
-            style={inputStyle}
+            style={pipelineInputStyle}
             value={form.search}
             onChange={(e) => setForm((f) => ({ ...f, search: e.target.value }))}
             onKeyDown={(e) => {
@@ -643,33 +645,18 @@ export function PipelineNetworkSection({ onOpenJob, onSaveJob, actingUserId, emb
         </FilterField>
 
         {showFilters && profileSuggestedLabels.length > 0 && activeFilterCount === 0 && (
-          <div style={{ marginTop: 12, padding: "10px 12px", background: surface.inset, border: border.line }}>
-            <p style={{ fontFamily: fontSans, fontSize: T.label, fontWeight: 700, color: color.muted, margin: "0 0 8px" }}>
-              From your profile — hit Apply filters to use
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {profileSuggestedLabels.map((label) => (
-                <span
-                  key={label}
-                  style={{
-                    padding: "3px 8px",
-                    border: border.line,
-                    fontFamily: fontSans,
-                    fontSize: T.label,
-                    color: color.muted,
-                    background: surface.card,
-                  }}
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-          </div>
+          <ProfileSuggestionsBanner
+            labels={profileSuggestedLabels}
+            onApply={applyProfileSuggestions}
+            hint="Uses the same profile defaults as Open Roles — click Apply & search or edit fields below."
+          />
         )}
 
         {showFilters && (
           <NetworkJobFiltersGrid form={form} setForm={setForm} suggestions={suggestions} internalView={internalView} />
         )}
+
+        <ActiveFiltersBar labels={activeFilterLabels} onClear={activeFilterCount > 0 ? clearFilters : undefined} />
 
         {needsProfile && profileHint && (
           <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, marginTop: 12, lineHeight: 1.45, background: surface.inset, padding: "10px 12px", border: border.line }}>

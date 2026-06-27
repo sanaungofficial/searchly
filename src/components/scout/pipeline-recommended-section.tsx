@@ -1156,7 +1156,7 @@ export function PipelineRecommendedSection({
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <ScoutSecondaryBtn onClick={() => setShowFilters((v) => !v)}>
-              {showFilters ? "Hide filters" : "Filters"}
+              {showFilters ? "Hide filters" : activeFilterLabels.length > 0 && !showFilters ? `Filters (${activeFilterLabels.length})` : "Filters"}
             </ScoutSecondaryBtn>
             <ScoutSecondaryBtn onClick={handleRefresh} disabled={loading || revalidating}>
               {loading || revalidating ? "Loading…" : "Refresh"}

@@ -818,6 +818,70 @@ export async function fetchHirebaseSummarySearch(input: {
   };
 }
 
+/** Similar-job search via `POST /v2/jobs/vsearch` (`search_type=job`, `job_id` required). */
+export async function fetchHirebaseSimilarJobs(input: {
+  jobId: string;
+  filters?: VectorSearchFilters;
+  limit?: number;
+  page?: number;
+}): Promise<{
+  jobs: CachedJob[];
+  rawJobs: HirebaseJob[];
+  companyNames: string[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const jobId = input.jobId.trim();
+  if (!jobId) {
+    return { jobs: [], rawJobs: [], companyNames: [], totalCount: 0, page: 1, limit: 0, totalPages: 0 };
+  }
+
+  const filters = input.filters ?? {};
+  const requestedLimit = input.limit ?? filters.limit ?? VECTOR_SEARCH_RESULTS_MAX;
+  const limit = Math.max(1, Math.min(requestedLimit, VECTOR_SEARCH_RESULTS_MAX));
+  const page = Math.max(1, input.page ?? filters.page ?? 1);
+
+  const body: Record<string, unknown> = {
+    search_type: "job",
+    job_id: jobId,
+    limit,
+    page,
+    accuracy: filters.accuracy ?? 0.35,
+    top_k: filters.topK ?? limit,
+  };
+
+  if (filters.offset != null) body.offset = filters.offset;
+  if (filters.minScore != null) body.score = filters.minScore;
+  if (filters.jobTitles?.length) {
+    assignIfPresent(body, "job_title", filters.jobTitles[0]?.trim());
+  }
+  assignJobSearchFilters(body, filters);
+
+  const data = await hirebaseFetch<PaginatedJobs>("/v2/jobs/vsearch", {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  const rawJobs = dedupeHirebaseJobs(data.jobs ?? [])
+    .filter((job) => job._id !== jobId)
+    .slice(0, limit);
+  const jobs = rawJobs.map(mapHirebaseJob);
+  const companyNames = rawJobs.map((j) => j.company_name?.trim() || "Unknown company");
+
+  return {
+    jobs,
+    rawJobs,
+    companyNames,
+    totalCount: data.total_count ?? jobs.length,
+    page: data.page ?? page,
+    limit: data.limit ?? limit,
+    totalPages: data.total_pages ?? 1,
+  };
+}
+
 function dedupeHirebaseJobs(jobs: HirebaseJob[]): HirebaseJob[] {
   const byKey = new Map<string, HirebaseJob>();
   for (const job of jobs) {

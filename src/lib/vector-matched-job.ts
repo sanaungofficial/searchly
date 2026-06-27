@@ -1,4 +1,6 @@
 import type { CachedJob } from "@/lib/cached-job";
+import type { RecommendedFetchLane } from "@/lib/recommended-jobs-fallback";
+import type { JobFitTier } from "@/lib/job-fit-ranking";
 
 export type HirebaseLocationFilter = {
   city?: string;
@@ -62,7 +64,11 @@ export type VectorMatchedJob = CachedJob & {
   gapSkills: string[];
   /** Semantic/heuristic score before role-preference boost/penalty — used to re-rank snapshots. */
   baseMatchScore?: number;
-  /** 1 = watchlist · 2 = strong fit · 3 = related */
+  /** S–E composite fit tier (watchlist × role × skills × source lane). */
+  fitTier?: JobFitTier;
+  /** Hirebase fetch lane that surfaced this job. */
+  fetchLane?: RecommendedFetchLane;
+  /** Legacy 1–3 tier for older sort paths — derived from fitTier. */
   rankTier?: 1 | 2 | 3;
   isTrackedCompany?: boolean;
 };
