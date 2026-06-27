@@ -26,9 +26,11 @@ import { GrowthDiscoveryModal } from "@/components/scout/growth-discovery-modal"
 import { ProfileSyncPromptModal } from "@/components/scout/profile-sync-prompt-modal";
 import { DashboardGoalWizardModal } from "@/components/scout/dashboard-goal-wizard-modal";
 import { MatchingPrefPromptModal, type MatchingPrefProfile } from "@/components/scout/matching-pref-prompt-modal";
-import { RecommendationTuningPanel } from "@/components/scout/recommendation-tuning-panel";
+
 import { SectionHeadingWithHelp, SectionHelpTip } from "@/components/scout/section-help-tip";
 import { DashboardGetStarted } from "@/components/scout/dashboard-get-started";
+import { SearchReadinessCard } from "@/components/scout/search-readiness-card";
+import { ProfileChecklistWidget } from "@/components/scout/profile-checklist-widget";
 import {
   isGoalsWizardDismissed,
   type MatchingTuningGapId,
@@ -59,7 +61,10 @@ type ProfileData = {
   workAuthorization: string | null;
   targetSalary: string | null;
   resumeUrl: string | null;
-  parsedData: { location?: string | null; workExperience?: unknown[] } | null;
+  linkedinUrl: string | null;
+  parsedData: { location?: string | null; workExperience?: unknown[]; phone?: string | null; education?: unknown[]; skills?: unknown[]; tools?: unknown[] } | null;
+  email: string | null;
+  hasStrategy: boolean;
 };
 
 function inferWorkArrangement(priorities: string[]): WorkArrangementId {
@@ -116,22 +121,6 @@ function tuningInputFromProfile(p: ProfileData): RecommendationTuningInput {
   };
 }
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
-
-function shortBio(profile: ProfileData | null): string | null {
-  if (!profile) return null;
-  if (profile.headline?.trim()) return profile.headline.trim();
-  if (profile.summary?.trim()) {
-    const s = profile.summary.trim();
-    return s.length > 120 ? `${s.slice(0, 117)}…` : s;
-  }
-  return null;
-}
 
 type BookedCoach = {
   bookingId: string;
@@ -211,7 +200,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
           workAuthorization: data.workAuthorization ?? null,
           targetSalary: data.targetSalary ?? null,
           resumeUrl: data.resumeUrl ?? null,
+          linkedinUrl: data.linkedinUrl ?? null,
           parsedData: data.parsedData ?? null,
+          email: data.email ?? null,
+          hasStrategy: data.hasStrategy ?? false,
         });
       })
       .catch(() => {})
@@ -308,7 +300,10 @@ export function DashboardHomeTop({ isMobile }: Props) {
       workAuthorization: null,
       targetSalary: null,
       resumeUrl: null,
+      linkedinUrl: null,
       parsedData: null,
+      email: null,
+      hasStrategy: false,
     })),
     [profile],
   );
@@ -480,7 +475,24 @@ export function DashboardHomeTop({ isMobile }: Props) {
     eventsScrollRef.current?.scrollBy({ left: dir * 300, behavior: "smooth" });
   };
 
-  const bio = shortBio(profile);
+
+  const navigateToProfileTab = useCallback(
+    (tab: string) => {
+      router.push(withClientReviewPath(`/profile?tab=${tab}`));
+    },
+    [router, withClientReviewPath],
+  );
+
+  const readinessScoreCard = showClientCoachUi && profile && !loading && (
+    <SearchReadinessCard
+      profile={{
+        ...profile,
+        hasStrategy: profile.hasStrategy,
+      }}
+      isMobile={isMobile}
+      onNavigateToTab={navigateToProfileTab}
+    />
+  );
 
   const coachSection = showClientCoachUi && !bookingLoading && (
     <>
@@ -681,110 +693,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
     </ScoutBox>
   );
 
-  const profileCard = (
-      <ScoutBox padding={0} style={{ overflow: "hidden", position: "relative" }}>
-        <button
-          type="button"
-          onClick={() => router.push(withClientReviewPath("/profile"))}
-          aria-label="Edit profile"
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            zIndex: 2,
-            width: 32,
-            height: 32,
-            border: border.line,
-            borderRadius: "var(--scout-radius)",
-            background: surface.card,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: color.muted,
-            boxShadow: "var(--scout-shadow-card)",
-          }}
-        >
-          ✎
-        </button>
-        <div style={{ height: isMobile ? 44 : 52, background: "rgba(74,139,106,0.18)" }} />
-        <div
-          style={{
-            padding: isMobile ? "0 18px 20px" : "0 22px 24px",
-            marginTop: isMobile ? -36 : -44,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-          }}
-        >
-          {profile?.avatarUrl ? (
-            <img
-              src={profile.avatarUrl}
-              alt=""
-              style={{
-                width: isMobile ? 80 : 96,
-                height: isMobile ? 80 : 96,
-                borderRadius: "50%",
-                objectFit: "cover",
-                marginBottom: 14,
-                border: "3px solid white",
-                boxShadow: "var(--scout-shadow-card)",
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: isMobile ? 80 : 96,
-                height: isMobile ? 80 : 96,
-                borderRadius: "50%",
-                background: "rgba(74,139,106,0.15)",
-                border: "3px solid white",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 14,
-                fontFamily: fontSans,
-                fontSize: 28,
-                fontWeight: 600,
-                color: color.forest,
-                boxShadow: "var(--scout-shadow-card)",
-              }}
-            >
-              {profile ? initials(profile.name) : "…"}
-            </div>
-          )}
-          <p style={{ fontFamily: fontSans, fontSize: T.heading, fontWeight: 600, color: color.ink, margin: "0 0 8px" }}>
-            {loading ? "…" : profile?.name ?? "You"}
-          </p>
-          {bio ? (
-            <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, lineHeight: 1.55, margin: 0 }}>
-              {bio}
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={() => router.push(withClientReviewPath("/profile"))}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                fontFamily: fontSans,
-                fontSize: T.bodySm,
-                color: color.muted,
-                cursor: "pointer",
-                textDecoration: "underline",
-                textDecorationStyle: "dotted",
-                textUnderlineOffset: 3,
-              }}
-            >
-              Add a bio
-            </button>
-          )}
-        </div>
-      </ScoutBox>
-  );
-
   const goalsCard = (
       <ScoutBox
         padding={isMobile ? "16px 18px" : "18px 20px"}
@@ -952,8 +860,8 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   const leftColumn = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {profileCard}
       {coachSection}
+      {goalsCard}
       {nudgeSection}
     </div>
   );
@@ -979,12 +887,6 @@ export function DashboardHomeTop({ isMobile }: Props) {
         minWidth: 0,
       }}
     >
-      {showClientCoachUi && tuningInput && (
-        <RecommendationTuningPanel input={tuningInput} isMobile={isMobile} onFixGap={handleFixGap} />
-      )}
-
-      {showClientCoachUi && goalsCard}
-
       {!showClientCoachUi && showExpertDashboard && (
         <ExpertDashboardOverview isMobile={isMobile} />
       )}
@@ -1208,6 +1110,13 @@ export function DashboardHomeTop({ isMobile }: Props) {
 
   return (
     <>
+      {/* Search Readiness Score — full width hero */}
+      {readinessScoreCard && (
+        <div style={{ marginBottom: isMobile ? 20 : 28 }}>
+          {readinessScoreCard}
+        </div>
+      )}
+
       <div
         style={{
           display: "grid",
@@ -1253,6 +1162,17 @@ export function DashboardHomeTop({ isMobile }: Props) {
           setGoalModalOpen(true);
         }}
       />
+
+      {/* Floating profile completion checklist */}
+      {showClientCoachUi && profile && !loading && (
+        <ProfileChecklistWidget
+          profile={{
+            ...profile,
+            hasStrategy: profile.hasStrategy,
+          }}
+          onNavigateToTab={navigateToProfileTab}
+        />
+      )}
     </>
   );
 }
