@@ -89,13 +89,32 @@ export type HirebaseResumeParseResult = {
 };
 
 function getApiKey(): string {
-  const key = process.env.HIREBASE_API_KEY?.trim();
+  const key =
+    process.env.HIREBASE_RESUME_EMBED_API_KEY?.trim() ||
+    process.env.HIREBASE_API_KEY?.trim();
   if (!key) throw new Error("HIREBASE_API_KEY is not configured.");
   return key;
 }
 
 export function isHirebaseResumeConfigured(): boolean {
-  return !!process.env.HIREBASE_API_KEY?.trim();
+  return !!(
+    process.env.HIREBASE_RESUME_EMBED_API_KEY?.trim() ||
+    process.env.HIREBASE_API_KEY?.trim()
+  );
+}
+
+function parseHirebaseErrorBody(body: string, status: number): string {
+  let detail = body.trim();
+  try {
+    const parsed = JSON.parse(body) as { detail?: string; message?: string };
+    detail = parsed.detail ?? parsed.message ?? detail;
+  } catch {
+    // keep raw body
+  }
+  if (/permission to embed resumes/i.test(detail)) {
+    return "Your Hirebase API key does not include resume embedding. Ask Hirebase to enable /v2/resumes/embed on your plan, or set HIREBASE_RESUME_EMBED_API_KEY on Vercel with an embed-enabled key.";
+  }
+  return detail || `Hirebase resume embed failed (${status})`;
 }
 
 function mimeForExt(ext: string): string {
