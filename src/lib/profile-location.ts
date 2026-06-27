@@ -150,15 +150,55 @@ export function parseProfileLocationString(raw: string | null | undefined): Pars
   };
 }
 
-export function relocationScopeFromPriorities(priorities: string[]): RelocationScope {
-  const lower = priorities.map((p) => p.toLowerCase());
+export type LocationPreferenceInput = {
+  profileLocation?: string | null;
+  priorities?: string[];
+  relocationOpenness?: string | null;
+  /** Force a scope (e.g. domestic backfill when the feed is sparse). */
+  scopeOverride?: RelocationScope;
+};
+
+function relocationSignals(input: { priorities?: string[]; relocationOpenness?: string | null }): string[] {
+  return [...(input.priorities ?? []), input.relocationOpenness ?? ""]
+    .map((p) => p.toLowerCase())
+    .filter(Boolean);
+}
+
+/** Default feed scope is domestic (same country + remote). Local only when explicitly chosen. */
+export function relocationScopeFromProfile(input: {
+  priorities?: string[];
+  relocationOpenness?: string | null;
+}): RelocationScope {
+  const lower = relocationSignals(input);
   if (lower.some((p) => p.includes("relocating internationally") || p.includes("relocation abroad"))) {
     return "international";
   }
   if (lower.some((p) => p.includes("relocating within") || p.includes("domestic relocation"))) {
     return "domestic";
   }
-  return "local";
+  if (
+    lower.some(
+      (p) =>
+        p.includes("prefer to stay") ||
+        p.includes("stay in my current area") ||
+        p.includes("current area"),
+    )
+  ) {
+    return "local";
+  }
+  return "domestic";
+}
+
+export function relocationScopeFromPriorities(priorities: string[]): RelocationScope {
+  return relocationScopeFromProfile({ priorities });
+}
+
+export function resolveRelocationScope(input: LocationPreferenceInput): RelocationScope {
+  if (input.scopeOverride) return input.scopeOverride;
+  return relocationScopeFromProfile({
+    priorities: input.priorities,
+    relocationOpenness: input.relocationOpenness,
+  });
 }
 
 /** Prefer explicit target market, then resume-parsed location. */
@@ -172,14 +212,11 @@ export function resolveProfileLocation(input: {
   return parsed || null;
 }
 
-export function profileLocationToHirebaseFilters(input: {
-  profileLocation?: string | null;
-  priorities?: string[];
-}): HirebaseLocationFilter[] {
+export function profileLocationToHirebaseFilters(input: LocationPreferenceInput): HirebaseLocationFilter[] {
   const home = parseProfileLocationString(input.profileLocation);
   if (!home) return [];
 
-  const scope = relocationScopeFromPriorities(input.priorities ?? []);
+  const scope = resolveRelocationScope(input);
   if (scope === "international") return [];
 
   const filters: HirebaseLocationFilter[] = [];
@@ -269,13 +306,24 @@ function remoteJobAllowedForScope(
   home: ParsedProfileLocation,
   scope: RelocationScope,
 ): boolean {
-  if (scope !== "local") return true;
-  if (!home.country || !US_COUNTRY_ALIASES.has(normalizeToken(home.country))) return true;
+  if (scope === "international") return true;
 
   const jobParts = jobLocationParts(cached, raw);
   const jobHay = locationHaystack(jobParts, cached);
   if (!jobHay.trim()) return true;
-  if (matchesCountry(jobHay, home.country)) return true;
+
+  if (home.country && US_COUNTRY_ALIASES.has(normalizeToken(home.country))) {
+    if (matchesCountry(jobHay, home.country)) return true;
+    if (mentionsOverseasLocation(jobHay)) return false;
+    return true;
+  }
+
+  if (scope !== "local") {
+    if (home.country) return matchesCountry(jobHay, home.country) || !mentionsOverseasLocation(jobHay);
+    return true;
+  }
+
+  if (home.country && matchesCountry(jobHay, home.country)) return true;
   return !mentionsOverseasLocation(jobHay);
 }
 
@@ -319,15 +367,12 @@ function matchesCity(jobHay: string, city?: string): boolean {
 export function jobMatchesLocationPreference(
   cached: CachedJob,
   raw: HirebaseJob | undefined,
-  input: {
-    profileLocation?: string | null;
-    priorities?: string[];
-  },
+  input: LocationPreferenceInput,
 ): boolean {
   const home = parseProfileLocationString(input.profileLocation);
   if (!home) return true;
 
-  const scope = relocationScopeFromPriorities(input.priorities ?? []);
+  const scope = resolveRelocationScope(input);
 
   if (isRemoteJob(cached, raw)) {
     return remoteJobAllowedForScope(cached, raw, home, scope);
@@ -363,10 +408,7 @@ export type RecommendedJobSourceLike = {
 
 export function filterSourcesByLocationPreference<T extends RecommendedJobSourceLike>(
   sources: T[],
-  input: {
-    profileLocation?: string | null;
-    priorities?: string[];
-  },
+  input: LocationPreferenceInput,
 ): T[] {
   if (!parseProfileLocationString(input.profileLocation)) return sources;
   return sources.filter((s) => jobMatchesLocationPreference(s.cached, s.raw, input));
@@ -374,10 +416,7 @@ export function filterSourcesByLocationPreference<T extends RecommendedJobSource
 
 export function filterJobsByLocationPreference<T extends CachedJob>(
   jobs: T[],
-  input: {
-    profileLocation?: string | null;
-    priorities?: string[];
-  },
+  input: LocationPreferenceInput,
 ): T[] {
   if (!parseProfileLocationString(input.profileLocation)) return jobs;
   return jobs.filter((j) => jobMatchesLocationPreference(j, undefined, input));
