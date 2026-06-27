@@ -6,6 +6,7 @@ import { BellIcon } from "./workspace-icons";
 import { NOTIFICATIONS } from "./workspace-data";
 import { UserSettingsModal } from "./user-settings-modal";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { profileCompletenessPct } from "@/lib/profile-completeness";
 import { canAccessBetaFeature } from "@/lib/beta-features";
 import { isStaffPortalRole, STAFF_DASHBOARD_NAV, matchStaffDashboardNavPath, isExpertPortalPath } from "@/lib/staff-portal";
@@ -305,6 +306,255 @@ function NotificationMenuItem({
   );
 }
 
+function BurgerIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MobileDrawerLink({
+  label,
+  active,
+  onClick,
+  indent = false,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  indent?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "block",
+        width: "calc(100% - 24px)",
+        margin: "0 12px",
+        textAlign: "left",
+        padding: indent ? "10px 12px 10px 28px" : "10px 12px",
+        border: "none",
+        borderRadius: "var(--scout-radius)",
+        background: active ? "rgba(26,58,47,0.08)" : "transparent",
+        borderLeft: active ? `3px solid ${color.forest}` : "3px solid transparent",
+        color: active ? color.forest : color.stone,
+        fontFamily: fontSans,
+        fontSize: T.bodySm,
+        fontWeight: active ? 600 : 500,
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function MobileDrawerSectionLabel({ label }: { label: string }) {
+  return (
+    <p
+      style={{
+        margin: "16px 16px 6px",
+        fontFamily: fontSans,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: color.muted,
+      }}
+    >
+      {label}
+    </p>
+  );
+}
+
+function MobileTopNavDrawer({
+  open,
+  onClose,
+  navLinks,
+  pathname,
+  onNavigateMain,
+  showExpertModeChip,
+  showExpertSection,
+  expertNavItems,
+  onNavigateExpert,
+  showAdminSection,
+  adminNavItems,
+  onNavigateAdmin,
+}: {
+  open: boolean;
+  onClose: () => void;
+  navLinks: NavLink[];
+  pathname: string;
+  onNavigateMain: (link: NavLink, childPath?: string) => void;
+  showExpertModeChip: boolean;
+  showExpertSection: boolean;
+  expertNavItems: NavChild[];
+  onNavigateExpert: (path: string) => void;
+  showAdminSection: boolean;
+  adminNavItems: NavChild[];
+  onNavigateAdmin: (path: string) => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Close navigation menu"
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          top: TOP_NAV_HEIGHT_MOBILE,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          border: "none",
+          padding: 0,
+          background: "rgba(15, 24, 20, 0.35)",
+          zIndex: 120,
+          cursor: "pointer",
+        }}
+      />
+      <aside
+        id="workspace-mobile-nav"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Main navigation"
+        style={{
+          position: "fixed",
+          top: TOP_NAV_HEIGHT_MOBILE,
+          left: 0,
+          bottom: 0,
+          width: "min(300px, calc(100vw - 48px))",
+          background: surface.card,
+          borderRight: border.line,
+          boxShadow: "4px 0 24px rgba(0,0,0,0.12)",
+          zIndex: 125,
+          display: "flex",
+          flexDirection: "column",
+          padding: "12px 0 24px",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          animation: "workspaceNavSlideIn 0.2s ease both",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 16px 12px",
+            marginBottom: 4,
+            borderBottom: border.line,
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontFamily: fontSans,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: color.muted,
+            }}
+          >
+            Menu
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 22,
+              lineHeight: 1,
+              color: color.muted,
+              cursor: "pointer",
+              padding: 4,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {showExpertModeChip && (
+          <div style={{ padding: "8px 16px 4px" }}>
+            <ExpertModeChip isMobile />
+          </div>
+        )}
+
+        <nav aria-label="Main navigation" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {navLinks.map((link) => {
+            const active = link.match(pathname);
+            if (link.children?.length) {
+              return (
+                <div key={link.id}>
+                  <MobileDrawerSectionLabel label={link.label} />
+                  {link.children.map((child) => (
+                    <MobileDrawerLink
+                      key={child.path}
+                      label={child.label}
+                      active={child.match(pathname)}
+                      onClick={() => onNavigateMain(link, child.path)}
+                      indent
+                    />
+                  ))}
+                </div>
+              );
+            }
+            return (
+              <MobileDrawerLink
+                key={link.id}
+                label={link.label}
+                active={active}
+                onClick={() => onNavigateMain(link)}
+              />
+            );
+          })}
+        </nav>
+
+        {showExpertSection && (
+          <>
+            <MobileDrawerSectionLabel label="Expert" />
+            {expertNavItems.map((item) => (
+              <MobileDrawerLink
+                key={item.path}
+                label={item.label}
+                active={item.match(pathname)}
+                onClick={() => onNavigateExpert(item.path)}
+              />
+            ))}
+          </>
+        )}
+
+        {showAdminSection && (
+          <>
+            <MobileDrawerSectionLabel label="Admin" />
+            {adminNavItems.map((item) => (
+              <MobileDrawerLink
+                key={item.path}
+                label={item.label}
+                active={item.match(pathname)}
+                onClick={() => onNavigateAdmin(item.path)}
+              />
+            ))}
+          </>
+        )}
+      </aside>
+      <style>{`
+        @keyframes workspaceNavSlideIn {
+          from { transform: translateX(-100%); opacity: 0.6; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
+    </>
+  );
+}
+
 type Props = {
   isMobile?: boolean;
   user?: {
@@ -316,13 +566,16 @@ type Props = {
   isAdmin?: boolean;
 };
 
-export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Props) {
+export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
   const navDropdownCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobileHook = useIsMobile();
+  const isMobile = isMobileProp || isMobileHook;
 
   const {
     notifOpen,
@@ -420,7 +673,30 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
 
   useEffect(() => {
     setNavDropdownOpen(null);
+    setMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen || !isMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileMenuOpen, isMobile]);
+
+  useEffect(() => {
+    if (!isMobile && mobileMenuOpen) setMobileMenuOpen(false);
+  }, [isMobile, mobileMenuOpen]);
 
   useEffect(() => {
     if (!navDropdownOpen || !isMobile) return;
@@ -457,6 +733,31 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
     setNotifRead(allRead);
   };
 
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  const navigateMainFromDrawer = (link: NavLink, childPath?: string) => {
+    if (link.id === "dashboard") {
+      navigateToSeekerDashboard();
+    } else {
+      router.push(withClientReviewPath(childPath ?? link.path));
+    }
+    setNavDropdownOpen(null);
+    closeMobileMenu();
+  };
+
+  const navigateExpertFromDrawer = (path: string) => {
+    navigateExpertPortal(path);
+    closeMobileMenu();
+  };
+
+  const navigateAdminFromDrawer = (path: string) => {
+    navigateAdminPortal(path);
+    closeMobileMenu();
+  };
+
+  const showExpertSection = isStaffPortal && !isImpersonating && !isAdminReviewing;
+  const showAdminSection = showAdminUi || isAdminReviewing;
+
   return (
     <>
       <header
@@ -483,6 +784,31 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
             boxSizing: "border-box",
           }}
         >
+          {/* Mobile burger */}
+          <button
+            type="button"
+            className="workspace-top-nav-burger"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open navigation menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="workspace-mobile-nav"
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              padding: 0,
+              border: border.line,
+              borderRadius: "var(--scout-radius)",
+              background: surface.card,
+              color: color.forest,
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <BurgerIcon />
+          </button>
+
           {/* Logo */}
           <button
             type="button"
@@ -509,18 +835,15 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
             </span>
           </button>
 
-          {/* Nav links */}
+          {/* Nav links — desktop only; mobile uses burger drawer */}
           <nav
+            className="workspace-top-nav-desktop-links"
             aria-label="Main"
             style={{
-              display: "flex",
               alignItems: "center",
               gap: isMobile ? 4 : 8,
               flex: 1,
               minWidth: 0,
-              overflowX: isMobile ? "auto" : "visible",
-              WebkitOverflowScrolling: "touch",
-              scrollbarWidth: "none",
             }}
           >
             {navLinks.map(({ id, label, path, match, children }) => {
@@ -649,42 +972,47 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
           </nav>
 
           {/* Right actions — expert/admin portals + account utilities */}
-          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0 }}>
-            {showExpertModeChip && <ExpertModeChip isMobile={isMobile} />}
-            {isStaffPortal && !isImpersonating && !isAdminReviewing && (
-              <UtilityPortalDropdown
-                label={isMobile ? "Expert" : "Expert mode"}
-                defaultPath="/expert/inbox"
-                active={expertPortalActive}
-                items={expertNavItems}
-                dropdownOpen={navDropdownOpen === "expert-portal"}
-                isMobile={isMobile}
-                pathname={pathname}
-                onOpen={() => openNavDropdown("expert-portal")}
-                onScheduleClose={scheduleCloseNavDropdown}
-                onToggle={() =>
-                  setNavDropdownOpen((prev) => (prev === "expert-portal" ? null : "expert-portal"))
-                }
-                onNavigate={navigateExpertPortal}
-              />
-            )}
-            {(showAdminUi || isAdminReviewing) && (
-              <UtilityPortalDropdown
-                label="Admin"
-                defaultPath="/admin"
-                active={adminPortalActive}
-                items={adminNavItems}
-                dropdownOpen={navDropdownOpen === "admin-portal"}
-                isMobile={isMobile}
-                pathname={pathname}
-                onOpen={() => openNavDropdown("admin-portal")}
-                onScheduleClose={scheduleCloseNavDropdown}
-                onToggle={() =>
-                  setNavDropdownOpen((prev) => (prev === "admin-portal" ? null : "admin-portal"))
-                }
-                onNavigate={navigateAdminPortal}
-              />
-            )}
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0, marginLeft: "auto" }}>
+            <div
+              className="workspace-top-nav-desktop-portals"
+              style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0 }}
+            >
+              {showExpertModeChip && <ExpertModeChip isMobile={isMobile} />}
+              {showExpertSection && (
+                <UtilityPortalDropdown
+                  label={isMobile ? "Expert" : "Expert mode"}
+                  defaultPath="/expert/inbox"
+                  active={expertPortalActive}
+                  items={expertNavItems}
+                  dropdownOpen={navDropdownOpen === "expert-portal"}
+                  isMobile={isMobile}
+                  pathname={pathname}
+                  onOpen={() => openNavDropdown("expert-portal")}
+                  onScheduleClose={scheduleCloseNavDropdown}
+                  onToggle={() =>
+                    setNavDropdownOpen((prev) => (prev === "expert-portal" ? null : "expert-portal"))
+                  }
+                  onNavigate={navigateExpertPortal}
+                />
+              )}
+              {showAdminSection && (
+                <UtilityPortalDropdown
+                  label="Admin"
+                  defaultPath="/admin"
+                  active={adminPortalActive}
+                  items={adminNavItems}
+                  dropdownOpen={navDropdownOpen === "admin-portal"}
+                  isMobile={isMobile}
+                  pathname={pathname}
+                  onOpen={() => openNavDropdown("admin-portal")}
+                  onScheduleClose={scheduleCloseNavDropdown}
+                  onToggle={() =>
+                    setNavDropdownOpen((prev) => (prev === "admin-portal" ? null : "admin-portal"))
+                  }
+                  onNavigate={navigateAdminPortal}
+                />
+              )}
+            </div>
 
             <button
               type="button"
@@ -782,6 +1110,44 @@ export function WorkspaceTopNav({ isMobile = false, user, isAdmin = false }: Pro
           </div>
         </div>
       </header>
+
+      <MobileTopNavDrawer
+        open={mobileMenuOpen}
+        onClose={closeMobileMenu}
+        navLinks={navLinks}
+        pathname={pathname}
+        onNavigateMain={navigateMainFromDrawer}
+        showExpertModeChip={showExpertModeChip}
+        showExpertSection={showExpertSection}
+        expertNavItems={expertNavItems}
+        onNavigateExpert={navigateExpertFromDrawer}
+        showAdminSection={showAdminSection}
+        adminNavItems={adminNavItems}
+        onNavigateAdmin={navigateAdminFromDrawer}
+      />
+
+      <style>{`
+        .workspace-top-nav-burger {
+          display: none;
+        }
+        .workspace-top-nav-desktop-links {
+          display: flex;
+        }
+        .workspace-top-nav-desktop-portals {
+          display: flex;
+        }
+        @media (max-width: 767px) {
+          .workspace-top-nav-burger {
+            display: inline-flex;
+          }
+          .workspace-top-nav-desktop-links {
+            display: none !important;
+          }
+          .workspace-top-nav-desktop-portals {
+            display: none !important;
+          }
+        }
+      `}</style>
 
       {settingsOpen && user && (
         <UserSettingsModal

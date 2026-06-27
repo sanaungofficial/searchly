@@ -171,11 +171,13 @@ export function JobSearchEmailDashboard() {
       >
         <div>
           <h2 style={{ margin: "0 0 4px", fontFamily: fontSans, fontSize: 20, fontWeight: 600, color: color.forest }}>
-            Inbox
+            Inbox & CRM
           </h2>
           <p style={{ margin: 0, fontFamily: fontSans, fontSize: T.caption, color: color.muted }}>
             {status.email}
             {status.provider ? ` · ${status.provider === "microsoft" ? "Outlook" : "Gmail"}` : ""}
+            {" · "}
+            Mail, contacts, and pipeline links in one place
           </p>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

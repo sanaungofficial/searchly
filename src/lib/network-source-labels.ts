@@ -26,7 +26,7 @@ export const NETWORK_JOB_CLIENT_BADGE = "Recruiter network";
 
 /** Client-facing section blurb for In-Network Roles. */
 export const NETWORK_JOB_CLIENT_INTRO =
-  "Roles shared exclusively through Kimchi's recruiter network — not on public job boards. Each listing is tagged TE or ET so you can filter by channel. Same profile-based scoring as Open Roles.";
+  "Roles recruiters are actively trying to fill — shared with Kimchi before they hit public job boards. Our network includes 1,000+ recruiting firms; we rank listings against your profile so the strongest fits rise to the top.";
 
 export const NETWORK_JOB_CHANNEL_FILTER_OPTIONS = ["TE", "ET"] as const;
 

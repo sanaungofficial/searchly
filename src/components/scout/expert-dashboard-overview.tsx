@@ -43,7 +43,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           Expert workspace
         </p>
         <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "0 0 16px", lineHeight: 1.55 }}>
-          Your session requests, client roster, offerings, and reviews — switch back to job seeker view anytime from the header.
+          Bookings, client roster, offerings, and live webinars — switch back to job seeker view anytime from the header.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {EXPERT_WORKSPACE_NAV.map((item) => (
@@ -109,7 +109,7 @@ export function ExpertDashboardOverview({ isMobile = false }: { isMobile?: boole
           </div>
         )}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-          <Link href="/expert/ops?section=clients" style={{ textDecoration: "none" }}>
+          <Link href="/expert/clients" style={{ textDecoration: "none" }}>
             <ScoutPrimaryBtn type="button">View clients</ScoutPrimaryBtn>
           </Link>
           <Link href="/expert/inbox" style={{ textDecoration: "none" }}>

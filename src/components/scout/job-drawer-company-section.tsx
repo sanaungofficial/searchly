@@ -59,6 +59,9 @@ export function JobDrawerCompanySection({
   hirebase,
   loading,
   networkSourced = false,
+  networkCompanyLogoUrl,
+  networkCompanyWebsiteUrl,
+  networkCompanyLinkedInUrl,
   trackPanel,
 }: {
   companyName: string;
@@ -68,6 +71,9 @@ export function JobDrawerCompanySection({
   hirebase: HirebaseCompanyProfileResponse | null;
   loading: boolean;
   networkSourced?: boolean;
+  networkCompanyLogoUrl?: string | null;
+  networkCompanyWebsiteUrl?: string | null;
+  networkCompanyLinkedInUrl?: string | null;
   trackPanel: React.ReactNode;
 }) {
   const profile = hirebase?.profile;
@@ -80,8 +86,18 @@ export function JobDrawerCompanySection({
   const linkedinUrl =
     profile?.linkedin_link?.trim() ||
     enrichment?.hirebase?.linkedinLink?.trim() ||
+    networkCompanyLinkedInUrl?.trim() ||
     null;
-  const websiteUrl = profile?.company_link?.trim() || enrichment?.websiteUrl?.trim() || jobUrl;
+  const websiteUrl =
+    profile?.company_link?.trim() ||
+    enrichment?.websiteUrl?.trim() ||
+    networkCompanyWebsiteUrl?.trim() ||
+    jobUrl;
+  const resolvedLogoUrl =
+    profile?.company_logo ??
+    enrichment?.hirebase?.logo ??
+    networkCompanyLogoUrl ??
+    null;
   const employeeLabel =
     formatEmployeeRange(profile?.size_range?.min, profile?.size_range?.max) ||
     enrichment?.employeeCount ||
@@ -104,7 +120,7 @@ export function JobDrawerCompanySection({
   const companyType = profile?.company_type ?? enrichment?.companyType ?? null;
   const hasRichProfile = Boolean(profile || enrichment?.description || enrichment?.hirebase?.slug);
   const showLimitedNote = !loading && !summary && !hasRichProfile && !networkSourced;
-  const showNetworkEmptyNote = networkSourced && !loading && !summary;
+  const showNetworkEmptyNote = networkSourced && !loading && !summary && !networkCompanyLogoUrl && !networkCompanyWebsiteUrl;
 
   return (
     <ScoutBox padding={20}>
@@ -112,9 +128,9 @@ export function JobDrawerCompanySection({
         <CompanyLogo
           name={companyName}
           website={jobUrl}
-          enrichmentWebsiteUrl={networkSourced ? null : websiteUrl}
-          logoUrl={networkSourced ? null : (profile?.company_logo ?? enrichment?.hirebase?.logo ?? null)}
-          skipDomainLookup={networkSourced}
+          enrichmentWebsiteUrl={networkSourced ? networkCompanyWebsiteUrl ?? null : websiteUrl}
+          logoUrl={networkSourced ? resolvedLogoUrl : (profile?.company_logo ?? enrichment?.hirebase?.logo ?? null)}
+          skipDomainLookup={networkSourced && !networkCompanyLogoUrl && !networkCompanyWebsiteUrl}
           size={52}
         />
         <div style={{ minWidth: 0 }}>

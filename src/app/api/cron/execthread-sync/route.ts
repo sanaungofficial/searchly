@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { runExecThreadSync } from "@/lib/execthread/sync";
 import { execthreadConfigured } from "@/lib/execthread/client";
+import { runExecThreadCronSync } from "@/lib/execthread/sync";
 
 function authorizeCron(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -21,8 +21,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const summary = await runExecThreadSync({ limit: 50 });
-    return NextResponse.json({ ok: true, summary });
+    const result = await runExecThreadCronSync();
+    return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     console.error("[cron execthread-sync]", err);
     return NextResponse.json({ error: "Cron run failed" }, { status: 500 });

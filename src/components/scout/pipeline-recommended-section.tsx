@@ -543,7 +543,9 @@ function RecommendedLoadingSkeleton() {
   const barWidths = ["72%", "58%", "84%", "64%"];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <KimchiProcessLoader preset="recommendations" variant="inline" />
+      <ScoutBox padding={24} style={{ textAlign: "center" }}>
+        <KimchiProcessLoader preset="recommendations" variant="inline" fullWidth />
+      </ScoutBox>
       {[0, 1, 2].map((card) => (
         <ScoutBox key={card} padding={18}>
           <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -993,7 +995,7 @@ export function PipelineRecommendedSection({
     const priorities = profilePrioritiesFromForm(filtersForm);
     const unchanged =
       profileBaseline &&
-      location.trim() === profileBaseline.location.trim() &&
+      location.trim() === (profileBaseline.location ?? "").trim() &&
       JSON.stringify([...priorities].sort()) === JSON.stringify([...profileBaseline.priorities].sort());
     if (unchanged) return;
 

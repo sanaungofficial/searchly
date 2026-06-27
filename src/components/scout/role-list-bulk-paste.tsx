@@ -48,7 +48,7 @@ export function RoleListBulkPaste({
   onDeprioritizedCategoriesChange,
   onInitRoleSettings,
 }: RoleListBulkPasteProps) {
-  const { showAdminUi, isImpersonating, isAdminReviewing } = useWorkspace();
+  const { showAdminUi } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [listKind, setListKind] = useState<BulkListKind>("deprioritized");
@@ -57,7 +57,7 @@ export function RoleListBulkPaste({
 
   const parsed = useMemo(() => parseRoleTitleList(text), [text]);
 
-  if (!showAdminUi && !isImpersonating && !isAdminReviewing) return null;
+  if (!showAdminUi) return null;
 
   const currentList = (): string[] => {
     switch (listKind) {

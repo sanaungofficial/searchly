@@ -45,7 +45,15 @@ export async function linkActivityToJob(params: {
   return updated;
 }
 
-export async function loadContactCard(userId: string, contactId: string, excludeMessageId?: string | null) {
+type LoadContactCardOptions = {
+  excludeMessageId?: string | null;
+  timelineLimit?: number;
+};
+
+export async function loadContactCard(userId: string, contactId: string, options?: LoadContactCardOptions) {
+  const excludeMessageId = options?.excludeMessageId;
+  const timelineLimit = options?.timelineLimit ?? 5;
+
   const contact = await prisma.inboxContact.findFirst({
     where: { id: contactId, userId },
     include: {
@@ -53,6 +61,7 @@ export async function loadContactCard(userId: string, contactId: string, exclude
         include: { job: { select: { id: true, company: true, role: true, stage: true } } },
         orderBy: { createdAt: "desc" },
       },
+      _count: { select: { activities: true } },
     },
   });
   if (!contact) return null;
@@ -64,7 +73,7 @@ export async function loadContactCard(userId: string, contactId: string, exclude
       ...(excludeMessageId ? { NOT: { nylasMessageId: excludeMessageId } } : {}),
     },
     orderBy: { occurredAt: "desc" },
-    take: 5,
+    take: timelineLimit,
     select: {
       id: true,
       kind: true,
@@ -92,5 +101,6 @@ export async function loadContactCard(userId: string, contactId: string, exclude
       contactRole: link.role,
     })),
     timeline,
+    activityCount: contact._count.activities,
   };
 }

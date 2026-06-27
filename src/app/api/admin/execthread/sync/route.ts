@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { execthreadConfigured } from "@/lib/execthread/client";
-import { runExecThreadSync, runExecThreadRefreshExisting, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
+import { runExecThreadSync, runExecThreadRefreshExisting, runExecThreadRefreshByExternalIds, runExecThreadImportSearchPage, runExecThreadCatalogImportBatch, runExecThreadCronSync, ExecThreadSessionExpiredError } from "@/lib/execthread/sync";
 import { recordExecThreadSyncResult } from "@/lib/execthread/session-store";
 
 export const maxDuration = 300;
@@ -11,6 +11,17 @@ type SyncBody = {
   forceLogin?: boolean;
   /** When true, re-fetch full details for ET jobs already in Kimchi (not search import). */
   refreshExisting?: boolean;
+  /** Re-fetch specific stored ExecThread jobs by externalId. */
+  refreshExternalIds?: string[];
+  /** Paginated catalog import — upserts search summaries (list-only by default). */
+  importCatalogPage?: {
+    from?: number;
+    size?: number;
+    listOnly?: boolean;
+  };
+  /** Cron-style batch: up to 30 pages (~3k listings) per request. */
+  importCatalogBatch?: boolean;
+  resetCatalogCheckpoint?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -39,12 +50,30 @@ export async function POST(request: Request) {
   const limit = typeof body.limit === "number" && body.limit > 0 ? body.limit : 5;
 
   try {
-    const summary = body.refreshExisting
-      ? await runExecThreadRefreshExisting({ forceLogin: body.forceLogin === true })
-      : await runExecThreadSync({
-          limit,
-          forceLogin: body.forceLogin === true,
-        });
+    const refreshExternalIds = Array.isArray(body.refreshExternalIds)
+      ? body.refreshExternalIds.filter((id) => typeof id === "string" && id.trim())
+      : [];
+
+    const summary = refreshExternalIds.length
+      ? await runExecThreadRefreshByExternalIds(refreshExternalIds, { forceLogin: body.forceLogin === true })
+      : body.importCatalogBatch
+        ? await runExecThreadCatalogImportBatch({
+            forceLogin: body.forceLogin === true,
+            resetCheckpoint: body.resetCatalogCheckpoint === true,
+          })
+      : body.importCatalogPage
+        ? await runExecThreadImportSearchPage({
+            from: body.importCatalogPage.from,
+            size: body.importCatalogPage.size,
+            listOnly: body.importCatalogPage.listOnly,
+            forceLogin: body.forceLogin === true,
+          })
+      : body.refreshExisting
+        ? await runExecThreadRefreshExisting({ forceLogin: body.forceLogin === true })
+        : await runExecThreadSync({
+            limit,
+            forceLogin: body.forceLogin === true,
+          });
     return NextResponse.json({ ok: true, summary });
   } catch (err) {
     if (err instanceof ExecThreadSessionExpiredError) {

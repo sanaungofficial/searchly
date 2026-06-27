@@ -1313,6 +1313,8 @@ export function JobDrawer({
                   hirebase={networkJob ? null : hirebaseCompany}
                   loading={networkJob ? false : hirebaseLoading}
                   networkSourced={Boolean(networkJob)}
+                  networkCompanyLogoUrl={meta?.companyLogo}
+                  networkCompanyWebsiteUrl={meta?.companyWebsite}
                   trackPanel={
                     canTrackCompany ? (
                       <CompanyTrackPanel

@@ -23,7 +23,7 @@ export function ImpersonationBanner({ state }: { state: ImpersonationState }) {
       await fetch("/api/admin/impersonate", { method: "DELETE" });
       clearClientSessionCaches();
       setActingUserScope(null);
-      window.location.href = "/expert/ops?section=clients";
+      window.location.href = "/expert/clients";
     } catch {
       setExiting(false);
     }

@@ -92,3 +92,79 @@ export async function loadNetworkJobListingById(externalId: string): Promise<Net
     SEED_NETWORK_JOBS.find((j) => j.id === externalId || j.externalId === externalId) ?? null
   );
 }
+
+export type NetworkJobCatalogFilters = {
+  source?: NetworkJobSource;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type NetworkJobCatalogStats = {
+  total: number;
+  execthread: number;
+  topechelon: number;
+};
+
+export async function getNetworkJobCatalogStats(): Promise<NetworkJobCatalogStats> {
+  const [total, execthread, topechelon] = await Promise.all([
+    prisma.networkJob.count(),
+    prisma.networkJob.count({ where: { source: "EXECTHREAD" } }),
+    prisma.networkJob.count({ where: { source: "TOPECHELON" } }),
+  ]);
+  return { total, execthread, topechelon };
+}
+
+function catalogSearchWhere(source?: NetworkJobSource, q?: string) {
+  const trimmed = q?.trim();
+  const searchClause = trimmed
+    ? {
+        OR: [
+          { positionTitle: { contains: trimmed, mode: "insensitive" as const } },
+          { companyName: { contains: trimmed, mode: "insensitive" as const } },
+          { location: { contains: trimmed, mode: "insensitive" as const } },
+          { networkId: { contains: trimmed, mode: "insensitive" as const } },
+          { externalId: { contains: trimmed, mode: "insensitive" as const } },
+          { recruiterName: { contains: trimmed, mode: "insensitive" as const } },
+        ],
+      }
+    : undefined;
+
+  if (source && searchClause) {
+    return { source, ...searchClause };
+  }
+  if (source) return { source };
+  if (searchClause) return searchClause;
+  return {};
+}
+
+export async function loadNetworkJobCatalog(filters: NetworkJobCatalogFilters = {}): Promise<{
+  jobs: NetworkJobListing[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
+  const where = catalogSearchWhere(filters.source, filters.q);
+
+  const [total, rows] = await Promise.all([
+    prisma.networkJob.count({ where }),
+    prisma.networkJob.findMany({
+      where,
+      include: { recruiterRecord: true },
+      orderBy: [{ syncedAt: "desc" }, { sharedAt: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return {
+    jobs: rows.map(rowToListing),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}

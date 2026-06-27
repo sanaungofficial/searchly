@@ -19,6 +19,10 @@ function str(value: unknown): string | null {
   return trimmed || null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function contactName(contact: ExecThreadContactRaw): string | null {
   const direct = str(contact.name);
   if (direct) return direct;
@@ -72,45 +76,62 @@ function normalizeContact(
   };
 }
 
+function pushContactObject(out: ExecThreadContactRaw[], value: unknown): void {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    out.push(value as ExecThreadContactRaw);
+  }
+}
+
+function pushAllContacts(out: ExecThreadContactRaw[], value: unknown): void {
+  if (!Array.isArray(value)) return;
+  for (const item of value) {
+    pushContactObject(out, item);
+  }
+}
+
+function collectContactsFromRecord(out: ExecThreadContactRaw[], record: Record<string, unknown>): void {
+  pushAllContacts(out, record.recruiters);
+  pushAllContacts(out, record.recruiterList);
+  pushAllContacts(out, record.contacts);
+  pushAllContacts(out, record.notificationRecipients);
+  pushAllContacts(out, record.hiringManagers);
+  pushAllContacts(out, record.hiringManagerList);
+  pushContactObject(out, record.companyContact);
+  pushContactObject(out, record.hiringManager);
+  pushContactObject(out, record.hiringManagerContact);
+  pushContactObject(out, record.primaryRecruiter);
+  pushContactObject(out, record.recruiter);
+
+  const existingRed = record.existingRed;
+  if (existingRed && isRecord(existingRed)) {
+    pushAllContacts(out, existingRed.recruiterList);
+    pushAllContacts(out, existingRed.hiringManagerList);
+    pushAllContacts(out, existingRed.hiringManagers);
+    pushContactObject(out, existingRed.companyContact);
+    pushContactObject(out, existingRed.hiringManager);
+  }
+
+  const listing = record.listing ?? record.listingPreview;
+  if (listing && isRecord(listing)) {
+    collectContactsFromRecord(out, listing);
+  }
+}
+
 function collectRawContacts(job: ExecThreadListingRaw): ExecThreadContactRaw[] {
   const out: ExecThreadContactRaw[] = [];
-  const pushAll = (value: unknown) => {
-    if (!Array.isArray(value)) return;
-    for (const item of value) {
-      if (item && typeof item === "object") out.push(item as ExecThreadContactRaw);
-    }
-  };
+  collectContactsFromRecord(out, job as Record<string, unknown>);
 
-  pushAll(job.recruiters);
-  pushAll(job.contacts);
-  pushAll(job.notificationRecipients);
-  pushAll(job.hiringManagers);
+  const exportBundle = job._kimchiExport as {
+    redeem?: Record<string, unknown>;
+    memberJob?: Record<string, unknown>;
+  } | undefined;
 
-  if (job.companyContact && typeof job.companyContact === "object") {
-    out.push(job.companyContact);
-  }
-
-  const exportBundle = job._kimchiExport as { redeem?: Record<string, unknown>; memberJob?: Record<string, unknown> } | undefined;
   if (exportBundle?.redeem) {
-    pushAll(exportBundle.redeem.recruiters);
-    pushAll(exportBundle.redeem.contacts);
-    pushAll(exportBundle.redeem.notificationRecipients);
-    if (exportBundle.redeem.companyContact && typeof exportBundle.redeem.companyContact === "object") {
-      out.push(exportBundle.redeem.companyContact as ExecThreadContactRaw);
-    }
+    collectContactsFromRecord(out, exportBundle.redeem);
   }
 
-  const memberListing =
-    exportBundle?.memberJob?.listing ?? exportBundle?.memberJob?.listingPreview;
-  if (memberListing && typeof memberListing === "object") {
-    const listing = memberListing as ExecThreadListingRaw;
-    pushAll(listing.recruiters);
-    pushAll(listing.contacts);
-    pushAll(listing.notificationRecipients);
-    pushAll(listing.hiringManagers);
-    if (listing.companyContact && typeof listing.companyContact === "object") {
-      out.push(listing.companyContact);
-    }
+  if (exportBundle?.memberJob) {
+    collectContactsFromRecord(out, exportBundle.memberJob);
   }
 
   return out;

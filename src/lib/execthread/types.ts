@@ -44,14 +44,24 @@ export type ExecThreadListingRaw = {
     type?: string;
     name?: string;
     employeeCountRange?: string;
+    logoUrl?: string;
+    url?: string;
+    linkedInId?: string;
+    linkedInUrl?: string;
+    description?: string;
+    founded?: string | number;
+    stockExchange?: string;
+    age?: string;
   };
   companyDescription?: string;
   companyDescriptionSafeHTML?: string;
   longCompanyDescription?: string | null;
+  alternateDescription?: string | null;
+  companyStockExchange?: string | null;
   jobDescription?: string;
   jobDescriptionSafeHTML?: string;
   summary?: string;
-  compensation?: boolean | { min?: number; max?: number; currency?: string; total?: { rangeLow?: number; rangeHigh?: number } } | null;
+  compensation?: boolean | string | { min?: number; max?: number; currency?: string; total?: { rangeLow?: number; rangeHigh?: number } } | null;
   compensationParts?: unknown;
   level?: string;
   jobType?: string;
@@ -92,6 +102,7 @@ export type ExecThreadListingRaw = {
   contacts?: ExecThreadContactRaw[];
   notificationRecipients?: ExecThreadContactRaw[];
   hiringManagers?: ExecThreadContactRaw[];
+  hiringManager?: ExecThreadContactRaw;
   unAuthorized?: boolean;
   listingPreview?: ExecThreadListingRaw;
   [key: string]: unknown;
@@ -140,6 +151,13 @@ export type ExecThreadSyncSummary = {
   previewHits?: number;
   redeemHits?: number;
   detailSparseSkips?: number;
-  mode?: "import" | "refresh";
+  mode?: "import" | "refresh" | "catalog-import" | "catalog-batch" | "refresh-batch";
   failed?: number;
+  /** Search offset for paginated catalog import. */
+  from?: number;
+  /** Next offset, or null when catalog is complete. */
+  nextFrom?: number | null;
+  listOnly?: boolean;
+  pagesRun?: number;
+  catalogComplete?: boolean;
 };

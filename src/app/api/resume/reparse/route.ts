@@ -50,7 +50,7 @@ export async function POST() {
   logAiUsage(dbUser.id, "RESUME_PARSE", modelId, tokensIn, tokensOut);
 
   const parsedData = mergeParsedWithReadback(parsed, dbUser.profile.readbackData);
-  if (!parsedData) {
+  if (!parsed) {
     return NextResponse.json({ error: "Could not parse resume" }, { status: 422 });
   }
 

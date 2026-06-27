@@ -15,10 +15,13 @@ type SyncStatus = {
   lastSyncAt: string | null;
   lastSyncError: string | null;
   apiBase: string;
+  catalogImportFrom?: number;
+  catalogImportTotalHits?: number | null;
+  catalogImportComplete?: boolean;
 };
 
 type SyncSummary = {
-  mode?: "import" | "refresh";
+  mode?: string;
   fetched: number;
   upserted: number;
   failed?: number;
@@ -27,6 +30,9 @@ type SyncSummary = {
   authenticated: boolean;
   previewHits?: number;
   redeemHits?: number;
+  pagesRun?: number;
+  catalogComplete?: boolean;
+  nextFrom?: number | null;
 };
 
 const VERCEL_ENV_URL =
@@ -49,6 +55,7 @@ export function ExecThreadSyncPanel() {
   const [forbidden, setForbidden] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [catalogBatching, setCatalogBatching] = useState(false);
   const [limit, setLimit] = useState("5");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +147,47 @@ export function ExecThreadSyncPanel() {
 
   const runRefresh = (forceLogin = false) => runRequest({ refreshExisting: true, forceLogin }, "refresh");
 
-  const busy = syncing || refreshing;
+  const runCatalogBatch = (resetCheckpoint = false) => {
+    setCatalogBatching(true);
+    setError(null);
+    setMessage(null);
+    setLastSummary(null);
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/execthread/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            importCatalogBatch: true,
+            resetCatalogCheckpoint: resetCheckpoint,
+          }),
+        });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          summary?: SyncSummary;
+          error?: string;
+        };
+        if (!res.ok || !data.ok) {
+          setError(data.error ?? "Catalog batch failed");
+          return;
+        }
+        setLastSummary(data.summary ?? null);
+        const s = data.summary;
+        setMessage(
+          s?.catalogComplete
+            ? `Catalog import complete — ${status?.jobCount ?? 0} jobs stored. Cron will now refresh full details in batches.`
+            : `Imported ${s?.upserted ?? 0} listings (${s?.pagesRun ?? 0} pages). Cron continues every 15 min until done.`,
+        );
+        await loadStatus();
+      } catch {
+        setError("Network error — try again.");
+      } finally {
+        setCatalogBatching(false);
+      }
+    })();
+  };
+
+  const busy = syncing || refreshing || catalogBatching;
   const canSync = !!status?.configured && !busy;
   const canRefresh = canSync && (status?.jobCount ?? 0) > 0;
 
@@ -149,6 +196,15 @@ export function ExecThreadSyncPanel() {
       <ScoutLabel>ExecThread network jobs</ScoutLabel>
       <p style={{ fontFamily: fontSans, fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
         Import new listings from ExecThread search, or <strong>refresh existing</strong> jobs already in Kimchi to backfill full descriptions, recruiter contacts, and apply links. Sync always reveals confidential info (premium/unlimited ET account; no point budgeting in Kimchi).
+      </p>
+      <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
+        For large catalogs (~5,806 US/Canada listings), set{" "}
+        <code style={{ fontFamily: fontMono, fontSize: T.label }}>EXECTHREAD_SEARCH_JSON</code> in Vercel with your ET filter (including{" "}
+        <code style={{ fontFamily: fontMono, fontSize: T.label }}>locations</code>), then use{" "}
+        <a href="/admin/network-jobs" style={{ color: color.forest, fontWeight: 600 }}>
+          Network catalog →
+        </a>{" "}
+        to import 100 summaries per click and browse scraped jobs.
       </p>
 
       {forbidden && (
@@ -183,6 +239,16 @@ export function ExecThreadSyncPanel() {
             <Stat label="Session" value={status.hasSession ? "Stored" : "None"} />
             <Stat label="ET jobs in DB" value={String(status.jobCount)} />
             <Stat label="Last sync" value={status.lastSyncAt ? new Date(status.lastSyncAt).toLocaleString() : "Never"} />
+            {status.catalogImportTotalHits != null && (
+              <Stat
+                label="Catalog progress"
+                value={
+                  status.catalogImportComplete
+                    ? "Complete"
+                    : `${(status.catalogImportFrom ?? 0).toLocaleString()} / ${status.catalogImportTotalHits.toLocaleString()}`
+                }
+              />
+            )}
           </div>
 
           {status.lastSyncError && (
@@ -193,7 +259,24 @@ export function ExecThreadSyncPanel() {
 
           <div style={{ marginBottom: 16 }}>
             <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.muted, margin: "0 0 8px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-              Import from search
+              Full catalog import (automated)
+            </p>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, color: color.muted, margin: "0 0 12px", maxWidth: 560, lineHeight: 1.45 }}>
+              Cron runs every <strong>15 minutes</strong> and imports up to ~3,000 listing summaries per run until the US/Canada catalog is complete, then refreshes full details in batches of 25. No manual clicking required.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+              <ScoutPrimaryBtn disabled={!canSync || catalogBatching} onClick={() => runCatalogBatch(false)} style={{ minHeight: 40 }}>
+                {catalogBatching ? "Importing batch…" : "Run catalog batch now"}
+              </ScoutPrimaryBtn>
+              <ScoutSecondaryBtn disabled={!canSync || catalogBatching} onClick={() => runCatalogBatch(true)} style={{ minHeight: 40 }}>
+                Restart from offset 0
+              </ScoutSecondaryBtn>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontFamily: fontSans, fontSize: T.caption, fontWeight: 700, color: color.muted, margin: "0 0 8px", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Import from search (manual)
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
               <label style={{ display: "grid", gap: 4 }}>

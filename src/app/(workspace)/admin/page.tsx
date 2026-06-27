@@ -197,6 +197,22 @@ export default async function AdminPage() {
       <AdminUsagePanel />
 
       <section>
+        <h2 className={adminSectionLabel}>Network catalog</h2>
+        <ScoutBox padding={20} style={{ marginBottom: 24 }}>
+          <ScoutLabel>Scraped listings browser</ScoutLabel>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: T.bodySm, color: color.muted, margin: "10px 0 16px", lineHeight: 1.55, maxWidth: 640 }}>
+            Browse every ExecThread and Top Echelon job Kimchi has imported — same drawer as In-Network Roles, with admin-only details.
+          </p>
+          <a
+            href="/admin/network-jobs"
+            style={{ fontFamily: "var(--font-sans)", fontSize: T.caption, fontWeight: 600, color: color.forest }}
+          >
+            Open network catalog →
+          </a>
+        </ScoutBox>
+      </section>
+
+      <section>
         <h2 className={adminSectionLabel}>Integrations</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <AdminJobMatchEmailPanel />
