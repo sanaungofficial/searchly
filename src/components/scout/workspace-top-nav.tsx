@@ -13,7 +13,6 @@ import { isStaffPortalRole, STAFF_DASHBOARD_NAV, matchStaffDashboardNavPath, isE
 import { isAdminClientReviewPath } from "@/lib/workspace-urls";
 import { ADMIN_NAV, matchAdminNavPath } from "@/lib/admin-nav";
 import { border, color, fontDisplay, fontSans, surface, type as T } from "@/lib/typography";
-import { KimchiLogoMark } from "@/components/scout/kimchi-logo";
 import { matchInboxPath, matchOpportunitiesNavPath, INBOX_PATH, OPPORTUNITIES_NAV } from "@/lib/workspace-urls";
 
 export const TOP_NAV_HEIGHT = 64;
@@ -820,15 +819,10 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
               padding: 0,
               cursor: "pointer",
               flexShrink: 0,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
             }}
             aria-label="Kimchi home"
           >
-            <KimchiLogoMark size={isMobile ? 26 : 28} />
             <span
-              className="workspace-top-nav-logo-text"
               style={{
                 fontFamily: fontDisplay,
                 fontSize: isMobile ? 20 : 22,
@@ -1151,9 +1145,6 @@ export function WorkspaceTopNav({ isMobile: isMobileProp = false, user, isAdmin 
           }
           .workspace-top-nav-desktop-portals {
             display: none !important;
-          }
-          .workspace-top-nav-logo-text {
-            display: none;
           }
         }
       `}</style>

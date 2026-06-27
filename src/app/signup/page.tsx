@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { AuthCredentialsForm } from "@/components/auth/auth-credentials-form";
-import { KimchiWordmark } from "@/components/scout/kimchi-logo";
+import { KimchiBySecondLadder } from "@/components/scout/scout-box";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -10,7 +10,19 @@ export default function SignupPage() {
   return (
     <div className="auth-page">
       <div className="auth-page__logo">
-        <KimchiWordmark markSize={36} titleSize={28} showTagline align="center" />
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 28,
+            fontWeight: 500,
+            color: "#1C3A2F",
+            letterSpacing: "-0.02em",
+            marginBottom: 8,
+          }}
+        >
+          Kimchi
+        </div>
+        <KimchiBySecondLadder fontSize={14} color="#6B7280" marginTop={0} />
       </div>
 
       <div className="auth-card">

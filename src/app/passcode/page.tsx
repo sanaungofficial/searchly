@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ScoutPrimaryBtn } from "@/components/scout/scout-box";
-import { KimchiWordmark } from "@/components/scout/kimchi-logo";
+import { KimchiBySecondLadder, ScoutPrimaryBtn } from "@/components/scout/scout-box";
 import { border, color, fontSans, surface, displayTitleStyle } from "@/lib/typography";
 
 export default function PasscodePage() {
@@ -44,7 +43,8 @@ export default function PasscodePage() {
       }}
     >
       <div style={{ marginBottom: 32, textAlign: "center" }}>
-        <KimchiWordmark markSize={36} titleSize={22} showTagline align="center" />
+        <div style={{ ...displayTitleStyle(22), color: color.forest, marginBottom: 4 }}>Kimchi</div>
+        <KimchiBySecondLadder fontSize={12} color={color.muted} />
       </div>
 
       <div
