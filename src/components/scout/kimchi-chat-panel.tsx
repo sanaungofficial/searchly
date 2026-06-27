@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
-import { useVoiceAgentSession, type VoiceAgentSessionResult } from "@/hooks/use-voice-agent-session";
+import type { VoiceAgentSessionResult } from "@/hooks/use-voice-agent-session";
+import { useVoiceAgent } from "@/contexts/voice-agent-context";
 import type { useKimchiThreads } from "@/hooks/use-kimchi-threads";
 import type { DebriefAction } from "@/lib/kimchi-assistant/debrief";
 import type { StoredThreadMessage } from "@/lib/kimchi-assistant/thread-serialize";
@@ -111,7 +112,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [assistantCtx, setAssistantCtx] = useState<AssistantContextPayload | null>(null);
   const [presetMenuOpen, setPresetMenuOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<VoicePresetId>("general");
+  // selectedPreset lives in VoiceAgentProvider context
   const [transcriptModal, setTranscriptModal] = useState<{ title: string; body: string } | null>(null);
   const [insightActivityId, setInsightActivityId] = useState<string | null>(null);
   const [resumeEditorOpen, setResumeEditorOpen] = useState(false);
@@ -225,13 +226,7 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     [ensureThread, setMessages, threads, pageHint?.jobDbId, pipelineJobs, assistantCtx?.contextSources],
   );
 
-  const onVoiceComplete = useCallback(
-    (result: VoiceAgentSessionResult) => {
-      void runDebrief(activePresetRef.current, result);
-    },
-    [runDebrief],
-  );
-
+  const voiceAgent = useVoiceAgent();
   const {
     available: voiceAvailable,
     orbState,
@@ -242,17 +237,31 @@ export function KimchiChatPanel({ pageHint, voiceUnavailable, threads, onNavigat
     toggleSession,
     endSession,
     agentSettings,
-  } = useVoiceAgentSession({
-    context: "workspace",
-    voicePresetId: selectedPreset,
-    pageHint,
-    disabled: voiceUnavailable,
-    onComplete: onVoiceComplete,
-    onNavigate: (route) => {
+    selectedPreset,
+    setSelectedPreset,
+    setPageHint: setVoicePageHint,
+    setOnComplete: setVoiceOnComplete,
+    setOnNavigate: setVoiceOnNavigate,
+  } = voiceAgent;
+
+  useEffect(() => {
+    setVoicePageHint(pageHint);
+  }, [pageHint, setVoicePageHint]);
+
+  useEffect(() => {
+    setVoiceOnComplete((result: VoiceAgentSessionResult) => {
+      void runDebrief(activePresetRef.current, result);
+    });
+    return () => setVoiceOnComplete(undefined);
+  }, [runDebrief, setVoiceOnComplete]);
+
+  useEffect(() => {
+    setVoiceOnNavigate((route: string) => {
       if (onNavigate) onNavigate(route);
       else router.push(route);
-    },
-  });
+    });
+    return () => setVoiceOnNavigate(undefined);
+  }, [onNavigate, router, setVoiceOnNavigate]);
 
   useEffect(() => {
     if (pendingVoiceStart && agentSettings && !sessionActive) {

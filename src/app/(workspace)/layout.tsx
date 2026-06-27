@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
+import { VoiceAgentProvider } from "@/contexts/voice-agent-context";
 import { WorkspaceTopNav } from "@/components/scout/workspace-top-nav";
 import { KimchiAssistant } from "@/components/scout/kimchi-assistant";
 import { PricingModal } from "@/components/scout/pricing-modal";
@@ -73,9 +74,11 @@ function WorkspaceShell({ children }: { children: React.ReactNode }) {
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   return (
     <WorkspaceProvider>
-      <Suspense>
-        <WorkspaceShell>{children}</WorkspaceShell>
-      </Suspense>
+      <VoiceAgentProvider>
+        <Suspense>
+          <WorkspaceShell>{children}</WorkspaceShell>
+        </Suspense>
+      </VoiceAgentProvider>
     </WorkspaceProvider>
   );
 }

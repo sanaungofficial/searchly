@@ -7,6 +7,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { KimchiChatPanel } from "@/components/scout/kimchi-chat-panel";
 import { KimchiThreadSidebar } from "@/components/scout/kimchi-thread-sidebar";
 import { VoiceOrb } from "@/components/voice/voice-orb";
+import { useVoiceAgentOptional } from "@/contexts/voice-agent-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKimchiThreads } from "@/hooks/use-kimchi-threads";
 import type { AssistantPageHint } from "@/lib/kimchi-assistant/types";
@@ -24,6 +25,7 @@ export function KimchiAssistant() {
   const pathname = usePathname();
   const router = useRouter();
   const { chatOpen, setChatOpen, chatPulse, kanbanCards, drawerCardId, chatView } = useWorkspace();
+  const voice = useVoiceAgentOptional();
   const [panelOpen, setPanelOpen] = useState(false);
   const [voiceConfigured, setVoiceConfigured] = useState<boolean | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -100,7 +102,13 @@ export function KimchiAssistant() {
             animation: chatPulse ? "kimchiOrbPulse 1.2s ease-in-out 2" : undefined,
           }}
         >
-          <VoiceOrb variant="float" state="idle" onClick={openPanel} bounce />
+          <VoiceOrb
+            variant="float"
+            state={voice?.sessionActive ? voice.orbState : "idle"}
+            audioLevel={voice?.sessionActive ? voice.audioLevel : undefined}
+            onClick={openPanel}
+            bounce={!voice?.sessionActive}
+          />
         </div>
       )}
 
