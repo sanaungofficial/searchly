@@ -17,7 +17,7 @@ export function PublicLiveCatalog() {
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/live/public/sessions");
-      const data = (await res.json()) as { sessions?: PublicSession[] };
+      const data = (await res.json().catch(() => ({}))) as { sessions?: PublicSession[] };
       setSessions(data.sessions ?? []);
     } finally {
       setLoading(false);

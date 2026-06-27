@@ -52,6 +52,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireCoachLiveAuth(request);
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!auth.coachProfileId) {
+    return NextResponse.json(
+      { error: "Link a coach profile to your account before creating webinars." },
+      { status: 403 },
+    );
+  }
 
   let body: {
     title?: string;
