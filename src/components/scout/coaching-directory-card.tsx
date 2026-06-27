@@ -6,63 +6,17 @@ import { CompanyLogo } from "@/components/scout/company-logo";
 import { CoachFitAssessment } from "@/components/scout/match-score-ui";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import { bioSnippet } from "@/lib/coach-directory";
-import { normalizeCompanySlug } from "@/lib/company-catalog";
+import {
+  buildCoachExperienceCompanies,
+  cleanCoachCompanyName,
+  coachCompanyWorksLabel,
+  type CoachCompanyLookupMeta,
+} from "@/lib/coach-experience-companies";
 import { matchScoreTier } from "@/lib/match-score";
 import type { CoachListItem } from "@/lib/coach-types";
 import { border, color, fontSans, surface, type as T } from "@/lib/typography";
 
-export type CoachCompanyLookupItem = {
-  logoUrl: string | null;
-  website: string | null;
-  name: string;
-};
-
-function cleanCompanyName(raw: string): string {
-  return raw.replace(/^ex[-\s]+/i, "").trim();
-}
-
-function companyWorksLabel(raw: string, kind: "current" | "past"): string {
-  const name = cleanCompanyName(raw);
-  return kind === "current" ? `Works at ${name}` : `Worked at ${name}`;
-}
-
-type CompanyPill = {
-  key: string;
-  rawName: string;
-  label: string;
-};
-
-function buildCompanyPills(coach: CoachListItem): CompanyPill[] {
-  const pills: CompanyPill[] = [];
-  const seen = new Set<string>();
-
-  if (coach.currentCompany?.trim()) {
-    const cleaned = cleanCompanyName(coach.currentCompany);
-    const slug = normalizeCompanySlug(cleaned);
-    if (slug && !seen.has(slug)) {
-      seen.add(slug);
-      pills.push({
-        key: slug,
-        rawName: coach.currentCompany,
-        label: companyWorksLabel(coach.currentCompany, "current"),
-      });
-    }
-  }
-
-  for (const firm of coach.firms ?? []) {
-    const cleaned = cleanCompanyName(firm);
-    const slug = normalizeCompanySlug(cleaned);
-    if (!slug || seen.has(slug)) continue;
-    seen.add(slug);
-    pills.push({
-      key: slug,
-      rawName: firm,
-      label: companyWorksLabel(firm, "past"),
-    });
-  }
-
-  return pills.slice(0, 3);
-}
+export type CoachCompanyLookupItem = CoachCompanyLookupMeta;
 
 function CoachCompanyPill({
   rawName,
@@ -73,7 +27,7 @@ function CoachCompanyPill({
   label: string;
   lookup?: CoachCompanyLookupItem;
 }) {
-  const displayName = cleanCompanyName(rawName);
+  const displayName = cleanCoachCompanyName(rawName);
   return (
     <span
       style={{
@@ -227,7 +181,7 @@ export function CoachingDirectoryCard({
   const tier = matchScore > 0 ? matchScoreTier(matchScore) : null;
   const showTopBorder = tier === "excellent" || tier === "strong" || tier === "good";
 
-  const companyPills = buildCompanyPills(coach);
+  const companyPills = buildCoachExperienceCompanies(coach).slice(0, 3);
   const isFavorite = (coach.avgRating ?? 0) >= 4.7 && (coach.reviewCount ?? 0) >= 8;
   const primaryLine = cardPrimaryLine(coach);
   const secondaryLine = cardSecondaryLine(coach, primaryLine);

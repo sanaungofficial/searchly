@@ -9,7 +9,7 @@ import {
   formatCoachNextAvailable,
   type CoachBookingSessionType,
 } from "@/components/scout/coach-booking-modal";
-import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
+import { CoachExperienceCompanies } from "@/components/scout/coach-experience-companies";
 import { CreditsStatusBar } from "@/components/scout/credits-display";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -385,9 +385,6 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           {coach.featured && <Badge label="Featured" tone="gold" />}
                           {coach.isProfessionalCoach && <Badge label="Pro coach" tone="forest" />}
-                          {coach.firms.slice(0, 3).map((f) => (
-                            <span key={f} style={{ padding: "4px 10px", border: line, fontFamily: fontSans, fontSize: 12, fontWeight: 500, color: color.forest }}>{f}</span>
-                          ))}
                         </div>
                       </div>
                     </div>
@@ -411,6 +408,8 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                       onClick={openPrepChat}
                     />
                   )}
+
+                <CoachExperienceCompanies coach={coach} isMobile={isMobile} embedded />
 
                 <ScoutBox padding={20} style={{ marginBottom: 16 }}>
                   <h3 style={{ fontFamily: fontSans, fontSize: 16, fontWeight: 600, margin: "0 0 12px" }}>
@@ -465,7 +464,9 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
                   {coach.reviewCount > 0 && (
                     <QualCheck label={`${coach.reviewCount} client review${coach.reviewCount !== 1 ? "s" : ""}`} />
                   )}
-                  {coach.firms.length > 0 && <QualCheck label={`Background: ${coach.firms.slice(0, 2).join(", ")}`} />}
+                  {coach.firms.length > 0 && (
+                    <QualCheck label={`Background includes ${coach.firms.slice(0, 3).join(", ")}`} />
+                  )}
                 </ScoutBox>
 
                 {coach.specialties.length > 0 && (
