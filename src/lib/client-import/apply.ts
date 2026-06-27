@@ -5,6 +5,7 @@ import { upsertManualInboxContact } from "@/lib/inbox-crm/manual-contact";
 import { ensureProfileRow } from "@/lib/profile-write";
 import { fetchResumeBytes, extractRawResumeText, parseResumeText, fileExtFromUrl } from "@/lib/resume-extract";
 import { enrichImportCompanies } from "@/lib/client-import/enrich-companies";
+import { importJobDedupeKey, normalizeImportJobUrl } from "@/lib/client-import/job-url";
 import type {
   ClientImportApplyPayload,
   ClientImportApplyResult,
@@ -38,6 +39,40 @@ function hirebaseLinkNote(apiLinked: boolean): string | null {
 function mergeNotes(...parts: Array<string | null | undefined>): string | null {
   const merged = parts.filter(Boolean).join(" · ");
   return merged || null;
+}
+
+type ExistingJobRow = {
+  id: string;
+  company: string;
+  role: string;
+  url: string | null;
+  stage: JobStage;
+  notes: string | null;
+  appliedAt: Date | null;
+};
+
+function buildExistingJobLookups(jobs: ExistingJobRow[]) {
+  const byUrlKey = new Map<string, ExistingJobRow>();
+  const byCompanyRole = new Map<string, ExistingJobRow>();
+  for (const job of jobs) {
+    const urlKey = normalizeImportJobUrl(job.url);
+    if (urlKey && !byUrlKey.has(urlKey)) byUrlKey.set(urlKey, job);
+    const crKey = `${job.company.toLowerCase()}::${job.role.toLowerCase()}`;
+    if (!byCompanyRole.has(crKey)) byCompanyRole.set(crKey, job);
+  }
+  return { byUrlKey, byCompanyRole };
+}
+
+function findExistingImportJob(
+  lookups: ReturnType<typeof buildExistingJobLookups>,
+  data: { url: string | null; company: string; role: string },
+): ExistingJobRow | null {
+  const urlKey = normalizeImportJobUrl(data.url);
+  if (urlKey) {
+    const byUrl = lookups.byUrlKey.get(urlKey);
+    if (byUrl) return byUrl;
+  }
+  return lookups.byCompanyRole.get(`${data.company.toLowerCase()}::${data.role.toLowerCase()}`) ?? null;
 }
 
 export async function applyClientImport(
@@ -160,38 +195,47 @@ export async function applyClientImport(
     result.errors.push(...companyResult.errors.map((n) => `Company: ${n}`));
   }
 
-  const jobIdByCompanyRole = new Map<string, string>();
+  const jobIdByDedupeKey = new Map<string, string>();
+  const existingUserJobs = await prisma.job.findMany({
+    where: { userId },
+    select: { id: true, company: true, role: true, url: true, stage: true, notes: true, appliedAt: true },
+  });
+  const jobLookups = buildExistingJobLookups(existingUserJobs);
 
   for (const row of jobs) {
     const { company, role, url, stage, notes, appliedAt } = row.data;
     const enriched = enrichedByName.get(company.toLowerCase());
     const companyName = enriched?.name ?? company;
+    const dedupeKey = importJobDedupeKey({ url, company: companyName, role });
     try {
-      const existing = await prisma.job.findFirst({
-        where: {
-          userId,
-          company: { equals: companyName, mode: "insensitive" },
-          role: { equals: role, mode: "insensitive" },
-        },
-      });
+      const existing = findExistingImportJob(jobLookups, { url, company: companyName, role });
 
       if (existing) {
-        const patch: { stage?: JobStage; url?: string | null; notes?: string | null; appliedAt?: Date | null; company?: string } = {};
+        const patch: {
+          stage?: JobStage;
+          url?: string | null;
+          notes?: string | null;
+          appliedAt?: Date | null;
+          company?: string;
+          role?: string;
+        } = {};
         if (stage && stage !== existing.stage) patch.stage = stage;
         if (url && url !== existing.url) patch.url = url;
         const mergedNotes = mergeNotes(notes, hirebaseLinkNote(Boolean(enriched?.apiLinked)));
         if (mergedNotes && mergedNotes !== existing.notes) patch.notes = mergedNotes;
         if (companyName !== existing.company) patch.company = companyName;
+        if (role !== existing.role) patch.role = role;
         const parsedApplied = parseAppliedAt(appliedAt);
         if (parsedApplied && !existing.appliedAt) patch.appliedAt = parsedApplied;
 
         if (Object.keys(patch).length > 0) {
-          await prisma.job.update({ where: { id: existing.id }, data: patch });
+          const updated = await prisma.job.update({ where: { id: existing.id }, data: patch });
+          Object.assign(existing, updated);
           result.jobs.updated++;
         } else {
           result.jobs.skipped++;
         }
-        jobIdByCompanyRole.set(`${companyName.toLowerCase()}::${role.toLowerCase()}`, existing.id);
+        jobIdByDedupeKey.set(dedupeKey, existing.id);
         continue;
       }
 
@@ -206,7 +250,19 @@ export async function applyClientImport(
           appliedAt: parseAppliedAt(appliedAt) ?? (stage === "APPLIED" ? new Date() : null),
         },
       });
-      jobIdByCompanyRole.set(`${companyName.toLowerCase()}::${role.toLowerCase()}`, created.id);
+      const createdRow: ExistingJobRow = {
+        id: created.id,
+        company: created.company,
+        role: created.role,
+        url: created.url,
+        stage: created.stage,
+        notes: created.notes,
+        appliedAt: created.appliedAt,
+      };
+      const urlKey = normalizeImportJobUrl(created.url);
+      if (urlKey) jobLookups.byUrlKey.set(urlKey, createdRow);
+      jobLookups.byCompanyRole.set(`${created.company.toLowerCase()}::${created.role.toLowerCase()}`, createdRow);
+      jobIdByDedupeKey.set(dedupeKey, created.id);
       result.jobs.added++;
     } catch (err) {
       console.error("[applyClientImport job]", companyName, role, err);
@@ -229,8 +285,14 @@ export async function applyClientImport(
         const companyKey = c.company.toLowerCase();
         const matchingJob = jobs.find((j) => j.data.company.toLowerCase() === companyKey);
         if (matchingJob) {
-          const jobKey = `${matchingJob.data.company.toLowerCase()}::${matchingJob.data.role.toLowerCase()}`;
-          const jobId = jobIdByCompanyRole.get(jobKey);
+          const enriched = enrichedByName.get(matchingJob.data.company.toLowerCase());
+          const companyName = enriched?.name ?? matchingJob.data.company;
+          const jobKey = importJobDedupeKey({
+            url: matchingJob.data.url,
+            company: companyName,
+            role: matchingJob.data.role,
+          });
+          const jobId = jobIdByDedupeKey.get(jobKey);
           if (jobId) {
             await prisma.jobInboxContact.upsert({
               where: { jobId_contactId: { jobId, contactId: contact.id } },

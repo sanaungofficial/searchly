@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import type { JobStage } from "@prisma/client";
 import type { ClientImportPreview, ImportContact, ImportPipelineJob, ImportRow } from "@/lib/client-import/types";
+import { importJobDedupeKey } from "@/lib/client-import/job-url";
 import type { SuggestedTrackedCompany } from "@/lib/intake-tracked-companies";
 
 let rowCounter = 0;
@@ -299,6 +300,26 @@ function parseTargetCompaniesSheet(wb: XLSX.WorkBook, sheetName: string): Import
   return out;
 }
 
+function looksLikeJobTitle(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 4 || t.length > 100) return false;
+  if (/^https?:\/\//i.test(t)) return false;
+  if (/^(notes|attached|please|if you|let me|can we|thank you|hi |hello)/i.test(t)) return false;
+  if (/let me know|anything else|work just as well|work great|if you need|attached are|don't even care/i.test(t)) {
+    return false;
+  }
+  if (/[!?]$/.test(t) && !/[,—–-]|\b(analyst|manager|consultant|director|engineer|specialist|associate|coordinator|lead|strategist)\b/i.test(t)) {
+    return false;
+  }
+
+  const jobSignals =
+    /\b(analyst|manager|director|consultant|engineer|specialist|coordinator|associate|lead|senior|junior|vp|head of|strategist|administrator|advisor|partner|actuary|underwriter|researcher|developer|designer|operations|finance|marketing|sales|product|data|business|healthcare|consulting)\b/i;
+  if (jobSignals.test(t)) return true;
+  if (/,/.test(t) && t.length < 80) return true;
+  if (/\s[—–-]\s/.test(t)) return true;
+  return false;
+}
+
 function parseTargetJobTitlesSheet(wb: XLSX.WorkBook, sheetName: string): {
   targetRoles: ImportRow<string>[];
   deprioritizedRoles: ImportRow<string>[];
@@ -337,6 +358,11 @@ function parseTargetJobTitlesSheet(wb: XLSX.WorkBook, sheetName: string): {
         continue;
       }
 
+      if (!looksLikeJobTitle(text)) {
+        if (text.length >= 20) noteLines.push(text);
+        continue;
+      }
+
       const struck = isStruck(sheet, r, c);
       const rowData: ImportRow<string> = {
         id: nextId(struck ? "drole" : "role"),
@@ -345,7 +371,7 @@ function parseTargetJobTitlesSheet(wb: XLSX.WorkBook, sheetName: string): {
         data: text,
       };
       if (struck) deprioritizedRoles.push(rowData);
-      else if (inCorporate || inConsulting || c <= 1) targetRoles.push(rowData);
+      else if (inCorporate || inConsulting) targetRoles.push(rowData);
     }
 
     if (col1 && col1.length > 80) noteLines.push(col1);
@@ -404,7 +430,7 @@ function dedupeCompanies(rows: ImportRow<SuggestedTrackedCompany>[]) {
 function dedupeJobs(rows: ImportRow<ImportPipelineJob>[]) {
   const byKey = new Map<string, ImportRow<ImportPipelineJob>>();
   for (const row of rows) {
-    const key = `${row.data.company.toLowerCase()}::${row.data.role.toLowerCase()}`;
+    const key = importJobDedupeKey(row.data);
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, row);
