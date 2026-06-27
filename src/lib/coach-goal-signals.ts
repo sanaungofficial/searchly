@@ -73,6 +73,16 @@ export const GOAL_COACH_SIGNALS: Record<string, GoalCoachSignals> = {
     categoryHints: ["skills", "development", "coaching"],
     specialtyHints: ["skills", "development", "upskill", "training"],
   },
+  application_strategy: {
+    keywords: ["applications", "apply", "targeting", "pipeline", "volume", "quality", "outreach"],
+    categoryHints: ["job", "search", "career"],
+    specialtyHints: ["job search", "applications", "recruiting"],
+  },
+  portfolio_build: {
+    keywords: ["portfolio", "work samples", "case study", "projects", "showcase"],
+    categoryHints: ["portfolio", "profile", "career"],
+    specialtyHints: ["portfolio", "personal brand", "positioning"],
+  },
 };
 
 type CoachGoalMatchInput = {
