@@ -99,7 +99,8 @@ function CreateClientModal({
   const [name, setName] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [sendInvite, setSendInvite] = useState(false);
+  const [sendInvite, setSendInvite] = useState(true);
+  const [initialPassword, setInitialPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,7 +127,8 @@ function CreateClientModal({
       if (name.trim()) formData.set("name", name.trim());
       if (linkedinUrl.trim()) formData.set("linkedinUrl", linkedinUrl.trim());
       if (resumeFile) formData.set("resume", resumeFile);
-      if (sendInvite) formData.set("sendInvite", "true");
+      if (sendInvite && !initialPassword.trim()) formData.set("sendInvite", "true");
+      if (initialPassword.trim()) formData.set("initialPassword", initialPassword.trim());
 
       const res = await fetch("/api/admin/clients", { method: "POST", body: formData });
       const data = await res.json().catch(() => ({}));
@@ -260,21 +262,44 @@ function CreateClientModal({
                 color: color.stone,
                 lineHeight: 1.45,
                 cursor: "pointer",
+                opacity: initialPassword.trim() ? 0.55 : 1,
               }}
             >
               <input
                 type="checkbox"
                 checked={sendInvite}
+                disabled={Boolean(initialPassword.trim())}
                 onChange={(e) => setSendInvite(e.target.checked)}
                 style={{ marginTop: 3 }}
               />
               <span>
                 Send sign-in invite email
                 <span style={{ display: "block", fontSize: T.caption, color: color.muted, marginTop: 4 }}>
-                  Optional. Unchecked creates the account only — you can invite them later or manage via View as client.
+                  {initialPassword.trim()
+                    ? "Disabled when you set a password — they can log in with that instead."
+                    : "Recommended. They'll get an email to set up their account."}
                 </span>
               </span>
             </label>
+            <div>
+              <label style={{ display: "block", fontSize: T.caption, color: color.muted, fontFamily: fontMono, marginBottom: 6 }}>
+                Initial password (optional)
+              </label>
+              <input
+                type="password"
+                value={initialPassword}
+                onChange={(e) => {
+                  setInitialPassword(e.target.value);
+                  if (e.target.value.trim()) setSendInvite(false);
+                }}
+                autoComplete="new-password"
+                placeholder="Set a password they can use to sign in"
+                style={fieldStyle}
+              />
+              <p style={{ fontSize: T.caption, color: color.muted, margin: "6px 0 0", lineHeight: 1.45 }}>
+                Creates their login immediately — no email sent. You can sign in as them on the login page with this password.
+              </p>
+            </div>
             <p style={{ fontSize: T.caption, color: color.muted, margin: 0, lineHeight: 1.45 }}>
               Resume parse uses AI on production. LinkedIn import needs Apify configured.
             </p>
@@ -419,6 +444,7 @@ export function AdminClientsPanel({
             setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
             setSelected(updated);
           }}
+          showAuthAccountTools={canAddClient}
         />
       </div>
     );
@@ -660,6 +686,7 @@ export function AdminClientsPanel({
             setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
             setSelected(updated);
           }}
+          showAuthAccountTools={canAddClient}
         />
       )}
     </div>

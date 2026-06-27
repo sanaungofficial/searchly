@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ScoutBox, ScoutPrimaryBtn, ScoutSecondaryBtn } from "@/components/scout/scout-box";
 import type { AdminClient } from "@/components/admin/admin-clients-panel";
 import { ClientCoachAssignmentSection } from "@/components/admin/client-coach-assignment-section";
+import { ClientAuthAccountSection } from "@/components/admin/client-auth-account-section";
 import { CoachSharedDocumentsPanel } from "@/components/scout/coach-shared-documents-panel";
 import { CoachClientSessionNotesPanel } from "@/components/scout/coach-client-session-notes-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -48,6 +49,7 @@ export function ClientDetailBody({
   startingUserId,
   showViewAsClient,
   onClientUpdated,
+  showAuthAccountTools,
 }: {
   client: AdminClient;
   onViewAsClient?: (userId: string) => void;
@@ -55,6 +57,7 @@ export function ClientDetailBody({
   startingUserId?: string | null;
   showViewAsClient?: boolean;
   onClientUpdated?: (client: AdminClient) => void;
+  showAuthAccountTools?: boolean;
 }) {
   const activeJobs = client.jobs.filter((j) => activeStage(j.stage));
   const appliedJobs = client.jobs.filter((j) => ["APPLIED", "SCREENING", "INTERVIEWING"].includes(j.stage));
@@ -186,6 +189,10 @@ export function ClientDetailBody({
         </ScoutBox>
       )}
 
+      {showAuthAccountTools && onClientUpdated && (
+        <ClientAuthAccountSection client={client} onUpdated={onClientUpdated} />
+      )}
+
       {onClientUpdated && (
         <ClientCoachAssignmentSection client={client} onUpdated={onClientUpdated} />
       )}
@@ -268,6 +275,7 @@ type DrawerProps = {
   startingUserId?: string | null;
   showViewAsClient?: boolean;
   onClientUpdated?: (client: AdminClient) => void;
+  showAuthAccountTools?: boolean;
 };
 
 export function ClientDrawer({
@@ -278,6 +286,7 @@ export function ClientDrawer({
   startingUserId,
   showViewAsClient,
   onClientUpdated,
+  showAuthAccountTools,
 }: DrawerProps) {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
@@ -369,6 +378,7 @@ export function ClientDrawer({
             startingUserId={startingUserId}
             showViewAsClient={showViewAsClient}
             onClientUpdated={onClientUpdated}
+            showAuthAccountTools={showAuthAccountTools}
           />
         </div>
       </div>
