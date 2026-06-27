@@ -377,6 +377,57 @@ function buildBucket(
   };
 }
 
+async function resolveOrgIds(names: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (!names.length) return map;
+
+  for (const name of names.slice(0, 5)) {
+    const res = await sumblePost<SumbleOrgsResponse>("/v6/organizations", {
+      organizations: [{ name: name.trim() }],
+      select: { attributes: ["id", "name"] },
+    });
+    if (res.ok) {
+      const id = res.data.organizations?.[0]?.attributes?.id;
+      if (typeof id === "number") map.set(name, id);
+    }
+  }
+  return map;
+}
+
+async function findPeopleFromPastOrgs(
+  targetOrgId: number,
+  orgNames: string[],
+  orgLabels: string[],
+): Promise<SumblePersonPreview[]> {
+  if (!orgNames.length) return [];
+
+  const orgMap = await resolveOrgIds(orgNames);
+  if (!orgMap.size) return [];
+
+  const targetPeople = await fetchOrgPeoplePreview(targetOrgId, 50, 0, null);
+  if (!targetPeople.length) return [];
+
+  const targetNameSet = new Set(targetPeople.map((p) => p.name.toLowerCase()));
+
+  const matched: SumblePersonPreview[] = [];
+  const seenNames = new Set<string>();
+
+  for (const [name, pastOrgId] of orgMap) {
+    if (pastOrgId === targetOrgId) continue;
+    const pastOrgPeople = await fetchOrgPeoplePreview(pastOrgId, 30, 0, null);
+    for (const person of pastOrgPeople) {
+      const key = person.name.toLowerCase();
+      if (targetNameSet.has(key) && !seenNames.has(key)) {
+        seenNames.add(key);
+        matched.push({ ...person, contextLabel: `Previously @ ${name}` });
+        if (matched.length >= 6) return matched;
+      }
+    }
+  }
+
+  return matched;
+}
+
 export async function loadInsiderConnections(input: {
   job: InsiderConnectionsJobContext;
   profile: UserConnectionProfile;
@@ -398,16 +449,8 @@ export async function loadInsiderConnections(input: {
   const { people: decisionPeople, teamIds, teamName } = await fetchJobRelatedPeople(orgId, job.jobTitle);
   const teamPeople = await fetchTeamPeople(teamIds.length ? teamIds : []);
 
-  const pastContext =
-    profile.pastCompanyLabels[0] != null ? `Previously @ ${profile.pastCompanyLabels[0]}` : null;
-  const schoolContext = profile.schoolLabels[0] != null ? `@ ${profile.schoolLabels[0]}` : null;
-
-  const pastPeople = profile.pastCompanies.length
-    ? await fetchOrgPeoplePreview(orgId, 6, 0, pastContext)
-    : [];
-  const schoolPeople = profile.schools.length
-    ? await fetchOrgPeoplePreview(orgId, 6, 6, schoolContext)
-    : [];
+  const pastPeople = await findPeopleFromPastOrgs(orgId, profile.pastCompanies, profile.pastCompanyLabels);
+  const schoolPeople = await findPeopleFromPastOrgs(orgId, profile.schools, profile.schoolLabels);
 
   const buckets: InsiderConnectionBucket[] = [
     buildBucket(

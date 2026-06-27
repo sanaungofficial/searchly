@@ -74,7 +74,7 @@ const cardBg = surface.card;
 const pageBg = surface.page;
 const mint = color.forest;
 const mintLight = "rgba(26,58,47,0.08)";
-const DRAWER_WIDTH = "min(1180px, calc(100vw - 16px))";
+const DRAWER_WIDTH = "min(80vw, calc(100vw - 16px))";
 const AI_SIDEBAR_WIDTH = 340;
 
 function guessCompanyWebsite(jobUrl: string | null): string | null {
