@@ -1,4 +1,76 @@
-/** Client-side voice tools — mail execution via POST /api/assistant/mail */
+/** Client-side voice tools — executed via POST /api/assistant/voice-tools and /api/assistant/mail */
+
+export const VOICE_RESEARCH_TOOLS = [
+  {
+    name: "refresh_context",
+    description:
+      "Reload the user's profile, pipeline, watchlist, and strategy from the database. Call after they say they updated something, or before deep prep if context may be stale.",
+    parameters: { type: "object", properties: {} },
+  },
+  {
+    name: "get_job_detail",
+    description:
+      "Load a pipeline job by id: stage, fit score, notes, posting excerpt, and interview format inference. Use for interview prep and 'why this role' questions. Always confirm interviewInference.confirmQuestion with the user before drilling.",
+    parameters: {
+      type: "object",
+      properties: {
+        jobId: { type: "string", description: "Job id from pipeline context" },
+        parsePosting: {
+          type: "boolean",
+          description: "Fetch/parse job URL if saved (default true). Set false to skip credits.",
+        },
+      },
+      required: ["jobId"],
+    },
+  },
+  {
+    name: "parse_job_posting",
+    description: "Fetch and parse a job posting URL (or job's saved URL via jobId). Uses credits.",
+    parameters: {
+      type: "object",
+      properties: {
+        jobId: { type: "string" },
+        url: { type: "string", description: "Job posting URL if not using jobId" },
+      },
+    },
+  },
+  {
+    name: "get_company_brief",
+    description:
+      "Load a target company from the watchlist: priority, candidate edge, intel, cached open roles. Cite as 'your target companies watchlist'.",
+    parameters: {
+      type: "object",
+      properties: {
+        companyId: { type: "string" },
+        companyName: { type: "string", description: "Fuzzy match if id unknown" },
+      },
+    },
+  },
+  {
+    name: "scan_company_roles",
+    description:
+      "Refresh open roles at a tracked company (Hirebase scan). Uses credits/time — ask user before scanning.",
+    parameters: {
+      type: "object",
+      properties: { companyId: { type: "string" } },
+      required: ["companyId"],
+    },
+  },
+  {
+    name: "save_job_note",
+    description:
+      "Save interview prep notes or voice insights to a pipeline job's user notes. Summarize what you're saving before calling.",
+    parameters: {
+      type: "object",
+      properties: {
+        jobId: { type: "string" },
+        note: { type: "string" },
+        mode: { type: "string", enum: ["append", "replace"], description: "Default append" },
+      },
+      required: ["jobId", "note"],
+    },
+  },
+] as const;
 
 export const WORKSPACE_READ_TOOLS = [
   {
@@ -120,4 +192,14 @@ export const MAIL_VOICE_TOOL_NAMES = new Set([
   "send_email",
   "list_calendar_events",
   "update_job_stage",
+]);
+
+export const VOICE_RESEARCH_TOOL_NAMES = new Set<string>(VOICE_RESEARCH_TOOLS.map((t) => t.name));
+
+export const VOICE_TOOL_NAMES = new Set([
+  ...VOICE_RESEARCH_TOOL_NAMES,
+  "finish_voice_chat",
+  "suggest_next_actions",
+  "open_ui_route",
+  ...MAIL_VOICE_TOOL_NAMES,
 ]);

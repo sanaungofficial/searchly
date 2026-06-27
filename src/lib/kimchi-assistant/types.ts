@@ -58,6 +58,8 @@ export type AssistantProfileGaps = {
   emailConnected: boolean;
 };
 
+import type { ContextSourceRef } from "@/lib/kimchi-assistant/context-sources";
+
 export type AssistantContextPayload = {
   roleMode: AssistantRoleMode;
   summary: string;
@@ -77,4 +79,6 @@ export type AssistantContextPayload = {
   suggestions: AssistantSuggestion[];
   inbox: AssistantInboxSnapshot;
   generatedAt: string;
+  /** Labeled sources for citation + debrief links */
+  contextSources: ContextSourceRef[];
 };

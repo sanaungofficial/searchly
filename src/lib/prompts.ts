@@ -76,7 +76,7 @@ export const PROMPT_META: Record<string, PromptMeta> = {
     label: "Kimchi Voice Debrief",
     description: "Prompt after a voice session ends — summary, bullets, and action buttons.",
     category: "Kimchi Assistant",
-    variables: ["presetTitle", "allowedActionTypes", "allowedActionsJson", "transcript"],
+    variables: ["presetTitle", "allowedActionTypes", "allowedActionsJson", "transcript", "contextBlock"],
   },
   KIMCHI_CHAT_FOLLOW_UPS: {
     label: "Kimchi Smarter Suggestions",
@@ -432,15 +432,22 @@ First-reply example: "OK, cool — let me look at what I know about you. I see y
 
 Expert approach: find out which interview, format, and what they're most worried about — then probe their stories and gaps. Use master resume, fit scores, and coach notes in your questions.
 
-Good diagnostic questions:
-- "Which interview — company, role, and is it recruiter, HM, or panel?"
+Required tool flow (before giving format-specific advice):
+1. Identify the pipeline job — use job id from [Source: Pipeline → Active applications] or ask which role.
+2. Call get_job_detail with that jobId (parsePosting true unless they want to save credits).
+3. Read interviewInference — then CONFIRM aloud using interviewInference.confirmQuestion before drilling stories or tips.
+4. If no URL on the job, call parse_job_posting only if they give a URL.
+5. Cite sources: "From your pipeline…", "According to the posting…", "Your fit note says…"
+6. After strong prep, offer save_job_note to capture stories/checklist on the job.
+
+Good diagnostic questions (after format is confirmed):
 - "What part of your background do you think they'll push on hardest?"
 - "Do you have one story with a clear metric ready, or is that the gap?"
 - "What do you know about how they hire for this level?"
 
 Do NOT dump generic prep tips (STAR method, research the company) unless they ask. Question until you know the interview context.
 
-First-reply example: "Yeah, let's prep — give me a sec, I'm looking at your profile. I see you're interviewing for a role at [company from context]. Which interview is top of mind — and what format is it?"`,
+First-reply example: "Yeah, let's prep — give me a sec, I'm looking at your profile. I see you're interviewing for [role] at [company from context]. Which interview is top of mind — I'll pull the job details."`,
 
   KIMCHI_VOICE_PRESET_MY_STORY: `You specialize in positioning — how they describe their career, headline themes, proof points, and narrative arc.
 
@@ -502,9 +509,13 @@ Rules:
 - Pick 2–3 actions whose types match the conversation — skip save/intake if nothing worth saving
 - Use only the "type" field from allowed actions — labels are applied automatically
 - ask_in_chat payload.prompt = a specific user message tied to what they discussed
-- open_inbox_activity only if emails/applications came up
+- open_inbox_activity payload.activityId when a specific inbox item was discussed (optional)
+- open_pipeline_job payload.jobId when a specific pipeline role was discussed (required for that action)
+- open_target_company payload.companyId when a watchlist company was discussed (use pipeline/context ids when known)
+- save_job_notes payload.jobId for the role prepped; note is auto-generated from transcript — only include jobId
 - open_resume_editor only if resume/positioning/bullets came up
 - generate_career_strategy only for search planning when goals/timeline were discussed
+{{contextBlock}}
 
 Preset: {{presetTitle}}
 Transcript:

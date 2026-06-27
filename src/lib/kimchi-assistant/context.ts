@@ -10,12 +10,12 @@ import {
   loadInboxSnapshot,
 } from "@/lib/kimchi-assistant/inbox-suggestions";
 import { jobStageLabel } from "@/lib/kimchi-assistant/stages";
-import { isPromotionalInboxActivity } from "@/lib/kimchi-assistant/suggestion-questions";
 import type {
   AssistantContextPayload,
   AssistantPageHint,
   AssistantRoleMode,
 } from "@/lib/kimchi-assistant/types";
+import { buildContextSourceRefs, formatLabeledContextForPrompt } from "@/lib/kimchi-assistant/context-sources";
 import { getFeatureCreditStatus } from "@/lib/feature-credits";
 import { prisma } from "@/lib/prisma";
 
@@ -348,7 +348,7 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
     suggestions[0]?.title ? `top suggestion: ${suggestions[0].title}` : null,
   ].filter(Boolean);
 
-  return {
+  return attachContextSources({
     roleMode,
     summary: summaryParts.join("; ") || "Getting started with Kimchi.",
     strategySnippet,
@@ -368,75 +368,14 @@ export async function buildAssistantContext(input: BuildContextInput): Promise<A
     suggestions,
     inbox,
     generatedAt: new Date().toISOString(),
-  };
+    contextSources: [],
+  });
+}
+
+function attachContextSources(payload: AssistantContextPayload): AssistantContextPayload {
+  return { ...payload, contextSources: buildContextSourceRefs(payload) };
 }
 
 export function formatAssistantContextForPrompt(ctx: AssistantContextPayload): string {
-  const roleLine =
-    ctx.roleMode === "coach"
-      ? "User is a coach using Kimchi — help with client prep and profile shaping when relevant."
-      : ctx.roleMode === "admin"
-        ? "User is an admin — stay helpful; do not expose internal system details."
-        : "User is a job seeker.";
-
-  const suggestionBlock =
-    ctx.suggestions.length > 0
-      ? `\nProactive suggestions (mention naturally when relevant):\n${ctx.suggestions
-          .map((s) => `- ${s.title}: ${s.detail}${s.route ? ` → ${s.route}` : ""}`)
-          .join("\n")}`
-      : "";
-
-  const inboxBlock =
-    ctx.inbox.pendingCount > 0
-      ? `\nInbox (${ctx.inbox.pendingCount} to review): ${ctx.inbox.activities
-          .filter((a) => !isPromotionalInboxActivity(a))
-          .slice(0, 5)
-          .map((a) => {
-            const parts = [a.roleGuess, a.companyGuess, a.title || a.snippet].filter(Boolean);
-            return parts.join(" · ");
-          })
-          .filter(Boolean)
-          .join("; ")}`
-      : "";
-
-  const knowsYouBlock = ctx.knowsYouSnippet?.trim()
-    ? `\nWhat you know about this user (cite these sources specifically — do not claim knowledge not listed here):\n${ctx.knowsYouSnippet}`
-    : "";
-
-  const strategyDocBlock = ctx.strategyDocSnippet?.trim()
-    ? `\nCareer strategy doc:\n${ctx.strategyDocSnippet}`
-    : "";
-
-  return `${roleLine}
-
-Search context:
-${ctx.strategySnippet}
-
-Target companies (watchlist):
-${ctx.targetCompaniesSnippet}
-${strategyDocBlock}
-${knowsYouBlock}
-
-Active applications (applied & interviewing — use fit rationale when discussing why these roles):
-${ctx.activeApplicationsSnippet}
-
-Full pipeline:
-${ctx.pipelineSnippet}
-${inboxBlock}
-
-${ctx.pageHint}
-${ctx.creditsHint}
-${suggestionBlock}
-
-Citation rules:
-- On your FIRST reply, always signal you're reviewing their file ("let me look at what I know about you") and cite at least one concrete detail from the sections below.
-- When referencing their background, say "based on your profile" or cite the master resume by name (e.g. "In your master resume, [filename]…").
-- When referencing pipeline roles, name the company and role (e.g. "your Stripe PM application").
-- When discussing interviews, start from the Active applications section — cite fit rationale or their notes if listed.
-- When referencing target companies, use the watchlist above by name.
-- When referencing fit, cite the percentage if listed above.
-- When referencing coach work, name the coach and the deliverable (e.g. "Coach Jane's career strategy doc").
-- If something isn't in the context above, ask — don't invent employers, coaches, or documents.
-
-You can use mail and calendar tools (list_recent_emails, draft_email_reply, send_email, list_calendar_events, update_job_stage) when the user asks about inbox or scheduling. Summarize email for voice — don't read full messages aloud. Confirm to/subject/body before send_email. Use open_ui_route when they need a screen you can't handle in chat.`;
+  return formatLabeledContextForPrompt(ctx);
 }

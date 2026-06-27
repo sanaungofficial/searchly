@@ -2,7 +2,7 @@ import type { AgentSettingsObject } from "@deepgram/agents";
 import { buildPresetVoicePrompt } from "@/lib/kimchi-assistant/prompts";
 import type { AssistantContextPayload } from "@/lib/kimchi-assistant/types";
 import { isVoicePresetId, type VoicePresetId } from "@/lib/kimchi-assistant/voice-presets";
-import { WORKSPACE_READ_TOOLS } from "@/lib/kimchi-assistant/tools/registry";
+import { VOICE_RESEARCH_TOOLS, WORKSPACE_READ_TOOLS } from "@/lib/kimchi-assistant/tools/registry";
 
 /**
  * Deepgram-managed LLM for Voice Agent think step.
@@ -136,7 +136,7 @@ export async function buildWorkspaceVoiceAgentSettings(
     think: {
       provider: VOICE_AGENT_THINK_PROVIDER,
       prompt,
-      functions: [...WORKSPACE_READ_TOOLS],
+      functions: [...VOICE_RESEARCH_TOOLS, ...WORKSPACE_READ_TOOLS],
     },
     speak: VOICE_AGENT_SPEAK,
   } as AgentSettingsObject;
