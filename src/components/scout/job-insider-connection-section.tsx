@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   InsiderConnectionBucket,
   InsiderConnectionsResult,
@@ -44,6 +44,34 @@ const THEME: Record<
     topBar: "#8B5CF6",
   },
 };
+
+type PlaceholderBucket = {
+  id: string;
+  title: string;
+  theme: InsiderConnectionBucket["theme"];
+  description: string;
+};
+
+const PLACEHOLDER_BUCKETS: PlaceholderBucket[] = [
+  {
+    id: "beyond",
+    title: "Beyond Your Network",
+    theme: "green",
+    description: "Decision makers & team members at this company",
+  },
+  {
+    id: "past_companies",
+    title: "From Your Previous Company",
+    theme: "blue",
+    description: "People who share a past employer with you",
+  },
+  {
+    id: "school",
+    title: "From Your School",
+    theme: "purple",
+    description: "Alumni from your school who work here",
+  },
+];
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -92,50 +120,85 @@ function AvatarStack({
   );
 }
 
-function SkeletonCard() {
+function PlaceholderCard({
+  bucket,
+  onView,
+  loading,
+}: {
+  bucket: PlaceholderBucket;
+  onView: () => void;
+  loading: boolean;
+}) {
+  const colors = THEME[bucket.theme];
+
   return (
     <div
       style={{
         flex: "1 1 0",
         minWidth: 180,
-        border: border.line,
+        border: `1px solid ${colors.border}`,
         borderRadius: "var(--scout-radius)",
         overflow: "hidden",
+        background: colors.bg,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <div style={{ height: 4, background: "#e5e5e5" }} />
-      <div style={{ padding: "16px 16px 14px" }}>
-        <div
+      <div style={{ height: 4, background: colors.topBar }} />
+      <div
+        style={{
+          padding: "14px 16px 14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          flex: 1,
+        }}
+      >
+        <p
           style={{
-            width: "60%",
-            height: 12,
-            background: "#f0f0f0",
-            borderRadius: 4,
-            marginBottom: 12,
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 700,
+            color: colors.accent,
+            margin: 0,
+            letterSpacing: "0.02em",
           }}
-        />
-        <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "#f0f0f0",
-                marginLeft: i === 0 ? 0 : -10,
-              }}
-            />
-          ))}
-        </div>
-        <div
+        >
+          {bucket.title}
+        </p>
+
+        <p
           style={{
-            width: "80%",
-            height: 10,
-            background: "#f0f0f0",
-            borderRadius: 4,
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            color: color.muted,
+            margin: 0,
+            lineHeight: 1.45,
           }}
-        />
+        >
+          {bucket.description}
+        </p>
+
+        <button
+          type="button"
+          onClick={onView}
+          disabled={loading}
+          style={{
+            alignSelf: "flex-start",
+            marginTop: "auto",
+            padding: "7px 14px",
+            background: "#fff",
+            border: border.line,
+            borderRadius: "var(--scout-radius)",
+            fontFamily: fontSans,
+            fontSize: T.caption,
+            fontWeight: 600,
+            color: color.stone,
+            cursor: loading ? "wait" : "pointer",
+          }}
+        >
+          {loading ? "Loading…" : "View"}
+        </button>
       </div>
     </div>
   );
@@ -585,10 +648,11 @@ export function JobInsiderConnectionSection({
   withClientScope,
 }: JobInsiderConnectionSectionProps) {
   const isMobile = useIsMobile();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [data, setData] = useState<InsiderConnectionsResult | null>(null);
   const [activeBucket, setActiveBucket] =
     useState<InsiderConnectionBucket | null>(null);
+  const [pendingBucketId, setPendingBucketId] = useState<string | null>(null);
   const [linkedinInput, setLinkedinInput] = useState("");
   const [emailLookup, setEmailLookup] = useState<{
     email: string | null;
@@ -596,7 +660,6 @@ export function JobInsiderConnectionSection({
     error?: string;
   } | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
-  const fetchedRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -617,14 +680,17 @@ export function JobInsiderConnectionSection({
       );
       const json = (await res.json()) as InsiderConnectionsResult;
       setData(json);
+      return json;
     } catch {
-      setData({
+      const fallback: InsiderConnectionsResult = {
         configured: false,
         companyName,
         sumbleOrganizationId: null,
         buckets: [],
         error: "Could not load connections.",
-      });
+      };
+      setData(fallback);
+      return fallback;
     } finally {
       setLoading(false);
     }
@@ -636,12 +702,6 @@ export function JobInsiderConnectionSection({
     jobTeam,
     withClientScope,
   ]);
-
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    void load();
-  }, [load]);
 
   const displayBuckets = useMemo(() => {
     const buckets = data?.buckets ?? [];
@@ -693,6 +753,37 @@ export function JobInsiderConnectionSection({
     return result;
   }, [data?.buckets]);
 
+  const handleView = useCallback(
+    async (placeholderId: string) => {
+      if (data) {
+        const match = displayBuckets.find(
+          (b) =>
+            b.id === placeholderId ||
+            (placeholderId === "beyond" &&
+              (b.id === "decision_makers" || b.title === "Beyond Your Network")),
+        );
+        if (match) setActiveBucket(match);
+        return;
+      }
+
+      setPendingBucketId(placeholderId);
+      const result = await load();
+      setPendingBucketId(null);
+
+      if (!result?.buckets?.length) return;
+
+      const buckets = result.buckets;
+      let match: InsiderConnectionBucket | undefined;
+      if (placeholderId === "beyond") {
+        match = buckets.find((b) => b.id === "decision_makers");
+      } else {
+        match = buckets.find((b) => b.id === placeholderId);
+      }
+      if (match) setActiveBucket(match);
+    },
+    [data, displayBuckets, load],
+  );
+
   const findEmail = async () => {
     const url = normalizeLinkedInUrl(linkedinInput);
     if (!url) {
@@ -741,8 +832,7 @@ export function JobInsiderConnectionSection({
     }
   };
 
-  const hasError = !loading && data?.error && displayBuckets.length === 0;
-  const hasData = !loading && displayBuckets.length > 0;
+  const fetched = data !== null;
 
   return (
     <ScoutBox
@@ -825,123 +915,104 @@ export function JobInsiderConnectionSection({
         </span>
       </div>
 
-      {/* Connection cards — loading skeleton, error, or data */}
-      {loading ? (
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            marginTop: 14,
-            flexDirection: isMobile ? "column" : "row",
-          }}
-        >
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      ) : hasError ? (
+      {/* Connection cards */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          marginTop: 14,
+          flexDirection: isMobile ? "column" : "row",
+        }}
+      >
+        {fetched
+          ? displayBuckets.map((bucket) => (
+              <ConnectionCard
+                key={bucket.id}
+                bucket={bucket}
+                onView={() => setActiveBucket(bucket)}
+              />
+            ))
+          : PLACEHOLDER_BUCKETS.map((pb) => (
+              <PlaceholderCard
+                key={pb.id}
+                bucket={pb}
+                loading={loading && pendingBucketId === pb.id}
+                onView={() => void handleView(pb.id)}
+              />
+            ))}
+      </div>
+
+      {/* Find any email — always visible */}
+      <div
+        style={{ marginTop: 18, paddingTop: 16, borderTop: border.line }}
+      >
         <p
           style={{
             fontFamily: fontSans,
             fontSize: T.bodySm,
-            color: color.muted,
-            margin: "14px 0 0",
+            fontWeight: 600,
+            color: color.stone,
+            margin: "0 0 8px",
           }}
         >
-          {data?.error}
+          Find any email
         </p>
-      ) : hasData ? (
         <div
           style={{
             display: "flex",
-            gap: 12,
-            marginTop: 14,
+            gap: 8,
             flexDirection: isMobile ? "column" : "row",
           }}
         >
-          {displayBuckets.map((bucket) => (
-            <ConnectionCard
-              key={bucket.id}
-              bucket={bucket}
-              onView={() => setActiveBucket(bucket)}
-            />
-          ))}
+          <input
+            value={linkedinInput}
+            onChange={(e) => setLinkedinInput(e.target.value)}
+            placeholder="Paste any LinkedIn profile URL (e.g., https://www.linkedin.com/in/xxxxx/) to find work emails instantly."
+            style={{
+              flex: 1,
+              padding: "11px 12px",
+              border: border.line,
+              borderRadius: "var(--scout-radius)",
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => void findEmail()}
+            disabled={emailLoading}
+            style={{
+              padding: "11px 18px",
+              background: color.forest,
+              color: color.gold,
+              border: border.lineStrong,
+              borderRadius: "var(--scout-radius)",
+              fontFamily: fontSans,
+              fontSize: T.bodySm,
+              fontWeight: 700,
+              cursor: emailLoading ? "wait" : "pointer",
+              flexShrink: 0,
+            }}
+          >
+            {emailLoading ? "Searching…" : "Search"}
+          </button>
         </div>
-      ) : null}
-
-      {/* Find any email — always visible after loading */}
-      {!loading && (
-        <div
-          style={{ marginTop: 18, paddingTop: 16, borderTop: border.line }}
-        >
+        {emailLookup && (
           <p
             style={{
               fontFamily: fontSans,
-              fontSize: T.bodySm,
-              fontWeight: 600,
-              color: color.stone,
-              margin: "0 0 8px",
+              fontSize: T.caption,
+              color: emailLookup.error ? "#9A4A4A" : color.forest,
+              margin: "8px 0 0",
             }}
           >
-            Find any email
+            {emailLookup.error ??
+              (emailLookup.email
+                ? `${emailLookup.name ? `${emailLookup.name}: ` : ""}${emailLookup.email}`
+                : "No email found.")}
           </p>
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              flexDirection: isMobile ? "column" : "row",
-            }}
-          >
-            <input
-              value={linkedinInput}
-              onChange={(e) => setLinkedinInput(e.target.value)}
-              placeholder="Paste any LinkedIn profile URL (e.g., https://www.linkedin.com/in/xxxxx/) to find work emails instantly."
-              style={{
-                flex: 1,
-                padding: "11px 12px",
-                border: border.line,
-                borderRadius: "var(--scout-radius)",
-                fontFamily: fontSans,
-                fontSize: T.bodySm,
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => void findEmail()}
-              disabled={emailLoading}
-              style={{
-                padding: "11px 18px",
-                background: color.forest,
-                color: color.gold,
-                border: border.lineStrong,
-                borderRadius: "var(--scout-radius)",
-                fontFamily: fontSans,
-                fontSize: T.bodySm,
-                fontWeight: 700,
-                cursor: emailLoading ? "wait" : "pointer",
-                flexShrink: 0,
-              }}
-            >
-              {emailLoading ? "Searching…" : "Search"}
-            </button>
-          </div>
-          {emailLookup && (
-            <p
-              style={{
-                fontFamily: fontSans,
-                fontSize: T.caption,
-                color: emailLookup.error ? "#9A4A4A" : color.forest,
-                margin: "8px 0 0",
-              }}
-            >
-              {emailLookup.error ??
-                (emailLookup.email
-                  ? `${emailLookup.name ? `${emailLookup.name}: ` : ""}${emailLookup.email}`
-                  : "No email found.")}
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {activeBucket && (
         <BucketModal
