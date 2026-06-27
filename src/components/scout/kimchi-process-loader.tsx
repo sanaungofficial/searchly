@@ -99,6 +99,8 @@ export interface KimchiProcessLoaderProps {
   durationSec?: number;
   /** card = white panel; inline = compact strip; centered = card in a flex center wrapper */
   variant?: "card" | "inline" | "centered";
+  /** When true, inline/card stretch to parent width (use inside ScoutBox). */
+  fullWidth?: boolean;
 }
 
 function LoaderStyles() {
@@ -123,6 +125,7 @@ export function KimchiProcessLoader({
   hint,
   durationSec,
   variant = "card",
+  fullWidth = false,
 }: KimchiProcessLoaderProps) {
   const base = preset ? KIMCHI_LOADER_PRESETS[preset] : null;
   const resolvedEmoji = emoji ?? base?.emoji ?? "✨";
@@ -197,14 +200,18 @@ export function KimchiProcessLoader({
     return (
       <div
         style={{
-          maxWidth: 560,
+          maxWidth: fullWidth ? undefined : 560,
           width: "100%",
-          background: "#FFFFFF",
-          border: "1px solid rgba(0,0,0,0.08)",
-          borderRadius: "var(--scout-radius)",
-          padding: "24px 28px",
+          ...(fullWidth
+            ? {}
+            : {
+                background: "#FFFFFF",
+                border: "1px solid rgba(0,0,0,0.08)",
+                borderRadius: "var(--scout-radius)",
+                padding: "24px 28px",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
+              }),
           textAlign: "center",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
         }}
       >
         {inner}
@@ -215,7 +222,7 @@ export function KimchiProcessLoader({
   const card = (
     <div
       style={{
-        maxWidth: 440,
+        maxWidth: fullWidth ? undefined : 440,
         width: "100%",
         background: "#FFFFFF",
         border: "1px solid rgba(0,0,0,0.08)",
