@@ -140,7 +140,8 @@ function ReviewFormModal({
 export function CoachProfilePageClient({ slug }: { slug: string }) {
   const isMobile = useIsMobile();
   const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
-  const canSelfAssignCoach = userRole === "USER" || isImpersonating;
+  const isAdmin = userRole === "ADMIN";
+  const canSelfAssignCoach = userRole === "USER" || isImpersonating || isAdmin;
   const [coach, setCoach] = useState<CoachProfileDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReview, setShowReview] = useState(false);
@@ -227,7 +228,8 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
   const toggleMyCoach = async () => {
     if (!coach) return;
     const isAssigned = coach.isMyCoach ?? false;
-    if (!isAssigned && coach.isInternal) return;
+    if (!isAssigned && coach.isInternal && !isAdmin) return;
+    if (!isAssigned && coach.requiresAssignment && !isAdmin) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -313,6 +315,7 @@ export function CoachProfilePageClient({ slug }: { slug: string }) {
         nextSlotStart={nextSlotStart}
         nextSlotLoading={nextSlotLoading}
         canSelfAssignCoach={canSelfAssignCoach}
+        isAdmin={isAdmin}
         onBookIntro={() => openBooking("intro")}
         onBookSession={() => openBooking("session")}
         onBuyPackage={buyPackage}

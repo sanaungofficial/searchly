@@ -27,6 +27,7 @@ const coachListSelect = {
   featured: true,
   isProfessionalCoach: true,
   isInternal: true,
+  requiresAssignment: true,
   calLink: true,
   linkedinUrl: true,
   nylasSchedulerConfigId: true,
@@ -56,6 +57,7 @@ function mapCoachRow(c: {
   featured: boolean;
   isProfessionalCoach: boolean;
   isInternal: boolean;
+  requiresAssignment: boolean;
   calLink: string | null;
   linkedinUrl: string | null;
   nylasSchedulerConfigId: string | null;
@@ -83,11 +85,12 @@ function mapCoachRow(c: {
     specialties: c.specialties ?? [],
     industries: c.industries ?? [],
     clientSpecializations: c.clientSpecializations ?? [],
-    hourlyRate: c.isInternal ? null : c.hourlyRate,
+    hourlyRate: c.isInternal || c.requiresAssignment ? null : c.hourlyRate,
     category: c.category,
     featured: c.featured,
     isProfessionalCoach: c.isProfessionalCoach,
     isInternal: c.isInternal,
+    requiresAssignment: c.requiresAssignment,
     calLink: c.calLink,
     linkedinUrl: c.linkedinUrl,
     nylasSchedulerConfigId: c.nylasSchedulerConfigId,

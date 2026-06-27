@@ -144,7 +144,8 @@ export function CoachingDirectory({ category, isMobile, isPro, onSubscribe, onOp
   const router = useRouter();
   const searchParams = useSearchParams();
   const { userRole, isImpersonating } = useWorkspace();
-  const canSelfAssignCoach = userRole === "USER" || isImpersonating;
+  const isAdmin = userRole === "ADMIN";
+  const canSelfAssignCoach = userRole === "USER" || isImpersonating || isAdmin;
   const [allCoaches, setAllCoaches] = useState<CoachListItem[]>([]);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [localMyCoachIds, setLocalMyCoachIds] = useState<Set<string>>(new Set());

@@ -162,7 +162,8 @@ function ReviewFormModal({
 export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFollowChange, onMyCoachChange }: Props) {
   const isMobile = useIsMobile();
   const { openCoachPrepChat, user, authChecked, userRole, isImpersonating } = useWorkspace();
-  const canSelfAssignCoach = userRole === "USER" || isImpersonating;
+  const isAdmin = userRole === "ADMIN";
+  const canSelfAssignCoach = userRole === "USER" || isImpersonating || isAdmin;
   const [visible, setVisible] = useState(false);
   const [coach, setCoach] = useState<CoachProfileDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -270,7 +271,8 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
   const toggleMyCoach = async () => {
     if (!coach) return;
     const isAssigned = coach.isMyCoach ?? false;
-    if (!isAssigned && coach.isInternal) return;
+    if (!isAssigned && coach.isInternal && !isAdmin) return;
+    if (!isAssigned && coach.requiresAssignment && !isAdmin) return;
     const res = isAssigned
       ? await fetch(`/api/coaching/coach-assignment?coachProfileId=${encodeURIComponent(coach.id)}`, { method: "DELETE" })
       : await fetch("/api/coaching/coach-assignment", {
@@ -385,6 +387,7 @@ export function CoachDrawer({ slug, onClose, isPro, onSubscribe, preview, onFoll
               nextSlotStart={nextSlotStart}
               nextSlotLoading={nextSlotLoading}
               canSelfAssignCoach={canSelfAssignCoach}
+              isAdmin={isAdmin}
               onBookIntro={() => openBooking("intro")}
               onBookSession={() => openBooking("session")}
               onBuyPackage={buyPackage}
