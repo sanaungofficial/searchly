@@ -19,6 +19,7 @@ import {
   ScreenWelcome,
   ScreenReadBack,
   ScreenTargetRoles,
+  ScreenOnboardingPriorityRole,
   ScreenTargetCompanies,
   ScreenOnboardingLocation,
   ScreenOnboardingWorkArrangement,
@@ -76,6 +77,15 @@ function saveMatchingPreferences(state: OnboardingMatchingState): Promise<void> 
   }).then(() => {});
 }
 
+function savePrioritizedRoles(roles: string[]): Promise<void> {
+  if (!roles.length) return Promise.resolve();
+  return fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prioritizedRoles: roles }),
+  }).then(() => {});
+}
+
 function saveTargetRoles(roles: string[]): Promise<void> {
   if (!roles.length) return Promise.resolve();
   return fetch("/api/profile", {
@@ -115,6 +125,7 @@ export default function OnboardingPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [liInput, setLiInput] = useState("");
   const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
+  const [priorityRole, setPriorityRole] = useState("");
   const [selectedCompanies, setSelectedCompanies] = useState<OnboardingCompanyPick[]>([]);
   const [readbackRoleSuggestions, setReadbackRoleSuggestions] = useState<string[]>([]);
   const [readbackData, setReadbackData] = useState<ReadBackData | null>(null);
@@ -136,7 +147,7 @@ export default function OnboardingPage() {
   const goTo = useCallback((n: Screen) => setScreen(n), []);
 
   useEffect(() => {
-    if (screen !== 3 || locationHintFetchedRef.current) return;
+    if (screen !== 4 || locationHintFetchedRef.current) return;
     locationHintFetchedRef.current = true;
     void fetch("/api/profile")
       .then((res) => (res.ok ? res.json() : null))
@@ -350,13 +361,28 @@ export default function OnboardingPage() {
 
   const onRolesContinue = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(3);
+    if (selectedTitles.length === 1) {
+      await savePrioritizedRoles([selectedTitles[0]!]);
+      goTo(4);
+    } else if (selectedTitles.length >= 2) {
+      setPriorityRole((prev) => prev || selectedTitles[0] || "");
+      goTo(3);
+    } else {
+      goTo(4);
+    }
   }, [selectedTitles, goTo]);
 
   const onRolesSkip = useCallback(async () => {
     await saveTargetRoles(selectedTitles);
-    goTo(3);
+    goTo(4);
   }, [selectedTitles, goTo]);
+
+  const onPriorityContinue = useCallback(async () => {
+    if (priorityRole) await savePrioritizedRoles([priorityRole]);
+    goTo(4);
+  }, [priorityRole, goTo]);
+
+  const onPrioritySkip = useCallback(() => goTo(4), [goTo]);
 
   const persistMatchingAndGo = useCallback(
     async (next: Screen) => {
@@ -373,59 +399,59 @@ export default function OnboardingPage() {
       workArrangement: fullyRemote ? "remote_only" : matchingState.workArrangement,
       fullyRemote,
     });
-    goTo(fullyRemote ? 5 : 4);
+    goTo(fullyRemote ? 6 : 5);
   }, [fullyRemote, matchingState, goTo]);
 
   const onLocationSkip = useCallback(async () => {
-    await persistMatchingAndGo(fullyRemote ? 5 : 4);
+    await persistMatchingAndGo(fullyRemote ? 6 : 5);
   }, [fullyRemote, persistMatchingAndGo]);
 
   const onWorkArrangementContinue = useCallback(async () => {
-    await persistMatchingAndGo(5);
+    await persistMatchingAndGo(6);
   }, [persistMatchingAndGo]);
 
   const onWorkArrangementSkip = useCallback(async () => {
-    await persistMatchingAndGo(5);
+    await persistMatchingAndGo(6);
   }, [persistMatchingAndGo]);
 
   const onRelocationContinue = useCallback(async () => {
-    await persistMatchingAndGo(6);
+    await persistMatchingAndGo(7);
   }, [persistMatchingAndGo]);
 
   const onRelocationSkip = useCallback(async () => {
-    await persistMatchingAndGo(6);
+    await persistMatchingAndGo(7);
   }, [persistMatchingAndGo]);
 
   const onVisaContinue = useCallback(async () => {
-    await persistMatchingAndGo(7);
+    await persistMatchingAndGo(8);
   }, [persistMatchingAndGo]);
 
   const onVisaSkip = useCallback(async () => {
-    await persistMatchingAndGo(7);
+    await persistMatchingAndGo(8);
   }, [persistMatchingAndGo]);
 
   const onSalaryContinue = useCallback(async () => {
-    await persistMatchingAndGo(8);
+    await persistMatchingAndGo(9);
   }, [persistMatchingAndGo]);
 
   const onSalarySkip = useCallback(async () => {
-    await persistMatchingAndGo(8);
+    await persistMatchingAndGo(9);
   }, [persistMatchingAndGo]);
 
   const onTimelineContinue = useCallback(async () => {
-    await persistMatchingAndGo(9);
+    await persistMatchingAndGo(10);
   }, [persistMatchingAndGo]);
 
   const onTimelineSkip = useCallback(async () => {
-    await persistMatchingAndGo(9);
+    await persistMatchingAndGo(10);
   }, [persistMatchingAndGo]);
 
   const onAvoidContinue = useCallback(async () => {
-    await persistMatchingAndGo(10);
+    await persistMatchingAndGo(11);
   }, [persistMatchingAndGo]);
 
   const onAvoidSkip = useCallback(async () => {
-    await persistMatchingAndGo(10);
+    await persistMatchingAndGo(11);
   }, [persistMatchingAndGo]);
 
   const onFullyRemoteChange = useCallback((next: boolean) => {
@@ -457,7 +483,7 @@ export default function OnboardingPage() {
 
   const runFinishSetup = useCallback(async () => {
     setSetupSteps(INITIAL_SETUP_STEPS.map((s) => ({ ...s, status: "pending" as SetupStepStatus })));
-    goTo(11);
+    goTo(12);
 
     let primaryAssetId: string | undefined;
     const companiesSnapshot = selectedCompanies;
@@ -571,9 +597,9 @@ export default function OnboardingPage() {
         setResumeUploaded(true);
         startBackgroundReadback();
       }, 1300);
-    } else if (screen < 10) {
+    } else if (screen < 11) {
       goTo((screen + 1) as Screen);
-    } else if (screen === 10) {
+    } else if (screen === 11) {
       void runFinishSetup();
     }
   };
@@ -588,7 +614,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const headerScreen = (screen === 11 ? 10 : screen) as Screen;
+  const headerScreen = (screen === 12 ? 11 : screen) as Screen;
   const showProcessingBanner =
     (screen === 0 && (resumeUploading || readbackStatus === "loading")) ||
     (screen === 1 && readbackStatus === "loading");
@@ -650,7 +676,17 @@ export default function OnboardingPage() {
               onSkip={onRolesSkip}
             />
           )}
-          {screen === 3 && (
+          {screen === 3 && selectedTitles.length >= 2 && (
+            <ScreenOnboardingPriorityRole
+              targetRoles={selectedTitles}
+              priorityRole={priorityRole}
+              onPriorityRoleChange={setPriorityRole}
+              onContinue={() => void onPriorityContinue()}
+              onSkip={onPrioritySkip}
+              onBack={() => goTo(2)}
+            />
+          )}
+          {screen === 4 && (
             <ScreenOnboardingLocation
               targetMarket={targetMarket}
               fullyRemote={fullyRemote}
@@ -659,64 +695,64 @@ export default function OnboardingPage() {
               onFullyRemoteChange={onFullyRemoteChange}
               onContinue={() => void onLocationContinue()}
               onSkip={() => void onLocationSkip()}
-              onBack={() => goTo(2)}
+              onBack={() => goTo(selectedTitles.length >= 2 ? 3 : 2)}
             />
           )}
-          {screen === 4 && (
+          {screen === 5 && (
             <ScreenOnboardingWorkArrangement
               workArrangement={workArrangement}
               onWorkArrangementChange={setWorkArrangement}
               onContinue={() => void onWorkArrangementContinue()}
               onSkip={() => void onWorkArrangementSkip()}
-              onBack={() => goTo(3)}
+              onBack={() => goTo(4)}
             />
           )}
-          {screen === 5 && (
+          {screen === 6 && (
             <ScreenOnboardingRelocation
               relocation={relocation}
               onRelocationChange={setRelocation}
               onContinue={() => void onRelocationContinue()}
               onSkip={() => void onRelocationSkip()}
-              onBack={() => goTo(fullyRemote ? 3 : 4)}
+              onBack={() => goTo(fullyRemote ? 4 : 5)}
             />
           )}
-          {screen === 6 && (
+          {screen === 7 && (
             <ScreenOnboardingVisa
               visaNeed={visaNeed}
               onVisaNeedChange={setVisaNeed}
               onContinue={() => void onVisaContinue()}
               onSkip={() => void onVisaSkip()}
-              onBack={() => goTo(5)}
+              onBack={() => goTo(6)}
             />
           )}
-          {screen === 7 && (
+          {screen === 8 && (
             <ScreenOnboardingSalary
               targetSalary={targetSalary}
               onTargetSalaryChange={setTargetSalary}
               onContinue={() => void onSalaryContinue()}
               onSkip={() => void onSalarySkip()}
-              onBack={() => goTo(6)}
+              onBack={() => goTo(7)}
             />
           )}
-          {screen === 8 && (
+          {screen === 9 && (
             <ScreenOnboardingTimeline
               jobTimeline={jobTimeline}
               onJobTimelineChange={setJobTimeline}
               onContinue={() => void onTimelineContinue()}
               onSkip={() => void onTimelineSkip()}
-              onBack={() => goTo(7)}
+              onBack={() => goTo(8)}
             />
           )}
-          {screen === 9 && (
+          {screen === 10 && (
             <ScreenOnboardingAvoidRoles
               deprioritizedRoles={deprioritizedRoles}
               onToggleAvoidRole={onToggleAvoidRole}
               onContinue={() => void onAvoidContinue()}
               onSkip={() => void onAvoidSkip()}
-              onBack={() => goTo(8)}
+              onBack={() => goTo(9)}
             />
           )}
-          {screen === 10 && (
+          {screen === 11 && (
             <ScreenTargetCompanies
               selectedCompanies={selectedCompanies}
               targetRoles={selectedTitles}
@@ -726,10 +762,10 @@ export default function OnboardingPage() {
               onSkip={onCompaniesSkip}
             />
           )}
-          {screen === 11 && <ScreenSetup steps={setupSteps} />}
+          {screen === 12 && <ScreenSetup steps={setupSteps} />}
         </div>
       </div>
-      {process.env.NODE_ENV === "development" && screen !== 11 && <DemoNextButton onClick={demoAdvance} />}
+      {process.env.NODE_ENV === "development" && screen !== 12 && <DemoNextButton onClick={demoAdvance} />}
     </div>
   );
 }
